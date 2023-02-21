@@ -1,0 +1,23 @@
+//
+//  Config-Release-External.xcconfig
+//  ProtonDrive-iOS
+//
+//  Created by Anatoly Rosencrantz on 10/09/2020.
+//  Copyright © 2020 ProtonMail. All rights reserved.
+//
+
+// Configuration settings file format documentation can be found at:
+// https://help.apple.com/xcode/#/dev745c5c974
+
+DEFAULT_API_HOST = drive-api.proton.me
+
+PROTOCOL = itms-apps:/
+APPSTORE_PAGE_LINK = $(PROTOCOL)/apple.com/app/id1509667851
+APP_VERSION_IDENTIFIER =
+
+SUPPORT_BIOMETRIC_UNLOCK_IN_APPEX = NO
+SUPPORTS_BACKGROUND_UPLOADS = NO // TODO: Enable Processing tasks Background when required
+
+ICON_NAME = AppIcon-Release-External
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) HAS_SIGNUP HAS_PAYMENTS NO_DOH
+EXCLUDED_SOURCE_FILE_NAMES = $(inherited) Settings.bundle

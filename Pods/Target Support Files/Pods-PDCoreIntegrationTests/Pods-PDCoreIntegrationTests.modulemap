@@ -1,0 +1,6 @@
+framework module Pods_PDCoreIntegrationTests {
+  umbrella header "Pods-PDCoreIntegrationTests-umbrella.h"
+
+  export *
+  module * { export * }
+}

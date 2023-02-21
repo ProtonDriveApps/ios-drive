@@ -1,0 +1,382 @@
+/* Email verification view title */
+"Account verification" = "Asenqed n umiḍan";
+
+/* Title of account switcher */
+"Accounts" = "Imiḍanen";
+
+/* Error message */
+"Apple informed us they could not process the purchase." = "Apple yenna-yaɣ-d d akken ur yezmir ara ad yessesfer tiɣint-agi.";
+
+/* Error message */
+"Apple informed us you've upgraded the service plan, but some technical data was missing. Please fill in the bug report and our customer support team will contact you." = "Apple yuzen-aɣ-d ulɣu belli tleqqmeḍ aɣawas n umeẓlu, maca kra n yisefka itiknikanen xuṣṣen. Ttxil-k·m ɛemmeṛ aneqqis n wabug syen tarbaɛt-nneɣ n tallalt n umsaɣ ad ak·akem-id-nermes.";
+
+/* Error message */
+"Apple informed us you've upgraded the service plan, but we detected you have logged out of the account since then." = "Apple yuzen-aɣ-d ulɣu belli tleqqmeḍ aɣawas n umeẓlu, maca nufa-d teffɣeḍ seg umiḍan seg wass-nni.";
+
+/* Alert message of sign out the email address */
+"Are you sure you want to sign out %@?" = "Tebɣiḍ ad teffɣeḍ%@?";
+
+/* *
+ * Login 2FA */
+"Authenticate" = "Asesteb";
+
+/* Cancel button */
+"Cancel" = "Sefsex";
+
+/* captha method name */
+"CAPTCHA" = "CAPTCHA";
+
+/* Dialog action button title for organization user first login */
+"Change password" = "Snifel awal uffir";
+
+/* Signup summary title */
+"Congratulations" = "Ayuz!";
+
+/* Error applying credit after registration alert */
+"Contact customer support" = "Nermes tallalt-nneɣ n umsaɣ";
+
+/* In App Purchase error */
+"Contact support@protonvpn.com to complete your purchase." = "Nermes support@protonvpn.com i wakken ad temmed tiɣin-inek·inem.";
+
+/* Proton Mail address button */
+"Create a secure Proton Mail address instead" = "Rnu tansa n Proton Mail taɣellsant deg ubdil";
+
+/* Create account button */
+"Create an account" = "Snulfud amiḍan";
+
+/* *
+ * Signup */
+"Create your Proton Account" = "Snulfu-d amiḍan-inek/m Proton";
+
+/* Plan selection title */
+"Current plan" = "Aɣawas amiran";
+
+/* Plan details renew expired */
+"Current plan will expire on %@" = "Aɣawas amiran ad yemmet deg %@";
+
+/* Customer support button */
+"Customer support" = "Tallalt tudmawant";
+
+/* Did not receive code button */
+"Did not receive a code?" = "Ur d-teṭṭifeḍ ara tangalt?";
+
+/* Not receive code button */
+"Did not receive the code?" = "Ur d-teṭṭifeḍ ara tangalt?";
+
+/* Question is user wants to bypass username validation and activate plan for current username */
+"Do you want to activate the purchase for %@ address?" = "Tebɣiḍ ad tremdeḍ tiɣin i tansa %@ address?";
+
+/* Email field title
+   Email label
+   email method name
+   Recovery segmenet email */
+"Email" = "Imayl";
+
+/* Email address already used error */
+"Email address already used." = "Tans-a n yimayl tettuseqdec yakan.";
+
+/* Username field title */
+"Email or username" = "Imayl neɣ isem n useqdac";
+
+/* 2FA screen field info
+   Email verification code description
+   Verification code hint label */
+"Enter the 6-digit code." = "Sekcem tangalt n 6 n yizwilen.";
+
+/* *
+ *  Payments */
+"Error occured" = "Tella-d tuccḍa";
+
+/* Forgot password button title
+   Forgot password help button */
+"Forgot password" = "Tettud awal uffir";
+
+/* Forgot username help button */
+"Forgot username" = "Tettuḍ isem n useqdac";
+
+/* Plan details plus description */
+"Full-featured mailbox with advanced protection." = "Tanaka n tirawt tummidt s ummesten leqqayen.";
+
+/* Verification button */
+"Get verification code" = "Awi tangalt n usentem";
+
+/* Help button */
+"Help" = "Tallelt";
+
+/* Plan details high speed message */
+"High speed" = "Arured ɛlayen";
+
+/* Plan details highest speed message */
+"Highest speed" = "Arured afellay maḍi";
+
+/* Invalid hashed password error */
+"Invalid hashed password" = "Awal uffir n udway mačči d ameɣtu";
+
+/* alert title */
+"Invalid verification code" = "Tangalt n usentem mačči d tameɣtut";
+
+/* Error message */
+"It wasn't possible to match your purchased App Store product to any products on our server. Please fill in the bug report and our customer support team will contact you." = "D awezɣi umeɣru n ufaris i d-tesɣiḍ seg App Store akked d yifuras i yellan deg uqeddac-nneɣ. Ttxil ččar aneqqis n ubug akken tarbaɛt-nneɣ n tallelt n yimsaɣen ad ak-kem-d-tnermes.";
+
+/* alternative routing link name in description
+   External accounts not supported popup learn more button
+   learn more button */
+"Learn more" = "Issin ugar";
+
+/* Plan details visionary description */
+"Mail + VPN bundle for families and small businesses" = "Imayl + VPN ttwamudden i twaculin akked businesses imecṭaḥ";
+
+/* Mailbox password field title */
+"Mailbox password" = "Awal uffir n Tnaka n yimayl";
+
+/* Manage accounts button */
+"Manage accounts" = "Sefrek imiḍanen";
+
+/* Plan details multi-user support message */
+"Multi-user support" = "Tallelt n ddeqs n iseqdacen";
+
+/* Help button */
+"Need help?" = "Tesriḍ tallelt?";
+
+/* Next button */
+"Next" = "Ɣer sdat";
+
+/* Warning message option when user want to relogin to another account */
+"No, for another Proton Mail account" = "Uhu, i umiḍan nniḍen Proton Mail";
+
+/* Action
+   OK button */
+"OK" = "IH";
+
+/* *
+ *  Login welcome screen */
+"One account for all Proton services." = "Yiwen n umiḍan i meṛṛa imeẓla n Proton.";
+
+/* Password field title */
+"Password" = "Awal uffir";
+
+/* (No Comment) */
+"payment failed" = "axelleṣ yecceḍ";
+
+/* Error applying credit after registration alert */
+"Payment failed" = "Axelleṣ yecceḍ";
+
+/* Recovery segmenet phone */
+"Phone" = "Tiliɣri";
+
+/* SMS label */
+"Phone number" = "Uṭṭun n tiliɣri";
+
+/* Error message */
+"Please log in to the Proton Mail account you're upgrading the service plan for so we can complete the purchase." = "Ttxil qqen ɣer umiḍan-ik•im Proton Mail iwumi tleqqmeḍ aɣawas n useqdec akken ad nesmed timseɣiwt.";
+
+/* Error message */
+"Please log in to the Proton Mail account you're upgrading the service plan for so we can complete the service plan activation." = "Ttxil qqen ɣer umiḍan-ik•im Proton Mail iwumi tleqqmeḍ aɣawas n useqdec akken ad nesmed armad n uɣawas n useqdec.";
+
+/* Error message */
+"Please unlock the app to proceed with your service plan activation" = "Ma ulac aɣilif kkes aseḍru i usnas akken ad tkemmleḍ deg urmad n uɣawas n umeẓlu";
+
+/* quit button */
+"Quit" = "Ffeɣ";
+
+/* 2FA screen recovery field title */
+"Recovery code" = "Tangalt n tririt";
+
+/* Recovery email field title */
+"Recovery email" = "Imayl n tririt";
+
+/* Remove button */
+"Remove" = "Kkes";
+
+/* Repeat password field title */
+"Repeat password" = "Ales awal uffir";
+
+/* request item title */
+"Request an invite" = "Suter tinubga";
+
+/* new code alert button */
+"Request new code" = "Suter tangalt tamaynut";
+
+/* alert title */
+"Request new code?" = "Suter tangalt tamaynut?";
+
+/* resend alert button */
+"Resend" = "Ales tuzna";
+
+/* Button in some alerts */
+"Retry" = "Ɛref̣ tikelt-nniḍen";
+
+/* Search country placeholder */
+"Search country" = "Nadi tamurt";
+
+/* Select plan button */
+"Select" = "Fren";
+
+/* *
+ *  Payments UI */
+"Select a plan" = "Fren aɣawas";
+
+/* *
+ *  Login screen */
+"Sign in" = "Qqen";
+
+/* Sign out button/ title */
+"Sign out" = "Ffeɣ";
+
+/* Skip button */
+"Skip" = "Zgel";
+
+/* SMS method name */
+"SMS" = "SMS";
+
+/* Error message for beta users */
+"Sorry, we cannot process purchases in the beta version of the iOS app. Thank you for participating in our public beta!" = "Suref-aɣ, ur nezmir ara ad nermed timahilin n tmesɣiwt deg lqem beta n usnas iOS. Tanemmirt imi tettekkaḍ deg lqem-nneɣ beta azayez!";
+
+/* Recovery terms and conditions link
+   Terms and conditions view title */
+"Terms and Conditions" = "Tiwtilin n useqdec";
+
+/* Plan details free description */
+"The basic for private and secure communications." = "Lsas i teywalt tbaḍnit, taɣelsant.";
+
+/* other method alert button */
+"Try other method" = "Ɛreḍ tarrayt nniḍen";
+
+/* 2FA screen title */
+"Two-factor authentication" = "Asesteb s snat n tarrayin";
+
+/* 2FA screen field title */
+"Two-factor code" = "Tangalt n snat n tarayin";
+
+/* Mailbox unlock screen action button title */
+"Unlock" = "Serreḥ";
+
+/* *
+ * Login unlock mailbox */
+"Unlock your mailbox" = "Kkes asekker i tbewwaḍt-ik·im n ymayl";
+
+/* update button */
+"Update" = "Leqqem";
+
+/* *
+ *  Force upgrade */
+"Update required" = "Ilaq uleqqem";
+
+/* Upgrade plan button */
+"Upgrade" = "Leqqem";
+
+/* 2FA screen recovery button title */
+"Use recovery code" = "Seqdec tangalt n tririt";
+
+/* 2FA screen 2FA button title */
+"Use two-factor code" = "Seqdec tangalt n snat n tarayin";
+
+/* Username field title */
+"Username" = "Isem n useqdac";
+
+/* Email verification code name
+   Verification code label */
+"Verification code" = "Tangalt n usenqed";
+
+/* Verify button */
+"Verify" = "Senqed";
+
+/* Title */
+"Warning" = "Γur-k";
+
+/* Error message */
+"We have been notified of an App Store purchase but cannot match the purchase with an account of yours." = "Neṭṭf-d talɣut n tiɣin ɣef App Store maca ur nezmir ara ad neg assaɣ gar tiɣin-agi akked umiḍan yellan d ayla-k•m.";
+
+/* Error message */
+"We have successfully activated your subscription. Please relaunch the app to start using your new service plan." = "Tremded akken iwata amulteɣ-inek·inem. Ttxil-k·m ales asenker n usnas i wakken ad tebduḍ aɣawas-inek·inem amaynut n umeẓlu.";
+
+/* alert message */
+"Would you like to receive a new verification code or use an alternative verification method?" = "Tebɣiḍ ad d-teṭṭfeḍ tangalt n usenqed tamaynut neɣ ad tesqedceḍ ttawil n usenqed nniḍen?";
+
+/* In App Purchase error */
+"Wrong payment token status. Please relaunch the app. If error persists, contact support." = "Addad arameɣtu n ujuṭu n lexlaṣ. Ttxil-k·m ales tanekra n usnas. Ma yella yeqqim wugur, nermes tallalt.";
+
+/* Warning message option to bypass validation and activate plan for current username */
+"Yes, activate it for " = "Ih, rmed-it i ";
+
+/* Error applying credit after registration alert */
+"You have successfully registered but your payment was not processed. To resend your payment information, click Retry. You will only be charged once. If the problem persists, please contact customer support." = "Ajerred-ik·im yedda akken iwata maca axelleṣ-inek·inem ur yettusesfar ara. I tuzna i tikkelt-nniḍen n telɣut n uxelleṣ-inek·inem, sit ales aneɛruḍ. Yiwet n tikkelt kan ad ak·am-d-tettwazen tfaṭurt. Ma yella yettuɣal-d wugur, ttxil-k·m nermes tallalt n umsaɣ.";
+
+/* Email method */
+"Your email will only be used for this one-time verification." = "Imayl-ik ad yettwaseqdec kan tikkelt deg usenqed-agi.";
+
+/* SMS method */
+"Your phone number will only be used for this one-time verification." = "Uṭṭun-ik n tiliɣṛi ad yettwaseqdec kan tikkelt deg usenqed-agi.";
+
+/* New_Plans Plan details used storage space */
+"New_Plans %@ of %@" = "%@ of %@";
+
+/* New_Plans Plan details Access to streaming services globally */
+"New_Plans Access to streaming services globally" = "Access to streaming services globally";
+
+/* New_Plans Plan details ad-blocker */
+"New_Plans Built-in ad-blocker (NetShield)" = "Built-in ad-blocker (NetShield)";
+
+/* New_Plans Plan connection error description */
+"New_Plans Check your internet connection" = "Check your internet connection";
+
+/* New_Plans Plan connection error title */
+"New_Plans Connection issues" = "Connection issues";
+
+/* New_Plans Extend subscription button */
+"New_Plans Extend subscription" = "Extend subscription";
+
+/* New_Plans Plan details VPN on a single device */
+"New_Plans Free VPN on a single device" = "Free VPN on a single device";
+
+/* New_Plans Get plan button */
+"New_Plans Get %@" = "Get %@";
+
+/* New_Plans Get free plan button */
+"New_Plans Get Proton for free" = "Get Proton for free";
+
+/* New_Plans Plan details Highest VPN speed */
+"New_Plans Highest VPN speed" = "Highest VPN speed";
+
+/* New_Plans */
+"New_Plans One plan for all Proton services" = "One plan for all Proton services";
+
+/* New_Plans Plan footer description */
+"New_Plans Only non-renewing annual subscriptions are available via this app" = "Only non-renewing annual subscriptions are available via this app";
+
+/* New_Plans Plan details P2P/BitTorrent */
+"New_Plans P2P/BitTorrent" = "P2P/BitTorrent";
+
+/* New_Plans Plan successfully upgraded banner message */
+"New_Plans Plan successfully upgraded" = "Plan successfully upgraded";
+
+/* New_Plans Plan details Secure Core servers */
+"New_Plans Secure Core servers" = "Secure Core servers";
+
+/* New_Plans Plan details no logs policy */
+"New_Plans Strict no-logs policy" = "Strict no-logs policy";
+
+/* New_Plans Plan details free description */
+"New_Plans The no-cost starter account designed to empower everyone with privacy by default." = "The no-cost starter account designed to empower everyone with privacy by default.";
+
+/* New_Plans Plan details plus description */
+"New_Plans The privacy-first email and calendar solution for your everyday communication needs." = "The privacy-first email and calendar solution for your everyday communication needs.";
+
+/* New_Plans Plan details bundle description */
+"New_Plans The ultimate privacy pack with access to all premium Proton services." = "The ultimate privacy pack with access to all premium Proton services.";
+
+/* New_Plans Plan details TOR over VPN */
+"New_Plans TOR over VPN" = "TOR over VPN";
+
+/* New_Plans Plan details unlimited folders, labels, filters */
+"New_Plans Unlimited folders, labels, and filters" = "Unlimited folders, labels, and filters";
+
+/* New_Plans Plan details up to storage */
+"New_Plans Up to %@ storage" = "Up to %@ storage";
+
+/* New_Plans Plan details vpn plus description */
+"New_Plans Your privacy and security are our priority." = "Your privacy and security are our priority.";
+
+/* Welcome screen */
+"Privacy by default" = "Privacy by default";
+

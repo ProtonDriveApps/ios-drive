@@ -1,0 +1,14 @@
+//
+//  Config-Release-QA.xcconfig
+//  ProtonDrive-iOS
+//
+//  Created by Anatoly Rosencrantz on 10/09/2020.
+//  Copyright © 2020 ProtonMail. All rights reserved.
+//
+
+// Configuration settings file format documentation can be found at:
+// https://help.apple.com/xcode/#/dev745c5c974
+
+#include "../Pods/Target Support Files/Pods-ProtonDriveFileProvider/Pods-ProtonDriveFileProvider.release-qa.xcconfig"
+
+#include "SharedBuildConfigs/Config-Release-QA.xcconfig"

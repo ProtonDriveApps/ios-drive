@@ -1,0 +1,4 @@
+${PODS_ROOT}/Target Support Files/Pods-ProtonDrive/Pods-ProtonDrive-frameworks.sh
+${BUILT_PRODUCTS_DIR}/OHHTTPStubs-dynamic/OHHTTPStubs.framework
+${BUILT_PRODUCTS_DIR}/PMSideMenu/PMSideMenu.framework
+${BUILT_PRODUCTS_DIR}/SideMenuSwift/SideMenuSwift.framework

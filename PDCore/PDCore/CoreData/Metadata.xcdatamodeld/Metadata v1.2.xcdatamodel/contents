@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="19461" systemVersion="21A344" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="Block" representedClassName="Block" isAbstract="YES" syncable="YES">
+        <attribute name="encSignature" optional="YES" attributeType="String"/>
+        <attribute name="index" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="localPath" optional="YES" attributeType="String"/>
+        <attribute name="signatureEmail" optional="YES" attributeType="String"/>
+        <relationship name="revision" maxCount="1" deletionRule="Cascade" destinationEntity="Revision" inverseName="blocks" inverseEntity="Revision"/>
+    </entity>
+    <entity name="DownloadBlock" representedClassName="DownloadBlock" parentEntity="Block" syncable="YES">
+        <attribute name="downloadUrl" attributeType="String"/>
+    </entity>
+    <entity name="File" representedClassName="File" parentEntity="Node" syncable="YES">
+        <attribute name="contentKeyPacket" optional="YES" attributeType="String"/>
+        <attribute name="contentKeyPacketSignature" optional="YES" attributeType="String"/>
+        <attribute name="uploadIdRaw" optional="YES" attributeType="String"/>
+        <relationship name="activeRevision" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="Revision"/>
+        <relationship name="revisions" toMany="YES" deletionRule="Cascade" destinationEntity="Revision" inverseName="file" inverseEntity="Revision"/>
+    </entity>
+    <entity name="Folder" representedClassName="Folder" parentEntity="Node" syncable="YES">
+        <attribute name="isChildrenListFullyFetched" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="nodeHashKey" optional="YES" attributeType="String"/>
+        <relationship name="children" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Node" inverseName="parentLink" inverseEntity="Node"/>
+    </entity>
+    <entity name="Node" representedClassName="Node" isAbstract="YES" syncable="YES">
+        <attribute name="attributesMaskRaw" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="clearName" optional="YES" transient="YES" attributeType="String"/>
+        <attribute name="clearPassphrase" optional="YES" transient="YES" attributeType="String"/>
+        <attribute name="created" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="String"/>
+        <attribute name="isFavorite" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="isFolder" optional="YES" transient="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="isInheritingOfflineAvailable" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="isMarkedOfflineAvailable" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="isShared" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="isToBeDeleted" transient="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="localID" optional="YES" attributeType="String"/>
+        <attribute name="mimeType" optional="YES" attributeType="String"/>
+        <attribute name="modified" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="nodeHash" optional="YES" attributeType="String"/>
+        <attribute name="nodeKey" optional="YES" attributeType="String"/>
+        <attribute name="nodePassphrase" optional="YES" attributeType="String"/>
+        <attribute name="nodePassphraseSignature" optional="YES" attributeType="String"/>
+        <attribute name="permissionsMaskRaw" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="shareID" attributeType="String"/>
+        <attribute name="signatureAddress" optional="YES" attributeType="String"/>
+        <attribute name="size" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="stateRaw" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="directShares" toMany="YES" deletionRule="Nullify" destinationEntity="Share" inverseName="root" inverseEntity="Share"/>
+        <relationship name="parentLink" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Folder" inverseName="children" inverseEntity="Folder"/>
+    </entity>
+    <entity name="Revision" representedClassName="Revision" syncable="YES">
+        <attribute name="created" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="String"/>
+        <attribute name="manifestSignature" optional="YES" attributeType="String"/>
+        <attribute name="signatureAddress" optional="YES" attributeType="String"/>
+        <attribute name="size" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="stateRaw" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="blocks" toMany="YES" deletionRule="Cascade" destinationEntity="Block" inverseName="revision" inverseEntity="Block"/>
+        <relationship name="file" maxCount="1" deletionRule="Nullify" destinationEntity="File" inverseName="revisions" inverseEntity="File"/>
+        <relationship name="thumbnail" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="Thumbnail" inverseName="revision" inverseEntity="Thumbnail"/>
+    </entity>
+    <entity name="Share" representedClassName="Share" syncable="YES">
+        <attribute name="addressID" optional="YES" attributeType="String"/>
+        <attribute name="blockSize" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="clearPassphrase" optional="YES" transient="YES" attributeType="String"/>
+        <attribute name="creator" optional="YES" attributeType="String"/>
+        <attribute name="flagsRaw" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="String"/>
+        <attribute name="key" optional="YES" attributeType="String"/>
+        <attribute name="linkTypeRaw" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="passphrase" optional="YES" attributeType="String"/>
+        <attribute name="passphraseSignature" optional="YES" attributeType="String"/>
+        <attribute name="permissionMaskRaw" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="root" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Node" inverseName="directShares" inverseEntity="Node"/>
+        <relationship name="shareUrls" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="ShareURL" inverseName="share" inverseEntity="ShareURL"/>
+        <relationship name="volume" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Volume" inverseName="shares" inverseEntity="Volume"/>
+    </entity>
+    <entity name="ShareURL" representedClassName="ShareURL" syncable="YES">
+        <attribute name="clearPassword" optional="YES" transient="YES" attributeType="String"/>
+        <attribute name="createTime" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="creatorEmail" attributeType="String"/>
+        <attribute name="expirationTime" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="flagsRaw" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="lastAccessTime" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="maxAccesses" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="numAccesses" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="password" attributeType="String"/>
+        <attribute name="permissionsRaw" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="sharePassphraseKeyPacket" attributeType="String"/>
+        <attribute name="sharePasswordSalt" attributeType="String"/>
+        <attribute name="srpModulusID" attributeType="String"/>
+        <attribute name="srpVerifier" attributeType="String"/>
+        <attribute name="token" attributeType="String"/>
+        <attribute name="urlPasswordSalt" attributeType="String"/>
+        <relationship name="share" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Share" inverseName="shareUrls" inverseEntity="Share"/>
+    </entity>
+    <entity name="Thumbnail" representedClassName="Thumbnail" syncable="YES">
+        <attribute name="clearData" optional="YES" transient="YES" attributeType="Binary"/>
+        <attribute name="downloadURL" optional="YES" attributeType="String"/>
+        <attribute name="encrypted" optional="YES" attributeType="Binary"/>
+        <attribute name="sha256" optional="YES" attributeType="Binary"/>
+        <attribute name="uploadURL" optional="YES" attributeType="String"/>
+        <relationship name="revision" maxCount="1" deletionRule="Nullify" destinationEntity="Revision" inverseName="thumbnail" inverseEntity="Revision"/>
+    </entity>
+    <entity name="UploadBlock" representedClassName="UploadBlock" parentEntity="Block" syncable="YES">
+        <attribute name="sha256" optional="YES" attributeType="Binary"/>
+        <attribute name="size" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="uploadToken" optional="YES" attributeType="String"/>
+        <attribute name="uploadUrl" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="Volume" representedClassName="Volume" syncable="YES">
+        <attribute name="id" attributeType="String"/>
+        <attribute name="maxSpace" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="restoreStatusRaw" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="stateRaw" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="usedSpace" attributeType="Integer 64" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <relationship name="shares" toMany="YES" deletionRule="Nullify" destinationEntity="Share" inverseName="volume" inverseEntity="Share"/>
+    </entity>
+    <elements>
+        <element name="Block" positionX="-27" positionY="135" width="128" height="118"/>
+        <element name="DownloadBlock" positionX="-18" positionY="144" width="128" height="58"/>
+        <element name="File" positionX="0" positionY="45" width="128" height="104"/>
+        <element name="Folder" positionX="-18" positionY="27" width="128" height="74"/>
+        <element name="Node" positionX="-36" positionY="9" width="128" height="433"/>
+        <element name="Revision" positionX="18" positionY="63" width="128" height="164"/>
+        <element name="Share" positionX="-54" positionY="-9" width="128" height="253"/>
+        <element name="ShareURL" positionX="-27" positionY="135" width="128" height="299"/>
+        <element name="Thumbnail" positionX="-27" positionY="144" width="128" height="119"/>
+        <element name="UploadBlock" positionX="-27" positionY="135" width="128" height="103"/>
+        <element name="Volume" positionX="-63" positionY="-18" width="128" height="119"/>
+    </elements>
+</model>

@@ -1,0 +1,6 @@
+framework module ProtonCore_TestingToolkit {
+  umbrella header "ProtonCore-TestingToolkit-UnitTests_Core-macOS-umbrella.h"
+
+  export *
+  module * { export * }
+}

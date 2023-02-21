@@ -1,0 +1,6 @@
+framework module PMEventsManager {
+  umbrella header "PMEventsManager-dynamic-umbrella.h"
+
+  export *
+  module * { export * }
+}

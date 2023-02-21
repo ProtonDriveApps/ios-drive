@@ -1,0 +1,379 @@
+/* Email verification view title */
+"Account verification" = "Verifikacija računa";
+
+/* Error message */
+"Apple informed us they could not process the purchase." = "Apple nas je obavijestio da ne mogu obraditi kupnju.";
+
+/* Error message */
+"Apple informed us you've upgraded the service plan, but some technical data was missing. Please fill in the bug report and our customer support team will contact you." = "Apple nas je obavijestio da ste nadogradili plan usluga, ali nedostajali su neki tehnički podaci. Ispunite izvještaj o pogrešci i naš tim za korisničku podršku će vas kontaktirati.";
+
+/* Error message */
+"Apple informed us you've upgraded the service plan, but we detected you have logged out of the account since then." = "Apple nas je obavijestio da ste nadogradili plan usluge, ali smo otkrili da ste se od tada odjavili s računa.";
+
+/* Alert message of sign out the email address */
+"Are you sure you want to sign out %@?" = "Da li ste sigurni da se želite odjaviti %@?";
+
+/* *
+ * Login 2FA */
+"Authenticate" = "Autenticiraj";
+
+/* Cancel button */
+"Cancel" = "Poništi";
+
+/* captha method name */
+"CAPTCHA" = "CAPTCHA";
+
+/* Dialog action button title for organization user first login */
+"Change password" = "Promjena lozinke";
+
+/* Signup summary title */
+"Congratulations" = "Čestitamo!";
+
+/* Error applying credit after registration alert */
+"Contact customer support" = "Kontaktirajte službu za korisnike";
+
+/* In App Purchase error */
+"Contact support@protonvpn.com to complete your purchase." = "Kontaktirajte support@protonvpn.com da biste dovršili kupovinu.";
+
+/* Proton Mail address button */
+"Create a secure Proton Mail address instead" = "Umjesto toga stvorite sigurnu Proton Mail adresu";
+
+/* Create account button */
+"Create an account" = "Stvori račun";
+
+/* *
+ * Signup */
+"Create your Proton Account" = "Stvorite svoj Proton račun";
+
+/* Plan selection title */
+"Current plan" = "Trenutni plan";
+
+/* Plan details renew expired */
+"Current plan will expire on %@" = "Trenutni plan istječe dana %@";
+
+/* Customer support button */
+"Customer support" = "Korisnička podrška";
+
+/* Did not receive code button */
+"Did not receive a code?" = "Niste primili kôd?";
+
+/* Not receive code button */
+"Did not receive the code?" = "Niste primili kȏd?";
+
+/* Question is user wants to bypass username validation and activate plan for current username */
+"Do you want to activate the purchase for %@ address?" = "Želite li aktivirati kupnju za %@ adresa?";
+
+/* Email field title
+   Email label
+   email method name
+   Recovery segmenet email */
+"Email" = "E-pošta";
+
+/* Email address already used error */
+"Email address already used." = "Adresa e-pošte je već u upotrebi.";
+
+/* Username field title */
+"Email or username" = "Adresa e-pošte ili korisničko ime";
+
+/* 2FA screen field info
+   Email verification code description
+   Verification code hint label */
+"Enter the 6-digit code." = "Unesite 6-znamenkasti kôd.";
+
+/* *
+ *  Payments */
+"Error occured" = "Došlo je do pogreške";
+
+/* Forgot password button title
+   Forgot password help button */
+"Forgot password" = "Zaboravili ste lozinku";
+
+/* Forgot username help button */
+"Forgot username" = "Zaboravili ste korisničko ime";
+
+/* Plan details plus description */
+"Full-featured mailbox with advanced protection." = "Poštanski sandučić s puno značajki i naprednom zaštitom.";
+
+/* Verification button */
+"Get verification code" = "Nabavi kôd za provjeru";
+
+/* Help button */
+"Help" = "Pomoć";
+
+/* Plan details high speed message */
+"High speed" = "Visoka brzina";
+
+/* Plan details highest speed message */
+"Highest speed" = "Najviša brzina";
+
+/* Invalid hashed password error */
+"Invalid hashed password" = "Nevažeća hashirana lozinka";
+
+/* alert title */
+"Invalid verification code" = "Nevažeći kôd za provjeru";
+
+/* Error message */
+"It wasn't possible to match your purchased App Store product to any products on our server. Please fill in the bug report and our customer support team will contact you." = "Nismo uspjeli pronaći AppStore proizvod koji ste kupili s proizvodima na našem poslužitelju. Ispunite izvještaj o pogreški i naš tim za korisničku podršku će vas kontaktirati.";
+
+/* alternative routing link name in description
+   External accounts not supported popup learn more button
+   learn more button */
+"Learn more" = "Saznajte više";
+
+/* Plan details visionary description */
+"Mail + VPN bundle for families and small businesses" = "E-pošta + VPN paket za obitelji i male tvrtke";
+
+/* Mailbox password field title */
+"Mailbox password" = "Lozinka sandučića e-pošte";
+
+/* Manage accounts button */
+"Manage accounts" = "Upravljanje korisničkim računima";
+
+/* Plan details multi-user support message */
+"Multi-user support" = "Višekorisnička podrška";
+
+/* Help button */
+"Need help?" = "Trebate pomoć?";
+
+/* Next button */
+"Next" = "Sljedeće";
+
+/* Warning message option when user want to relogin to another account */
+"No, for another Proton Mail account" = "Ne, za drugi Proton Mail račun";
+
+/* Action
+   OK button */
+"OK" = "U redu";
+
+/* *
+ *  Login welcome screen */
+"One account for all Proton services." = "Jedan račun za sve Proton usluge.";
+
+/* Password field title */
+"Password" = "Lozinka";
+
+/* (No Comment) */
+"payment failed" = "neuspješno plaćanje";
+
+/* Error applying credit after registration alert */
+"Payment failed" = "Neuspješno plaćanje";
+
+/* Recovery segmenet phone */
+"Phone" = "Telefon";
+
+/* SMS label */
+"Phone number" = "Broj telefona";
+
+/* Error message */
+"Please log in to the Proton Mail account you're upgrading the service plan for so we can complete the purchase." = "Prijavite se na Proton Mail račun za koji nadograđujete plan usluga, kako bismo mogli dovršiti kupnju.";
+
+/* Error message */
+"Please log in to the Proton Mail account you're upgrading the service plan for so we can complete the service plan activation." = "Prijavite se na Proton Mail račun za koji nadograđujete plan usluga, kako bismo mogli dovršiti aktivaciju plana usluga.";
+
+/* Error message */
+"Please unlock the app to proceed with your service plan activation" = "Otključajte aplikaciju da biste nastavili s aktivacijom plana usluge";
+
+/* quit button */
+"Quit" = "Zatvori";
+
+/* 2FA screen recovery field title */
+"Recovery code" = "Kȏd za oporavak";
+
+/* Recovery email field title */
+"Recovery email" = "Adresa e-pošte za oporavak";
+
+/* Remove button */
+"Remove" = "Ukloni";
+
+/* Repeat password field title */
+"Repeat password" = "Ponovite lozinku";
+
+/* request item title */
+"Request an invite" = "Zatraži pozivnicu";
+
+/* new code alert button */
+"Request new code" = "Zatraži novi kôd";
+
+/* alert title */
+"Request new code?" = "Zatraži novi kôd?";
+
+/* resend alert button */
+"Resend" = "Ponovno pošalji";
+
+/* Button in some alerts */
+"Retry" = "Pokušaj ponovno";
+
+/* Search country placeholder */
+"Search country" = "Traži državu";
+
+/* Select plan button */
+"Select" = "Odaberi";
+
+/* *
+ *  Payments UI */
+"Select a plan" = "Odaberite plan";
+
+/* *
+ *  Login screen */
+"Sign in" = "Prijavite se";
+
+/* Sign out button/ title */
+"Sign out" = "Odjava";
+
+/* Skip button */
+"Skip" = "Preskoči";
+
+/* SMS method name */
+"SMS" = "SMS";
+
+/* Error message for beta users */
+"Sorry, we cannot process purchases in the beta version of the iOS app. Thank you for participating in our public beta!" = "Nažalost, ne možemo obrađivati kupnje u Beta verziji aplikacije na iOS-u. Hvala što sudjelujete u našoj javnoj Beta verziji!";
+
+/* Recovery terms and conditions link
+   Terms and conditions view title */
+"Terms and Conditions" = "Odredbe i uvjeti";
+
+/* Plan details free description */
+"The basic for private and secure communications." = "Osnova za privatnu i sigurnu komunikaciju.";
+
+/* other method alert button */
+"Try other method" = "Pokušajte neki drugi način";
+
+/* 2FA screen title */
+"Two-factor authentication" = "Dvofaktorska autentikacija";
+
+/* 2FA screen field title */
+"Two-factor code" = "Kȏd dvofaktorske autentikacije";
+
+/* Mailbox unlock screen action button title */
+"Unlock" = "Otključaj";
+
+/* *
+ * Login unlock mailbox */
+"Unlock your mailbox" = "Otključajte vaš poštanski sandučić";
+
+/* update button */
+"Update" = "Ažuriraj";
+
+/* *
+ *  Force upgrade */
+"Update required" = "Potrebno ažuriranje";
+
+/* Upgrade plan button */
+"Upgrade" = "Nadogradnja";
+
+/* 2FA screen recovery button title */
+"Use recovery code" = "Koristi kȏd za oporavak";
+
+/* 2FA screen 2FA button title */
+"Use two-factor code" = "Koristi kȏd dvofaktorske autentikacije";
+
+/* Username field title */
+"Username" = "Korisničko ime";
+
+/* Email verification code name
+   Verification code label */
+"Verification code" = "Kȏd za provjeru";
+
+/* Verify button */
+"Verify" = "Potvrda";
+
+/* Title */
+"Warning" = "Upozorenje";
+
+/* Error message */
+"We have been notified of an App Store purchase but cannot match the purchase with an account of yours." = "Obaviješteni smo o kupnji u App Storeu, ali ne možemo povezati tu kupnju s vašim računom.";
+
+/* Error message */
+"We have successfully activated your subscription. Please relaunch the app to start using your new service plan." = "Uspješno smo aktivirali vašu pretplatu. Ponovno pokrenite aplikaciju da biste počeli koristiti novi plan usluge.";
+
+/* alert message */
+"Would you like to receive a new verification code or use an alternative verification method?" = "Želite li dobiti novi potvrdni kôd ili koristiti alternativnu metodu potvrde?";
+
+/* In App Purchase error */
+"Wrong payment token status. Please relaunch the app. If error persists, contact support." = "Pogrešan status tokena plaćanja. Ponovo pokrenite aplikaciju. Ako pogreška i dalje postoji, obratite se službi za podršku.";
+
+/* Warning message option to bypass validation and activate plan for current username */
+"Yes, activate it for " = "Da, aktiviraj za ";
+
+/* Error applying credit after registration alert */
+"You have successfully registered but your payment was not processed. To resend your payment information, click Retry. You will only be charged once. If the problem persists, please contact customer support." = "Uspješno ste se registrirali, ali plaćanje nije obrađeno. Da biste ponovo poslali podatke o plaćanju, pritisnite Pokušaj ponovno. Naplatit će vam se samo jednom. Ako se problem nastavi, obratite se korisničkoj službi.";
+
+/* Email method */
+"Your email will only be used for this one-time verification." = "Vaša adresa e-pošte koristit će se samo za ovu jednokratnu provjeru.";
+
+/* SMS method */
+"Your phone number will only be used for this one-time verification." = "Vaš broj telefona koristit će se samo za ovu jednokratnu provjeru.";
+
+/* New_Plans Plan details used storage space */
+"New_Plans %@ of %@" = "%@ of %@";
+
+/* New_Plans Plan details Access to streaming services globally */
+"New_Plans Access to streaming services globally" = "Access to streaming services globally";
+
+/* New_Plans Plan details ad-blocker */
+"New_Plans Built-in ad-blocker (NetShield)" = "Built-in ad-blocker (NetShield)";
+
+/* New_Plans Plan connection error description */
+"New_Plans Check your internet connection" = "Check your internet connection";
+
+/* New_Plans Plan connection error title */
+"New_Plans Connection issues" = "Connection issues";
+
+/* New_Plans Extend subscription button */
+"New_Plans Extend subscription" = "Extend subscription";
+
+/* New_Plans Plan details VPN on a single device */
+"New_Plans Free VPN on a single device" = "Free VPN on a single device";
+
+/* New_Plans Get plan button */
+"New_Plans Get %@" = "Get %@";
+
+/* New_Plans Get free plan button */
+"New_Plans Get Proton for free" = "Get Proton for free";
+
+/* New_Plans Plan details Highest VPN speed */
+"New_Plans Highest VPN speed" = "Highest VPN speed";
+
+/* New_Plans */
+"New_Plans One plan for all Proton services" = "One plan for all Proton services";
+
+/* New_Plans Plan footer description */
+"New_Plans Only non-renewing annual subscriptions are available via this app" = "Only non-renewing annual subscriptions are available via this app";
+
+/* New_Plans Plan details P2P/BitTorrent */
+"New_Plans P2P/BitTorrent" = "P2P/BitTorrent";
+
+/* New_Plans Plan successfully upgraded banner message */
+"New_Plans Plan successfully upgraded" = "Plan successfully upgraded";
+
+/* New_Plans Plan details Secure Core servers */
+"New_Plans Secure Core servers" = "Secure Core servers";
+
+/* New_Plans Plan details no logs policy */
+"New_Plans Strict no-logs policy" = "Strict no-logs policy";
+
+/* New_Plans Plan details free description */
+"New_Plans The no-cost starter account designed to empower everyone with privacy by default." = "The no-cost starter account designed to empower everyone with privacy by default.";
+
+/* New_Plans Plan details plus description */
+"New_Plans The privacy-first email and calendar solution for your everyday communication needs." = "The privacy-first email and calendar solution for your everyday communication needs.";
+
+/* New_Plans Plan details bundle description */
+"New_Plans The ultimate privacy pack with access to all premium Proton services." = "The ultimate privacy pack with access to all premium Proton services.";
+
+/* New_Plans Plan details TOR over VPN */
+"New_Plans TOR over VPN" = "TOR over VPN";
+
+/* New_Plans Plan details unlimited folders, labels, filters */
+"New_Plans Unlimited folders, labels, and filters" = "Unlimited folders, labels, and filters";
+
+/* New_Plans Plan details up to storage */
+"New_Plans Up to %@ storage" = "Up to %@ storage";
+
+/* New_Plans Plan details vpn plus description */
+"New_Plans Your privacy and security are our priority." = "Your privacy and security are our priority.";
+
+/* Welcome screen */
+"Privacy by default" = "Privacy by default";
+

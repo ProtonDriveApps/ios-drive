@@ -1,0 +1,6 @@
+framework module Pods_PDFileProviderMac {
+  umbrella header "Pods-PDFileProviderMac-umbrella.h"
+
+  export *
+  module * { export * }
+}

@@ -1,0 +1,55 @@
+// Copyright (c) 2023 Proton AG
+//
+// This file is part of Proton Drive.
+//
+// Proton Drive is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Proton Drive is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Proton Drive. If not, see https://www.gnu.org/licenses/.
+
+final class IncompleteThumbnailDownloaderOperation: DownloadThumbnailOperation {
+    private let id: RevisionIdentifier
+    private let cloud: ThumbnailCloudClient
+
+    init(id: RevisionIdentifier, cloud: ThumbnailCloudClient, downloader: ThumbnailDownloader, decryptor: ThumbnailDecryptor) {
+        self.id = id
+        self.cloud = cloud
+        super.init(url: nil, downloader: downloader, decryptor: decryptor, identifier: id.nodeIdentifier)
+    }
+
+    convenience init(
+        model: IncompleteThumbnail,
+        cloud: ThumbnailCloudClient,
+        downloader: ThumbnailDownloader,
+        decryptor: ThumbnailDecryptor
+    ) {
+        self.init(id: model.id, cloud: cloud, downloader: downloader, decryptor: decryptor)
+    }
+
+    override func main() {
+        guard !self.isCancelled else { return }
+
+        cloud.downloadThumbnailURL(id: id) { [weak self] result in
+            guard let self = self,
+                  !self.isCancelled else {
+                return
+            }
+
+            switch result {
+            case .success(let thumbnailURL):
+                self.download(thumbnailURL)
+
+            case .failure(let error):
+                self.finishOperationWithFailure(error)
+            }
+        }
+    }
+}

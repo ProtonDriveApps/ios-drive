@@ -1,0 +1,6 @@
+framework module pmtest {
+  umbrella header "pmtest-macOS-umbrella.h"
+
+  export *
+  module * { export * }
+}

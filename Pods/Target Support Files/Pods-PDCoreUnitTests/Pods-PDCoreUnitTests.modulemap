@@ -1,0 +1,6 @@
+framework module Pods_PDCoreUnitTests {
+  umbrella header "Pods-PDCoreUnitTests-umbrella.h"
+
+  export *
+  module * { export * }
+}

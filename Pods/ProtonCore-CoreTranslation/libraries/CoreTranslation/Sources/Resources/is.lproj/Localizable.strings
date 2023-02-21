@@ -1,0 +1,340 @@
+/* Plan details storage */
+"%@ storage" = "%@ geymslurými";
+
+/* Email verification view title */
+"Account verification" = "Sannvottun notandaaðgangs";
+
+/* Error message */
+"Apple informed us they could not process the purchase." = "Apple hefur tilkynnt okkur að þeir geti ekki meðhöndlað þessi kaup.";
+
+/* Error message */
+"Apple informed us you've upgraded the service plan, but some technical data was missing. Please fill in the bug report and our customer support team will contact you." = "Apple hefur tilkynnt okkur að þú hafir uppfært þjónustuáskriftina, en einhverjar tæknilegar upplýsingar vantaði. Gefðu þær upp í villuskýrslunni og mun notendaaðstoðarteymið okkar síðan hafa samband við þig.";
+
+/* Error message */
+"Apple informed us you've upgraded the service plan, but we detected you have logged out of the account since then." = "Apple hefur tilkynnt okkur að þú hafir uppfært þjónustuáskriftina, en við sjáum að þú hefur skráð þig út af notandaaðgangnum síðan þá.";
+
+/* *
+ * Login 2FA */
+"Authenticate" = "Auðkenna";
+
+/* Cancel button */
+"Cancel" = "Hætta við";
+
+/* captha method name */
+"CAPTCHA" = "CAPTCHA-mennskupróf";
+
+/* Dialog action button title for organization user first login */
+"Change password" = "Breyta lykilorði";
+
+/* *
+ * Login upgrade username-only account */
+"Change your password" = "Breyta lykilorðinu þínu";
+
+/* Signup summary title */
+"Congratulations" = "Til hamingju!";
+
+/* Create account button */
+"Create an account" = "Stofna notandaaðgang";
+
+/* *
+ * Signup */
+"Create your Proton Account" = "Búa til Proton-notandaaðgang fyrir þig";
+
+/* Plan selection title */
+"Current plan" = "Núverandi áskriftarleið";
+
+/* Customer support button */
+"Customer support" = "Aðstoð við viðskiptavini";
+
+/* Did not receive code button */
+"Did not receive a code?" = "Fékkstu ekki kóða?";
+
+/* Not receive code button */
+"Did not receive the code?" = "Fékkstu ekki kóðann?";
+
+/* Question is user wants to bypass username validation and activate plan for current username */
+"Do you want to activate the purchase for %@ address?" = "Viltu virkja kaupin fyrir %@ póstfangið?";
+
+/* Email field title
+   Email label
+   email method name
+   Recovery segmenet email */
+"Email" = "Tölvupóstur";
+
+/* Username field title */
+"Email or username" = "Tölvupóstfang eða notandanafn";
+
+/* 2FA screen field info
+   Email verification code description
+   Verification code hint label */
+"Enter the 6-digit code." = "Settu inn 6-stafa kóðann.";
+
+/* *
+ *  Payments */
+"Error occured" = "Villa kom upp";
+
+/* Forgot password button title
+   Forgot password help button */
+"Forgot password" = "Gleymt lykilorð";
+
+/* Forgot username help button */
+"Forgot username" = "Gleymt notandanafn";
+
+/* Verification button */
+"Get verification code" = "Sækja staðfestingarkóða";
+
+/* Help button */
+"Help" = "Hjálp";
+
+/* Plan details high speed message */
+"High speed" = "Hár hraði";
+
+/* Plan details highest speed message */
+"Highest speed" = "Mesti hraði";
+
+/* Login help screen title */
+"How can we help?" = "Hvernig getum við aðstoðað?";
+
+/* request item message */
+"If you are having trouble creating your account, please request an invitation and we will respond within 1 business day." = "Ef þú átt í vandræðum með að útbúa notandaaðgang, geturðu sent inn beiðni um aðgang og við munum svara innan næsta virka dags.";
+
+/* Invalid hashed password error */
+"Invalid hashed password" = "Ógilt tætigildislykilorð";
+
+/* alert title */
+"Invalid verification code" = "Ógildur sannvottunarkóði";
+
+/* Error message */
+"It wasn't possible to match your purchased App Store product to any products on our server. Please fill in the bug report and our customer support team will contact you." = "Okkur tókst ekki að tengja vöruna sem þú keyptir í AppStore við neina vöru á þjónum okkar. Vinsamlega fylltu inn í villuskýrsluna og notendaaðstoðarteymið okkar mun hafa samband við þig eins fljótt og auðið er.";
+
+/* alternative routing link name in description
+   External accounts not supported popup learn more button
+   learn more button */
+"Learn more" = "Kanna nánar";
+
+/* Mailbox password field title */
+"Mailbox password" = "Lykilorð á pósthólfi";
+
+/* Manage accounts button */
+"Manage accounts" = "Sýsla með notandaaðganga";
+
+/* Plan details multi-user support message */
+"Multi-user support" = "Fjölnotendastuðningur";
+
+/* Help button */
+"Need help?" = "Þarftu hjálp?";
+
+/* Next button */
+"Next" = "Næsta";
+
+/* Action
+   OK button */
+"OK" = "Í lagi";
+
+/* *
+ *  Login welcome screen */
+"One account for all Proton services." = "Einn aðgangur fyrir allar Proton-þjónustur.";
+
+/* Password field title */
+"Password" = "Lykilorð";
+
+/* Recovery segmenet phone */
+"Phone" = "Sími";
+
+/* SMS label */
+"Phone number" = "Símanúmer";
+
+/* Error message */
+"Please unlock the app to proceed with your service plan activation" = "Aflæstu forritinu til að halda áfram með virkjun þjónustuáskriftarinnar þinnar";
+
+/* quit button */
+"Quit" = "Hætta";
+
+/* 2FA screen recovery field title */
+"Recovery code" = "Endurheimtukóði";
+
+/* Recovery email field title */
+"Recovery email" = "Endurheimtupóstur";
+
+/* Remove button */
+"Remove" = "Fjarlægja";
+
+/* Repeat password field title */
+"Repeat password" = "Endurtaka lykilorð";
+
+/* request item title */
+"Request an invite" = "Beiðni um boð";
+
+/* new code alert button */
+"Request new code" = "Biðja um nýjan kóða";
+
+/* alert title */
+"Request new code?" = "Biðja um nýjan kóða?";
+
+/* resend alert button */
+"Resend" = "Endursenda";
+
+/* Button in some alerts */
+"Retry" = "Reyna aftur";
+
+/* Search country placeholder */
+"Search country" = "Leita að landi";
+
+/* Select plan button */
+"Select" = "Velja";
+
+/* *
+ *  Payments UI */
+"Select a plan" = "Veldu áskriftarleið";
+
+/* *
+ *  Login screen */
+"Sign in" = "Skrá inn";
+
+/* Sign out button/ title */
+"Sign out" = "Skrá út";
+
+/* Skip button */
+"Skip" = "Sleppa";
+
+/* SMS method name */
+"SMS" = "SMS";
+
+/* Error message for beta users */
+"Sorry, we cannot process purchases in the beta version of the iOS app. Thank you for participating in our public beta!" = "Því miður getum við ekki meðhöndlað viðskipti í beta-þróunarútgáfu iOS-forritsins. Við þökkum þér hinsvegar fyrir að taka þátt í þróunarvinnu opinberu beta-útgáfunnar.";
+
+/* *  Account Manager */
+"switch to" = "skipta yfir í";
+
+/* 2FA screen title */
+"Two-factor authentication" = "Tveggja-þátta auðkenning";
+
+/* 2FA screen field title */
+"Two-factor code" = "Tveggja-þátta kóði";
+
+/* Mailbox unlock screen action button title */
+"Unlock" = "Aflæsa";
+
+/* *
+ * Login unlock mailbox */
+"Unlock your mailbox" = "Aflæstu pósthólfinu þínu";
+
+/* update button */
+"Update" = "Uppfæra";
+
+/* *
+ *  Force upgrade */
+"Update required" = "Uppfærsla nauðsynleg";
+
+/* Upgrade plan button */
+"Upgrade" = "Uppfæra";
+
+/* 2FA screen recovery button title */
+"Use recovery code" = "Nota endurheimtukóða";
+
+/* 2FA screen 2FA button title */
+"Use two-factor code" = "Nota tveggja-þátta kóða";
+
+/* Username field title */
+"Username" = "Notandanafn";
+
+/* Email verification code name
+   Verification code label */
+"Verification code" = "Sannvottunarkóði";
+
+/* Verify button */
+"Verify" = "Sannreyna";
+
+/* Title */
+"Warning" = "Aðvörun";
+
+/* Error message */
+"We have been notified of an App Store purchase but cannot match the purchase with an account of yours." = "Okkur hefur verið gert viðvart um kaup í AppStore, en tókst ekki að tengja vöruna við neinn notandaaðgang á þínu nafni.";
+
+/* Error message */
+"We have successfully activated your subscription. Please relaunch the app to start using your new service plan." = "Okkur tókst að virkja áskriftina þína. Endurræstu forritið til að fara að nota nýju þjónustuáskriftina.";
+
+/* alert message */
+"Would you like to receive a new verification code or use an alternative verification method?" = "Viltu fá sendan nýjan sannvottunarkóða eða nota aðra aðferð til auðkenningar?";
+
+/* Warning message option to bypass validation and activate plan for current username */
+"Yes, activate it for " = "Já, virkja það fyrir ";
+
+/* Email method */
+"Your email will only be used for this one-time verification." = "Netfangið þitt verður aðeins notað við þessa einu sinni staðfestingu.";
+
+/* SMS method */
+"Your phone number will only be used for this one-time verification." = "Símanúmerið þitt verður aðeins notað við þessa einu sinni staðfestingu.";
+
+/* New_Plans Plan details used storage space */
+"New_Plans %@ of %@" = "%@ of %@";
+
+/* New_Plans Plan details Access to streaming services globally */
+"New_Plans Access to streaming services globally" = "Access to streaming services globally";
+
+/* New_Plans Plan details ad-blocker */
+"New_Plans Built-in ad-blocker (NetShield)" = "Built-in ad-blocker (NetShield)";
+
+/* New_Plans Plan connection error description */
+"New_Plans Check your internet connection" = "Check your internet connection";
+
+/* New_Plans Plan connection error title */
+"New_Plans Connection issues" = "Connection issues";
+
+/* New_Plans Extend subscription button */
+"New_Plans Extend subscription" = "Extend subscription";
+
+/* New_Plans Plan details VPN on a single device */
+"New_Plans Free VPN on a single device" = "Free VPN on a single device";
+
+/* New_Plans Get plan button */
+"New_Plans Get %@" = "Get %@";
+
+/* New_Plans Get free plan button */
+"New_Plans Get Proton for free" = "Get Proton for free";
+
+/* New_Plans Plan details Highest VPN speed */
+"New_Plans Highest VPN speed" = "Highest VPN speed";
+
+/* New_Plans */
+"New_Plans One plan for all Proton services" = "One plan for all Proton services";
+
+/* New_Plans Plan footer description */
+"New_Plans Only non-renewing annual subscriptions are available via this app" = "Only non-renewing annual subscriptions are available via this app";
+
+/* New_Plans Plan details P2P/BitTorrent */
+"New_Plans P2P/BitTorrent" = "P2P/BitTorrent";
+
+/* New_Plans Plan successfully upgraded banner message */
+"New_Plans Plan successfully upgraded" = "Plan successfully upgraded";
+
+/* New_Plans Plan details Secure Core servers */
+"New_Plans Secure Core servers" = "Secure Core servers";
+
+/* New_Plans Plan details no logs policy */
+"New_Plans Strict no-logs policy" = "Strict no-logs policy";
+
+/* New_Plans Plan details free description */
+"New_Plans The no-cost starter account designed to empower everyone with privacy by default." = "The no-cost starter account designed to empower everyone with privacy by default.";
+
+/* New_Plans Plan details plus description */
+"New_Plans The privacy-first email and calendar solution for your everyday communication needs." = "The privacy-first email and calendar solution for your everyday communication needs.";
+
+/* New_Plans Plan details bundle description */
+"New_Plans The ultimate privacy pack with access to all premium Proton services." = "The ultimate privacy pack with access to all premium Proton services.";
+
+/* New_Plans Plan details TOR over VPN */
+"New_Plans TOR over VPN" = "TOR over VPN";
+
+/* New_Plans Plan details unlimited folders, labels, filters */
+"New_Plans Unlimited folders, labels, and filters" = "Unlimited folders, labels, and filters";
+
+/* New_Plans Plan details up to storage */
+"New_Plans Up to %@ storage" = "Up to %@ storage";
+
+/* New_Plans Plan details vpn plus description */
+"New_Plans Your privacy and security are our priority." = "Your privacy and security are our priority.";
+
+/* Welcome screen */
+"Privacy by default" = "Privacy by default";
+
