@@ -100,21 +100,25 @@ if [[ "$CONFIGURATION" == "Debug" ]]; then
   install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-CoreTranslation-static/Resources-CoreTranslation.bundle"
   install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-FeatureSwitch-static/Resources-FeatureSwitch.bundle"
   install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Login-static/Resources-Login.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-UIFoundations-static/Resources-UIFoundations.bundle"
 fi
 if [[ "$CONFIGURATION" == "Release-External" ]]; then
   install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-CoreTranslation-static/Resources-CoreTranslation.bundle"
   install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-FeatureSwitch-static/Resources-FeatureSwitch.bundle"
   install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Login-static/Resources-Login.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-UIFoundations-static/Resources-UIFoundations.bundle"
 fi
 if [[ "$CONFIGURATION" == "Release-Store" ]]; then
   install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-CoreTranslation-static/Resources-CoreTranslation.bundle"
   install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-FeatureSwitch-static/Resources-FeatureSwitch.bundle"
   install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Login-static/Resources-Login.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-UIFoundations-static/Resources-UIFoundations.bundle"
 fi
 if [[ "$CONFIGURATION" == "Release-QA" ]]; then
   install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-CoreTranslation-static/Resources-CoreTranslation.bundle"
   install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-FeatureSwitch-static/Resources-FeatureSwitch.bundle"
   install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Login-static/Resources-Login.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-UIFoundations-static/Resources-UIFoundations.bundle"
 fi
 
 mkdir -p "${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"

@@ -1,0 +1,6 @@
+framework module Pods_PDCoreStatic {
+  umbrella header "Pods-PDCoreStatic-umbrella.h"
+
+  export *
+  module * { export * }
+}

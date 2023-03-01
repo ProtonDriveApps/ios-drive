@@ -1,0 +1,6 @@
+framework module Pods_PDUIComponentsStatic {
+  umbrella header "Pods-PDUIComponentsStatic-umbrella.h"
+
+  export *
+  module * { export * }
+}

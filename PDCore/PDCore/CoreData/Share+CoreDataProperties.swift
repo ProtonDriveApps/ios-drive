@@ -25,7 +25,6 @@ extension Share {
     }
 
     @NSManaged public var addressID: String?
-    @NSManaged public var blockSize: Int
     @NSManaged public var creator: String?
     @NSManaged public var id: String
     @NSManaged public var key: String?

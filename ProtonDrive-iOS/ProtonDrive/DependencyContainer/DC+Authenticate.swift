@@ -22,23 +22,16 @@ import ProtonCore_Environment
 
 extension DriveDependencyContainer {
     func makeAuthenticateViewController() -> AuthenticateViewController {
-        let viewController = AuthenticateViewController()
         let viewModel = makeAuthenticatorViewModel()
         let authenticator = makeAuthenticator()
-        let coordinator = makeAuthenticateCoordinator(viewController)
-
-        viewController.viewModel = viewModel
-        viewController.authenticator = authenticator
-        viewController.onAuthenticated = coordinator.onAuthenticated
-
-        return viewController
+        return AuthenticateViewController(viewModel: viewModel, authenticator: authenticator)
     }
 
     private func makeAuthenticatorViewModel() -> AuthenticateViewModel {
-        AuthenticateViewModel(sessionStore: sessionVault)
+        AuthenticateViewModel(sessionStore: sessionVault, coordinator: AuthenticateCoordinator())
     }
 
-    private func makeAuthenticator() -> LoginAndSignup {
+    private func makeAuthenticator() -> DriveLoginAndSignupAuthenticator {
         #if HAS_PAYMENTS
         let paymentsAvailability = PaymentsAvailability.available(
             parameters: PaymentsParameters(
@@ -63,7 +56,7 @@ extension DriveDependencyContainer {
         let signUpAvailability = LoginFeatureAvailability<SignupParameters>.notAvailable
         #endif
         
-        return LoginAndSignup(appName: "ProtonDrive",
+        let authenticator = LoginAndSignup(appName: "ProtonDrive",
                               clientApp: .drive,
                               environment: Constants.clientApiConfig.environment,
                               trustKit: PMAPIService.trustKit,
@@ -73,9 +66,6 @@ extension DriveDependencyContainer {
                               isCloseButtonAvailable: false,
                               paymentsAvailability: paymentsAvailability,
                               signupAvailability: signUpAvailability)
-    }
-
-    private func makeAuthenticateCoordinator(_ viewController: AuthenticateViewController) -> AuthenticateCoordinator {
-        AuthenticateCoordinator(viewController: viewController)
+        return DriveLoginAndSignupAuthenticator(authenticator: authenticator)
     }
 }

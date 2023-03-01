@@ -17,28 +17,13 @@
 
 import Foundation
 
-struct ShareShortWithoutLinkType: Codable {
-    public var blockSize: Int
-    public var permissionsMask: Share.PermissionMask
-    public var shareID: Share.ShareID
-    public var volumeID: Volume.VolumeID
-    
-    public var flags: Share.Flags
-    
-    public var linkID: Link.LinkID
-    public var creator: String
-}
-
 public struct ShareShort: Codable {
-    public var blockSize: Int
-    public var permissionsMask: Share.PermissionMask
     public var shareID: Share.ShareID
     public var volumeID: Volume.VolumeID
     
     public var flags: Share.Flags
     
     public var linkID: Link.LinkID
-    public var linkType: LinkType
     public var creator: String
 }
 
@@ -54,46 +39,19 @@ public struct Share: Codable {
     }
 
     public var flags: Flags
-    public var blockSize: Int
-    public var permissionsMask: PermissionMask
     public var shareID: ShareID
     public var volumeID: Volume.VolumeID
     public var linkID: Link.LinkID
-    public var linkType: LinkType
     public var creator, addressID: String
     public var key, passphrase, passphraseSignature: String
-    
-    public struct PermissionMask: OptionSet, Codable {
-        public let rawValue: Int
-        public init(rawValue: Int) {
-            self.rawValue = rawValue
-        }
-        public static let full = PermissionMask([])
-    }
 }
 
 public extension ShareShort {
     init(from share: Share) {
-        self.blockSize = share.blockSize
-        self.permissionsMask = share.permissionsMask
         self.shareID = share.shareID
         self.volumeID = share.volumeID
         self.flags = share.flags
         self.linkID = share.linkID
-        self.linkType = share.linkType
-        self.creator = share.creator
-    }
-}
-
-extension ShareShort {
-    init(from share: ShareShortWithoutLinkType) {
-        self.blockSize = share.blockSize
-        self.permissionsMask = share.permissionsMask
-        self.shareID = share.shareID
-        self.volumeID = share.volumeID
-        self.flags = share.flags
-        self.linkID = share.linkID
-        self.linkType = .folder
         self.creator = share.creator
     }
 }

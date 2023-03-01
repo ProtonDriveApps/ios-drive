@@ -143,6 +143,9 @@ public final class ConsoleLogger: Logger {
     public func logAndNotify(title: String, message: String, osLogType: LogObject.Type) {
         #if DEBUG
         log(title + " " + message, osLogType: osLogType)
+        #endif
+
+        #if SUPPORTS_BACKGROUND_UPLOADS
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = message

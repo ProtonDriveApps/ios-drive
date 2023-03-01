@@ -25,6 +25,7 @@ public struct BlueRectButton: View {
     var backgroundColor: Color
     var font: Font
     var height: CGFloat
+    var cornerRadius: CornerRadius
     var action: () -> Void
     
     public init(title: String,
@@ -32,6 +33,7 @@ public struct BlueRectButton: View {
                 backgroundColor: Color = Color.BrandNorm,
                 font: Font = .body,
                 height: CGFloat = 48.0,
+                cornerRadius: CornerRadius = .small,
                 action: @escaping () -> Void)
     {
         self.title = title
@@ -39,6 +41,7 @@ public struct BlueRectButton: View {
         self.backgroundColor = backgroundColor
         self.font = font
         self.height = height
+        self.cornerRadius = cornerRadius
         self.action = action
     }
     
@@ -46,7 +49,7 @@ public struct BlueRectButton: View {
         Button(action: action) {
             ZStack {
                 self.backgroundColor
-                    .cornerRadius(.small)
+                    .cornerRadius(cornerRadius)
                 
                 Text(title)
                     .font(self.font)

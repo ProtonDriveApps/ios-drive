@@ -27,10 +27,7 @@ public extension Volume {
 
 public extension Share {
     func fulfill(from meta: PDClient.Share) {
-        self.blockSize = meta.blockSize
-        self.permissionMask = meta.permissionsMask
         self.flags = meta.flags
-        self.linkType = meta.linkType
         self.creator = meta.creator
         
         self.addressID = meta.addressID
@@ -39,10 +36,7 @@ public extension Share {
         self.passphraseSignature = meta.passphraseSignature
     }
     func fulfill(from meta: PDClient.ShareShort) {
-        self.blockSize = meta.blockSize
-        self.permissionMask = meta.permissionsMask
         self.flags = meta.flags
-        self.linkType = meta.linkType
         self.creator = meta.creator
     }
 }

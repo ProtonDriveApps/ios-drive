@@ -123,6 +123,7 @@ public final class FileUploader: LogObject {
     }
 
     public func pauseAllUploads() {
+        NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
         queue.operations
             .compactMap { $0 as? MainFileUploaderOperation }
             .forEach { $0.pause() }
@@ -156,7 +157,10 @@ public final class FileUploader: LogObject {
             // Do not schedule previously scheduled operations
             cancel(uploadID: uploadID)
 
+            NotificationCenter.default.post(name: .didStartFileUpload, object: nil)
+
             let operations = fileUploadFactory.getOperations(for: draft) { [weak self] error in
+                NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
                 self?.cancel(uploadID: uploadID)
                 self?.errorStream.send(error)
                 ConsoleLogger.shared?.log(DriveError(error, "FileUploader"))
@@ -169,6 +173,7 @@ public final class FileUploader: LogObject {
             queue.addOperations(operations, waitUntilFinished: false)
             return operations.last as? UploadOperation
         } catch {
+            NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
             errorStream.send(error)
             ConsoleLogger.shared?.log(DriveError(error, "FileUploader"))
             completion(.failure(error))
@@ -177,10 +182,12 @@ public final class FileUploader: LogObject {
     }
 
     private func handleSuccessfulDraftImports(from drafts: [FileDraft], completion: @escaping OnUploadCompletion) -> [UploadOperation] {
+        NotificationCenter.default.post(name: .didStartFileUpload, object: nil)
         var mainOperations: [UploadOperation] = []
         for draft in drafts {
             let uploadID = draft.uploadID
             let operations = fileUploadFactory.getOperations(for: draft) { [weak self] error in
+                NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
                 self?.cancel(uploadID: uploadID)
                 self?.errorStream.send(error)
                 ConsoleLogger.shared?.log(DriveError(error, "FileUploader"))

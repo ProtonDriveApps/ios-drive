@@ -21,6 +21,7 @@ import SwiftUI
 import PDUIComponents
 
 class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, HasRefreshControl, UploadingViewModel, DownloadingViewModel, SortingViewModel, HasMultipleSelection {
+    private let localSettings: LocalSettings
     
     // MARK: FinderViewModel
     let model: FolderModel
@@ -67,6 +68,12 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
 
     let supportsLayoutSwitch = true
     
+    @Published var isUploadDisclaimerVisible: Bool = false
+
+    func closeUploadDisclaimer() {
+        localSettings.isUploadingDisclaimerActive = false
+    }
+    
     // MARK: FetchingViewModel
     @Published var lastUpdated = Date.distantPast
     var fetchFromAPICancellable: AnyCancellable?
@@ -102,7 +109,8 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
     @Published var listState: ListState = .active
     
     // MARK: others
-    init(model: FolderModel, node: Folder) {
+    init(localSettings: LocalSettings, model: FolderModel, node: Folder) {
+        self.localSettings = localSettings
         defer { self.model.loadFromCache() }
         self.model = model
         self.sorting = model.sorting
@@ -114,6 +122,7 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
         self.subscribeToChildrenDownloading()
         self.selection.unselectOnEmpty(for: self)
         self.subscribeToLayoutChanges()
+        setupUploadBannerVisibility()
 
         $permanentChildren
             .removeDuplicates()
@@ -128,6 +137,14 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
                 if state == .selecting {
                     self?.multiselectWasActivatedOnce = true
                 }
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func setupUploadBannerVisibility() {
+        localSettings.publisher(for: \.isUploadingDisclaimerActive)
+            .sink { [weak self] value in
+                self?.isUploadDisclaimerVisible = value
             }
             .store(in: &cancellables)
     }

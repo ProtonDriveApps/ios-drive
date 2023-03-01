@@ -129,14 +129,14 @@ extension Constants {
     }
 
     private static func loadConfiguration() -> APIService.Configuration {
-        #if RELEASE
-        return loadConfigurationFromSettingsBundle()
-        #else
+        #if DEBUG
         if let dynamicDomain = dynamicDomain, isUITest {
             return Configuration(environment: .custom(dynamicDomain), clientVersion: clientVersion)
         } else {
             return loadConfigurationFromSettingsBundle()
         }
+        #else
+        return loadConfigurationFromSettingsBundle()
         #endif
     }
     

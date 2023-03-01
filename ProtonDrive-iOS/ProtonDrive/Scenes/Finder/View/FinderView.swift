@@ -88,6 +88,7 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
             GridOrList(vm: vm) {
                 if !vm.transientChildren.isEmpty {
                     Section(header: uploadingBar, footer: Spacer(minLength: 30)) {
+                        uploadDisclaimer
                         ForEach(vm.transientChildren) { node in
                             nodeRow(node, isList: true)
                         }
@@ -123,6 +124,15 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
             if multipleSelectionIsSelecting {
                 multipleSelectionActionBar
             }
+        }
+    }
+    
+    @ViewBuilder private var uploadDisclaimer: some View {
+        if vm.isUploadDisclaimerVisible {
+            NotificationBanner(
+                message: "For uninterrupted uploads, keep the app open. Uploads will pause when the app is in the background.",
+                closeBlock: vm.closeUploadDisclaimer
+            )
         }
     }
 

@@ -21,4 +21,12 @@ public extension Notification.Name {
     static var scheduleUploads: Notification.Name {
         Notification.Name("ch.protonmail.protondrive.uploadFiles")
     }
+
+    static var didFindIssueOnFileUpload: Notification.Name {
+        Notification.Name("ch.protonmail.protondrive.didFindIssueOnFileUpload")
+    }
+
+    static var didStartFileUpload: Notification.Name {
+        Notification.Name("ch.protonmail.protondrive.didStartFileUpload")
+    }
 }

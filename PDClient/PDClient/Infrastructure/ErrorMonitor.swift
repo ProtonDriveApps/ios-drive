@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Foundation
+
 public struct ErrorMonitor {
     static let EndpointKey = "Endpoint"
     static let ResponseKey = "Response"

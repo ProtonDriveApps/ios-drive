@@ -14,6 +14,7 @@ disabled_rules: # rule identifiers to exclude from running
   - no_fallthrough_only # https://github.com/realm/SwiftLint/blob/master/Rules.md#no-fallthrough-only
   - opening_brace
   - nesting
+  - todo
   
 opt_in_rules:
   - empty_count # https://github.com/realm/SwiftLint/blob/master/Rules.md#empty-count
@@ -56,7 +57,7 @@ custom_rules:
       - identifier
 
 file_header:
-  severity: error
+  severity: warning
   required_pattern: |
                     \/\/ Copyright \(c\) \d{4} Proton AG
                     \/\/

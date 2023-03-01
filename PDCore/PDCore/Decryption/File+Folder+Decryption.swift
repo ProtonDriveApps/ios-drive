@@ -77,7 +77,8 @@ public extension Node {
             throw error
         }
     }
-    
+
+    @available(*, deprecated, message: "Use NewUploadingFile to create KeyCredentials of new files, this approach is not test friendly")
     internal func generateNodeKeys(signersKit: SignersKit) throws -> Encryptor.KeyCredentials {
         let (_, parentKey) = try self.getDirectParentPack()
         let nodeCredentials = try Encryptor.generateNodeKeys(addressPassphrase: signersKit.addressPassphrase,

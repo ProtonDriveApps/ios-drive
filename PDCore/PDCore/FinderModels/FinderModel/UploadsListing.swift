@@ -73,72 +73,11 @@ extension UploadsListing {
             return
         }
 
-        let completion: OnUploadCompletion = {  [weak self]  result in
-            guard let self = self else { return }
-
-            self.onResult(result)
-        }
-
-        do {
-            try tower.fileUploader
-                .upload(clearFiles: [copy], parent: node, address: address, completion: completion)
-                .forEach { handleOperationAtBackground($0, id: $0.uploadID.uuidString) }
-        } catch {
-            completion(.failure(error))
-        }
+        try? tower.fileUploader
+            .upload(clearFiles: [copy], parent: node, address: address, completion: { _ in })
     }
 
     public func restartUpload(node: File) {
-        let completion: OnUploadCompletion = {  [weak self]  result in
-            guard let self = self else { return }
-
-            self.onResult(result)
-        }
-
-        guard let op = tower.fileUploader.upload(file: node, completion: completion) else { return }
-
-        handleOperationAtBackground(op, id: op.uploadID.uuidString)
-    }
-
-    private func onResult(_ result: Result<FileDraft, Error>) {
-        switch result {
-        case .failure(let error as UploaderError):
-            fireWarning(.failure(error.underlyingError), for: error.url.lastPathComponent)
-
-        case .failure(let error):
-            fireWarning(.failure(error), for: "Unknown file")
-
-        case .success(let draft):
-            fireWarning(.success, for: draft.originalName)
-        }
-    }
-    
-    private func fireWarning(_ result: Uploader.Warning, for filename: String) {
-        #if DEBUG
-        let content = UNMutableNotificationContent()
-        content.title = result.title
-        content.subtitle = filename
-        switch result {
-        case .failure(let error):
-            content.body = error.localizedDescription
-        case .backgroundTaskExpired:
-            content.body = "Run out of background execution time"
-        case .success: break
-        }
-
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
-
-        let request = UNNotificationRequest(identifier: filename, content: content, trigger: trigger)
-        UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
-        #endif
-    }
-
-    private func handleOperationAtBackground(_ operation: Operation?, id: String) {
-        /*
-         TODO: We do not need the registration to be done per upload operation, it can be done one general for the entire FileUploader class.
-         With this change we lose the ability to fire a warning when the upload fails.
-         A better approach to this is to post a notification on the last operation of the upload file chain,
-         and subscribe to it from the app itself. This can be done together with DRVIOS-404 that requires us to show the local notification on production too.
-         */
+        _ = tower.fileUploader.upload(file: node, completion: { _ in })
     }
 }

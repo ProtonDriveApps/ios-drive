@@ -1,3 +1,4 @@
 ${PODS_ROOT}/Target Support Files/Pods-PDClientIntegrationTests/Pods-PDClientIntegrationTests-resources.sh
 ${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-CoreTranslation-static/Resources-CoreTranslation.bundle
 ${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-FeatureSwitch-static/Resources-FeatureSwitch.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Login-static/Resources-Login.bundle

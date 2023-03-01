@@ -20,80 +20,33 @@ import ProtonCore_Login
 import ProtonCore_LoginUI
 import ProtonCore_UIFoundations
 
-public final class AuthenticateViewController: UIViewController {
-    public var viewModel: AuthenticateViewModel!
-    public var authenticator: LoginAndSignup!
-
-    public var onAuthenticated: (() -> Void)?
-
-    override public func viewDidLoad() {
+final class AuthenticateViewController: UIViewController {
+    private let viewModel: AuthenticateViewModel
+    private let authenticator: DriveLoginAndSignupAuthenticator
+    
+    init(viewModel: AuthenticateViewModel, authenticator: DriveLoginAndSignupAuthenticator) {
+        self.viewModel = viewModel
+        self.authenticator = authenticator
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = ColorProvider.BackgroundNorm
 
         authenticator.authenticate(
             over: self,
             body: viewModel.welcomeBody,
-            onCompletion: { [weak self] in self?.didAuthenticate($0) }
+            userDataBlock: { [weak self] data in
+                self?.viewModel.save(data)
+            },
+            onCompletion: { [weak self] in
+                self?.viewModel.completeAuthentication()
+            }
         )
     }
-
-    private func didAuthenticate(_ userData: UserData) {
-        viewModel.didAuthenticate(userData)
-        onAuthenticated?()
-    }
 }
-
-private extension LoginAndSignup {
-    func authenticate(
-        over parent: UIViewController,
-        body: String,
-        onCompletion: @escaping (UserData) -> Void
-    ) {
-        #if DEBUG
-        OnboardingFlowTestsManager.skipOnboardingInTestsIfNeeded()
-        removeLogoutFlagIfNeeded()
-        if ProcessInfo.processInfo.environment["ExtAccountNotSupportedStub"] != nil {
-            LoginExternalAccountNotSupportedSetup.start()
-        }
-        #endif
-
-        presentFlowFromWelcomeScreen(over: parent, welcomeScreen: .drive(.init(body: body))) { result in
-            switch result {
-            case .dismissed:
-                fatalError()
-
-            case .loggedIn(let data):
-                switch data {
-                case .credential:
-                    break
-                case .userData(let userData):
-                    onCompletion(userData)
-                }
-
-            case .signedUp(let data):
-                switch data {
-                case .credential:
-                    break
-                case .userData(let userData):
-                    onCompletion(userData)
-                }
-            }
-        }
-    }
-}
-
-#if DEBUG
-extension LoginAndSignup {
-    private var testArgument: String { "--uitests" }
-    private var clearArgument: String { "--clear_all_preference" }
-
-    func removeLogoutFlagIfNeeded() {
-        let arguments = CommandLine.arguments
-        guard arguments.contains(testArgument),
-              arguments.contains(clearArgument) else { return }
-
-        CommandLine.arguments = arguments
-            .filter { $0 != clearArgument }
-    }
-}
-#endif

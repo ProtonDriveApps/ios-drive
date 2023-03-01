@@ -21,9 +21,7 @@ import PDClient
 
 @objc(Share)
 public class Share: NSManagedObject, HasTransientValues {
-    public typealias LinkType = PDClient.LinkType
     public typealias Flags = PDClient.Share.Flags
-    public typealias Permissions = PDClient.Share.PermissionMask
     
     // private raw values
     @NSManaged fileprivate var linkTypeRaw: NSNumber?
@@ -32,16 +30,12 @@ public class Share: NSManagedObject, HasTransientValues {
     var _observation: Any?
     
     // public enums, wrapped
-    @ManagedEnum(raw: #keyPath(linkTypeRaw)) public var linkType: LinkType?
     @ManagedEnum(raw: #keyPath(flagsRaw)) public var flags: Flags?
-    @ManagedEnum(raw: #keyPath(permissionMaskRaw)) public var permissionMask: Permissions?
     
     // dangerous injection, see https://developer.apple.com/documentation/coredata/nsmanagedobject
     override public init(entity: NSEntityDescription, insertInto context: NSManagedObjectContext?) {
         super.init(entity: entity, insertInto: context)
-        self._linkType.configure(with: self)
         self._flags.configure(with: self)
-        self._permissionMask.configure(with: self)
     }
     
     deinit {

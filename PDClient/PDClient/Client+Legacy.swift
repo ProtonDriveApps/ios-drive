@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Foundation
+
 extension Client {
     public func getSRPModulus(_ completion: @escaping (Result<Modulus, Error>) -> Void) {
         let endpoint = ShareSRPEndpoint(service: self.service)
@@ -39,7 +41,7 @@ extension Client {
         }
         let endpoint = SharesEndpoint(service: self.service, credential: credential)
         request(endpoint) { result in
-            completion( result.flatMap { .success($0.shares.map(ShareShort.init)) })
+            completion( result.flatMap { .success($0.shares) })
         }
     }
     

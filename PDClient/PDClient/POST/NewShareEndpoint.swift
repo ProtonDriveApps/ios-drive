@@ -22,13 +22,11 @@ struct NewShareShort: Codable {
 }
 
 public struct NewShareParameters: Codable {
-    public init(type: Int, addressID: String, name: String, permissionsMask: Share.PermissionMask, rootLinkID: String, linkType: LinkType, shareKey: String, sharePassphrase: String, sharePassphraseSignature: String, passphraseKeyPacket: String, nameKeyPacket: String) {
+    public init(type: Int, addressID: String, name: String, rootLinkID: String, shareKey: String, sharePassphrase: String, sharePassphraseSignature: String, passphraseKeyPacket: String, nameKeyPacket: String) {
         self.Type = type
         self.AddressID = addressID
         self.Name = name
-        self.PermissionsMask = permissionsMask.rawValue
         self.RootLinkID = rootLinkID
-        self.LinkType = linkType.rawValue
         self.ShareKey = shareKey
         self.SharePassphrase = sharePassphrase
         self.SharePassphraseSignature = sharePassphraseSignature
@@ -39,9 +37,7 @@ public struct NewShareParameters: Codable {
     var `Type`: Int
     var AddressID: String
     var Name: String
-    var PermissionsMask: Int
     var RootLinkID: String
-    var LinkType: Int
     var ShareKey: String
     var SharePassphrase: String
     var SharePassphraseSignature: String

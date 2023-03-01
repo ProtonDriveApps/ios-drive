@@ -302,16 +302,13 @@ extension CloudSlot {
                 share.volume = mainShare.volume
                 node.directShares.insert(share)
 
-                let linkType = node.isFolder ? LinkType.folder : .file
                 let passphraseKeyPacket = try node.keyPacket(node.nodePassphrase, newKey: shareKeys.key)
                 let nameKeyPacket = try node.keyPacket(node.name!, newKey: shareKeys.key)
 
                 let parameters = NewShareParameters(type: 0, // unused on BE yet
                                                     addressID: signersKit.address.addressID,
                                                     name: "New share",
-                                                    permissionsMask: .full,
                                                     rootLinkID: node.id,
-                                                    linkType: linkType,
                                                     shareKey: shareKeys.key,
                                                     sharePassphrase: shareKeys.passphrase,
                                                     sharePassphraseSignature: shareKeys.signature,

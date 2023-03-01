@@ -56,17 +56,14 @@ extension CloudSlot {
             shares.forEach {
                 affectedIds.shares.insert($0.shareID)
                 affectedIds.volumes.insert($0.volumeID)
-                switch $0.linkType {
-                case .file: affectedIds.files.insert($0.linkID)
-                case .folder: affectedIds.folders.insert($0.linkID)
-                @unknown default: assert(false, "Unknown node type")
-                }
+                affectedIds.files.insert($0.linkID)
+                affectedIds.folders.insert($0.linkID)
             }
             
             // create minimal objects for them
             let uniqueShares: [ShareObj] = self.storage.unique(with: affectedIds.shares, in: moc)
-            let uniqueFiles: [FileObj] = self.storage.unique(with: affectedIds.files, in: moc)
-            let uniqueFolders: [FolderObj] = self.storage.unique(with: affectedIds.folders, in: moc)
+            let uniqueFiles: [FileObj] = self.storage.existing(with: affectedIds.files, in: moc)
+            let uniqueFolders: [FolderObj] = self.storage.existing(with: affectedIds.folders, in: moc)
             let uniqueVolumes: [VolumeObj] = self.storage.unique(with: affectedIds.volumes, in: moc)
             
             // set up share and relationships

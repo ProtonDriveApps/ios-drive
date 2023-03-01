@@ -1,0 +1,10 @@
+${PODS_ROOT}/Target Support Files/Pods-ProtonDrive/Pods-ProtonDrive-resources.sh
+${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-CoreTranslation-static/Resources-CoreTranslation.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-FeatureSwitch-static/Resources-FeatureSwitch.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-HumanVerification/Resources-HumanVerification.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Login-static/Resources-Login.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-LoginUI/Resources-LoginUI.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-PaymentsUI/Resources-PaymentsUI.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Settings/Resources-Settings.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-TroubleShooting/Resources-TroubleShooting.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-UIFoundations-static/Resources-UIFoundations.bundle

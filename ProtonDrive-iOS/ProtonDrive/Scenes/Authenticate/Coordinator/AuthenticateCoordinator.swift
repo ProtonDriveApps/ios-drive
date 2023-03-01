@@ -18,12 +18,6 @@
 import ProtonCore_UIFoundations
 
 final class AuthenticateCoordinator {
-    private(set) unowned var viewController: AuthenticateViewController
-
-    init(viewController: AuthenticateViewController) {
-        self.viewController = viewController
-    }
-
     func onAuthenticated() {
         NotificationCenter.default.post(.checkAuthentication)
     }

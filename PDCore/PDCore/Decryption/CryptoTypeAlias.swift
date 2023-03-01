@@ -15,9 +15,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Foundation
+
 public typealias ArmoredKey = String
 public typealias ArmoredMessage = String
 public typealias ArmoredSignature = String
+public typealias SignerEmail = String
+
+public typealias HashKey = String
 
 public typealias VerifiedText = DecryptedMessage<String>
 public typealias VerifiedBinary = DecryptedMessage<Data>

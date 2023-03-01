@@ -20,7 +20,7 @@ import Foundation
 struct SharesEndpoint: Endpoint {
     public struct Response: Codable {
         var code: Int
-        var shares: [ShareShortWithoutLinkType]
+        var shares: [ShareShort]
     }
     
     var request: URLRequest

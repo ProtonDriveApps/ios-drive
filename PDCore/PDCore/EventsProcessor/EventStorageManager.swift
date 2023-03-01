@@ -26,12 +26,22 @@ public class EventStorageManager: NSObject {
     public typealias EventID = String
     
     private static let managedObjectModel: NSManagedObjectModel = {
-        guard let bundle = Bundle(for: EventStorageManager.self).url(forResource: "EventStorageModel", withExtension: "momd"),
-              let model = NSManagedObjectModel(contentsOf: bundle) else
+        // static linking
+        if let resources = Bundle.main.resourceURL?.appendingPathComponent("PDCoreResources").appendingPathExtension("bundle"),
+           let bundle = Bundle(url: resources)?.url(forResource: "EventStorageModel", withExtension: "momd"),
+           let model = NSManagedObjectModel(contentsOf: bundle)
         {
-            fatalError("Error loading EventStorageModel from bundle")
+            return model
         }
-        return model
+        
+        // dynamic linking
+        if let bundle = Bundle(for: EventStorageManager.self).url(forResource: "EventStorageModel", withExtension: "momd"),
+           let model = NSManagedObjectModel(contentsOf: bundle)
+        {
+            return model
+        }
+        
+        fatalError("Error loading EventStorageModel from bundle")
     }()
     
     internal static func defaultPersistentContainer(suiteUrl: URL?) -> NSPersistentContainer {

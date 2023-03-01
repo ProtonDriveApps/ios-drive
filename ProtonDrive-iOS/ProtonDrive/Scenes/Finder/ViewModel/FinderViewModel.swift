@@ -74,6 +74,9 @@ protocol FinderViewModel: NodeEditionViewModel, FlatNavigationBarDelegate {
     func selected(file: File)
     func childViewModel(for node: Node) -> NodeCellConfiguration
     func applyAction(completion: @escaping ApplyActionCompletion)
+    
+    var isUploadDisclaimerVisible: Bool { get }
+    func closeUploadDisclaimer()
 }
 
 extension FinderViewModel {
@@ -130,6 +133,10 @@ extension FinderViewModel {
         default: return nil
         }
     }
+
+    var isUploadDisclaimerVisible: Bool { false }
+
+    func closeUploadDisclaimer() {}
 }
 
 extension FinderViewModel {

@@ -21,16 +21,18 @@ import ProtonCore_Login
 public final class AuthenticateViewModel {
 
     private let sessionStore: SessionStore
+    private let coordinator: AuthenticateCoordinator
 
-    init(sessionStore: SessionStore) {
+    init(sessionStore: SessionStore, coordinator: AuthenticateCoordinator) {
         self.sessionStore = sessionStore
+        self.coordinator = coordinator
     }
 
     var welcomeBody: String {
         "The convenience of cloud storage and the security of encryption technology. Finally a cloud storage solution you can trust."
     }
 
-    func didAuthenticate(_ userData: UserData) {
+    func save(_ userData: UserData) {
         #if DEBUG
             dump("Credential 🔑: \n \(userData.credential)")
         #endif
@@ -40,7 +42,9 @@ public final class AuthenticateViewModel {
         sessionStore.storeSalts(userData.salts)
         sessionStore.storeAddresses(userData.addresses)
         sessionStore.storePassphrases(userData.passphrases)
-
-        NotificationCenter.default.post(.checkAuthentication)
+    }
+    
+    func completeAuthentication() {
+        coordinator.onAuthenticated()
     }
 }

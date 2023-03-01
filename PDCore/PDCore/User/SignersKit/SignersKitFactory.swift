@@ -17,6 +17,7 @@
 
 import Foundation
 
+// TODO: Rename to SignersKitFactory once the current one is removed from the project
 protocol SignersKitFactoryProtocol {
     func make(forSigner signer: Signer) throws -> SignersKit
 }

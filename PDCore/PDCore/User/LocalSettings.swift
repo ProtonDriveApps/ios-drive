@@ -21,10 +21,12 @@ import PDClient
 public class LocalSettings: NSObject {
     @SettingsStorage("sortPreferenceCache") private var sortPreferenceCache: SortPreference.RawValue?
     @SettingsStorage("layoutPreferenceCache") private var layoutPreferenceCache: LayoutPreference.RawValue?
+    @SettingsStorage("isUploadingDisclaimerActiveValue") private var isUploadingDisclaimerActiveValue: Bool?
     
     @SettingsStorage("optOutFromTelemetry") var optOutFromTelemetry: Bool?
     @SettingsStorage("optOutFromCrashReports") var optOutFromCrashReports: Bool?
     @SettingsStorage("isOnboarded") public var isOnboarded: Bool?
+    @SettingsStorage("isNoticationPermissionsSkipped") public var isNoticationPermissionsSkipped: Bool?
 
     public init(suite: SettingsStorageSuite) {
         super.init()
@@ -34,6 +36,8 @@ public class LocalSettings: NSObject {
         self._optOutFromTelemetry.configure(with: suite)
         self._optOutFromCrashReports.configure(with: suite)
         self._isOnboarded.configure(with: suite)
+        self._isUploadingDisclaimerActiveValue.configure(with: suite)
+        self._isNoticationPermissionsSkipped.configure(with: suite)
 
         if let sortPreferenceCache = self.sortPreferenceCache {
             nodesSortPreference = SortPreference(rawValue: sortPreferenceCache) ?? SortPreference.default
@@ -42,6 +46,7 @@ public class LocalSettings: NSObject {
         }
 
         nodesLayoutPreference = LayoutPreference(cachedValue: layoutPreferenceCache)
+        isUploadingDisclaimerActive = isUploadingDisclaimerActiveValue ?? true
     }
     
     public func cleanUp() {
@@ -50,6 +55,7 @@ public class LocalSettings: NSObject {
         self.optOutFromTelemetry = nil
         self.optOutFromCrashReports = nil
         // self.isOnboarded needs no clean up - we only show it for first login ever
+        self.isUploadingDisclaimerActiveValue = nil
     }
     
     @objc public dynamic var nodesSortPreference: SortPreference = SortPreference.default {
@@ -61,6 +67,12 @@ public class LocalSettings: NSObject {
     @objc public dynamic var nodesLayoutPreference: LayoutPreference = LayoutPreference.default {
         willSet {
             self.layoutPreferenceCache = newValue.rawValue
+        }
+    }
+    
+    @objc public dynamic var isUploadingDisclaimerActive: Bool = true {
+        willSet {
+            isUploadingDisclaimerActiveValue = newValue
         }
     }
 }

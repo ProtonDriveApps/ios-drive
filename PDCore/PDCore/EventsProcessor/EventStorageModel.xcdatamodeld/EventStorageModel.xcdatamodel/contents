@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="17709" systemVersion="20D74" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
-    <entity name="PersistedEvent" representedClassName="PersistedEvent" syncable="YES" codeGenerationType="class">
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="21513" systemVersion="22C65" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="PersistedEvent" representedClassName="PersistedEvent" syncable="YES">
         <attribute name="contents" attributeType="Binary"/>
         <attribute name="eventEmittedAt" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="eventId" optional="YES" attributeType="String"/>
@@ -8,7 +8,4 @@
         <attribute name="providerType" optional="YES" attributeType="String"/>
         <attribute name="shareId" optional="YES" attributeType="String"/>
     </entity>
-    <elements>
-        <element name="PersistedEvent" positionX="-63" positionY="-18" width="128" height="14"/>
-    </elements>
 </model>

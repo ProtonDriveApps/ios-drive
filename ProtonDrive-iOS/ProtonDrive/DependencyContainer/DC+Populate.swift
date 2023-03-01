@@ -20,12 +20,14 @@ import PDCore
 import Combine
 import ProtonCore_Keymaker
 import ProtonCore_Services
+import UserNotifications
 
 final class AuthenticatedDependencyContainer {
     let tower: Tower
     let keymaker: Keymaker
     let networkService: PMAPIService
     let applicationStateController: ApplicationStateOperationsController
+    let localNotificationController: LocalNotificationsController
     let windowScene: UIWindowScene
     let factory = TabBarViewControllerFactory()
 
@@ -36,6 +38,7 @@ final class AuthenticatedDependencyContainer {
         self.windowScene = windowScene
 
         let uploadOperationInteractor = UploadOperationInteractor(interactor: tower.fileUploader)
+        let applicationRunningResource = ApplicationRunningStateResourceImpl()
         #if SUPPORTS_BACKGROUND_UPLOADS
         let processingController = ProcessingBackgroundOperationController(
             operationInteractor: uploadOperationInteractor,
@@ -54,9 +57,20 @@ final class AuthenticatedDependencyContainer {
         #endif
 
         applicationStateController = ApplicationStateOperationsController(
-            applicationStateResource: ApplicationRunningStateResourceImpl(),
+            applicationStateResource: applicationRunningResource,
             backgroundOperationController: backgroundOperationController
         )
+
+        let scheduler = UNUserNotificationCenter.current()
+
+        let notifier = UploadFileLocalNotificationNotifier(
+            didStartFileUploadPublisher: NotificationCenter.default.mappedPublisher(for: .didStartFileUpload),
+            didFindIssueOnFileUploadPublisher: NotificationCenter.default.mappedPublisher(for: .didFindIssueOnFileUpload),
+            didChangeAppRunningStatePublisher: applicationRunningResource.state,
+            notificationsAuthorizer: { try await scheduler.requestAuthorization(options: $0) }
+        )
+
+        localNotificationController = LocalNotificationsController(scheduler, notifier)
     }
 
     func makePopulateViewController() -> UIViewController {
@@ -133,5 +147,22 @@ extension Tower: LockManager {
 
     func onUnlock() {
         eventProcessor.suspend(false)
+    }
+}
+
+extension NotificationCenter {
+    var didStartFileUploadPublisher: AnyPublisher<Void, Never> { mappedPublisher(for: .didStartFileUpload) }
+    var didFindIssueOnFileUpload: AnyPublisher<Void, Never> { mappedPublisher(for: .didFindIssueOnFileUpload) }
+}
+
+extension NotificationCenter {
+    func mappedPublisher<T>(for notificationName: Notification.Name, transformer: @escaping (Any?) -> T) -> AnyPublisher<T, Never> {
+        self.publisher(for: notificationName).map { transformer($0) }.eraseToAnyPublisher()
+    }
+}
+
+extension NotificationCenter {
+    func mappedPublisher(for notificationName: Notification.Name) -> AnyPublisher<Void, Never> {
+        self.publisher(for: notificationName).map { _ in Void() }.eraseToAnyPublisher()
     }
 }

@@ -22,12 +22,22 @@ import CoreData
 
 public class StorageManager: NSObject {
     private static var managedObjectModel: NSManagedObjectModel = {
-        guard let bundle = Bundle(for: StorageManager.self).url(forResource: "Metadata", withExtension: "momd"),
-              let model = NSManagedObjectModel(contentsOf: bundle) else
+        // static linking
+        if let resources = Bundle.main.resourceURL?.appendingPathComponent("PDCoreResources").appendingPathExtension("bundle"),
+           let bundle = Bundle(url: resources)?.url(forResource: "Metadata", withExtension: "momd"),
+           let model = NSManagedObjectModel(contentsOf: bundle)
         {
-            fatalError("Error loading EventStorageModel from bundle")
+            return model
         }
-        return model
+        
+        // dynamic linking
+        if let bundle = Bundle(for: StorageManager.self).url(forResource: "Metadata", withExtension: "momd"),
+           let model = NSManagedObjectModel(contentsOf: bundle)
+        {
+            return model
+        }
+        
+        fatalError("Error loading Metadata from bundle")
     }()
 
     internal static func defaultPersistentContainer(suiteUrl: URL?) -> NSPersistentContainer {
@@ -38,12 +48,12 @@ public class StorageManager: NSObject {
         let storeFileUrl = storeDirectoryUrl.appendingPathComponent(databaseName + ".sqlite")
         
         let storeDescription = NSPersistentStoreDescription(url: storeFileUrl)
-        storeDescription.shouldMigrateStoreAutomatically = false
+        storeDescription.shouldMigrateStoreAutomatically = true // Lightweight migration is enabled. Standard migrations from previous versions are to be handled below.
         storeDescription.shouldAddStoreAsynchronously = false
         container.persistentStoreDescriptions = [storeDescription]
         
         var loadError: Error?
-        container.loadPersistentStores { (_, error) in
+        container.loadPersistentStores { (description, error) in
             loadError = error
             
             do {
@@ -55,6 +65,8 @@ public class StorageManager: NSObject {
         
         if let loadError = loadError as NSError? {
             switch loadError.code {
+            case NSInferredMappingModelError, NSMigrationMissingMappingModelError: // Lightweight migration not possible.
+                fallthrough
             case NSPersistentStoreIncompatibleVersionHashError:
                 do {
                     // Delete any stored files, as their references will be lost with the persistent store being reset

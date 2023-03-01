@@ -1,0 +1,5 @@
+${PODS_ROOT}/Target Support Files/Pods-PDFileProviderTests/Pods-PDFileProviderTests-resources.sh
+${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-CoreTranslation-static/Resources-CoreTranslation.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-FeatureSwitch-static/Resources-FeatureSwitch.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Settings/Resources-Settings.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-UIFoundations-static/Resources-UIFoundations.bundle

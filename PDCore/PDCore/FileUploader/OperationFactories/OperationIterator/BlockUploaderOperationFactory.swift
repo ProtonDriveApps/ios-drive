@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDClient
+import Foundation
 
 final class BlockUploaderOperationFactory: OperationIterator {
     typealias BlockUploaderFactory = (FullUploadableBlock, Progress) -> URLSessionContentUploader

@@ -19,7 +19,7 @@ import Foundation
 import CoreData
 
 extension Revision {
-
+    
     @nonobjc public class func fetchRequest() -> NSFetchRequest<Revision> {
         return NSFetchRequest<Revision>(entityName: "Revision")
     }
@@ -34,9 +34,25 @@ extension Revision {
     @NSManaged public var thumbnail: Thumbnail?
     @NSManaged public var thumbnailHash: String?
     @NSManaged public var xAttributes: String?
+}
 
-    // Properties specific of the iOS app
-    @NSManaged public var requestedUpload: Date?
+// MARK: - Custom Upload properties
+extension Revision {
+    /// State of the Revision when it's being created and uploaded
+    @NSManaged var uploadState: UploadState
+
+    /// URL of the clear text resource before it's encrypted.
+    @NSManaged var uploadableResourceURL: URL?
+
+    /// Date in which the last request for uploading blocks has been performed
+    @NSManaged var requestedUpload: Date?
+
+    @objc enum UploadState: Int16 {
+        case none
+        case created
+        case encrypted
+        case uploaded
+    }
 }
 
 // MARK: Generated accessors for blocks
@@ -59,17 +75,5 @@ extension Revision {
 public extension Revision {
     var identifier: RevisionIdentifier {
         RevisionIdentifier(share: file.shareID, file: file.id, revision: id)
-    }
-}
-
-extension Revision {
-
-    @NSManaged var uploadState: UploadState
-
-    @objc enum UploadState: Int16 {
-        case none
-        case created
-        case encrypted
-        case uploaded
     }
 }
