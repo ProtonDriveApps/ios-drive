@@ -33,7 +33,7 @@ public final class FileUploader: LogObject {
     
     public static let osLog: OSLog = OSLog(subsystem: "ProtonDrive", category: "FileUploader")
     
-    private let darftImporter: FileDraftImporter
+    private let draftImporter: FileDraftImporter
     private let fileUploadFactory: FileUploadOperationsProvider
     private let storage: StorageManager
     private let moc: NSManagedObjectContext
@@ -48,7 +48,7 @@ public final class FileUploader: LogObject {
         storage: StorageManager,
         sessionVault: SessionVault
     ) {
-        self.darftImporter = draftImporter
+        self.draftImporter = draftImporter
         self.fileUploadFactory = fileUploadFactory
         self.moc = storage.backgroundContext
         self.storage = storage
@@ -134,7 +134,7 @@ public final class FileUploader: LogObject {
         ConsoleLogger.shared?.log("STAGE: 0 Batch imported 🗂💾 started", osLogType: FileUploader.self)
         do {
             ConsoleLogger.shared?.log("STAGE: 0 Batch imported 🗂💾 finished ✅", osLogType: FileUploader.self)
-            let outcome = try darftImporter.`import`(files: files, to: parent)
+            let outcome = try draftImporter.`import`(files: files, to: parent)
             handleUnssuccessfulDraftImports(from: outcome.failure)
 
             let operations = handleSuccessfulDraftImports(from: outcome.success, completion: completion)
