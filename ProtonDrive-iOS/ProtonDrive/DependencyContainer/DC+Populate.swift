@@ -27,9 +27,9 @@ final class AuthenticatedDependencyContainer {
     let keymaker: Keymaker
     let networkService: PMAPIService
     let applicationStateController: ApplicationStateOperationsController
-    let localNotificationController: LocalNotificationsController
     let windowScene: UIWindowScene
     let factory = TabBarViewControllerFactory()
+    let localNotificationsContainer: LocalNotificationsContainer
 
     init(tower: Tower, keymaker: Keymaker, networkService: PMAPIService, windowScene: UIWindowScene) {
         self.tower = tower
@@ -60,17 +60,9 @@ final class AuthenticatedDependencyContainer {
             applicationStateResource: applicationRunningResource,
             backgroundOperationController: backgroundOperationController
         )
-
-        let scheduler = UNUserNotificationCenter.current()
-
-        let notifier = UploadFileLocalNotificationNotifier(
-            didStartFileUploadPublisher: NotificationCenter.default.mappedPublisher(for: .didStartFileUpload),
-            didFindIssueOnFileUploadPublisher: NotificationCenter.default.mappedPublisher(for: .didFindIssueOnFileUpload),
-            didChangeAppRunningStatePublisher: applicationRunningResource.state,
-            notificationsAuthorizer: { try await scheduler.requestAuthorization(options: $0) }
-        )
-
-        localNotificationController = LocalNotificationsController(scheduler, notifier)
+        
+        // Child containers
+        localNotificationsContainer = LocalNotificationsContainer(tower: tower)
     }
 
     func makePopulateViewController() -> UIViewController {
@@ -151,7 +143,6 @@ extension Tower: LockManager {
 }
 
 extension NotificationCenter {
-    var didStartFileUploadPublisher: AnyPublisher<Void, Never> { mappedPublisher(for: .didStartFileUpload) }
     var didFindIssueOnFileUpload: AnyPublisher<Void, Never> { mappedPublisher(for: .didFindIssueOnFileUpload) }
 }
 

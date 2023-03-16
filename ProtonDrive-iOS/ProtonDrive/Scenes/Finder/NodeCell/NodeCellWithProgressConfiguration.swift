@@ -116,11 +116,11 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
     }
     
     var uploadWaiting: Bool {
-        self.state == .waiting
+        self.state == .cloudImpediment
     }
     
     var uploadPaused: Bool {
-        self.state == .pausedUpload
+        [Node.State.paused, .interrupted].contains(state)
     }
     
     private var percentFormatter: NumberFormatter = {
@@ -133,10 +133,10 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
 
     var secondLineSubtitle: String {
         switch self.progress {
-        case _ where self.state == .pausedUpload:
+        case _ where uploadPaused:
             return "Paused"
             
-        case _ where self.state == .waiting:
+        case _ where self.state == .cloudImpediment:
             return "Waiting..."
             
         case .none where self.uploadFailed:

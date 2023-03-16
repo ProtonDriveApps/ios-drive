@@ -261,10 +261,11 @@ public extension StorageManager {
         let fetchRequest = NSFetchRequest<Result>()
         fetchRequest.entity = File.entity()
         fetchRequest.sortDescriptors = [.init(key: #keyPath(Node.id), ascending: true)]
-        fetchRequest.predicate = NSPredicate(format: "%K == %d OR %K == %d OR %K == %d",
+        fetchRequest.predicate = NSPredicate(format: "%K == %d OR %K == %d OR %K == %d OR %K == %d",
                                              #keyPath(Node.stateRaw), Node.State.uploading.rawValue,
-                                             #keyPath(Node.stateRaw), Node.State.waiting.rawValue,
-                                             #keyPath(Node.stateRaw), Node.State.pausedUpload.rawValue)
+                                             #keyPath(Node.stateRaw), Node.State.cloudImpediment.rawValue,
+                                             #keyPath(Node.stateRaw), Node.State.paused.rawValue,
+                                             #keyPath(Node.stateRaw), Node.State.interrupted.rawValue)
         
         return fetchRequest
     }
@@ -274,9 +275,10 @@ public extension StorageManager {
         fetchRequest.entity = File.entity()
         fetchRequest.sortDescriptors = [.init(key: #keyPath(File.id), ascending: true)]
         fetchRequest.predicate = NSPredicate(
-            format: "%K == %d OR %K == %d",
+            format: "%K == %d OR %K == %d OR %K == %d",
             #keyPath(File.stateRaw), File.State.uploading.rawValue,
-            #keyPath(File.stateRaw), File.State.waiting.rawValue
+            #keyPath(File.stateRaw), File.State.cloudImpediment.rawValue,
+            #keyPath(File.stateRaw), File.State.interrupted.rawValue
         )
 
         return fetchRequest
@@ -347,7 +349,7 @@ public extension StorageManager {
                                         .init(key: #keyPath(Node.size), ascending: true)]
         fetchRequest.predicate = NSPredicate(format: "%K < %i AND %K == %d",
                                              #keyPath(Node.size), NSNumber(value: maxSize).intValue,
-                                             #keyPath(Node.stateRaw), Node.State.waiting.rawValue)
+                                             #keyPath(Node.stateRaw), Node.State.cloudImpediment.rawValue)
         return fetchRequest
     }
 }

@@ -95,6 +95,7 @@ struct PhotoPicker: UIViewControllerRepresentable {
             blur.alpha = 0.0
             
             picker.view.addSubview(blur)
+            blur.fillSuperview()
             blur.contentView.addSubview(stack)
             stack.centerInSuperview()
             

@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import UserNotifications
 
 struct LocalNotification: Equatable {
     let id: UUID
@@ -23,26 +22,6 @@ struct LocalNotification: Equatable {
             body: "Some files didn’t upload. Try uploading them again.",
             thread: "ch.protondrive.usernotification.uploadfailure",
             delay: 1.0
-        )
-    }
-}
-
-extension UNNotificationRequest {
-    convenience init(_ localNotification: LocalNotification) {
-        let content = UNMutableNotificationContent()
-        content.title = localNotification.title
-        content.body = localNotification.body
-        content.threadIdentifier = localNotification.thread
-
-        let trigger = UNTimeIntervalNotificationTrigger(
-            timeInterval: localNotification.delay,
-            repeats: false
-        )
-
-        self.init(
-            identifier: localNotification.id.uuidString,
-            content: content,
-            trigger: trigger
         )
     }
 }

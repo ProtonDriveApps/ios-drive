@@ -22,8 +22,14 @@ import PDClient
 @objc(Node)
 public class Node: NSManagedObject, HasTransientValues {
     public enum State: Int, Codable {
-        case active = 1, deleted, deleting
-        case uploading, waiting, pausedUpload
+        case active = 1
+        case deleted = 2
+        case deleting = 3
+
+        case uploading = 4          // Actively trying to upload
+        case cloudImpediment = 5    // Waiting for more storage
+        case paused = 6             // Paused by the user
+        case interrupted = 7        // Paused by the system/app
     }
     
     var _observation: Any?
@@ -75,14 +81,14 @@ extension Node.State {
     public var existsOnCloud: Bool {
         switch self {
         case .active, .deleted, .deleting: return true
-        case .uploading, .waiting, .pausedUpload: return false
+        case .uploading, .cloudImpediment, .paused, .interrupted: return false
         }
     }
     
     public var isUploading: Bool {
         switch self {
         case .active, .deleted, .deleting: return false
-        case .uploading, .waiting, .pausedUpload: return true
+        case .uploading, .cloudImpediment, .paused, .interrupted: return true
         }
     }
 }

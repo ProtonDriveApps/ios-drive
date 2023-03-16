@@ -11,15 +11,14 @@ import UIKit
 
 final class NotificationsPermissionsCoordinator {
     private let controller: NotificationsPermissionsFlowController
+    private let viewControllerFactory: (() -> UIViewController)
     private var cancellable: AnyCancellable?
     private weak var viewController: UIViewController?
     
-    var viewControllerFactory: (() -> UIViewController)?
-    
-    init(controller: NotificationsPermissionsFlowController) {
+    init(controller: NotificationsPermissionsFlowController, viewControllerFactory: @escaping (() -> UIViewController)) {
         self.controller = controller
+        self.viewControllerFactory = viewControllerFactory
         cancellable = controller.event
-            .debounce(for: 0.3, scheduler: RunLoop.main)
             .sink { [weak self] event in
                 self?.handle(event)
             }
@@ -28,12 +27,19 @@ final class NotificationsPermissionsCoordinator {
     private func handle(_ event: NotificationsPermissionsEvent) {
         switch event {
         case .open:
-            guard let viewController = viewControllerFactory?() else { return }
-            let rootViewController = UIApplication.shared.topViewController()
-            rootViewController?.present(viewController, animated: true)
+            let viewController = viewControllerFactory()
+            getTopViewController()?.present(viewController, animated: true)
             self.viewController = viewController
         case .close:
             viewController?.dismiss(animated: true)
         }
+    }
+
+    private func getTopViewController() -> UIViewController? {
+        var rootViewController = UIApplication.shared.topViewController()
+        if rootViewController?.isBeingDismissed ?? false {
+            rootViewController = rootViewController?.presentingViewController
+        }
+        return rootViewController
     }
 }

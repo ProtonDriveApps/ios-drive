@@ -10,7 +10,6 @@ import Foundation
 
 protocol NotificationsPermissionsViewModel {
     func enable()
-    func skip()
     func close()
 }
 
@@ -27,12 +26,8 @@ final class NotificationsPermissionsViewModelImpl: NotificationsPermissionsViewM
         controller.requestPermissions()
     }
 
-    func skip() {
-        controller.skip()
-        close()
-    }
-    
     func close() {
+        controller.skip()
         flowController.event.send(.close)
     }
 }

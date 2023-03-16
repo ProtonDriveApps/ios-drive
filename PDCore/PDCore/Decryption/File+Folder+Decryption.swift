@@ -40,13 +40,15 @@ public extension Node {
 
     internal func decryptName() throws -> String {
         do {
-            #if os(iOS)
-            // Looks like macOS app does not exchange updates across contexts properly
-            if let cached = self.clearName {
-                return cached
+            if !Constants.runningInExtension {
+                // Looks like file providers do no exchange updates across contexts properly
+                if let cached = self.clearName {
+                    return cached
+                }
+
+                // Node can be a fault on in the file providers at this point
+                guard !isFault else { return Self.unknownNamePlaceholder }
             }
-            #endif
-            guard !isFault else { return Self.unknownNamePlaceholder }
 
             guard let name = self.name else {
                 throw Errors.noName

@@ -42,10 +42,18 @@ final class MainFileUploaderOperation: AsynchronousOperation, UploadOperation {
     }
 
     func pause() {
+        cancel(with: .paused)
+    }
+    
+    func interrupt() {
+        cancel(with: .interrupted)
+    }
+    
+    private func cancel(with state: Node.State) {
         cancel()
         guard let moc = draft.file.managedObjectContext else { return }
         moc.performAndWait {
-            draft.file.state = .pausedUpload
+            draft.file.state = state
             try? moc.save()
         }
     }

@@ -126,7 +126,7 @@ public final class FileUploader: LogObject {
         NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
         queue.operations
             .compactMap { $0 as? MainFileUploaderOperation }
-            .forEach { $0.pause() }
+            .forEach { $0.interrupt() }
     }
 
     @discardableResult
@@ -157,8 +157,6 @@ public final class FileUploader: LogObject {
             // Do not schedule previously scheduled operations
             cancel(uploadID: uploadID)
 
-            NotificationCenter.default.post(name: .didStartFileUpload, object: nil)
-
             let operations = fileUploadFactory.getOperations(for: draft) { [weak self] error in
                 NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
                 self?.cancel(uploadID: uploadID)
@@ -182,7 +180,6 @@ public final class FileUploader: LogObject {
     }
 
     private func handleSuccessfulDraftImports(from drafts: [FileDraft], completion: @escaping OnUploadCompletion) -> [UploadOperation] {
-        NotificationCenter.default.post(name: .didStartFileUpload, object: nil)
         var mainOperations: [UploadOperation] = []
         for draft in drafts {
             let uploadID = draft.uploadID

@@ -17,7 +17,6 @@ struct NotificationsPermissionsView: View {
         NavigatingView(title: "", leading: closeButton, trailing: EmptyView()) {
             content
         }
-        .background(ColorProvider.BackgroundNorm)
     }
     
     private var content: some View {
@@ -32,6 +31,7 @@ struct NotificationsPermissionsView: View {
             buttons
         }
         .padding(24)
+        .background(ColorProvider.BackgroundNorm)
     }
     
     private var image: some View {
@@ -39,6 +39,7 @@ struct NotificationsPermissionsView: View {
             .resizable()
             .aspectRatio(contentMode: .fit)
             .frame(maxWidth: 140)
+            .accessibilityIdentifier("NotificationsPermissions.Illustration")
     }
     
     private var texts: some View {
@@ -61,12 +62,12 @@ struct NotificationsPermissionsView: View {
                 cornerRadius: .huge,
                 action: viewModel.enable
             )
-            .accessibilityIdentifier("NotificationsPermissions.Button.allow")
+            .accessibilityIdentifier("NotificationsPermissions.Button.Allow")
             LinkButton(
                 title: "Not now",
-                action: viewModel.skip
+                action: viewModel.close
             )
-            .accessibilityIdentifier("NotificationsPermissions.Button.notNow")
+            .accessibilityIdentifier("NotificationsPermissions.Button.NotNow")
         }
     }
     

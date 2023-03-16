@@ -56,6 +56,7 @@ public class LocalSettings: NSObject {
         self.optOutFromCrashReports = nil
         // self.isOnboarded needs no clean up - we only show it for first login ever
         self.isUploadingDisclaimerActiveValue = nil
+        self.isNoticationPermissionsSkipped = nil
     }
     
     @objc public dynamic var nodesSortPreference: SortPreference = SortPreference.default {

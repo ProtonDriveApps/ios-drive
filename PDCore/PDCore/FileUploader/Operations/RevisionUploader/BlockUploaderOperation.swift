@@ -127,7 +127,7 @@ final class BlockUploaderOperation: AsynchronousOperation, OperationWithProgress
 
         moc.performAndWait {
             do {
-                file.state = .waiting
+                file.state = .cloudImpediment
                 try moc.save()
             } catch {
                 moc.rollback()

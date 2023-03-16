@@ -24,27 +24,21 @@ Requirements:
 - Two alerts
 */
 
-protocol UserNotificationCenter {
-    func add(_ request: UNNotificationRequest, withCompletionHandler completionHandler: ((Error?) -> Void)?)
-}
-
-extension UNUserNotificationCenter: UserNotificationCenter { }
-
 final class LocalNotificationsController {
     private var cancellable: AnyCancellable?
-    private let notificationCenter: UserNotificationCenter
+    private let resource: LocalNotificationsResource
 
     private let localNotificationPublisher: LocalNotificationNotifier
 
     init(
-        _ notificationCenter: UserNotificationCenter,
+        _ resource: LocalNotificationsResource,
         _ localNotificationPublisher: LocalNotificationNotifier
     ) {
-        self.notificationCenter = notificationCenter
+        self.resource = resource
         self.localNotificationPublisher = localNotificationPublisher
         self.cancellable = localNotificationPublisher.publisher
             .sink {
-                notificationCenter.add(UNNotificationRequest($0), withCompletionHandler: nil)
+                resource.addRequest(with: $0)
             }
     }
 }

@@ -15,14 +15,22 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+#if DEBUG
+
 import Foundation
 
-public extension Notification.Name {
-    static var scheduleUploads: Notification.Name {
-        Notification.Name("ch.protonmail.protondrive.uploadFiles")
-    }
+struct UITestsFlag {
+    let content: String
+    
+    static let uiTests = UITestsFlag(content: "--uitests")
+    static let skipNotificationPermissions = UITestsFlag(content: "--skip_notifications_permissions")
+}
 
-    static var didFindIssueOnFileUpload: Notification.Name {
-        Notification.Name("ch.protonmail.protondrive.didFindIssueOnFileUpload")
+struct DebugConstants {
+    static func commandLineContains(flags: [UITestsFlag]) -> Bool {
+        let flagsRaw = flags.map(\.content)
+        return Set(ProcessInfo.processInfo.arguments).isSuperset(of: flagsRaw)
     }
 }
+
+#endif

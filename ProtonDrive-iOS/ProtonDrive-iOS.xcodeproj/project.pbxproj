@@ -71,6 +71,9 @@
 		18FBBA5F24F1DC00003295FF /* TrashAlertEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FBBA5E24F1DC00003295FF /* TrashAlertEnvironment.swift */; };
 		18FBBA6224F1F087003295FF /* UploadSectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FBBA6124F1F087003295FF /* UploadSectionViewModel.swift */; };
 		2FF4922890232206DCCFABC0 /* Pods_ProtonDriveFileProviderUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F68BA7DF1533ED7CE46E4692 /* Pods_ProtonDriveFileProviderUI.framework */; };
+		313F345229939E75000F5B9C /* LocalNotificationsContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 313F345129939E75000F5B9C /* LocalNotificationsContainer.swift */; };
+		313F345D2993C6CD000F5B9C /* DebugConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 313F345C2993C6CD000F5B9C /* DebugConstants.swift */; };
+		313F34602993D483000F5B9C /* LocalNotificationsFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 313F345F2993D483000F5B9C /* LocalNotificationsFactory.swift */; };
 		3151B3CB298289F8006C99AA /* DriveLoginAndSignupAuthenticator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3151B3CA298289F8006C99AA /* DriveLoginAndSignupAuthenticator.swift */; };
 		315C38A5298A64870080BBE7 /* NotificationsPermissionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315C38A4298A64870080BBE7 /* NotificationsPermissionsView.swift */; };
 		315C38A8298A65D80080BBE7 /* NotificationsPermissionsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315C38A7298A65D80080BBE7 /* NotificationsPermissionsViewModel.swift */; };
@@ -84,9 +87,10 @@
 		318DA41A296EC54B0070329F /* BackgroundOperationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318DA413296EC54B0070329F /* BackgroundOperationController.swift */; };
 		318DA41C296EC6C80070329F /* ApplicationStateOperationsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318DA41B296EC6C80070329F /* ApplicationStateOperationsController.swift */; };
 		318DA41E296EC8310070329F /* UploadOperationInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318DA41D296EC8310070329F /* UploadOperationInteractor.swift */; };
+		319BF7A1299A2DCE004373DA /* NotificationsPermissionsHostingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 319BF7A0299A2DCE004373DA /* NotificationsPermissionsHostingViewController.swift */; };
 		31BA8440297585E500A15143 /* BackgroundOperations.md in Resources */ = {isa = PBXBuildFile; fileRef = 31BA843F297585E500A15143 /* BackgroundOperations.md */; };
 		31CC2DCA298B9E5C00B73E9C /* NotificationsPermissionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CC2DC9298B9E5C00B73E9C /* NotificationsPermissionsController.swift */; };
-		31CC2DCD298B9E8B00B73E9C /* NotificationsPermissionsResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CC2DCC298B9E8B00B73E9C /* NotificationsPermissionsResource.swift */; };
+		31CC2DCD298B9E8B00B73E9C /* LocalNotificationsResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CC2DCC298B9E8B00B73E9C /* LocalNotificationsResource.swift */; };
 		31CC2DD0298BD6B400B73E9C /* NotificationsPermissionsCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CC2DCF298BD6B400B73E9C /* NotificationsPermissionsCoordinator.swift */; };
 		31CC2DD3298BF85700B73E9C /* NotificationsPermissionsFlowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CC2DD2298BF85700B73E9C /* NotificationsPermissionsFlowController.swift */; };
 		31D0BA2529793D2600A5028C /* NotificationBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31D0BA2429793D2600A5028C /* NotificationBanner.swift */; };
@@ -384,6 +388,9 @@
 		1B0020C79C621A38800E14B8 /* Pods_ProtonDriveFileProvider.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_ProtonDriveFileProvider.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		29A9511059D792B52A5DAD90 /* Pods-ProtonDrive.release-external.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ProtonDrive.release-external.xcconfig"; path = "Target Support Files/Pods-ProtonDrive/Pods-ProtonDrive.release-external.xcconfig"; sourceTree = "<group>"; };
 		3079F03FAE711FFB7CD6D683 /* Pods-ProtonDriveUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ProtonDriveUITests.debug.xcconfig"; path = "Target Support Files/Pods-ProtonDriveUITests/Pods-ProtonDriveUITests.debug.xcconfig"; sourceTree = "<group>"; };
+		313F345129939E75000F5B9C /* LocalNotificationsContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNotificationsContainer.swift; sourceTree = "<group>"; };
+		313F345C2993C6CD000F5B9C /* DebugConstants.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DebugConstants.swift; sourceTree = "<group>"; };
+		313F345F2993D483000F5B9C /* LocalNotificationsFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNotificationsFactory.swift; sourceTree = "<group>"; };
 		3151B3CA298289F8006C99AA /* DriveLoginAndSignupAuthenticator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriveLoginAndSignupAuthenticator.swift; sourceTree = "<group>"; };
 		315C38A4298A64870080BBE7 /* NotificationsPermissionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsPermissionsView.swift; sourceTree = "<group>"; };
 		315C38A7298A65D80080BBE7 /* NotificationsPermissionsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsPermissionsViewModel.swift; sourceTree = "<group>"; };
@@ -397,9 +404,10 @@
 		318DA413296EC54B0070329F /* BackgroundOperationController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BackgroundOperationController.swift; sourceTree = "<group>"; };
 		318DA41B296EC6C80070329F /* ApplicationStateOperationsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationStateOperationsController.swift; sourceTree = "<group>"; };
 		318DA41D296EC8310070329F /* UploadOperationInteractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadOperationInteractor.swift; sourceTree = "<group>"; };
+		319BF7A0299A2DCE004373DA /* NotificationsPermissionsHostingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsPermissionsHostingViewController.swift; sourceTree = "<group>"; };
 		31BA843F297585E500A15143 /* BackgroundOperations.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = BackgroundOperations.md; sourceTree = "<group>"; };
 		31CC2DC9298B9E5C00B73E9C /* NotificationsPermissionsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsPermissionsController.swift; sourceTree = "<group>"; };
-		31CC2DCC298B9E8B00B73E9C /* NotificationsPermissionsResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsPermissionsResource.swift; sourceTree = "<group>"; };
+		31CC2DCC298B9E8B00B73E9C /* LocalNotificationsResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNotificationsResource.swift; sourceTree = "<group>"; };
 		31CC2DCF298BD6B400B73E9C /* NotificationsPermissionsCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsPermissionsCoordinator.swift; sourceTree = "<group>"; };
 		31CC2DD2298BF85700B73E9C /* NotificationsPermissionsFlowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsPermissionsFlowController.swift; sourceTree = "<group>"; };
 		31D0BA2429793D2600A5028C /* NotificationBanner.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NotificationBanner.swift; sourceTree = "<group>"; };
@@ -1070,12 +1078,76 @@
 			path = ../Pods;
 			sourceTree = "<group>";
 		};
-		315C38A2298A64730080BBE7 /* Permissions */ = {
+		313F34532993B1D4000F5B9C /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				D92BB5602987DC0900B147F7 /* LocalNotification.swift */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		313F34542993B265000F5B9C /* Permissions */ = {
 			isa = PBXGroup;
 			children = (
 				31CC2DC8298B9BDC00B73E9C /* Application */,
-				31CC2DCE298BD6A900B73E9C /* Coordinator */,
+			);
+			path = Permissions;
+			sourceTree = "<group>";
+		};
+		313F34552993B26C000F5B9C /* Notifier */ = {
+			isa = PBXGroup;
+			children = (
+				313F34562993B276000F5B9C /* Application */,
+				313F34532993B1D4000F5B9C /* Domain */,
+			);
+			path = Notifier;
+			sourceTree = "<group>";
+		};
+		313F34562993B276000F5B9C /* Application */ = {
+			isa = PBXGroup;
+			children = (
+				D995D0552981349C00AE1900 /* LocalNotificationsController.swift */,
+				D92BB5622987E75300B147F7 /* UploadFileLocalNotificationNotifier.swift */,
+			);
+			path = Application;
+			sourceTree = "<group>";
+		};
+		313F34572993B27E000F5B9C /* Common */ = {
+			isa = PBXGroup;
+			children = (
 				31CC2DCB298B9E8700B73E9C /* Resource */,
+			);
+			path = Common;
+			sourceTree = "<group>";
+		};
+		313F34582993B847000F5B9C /* Notifier */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Notifier;
+			sourceTree = "<group>";
+		};
+		313F34592993B84E000F5B9C /* Permissions */ = {
+			isa = PBXGroup;
+			children = (
+				318D2EA7298D403C00A46EF2 /* Application */,
+			);
+			path = Permissions;
+			sourceTree = "<group>";
+		};
+		313F345E2993D46B000F5B9C /* Injection */ = {
+			isa = PBXGroup;
+			children = (
+				313F345129939E75000F5B9C /* LocalNotificationsContainer.swift */,
+				313F345F2993D483000F5B9C /* LocalNotificationsFactory.swift */,
+			);
+			path = Injection;
+			sourceTree = "<group>";
+		};
+		315C38A2298A64730080BBE7 /* Permissions */ = {
+			isa = PBXGroup;
+			children = (
+				31CC2DCE298BD6A900B73E9C /* Coordinator */,
 				315C38A6298A65CC0080BBE7 /* ViewModel */,
 				315C38A3298A647E0080BBE7 /* View */,
 			);
@@ -1086,6 +1158,7 @@
 			isa = PBXGroup;
 			children = (
 				315C38A4298A64870080BBE7 /* NotificationsPermissionsView.swift */,
+				319BF7A0299A2DCE004373DA /* NotificationsPermissionsHostingViewController.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -1101,7 +1174,6 @@
 		315C38B1298AB0080080BBE7 /* Permissions */ = {
 			isa = PBXGroup;
 			children = (
-				318D2EA7298D403C00A46EF2 /* Application */,
 				315C38B2298AB00C0080BBE7 /* ViewModel */,
 			);
 			path = Permissions;
@@ -1174,7 +1246,7 @@
 		31CC2DCB298B9E8700B73E9C /* Resource */ = {
 			isa = PBXGroup;
 			children = (
-				31CC2DCC298B9E8B00B73E9C /* NotificationsPermissionsResource.swift */,
+				31CC2DCC298B9E8B00B73E9C /* LocalNotificationsResource.swift */,
 			);
 			path = Resource;
 			sourceTree = "<group>";
@@ -1375,6 +1447,7 @@
 				AB32ABE529A4FBE500D8629E /* README.md */,
 				ABF52BC52431CA5700CA4368 /* TRUSTMODEL.md */,
 				ABC99D4F241FB0B500FD077A /* Constants.swift */,
+				313F345C2993C6CD000F5B9C /* DebugConstants.swift */,
 				AB54DAB42412AA05000570F7 /* ProtonDrive */,
 				AB6AA4FC261AEF4A0098F990 /* ProtonDriveFileProvider */,
 				AB6AA50A261AEF4A0098F990 /* ProtonDriveFileProviderUI */,
@@ -1812,6 +1885,8 @@
 		D92BB55A298288C900B147F7 /* LocalNotifications */ = {
 			isa = PBXGroup;
 			children = (
+				313F34592993B84E000F5B9C /* Permissions */,
+				313F34582993B847000F5B9C /* Notifier */,
 			);
 			path = LocalNotifications;
 			sourceTree = "<group>";
@@ -2112,9 +2187,10 @@
 		D995D05429812CA200AE1900 /* LocalNotifications */ = {
 			isa = PBXGroup;
 			children = (
-				D92BB5602987DC0900B147F7 /* LocalNotification.swift */,
-				D995D0552981349C00AE1900 /* LocalNotificationsController.swift */,
-				D92BB5622987E75300B147F7 /* UploadFileLocalNotificationNotifier.swift */,
+				313F345E2993D46B000F5B9C /* Injection */,
+				313F34572993B27E000F5B9C /* Common */,
+				313F34552993B26C000F5B9C /* Notifier */,
+				313F34542993B265000F5B9C /* Permissions */,
 			);
 			path = LocalNotifications;
 			sourceTree = "<group>";
@@ -2567,6 +2643,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				ABA316F324778BB500128F98 /* DocumentPicker.swift in Sources */,
+				313F345D2993C6CD000F5B9C /* DebugConstants.swift in Sources */,
 				18A81A0D269CAA1000351694 /* PickerDelegate.swift in Sources */,
 				D968265628466BC7009DA22B /* DC+Start.swift in Sources */,
 				18CD256F2521F5360052099B /* SettingsAssembler.swift in Sources */,
@@ -2603,6 +2680,7 @@
 				ABF72EB624AB38D90073A87E /* RootMoveView.swift in Sources */,
 				1887D44925FF4CAE00EC946A /* Layout.swift in Sources */,
 				31CC2DCA298B9E5C00B73E9C /* NotificationsPermissionsController.swift in Sources */,
+				313F34602993D483000F5B9C /* LocalNotificationsFactory.swift in Sources */,
 				188EB24526020A0B009D3B8A /* FinderListCell.swift in Sources */,
 				D968261F28465AF8009DA22B /* SentryLaunchConfigurator.swift in Sources */,
 				D968265428466BC7009DA22B /* DC+Populated.swift in Sources */,
@@ -2618,6 +2696,7 @@
 				1828B8F32555BB6C00943EFF /* FormattingFileViewModel.swift in Sources */,
 				D9DAE7C72852101600D7CB1B /* LoadingView.swift in Sources */,
 				AB45D81824A87A5800C3F76E /* NodeCellConfiguration.swift in Sources */,
+				313F345229939E75000F5B9C /* LocalNotificationsContainer.swift in Sources */,
 				1828B8E82555BAB100943EFF /* FormattingFolderViewModel.swift in Sources */,
 				18764CA72553F2E2002B1845 /* NodeNameEditor.swift in Sources */,
 				7646BA65289147E700DE4D09 /* NodeRowActionViewModel+TrashSection.swift in Sources */,
@@ -2724,7 +2803,7 @@
 				318DA41E296EC8310070329F /* UploadOperationInteractor.swift in Sources */,
 				187D904724B8443F00755FE3 /* EditSectionViewModel.swift in Sources */,
 				AB45D81A24A87A7E00C3F76E /* NodeCellSimpleConfiguration.swift in Sources */,
-				31CC2DCD298B9E8B00B73E9C /* NotificationsPermissionsResource.swift in Sources */,
+				31CC2DCD298B9E8B00B73E9C /* LocalNotificationsResource.swift in Sources */,
 				AB716D0624A0FA6200A20B8C /* FinderViewModel.swift in Sources */,
 				318DA414296EC54B0070329F /* OperationInteractor.swift in Sources */,
 				AB96DE2125B85103002BDCFF /* FinderMenu.swift in Sources */,
@@ -2787,6 +2866,7 @@
 				D9B426E728467281004294EE /* SideMenuCoordinator.swift in Sources */,
 				187D456024C052340007A34E /* MenuCell.swift in Sources */,
 				D9EA0B222875850B00B938FD /* ShareSheet.swift in Sources */,
+				319BF7A1299A2DCE004373DA /* NotificationsPermissionsHostingViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3146,7 +3226,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.0;
+				MARKETING_VERSION = 1.7.0;
 				OTHER_CODE_SIGN_FLAGS = "--deep";
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -3310,7 +3390,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.6.0;
+				MARKETING_VERSION = 1.7.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.fileprovider;
@@ -3385,7 +3465,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.6.0;
+				MARKETING_VERSION = 1.7.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "ch.protonmail.drive.fileprovider-ui";
