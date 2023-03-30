@@ -32,13 +32,13 @@ extension UIElement {
         uiElement()!.twoFingerTap()
         return self
     }
-    
+
     @discardableResult
     public func typeText(_ text: String) -> UIElement {
         uiElement()!.typeText(text)
         return self
     }
-    
+
     @discardableResult
     public func tap(withNumberOfTaps numberOfTaps: Int, numberOfTouches: Int) -> UIElement {
         uiElement()!.tap(withNumberOfTaps: numberOfTaps, numberOfTouches: numberOfTouches)

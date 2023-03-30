@@ -23,7 +23,8 @@ public final class ItemActionsOutlet: LogObject {
     public typealias SuccessfulCompletion = (NSFileProviderItem?, NSFileProviderItemFields, Bool)
     public typealias Completion = (NSFileProviderItem?, NSFileProviderItemFields, Bool, Error?) -> Void
     public static var osLog: OSLog = OSLog(subsystem: "ProtonDriveFileProvider", category: "ItemActionsOutlet")
-    
+    private var nodeFetcher: NodeFetcher?
+
     public init() { }
     
     @discardableResult
@@ -128,13 +129,17 @@ public final class ItemActionsOutlet: LogObject {
                 completionHandler(nil, [], false, Errors.nodeNotFound)
                 return Progress()
             }
-            file.updateRevision(with: copy)
-            let operation = tower.fileUploader.upload(file: file) {
+            guard let newFile = try? tower.revisionImporter.importNewRevision(from: copy, into: file) else {
+                completionHandler(nil, [], false, Errors.failedToCreateModel)
+                return Progress()
+            }
+
+            let operation = tower.fileUploader.upload(newFile) {
                 try? FileManager.default.removeItem(at: copy.deletingLastPathComponent())
-                completion($0.map { $0.file as Node })
+                completion($0.map { $0 as Node })
             }
             
-            return (operation as? OperationWithProgress)?.progress ?? Progress()
+            return (operation as OperationWithProgress).progress
             
         default:
             ConsoleLogger.shared?.log("Irrelevant changes", osLogType: Self.self)
@@ -160,7 +165,7 @@ public final class ItemActionsOutlet: LogObject {
         
         let completion: (Result<Node, Error>) -> Void = { result in
             switch result {
-            case let .failure(error):
+            case let .failure(error as NSError):
                 ConsoleLogger.shared?.log(error, osLogType: Self.self)
                 completionHandler(nil, [], false, error)
             case let .success(folder):
@@ -172,13 +177,17 @@ public final class ItemActionsOutlet: LogObject {
         
         if itemTemplate.isFolder {
             ConsoleLogger.shared?.log("Item is a folder", osLogType: Self.self)
-            tower.createFolder(named: itemTemplate.filename, under: parent) {
-                completion($0.map { $0 as Node })
+            // Check for conflicts
+            let nodes = retrieveNodes(tower: tower, basedOn: itemTemplate).compactMap { $0 as? Folder }
+            if !detectConflicts(tower: tower, between: itemTemplate, and: nodes, completionHandler: completionHandler) {
+                tower.createFolder(named: itemTemplate.filename, under: parent) {
+                    completion($0.map { $0 as Node })
+                }
             }
             return Progress()
         } else {
             ConsoleLogger.shared?.log("Item is a file", osLogType: Self.self)
-            guard let address = tower.sessionVault.currentAddress() else {
+            guard tower.sessionVault.currentAddress() != nil else {
                 completionHandler(nil, [], false, Errors.noAddressInTower)
                 return Progress()
             }
@@ -189,15 +198,50 @@ public final class ItemActionsOutlet: LogObject {
 
             let completion: OnUploadCompletion = {
                 try? FileManager.default.removeItem(at: copy.deletingLastPathComponent())
-                completion($0.map { $0.file as Node })
+                completion($0.map { $0 as Node })
             }
 
-            guard let op = try? tower.fileUploader.upload(clearFiles: [copy], parent: parent, address: address, completion: completion).first else {
+            guard let file = try? tower.fileImporter.importFile(from: copy, to: parent) else {
                 return Progress()
             }
 
+            let op = tower.fileUploader.upload(file, completion: completion)
+
             return op.progress
         }
+    }
+
+    private func retrieveNodes(tower: Tower, basedOn itemTemplate: NSFileProviderItem) -> [Node] {
+        guard let shareID = self.node(tower: tower, of: itemTemplate.parentItemIdentifier)?.shareID else {
+            return []
+        }
+
+        return tower.storage.fetchNodes(of: shareID, moc: tower.storage.mainContext)
+    }
+
+    private func detectConflicts(tower: Tower, between itemTemplate: NSFileProviderItem, and nodes: [Node], completionHandler: @escaping Completion) -> Bool {
+        if #available(macOS 12.0, *) {
+            if itemTemplate.isFolder {
+                let folders = nodes.compactMap { $0 as? Folder }
+                // Only deal with one conflict at a time
+                if let conflictedFolder = folders.first(
+                    where: {
+                        guard let parentLink = $0.parentLink,
+                              let parentItemIdentifier = self.parent(tower: tower, of: itemTemplate)?.id else {
+                            return false
+                        }
+                        return $0.decryptedName == itemTemplate.filename && parentLink.id == parentItemIdentifier
+                    }
+                ) {
+                    os_log("Event requires unknown lane type: %@ ", log: Self.osLog, type: .default, "\(conflictedFolder.decryptedName)")
+                    let item = NodeItem(node: conflictedFolder)
+                    completionHandler(item, [], false, nil)
+                    return true
+                }
+            }
+        }
+        return false
+
     }
 }
 
@@ -233,14 +277,5 @@ extension ItemActionsOutlet {
             return nil
         }
         return tower.fileSystemSlot?.getNode(parentIdentifier)
-    }
-}
-
-extension File {
-    func updateRevision(with url: URL) {
-        managedObjectContext!.performAndWait {
-            self.uploadID = UUID()
-            self.uploadIDURL = url
-        }
     }
 }

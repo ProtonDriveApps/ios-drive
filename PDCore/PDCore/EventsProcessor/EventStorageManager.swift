@@ -75,8 +75,28 @@ public class EventStorageManager: NSObject {
         })
         return container
     }
+
+    private static func inMemoryPersistantContainer() -> NSPersistentContainer {
+        let container = NSPersistentContainer(name: "EventStorageModel", managedObjectModel: self.managedObjectModel)
+        let description = NSPersistentStoreDescription()
+        description.type = NSInMemoryStoreType
+        description.shouldAddStoreAsynchronously = false // Make it simpler in test env
+
+        container.persistentStoreDescriptions = [description]
+        container.loadPersistentStores { (description, error) in
+            // Check if the data store is in memory
+            precondition( description.type == NSInMemoryStoreType )
+
+            // Check if creating container wrong
+            if let error = error {
+                fatalError("Create an in-memory coordinator failed \(error)")
+            }
+        }
+
+        return container
+    }
     
-    internal static func inMemoryPersistantContainer(prePopulatedFrom databaseUrl: URL) -> NSPersistentContainer {
+    private static func inMemoryPersistantContainer(prePopulatedFrom databaseUrl: URL) -> NSPersistentContainer {
         let container = Self.defaultPersistentContainer(suiteUrl: databaseUrl)
         let coordinator = container.persistentStoreCoordinator
         coordinator.persistentStores.forEach { persistentStore in
@@ -91,15 +111,19 @@ public class EventStorageManager: NSObject {
 
     private let persistentContainer: NSPersistentContainer
 
-    private lazy var backgroundContext: NSManagedObjectContext = {
+    public lazy var backgroundContext: NSManagedObjectContext = {
         let context = self.persistentContainer.newBackgroundContext()
         context.automaticallyMergesChangesFromParent = true
         context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
         return context
     }()
 
-    public init(prePopulateFrom template: URL) {
-        self.persistentContainer = Self.inMemoryPersistantContainer(prePopulatedFrom: template)
+    internal init(prePopulateFrom template: URL?) {
+        if let template {
+            self.persistentContainer = Self.inMemoryPersistantContainer(prePopulatedFrom: template)
+        } else {
+            self.persistentContainer = Self.inMemoryPersistantContainer()
+        }
         super.init()
     }
     
@@ -214,6 +238,12 @@ extension EventStorageManager {
                 _ = try? self.persistentContainer.persistentStoreCoordinator.execute(request, with: self.backgroundContext)
             }
         }
+    }
+
+    public func count() throws -> Int {
+        let fetchRequest = NSFetchRequest<PersistedEvent>()
+        fetchRequest.entity = PersistedEvent.entity()
+        return try backgroundContext.count(for: fetchRequest)
     }
     
     public func periodicalCleanup(horizon: DateComponents = .init(day: -10)) throws {

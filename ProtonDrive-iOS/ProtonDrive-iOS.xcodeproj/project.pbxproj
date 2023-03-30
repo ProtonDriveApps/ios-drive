@@ -71,6 +71,9 @@
 		18FBBA5F24F1DC00003295FF /* TrashAlertEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FBBA5E24F1DC00003295FF /* TrashAlertEnvironment.swift */; };
 		18FBBA6224F1F087003295FF /* UploadSectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FBBA6124F1F087003295FF /* UploadSectionViewModel.swift */; };
 		2FF4922890232206DCCFABC0 /* Pods_ProtonDriveFileProviderUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F68BA7DF1533ED7CE46E4692 /* Pods_ProtonDriveFileProviderUI.framework */; };
+		311ECF7F29A5249E00F76062 /* InterruptedUploadsContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311ECF7A29A5249E00F76062 /* InterruptedUploadsContainer.swift */; };
+		311ECF8029A5249E00F76062 /* InterruptedUploadsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311ECF7C29A5249E00F76062 /* InterruptedUploadsController.swift */; };
+		311ECF8129A5249E00F76062 /* InterruptedUploadsInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311ECF7E29A5249E00F76062 /* InterruptedUploadsInteractor.swift */; };
 		313F345229939E75000F5B9C /* LocalNotificationsContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 313F345129939E75000F5B9C /* LocalNotificationsContainer.swift */; };
 		313F345D2993C6CD000F5B9C /* DebugConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 313F345C2993C6CD000F5B9C /* DebugConstants.swift */; };
 		313F34602993D483000F5B9C /* LocalNotificationsFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 313F345F2993D483000F5B9C /* LocalNotificationsFactory.swift */; };
@@ -388,6 +391,9 @@
 		1B0020C79C621A38800E14B8 /* Pods_ProtonDriveFileProvider.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_ProtonDriveFileProvider.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		29A9511059D792B52A5DAD90 /* Pods-ProtonDrive.release-external.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ProtonDrive.release-external.xcconfig"; path = "Target Support Files/Pods-ProtonDrive/Pods-ProtonDrive.release-external.xcconfig"; sourceTree = "<group>"; };
 		3079F03FAE711FFB7CD6D683 /* Pods-ProtonDriveUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ProtonDriveUITests.debug.xcconfig"; path = "Target Support Files/Pods-ProtonDriveUITests/Pods-ProtonDriveUITests.debug.xcconfig"; sourceTree = "<group>"; };
+		311ECF7A29A5249E00F76062 /* InterruptedUploadsContainer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InterruptedUploadsContainer.swift; sourceTree = "<group>"; };
+		311ECF7C29A5249E00F76062 /* InterruptedUploadsController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InterruptedUploadsController.swift; sourceTree = "<group>"; };
+		311ECF7E29A5249E00F76062 /* InterruptedUploadsInteractor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InterruptedUploadsInteractor.swift; sourceTree = "<group>"; };
 		313F345129939E75000F5B9C /* LocalNotificationsContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNotificationsContainer.swift; sourceTree = "<group>"; };
 		313F345C2993C6CD000F5B9C /* DebugConstants.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DebugConstants.swift; sourceTree = "<group>"; };
 		313F345F2993D483000F5B9C /* LocalNotificationsFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNotificationsFactory.swift; sourceTree = "<group>"; };
@@ -1078,6 +1084,47 @@
 			path = ../Pods;
 			sourceTree = "<group>";
 		};
+		311ECF7829A5249E00F76062 /* InterruptedUploads */ = {
+			isa = PBXGroup;
+			children = (
+				311ECF7929A5249E00F76062 /* Injection */,
+				311ECF7B29A5249E00F76062 /* Application */,
+				311ECF7D29A5249E00F76062 /* Domain */,
+			);
+			path = InterruptedUploads;
+			sourceTree = "<group>";
+		};
+		311ECF7929A5249E00F76062 /* Injection */ = {
+			isa = PBXGroup;
+			children = (
+				311ECF7A29A5249E00F76062 /* InterruptedUploadsContainer.swift */,
+			);
+			path = Injection;
+			sourceTree = "<group>";
+		};
+		311ECF7B29A5249E00F76062 /* Application */ = {
+			isa = PBXGroup;
+			children = (
+				311ECF7C29A5249E00F76062 /* InterruptedUploadsController.swift */,
+			);
+			path = Application;
+			sourceTree = "<group>";
+		};
+		311ECF7D29A5249E00F76062 /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				311ECF7E29A5249E00F76062 /* InterruptedUploadsInteractor.swift */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		311ECF8329A524BA00F76062 /* Application */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Application;
+			sourceTree = "<group>";
+		};
 		313F34532993B1D4000F5B9C /* Domain */ = {
 			isa = PBXGroup;
 			children = (
@@ -1482,6 +1529,7 @@
 				AB74964925B1E9AF004E6694 /* Coordinator */,
 				1844B90D2665731600A3AB55 /* Deeplink */,
 				1844B9052665724700A3AB55 /* Notifications */,
+				311ECF7829A5249E00F76062 /* InterruptedUploads */,
 				ABD154152431EDA6000A7026 /* Scenes */,
 				AB54DABB2412AA08000570F7 /* Assets.xcassets */,
 				AB013484248A839F001377A9 /* Settings.bundle */,
@@ -1745,6 +1793,13 @@
 				76E93E4528A26010004A885B /* HidableTabBarController.swift */,
 			);
 			path = TabBarView;
+			sourceTree = "<group>";
+		};
+		ABEB77FA29B8925500782DFE /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Settings;
 			sourceTree = "<group>";
 		};
 		ABF3C8F42478231600263101 /* NodeDetails */ = {
@@ -2700,6 +2755,7 @@
 				1828B8E82555BAB100943EFF /* FormattingFolderViewModel.swift in Sources */,
 				18764CA72553F2E2002B1845 /* NodeNameEditor.swift in Sources */,
 				7646BA65289147E700DE4D09 /* NodeRowActionViewModel+TrashSection.swift in Sources */,
+				311ECF8129A5249E00F76062 /* InterruptedUploadsInteractor.swift in Sources */,
 				1844B90A266572A800A3AB55 /* LockRequesting.swift in Sources */,
 				ABABE7BB25C1933C005B3A8D /* FolderModel+PickerDelegate.swift in Sources */,
 				1879521D24F278A00047F5A0 /* UploadManagementMenuViewModel.swift in Sources */,
@@ -2727,6 +2783,7 @@
 				D9F7557E2869CCBE009E4657 /* SharedLinkEditorViewController.swift in Sources */,
 				318DA418296EC54B0070329F /* ProcessingBackgroundOperationController.swift in Sources */,
 				D9EA0B242877191800B938FD /* SharedLink.swift in Sources */,
+				311ECF7F29A5249E00F76062 /* InterruptedUploadsContainer.swift in Sources */,
 				D928D4A22869B354009D53C2 /* ShareLinkCreatorCoordinator.swift in Sources */,
 				AB1E020424534BA8003A039C /* NodeCellWithProgressConfiguration.swift in Sources */,
 				37C9395F28F04C5F00A1C8E6 /* LoginExternalAccountNotSupportedSetup.swift in Sources */,
@@ -2813,6 +2870,7 @@
 				AB55A95E2613592E00CAFA0C /* GridOrList.swift in Sources */,
 				187BD63524F1A21500EC711C /* NodeRowActionViewModel+TrashAlert.swift in Sources */,
 				D968263C28466873009DA22B /* ProtectCoordinator.swift in Sources */,
+				311ECF8029A5249E00F76062 /* InterruptedUploadsController.swift in Sources */,
 				ABE794D62497C16E00F89D7A /* NSRange+Extension.swift in Sources */,
 				AB38BC9024CEBC00001CD0FC /* HasRefreshControl.swift in Sources */,
 				AB45D81C24A87F3C00C3F76E /* NodeCellPlaceholderConfiguration.swift in Sources */,
@@ -3226,7 +3284,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.7.0;
+				MARKETING_VERSION = 1.8.0;
 				OTHER_CODE_SIGN_FLAGS = "--deep";
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -3390,7 +3448,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.7.0;
+				MARKETING_VERSION = 1.8.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.fileprovider;
@@ -3465,7 +3523,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.7.0;
+				MARKETING_VERSION = 1.8.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "ch.protonmail.drive.fileprovider-ui";

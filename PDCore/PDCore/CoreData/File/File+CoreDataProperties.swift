@@ -33,11 +33,6 @@ extension File {
 // MARK: - Custom properties
 extension File {
     @available(*, deprecated, message: "Replace with Revision's uploadableResourceURL or uploadID")
-    public var uploadIDURL: URL? {
-        get { URL(fileURLWithPath: self.uploadIdRaw ?? "") }
-        set { self.uploadIdRaw = newValue?.path }
-    }
-    @available(*, deprecated, message: "Replace with Revision's uploadableResourceURL or uploadID")
     @NSManaged private var uploadIdRaw: String? // should be removed by finish handler of Upload operation
 }
 

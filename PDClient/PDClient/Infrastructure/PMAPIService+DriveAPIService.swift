@@ -30,43 +30,34 @@ extension PMAPIService: DriveAPIService {
     public func request<E, Response>(from endpoint: E, completion: @escaping (Result<Response, Error>) -> Void) where E: Endpoint, Response == E.Response {
         log(endpoint.prettyDescription)
 
-        request(
-            method: endpoint.method,
-            path: endpoint.path,
-            parameters: endpoint.parameters,
-            headers: endpoint.header,
-            authenticated: true,
-            autoRetry: true,
-            customAuthCredential: endpoint.authCredential
-        ) { task, responseDict, networkingError in
+        perform(request: endpoint) { task, result in
+            switch result {
+            case .failure(let responseError):
+                log(endpoint.networkingError(responseError))
+                return completion(.failure(responseError))
 
-            if let networkingError = networkingError {
-                log(endpoint.networkingError(networkingError))
-                return completion(.failure(networkingError))
+            case .success(let responseDict):
+                guard let responseData = try? JSONSerialization.data(withJSONObject: responseDict, options: .prettyPrinted) else {
+                    log(endpoint.unknownError())
+                    return completion(.failure(URLError(.unknown)))
+                }
+
+                let decoder = JSONDecoder(strategy: .decapitaliseFirstLetter)
+                if let serverError = try? decoder.decode(PDClient.ErrorResponse.self, from: responseData) {
+                    let error = NSError(serverError)
+                    log(endpoint.serverError(error))
+                    return completion(.failure(error))
+                }
+
+                do {
+                    let response = try decoder.decode(E.Response.self, from: responseData)
+                    log(endpoint.prettyResponse(responseData))
+                    return completion(.success(response))
+                } catch {
+                    log(endpoint.deserializingError(error))
+                    return completion(.failure(error))
+                }
             }
-
-            guard let responseDict = responseDict,
-                  let responseData = try? JSONSerialization.data(withJSONObject: responseDict, options: .prettyPrinted) else {
-                log(endpoint.unknownError())
-                return completion(.failure(URLError(.unknown)))
-            }
-
-            let decoder = JSONDecoder(strategy: .decapitaliseFirstLetter)
-            if let serverError = try? decoder.decode(PDClient.ErrorResponse.self, from: responseData) {
-                let error = NSError(serverError)
-                log(endpoint.serverError(error))
-                return completion(.failure(error))
-            }
-
-            do {
-                let response = try decoder.decode(E.Response.self, from: responseData)
-                log(endpoint.prettyResponse(responseData))
-                return completion(.success(response))
-            } catch {
-                log(endpoint.deserializingError(error))
-                return completion(.failure(error))
-            }
-
         }
     }
 }

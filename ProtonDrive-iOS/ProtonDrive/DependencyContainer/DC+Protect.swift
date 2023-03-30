@@ -27,6 +27,7 @@ extension DriveDependencyContainer {
         
         let tower = Tower(
             storage: storageManager,
+            eventStorage: EventStorageManager(suiteUrl: appGroup.directoryUrl),
             appGroup: appGroup,
             mainKeyProvider: keymaker,
             sessionVault: sessionVault,
@@ -78,10 +79,12 @@ extension AuthenticatedDependencyContainer {
     }
 
     private func makeProtectCoordinator(_ viewController: ProtectViewController) -> ProtectCoordinator {
-        ProtectCoordinator(
+        let humanHelper = makeHumanVerificationHelper(networkService)
+        humanCheckHelper = humanHelper
+        return ProtectCoordinator(
             windowScene: windowScene,
             viewController: viewController,
-            humanVerificationHelper: makeHumanVerificationHelper(networkService),
+            humanVerificationHelper: humanHelper,
             lockedViewControllerFactory: makeLockViewController,
             unlockedViewControllerFactory: makePopulateViewController
         )

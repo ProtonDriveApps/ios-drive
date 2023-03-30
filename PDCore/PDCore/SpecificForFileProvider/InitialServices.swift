@@ -16,10 +16,12 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import OSLog
 import PDClient
 #if os(iOS)
 import ProtonCore_Challenge
 #endif
+import ProtonCore_FeatureSwitch
 import ProtonCore_Keymaker
 import ProtonCore_Services
 import ProtonCore_Authentication
@@ -49,6 +51,21 @@ public class InitialServices {
         self.networkService = networking
         self.networkClient = serviceDelegate
         self.authenticator = authenticator
+
+        if FeatureFactory.shared.isEnabled(.unauthSession) {
+            networkService.acquireSessionIfNeeded { result in
+                switch result {
+                case .success:
+                    // session was already available, or servers were
+                    // reached but returned 4xx/5xx.
+                    // In both cases we're done here
+                    break
+                case .failure(let error):
+                    // servers not reachable, need to display banner
+                    ConsoleLogger.shared?.log(error, osLogType: SessionVault.self)
+                }
+            }
+        }
     }
 
     public func clearCache() {
@@ -69,13 +86,12 @@ public class InitialServices {
             authenticator: nil
         )
 #if os(iOS)
-        let networking = PMAPIService.createAPIService(environment: clientConfig.environment,
-                                                       sessionUID: sessionVault.credential?.UID ?? "",
-                                                       challengeParametersProvider: .forAPIService(clientApp: .drive))
+        let networking = PMAPIService.createAPIServiceWithoutSession(environment: clientConfig.environment,
+                                                                     challengeParametersProvider: .forAPIService(clientApp: .drive,
+                                                                                                                 challenge: PMChallenge()))
 #else
-        let networking = PMAPIService.createAPIService(environment: clientConfig.environment,
-                                                       sessionUID: sessionVault.credential?.UID ?? "",
-                                                       challengeParametersProvider: .empty)
+        let networking = PMAPIService.createAPIServiceWithoutSession(environment: clientConfig.environment,
+                                                                     challengeParametersProvider: .empty)
 #endif
         networking.serviceDelegate = serviceDelegate
         networking.authDelegate = serviceDelegate

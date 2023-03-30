@@ -33,4 +33,14 @@ extension UploadBlock {
 // Upload File Process
 extension UploadBlock {
     @NSManaged var isUploaded: Bool
+
+    /// Removes upload related values that are not permanent.
+    /// `uploadToken` and `uploadUrl` come from the BE and they live during certain time aprox. 3 h.
+    /// `isUploaded` this references a successfully uploaded Block, the value is valid as long as the revision on the BE
+    /// exists, aprox. 4 h.
+    func unsetRemoteValues() {
+        uploadToken = nil
+        uploadUrl = nil
+        isUploaded = false
+    }
 }

@@ -18,45 +18,50 @@
 import CoreData
 
 final class DiscreteBlocksRevisionEncryptor: RevisionEncryptor {
-    let moc: NSManagedObjectContext
-    let maxBlockSize = Constants.maxBlockSize
 
-    private let storage: StorageManager
     private let signersKitFactory: SignersKitFactoryProtocol
+    private let maxBlockSize: Int
+    private let progress: Progress
+    private let moc: NSManagedObjectContext
 
     private var isCancelled = false
     private var isExecuting = false
 
-    init(signersKitFactory: SignersKitFactoryProtocol, storage: StorageManager) {
-        self.storage = storage
+    init(
+        signersKitFactory: SignersKitFactoryProtocol,
+        maxBlockSize: Int,
+        progress: Progress,
+        moc: NSManagedObjectContext
+    ) {
         self.signersKitFactory = signersKitFactory
-        self.moc = storage.backgroundContext
+        self.maxBlockSize = maxBlockSize
+        self.progress = progress
+        self.moc = moc
     }
 
-    func encrypt(revisionDraft draft: CreatedRevisionDraft, completion: @escaping Completion) {
+    func encrypt(_ draft: CreatedRevisionDraft, completion: @escaping Completion) {
         guard !isCancelled, !isExecuting else { return }
         isExecuting = true
 
-        ConsoleLogger.shared?.log("STAGE: 2.2 Encrypt blocks 📦📦 started", osLogType: FileUploader.self)
-        
-        moc.performAndWait {
+        ConsoleLogger.shared?.log("STAGE: 1.2 Encrypt blocks 📦📦 started", osLogType: FileUploader.self)
+
+        moc.perform {
             do {
-                // TODO: Conceptually it should we should use draft.revision.signatureAddress, in this case is the same because the creator of the file is the same as the creator of the revision, and both are created at the same time
-                let signersKit = try signersKitFactory.make(forSigner: .address(draft.revision.file.signatureEmail))
                 let revision = draft.revision.in(moc: self.moc)
-                self.storage.removeOldBlocks(of: revision)
-
-                guard !isCancelled else { return }
-
+                revision.removeOldBlocks(in: self.moc)
+                let signersKit = try self.getSignersKit(for: revision)
                 let uploadBlocks = try self.createEncryptedBlocks(draft.localURL, revision: revision, signersKit: signersKit)
+                self.finalize(uploadBlocks, revision: revision, cleanupCleartext: draft.localURL, signersKit: signersKit)
 
-                try self.finalize(uploadBlocks, revision: revision, cleanupCleartext: draft.localURL, signersKit: signersKit)
-                ConsoleLogger.shared?.log("STAGE: 2.2 Encrypt blocks 📦📦 finished ✅", osLogType: FileUploader.self)
-                completion(.success(Void()))
+                try self.moc.saveOrRollback()
+
+                ConsoleLogger.shared?.log("STAGE: 1.2 Encrypt blocks 📦📦 finished ✅", osLogType: FileUploader.self)
+
+                self.progress.complete()
+                completion(.success)
 
             } catch {
-                ConsoleLogger.shared?.log("STAGE: 2.2 Encrypt blocks 📦📦 finished ❌", osLogType: FileUploader.self)
-                moc.rollback()
+                ConsoleLogger.shared?.log("STAGE: 1.2 Encrypt blocks 📦📦 finished ❌", osLogType: FileUploader.self)
                 completion(.failure(error))
             }
         }
@@ -70,6 +75,13 @@ final class DiscreteBlocksRevisionEncryptor: RevisionEncryptor {
 
 extension DiscreteBlocksRevisionEncryptor {
 
+    private func getSignersKit(for revision: Revision) throws -> SignersKit {
+        guard let signatureAddress = revision.signatureAddress else {
+            throw RevisionEncryptorError.noSignatureEmailInRevision
+        }
+        return try signersKitFactory.make(forSigner: .address(signatureAddress))
+    }
+
     /// Breaks cleartext file into a number of Blocks
     private func createEncryptedBlocks(_ cleartextlUrl: URL, revision: Revision, signersKit: SignersKit) throws -> [UploadBlock] {
         // preparations
@@ -81,7 +93,7 @@ extension DiscreteBlocksRevisionEncryptor {
         var index = 1 // BE starts numeration of blocks from 1
         var data = reader.readData(ofLength: maxBlockSize)
         while !data.isEmpty, !self.isCancelled {
-            ConsoleLogger.shared?.log("STAGE: 2.2 Encrypting block \(index) 🚧", osLogType: FileUploader.self)
+            ConsoleLogger.shared?.log("STAGE: 1.2 Encrypting block \(index) 🚧", osLogType: FileUploader.self)
             try autoreleasepool {
 
                 let pack = NewBlockDataCleartext(index: index, cleardata: data)
@@ -93,6 +105,8 @@ extension DiscreteBlocksRevisionEncryptor {
                 blocks.append(block)
                 index += 1
                 data = reader.readData(ofLength: maxBlockSize)
+
+                progress.complete(1)
             }
         }
 
@@ -117,6 +131,8 @@ extension DiscreteBlocksRevisionEncryptor {
             throw Uploader.Errors.noFileKeyPacket
         }
         let nodePassphrase = try file.decryptPassphrase()
+
+        // TODO: Try to reuse the session key to make the process more performant
         let encrypted = try Encryptor.encryptBinary(chunk: block.cleardata,
                                                     contentKeyPacket: contentKeyPacket,
                                                     nodeKey: file.nodeKey,
@@ -132,7 +148,7 @@ extension DiscreteBlocksRevisionEncryptor {
         return encSignature
     }
 
-    func finalize(_ blocks: [UploadBlock], revision: Revision, cleanupCleartext cleartextlUrl: URL, signersKit: SignersKit) throws {
+    func finalize(_ blocks: [UploadBlock], revision: Revision, cleanupCleartext cleartextlUrl: URL, signersKit: SignersKit) {
         if isCancelled {
             blocks.forEach(moc.delete)
         } else {
@@ -141,8 +157,6 @@ extension DiscreteBlocksRevisionEncryptor {
             revision.blocks = Set(blocks)
             revision.signatureAddress = signersKit.address.email
         }
-
-        try moc.save()
     }
 
     ///// Temporary holder for block cyphertext values

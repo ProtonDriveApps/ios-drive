@@ -22,9 +22,7 @@ import os.log
 typealias UnitOfWork = Int
 typealias OnError = (Error) -> Void
 typealias OnUploadSuccess = (FileDraft) -> Void
-public typealias OnUploadCompletion = (Result<FileDraft, Error>) -> Void
-
-public protocol UploadOperation: OperationWithProgress, IdentifiableUploadOperation { }
+public typealias OnUploadCompletion = (Result<File, Error>) -> Void
 
 public final class FileUploader: LogObject {
     private enum FileUploaderError: Error {
@@ -32,8 +30,7 @@ public final class FileUploader: LogObject {
     }
     
     public static let osLog: OSLog = OSLog(subsystem: "ProtonDrive", category: "FileUploader")
-    
-    private let darftImporter: FileDraftImporter
+
     private let fileUploadFactory: FileUploadOperationsProvider
     private let storage: StorageManager
     private let moc: NSManagedObjectContext
@@ -43,12 +40,10 @@ public final class FileUploader: LogObject {
     private var cancellables = Set<AnyCancellable>()
 
     init(
-        draftImporter: FileDraftImporter,
         fileUploadFactory: FileUploadOperationsProvider,
         storage: StorageManager,
         sessionVault: SessionVault
     ) {
-        self.darftImporter = draftImporter
         self.fileUploadFactory = fileUploadFactory
         self.moc = storage.backgroundContext
         self.storage = storage
@@ -57,6 +52,7 @@ public final class FileUploader: LogObject {
             .objectWillChange
             .compactMap(sessionVault.getUserInfo)
             .map(\.availableStorage)
+            .receive(on: DispatchQueue.main)
             .sink { [unowned self] in
                 restartWaitingOperations(availableStorage: $0)
             }
@@ -65,11 +61,22 @@ public final class FileUploader: LogObject {
 
     public func restartOperations() throws {
         let uploading = storage.fetchFilesUploading(moc: storage.mainContext)
-
-        for file in uploading {
+        restartFilesUpload(files: uploading)
+        if queue.operationCount == 0 {
+            throw FileUploaderError.missingOperations
+        }
+    }
+    
+    public func restartInterruptedUploads() {
+        let interrupted = storage.fetchFilesInterrupted(moc: storage.mainContext)
+        restartFilesUpload(files: interrupted)
+    }
+    
+    private func restartFilesUpload(files: [File]) {
+        for file in files {
             file.managedObjectContext?.performAndWait {
                 let uploadID = file.uploadID
-                _ = self.upload(file: file) { [weak self] result in
+                self.upload(file) { [weak self] result in
                     switch result {
                     case .success:
                         break
@@ -78,10 +85,6 @@ public final class FileUploader: LogObject {
                     }
                 }
             }
-        }
-        
-        if queue.operationCount == 0 {
-            throw FileUploaderError.missingOperations
         }
     }
 
@@ -103,7 +106,7 @@ public final class FileUploader: LogObject {
 
     public func remove(file: File, completion: @escaping (Error?) -> Void) {
         pause(file: file)
-        if let url = file.uploadIDURL {
+        if let url = file.activeRevisionDraft?.uploadableResourceURL {
             cleaupCleartext(at: url)
         }
         file.managedObjectContext!.perform {
@@ -123,89 +126,10 @@ public final class FileUploader: LogObject {
     }
 
     public func pauseAllUploads() {
-        NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
+        NotificationCenter.default.post(name: .didInterruptOnFileUpload, object: nil)
         queue.operations
             .compactMap { $0 as? MainFileUploaderOperation }
             .forEach { $0.interrupt() }
-    }
-
-    @discardableResult
-    public func upload(clearFiles files: [URL], parent: Folder, address: AddressManager.Address, completion: @escaping OnUploadCompletion) throws -> [UploadOperation] {
-        ConsoleLogger.shared?.log("STAGE: 0 Batch imported 🗂💾 started", osLogType: FileUploader.self)
-        do {
-            ConsoleLogger.shared?.log("STAGE: 0 Batch imported 🗂💾 finished ✅", osLogType: FileUploader.self)
-            let outcome = try darftImporter.`import`(files: files, to: parent)
-            handleUnssuccessfulDraftImports(from: outcome.failure)
-
-            let operations = handleSuccessfulDraftImports(from: outcome.success, completion: completion)
-            return operations
-
-        } catch {
-            ConsoleLogger.shared?.log("STAGE: 0 Batch imported 🗂💾 finished ❌", osLogType: FileUploader.self)
-            ConsoleLogger.shared?.log(DriveError(error, "FileUploader"))
-            errorStream.send(error)
-            throw error
-        }
-    }
-
-    public func upload(file: File, completion: @escaping OnUploadCompletion) -> UploadOperation? {
-        do {
-            let draft = try FileDraft.extract(from: file, moc: moc)
-            draft.file.changeState(to: .uploading)
-            let uploadID = draft.uploadID
-
-            // Do not schedule previously scheduled operations
-            cancel(uploadID: uploadID)
-
-            let operations = fileUploadFactory.getOperations(for: draft) { [weak self] error in
-                NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
-                self?.cancel(uploadID: uploadID)
-                self?.errorStream.send(error)
-                ConsoleLogger.shared?.log(DriveError(error, "FileUploader"))
-                completion(.failure(error))
-            } onSuccess: { [weak self] file in
-                self?.cleaupCleartext(at: file.url)
-                completion(.success(file))
-            }
-
-            queue.addOperations(operations, waitUntilFinished: false)
-            return operations.last as? UploadOperation
-        } catch {
-            NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
-            errorStream.send(error)
-            ConsoleLogger.shared?.log(DriveError(error, "FileUploader"))
-            completion(.failure(error))
-            return nil
-        }
-    }
-
-    private func handleSuccessfulDraftImports(from drafts: [FileDraft], completion: @escaping OnUploadCompletion) -> [UploadOperation] {
-        var mainOperations: [UploadOperation] = []
-        for draft in drafts {
-            let uploadID = draft.uploadID
-            let operations = fileUploadFactory.getOperations(for: draft) { [weak self] error in
-                NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
-                self?.cancel(uploadID: uploadID)
-                self?.errorStream.send(error)
-                ConsoleLogger.shared?.log(DriveError(error, "FileUploader"))
-                completion(.failure(UploaderError(url: draft.url, uploadID: uploadID, underlyingError: error)))
-            } onSuccess: { [weak self] file in
-                self?.cleaupCleartext(at: file.url)
-                completion(.success(file))
-            }
-
-            mainOperations.append(operations.last as! UploadOperation)
-            queue.addOperations(operations, waitUntilFinished: false)
-        }
-        return mainOperations
-    }
-
-    private func handleUnssuccessfulDraftImports(from failed: [FaultFile]) {
-        for failure in failed {
-            cleaupCleartext(at: failure.url)
-            ConsoleLogger.shared?.log(DriveError(failure.error, "FileUploader"))
-            errorStream.send(failure.error)
-        }
     }
     
     func cleaupCleartext(at url: URL) {
@@ -238,7 +162,7 @@ extension FileUploader {
             file.managedObjectContext?.performAndWait {
                 ConsoleLogger.shared?.log("Attempt to restart waiting upload with size \(file.size)", osLogType: FileUploader.self)
                 storageLeft -= file.size
-                _ = self.upload(file: file) { [weak self] result in
+                self.upload(file) { [weak self] result in
                     switch result {
                     case .success:
                         break
@@ -251,4 +175,34 @@ extension FileUploader {
             }
         }
     }
+}
+
+extension FileUploader {
+    @discardableResult
+    public func upload(_ file: File, completion: @escaping OnUploadCompletion) -> UploadOperation {
+        let draft = FileDraft.extract(from: file, moc: storage.backgroundContext)
+        let uploadID = draft.uploadID
+
+        // Do not schedule previously scheduled operations
+        cancel(uploadID: uploadID)
+
+        let operations = fileUploadFactory.getOperations(for: draft) { [weak self] result in
+            switch result {
+            case .success(let file):
+                completion(.success(file))
+            case .failure(let error):
+                NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
+                ConsoleLogger.shared?.log(DriveError(error, "FileUploader"))
+
+                self?.cancel(uploadID: uploadID)
+                self?.errorStream.send(error)
+                completion(.failure(error))
+            }
+        }
+
+        draft.file.changeState(to: .uploading)
+        queue.addOperations(operations, waitUntilFinished: false)
+        return operations.last as! UploadOperation
+    }
+
 }

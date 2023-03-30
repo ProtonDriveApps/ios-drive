@@ -404,6 +404,16 @@
 			<key>isShown</key>
 			<false/>
 		</dict>
+		<key>ProtonCore-Observability-dynamic.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
+		<key>ProtonCore-Observability-static.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
 		<key>ProtonCore-OpenPGP-dynamic.xcscheme</key>
 		<dict>
 			<key>isShown</key>
@@ -464,12 +474,22 @@
 			<key>isShown</key>
 			<false/>
 		</dict>
-		<key>ProtonCore-TestingToolkit-81747a07.xcscheme</key>
+		<key>ProtonCore-TestingToolkit-1889c66f.xcscheme</key>
 		<dict>
 			<key>isShown</key>
 			<false/>
 		</dict>
-		<key>ProtonCore-TestingToolkit-8bc049aa.xcscheme</key>
+		<key>ProtonCore-TestingToolkit-543e954a.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
+		<key>ProtonCore-TestingToolkit-8045a870.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
+		<key>ProtonCore-TestingToolkit-99e91a64.xcscheme</key>
 		<dict>
 			<key>isShown</key>
 			<false/>
@@ -484,12 +504,7 @@
 			<key>isShown</key>
 			<false/>
 		</dict>
-		<key>ProtonCore-TestingToolkit-a563ad96.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>ProtonCore-TestingToolkit-fc65c1b6.xcscheme</key>
+		<key>ProtonCore-TestingToolkit-e16fa8c7.xcscheme</key>
 		<dict>
 			<key>isShown</key>
 			<false/>
@@ -579,22 +594,22 @@
 			<key>isShown</key>
 			<false/>
 		</dict>
+		<key>fusion-iOS.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
+		<key>fusion-macOS.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
 		<key>iosMonkey.xcscheme</key>
 		<dict>
 			<key>isShown</key>
 			<false/>
 		</dict>
 		<key>lottie-ios.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>pmtest-iOS.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>pmtest-macOS.xcscheme</key>
 		<dict>
 			<key>isShown</key>
 			<false/>

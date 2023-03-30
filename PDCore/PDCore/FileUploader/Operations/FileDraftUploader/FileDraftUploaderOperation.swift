@@ -17,7 +17,7 @@
 
 import Foundation
 
-final class FileDraftUploaderOperation: AsynchronousOperation, OperationWithProgress, IdentifiableUploadOperation {
+final class FileDraftUploaderOperation: AsynchronousOperation, UploadOperation {
     let progress: Progress
     let uploadID: UUID
 
@@ -41,11 +41,13 @@ final class FileDraftUploaderOperation: AsynchronousOperation, OperationWithProg
         super.init()
     }
 
-    override func start() {
+    override func main() {
         guard !isCancelled else { return }
 
+        record()
+
         ConsoleLogger.shared?.log("STAGE: 1 Upload draft ✍️☁️ started", osLogType: FileUploader.self)
-        fileDraftUploader.upload(draft: draft) { [weak self] result in
+        fileDraftUploader.upload(draft: draft.file) { [weak self] result in
             guard let self = self, !self.isCancelled else { return }
 
             switch result {
@@ -66,4 +68,6 @@ final class FileDraftUploaderOperation: AsynchronousOperation, OperationWithProg
         super.cancel()
         fileDraftUploader.cancel()
     }
+
+    var recordingName: String { "creatingFileDraft" }
 }

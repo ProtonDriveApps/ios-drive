@@ -19,7 +19,6 @@ public enum DriveCoreAlert: Equatable {
     case logout
     case trustKitFailure
     case trustKitHardFailure
-    case tokenRefreshFailure
     case humanVerification
     case forceUpgrade
     case userGoneDelinquent
@@ -32,8 +31,6 @@ public enum DriveCoreAlert: Equatable {
             return "Insecure connection"
         case .trustKitHardFailure:
             return "Insecure connection"
-        case .tokenRefreshFailure:
-            return "Failed to refresh access token"
         case .humanVerification:
             fatalError("Should be handled by ProtonCore")
         case .forceUpgrade:
@@ -51,8 +48,6 @@ public enum DriveCoreAlert: Equatable {
             return "TLS certificate validation failed. Your connection may be monitored and the app is temporarily blocked for your safety.\n\nswitch  networks immediately"
         case .trustKitHardFailure:
             return "TLS certificate validation failed. Your connection may be monitored and the app is temporarily blocked for your safety.\n\n"
-        case .tokenRefreshFailure:
-            return "Access token expired and could not be refreshed, probably due to network conditions. All local functional is available, but connection to the server cannot be established. We'll try refreshing the token a little later. Please re-login if this error occurs multiple times"
         case .humanVerification:
             fatalError("Should be handled by ProtonCore")
         case .forceUpgrade:

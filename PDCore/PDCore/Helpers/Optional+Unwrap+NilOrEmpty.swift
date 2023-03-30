@@ -26,6 +26,14 @@ public extension Optional {
             fatalError("Could not find: " + String(describing: Wrapped.self) + "\n" + "in \(file).", file: file, line: line)
         }
     }
+
+    var isNil: Bool {
+        return self == nil
+    }
+
+    var isNotNil: Bool {
+        !isNil
+    }
 }
 
 public extension Optional where Wrapped: Collection {

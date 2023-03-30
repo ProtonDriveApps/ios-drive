@@ -73,6 +73,7 @@ final class BlockUploaderOperation: AsynchronousOperation, OperationWithProgress
                 self.progress.complete()
                 self.saveUploadedBlockState()
 
+            // For this one we are using the URLSession, so we do not expect any Response error.
             case .failure(let error) where (error as NSError).code == Uploader.Errors.noSpaceOnCloudError.code:
                 self.logger?.log("STAGE: 3.2 Block \(blockIndex) upload 📦☁️ finished ❌ - No space on cloud ", osLogType: FileUploader.self)
                 self.finalizeWithNoSpaceOnCloudError(error)

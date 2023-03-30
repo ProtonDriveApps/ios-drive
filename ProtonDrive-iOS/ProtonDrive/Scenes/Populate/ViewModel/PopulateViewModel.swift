@@ -40,13 +40,15 @@ final class PopulateViewModel: LogoutRequesting {
     }
 
     public func populate() {
-        populator.populate { [unowned self] result in
-            switch result {
-            case .success:
-                self.populatedSubject.send(populator.state)
-
-            case .failure:
-                self.requestLogout()
+        populator.populate { [weak self] result in
+            if let self {
+                switch result {
+                case .success:
+                    self.populatedSubject.send(self.populator.state)
+                    
+                case .failure:
+                    self.requestLogout()
+                }
             }
         }
     }

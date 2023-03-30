@@ -20,10 +20,8 @@ import PMEventsManager
 import ProtonCore_Services
 
 extension Tower {
-    static func makeDriveEventsSystem(storage: StorageManager, appGroup: SettingsStorageSuite, eventObservers: [EventsListener], eventProviders: [EventsProvider], processLocally: Bool) -> (EventsConveyor, EventsProcessor) {
-        let eventsStorage = EventStorageManager(suiteUrl: appGroup.directoryUrl)
-        
-        let eventsConveyor = EventsConveyor(storage: eventsStorage)
+    static func makeDriveEventsSystem(storage: StorageManager, eventStorage: EventStorageManager, appGroup: SettingsStorageSuite, eventObservers: [EventsListener], eventProviders: [EventsProvider], processLocally: Bool) -> (EventsConveyor, EventsProcessor) {
+        let eventsConveyor = EventsConveyor(storage: eventStorage)
         
         let eventProcessor = EventsProcessor(
             storage: storage,

@@ -21,6 +21,7 @@ import SwiftUI
 import PDUIComponents
 
 class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, HasRefreshControl, UploadingViewModel, DownloadingViewModel, SortingViewModel, HasMultipleSelection {
+    typealias FolderErrorModel = FolderModel & FinderErrorModel
     private let localSettings: LocalSettings
     
     // MARK: FinderViewModel
@@ -109,7 +110,7 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
     @Published var listState: ListState = .active
     
     // MARK: others
-    init(localSettings: LocalSettings, model: FolderModel, node: Folder) {
+    init(localSettings: LocalSettings, model: FolderErrorModel, node: Folder) {
         self.localSettings = localSettings
         defer { self.model.loadFromCache() }
         self.model = model
@@ -137,6 +138,12 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
                 if state == .selecting {
                     self?.multiselectWasActivatedOnce = true
                 }
+            }
+            .store(in: &cancellables)
+        
+        model.errorSubject
+            .sink { [weak self] error in
+                self?.genericErrors.stream.send(error)
             }
             .store(in: &cancellables)
     }

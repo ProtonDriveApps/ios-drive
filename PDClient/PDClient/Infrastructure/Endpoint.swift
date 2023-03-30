@@ -64,15 +64,15 @@ public struct ErrorResponse: Codable, CustomStringConvertible, Error {
     var code: Int
     var error: String
     var errorDescription: String
-    
+
     public var description: String {
         ["Server Error Response \(code)", error, errorDescription].filter { !$0.isEmpty }.joined(separator: ", ")
     }
-    
+
     public func nsError() -> NSError {
         let userInfo = [NSLocalizedDescriptionKey: self.error,
                         NSLocalizedFailureReasonErrorKey: self.errorDescription]
-        
+
         return NSError(domain: "PMAuthentication", code: self.code, userInfo: userInfo)
     }
 }
@@ -81,7 +81,7 @@ public extension NSError {
     convenience init(_ serverError: ErrorResponse) {
         let userInfo = [NSLocalizedDescriptionKey: serverError.error,
                         NSLocalizedFailureReasonErrorKey: serverError.errorDescription]
-        
+
         self.init(domain: "PMAuthentication", code: serverError.code, userInfo: userInfo)
     }
 }

@@ -132,11 +132,12 @@ public class NodeItem: NSObject, NSFileProviderItem {
             //
             #if os(OSX)
             capabilities.insert(.allowsEvicting)
-            
+
             if node.isDownloaded {
                 capabilities.insert(.allowsWriting)
             }
             #endif
+
             return capabilities
         }
     }

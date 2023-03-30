@@ -18,6 +18,7 @@
 import Foundation
 import Combine
 import PDCore
+import ProtonCore_Networking
 import PDUIComponents
 
 final class TrashViewModel: ObservableObject, HasMultipleSelection {
@@ -105,6 +106,7 @@ extension TrashViewModel {
                         completion()
                     case .failure(let error):
                         completion()
+                        let error: Error = (error as? ResponseError)?.underlyingError ?? error
                         self?.genericErrors.send(error)
                     }
                 },
@@ -122,6 +124,7 @@ extension TrashViewModel {
                 case .finished: completion()
                 case .failure(let error):
                     completion()
+                    let error: Error = (error as? ResponseError)?.underlyingError ?? error
                     self?.genericErrors.send(error)
                 }
             }, receiveValue: { _ in })
@@ -179,6 +182,7 @@ extension TrashViewModel {
 
                 case .failure(let error):
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        let error: Error = (error as? ResponseError)?.underlyingError ?? error
                         self.genericErrors.send(error)
                         self.isUpdating = false
                     }

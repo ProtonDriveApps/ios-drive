@@ -20,6 +20,7 @@ import UIKit
 import UserNotifications
 import PDCore
 import PDUIComponents
+import ProtonCore_FeatureSwitch
 import ProtonCore_Services
 import BackgroundTasks
 
@@ -38,6 +39,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         lockOrientationIfNeeded(in: .portrait)
         UINavigationBar.setupFlatNavigationBarSystemWide()
         UNUserNotificationCenter.current().delegate = self
+
+        configureFeatureSwitches()
 
         // swiftlint:disable no_print
         #if DEBUG
@@ -91,6 +94,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationWillTerminate(_ application: UIApplication) {
         Environment(\.storage).wrappedValue.prepareForTermination()
+    }
+
+    private func configureFeatureSwitches() {
+        // These need to be set as early as possible in the app lifecycle
+
+        // Core Feature Flags
+        FeatureFactory.shared.enable(&.unauthSession)
+
+        #if DEBUG
+        FeatureFactory.shared.enable(&.enforceUnauthSessionStrictVerificationOnBackend)
+        #endif
     }
 }
 

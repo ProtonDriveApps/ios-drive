@@ -18,6 +18,7 @@
 import UIKit
 import PDCore
 import Combine
+import ProtonCore_HumanVerification
 import ProtonCore_Keymaker
 import ProtonCore_Services
 import UserNotifications
@@ -29,7 +30,8 @@ final class AuthenticatedDependencyContainer {
     let applicationStateController: ApplicationStateOperationsController
     let windowScene: UIWindowScene
     let factory = TabBarViewControllerFactory()
-    let localNotificationsContainer: LocalNotificationsContainer
+    let childContainers: [Any]
+    var humanCheckHelper: HumanCheckHelper?
 
     init(tower: Tower, keymaker: Keymaker, networkService: PMAPIService, windowScene: UIWindowScene) {
         self.tower = tower
@@ -62,7 +64,10 @@ final class AuthenticatedDependencyContainer {
         )
         
         // Child containers
-        localNotificationsContainer = LocalNotificationsContainer(tower: tower)
+        childContainers = [
+            LocalNotificationsContainer(tower: tower),
+            InterruptedUploadsContainer(tower: tower)
+        ]
     }
 
     func makePopulateViewController() -> UIViewController {
@@ -140,10 +145,6 @@ extension Tower: LockManager {
     func onUnlock() {
         eventProcessor.suspend(false)
     }
-}
-
-extension NotificationCenter {
-    var didFindIssueOnFileUpload: AnyPublisher<Void, Never> { mappedPublisher(for: .didFindIssueOnFileUpload) }
 }
 
 extension NotificationCenter {

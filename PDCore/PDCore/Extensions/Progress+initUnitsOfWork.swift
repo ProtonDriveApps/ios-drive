@@ -17,7 +17,7 @@
 
 import Foundation
 
-extension Progress {
+public extension Progress {
     typealias UnitOfWork = Int
 
     convenience init(unitsOfWork: UnitOfWork) {
@@ -43,7 +43,21 @@ extension Progress {
         addChild(child, withPendingUnitCount: Int64(unitsOfWork))
     }
 
+    func complete(_ units: UnitOfWork) {
+        unitsOfWorkCompleted += units
+    }
+
     func complete() {
         completedUnitCount = totalUnitCount
     }
+}
+
+public extension Progress {
+
+    func child(pending unitsOfWork: UnitOfWork = .zero) -> Progress {
+        let child = Progress(unitsOfWork: unitsOfWork)
+        addChild(child, pending: unitsOfWork)
+        return child
+    }
+
 }

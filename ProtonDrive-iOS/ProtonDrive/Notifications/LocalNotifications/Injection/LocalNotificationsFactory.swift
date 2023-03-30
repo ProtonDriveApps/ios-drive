@@ -24,6 +24,7 @@ struct LocalNotificationsFactory {
         let applicationRunningResource = ApplicationRunningStateResourceImpl()
         let notificationsResource = UNUserNotificationsResource()
         let notifier = UploadFileLocalNotificationNotifier(
+            didInterruptOnFileUploadPublisher: NotificationCenter.default.mappedPublisher(for: .didInterruptOnFileUpload),
             didFindIssueOnFileUploadPublisher: NotificationCenter.default.mappedPublisher(for: .didFindIssueOnFileUpload),
             didChangeAppRunningStatePublisher: applicationRunningResource.state,
             notificationsResource: notificationsResource

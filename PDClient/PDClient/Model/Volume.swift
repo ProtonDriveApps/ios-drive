@@ -22,13 +22,13 @@ public typealias AttriburesMask = Int
 
 public struct Volume: Codable {
     public typealias VolumeID = String
-    
+
     public enum RestoreStatus: Int, Codable {
         case failed = -1
         case done = 0
         case inProgress = 1
     }
-    
+
     public enum State: Int, Codable {
         case active = 1
         case deleted = 2
@@ -37,12 +37,14 @@ public struct Volume: Codable {
     }
 
     public struct Share: Codable {
-        public let ID: String
         public let shareID: String
         public let linkID: String
     }
-    
-    public var ID: VolumeID
+
+    public var volumeID: VolumeID
+    public var createTime: TimeInterval?
+    public var modifyTime: TimeInterval?
+    public var uploadedBytes: Int
     public var maxSpace: Int?
     public var usedSpace: Int?
     public var state: State?

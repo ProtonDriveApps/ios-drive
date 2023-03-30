@@ -18,67 +18,27 @@
 import Foundation
 public class FileDraft: Equatable {
 
-    let url: URL
-    var state: State
-    let numberOfBlocks: Int
-    let parent: Parent
-    let parameters: Parameters
-    var nameParameters: NameParameters
+    /// Initial state of the file
+    public let state: State
 
+    /// Number of blocks that the active revision draft has or will have
+    public let numberOfBlocks: Int
+
+    /// Unique Identifier for the uploading file
     public let uploadID: UUID
+
+    /// Backing CoreData file
     public let file: File
 
-    public init(uploadID: UUID, url: URL, file: File, state: FileDraft.State, numberOfBlocks: Int, parent: FileDraft.Parent, parameters: FileDraft.Parameters, nameParameters: FileDraft.NameParameters) {
+    public init(uploadID: UUID, file: File, state: FileDraft.State, numberOfBlocks: Int) {
         self.uploadID = uploadID
-        self.url = url
         self.file = file
         self.state = state
         self.numberOfBlocks = numberOfBlocks
-        self.parent = parent
-        self.parameters = parameters
-        self.nameParameters = nameParameters
-    }
-
-    var originalName: String {
-        url.lastPathComponent
-    }
-
-    var mimeType: String {
-        url.mimeType()
     }
 
     var isEmpty: Bool {
         numberOfBlocks == .zero
-    }
-
-    public enum State: Equatable {
-        case uploadingDraft
-        case encryptingRevision
-        case uploadingRevision
-        case updateRevision
-        case sealingRevision
-        case finished
-    }
-
-    public struct Parent: Equatable {
-        let identifier: NodeIdentifier
-        let nodeHashKey: String
-    }
-
-    public struct Parameters: Equatable {
-        let nodeKey: String
-        let nodePassphrase: String
-        let nodePassphraseSignature: String
-        let contentKeyPacket: String
-        let contentKeyPacketSignature: String
-        let signatureAddress: String
-    }
-
-    public struct NameParameters: Equatable {
-        let hash: String
-        let clearName: String
-        let armoredName: Armored
-        let nameSignatureAddress: String
     }
 
     public static func == (lhs: FileDraft, rhs: FileDraft) -> Bool {

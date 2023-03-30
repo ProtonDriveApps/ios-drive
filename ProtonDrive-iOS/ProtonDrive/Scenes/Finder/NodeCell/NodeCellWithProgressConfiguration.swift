@@ -74,7 +74,7 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
         if let file = node as? File {
             if let uploadID = file.uploadID,
                let uploadProgress = uploadProgresses?[uploadID],
-               file.activeRevision == nil {
+               file.activeRevisionDraft != nil {
                 progressPack = ProgressTracker(progress: uploadProgress, direction: .upstream)
             } else {
                 progressPack = downloadProgresses.first { $0.matches(file.id) }
@@ -85,6 +85,7 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
         self.thumbnailViewModel = ThumbnailImageViewModel(node: node, loader: thumbnailLoader)
         self.progressCancellable = progressPack?.progressPublisher()?
             .receive(on: DispatchQueue.main)
+            .throttle(for: .milliseconds(300), scheduler: DispatchQueue.main, latest: true)
             .sink { [weak self] in
                 self?.progressCompleted = $0
             }

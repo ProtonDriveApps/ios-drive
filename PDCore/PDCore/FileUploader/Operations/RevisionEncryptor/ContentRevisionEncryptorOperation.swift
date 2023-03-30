@@ -35,7 +35,7 @@ final class ContentRevisionEncryptorOperation: AsynchronousOperation {
     }
 
     override func main() {
-        contentEncryptor.encrypt(revisionDraft: revision) { [weak self] result in
+        contentEncryptor.encrypt(revision) { [weak self] result in
             guard let self = self else { return }
 
             switch result {

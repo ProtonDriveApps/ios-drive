@@ -33,6 +33,13 @@ final class SettingsAssembler {
             .amending()
             .prepend(row: PMAcknowledgementsConfiguration.acknowledgements(url: Self.url))
             .amend()
+        let clearCache = PMSettingsSectionBuilder(bundle: PMSettings.bundle)
+            .appendRow(
+                PMAboutConfiguration(title: "Clear local cache", action: .perform({
+                    NotificationCenter.default.post(name: .nukeCache, object: nil)
+                }), bundle: .main)
+            )
+            .build()
         let accountSettings = PMSettingsSectionBuilder(bundle: PMSettings.bundle)
             .footer(CoreString._ad_delete_account_message)
             .appendRow(PMHostConfiguration(
@@ -40,7 +47,7 @@ final class SettingsAssembler {
             )
             .build()
         return PMSettingsComposer.assemble(
-            sections: [appSettings, about, accountSettings],
+            sections: [appSettings, about, clearCache, accountSettings],
             leftBarButtonAction: PMSettingsLeftBarButton(
                 image: UIImage(named: "ic-hamburger"),
                 action: { NotificationCenter.default.post(.toggleSideMenu) }

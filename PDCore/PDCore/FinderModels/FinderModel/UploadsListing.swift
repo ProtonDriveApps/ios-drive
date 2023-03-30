@@ -45,9 +45,13 @@ extension UploadsListing {
         childrenUploadingObserver.objectWillChange
             .setFailureType(to: Error.self)
             .combineLatest(tower.fileUploader.progressPublisher())
+            .throttle(for: 0.02, scheduler: DispatchQueue.main, latest: true)
             .map { [unowned self] (_, progresses) in
                 return (self.childrenUploadingObserver.fetchedObjects, progresses)
             }
+            .removeDuplicates(by: { previous, current in
+                return previous.0 == current.0 && previous.1 == current.1
+            })
             .eraseToAnyPublisher()
     }
     
@@ -67,17 +71,16 @@ extension UploadsListing {
         }
     }
     
-    public func uploadFile(_ copy: URL, node: Folder) {
-        guard let address = self.tower.sessionVault.currentAddress() else {
-            assert(false, "No Address in Tower")
+    public func uploadFile(_ copy: URL, to folder: Folder) {
+        guard let newFile = try? tower.fileImporter.importFile(from: copy, to: folder) else {
+            assert(false, "Failed to create File")
             return
         }
+        tower.fileUploader.upload(newFile, completion: { _ in })
 
-        try? tower.fileUploader
-            .upload(clearFiles: [copy], parent: node, address: address, completion: { _ in })
     }
 
     public func restartUpload(node: File) {
-        _ = tower.fileUploader.upload(file: node, completion: { _ in })
+        tower.fileUploader.upload(node, completion: { _ in })
     }
 }

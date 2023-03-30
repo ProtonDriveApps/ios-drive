@@ -283,7 +283,7 @@ extension CloudSlot {
         let scratchpadMoc = node.managedObjectContext!
         scratchpadMoc.performAndWait {
             do {
-                let signersKit = try signersKitFactory.make()
+                let signersKit = try signersKitFactory.make(forSigner: .main)
                 let share: ShareObj = self.storage.new(with: signersKit.address.email, by: #keyPath(ShareObj.creator), in: scratchpadMoc)
                 let shareKeys = try share.generateShareKeys(signersKit: signersKit)
                 share.addressID = signersKit.address.addressID

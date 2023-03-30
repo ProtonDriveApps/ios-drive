@@ -19,6 +19,16 @@ import Foundation
 import CoreData
 
 public extension StorageManager {
+
+    func entities<E: NSManagedObject>(in moc: NSManagedObjectContext) throws -> [E] {
+        var result: [E] = []
+        try moc.performAndWait {
+            let request = NSFetchRequest<E>()
+            request.entity = E.entity()
+            result = try moc.fetch(request)
+        }
+        return result
+    }
     
     // Results
     func volumes(moc: NSManagedObjectContext) -> [Volume] {
@@ -95,6 +105,15 @@ public extension StorageManager {
         var files = [File]()
         moc.performAndWait {
             let fetchRequest = self.requestFilesUploading(moc: moc)
+            files = (try? moc.fetch(fetchRequest)) ?? []
+        }
+        return files
+    }
+    
+    func fetchFilesInterrupted(moc: NSManagedObjectContext) -> [File] {
+        var files = [File]()
+        moc.performAndWait {
+            let fetchRequest = self.requestFilesInterrupted(moc: moc)
             files = (try? moc.fetch(fetchRequest)) ?? []
         }
         return files
@@ -278,6 +297,18 @@ public extension StorageManager {
             format: "%K == %d OR %K == %d OR %K == %d",
             #keyPath(File.stateRaw), File.State.uploading.rawValue,
             #keyPath(File.stateRaw), File.State.cloudImpediment.rawValue,
+            #keyPath(File.stateRaw), File.State.interrupted.rawValue
+        )
+
+        return fetchRequest
+    }
+    
+    private func requestFilesInterrupted(moc: NSManagedObjectContext) -> NSFetchRequest<File> {
+        let fetchRequest = NSFetchRequest<File>()
+        fetchRequest.entity = File.entity()
+        fetchRequest.sortDescriptors = [.init(key: #keyPath(File.id), ascending: true)]
+        fetchRequest.predicate = NSPredicate(
+            format: "%K == %d",
             #keyPath(File.stateRaw), File.State.interrupted.rawValue
         )
 

@@ -107,7 +107,7 @@ extension Revision {
         try file.decryptContentKeyPacket()
     }
     
-    private func decryptFileInMemory(isCancelled: inout Bool) throws -> URL {
+    func decryptFileInMemory(isCancelled: inout Bool) throws -> URL {
         let sessionKey = try decryptContentSessionKey()
 
         let clearUrl = try clearURL()

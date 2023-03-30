@@ -18,20 +18,20 @@
 import Foundation
 
 // TODO: Rename to SignersKitFactory once the current one is removed from the project
-protocol SignersKitFactoryProtocol {
+public protocol SignersKitFactoryProtocol {
     func make(forSigner signer: Signer) throws -> SignersKit
 }
 
 /// Wether to use the current main address, or some specified address
 ///  - case main: Build a SignersKit object for the current main address email.
 ///  - case address(String): Build a SignersKit object using the specified email.
-enum Signer {
+public enum Signer {
     case main
     case address(String)
 }
 
 extension SessionVault: SignersKitFactoryProtocol {
-    func make(forSigner signer: Signer) throws -> SignersKit {
+    public func make(forSigner signer: Signer) throws -> SignersKit {
         let address = try getSignerAddress(signer)
 
         guard let addressKey = address.activeKeys.first else {

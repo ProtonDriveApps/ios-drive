@@ -42,6 +42,7 @@ public class PostLoginServices: LogObject {
         self.storage = storage ?? StorageManager(suite: appGroup, sessionVault: initialServices.sessionVault)
         
         self.tower = Tower(storage: self.storage,
+                           eventStorage: EventStorageManager(suiteUrl: appGroup.directoryUrl),
                            appGroup: appGroup,
                            mainKeyProvider: initialServices.keymaker,
                            sessionVault: initialServices.sessionVault,
@@ -105,8 +106,6 @@ public class PostLoginServices: LogObject {
             
         case PMAPIClient.Activity.trustKitFailure: break
 
-        case PMAPIClient.Activity.failedToRefreshToken: break
-            
         case PMAPIClient.Activity.humanVerification: break
         
         case PMAPIClient.Activity.forceUpgrade: break

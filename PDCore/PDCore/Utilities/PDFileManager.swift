@@ -96,4 +96,22 @@ public final class PDFileManager {
             }
         }
     }
+
+    static func copyMetadata(stage: String) {
+        let sqlite = appGroupUrl.appendingPathComponent("Metadata.sqlite")
+        let sqlite_shm = appGroupUrl.appendingPathComponent("Metadata.sqlite-shm")
+        let sqlite_wal = appGroupUrl.appendingPathComponent("Metadata.sqlite-wal")
+
+        var destination = FileManager.default.temporaryDirectory.appendingPathComponent("DB").appendingPathComponent(stage)
+        self.createIfNeeded(&destination)
+        let sqlite_copy = destination.appendingPathComponent("\(stage).sqlite")
+        let sqlite_shm_copy = destination.appendingPathComponent("\(stage).sqlite-shm")
+        let sqlite_wal_copy = destination.appendingPathComponent("\(stage).sqlite-wal")
+
+        try? FileManager.default.copyItem(at: sqlite, to: sqlite_copy)
+        try? FileManager.default.copyItem(at: sqlite_shm, to: sqlite_shm_copy)
+        try? FileManager.default.copyItem(at: sqlite_wal, to: sqlite_wal_copy)
+
+        dump("Recorder 🔴: stage 📁 - \(destination.absoluteURL)")
+    }
 }

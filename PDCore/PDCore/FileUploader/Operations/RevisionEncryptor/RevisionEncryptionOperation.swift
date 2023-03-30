@@ -17,9 +17,8 @@
 
 import Foundation
 
-final class RevisionEncryptionOperation: AsynchronousOperation, OperationWithProgress, IdentifiableUploadOperation {
+final class RevisionEncryptionOperation: AsynchronousOperation, UploadOperation {
 
-    private let unitsOfWork: UnitOfWork
     private let draft: FileDraft
     private let revisionEncryptor: RevisionEncryptor
     private let onError: OnError
@@ -28,13 +27,12 @@ final class RevisionEncryptionOperation: AsynchronousOperation, OperationWithPro
     let uploadID: UUID
 
     init(
-        unitsOfWork: UnitOfWork,
+        progress: Progress,
         draft: FileDraft,
         revisionEncryptor: RevisionEncryptor,
         onError: @escaping OnError
     ) {
-        self.unitsOfWork = unitsOfWork
-        self.progress = Progress(unitsOfWork: unitsOfWork)
+        self.progress = progress
         self.draft = draft
         self.revisionEncryptor = revisionEncryptor
         self.onError = onError
@@ -45,8 +43,11 @@ final class RevisionEncryptionOperation: AsynchronousOperation, OperationWithPro
     override func main() {
         guard !isCancelled else { return }
 
+        record()
+
         ConsoleLogger.shared?.log("STAGE: 2 🏞📦 Encrypt revision started", osLogType: FileUploader.self)
 
+        // TODO: Empty files should have their own RevisionEncryptor subclass
         guard !draft.isEmpty else {
             ConsoleLogger.shared?.log("STAGE: 2 🏞📦 Encrypt revision finished ✅", osLogType: FileUploader.self)
             state = .finished
@@ -57,13 +58,13 @@ final class RevisionEncryptionOperation: AsynchronousOperation, OperationWithPro
         ConsoleLogger.shared?.log("STAGE: 2 🏞📦 Encrypt revision started", osLogType: FileUploader.self)
         do {
             let revisionDraft = try draft.getCreatedRevisionDraft()
-            revisionEncryptor.encrypt(revisionDraft: revisionDraft) { [weak self] result in
+            revisionEncryptor.encrypt(revisionDraft) { [weak self] result in
                 guard let self = self, !self.isCancelled else { return }
 
                 switch result {
                 case .success:
                     ConsoleLogger.shared?.log("STAGE: 2 🏞📦 Encrypt revision finished ✅", osLogType: FileUploader.self)
-                    self.progress.unitsOfWorkCompleted = self.unitsOfWork
+                    self.progress.complete()
                     self.state = .finished
 
                 case .failure(let error):
@@ -84,4 +85,5 @@ final class RevisionEncryptionOperation: AsynchronousOperation, OperationWithPro
         revisionEncryptor.cancel()
     }
 
+    var recordingName: String { "encryptingRevision" }
 }

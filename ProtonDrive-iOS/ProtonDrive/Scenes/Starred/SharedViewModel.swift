@@ -18,6 +18,7 @@
 import Combine
 import PDCore
 import SwiftUI
+import ProtonCore_Networking
 import PDUIComponents
 
 class SharedViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, SortingViewModel, HasMultipleSelection, HasRefreshControl {
@@ -111,6 +112,7 @@ extension SharedViewModel {
 
                 case .failure(let error):
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        let error: Error = (error as? ResponseError)?.underlyingError ?? error
                         self.genericErrors.send(error)
                         self.isUpdating = false
                     }

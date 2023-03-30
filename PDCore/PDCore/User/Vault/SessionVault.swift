@@ -79,6 +79,10 @@ public class SessionVault: CredentialProvider, LogObject, ObservableObject {
 }
 
 extension SessionVault: SessionStore {
+    public func removeCredential() {
+        _credential.wipeValue()
+    }
+
     public var sessionCredential: CoreCredential? {
          credential
     }
@@ -124,12 +128,13 @@ public protocol SessionStore {
 
     var sessionCredential: CoreCredential? { get }
 
+    func removeCredential()
     func storeCredential(_ credential: CoreCredential)
     func storeUser(_ user: User)
     func storeSalts(_ salts: [KeySalt])
     func storeAddresses(_ addresses: [Address])
     func storePassphrases(_ passphrases: [AddressID: Passphrase])
-    
+
     func signOut()
 }
 

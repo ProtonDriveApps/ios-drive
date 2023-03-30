@@ -26,11 +26,15 @@ import ProtonCore_Keymaker
 import ProtonCore_Networking
 import ProtonCore_DataModel
 
+typealias ResponseError = ProtonCore_Networking.ResponseError
+
 public class Tower: NSObject, LogObject {
     typealias CoreEventLoopManager = EventPeriodicScheduler<GeneralEventsLoopWithProcessor, DriveEventsLoop>
     public static var osLog: OSLog = OSLog(subsystem: "PDCore", category: "Tower")
 
     public let fileUploader: FileUploader
+    public let fileImporter: FileImporter
+    public let revisionImporter: RevisionImporter
     public let downloader: Downloader!
     public let uiSlot: UISlot!
     public let cloudSlot: CloudSlot!
@@ -56,6 +60,7 @@ public class Tower: NSObject, LogObject {
     private let authenticator: Authenticator
     
     public init(storage: StorageManager,
+                eventStorage: EventStorageManager,
                 appGroup: SettingsStorageSuite,
                 mainKeyProvider: Keymaker,
                 sessionVault: SessionVault,
@@ -82,15 +87,14 @@ public class Tower: NSObject, LogObject {
         client.errorMonitor = ErrorMonitor(ConsoleLogger.shared?.logDeserializationErrors)
         self.client = client
 
-        let signersKitFactory = SignersKitFactory(sessionVault: sessionVault)
-        let cloudSlot = CloudSlot(client: client, storage: storage, signersKitFactory: signersKitFactory)
+        let cloudSlot = CloudSlot(client: client, storage: storage, signersKitFactory: sessionVault)
         self.cloudSlot = cloudSlot
         
         let downloader = Downloader(cloudSlot: cloudSlot)
         self.downloader = downloader
         
         self.offlineSaver = OfflineSaver(clientConfig: clientConfig, storage: storage, downloader: downloader)
-        self.sharingManager = SharingManager(cloudSlot: cloudSlot)
+        self.sharingManager = SharingManager(cloudSlot: cloudSlot, sessionVault: sessionVault)
 
         // Thumbnails
         let thumbnailsOperatiosFactory = LoadThumbnailOperationsFactory(store: storage, cloud: cloudSlot)
@@ -102,19 +106,29 @@ public class Tower: NSObject, LogObject {
         
         // Events
         let paymentsStorage = PaymentsSecureStorage(mainKeyProvider: mainKeyProvider)
-        let (conveyor, processor) = Self.makeDriveEventsSystem(storage: storage, appGroup: appGroup, eventObservers: eventObservers, eventProviders: [cloudSlot], processLocally: processEventsLocally)
+        let (conveyor, processor) = Self.makeDriveEventsSystem(storage: storage, eventStorage: eventStorage, appGroup: appGroup, eventObservers: eventObservers, eventProviders: [cloudSlot], processLocally: processEventsLocally)
         self.paymentsStorage = paymentsStorage
         self.eventsConveyor = conveyor
         self.eventProcessor = processor
         self.coreEventManager = Self.makeCoreEventsSystem(appGroup: appGroup, sessionVault: sessionVault, generalSettings: generalSettings, paymentsSecureStorage: paymentsStorage, network: network)
         
         // Files
-        let fileDraftImporter = SegmentedFileDraftImporter(storage: storage, signersKitFactory: sessionVault)
-        let factory = FileUploadOperationsFactory(storage: storage, cloudSlot: cloudSlot, sessionVault: sessionVault, apiService: api)
+        self.fileImporter = CoreDataFileImporter(moc: cloudSlot.moc, signersKitFactory: sessionVault)
+        self.revisionImporter = CoreDataRevisionImporter(signersKitFactory: sessionVault)
+
+        let fileUploadFactory: FileUploadOperationsProviderFactory
+        #if os(macOS)
+        fileUploadFactory = DiscreteFileUploadOperationsProviderFactory(storage: storage, cloudSlot: cloudSlot, sessionVault: sessionVault, apiService: api)
+        #else
+        if Constants.runningInExtension {
+            fileUploadFactory = StreamFileUploadOperationsProviderFactory(storage: storage, cloudSlot: cloudSlot, sessionVault: sessionVault, apiService: api)
+        } else {
+            fileUploadFactory = DiscreteFileUploadOperationsProviderFactory(storage: storage, cloudSlot: cloudSlot, sessionVault: sessionVault, apiService: api)
+        }
+        #endif
 
         self.fileUploader = FileUploader(
-            draftImporter: fileDraftImporter,
-            fileUploadFactory: factory.makeFileUploadOperationsProvider(),
+            fileUploadFactory: fileUploadFactory.make(),
             storage: storage,
             sessionVault: sessionVault
         )

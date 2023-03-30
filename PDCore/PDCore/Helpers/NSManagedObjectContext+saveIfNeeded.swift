@@ -17,13 +17,34 @@
 
 import CoreData
 
-extension NSManagedObjectContext {
+public extension NSManagedObjectContext {
 
     /// Only performs a save if there are changes to commit.
     /// - Returns: `true` if a save was needed. Otherwise, `false`.
-    @discardableResult public func saveIfNeeded() throws -> Bool {
-        guard hasChanges else { return false }
+    func saveIfNeeded() throws {
+        guard hasChanges else { return }
         try save()
-        return true
     }
+
+    /// Attempts to save the changes in the NSManagedObjectContext
+    /// on failure rollsback all the changes and throws the error that caused the failure
+    func saveOrRollback() throws {
+        do {
+            guard hasChanges else { return }
+            try save()
+        } catch {
+            rollback()
+            throw error
+        }
+    }
+}
+
+public extension NSManagedObjectContext {
+
+    func childContext(ofType type: NSManagedObjectContextConcurrencyType = .privateQueueConcurrencyType) -> NSManagedObjectContext {
+        let child = NSManagedObjectContext(concurrencyType: type)
+        child.parent = self
+        return child
+    }
+
 }

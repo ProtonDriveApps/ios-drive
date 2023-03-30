@@ -19,6 +19,7 @@ import Sentry
 import PDCore
 import ProtonCore_Keymaker
 import ProtonCore_Authentication
+import ProtonCore_HumanVerification
 import ProtonCore_Services
 
 public class DriveDependencyContainer {
@@ -27,6 +28,7 @@ public class DriveDependencyContainer {
     var appGroup: SettingsStorageSuite { Constants.appGroup }
     var authenticatedContainer: AuthenticatedDependencyContainer?
     var windowScene: UIWindowScene!
+    var hvHelper: HumanCheckHelper
 
     public init() {
         func makeInitialServices() -> InitialServices {
@@ -35,8 +37,16 @@ public class DriveDependencyContainer {
             let keymaker = Keymaker(autolocker: autolocker, keychain: DriveKeychain())
             return InitialServices(clientConfig: config, keymaker: keymaker)
         }
-
         initialServices = makeInitialServices()
+
+        hvHelper = HumanCheckHelper(
+            apiService: initialServices.networkService,
+            supportURL: URL(string: "https://protonmail.com/support/knowledge-base/human-verification/")!,
+            clientApp: .drive
+        )
+        // We're replacing the delegate set in the creation of InitialServices, so the HV delegate in iOS will be HumanCheckHelper instead of PMAPIClient, which still will be the HV delegate in macOS
+        initialServices.networkService.humanDelegate = hvHelper
+
     }
 
     var sessionVault: SessionVault {

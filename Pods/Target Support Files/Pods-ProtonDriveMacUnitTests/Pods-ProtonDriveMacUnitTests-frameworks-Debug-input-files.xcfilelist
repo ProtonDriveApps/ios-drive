@@ -18,6 +18,7 @@ ${BUILT_PRODUCTS_DIR}/ProtonCore-Keymaker-dynamic/ProtonCore_Keymaker.framework
 ${BUILT_PRODUCTS_DIR}/ProtonCore-Log-dynamic/ProtonCore_Log.framework
 ${BUILT_PRODUCTS_DIR}/ProtonCore-Login-dynamic/ProtonCore_Login.framework
 ${BUILT_PRODUCTS_DIR}/ProtonCore-Networking-dynamic/ProtonCore_Networking.framework
+${BUILT_PRODUCTS_DIR}/ProtonCore-Observability-dynamic/ProtonCore_Observability.framework
 ${BUILT_PRODUCTS_DIR}/ProtonCore-Payments-dynamic/ProtonCore_Payments.framework
 ${BUILT_PRODUCTS_DIR}/ProtonCore-Services-dynamic/ProtonCore_Services.framework
 ${BUILT_PRODUCTS_DIR}/ProtonCore-UIFoundations-dynamic/ProtonCore_UIFoundations.framework

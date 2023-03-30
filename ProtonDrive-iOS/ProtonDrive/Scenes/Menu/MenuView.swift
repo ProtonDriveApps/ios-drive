@@ -103,10 +103,6 @@ struct MenuView: View {
         VStack(alignment: .leading, spacing: 16) {
             sectionHeader(title: "QA Section")
             
-            Button("Clear cache") {
-                NotificationCenter.default.post(name: .nukeCache, object: nil)
-            }
-            
             Button("Send event to Sentry") {
                 let error = DriveError(NSError(domain: "SENTRY TELEMETRY", code: 420), "SENTRY TEST")
                 ConsoleLogger.shared?.log(error)

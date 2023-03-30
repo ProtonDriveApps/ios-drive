@@ -24,17 +24,20 @@ final class ContentsCreatorOperation: AsynchronousOperation, OperationWithProgre
 
     private let draft: FileDraft
     private let contentCreator: CloudContentCreator
+    private let signersKitFactory: SignersKitFactoryProtocol
     private let date: () -> Date
     private let onError: OnError
 
     init(
         draft: FileDraft,
         contentCreator: CloudContentCreator,
+        signersKitFactory: SignersKitFactoryProtocol,
         date: @escaping () -> Date = Date.init,
         onError: @escaping OnError
     ) {
         self.draft = draft
         self.contentCreator = contentCreator
+        self.signersKitFactory = signersKitFactory
         self.date = date
         self.onError = onError
         super.init()
@@ -45,17 +48,18 @@ final class ContentsCreatorOperation: AsynchronousOperation, OperationWithProgre
 
         do {
             let revision = try draft.getUploadableRevision()
+            let addressID = try signersKitFactory.make(forSigner: .address(revision.signatureEmail)).address.addressID
 
             let requestedUploadDate = date()
 
-            contentCreator.create(from: revision) { [weak self] result in
+            contentCreator.create(from: revision, addressID: addressID) { [weak self] result in
                 guard let self = self, !self.isCancelled else { return }
 
                 switch result {
                 case .success(let revision):
                     self.finalize(revision, requestedUploadDate)
 
-                case .failure(let error) where (error as NSError).code == Uploader.Errors.noSpaceOnCloudError.code:
+                case .failure(let error as ResponseError) where error.responseCode == Uploader.Errors.noSpaceOnCloudError.code:
                     self.finalizeWithNoSpaceOnCloudError(error)
 
                 case .failure(let error):

@@ -31,10 +31,10 @@ struct SharingManager {
 
     private let cloudSlot: CloudSlot
     private let signersKitFactory: SignersKitFactory
-    
-    init(cloudSlot: CloudSlot) {
+
+    init(cloudSlot: CloudSlot, sessionVault: SessionVault) {
         self.cloudSlot = cloudSlot
-        self.signersKitFactory = cloudSlot.signersKitFactory
+        self.signersKitFactory = SignersKitFactory(sessionVault: sessionVault)
     }
 }
 

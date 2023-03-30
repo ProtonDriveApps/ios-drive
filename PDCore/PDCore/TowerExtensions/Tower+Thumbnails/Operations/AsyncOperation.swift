@@ -50,6 +50,8 @@ class AsynchronousOperation: Operation {
     }
 
     override func start() {
+        // Should be overriden only with custom state handling.
+        // Put execution login into `main`.
         if isCancelled {
             state = .finished
             return

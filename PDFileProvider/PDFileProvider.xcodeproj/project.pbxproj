@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		762C2CBC29B1DD4F00416E31 /* NodeFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762C2CBB29B1DD4F00416E31 /* NodeFetcher.swift */; };
+		762C2CBD29B1DD4F00416E31 /* NodeFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762C2CBB29B1DD4F00416E31 /* NodeFetcher.swift */; };
 		87D7B15FECAABFEA7FC40578 /* Pods_PDFileProviderMac.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8C83D4B1BCDA4C5ECADFBE8F /* Pods_PDFileProviderMac.framework */; };
 		A60E6E6CA8EBDD32EE0C0AD3 /* Pods_PDFileProviderStatic.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 01F0423A62C38EDF235A7A2A /* Pods_PDFileProviderStatic.framework */; };
 		AB33B91E26243765007ED298 /* NSFileProviderItemIdentifier+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB33B91C26243765007ED298 /* NSFileProviderItemIdentifier+Extension.swift */; };
@@ -98,6 +100,7 @@
 		407A2E694C1D5B42C727F73B /* Pods-ProtonDrive.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ProtonDrive.debug.xcconfig"; path = "Target Support Files/Pods-ProtonDrive/Pods-ProtonDrive.debug.xcconfig"; sourceTree = "<group>"; };
 		58FD780C9EA3565FB54BE356 /* Pods-PDFileProviderTests.release-qa.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderTests.release-qa.xcconfig"; path = "Target Support Files/Pods-PDFileProviderTests/Pods-PDFileProviderTests.release-qa.xcconfig"; sourceTree = "<group>"; };
 		62E57EB2540196BA92C18CCD /* Pods-PDFileProviderStatic.release-external.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderStatic.release-external.xcconfig"; path = "Target Support Files/Pods-PDFileProviderStatic/Pods-PDFileProviderStatic.release-external.xcconfig"; sourceTree = "<group>"; };
+		762C2CBB29B1DD4F00416E31 /* NodeFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeFetcher.swift; sourceTree = "<group>"; };
 		8C83D4B1BCDA4C5ECADFBE8F /* Pods_PDFileProviderMac.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PDFileProviderMac.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		9AFA25662E9BD49902ADD93C /* Pods-PDFileProviderStatic.release-store.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderStatic.release-store.xcconfig"; path = "Target Support Files/Pods-PDFileProviderStatic/Pods-PDFileProviderStatic.release-store.xcconfig"; sourceTree = "<group>"; };
 		A5E56D9369C52CDDB6A6BDC4 /* Pods-PDFileProviderMac.release-store.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderMac.release-store.xcconfig"; path = "Target Support Files/Pods-PDFileProviderMac/Pods-PDFileProviderMac.release-store.xcconfig"; sourceTree = "<group>"; };
@@ -205,6 +208,7 @@
 			children = (
 				ABD1909125A30FF7005D3E29 /* NodeItem.swift */,
 				AB59FBA2261DA4FA0072C601 /* ItemTemplate.swift */,
+				762C2CBB29B1DD4F00416E31 /* NodeFetcher.swift */,
 			);
 			path = Items;
 			sourceTree = "<group>";
@@ -397,6 +401,7 @@
 				ABE2787629916F6F008EC1B3 /* NSFileProviderItemIdentifier+Extension.swift in Sources */,
 				ABE2788529916F77008EC1B3 /* EnumeratorWithChanges.swift in Sources */,
 				ABE2787A29916F6F008EC1B3 /* NSFileProviderItem+Extension.swift in Sources */,
+				762C2CBD29B1DD4F00416E31 /* NodeFetcher.swift in Sources */,
 				ABE2787429916F6C008EC1B3 /* NodeItem.swift in Sources */,
 				ABE2787829916F6F008EC1B3 /* NSFileProviderItemIdentifier+iOS.swift in Sources */,
 				ABE2787D29916F73008EC1B3 /* ItemProvider.swift in Sources */,

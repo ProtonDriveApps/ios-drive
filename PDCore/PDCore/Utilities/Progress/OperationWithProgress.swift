@@ -17,6 +17,8 @@
 
 import Foundation
 
+public typealias UploadOperation = OperationWithProgress & IdentifiableUploadOperation & RecordableOperation
+
 public protocol OperationWithProgress where Self: Operation {
     var progress: Progress { get }
     
@@ -31,9 +33,20 @@ extension OperationWithProgress {
     func fingerprint(progress: Progress, _ id: URL?) {
         progress.fileURL = id
     }
-
 }
 
 public protocol IdentifiableUploadOperation where Self: Operation {
     var uploadID: UUID { get }
+}
+
+public protocol RecordableOperation where Self: Operation {
+    var recordingName: String { get }
+
+    func record()
+}
+
+extension RecordableOperation where Self: UploadOperation {
+    var recordingName: String { "uploading" }
+
+    func record() { }
 }

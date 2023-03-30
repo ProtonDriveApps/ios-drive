@@ -43,6 +43,8 @@ public class PMAPIClient: NSObject, APIServiceDelegate {
     internal var authenticator: AuthenticatorInterface?
     internal var apiService: PMAPIService?
 
+    public var authSessionInvalidatedDelegateForLoginAndSignup: ProtonCore_Services.AuthSessionInvalidatedDelegate?
+
     // To be observed by UI layer in order to communicate with the user
     @objc public internal(set) dynamic var currentActivity: NSUserActivity?
 
@@ -93,14 +95,42 @@ public class PMAPIClient: NSObject, APIServiceDelegate {
 }
 
 extension PMAPIClient: AuthDelegate {
-    // This is not in use now but will use it near future. maybe in the next 2 weeks. please ignore this for now.
-    public func eraseUnauthSessionCredentials(sessionUID: String) { }
-    
-    public enum Activity {
+
+    public func onSessionObtaining(credential: ProtonCore_Networking.Credential) {
+        let coreCredential = CoreCredential(credential)
+        ConsoleLogger.shared?.log("Session obtained", osLogType: Tower.self)
+        self.sessionStore.storeCredential(coreCredential)
+    }
+
+    public func onAdditionalCredentialsInfoObtained(sessionUID: String, password: String?, salt: String?, privateKey: String?) {
+        guard let credential = credential(sessionUID: sessionUID) else { return }
+        let authCredential = AuthCredential(credential)
+
+        if let password = password {
+            authCredential.update(password: password)
+        }
+        let saltToUpdate = salt ?? authCredential.passwordKeySalt
+        let privateKeyToUpdate = privateKey ?? authCredential.privateKey
+        authCredential.update(salt: saltToUpdate, privateKey: privateKeyToUpdate)
+
+        self.sessionStore.storeCredential(CoreCredential(authCredential: authCredential, scopes: credential.scopes))
+    }
+
+    public func onAuthenticatedSessionInvalidated(sessionUID: String) {
+        ConsoleLogger.shared?.log("Authenticated session invalidated from PMCommon", osLogType: Tower.self)
+        eraseSessionCredentials(sessionUID: sessionUID)
+        self.currentActivity = Activity.logout
+    }
+
+    public func onUnauthenticatedSessionInvalidated(sessionUID: String) {
+        ConsoleLogger.shared?.log("Unauthenticated session invalidated from PMCommon", osLogType: Tower.self)
+        eraseSessionCredentials(sessionUID: sessionUID)
+    }
+
+     public enum Activity {
         public static let logout: NSUserActivity = NSUserActivity(activityType: "ch.protondrive.PDCore.Tower.Logout")
         public static let humanVerification: NSUserActivity = NSUserActivity(activityType: "ch.protondrive.PDCore.Tower.HumanVerification")
         public static let forceUpgrade: NSUserActivity = NSUserActivity(activityType: "ch.protondrive.PDCore.Tower.ForceUpgrade")
-        public static let failedToRefreshToken: NSUserActivity = NSUserActivity(activityType: "ch.protondrive.PDCore.Tower.FailedToRefreshToken")
         public static let trustKitFailure: NSUserActivity = NSUserActivity(activityType: "ch.protondrive.PDCore.Tower.TrustKitFailure")
         public static let trustKitFailureHard: NSUserActivity = NSUserActivity(activityType: "ch.protondrive.PDCore.Tower.TrustKitFailureHard")
     }
@@ -129,41 +159,17 @@ extension PMAPIClient: AuthDelegate {
         ConsoleLogger.shared?.log("Logout callback from PMCommon", osLogType: Tower.self)
         self.currentActivity = Activity.logout
     }
-    
-    public func onRefresh(sessionUID: String, service: ProtonCore_Services.APIService, complete: @escaping AuthRefreshResultCompletion) {
-        ConsoleLogger.shared?.log("Refresh callback from PMCommon", osLogType: Tower.self)
-        guard let oldCredential = self.sessionStore.sessionCredential else {
-            ConsoleLogger.shared?.log(Errors.noCredentialToRefresh, osLogType: Tower.self)
-            self.currentActivity = Activity.logout
-            return
-        }
-        
-        self.authenticator?.refreshCredential(.init(oldCredential)) { result in
-            switch result {
-            case let .failure(error):
-                ConsoleLogger.shared?.log(error, osLogType: Tower.self)
-                self.currentActivity = Activity.failedToRefreshToken
-                complete(.failure(error))
-                
-            case let .success(.updatedCredential(newCredential)):
-                ConsoleLogger.shared?.log("Successfully refreshed token", osLogType: Tower.self)
-                let coreCredential = CoreCredential(newCredential)
-                self.sessionStore.storeCredential(coreCredential)
-                complete(.success(newCredential))
-                
-            default:
-                assert(false, "Unexpected response from PMAuthentication")
-                ConsoleLogger.shared?.log(Errors.unexpectedResponse, osLogType: Tower.self)
-                self.currentActivity = Activity.failedToRefreshToken
-                complete(.failure(.notImplementedYet(Errors.unexpectedResponse.localizedDescription)))
-            }
-        }
-    }
-    
+
     public func onForceUpgrade() {
         ConsoleLogger.shared?.log("ForceUpgrade callback from PMCommon", osLogType: Tower.self)
         self.currentActivity = Activity.forceUpgrade
     }
+
+    private func eraseSessionCredentials(sessionUID: String) {
+        guard self.sessionStore.sessionCredential != nil else { return }
+        self.sessionStore.removeCredential()
+    }
+
 }
 
 extension PMAPIClient: HumanVerifyDelegate {
@@ -195,6 +201,17 @@ extension PMAPIClient: TrustKitFailureDelegate {
         case .failed:
             self.currentActivity = Activity.trustKitFailure
         }
+    }
+}
+
+extension PMAPIClient: AuthSessionInvalidatedDelegate {
+    public func sessionWasInvalidated(for sessionUID: String, isAuthenticatedSession: Bool) {
+        if isAuthenticatedSession {
+            onAuthenticatedSessionInvalidated(sessionUID: sessionUID)
+        } else {
+            onUnauthenticatedSessionInvalidated(sessionUID: sessionUID)
+        }
+        authSessionInvalidatedDelegateForLoginAndSignup?.sessionWasInvalidated(for: sessionUID, isAuthenticatedSession: isAuthenticatedSession)
     }
 }
 

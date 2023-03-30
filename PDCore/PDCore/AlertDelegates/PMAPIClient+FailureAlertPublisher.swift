@@ -36,9 +36,6 @@ extension PMAPIClient {
         case PMAPIClient.Activity.trustKitFailure:
             return .trustKitFailure
 
-        case PMAPIClient.Activity.failedToRefreshToken:
-            return .tokenRefreshFailure
-
         case PMAPIClient.Activity.humanVerification:
             return .humanVerification
 

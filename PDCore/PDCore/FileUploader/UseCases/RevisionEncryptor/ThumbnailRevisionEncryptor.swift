@@ -17,60 +17,60 @@
 
 import Foundation
 import CoreImage
+import CoreData
 
 final class ThumbnailRevisionEncryptor: RevisionEncryptor {
 
     private let thumbnailProvider: ThumbnailProvider
     private let signersKitFactory: SignersKitFactoryProtocol
+    private let progress: Progress
+    private let moc: NSManagedObjectContext
 
     private var isCancelled = false
     private var isExecuting = false
 
     init(
         thumbnailProvider: ThumbnailProvider,
-        signersKitFactory: SignersKitFactoryProtocol
+        signersKitFactory: SignersKitFactoryProtocol,
+        progress: Progress,
+        moc: NSManagedObjectContext
     ) {
         self.thumbnailProvider = thumbnailProvider
         self.signersKitFactory = signersKitFactory
+        self.progress = progress
+        self.moc = moc
     }
 
-    func encrypt(revisionDraft: CreatedRevisionDraft, completion: @escaping Completion) {
+    func encrypt(_ draft: CreatedRevisionDraft, completion: @escaping Completion) {
         guard !isCancelled, !isExecuting else { return }
         isExecuting = true
 
-        ConsoleLogger.shared?.log("STAGE: 2.1 🏞 Encrypt thumbnail started", osLogType: FileUploader.self)
-        let moc = revisionDraft.revision.managedObjectContext!
-
-        do {
-            guard let thumbnail = thumbnailProvider.getThumbnail(from: revisionDraft.localURL) else {
-                throw ThumbnailGenerationError.generation
-            }
-            let thumbnailData = try compressAndEncrypt(thumbnail, draft: revisionDraft)
-
-            let revision = revisionDraft.revision
-
-            moc.performAndWait {
-                let thumbnail = Thumbnail(context: moc)
-                thumbnail.encrypted = thumbnailData.encrypted
-                thumbnail.sha256 = thumbnailData.hash
-                thumbnail.revision = revision
-
-                do {
-                    try moc.save()
-                    ConsoleLogger.shared?.log("STAGE: 2.1 🏞 Encrypt thumbnail finished ✅", osLogType: FileUploader.self)
-                    completion(.success(Void()))
-
-                } catch {
-                    ConsoleLogger.shared?.log("STAGE: 2.1 🏞 Encrypt thumbnail finished ❌", osLogType: FileUploader.self)
-                    revision.thumbnail = nil
-                    moc.delete(thumbnail)
-                    completion(.failure(error))
+        ConsoleLogger.shared?.log("STAGE: 1.1 🏞 Encrypt thumbnail started", osLogType: FileUploader.self)
+        moc.perform {
+            do {
+                let revision = draft.revision.in(moc: self.moc)
+                revision.removeOldThumbnail(in: self.moc)
+                guard let thumbnail = self.thumbnailProvider.getThumbnail(from: draft.localURL) else {
+                    throw ThumbnailGenerationError.generation
                 }
-            }
+                let thumbnailData = try self.compressAndEncrypt(thumbnail, draft: draft)
 
-        } catch {
-            ConsoleLogger.shared?.log("STAGE: 2.1 🏞 Encrypt thumbnail finished ❌", osLogType: FileUploader.self)
-            completion(.failure(error))
+                let coreDatathumbnail = Thumbnail(context: self.moc)
+                coreDatathumbnail.encrypted = thumbnailData.encrypted
+                coreDatathumbnail.sha256 = thumbnailData.hash
+                coreDatathumbnail.revision = revision
+
+                try self.moc.saveOrRollback()
+                
+                ConsoleLogger.shared?.log("STAGE: 1.1 🏞 Encrypt thumbnail finished ✅", osLogType: FileUploader.self)
+
+                self.progress.complete()
+                completion(.success)
+
+            } catch {
+                ConsoleLogger.shared?.log("STAGE: 1.1 🏞 Encrypt thumbnail finished ❌", osLogType: FileUploader.self)
+                completion(.failure(error))
+            }
         }
     }
 

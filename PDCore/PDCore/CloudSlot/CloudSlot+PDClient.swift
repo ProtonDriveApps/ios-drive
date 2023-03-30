@@ -96,14 +96,14 @@ extension CloudSlot {
         // switch to MOC's thread
         moc.performAndWait {
             // get all affected IDs
-            let affectedIds = Set<VolumeMeta.VolumeID>(volumes.map(\.ID))
+            let affectedIds = Set<VolumeMeta.VolumeID>(volumes.map(\.volumeID))
             
             // create minimal objects for them
             let uniqueVolumes: [VolumeObj] = self.storage.unique(with: affectedIds, in: moc)
             
             // set up share and relationships
             result = volumes.compactMap { volumeMeta in
-                let volume = uniqueVolumes.first { $0.id == volumeMeta.ID }
+                let volume = uniqueVolumes.first { $0.id == volumeMeta.volumeID }
                 volume?.fulfill(from: volumeMeta)
                 return volume
             }

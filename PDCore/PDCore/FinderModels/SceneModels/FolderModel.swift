@@ -19,7 +19,7 @@ import Combine
 import CoreData
 import PDClient
 
-public final class FolderModel: FinderModel, ThumbnailLoader, NodesListing, NodesFetching, UploadsListing, DownloadsListing, NodesSorting {
+public final class FolderModel: FinderModel, FinderErrorModel, ThumbnailLoader, NodesListing, NodesFetching, UploadsListing, DownloadsListing, NodesSorting {
     public enum Errors: Error {
         case nodeIdDoesNotBelongToFolder
         case noMainShareFound
@@ -31,6 +31,9 @@ public final class FolderModel: FinderModel, ThumbnailLoader, NodesListing, Node
         self.loadChildrenFromCache()
         self.loadUploadsFromCache()
     }
+    
+    // MARK: FinderErrorModel
+    public let errorSubject = PassthroughSubject<Error, Never>()
     
     // MARK: NodesListing, DownloadsListing
     public private(set) weak var tower: Tower!

@@ -56,7 +56,7 @@ public class SentryClient {
         guard !optOutFromCrashReports else { return }
         
         let event = Event(level: .error)
-        event.message = SentryMessage(formatted: error.localizedDescription)
+        event.message = SentryMessage(formatted: error.messageForTheUser)
         event.extra = [
             "Code": error.code,
             "Description": String(describing: error),

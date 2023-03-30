@@ -36,13 +36,13 @@ public class CloudSlot: LogObject {
     public static let osLog = OSLog(subsystem: "PDCore", category: "CloudSlot")
     let storage: StorageManager
     let client: Client
-    let signersKitFactory: SignersKitFactory
+    let signersKitFactory: SignersKitFactoryProtocol
 
     internal var moc: NSManagedObjectContext {
         self.storage.backgroundContext
     }
     
-    public init(client: Client, storage: StorageManager, signersKitFactory: SignersKitFactory) {
+    public init(client: Client, storage: StorageManager, signersKitFactory: SignersKitFactoryProtocol) {
         self.client = client
         self.storage = storage
         self.signersKitFactory = signersKitFactory
@@ -89,7 +89,7 @@ public class CloudSlot: LogObject {
                 guard let volume = volumes.first(where: { $0.state == .active }) else {
                     return onMainShareNotFound()
                 }
-                self?.scanMainShare(shareID: volume.share.ID, handler: onFoundMainShare)
+                self?.scanMainShare(shareID: volume.share.shareID, handler: onFoundMainShare)
             }
         }
     }

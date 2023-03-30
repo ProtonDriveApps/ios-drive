@@ -21,40 +21,38 @@ import Foundation
 final class StreamRevisionEncryptor: RevisionEncryptor {
     typealias Errors = Uploader.Errors
     
-    let moc: NSManagedObjectContext
     let signersKitFactory: SignersKitFactoryProtocol
-    let maxBlockSize = Constants.maxBlockSize
-
-    private let storage: StorageManager
+    let maxBlockSize: Int
+    let moc: NSManagedObjectContext
 
     private var isCancelled = false
     private var isExecuting = false
 
-    init( signersKitFactory: SignersKitFactoryProtocol, storage: StorageManager) {
+    init( signersKitFactory: SignersKitFactoryProtocol, maxBlockSize: Int, moc: NSManagedObjectContext) {
         self.signersKitFactory = signersKitFactory
-        self.storage = storage
-        self.moc = storage.backgroundContext
+        self.maxBlockSize = maxBlockSize
+        self.moc = moc
     }
 
-    func encrypt(revisionDraft draft: CreatedRevisionDraft, completion: @escaping Completion) {
+    func encrypt(_ draft: CreatedRevisionDraft, completion: @escaping Completion) {
         guard !isCancelled, !isExecuting else { return }
         isExecuting = true
-        ConsoleLogger.shared?.log("STAGE: 2.2 Encrypt Revision 🏞📦📦 started", osLogType: FileUploader.self)
+        ConsoleLogger.shared?.log("STAGE: 1.2 Encrypt Revision 🏞📦📦 started", osLogType: FileUploader.self)
 
         moc.performAndWait {
             do {
                 let revision = draft.revision.in(moc: self.moc)
-                self.storage.removeOldBlocks(of: revision)
-                // TODO: Conceptually it should we should use draft.revision.signatureAddress, in this case is the same because the creator of the file is the same as the creator of the revision, and both are created at the same time
-                let signersKit = try signersKitFactory.make(forSigner: .address(revision.file.signatureEmail))
+                revision.removeOldBlocks(in: self.moc)
+                guard let signatureAddress = revision.signatureAddress else { throw RevisionEncryptorError.noSignatureEmailInRevision }
+                let signersKit = try signersKitFactory.make(forSigner: .address(signatureAddress))
 
                 let uploadBlocks = try self.createEncryptedBlocks(draft.localURL, revision: revision, signersKit: signersKit)
                 self.finalize(uploadBlocks, thumbnail: nil, revision: revision, cleanupCleartext: draft.localURL, signersKit: signersKit)
-                ConsoleLogger.shared?.log("STAGE: 2.2 Encrypt Revision 🏞📦📦 finished ✅", osLogType: FileUploader.self)
+                ConsoleLogger.shared?.log("STAGE: 1.2 Encrypt Revision 🏞📦📦 finished ✅", osLogType: FileUploader.self)
                 completion(.success(Void()))
 
             } catch {
-                ConsoleLogger.shared?.log("STAGE: 2.2 Encrypt Revision 🏞📦📦 finished ❌", osLogType: FileUploader.self)
+                ConsoleLogger.shared?.log("STAGE: 1.2 Encrypt Revision 🏞📦📦 finished ❌", osLogType: FileUploader.self)
                 moc.rollback()
                 completion(.failure(error))
             }
@@ -79,7 +77,7 @@ extension StreamRevisionEncryptor {
 
         while let blockURL = iterator.next() {
             index += 1
-            ConsoleLogger.shared?.log("STAGE: 2.2 Encrypting block \(index) 🚧🚰", osLogType: FileUploader.self)
+            ConsoleLogger.shared?.log("STAGE: 1.2 Encrypting block \(index) 🚧🚰", osLogType: FileUploader.self)
             try autoreleasepool {
                 let pack = NewBlockUrlCleartext(index: index, cleardata: blockURL) // Cloud requires first index == 1
                 let encryptedBlock = try self.encryptBlock(pack, file: revision.file)
@@ -123,7 +121,6 @@ extension StreamRevisionEncryptor {
                 revision.blocks = Set(blocks)
                 revision.signatureAddress = signersKit.address.email
                 revision.thumbnail = thumbnail
-                try FileManager.default.removeItem(at: cleartextlUrl)
             } else {
                 ConsoleLogger.shared?.log("🧹 Clear blocks - Operation cancelled ", osLogType: FileUploader.self)
                 blocks.forEach(self.moc.delete)

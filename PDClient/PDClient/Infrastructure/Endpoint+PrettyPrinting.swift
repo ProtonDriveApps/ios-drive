@@ -16,7 +16,6 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import PDClient
 
 // MARK: - Request
 extension Endpoint {

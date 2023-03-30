@@ -16,7 +16,20 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDClient
 
 protocol RevisionSealer {
-    func seal(revision: Revision, completion: @escaping (Result<Revision, Error>) -> Void)
+    func makeData(revision: Revision) throws -> RevisionSealData
+    func sealRemote(data: RevisionSealData, completion: @escaping (Result<Void, Error>) -> Void)
+    func sealLocal(data: RevisionSealData, revisionURI: URL) throws
+}
+
+struct RevisionSealData {
+    let shareID: String
+    let fileID: String
+    let revisionID: String
+    let blockList: [UpdateRevisionBlocks]
+    let manifestSignature: String
+    let signatureAddress: String
+    let xAttributes: String?
 }

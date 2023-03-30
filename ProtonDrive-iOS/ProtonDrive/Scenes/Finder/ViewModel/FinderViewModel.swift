@@ -20,6 +20,7 @@ import UIKit
 import Combine
 import PDCore
 import PDUIComponents
+import ProtonCore_Networking
 
 typealias ListState = TrashViewModel.ListState
 typealias ObservableFinderViewModel = FinderViewModel & ObservableObject
@@ -193,7 +194,6 @@ extension FinderViewModel where Self: UploadingViewModel, Self.Model: UploadsLis
     func subscribeToChildrenUploading() {
         self.childrenUploadCancellable?.cancel()
         self.childrenUploadCancellable = self.model.childrenUploading()
-        .receive(on: DispatchQueue.main)
         .catch {  [weak self] error -> Empty<([File], [FileUploader.OperationID: FileUploader.CurrentProgress]), Error> in
             switch error {
             case Uploader.Errors.canceled:
@@ -230,6 +230,7 @@ extension FinderViewModel where Self: DownloadingViewModel, Self.Model: Download
         self.childrenDownloadCancellable = self.model.childrenDownloading()
         .receive(on: DispatchQueue.main)
         .catch { [weak self] error -> Empty<[ProgressTracker], Error> in
+            let error: Error = (error as? ResponseError)?.underlyingError ?? error
             self?.genericErrors.send(error)
             return .init()
         }
@@ -272,6 +273,7 @@ extension FinderViewModel where Self.Model: NodesListing {
     }
 
     func sendError(_ error: Error) {
+        let error: Error = (error as? ResponseError)?.underlyingError ?? error
         genericErrors.send(error)
     }
 }

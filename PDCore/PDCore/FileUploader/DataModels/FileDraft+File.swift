@@ -20,129 +20,74 @@ import CoreData
 
 extension FileDraft {
 
-    static func extract(from file: File, moc: NSManagedObjectContext) throws -> FileDraft {
-        let draft: FileDraft = try moc.performAndWait {
+    static func extract(from file: File, moc: NSManagedObjectContext) -> FileDraft {
+        let draft: FileDraft = moc.performAndWait {
             let file = file.in(moc: moc)
-
-            // We remove the uploadID when the file is already uploaded
-            guard let id = file.uploadID else {
-                throw ResumeDraftCreationError.fileAlreadyUploaded
-            }
 
             let state = getCurrentState(of: file)
 
-            // We could have lost the original resource while the file is not yet uploaded
-            guard let url = file.uploadIDURL else {
-                throw Uploader.Errors.cleartextLost
-            }
-
-            try assertContentExistence(state: state, url: url)
-
-            guard let name = file.name,
-                  let parentIdentifier = file.parentLink?.identifier,
-                  let clearParentNodeHashKey = try? file.parentLink?.decryptNodeHashKey(),
-                  let contentKeyPacket = file.contentKeyPacket,
-                  let contentKeyPacketSignature = file.contentKeyPacketSignature else {
-                      throw ResumeDraftCreationError.corruptedFileData
-                  }
-
             var numberOfBlocks: Int
-            if state == .uploadingRevision || state == .sealingRevision || state == .finished {
+            if state == .creatingFileDraft || state == .creatingNewRevision || state == .uploadingRevision || state == .commitingRevision {
                 numberOfBlocks = file.activeRevisionDraft!.blocks.count
+            } else if state == .encryptingRevision || state == .encryptingNewRevision {
+                let url = file.activeRevisionDraft?.uploadableResourceURL
+                numberOfBlocks = Int(ceil(Double(url?.fileSize ?? .zero) / Double(Constants.maxBlockSize)))
             } else {
-                numberOfBlocks = Int(ceil(Double(url.fileSize ?? .zero) / Double(Constants.maxBlockSize)))
+                numberOfBlocks = .zero
             }
 
+            let id = file.uploadID!
             return FileDraft(
                 uploadID: id,
-                url: url,
                 file: file,
                 state: state,
-                numberOfBlocks: numberOfBlocks,
-                parent: .init(
-                    identifier: parentIdentifier,
-                    nodeHashKey: clearParentNodeHashKey),
-                parameters: .init(
-                    nodeKey: file.nodeKey,
-                    nodePassphrase: file.nodePassphrase,
-                    nodePassphraseSignature: file.nodePassphraseSignature,
-                    contentKeyPacket: contentKeyPacket,
-                    contentKeyPacketSignature: contentKeyPacketSignature,
-                    signatureAddress: file.signatureEmail),
-                nameParameters: .init(
-                    hash: file.nodeHash,
-                    clearName: url.lastPathComponent,
-                    armoredName: name,
-                    nameSignatureAddress: file.signatureEmail
-                )
+                numberOfBlocks: numberOfBlocks
             )
         }
 
         return draft
     }
 
-    private static func assertContentExistence(state: State, url: URL) throws {
-        if state == .uploadingDraft || state == .encryptingRevision {
-
-            // We could have lost the original resource while the file is not yet uploaded
-            guard url.path != "/",
-                  FileManager.default.fileExists(atPath: url.path) else {
-                throw Uploader.Errors.cleartextLost
-            }
-        }
-    }
-
     private static func getCurrentState(of file: File) -> FileDraft.State {
-        guard !file.updatingRevision else { return .updateRevision }
-
-        if let revisionDraft = file.activeRevisionDraft {
-            switch revisionDraft.uploadState {
-            case .created:
-                return .encryptingRevision
-            case .encrypted:
-                return .uploadingRevision
-            case .uploaded:
-                return .sealingRevision
-            case .none:
-                return .finished
-            }
-        } else {
-            return .uploadingDraft
+        if file.isEncryptingRevision() {
+            return .encryptingRevision
         }
+
+        if file.isCreatingFileDraft() {
+            return .creatingFileDraft
+        }
+
+        if file.isUploadingRevision() {
+            return .uploadingRevision
+        }
+
+        if file.isCommitingRevision() {
+            return .commitingRevision
+        }
+
+        if file.isEncryptingNewRevision() {
+            return .encryptingNewRevision
+        }
+
+        if file.isCreatingNewRevision() {
+            return .creatingNewRevision
+        }
+
+        return .none
     }
 
-    enum ResumeDraftCreationError: Error {
-        case fileAlreadyUploaded
-        case draftAlreadyCreated
-        case corruptedFileData
-    }
-
-}
-
-private extension File {
-    /// Having an active revision means that the file has been successfully uploaded and any new attempt of uploading can only mean that we upload a new revision
-    var updatingRevision: Bool {
-        activeRevision != nil && activeRevisionDraft == nil && uploadID != nil && uploadIDURL != nil
+    public enum State: Equatable {
+        case none
+        case encryptingRevision
+        case encryptingNewRevision
+        case creatingFileDraft
+        case creatingNewRevision
+        case uploadingRevision
+        case commitingRevision
     }
 }
 
 extension FileDraft {
-
-    func getUploadableFileDraft() -> UploadableFileDraft {
-        UploadableFileDraft(
-            shareID: parent.identifier.shareID,
-            parentLinkID: parent.identifier.nodeID,
-            armoredName: nameParameters.armoredName,
-            nameHash: nameParameters.hash,
-            nodeKey: parameters.nodeKey,
-            nodePassphrase: parameters.nodePassphrase,
-            nodePassphraseSignature: parameters.nodePassphraseSignature,
-            signatureAddress: parameters.signatureAddress,
-            contentKeyPacket: parameters.contentKeyPacket,
-            contentKeyPacketSignature: parameters.contentKeyPacketSignature,
-            mimeType: mimeType
-        )
-    }
 
     func getCreatedRevisionDraft() throws -> CreatedRevisionDraft {
         guard let moc = file.moc else { throw File.noMOC() }
@@ -150,6 +95,14 @@ extension FileDraft {
         return try moc.performAndWait {
             guard let revision = file.activeRevisionDraft else {
                 throw File.InvalidState(message: "Invalid File, it should have already an activeRevisionDraft")
+            }
+
+            guard revision.uploadState == .created else {
+                throw Revision.InvalidState(message: "Invalid Revision, the upload state should be `.created`")
+            }
+
+            guard let url = revision.uploadableResourceURL else {
+                throw Revision.InvalidState(message: "Invalid Revision, it should have a url that points to the local resource")
             }
 
             return CreatedRevisionDraft(localURL: url, revision: revision)
@@ -206,23 +159,6 @@ extension FileDraft {
 
             return revision.unsafeFullUploadableBlocks
         }
-    }
-
-    var unsafeCreatedRevisionDraft: CreatedRevisionDraft? {
-        guard let revision = file.activeRevisionDraft else {
-            return nil
-        }
-        return CreatedRevisionDraft(localURL: url, revision: revision)
-    }
-
-    func createdRevisionDraft() throws -> CreatedRevisionDraft {
-        let createdRevisionDraft: CreatedRevisionDraft = try file.managedObjectContext!.performAndWait {
-            guard let revision = unsafeCreatedRevisionDraft else {
-                throw Uploader.Errors.blockLacksMetadata
-            }
-            return revision
-        }
-        return createdRevisionDraft
     }
 
     func getSealableRevision() throws -> Revision {

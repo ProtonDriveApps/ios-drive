@@ -40,14 +40,16 @@ final class RevisionCreatorOperation: AsynchronousOperation, OperationWithProgre
 
     override func main() {
         guard !isCancelled else { return }
+
+        let file = draft.file
         ConsoleLogger.shared?.log("STAGE: 1 Create revision 🐣📦🏞 started", osLogType: FileUploader.self)
-        creator.createRevision(for: draft.file.identifier) { [weak self] result in
+        creator.createRevision(for: file) { [weak self] result in
             guard let self = self, !self.isCancelled else { return }
 
             switch result {
             case .success(let revision):
                 ConsoleLogger.shared?.log("STAGE: 1 Create revision 🐣📦🏞 finished ✅", osLogType: FileUploader.self)
-                try? self.finalizer.finalize(identifier: revision)
+                try? self.finalizer.finalize(file: file, revisionIdentifier: revision)
                 self.progress.complete()
                 self.state = .finished
 
@@ -60,30 +62,22 @@ final class RevisionCreatorOperation: AsynchronousOperation, OperationWithProgre
 }
 
 protocol LocalRevisionCreatorFinalizer {
-    func finalize(identifier: RevisionIdentifier) throws
+    func finalize(file: File, revisionIdentifier: RevisionIdentifier) throws
 }
 
 extension StorageManager: LocalRevisionCreatorFinalizer {
 
-    func finalize(identifier: RevisionIdentifier) throws {
-        guard let file: File = existing(with: Set([identifier.file]), in: backgroundContext).first else {
-            fatalError("A file valid file must be present before Revision creation")
-        }
-
+    func finalize(file: File, revisionIdentifier: RevisionIdentifier) throws {
         try backgroundContext.performAndWait {
-            let revision: Revision = new(with: identifier.revision, by: "id", in: backgroundContext)
+            let file = file.in(moc: backgroundContext)
+            guard let revision = file.activeRevisionDraft else {
+                throw file.invalidState("The file should have an active revisionDraft")
+            }
 
-            file.activeRevisionDraft = revision
-
-            revision.file = file
+            revision.id = revisionIdentifier.revision
             revision.uploadState = .created
 
-            do {
-                try backgroundContext.save()
-            } catch {
-                backgroundContext.rollback()
-                throw error
-            }
+            try backgroundContext.saveOrRollback()
         }
     }
 }

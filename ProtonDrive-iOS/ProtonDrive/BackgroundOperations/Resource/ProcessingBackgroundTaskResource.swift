@@ -54,7 +54,7 @@ final class ProcessingExtensionBackgroundTaskResourceImpl: ProcessingExtensionBa
             try BGTaskScheduler.shared.submit(request)
             ConsoleLogger.shared?.logAndNotify(title: "✅ background processing scheduled", message: "", osLogType: Constants.self)
         } catch {
-            ConsoleLogger.shared?.logAndNotify(title: "🐛⚠️ Couldn't schedule app refresh", message: error.localizedDescription, osLogType: Constants.self)
+            ConsoleLogger.shared?.logAndNotify(title: "🐛⚠️ Couldn't schedule app refresh", message: error.messageForTheUser, osLogType: Constants.self)
         }
     }
     

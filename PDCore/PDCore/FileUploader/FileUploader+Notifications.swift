@@ -25,4 +25,8 @@ public extension Notification.Name {
     static var didFindIssueOnFileUpload: Notification.Name {
         Notification.Name("ch.protonmail.protondrive.didFindIssueOnFileUpload")
     }
+
+    static var didInterruptOnFileUpload: Notification.Name {
+        Notification.Name("ch.protonmail.protondrive.didInterruptOnFileUpload")
+    }
 }

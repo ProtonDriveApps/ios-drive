@@ -18,7 +18,9 @@
 import Foundation
 
 final class NonFinishingOperation: AsynchronousOperation, OperationWithProgress {
+
     let progress = Progress(unitsOfWork: 1)
 
     override func main() { }
+
 }

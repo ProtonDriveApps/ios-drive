@@ -56,7 +56,7 @@ class FileModel: NSObject, QLPreviewControllerDataSource, QLPreviewControllerDel
                 }
             } catch let error where !self.isCancelled {
                 DispatchQueue.main.async {
-                    self.eventsSubject.send(.error(error.localizedDescription))
+                    self.eventsSubject.send(.error(error.messageForTheUser))
                 }
             } catch {
                 DispatchQueue.main.async {
@@ -80,6 +80,20 @@ class FileModel: NSObject, QLPreviewControllerDataSource, QLPreviewControllerDel
 
     func previewController(_ controller: QLPreviewController, editingModeFor previewItem: QLPreviewItem) -> QLPreviewItemEditingMode {
         .disabled
+    }
+
+    func previewController(_ controller: QLPreviewController, didSaveEditedCopyOf previewItem: QLPreviewItem, at modifiedContentsURL: URL) {
+        guard let revision = revision else { return }
+        guard let moc = revision.moc else { return }
+
+        moc.perform {
+            do {
+                let file = try self.tower.revisionImporter.importNewRevision(from: modifiedContentsURL, into: revision.file)
+                self.tower.fileUploader.upload(file, completion: { _ in })
+            } catch {
+                try? FileManager.default.removeItem(at: modifiedContentsURL)
+            }
+        }
     }
     
     func cleanup() {

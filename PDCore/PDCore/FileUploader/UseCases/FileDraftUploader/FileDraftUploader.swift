@@ -16,8 +16,8 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 protocol FileDraftUploader {
-    typealias Completion = (Result<RemoteUploadedNewFile, Error>) -> Void
+    typealias Completion = (Result<File, Error>) -> Void
 
-    func upload(draft: FileDraft, completion: @escaping Completion)
+    func upload(draft: File, completion: @escaping Completion)
     func cancel()
 }

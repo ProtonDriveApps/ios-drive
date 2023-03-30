@@ -28,7 +28,7 @@ public class ItemTemplate: NSObject, NSFileProviderItem {
         self.filename = filename
         
         #if os(OSX)
-        self.contentType = UTType(mimeType: type) ?? .data
+        self.contentType = UTType(type) ?? .data
         #else
         self.typeIdentifier = type
         #endif

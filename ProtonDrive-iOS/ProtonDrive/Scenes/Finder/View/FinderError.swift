@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import ProtonCore_Networking
 import PDCore
 
 enum FinderError: Error, Equatable {
@@ -29,8 +30,12 @@ enum FinderError: Error, Equatable {
 
         init(_ error: Error?) {
             switch error {
-            case let error as UploaderError:
-                self = Self.checkSpaceError(for: error.underlyingError as NSError)
+            case let (error as ResponseError):
+                if let nsError = error.underlyingError {
+                    self = Self.checkSpaceError(for: nsError)
+                } else {
+                    self = Self.toast(error: error)
+                }
             case let error as NSError:
                 self = Self.checkSpaceError(for: error)
             default:

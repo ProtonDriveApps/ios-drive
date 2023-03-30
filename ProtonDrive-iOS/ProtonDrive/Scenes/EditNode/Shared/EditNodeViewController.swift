@@ -80,7 +80,7 @@ final class EditNodeViewController: UIViewController {
     }
 
     private func showError(_ error: Error) {
-        let banner = PMBanner(message: error.localizedDescription, style: PMBannerNewStyle.error)
+        let banner = PMBanner(message: error.messageForTheUser, style: PMBannerNewStyle.error)
         banner.accessibilityIdentifier = "EditNodeViewController.showError.errorToast"
         banner.show(at: .bottom, on: self)
     }

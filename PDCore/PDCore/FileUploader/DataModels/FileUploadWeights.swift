@@ -25,6 +25,6 @@ struct FileUploadWeights {
 
 extension FileUploadWeights {
     static var `default`: FileUploadWeights {
-        FileUploadWeights(draftUpload: 3, revisionEncryption: 1, revisionUploader: 20, revisionSealer: 2, revisionUpdate: 2)
+        FileUploadWeights(draftUpload: 3, revisionEncryption: 1, revisionUploader: 8, revisionSealer: 2, revisionUpdate: 2)
     }
 }

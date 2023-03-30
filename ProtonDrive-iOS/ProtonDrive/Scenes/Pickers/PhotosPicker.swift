@@ -17,12 +17,14 @@
 
 import UIKit
 import SwiftUI
+import os.log
 import PhotosUI
 import PDCore
 import PDUIComponents
 import ProtonCore_UIFoundations
 
 struct PhotoPicker: UIViewControllerRepresentable {
+    typealias URLErrorCompletion = (URL?, Error?) -> Void
     typealias Controller = UIDocumentPickerViewController
 
     @EnvironmentObject var root: RootViewModel
@@ -38,7 +40,11 @@ struct PhotoPicker: UIViewControllerRepresentable {
 
     func makeUIViewController(context: Context) -> PHPickerViewController {
         var configuration = PHPickerConfiguration()
+        #if SUPPORTS_UNLIMITED_PICKER_SELECTION
+        configuration.selectionLimit = 250
+        #else
         configuration.selectionLimit = 10
+        #endif
 
         let controller = PHPickerViewController(configuration: configuration)
         controller.delegate = context.coordinator
@@ -58,7 +64,8 @@ struct PhotoPicker: UIViewControllerRepresentable {
     }
 
     // MARK: - SwiftUICoordinator
-    class Coordinator: PHPickerViewControllerDelegate {
+    class Coordinator: PHPickerViewControllerDelegate, LogObject {
+        static var osLog = OSLog(subsystem: "ProtonDrive", category: "PhotoPicker")
         private let parent: PhotoPicker
         private var didFinishSelecting = false
 
@@ -118,7 +125,7 @@ struct PhotoPicker: UIViewControllerRepresentable {
 
                 group.enter()
 
-                let onCompletion: (URL?, Error?) -> Void = { url, error in
+                let onCompletion: URLErrorCompletion = { url, error in
                     switch (url, error) {
                     case let (url?, nil):
                         do {
@@ -129,6 +136,7 @@ struct PhotoPicker: UIViewControllerRepresentable {
                             fileResults.append(.failure(error))
                         }
                     case let (nil, error?):
+                        ConsoleLogger.shared?.log(error, osLogType: Coordinator.self)
                         fileResults.append(.failure(error))
                     default:
                         fileResults.append(.failure(Errors.invalidState))
@@ -137,32 +145,49 @@ struct PhotoPicker: UIViewControllerRepresentable {
                 }
 
                 if UTI(value: typeIdentifier).isLiveAsset {
-                    itemProvider.loadObject(ofClass: PHLivePhoto.self) { livePhoto, error in
-                        guard let livePhoto = livePhoto as? PHLivePhoto,
-                              let resource = PHAssetResource.assetResources(for: livePhoto).first(where: { $0.type == .photo }) else {
-                            return onCompletion(nil, Errors.invalidLivePhoto)
-                        }
-
-                        let copyURL = PDFileManager.prepareUrlForFile(named: resource.originalFilename)
-
-                        PHAssetResourceManager.default().writeData(for: resource, toFile: copyURL, options: nil) { error in
-                            if let error = error {
-                                onCompletion(nil, error)
-                            } else {
-                                onCompletion(copyURL, nil)
-                            }
-                        }
-                    }
-
+                    loadLivePhoto(with: itemProvider, completion: onCompletion)
                 } else {
-                    itemProvider.loadFileRepresentation(forTypeIdentifier: typeIdentifier) { url, error in
-                        onCompletion(url, error)
-                    }
+                    loadFileRepresentation(with: itemProvider, typeIdentifier: typeIdentifier, completion: onCompletion)
                 }
             }
 
             group.notify(queue: DispatchQueue.main) { [weak self] in
                 self?.parent.picker(didFinishPicking: fileResults)
+            }
+        }
+        
+        private func loadLivePhoto(with itemProvider: NSItemProvider, completion: @escaping URLErrorCompletion) {
+            itemProvider.loadObject(ofClass: PHLivePhoto.self) { [weak self] livePhoto, error in
+                let utTypeIdentifiers = itemProvider.registeredTypeIdentifiers.map { UTI(value: $0) }
+                
+                // If live photo load fails, we try to load the image representation instead.
+                let typeIdentifier = utTypeIdentifiers.first(where: { !$0.isLiveAsset && $0.isImage })?.value ?? ""
+                
+                guard let livePhoto = livePhoto as? PHLivePhoto else {
+                    self?.loadFileRepresentation(with: itemProvider, typeIdentifier: typeIdentifier, completion: completion)
+                    return
+                }
+                
+                let resources = PHAssetResource.assetResources(for: livePhoto)
+                guard let resource = resources.first(where: { $0.type == .photo }) else {
+                    self?.loadFileRepresentation(with: itemProvider, typeIdentifier: typeIdentifier, completion: completion)
+                    return
+                }
+
+                let copyURL = PDFileManager.prepareUrlForFile(named: resource.originalFilename)
+                PHAssetResourceManager.default().writeData(for: resource, toFile: copyURL, options: nil) { error in
+                    if let error = error {
+                        completion(nil, error)
+                    } else {
+                        completion(copyURL, nil)
+                    }
+                }
+            }
+        }
+        
+        private func loadFileRepresentation(with itemProvider: NSItemProvider, typeIdentifier: String, completion: @escaping URLErrorCompletion) {
+            itemProvider.loadFileRepresentation(forTypeIdentifier: typeIdentifier) { url, error in
+                completion(url, error)
             }
         }
 

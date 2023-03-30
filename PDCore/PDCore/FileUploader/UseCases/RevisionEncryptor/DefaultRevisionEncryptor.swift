@@ -16,29 +16,35 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import CoreData
 
 final class DefaultRevisionEncryptor: RevisionEncryptor {
     private let blocksEncryptor: RevisionEncryptor
     private let thumbnailEncryptor: RevisionEncryptor
-    private let finalizer: RevisionEncryptionFinalizer
+    private let xAttributesEncryptor: RevisionEncryptor
+    private let moc: NSManagedObjectContext
 
     private let queue = OperationQueue(underlyingQueue: .global())
 
     private var isCancelled = false
+    private var isExecuting = false
 
     init(
         blocksEncryptor: RevisionEncryptor,
         thumbnailEncryptor: RevisionEncryptor,
-        finalizer: RevisionEncryptionFinalizer
+        xAttributesEncryptor: RevisionEncryptor,
+        moc: NSManagedObjectContext
     ) {
         self.blocksEncryptor = blocksEncryptor
         self.thumbnailEncryptor = thumbnailEncryptor
-        self.finalizer = finalizer
+        self.xAttributesEncryptor = xAttributesEncryptor
+        self.moc = moc
     }
 
-    func encrypt(revisionDraft draft: CreatedRevisionDraft, completion: @escaping Completion) {
-        guard !isCancelled else { return }
-        
+    func encrypt(_ draft: CreatedRevisionDraft, completion: @escaping Completion) {
+        guard !isCancelled, !isExecuting else { return }
+        isExecuting = true
+
         let thumbnailEncryptorOperation = ContentRevisionEncryptorOperation(
             revision: draft,
             contentEncryptor: thumbnailEncryptor,
@@ -53,23 +59,22 @@ final class DefaultRevisionEncryptor: RevisionEncryptor {
             completion(.failure(error))
         }
 
-        let finishOperation = BlockOperation { [weak self] in
+        let xAttrEncryptorOperation = ContentRevisionEncryptorOperation(
+            revision: draft,
+            contentEncryptor: xAttributesEncryptor
+        ) { [weak self] error in
             guard let self = self, !self.isCancelled else { return }
-
-            self.finalizer.finalize(revision: draft.revision) { result in
-                guard !self.isCancelled else { return }
-
-                switch result {
-                case .success:
-                    completion(.success)
-                case .failure(let error):
-                    completion(.failure(error))
-                }
-            }
+            self.cancel()
+            completion(.failure(error))
         }
 
-        [thumbnailEncryptorOperation, blocksEncryptorOperation].forEach(finishOperation.addDependency)
-        [thumbnailEncryptorOperation, blocksEncryptorOperation, finishOperation].forEach(queue.addOperation)
+        let finishOperation = BlockOperation { [weak self] in
+            guard let self = self, !self.isCancelled else { return }
+            self.finalize(draft: draft, completion: completion)
+        }
+
+        [thumbnailEncryptorOperation, blocksEncryptorOperation, xAttrEncryptorOperation].forEach(finishOperation.addDependency)
+        [thumbnailEncryptorOperation, blocksEncryptorOperation, xAttrEncryptorOperation, finishOperation].forEach(queue.addOperation)
     }
 
     func cancel() {
@@ -79,4 +84,22 @@ final class DefaultRevisionEncryptor: RevisionEncryptor {
         queue.cancelAllOperations()
     }
 
+    private func finalize(draft: CreatedRevisionDraft, completion: @escaping Completion) {
+        moc.perform {
+            do {
+                let revision = draft.revision.in(moc: self.moc)
+                revision.uploadState = .encrypted
+
+                if let url = revision.uploadableResourceURL {
+                    revision.uploadableResourceURL = nil
+                    try? FileManager.default.removeItem(at: url)
+                }
+
+                try self.moc.saveOrRollback()
+                completion(.success)
+            } catch {
+                completion(.failure(error))
+            }
+        }
+    }
 }

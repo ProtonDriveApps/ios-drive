@@ -15,10 +15,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-protocol RevisionEncryptor {
-    typealias Result = Swift.Result<Void, Error>
-    typealias Completion = (Result) -> Void
+import Foundation
 
-    func encrypt(revisionDraft draft: CreatedRevisionDraft, completion: @escaping Completion)
+protocol RevisionEncryptor {
+    typealias Completion = (Result<Void, Error>) -> Void
+
+    func encrypt(_ draft: CreatedRevisionDraft, completion: @escaping Completion)
     func cancel()
+}
+
+enum RevisionEncryptorError: String, LocalizedError {
+    case noSignatureEmailInRevision = "The revision does not have a creator set."
 }

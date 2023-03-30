@@ -23,9 +23,9 @@ final class MainFileUploaderOperation: AsynchronousOperation, UploadOperation {
     let uploadID: UUID
 
     private let draft: FileDraft
-    private let onSuccess: OnUploadSuccess
+    private let onSuccess: (File) -> Void
 
-    init(draft: FileDraft, onSuccess: @escaping OnUploadSuccess) {
+    init(draft: FileDraft, onSuccess: @escaping (File) -> Void) {
         self.uploadID = draft.uploadID
         self.draft = draft
         self.onSuccess = onSuccess
@@ -35,10 +35,12 @@ final class MainFileUploaderOperation: AsynchronousOperation, UploadOperation {
     override func main() {
         guard !isCancelled else { return }
 
+        record()
+
         ConsoleLogger.shared?.log("🎉🎉🎉🎉  Completed File Upload, id: \(uploadID.uuidString) 🎉🎉🎉🎉", osLogType: FileUploader.self)
         progress.complete()
         state = .finished
-        onSuccess(draft)
+        onSuccess(draft.file)
     }
 
     func pause() {
@@ -64,4 +66,5 @@ final class MainFileUploaderOperation: AsynchronousOperation, UploadOperation {
         progress.cancel()
     }
 
+    var recordingName: String { "uploadedFile" }
 }

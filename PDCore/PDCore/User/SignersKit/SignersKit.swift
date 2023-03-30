@@ -20,7 +20,7 @@ import Foundation
 public typealias Address = AddressManager.Address
 public typealias AddressKey = AddressManager.AddressKey
 
-struct SignersKit {
+public struct SignersKit {
     
     enum Errors: Error {
         case addressHasNoKeys

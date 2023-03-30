@@ -18,6 +18,7 @@
 import Foundation
 import Combine
 import PDCore
+import ProtonCore_Networking
 import PDUIComponents
 
 class MoveViewModel: ObservableObject, FinderViewModel, HasRefreshControl, FetchingViewModel, SortingViewModel {
@@ -77,6 +78,7 @@ class MoveViewModel: ObservableObject, FinderViewModel, HasRefreshControl, Fetch
                 
                 switch result {
                 case let .failure(error):
+                    let error: Error = (error as? ResponseError)?.underlyingError ?? error
                     self.genericErrors.send(error)
                 case .success:
                     completion()

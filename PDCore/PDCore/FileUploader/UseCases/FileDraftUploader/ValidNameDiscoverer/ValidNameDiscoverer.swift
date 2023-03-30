@@ -21,14 +21,3 @@ protocol ValidNameDiscoverer {
     typealias Completion = (Result<NameHashPair, Error>) -> Void
     func findNextAvailableName(for file: FileNameCheckerModel, completion: @escaping Completion)
 }
-
-struct FileNameCheckerModel {
-    let originalName: String
-    let parent: NodeIdentifier
-    let parentNodeHashKey: String
-}
-
-struct NameHashPair: Equatable {
-    let name: String
-    let hash: String
-}

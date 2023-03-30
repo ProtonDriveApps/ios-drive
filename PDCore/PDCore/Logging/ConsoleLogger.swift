@@ -171,7 +171,7 @@ struct SignatureError: LocalizedError, Loggable {
     }
 
     var errorDescription: String? {
-        "\(context) - \(method) - Signature Error ⚠️ \n" + error.localizedDescription
+        "\(context) - \(method) - Signature Error ⚠️ \n" + error.messageForTheUser
     }
 }
 
@@ -188,7 +188,7 @@ struct DecryptionError: LocalizedError, Loggable {
     }
 
     var errorDescription: String? {
-        "\(context) - \(method) - Decryption Error ❌ \n" + error.localizedDescription
+        "\(context) - \(method) - Decryption Error ❌ \n" + error.messageForTheUser
     }
 }
 
@@ -205,7 +205,7 @@ public struct DriveError: LocalizedError, Loggable {
     }
 
     public var errorDescription: String? {
-        "\(context) - \(method) - Generic Drive Error \n" + error.localizedDescription
+        "\(context) - \(method) - Generic Drive Error \n" + error.messageForTheUser
     }
 }
 

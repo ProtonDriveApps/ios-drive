@@ -23,6 +23,7 @@ final class UploadFileLocalNotificationNotifier: LocalNotificationNotifier {
     let publisher: AnyPublisher<LocalNotification, Never>
 
     init(
+        didInterruptOnFileUploadPublisher: AnyPublisher<Void, Never>,
         didFindIssueOnFileUploadPublisher: AnyPublisher<Void, Never>,
         didChangeAppRunningStatePublisher: AnyPublisher<ApplicationRunningState, Never>,
         notificationsResource: LocalNotificationsResource
@@ -34,10 +35,16 @@ final class UploadFileLocalNotificationNotifier: LocalNotificationNotifier {
             .sink { [weak self] in self?.onAppStateDidChange(to: $0) }
             .store(in: &cancellables)
 
+        didInterruptOnFileUploadPublisher
+            .flatMap { notificationsResource.isAuthorized() }
+            .filter { $0 }
+            .sink { [weak self] _ in self?.showInterruptedNotification() }
+            .store(in: &cancellables)
+
         didFindIssueOnFileUploadPublisher
             .flatMap { notificationsResource.isAuthorized() }
             .filter { $0 }
-            .sink { [weak self] _ in self?.showNotification() }
+            .sink { [weak self] _ in self?.showFailedNotification() }
             .store(in: &cancellables)
     }
 
@@ -52,10 +59,17 @@ final class UploadFileLocalNotificationNotifier: LocalNotificationNotifier {
         didShowNotificationInSession = false
     }
 
-    private func showNotification() {
+    private func showInterruptedNotification() {
         guard canShowNotification else { return }
 
-        subject.send(.incompleteUpload)
+        subject.send(.interruptedUpload)
+        didShowNotificationInSession = true
+    }
+
+    private func showFailedNotification() {
+        guard canShowNotification else { return }
+
+        subject.send(.failedUpload)
         didShowNotificationInSession = true
     }
 }

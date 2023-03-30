@@ -41,6 +41,7 @@ public extension FileUploader {
                         partialResult[op.uploadID] = op.progress
                     }
             }
+            .removeDuplicates()
             .setFailureType(to: Error.self)
             .eraseToAnyPublisher()
             .merge(with: errorPublisher())

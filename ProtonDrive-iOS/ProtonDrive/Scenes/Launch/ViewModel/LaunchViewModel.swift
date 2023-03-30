@@ -84,9 +84,6 @@ final class LaunchViewModel {
                 case .trustKitHardFailure:
                     return FailingAlert(type: .trustKitHardFailure, primaryAction: nil, secondaryAction: .ok)
 
-                case .tokenRefreshFailure:
-                    return FailingAlert(type: .tokenRefreshFailure, primaryAction: nil, secondaryAction: .ok)
-
                 case .forceUpgrade:
                     let primaryAction = AlertAction(
                         title: "Update",

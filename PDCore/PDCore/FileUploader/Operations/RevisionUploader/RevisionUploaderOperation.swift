@@ -17,8 +17,9 @@
 
 import Foundation
 
-final class RevisionUploaderOperation: AsynchronousOperation, OperationWithProgress {
+final class RevisionUploaderOperation: AsynchronousOperation, UploadOperation {
 
+    var uploadID: UUID
     let progress: Progress
 
     private let draft: FileDraft
@@ -36,11 +37,12 @@ final class RevisionUploaderOperation: AsynchronousOperation, OperationWithProgr
         self.draft = draft
         self.progress = progress
         self.uploader = uploader
+        self.uploadID = draft.uploadID
 
         let loger = ConsoleLogger.shared
         self.logger = loger
         self.onError = { error in
-            loger?.log("STAGE: 3 Upload Revision 🏞📦☁️ finished ❌", osLogType: FileUploader.self)
+            loger?.log("STAGE: 3 Upload Revision 🏞📦📝☁️ finished ❌", osLogType: FileUploader.self)
             onError(error)
         }
         super.init()
@@ -49,12 +51,14 @@ final class RevisionUploaderOperation: AsynchronousOperation, OperationWithProgr
     override func main() {
         guard !isCancelled else { return }
 
-        logger?.log("STAGE: 3 Upload Revision 🏞📦☁️ started", osLogType: FileUploader.self)
+        record()
+
+        logger?.log("STAGE: 3 Upload Revision 🏞📦📝☁️ started", osLogType: FileUploader.self)
 
         // swiftlint:disable:next todo
         // TODO: Improve this in order not to have flow control statements all over the place
         guard !draft.isEmpty else {
-            ConsoleLogger.shared?.log("STAGE: 3 Upload Revision 🏞📦☁️ finished ✅", osLogType: FileUploader.self)
+            ConsoleLogger.shared?.log("STAGE: 3 Upload Revision 🏞📦📝☁️ finished ✅", osLogType: FileUploader.self)
             finalizeRevision()
             progress.complete()
             state = .finished
@@ -63,7 +67,7 @@ final class RevisionUploaderOperation: AsynchronousOperation, OperationWithProgr
 
         uploader.didFinish = { [weak self] in
             guard let self = self, !self.isCancelled else { return }
-            self.logger?.log("STAGE: 3 Upload Revision 🏞📦☁️ finished ✅", osLogType: FileUploader.self)
+            self.logger?.log("STAGE: 3 Upload Revision 🏞📦📝☁️ finished ✅", osLogType: FileUploader.self)
             self.finalizeRevision()
         }
 
@@ -83,7 +87,6 @@ final class RevisionUploaderOperation: AsynchronousOperation, OperationWithProgr
 
                 try moc.save()
 
-                draft.state = .sealingRevision
                 progress.complete()
                 state = .finished
 
@@ -100,4 +103,5 @@ final class RevisionUploaderOperation: AsynchronousOperation, OperationWithProgr
         progress.cancel()
     }
 
+    var recordingName: String { "uploadingRevision" }
 }

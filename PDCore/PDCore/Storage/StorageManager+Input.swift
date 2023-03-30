@@ -18,6 +18,21 @@
 import Foundation
 import CoreData
 
+extension Revision {
+    func removeOldBlocks(in moc: NSManagedObjectContext) {
+        let oldBlocks = blocks
+        blocks = Set([])
+        oldBlocks.forEach(moc.delete)
+    }
+
+    func removeOldThumbnail(in moc: NSManagedObjectContext) {
+        if let oldThumbnail = thumbnail {
+            thumbnail = nil
+            moc.delete(oldThumbnail)
+        }
+    }
+}
+
 extension StorageManager {
     func removeOldBlocks(of revisionObj: PDCore.Revision) {
         let oldBlocks = revisionObj.blocks
@@ -25,17 +40,6 @@ extension StorageManager {
         moc.performAndWait {
             revisionObj.blocks = Set([])
             oldBlocks.forEach(moc.delete)
-        }
-    }
-
-    func removeOldThumbnail(of revisionObj: PDCore.Revision) {
-        guard let oldThumbnail = revisionObj.thumbnail else {
-            return
-        }
-        let moc = revisionObj.managedObjectContext!
-        moc.performAndWait {
-            revisionObj.thumbnail = nil
-            moc.delete(oldThumbnail)
         }
     }
 }

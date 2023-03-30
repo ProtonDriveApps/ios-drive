@@ -24,27 +24,16 @@ extension NSManagedObject {
 }
 
 extension NSManagedObjectContext {
-    func performAndWait<T>(_ block: () throws -> T) throws -> T {
-        var result: Result<T, Error>?
-        performAndWait {
-            result = Result { try block() }
+    public func existingObject<O: NSManagedObject>(with url: URL) -> O? {
+        guard let objectId = persistentStoreCoordinator?.managedObjectID(forURIRepresentation: url) else {
+            return nil
         }
-        return try result!.get()
-    }
-}
-
-extension NSManagedObjectContext {
-    func performAndWait<T>(_ block: () -> T) -> T {
-        var result: T?
-        performAndWait {
-            result = block()
-        }
-        return result!
+        return object(with: objectId) as? O
     }
 }
 
 extension NSManagedObject {
-    var moc: NSManagedObjectContext? {
+    public var moc: NSManagedObjectContext? {
         managedObjectContext
     }
 

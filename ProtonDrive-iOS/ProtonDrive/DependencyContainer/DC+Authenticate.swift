@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import ProtonCore_Challenge
 import ProtonCore_LoginUI
 import ProtonCore_Services
 import ProtonCore_Environment
@@ -58,10 +59,7 @@ extension DriveDependencyContainer {
         
         let authenticator = LoginAndSignup(appName: "ProtonDrive",
                               clientApp: .drive,
-                              environment: Constants.clientApiConfig.environment,
-                              trustKit: PMAPIService.trustKit,
-                              apiServiceDelegate: networkClient,
-                              forceUpgradeDelegate: networkClient,
+                              apiService: networkService,
                               minimumAccountType: .external,
                               isCloseButtonAvailable: false,
                               paymentsAvailability: paymentsAvailability,

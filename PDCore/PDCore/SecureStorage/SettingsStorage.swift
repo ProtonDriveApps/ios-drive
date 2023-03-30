@@ -22,7 +22,7 @@ public enum SettingsStorageSuite {
     case group(named: String)
     case inMemory(initialContentFrom: URL)
 
-    var directoryUrl: URL {
+    public var directoryUrl: URL {
         switch self {
         case let .group(named: appGroup):
             guard let fileContainer = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup) else {

@@ -131,7 +131,7 @@ public class StorageManager: NSObject {
     @SettingsStorage("finishedFetchingShareURLs") var finishedFetchingShareURLs: Bool?
     @SettingsStorage("finishedFetchingTrash") var finishedFetchingTrash: Bool?
     private let persistentContainer: NSPersistentContainer
-    let userDefaults: UserDefaults // Ideally, this should be replaced with @SettigsStorage
+    let userDefaults: UserDefaults // Ideally, this should be replaced with @SettingsStorage
     
     public convenience init(suite: SettingsStorageSuite, sessionVault: SessionVault) {
         switch suite {
