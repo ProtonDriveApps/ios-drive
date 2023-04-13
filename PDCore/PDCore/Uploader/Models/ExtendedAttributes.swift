@@ -28,17 +28,32 @@ public struct ExtendedAttributes: Codable {
         public let modificationTime: String?
         public let size: Int?
         public let blockSizes: [Int]?
+        public let digests: Digests?
 
-        public init(modificationTime: Date, size: Int, blockSizes: [Int]) {
+        public init(modificationTime: Date, size: Int, blockSizes: [Int], digests: Digests?) {
             self.modificationTime = ISO8601DateFormatter().string(from: modificationTime)
             self.size = size
             self.blockSizes = blockSizes
+            self.digests = digests
         }
 
         enum CodingKeys: String, CodingKey {
             case modificationTime = "ModificationTime"
             case size = "Size"
             case blockSizes = "BlockSizes"
+            case digests = "Digests"
+        }
+    }
+    
+    public struct Digests: Codable {
+        public let sha1: String?
+        
+        public init(sha1: String?) {
+            self.sha1 = sha1
+        }
+        
+        enum CodingKeys: String, CodingKey {
+            case sha1 = "SHA1"
         }
     }
 

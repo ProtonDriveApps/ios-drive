@@ -21,6 +21,7 @@ import PDUIComponents
 
 struct NodeListSecondLineView: View {
     let vm: NodeListSecondLine
+    let parentIdentifier: String
 
     var body: some View {
         Group {
@@ -43,6 +44,7 @@ struct NodeListSecondLineView: View {
             .padding(.trailing, 4)
 
             Text(vm.subtitle)
+                .accessibility(identifier: parentIdentifier)
                 .font(.caption)
                 .foregroundColor(vm.isFailedStyle ? ColorProvider.NotificationError : ColorProvider.TextWeak)
         }
@@ -52,14 +54,17 @@ struct NodeListSecondLineView: View {
     func badgeIcons(from badges: [Badge]) -> some View {
         if badges.contains(.cloud) {
             RoundIconSmall(icon: IconProvider.cloud, color: ColorProvider.TextWeak)
+                .accessibilityIdentifier("RoundIconSmall.cloud")
         }
         
         if badges.contains(.shared) {
             RoundIconSmall(icon: IconProvider.link, color: ColorProvider.TextWeak)
+                .accessibilityIdentifier("RoundIconSmall.shared")
         }
 
         if badges.contains(.offline(downloaded: true)) {
             RoundIconSmall(icon: IconProvider.arrowDownCircle, color: ColorProvider.TextWeak)
+                .accessibilityIdentifier("RoundIconSmall.offline")
         }
     }
 }

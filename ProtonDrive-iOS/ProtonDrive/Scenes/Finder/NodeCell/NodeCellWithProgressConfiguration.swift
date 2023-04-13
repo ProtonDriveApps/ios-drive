@@ -27,6 +27,7 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
     let thumbnailViewModel: ThumbnailImageViewModel?
     var nodeRowActionMenuViewModel: NodeRowActionMenuViewModel?
     var uploadManagementMenuViewModel: UploadManagementMenuViewModel?
+    private let nodeStatePolicy: NodeStatePolicy
 
     private var cancellables = Set<AnyCancellable>()
     private var progressCancellable: AnyCancellable?
@@ -35,8 +36,7 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
     private var progress: Progress? {
         self.progressTracker?.progress
     }
-    
-    var state: Node.State { node.state ?? .active }
+
     let iconName: String
     var name: String
     var isFavorite: Bool { node.isFavorite }
@@ -58,32 +58,25 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
     init(from node: Node,
          fileTypeAsset: FileTypeAsset = .shared,
          selectionModel: CellSelectionModel? = nil,
-         uploadProgresses: [UUID: Progress]? = [:],
+         progressesAvailable: Bool = false,
+         progressTracker: ProgressTracker? = nil,
          downloadProgresses: [ProgressTracker] = [],
-         thumbnailLoader: ThumbnailLoader)
+         thumbnailLoader: ThumbnailLoader,
+         nodeStatePolicy: NodeStatePolicy)
     {
-        self.progressesAvailable = uploadProgresses != nil
+        self.progressesAvailable = progressesAvailable
         self.node = node
         self.selectionModel = selectionModel
         self.id = node.id
         self.name = node.decryptedName
+        self.nodeStatePolicy = nodeStatePolicy
 
         self.iconName = fileTypeAsset.getAsset(node.mimeType)
 
-        var progressPack: ProgressTracker?
-        if let file = node as? File {
-            if let uploadID = file.uploadID,
-               let uploadProgress = uploadProgresses?[uploadID],
-               file.activeRevisionDraft != nil {
-                progressPack = ProgressTracker(progress: uploadProgress, direction: .upstream)
-            } else {
-                progressPack = downloadProgresses.first { $0.matches(file.id) }
-            }
-        }
-        self.progressTracker = progressPack
-        self.progressDirection = progressPack?.direction
+        self.progressTracker = progressTracker
+        self.progressDirection = progressTracker?.direction
         self.thumbnailViewModel = ThumbnailImageViewModel(node: node, loader: thumbnailLoader)
-        self.progressCancellable = progressPack?.progressPublisher()?
+        self.progressCancellable = progressTracker?.progressPublisher()?
             .receive(on: DispatchQueue.main)
             .throttle(for: .milliseconds(300), scheduler: DispatchQueue.main, latest: true)
             .sink { [weak self] in
@@ -113,15 +106,15 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
     }
     
     var uploadFailed: Bool {
-        ((self.state == .uploading || self.file?.uploadID != nil) && self.progress == nil && self.progressesAvailable)
+        nodeStatePolicy.isUploadFailed(for: node, progressTracker: progressTracker, areProgressesAvailable: progressesAvailable)
     }
     
     var uploadWaiting: Bool {
-        self.state == .cloudImpediment
+        nodeStatePolicy.isUploadWaiting(for: node)
     }
     
     var uploadPaused: Bool {
-        [Node.State.paused, .interrupted].contains(state)
+        nodeStatePolicy.isUploadPaused(for: node)
     }
     
     private var percentFormatter: NumberFormatter = {
@@ -137,7 +130,7 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
         case _ where uploadPaused:
             return "Paused"
             
-        case _ where self.state == .cloudImpediment:
+        case _ where uploadWaiting:
             return "Waiting..."
             
         case .none where self.uploadFailed:

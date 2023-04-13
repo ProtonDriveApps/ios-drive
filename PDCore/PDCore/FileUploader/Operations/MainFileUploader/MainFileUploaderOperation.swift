@@ -61,6 +61,7 @@ final class MainFileUploaderOperation: AsynchronousOperation, UploadOperation {
     }
 
     override func cancel() {
+        ConsoleLogger.shared?.log("🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
         super.cancel()
         dependencies.reversed().forEach { $0.cancel() }
         progress.cancel()

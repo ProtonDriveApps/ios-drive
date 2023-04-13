@@ -47,11 +47,24 @@ extension Revision {
     /// Date in which the last request for uploading blocks has been performed
     @NSManaged var requestedUpload: Date?
 
-    @objc enum UploadState: Int16 {
+    @objc enum UploadState: Int16, CustomStringConvertible {
         case none
         case created
         case encrypted
         case uploaded
+
+        var description: String {
+            switch self {
+            case .none:
+                return "None"
+            case .created:
+                return "Created"
+            case .encrypted:
+                return "Encrypted"
+            case .uploaded:
+                return "Uploaded"
+            }
+        }
     }
 }
 

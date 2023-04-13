@@ -34,7 +34,7 @@ public extension Progress {
         set { totalUnitCount = Int64(newValue) }
     }
 
-    func modifyTotalUnitsOfWork(by newUnitsOfWork: Int) {
+    func increaseTotalUnitsOfWork(by newUnitsOfWork: Int) {
         let initial = totalUnitsOfWork
         totalUnitsOfWork = initial + newUnitsOfWork
     }
@@ -43,16 +43,13 @@ public extension Progress {
         addChild(child, withPendingUnitCount: Int64(unitsOfWork))
     }
 
-    func complete(_ units: UnitOfWork) {
+    func complete(units: UnitOfWork) {
         unitsOfWorkCompleted += units
     }
 
     func complete() {
         completedUnitCount = totalUnitCount
     }
-}
-
-public extension Progress {
 
     func child(pending unitsOfWork: UnitOfWork = .zero) -> Progress {
         let child = Progress(unitsOfWork: unitsOfWork)
@@ -60,4 +57,20 @@ public extension Progress {
         return child
     }
 
+}
+
+extension OperationQueue {
+
+    func addProgressOperations(_ ops: [OperationWithProgress]) {
+        ops.forEach(self.addUnitaryProgressOperation)
+    }
+
+    func addProgressOperation(_ op: OperationWithProgress, pendingWork: UnitOfWork = 1) {
+        progress.addChild(op.progress, pending: pendingWork)
+        addOperation(op)
+    }
+
+    private func addUnitaryProgressOperation(_ op: OperationWithProgress) {
+        addProgressOperation(op)
+    }
 }

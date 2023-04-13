@@ -120,7 +120,7 @@ extension FinderCoordinator {
     private func startFolder(_ nodeID: NodeIdentifier, _ node: Folder) -> some View {
         let model = FolderModel(tower: tower, node: node, nodeID: nodeID)
         self.model = model
-        let viewModel = FolderViewModel(localSettings: tower.localSettings, model: model, node: node)
+        let viewModel = FolderViewModel(localSettings: tower.localSettings, model: model, node: node, nodeStatePolicy: FileNodeStatePolicy())
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
     }

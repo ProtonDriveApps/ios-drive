@@ -27,7 +27,7 @@ final class NotificationsPermissionsHostingViewController: UIHostingController<N
         presentationController?.delegate = self
     }
 
-    @MainActor required dynamic init?(coder aDecoder: NSCoder) {
+    @MainActor dynamic required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
@@ -35,5 +35,9 @@ final class NotificationsPermissionsHostingViewController: UIHostingController<N
 
     func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
         viewModel.close()
+    }
+    
+    func adaptivePresentationStyle(for controller: UIPresentationController) -> UIModalPresentationStyle {
+        return .overFullScreen
     }
 }

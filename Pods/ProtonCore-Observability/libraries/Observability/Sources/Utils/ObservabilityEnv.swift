@@ -20,7 +20,8 @@
 //  along with ProtonCore. If not, see https://www.gnu.org/licenses/.
 //
 
-import ProtonCore_Services
+import ProtonCore_Networking
+import ProtonCore_FeatureSwitch
 
 public struct ObservabilityEnv {
     
@@ -33,10 +34,12 @@ public struct ObservabilityEnv {
     /// The setupWorld function sets up the service used to report events before the
     /// user is logged in. Session ID is not relevant in the context of Observability.
     /// - Parameters:
-    ///     - apiService: Should be the instance of the APIService used
+    ///     - requestPerformer: Should be an instance conforming to RequestPerforming used
     ///     before the user is logged in.
-    public mutating func setupWorld(apiService: APIService) {
-        self.observabilityService = ObservabilityServiceImpl(apiService: apiService)
+    public mutating func setupWorld(requestPerformer: RequestPerforming) {
+        if FeatureFactory.shared.isEnabled(.observability) {
+            self.observabilityService = ObservabilityServiceImpl(requestPerformer: requestPerformer)
+        }
     }
     
     var observabilityService: ObservabilityService?

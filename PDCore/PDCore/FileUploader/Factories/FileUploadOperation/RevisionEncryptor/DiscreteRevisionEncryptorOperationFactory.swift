@@ -38,10 +38,10 @@ class DiscreteRevisionEncryptorOperationFactory: FileUploadOperationFactory {
     }
 
     func makeRevisionEncryptor(_ progress: Progress, blocks: Int) -> RevisionEncryptor {
-        let blocksEncryptor = makeBlocksRevisionEncryptor(progress: progress.child(pending: blocks), moc: moc.childContext())
+        let shaDigestBuilder = SHA1DigestBuilder()
+        let blocksEncryptor = makeBlocksRevisionEncryptor(progress: progress.child(pending: blocks), moc: moc.childContext(), digestBuilder: shaDigestBuilder)
         let thumbnailEncryptor = makeThumbnailRevisionEncryptor(progress: progress.child(pending: 1), moc: moc.childContext())
-        let xAttrEncryptor = makeExtendedAttributesRevisionEncryptor(progress: progress.child(pending: 1), moc: moc.childContext())
-
+        let xAttrEncryptor = makeExtendedAttributesRevisionEncryptor(progress: progress.child(pending: 1), moc: moc.childContext(), digestBuilder: shaDigestBuilder)
         return DefaultRevisionEncryptor(
             blocksEncryptor: blocksEncryptor,
             thumbnailEncryptor: thumbnailEncryptor,
@@ -50,16 +50,16 @@ class DiscreteRevisionEncryptorOperationFactory: FileUploadOperationFactory {
         )
     }
 
-    func makeBlocksRevisionEncryptor(progress: Progress, moc: NSManagedObjectContext) -> RevisionEncryptor {
-        DiscreteBlocksRevisionEncryptor(signersKitFactory: signersKitFactory, maxBlockSize: maxBlockSize(), progress: progress, moc: moc)
+    func makeBlocksRevisionEncryptor(progress: Progress, moc: NSManagedObjectContext, digestBuilder: DigestBuilder) -> RevisionEncryptor {
+        DiscreteBlocksRevisionEncryptor(signersKitFactory: signersKitFactory, maxBlockSize: maxBlockSize(), progress: progress, moc: moc, digestBuilder: digestBuilder)
     }
 
     func makeThumbnailRevisionEncryptor(progress: Progress, moc: NSManagedObjectContext) -> RevisionEncryptor {
         ThumbnailRevisionEncryptor(thumbnailProvider: makeThumbnailProvider(), signersKitFactory: signersKitFactory, progress: progress, moc: moc)
     }
 
-    func makeExtendedAttributesRevisionEncryptor(progress: Progress, moc: NSManagedObjectContext) -> ExtendedAttributesRevisionEncryptor {
-        ExtendedAttributesRevisionEncryptor(signersKitFactory: signersKitFactory, maxBlockSize: maxBlockSize(), progress: progress, moc: moc)
+    func makeExtendedAttributesRevisionEncryptor(progress: Progress, moc: NSManagedObjectContext, digestBuilder: DigestBuilder) -> ExtendedAttributesRevisionEncryptor {
+        ExtendedAttributesRevisionEncryptor(signersKitFactory: signersKitFactory, maxBlockSize: maxBlockSize(), progress: progress, moc: moc, digestBuilder: digestBuilder)
     }
 
     func makeThumbnailProvider() -> ThumbnailProvider {

@@ -71,6 +71,7 @@
 		18FBBA5F24F1DC00003295FF /* TrashAlertEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FBBA5E24F1DC00003295FF /* TrashAlertEnvironment.swift */; };
 		18FBBA6224F1F087003295FF /* UploadSectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FBBA6124F1F087003295FF /* UploadSectionViewModel.swift */; };
 		2FF4922890232206DCCFABC0 /* Pods_ProtonDriveFileProviderUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F68BA7DF1533ED7CE46E4692 /* Pods_ProtonDriveFileProviderUI.framework */; };
+		310FB4F529C1B692005EA929 /* NodeStatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 310FB4F429C1B692005EA929 /* NodeStatePolicy.swift */; };
 		311ECF7F29A5249E00F76062 /* InterruptedUploadsContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311ECF7A29A5249E00F76062 /* InterruptedUploadsContainer.swift */; };
 		311ECF8029A5249E00F76062 /* InterruptedUploadsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311ECF7C29A5249E00F76062 /* InterruptedUploadsController.swift */; };
 		311ECF8129A5249E00F76062 /* InterruptedUploadsInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311ECF7E29A5249E00F76062 /* InterruptedUploadsInteractor.swift */; };
@@ -91,12 +92,20 @@
 		318DA41C296EC6C80070329F /* ApplicationStateOperationsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318DA41B296EC6C80070329F /* ApplicationStateOperationsController.swift */; };
 		318DA41E296EC8310070329F /* UploadOperationInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318DA41D296EC8310070329F /* UploadOperationInteractor.swift */; };
 		319BF7A1299A2DCE004373DA /* NotificationsPermissionsHostingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 319BF7A0299A2DCE004373DA /* NotificationsPermissionsHostingViewController.swift */; };
+		31B7828429BB6E050060B403 /* PhotoPickerResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31B7828329BB6E050060B403 /* PhotoPickerResource.swift */; };
+		31B7828929BB6E9B0060B403 /* PhotoItemProviderLoadResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31B7828829BB6E9B0060B403 /* PhotoItemProviderLoadResource.swift */; };
 		31BA8440297585E500A15143 /* BackgroundOperations.md in Resources */ = {isa = PBXBuildFile; fileRef = 31BA843F297585E500A15143 /* BackgroundOperations.md */; };
+		31C6B23629C85416001C585A /* PhotosPickerCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31C6B23529C85416001C585A /* PhotosPickerCoordinator.swift */; };
+		31C6B23929C85817001C585A /* PhotosPickerFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31C6B23829C85817001C585A /* PhotosPickerFactory.swift */; };
 		31CC2DCA298B9E5C00B73E9C /* NotificationsPermissionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CC2DC9298B9E5C00B73E9C /* NotificationsPermissionsController.swift */; };
 		31CC2DCD298B9E8B00B73E9C /* LocalNotificationsResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CC2DCC298B9E8B00B73E9C /* LocalNotificationsResource.swift */; };
 		31CC2DD0298BD6B400B73E9C /* NotificationsPermissionsCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CC2DCF298BD6B400B73E9C /* NotificationsPermissionsCoordinator.swift */; };
 		31CC2DD3298BF85700B73E9C /* NotificationsPermissionsFlowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CC2DD2298BF85700B73E9C /* NotificationsPermissionsFlowController.swift */; };
 		31D0BA2529793D2600A5028C /* NotificationBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31D0BA2429793D2600A5028C /* NotificationBanner.swift */; };
+		31E1D43D29C9B1A3000DD73D /* ItemProviderLoadOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E1D43C29C9B1A3000DD73D /* ItemProviderLoadOperation.swift */; };
+		31EF34AE29C494630022BF83 /* PickersContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31EF34AD29C494630022BF83 /* PickersContainer.swift */; };
+		31EF34B129C4B5ED0022BF83 /* PickerInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31EF34B029C4B5ED0022BF83 /* PickerInteractor.swift */; };
+		31EF34B429C4B6380022BF83 /* PickerResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31EF34B329C4B6380022BF83 /* PickerResource.swift */; };
 		37C9395F28F04C5F00A1C8E6 /* LoginExternalAccountNotSupportedSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37C9395E28F04C5F00A1C8E6 /* LoginExternalAccountNotSupportedSetup.swift */; };
 		7646BA65289147E700DE4D09 /* NodeRowActionViewModel+TrashSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7646BA64289147E700DE4D09 /* NodeRowActionViewModel+TrashSection.swift */; };
 		7646BA83289A73AE00DE4D09 /* FinderNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7646BA82289A73AE00DE4D09 /* FinderNotifications.swift */; };
@@ -391,6 +400,7 @@
 		1B0020C79C621A38800E14B8 /* Pods_ProtonDriveFileProvider.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_ProtonDriveFileProvider.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		29A9511059D792B52A5DAD90 /* Pods-ProtonDrive.release-external.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ProtonDrive.release-external.xcconfig"; path = "Target Support Files/Pods-ProtonDrive/Pods-ProtonDrive.release-external.xcconfig"; sourceTree = "<group>"; };
 		3079F03FAE711FFB7CD6D683 /* Pods-ProtonDriveUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ProtonDriveUITests.debug.xcconfig"; path = "Target Support Files/Pods-ProtonDriveUITests/Pods-ProtonDriveUITests.debug.xcconfig"; sourceTree = "<group>"; };
+		310FB4F429C1B692005EA929 /* NodeStatePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeStatePolicy.swift; sourceTree = "<group>"; };
 		311ECF7A29A5249E00F76062 /* InterruptedUploadsContainer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InterruptedUploadsContainer.swift; sourceTree = "<group>"; };
 		311ECF7C29A5249E00F76062 /* InterruptedUploadsController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InterruptedUploadsController.swift; sourceTree = "<group>"; };
 		311ECF7E29A5249E00F76062 /* InterruptedUploadsInteractor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InterruptedUploadsInteractor.swift; sourceTree = "<group>"; };
@@ -411,12 +421,20 @@
 		318DA41B296EC6C80070329F /* ApplicationStateOperationsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationStateOperationsController.swift; sourceTree = "<group>"; };
 		318DA41D296EC8310070329F /* UploadOperationInteractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadOperationInteractor.swift; sourceTree = "<group>"; };
 		319BF7A0299A2DCE004373DA /* NotificationsPermissionsHostingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsPermissionsHostingViewController.swift; sourceTree = "<group>"; };
+		31B7828329BB6E050060B403 /* PhotoPickerResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPickerResource.swift; sourceTree = "<group>"; };
+		31B7828829BB6E9B0060B403 /* PhotoItemProviderLoadResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoItemProviderLoadResource.swift; sourceTree = "<group>"; };
 		31BA843F297585E500A15143 /* BackgroundOperations.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = BackgroundOperations.md; sourceTree = "<group>"; };
+		31C6B23529C85416001C585A /* PhotosPickerCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosPickerCoordinator.swift; sourceTree = "<group>"; };
+		31C6B23829C85817001C585A /* PhotosPickerFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosPickerFactory.swift; sourceTree = "<group>"; };
 		31CC2DC9298B9E5C00B73E9C /* NotificationsPermissionsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsPermissionsController.swift; sourceTree = "<group>"; };
 		31CC2DCC298B9E8B00B73E9C /* LocalNotificationsResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNotificationsResource.swift; sourceTree = "<group>"; };
 		31CC2DCF298BD6B400B73E9C /* NotificationsPermissionsCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsPermissionsCoordinator.swift; sourceTree = "<group>"; };
 		31CC2DD2298BF85700B73E9C /* NotificationsPermissionsFlowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsPermissionsFlowController.swift; sourceTree = "<group>"; };
 		31D0BA2429793D2600A5028C /* NotificationBanner.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NotificationBanner.swift; sourceTree = "<group>"; };
+		31E1D43C29C9B1A3000DD73D /* ItemProviderLoadOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemProviderLoadOperation.swift; sourceTree = "<group>"; };
+		31EF34AD29C494630022BF83 /* PickersContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickersContainer.swift; sourceTree = "<group>"; };
+		31EF34B029C4B5ED0022BF83 /* PickerInteractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickerInteractor.swift; sourceTree = "<group>"; };
+		31EF34B329C4B6380022BF83 /* PickerResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickerResource.swift; sourceTree = "<group>"; };
 		37C9395E28F04C5F00A1C8E6 /* LoginExternalAccountNotSupportedSetup.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LoginExternalAccountNotSupportedSetup.swift; sourceTree = "<group>"; };
 		4DBF73163F48285AE66C932B /* Pods-ProtonDriveTests.release-store.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ProtonDriveTests.release-store.xcconfig"; path = "Target Support Files/Pods-ProtonDriveTests/Pods-ProtonDriveTests.release-store.xcconfig"; sourceTree = "<group>"; };
 		50E499C1C74E03FF28B95634 /* Pods-ProtonDrive.release-store.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ProtonDrive.release-store.xcconfig"; path = "Target Support Files/Pods-ProtonDrive/Pods-ProtonDrive.release-store.xcconfig"; sourceTree = "<group>"; };
@@ -974,6 +992,10 @@
 		189C1AE32695AF6400F410AF /* Pickers */ = {
 			isa = PBXGroup;
 			children = (
+				31EF34B229C4B6330022BF83 /* Resource */,
+				31EF34AF29C4B5E50022BF83 /* Domain */,
+				31EF34AC29C494380022BF83 /* Injection */,
+				31EF34AB29C4942C0022BF83 /* Photo */,
 				18A81A0C269CAA1000351694 /* PickerDelegate.swift */,
 				189C1AE42695B07700F410AF /* PhotosPicker.swift */,
 				AB0C5ABF246571350002C0AA /* CameraPicker.swift */,
@@ -1084,6 +1106,14 @@
 			path = ../Pods;
 			sourceTree = "<group>";
 		};
+		310FB4F329C1B67B005EA929 /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				310FB4F429C1B692005EA929 /* NodeStatePolicy.swift */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
 		311ECF7829A5249E00F76062 /* InterruptedUploads */ = {
 			isa = PBXGroup;
 			children = (
@@ -1123,6 +1153,13 @@
 			children = (
 			);
 			path = Application;
+			sourceTree = "<group>";
+		};
+		312DDA2229BF15EF008692E2 /* Share */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Share;
 			sourceTree = "<group>";
 		};
 		313F34532993B1D4000F5B9C /* Domain */ = {
@@ -1270,6 +1307,30 @@
 			path = Application;
 			sourceTree = "<group>";
 		};
+		319D2C3029C3372B00C70A2B /* Subscription */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Subscription;
+			sourceTree = "<group>";
+		};
+		319D2C3329C33ABF00C70A2B /* Subscription */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Subscription;
+			sourceTree = "<group>";
+		};
+		31B7828229BB6DFB0060B403 /* Resource */ = {
+			isa = PBXGroup;
+			children = (
+				31B7828329BB6E050060B403 /* PhotoPickerResource.swift */,
+				31B7828829BB6E9B0060B403 /* PhotoItemProviderLoadResource.swift */,
+				31E1D43C29C9B1A3000DD73D /* ItemProviderLoadOperation.swift */,
+			);
+			path = Resource;
+			sourceTree = "<group>";
+		};
 		31C2CC85296EC48F00555ED7 /* BackgroundOperations */ = {
 			isa = PBXGroup;
 			children = (
@@ -1279,6 +1340,37 @@
 				318DA40C296EC54B0070329F /* Resource */,
 			);
 			path = BackgroundOperations;
+			sourceTree = "<group>";
+		};
+		31C6B23029C84E2D001C585A /* Pickers */ = {
+			isa = PBXGroup;
+			children = (
+				31C6B23129C84E33001C585A /* Domain */,
+			);
+			path = Pickers;
+			sourceTree = "<group>";
+		};
+		31C6B23129C84E33001C585A /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		31C6B23429C8540A001C585A /* Coordinator */ = {
+			isa = PBXGroup;
+			children = (
+				31C6B23529C85416001C585A /* PhotosPickerCoordinator.swift */,
+			);
+			path = Coordinator;
+			sourceTree = "<group>";
+		};
+		31C6B23729C85802001C585A /* Injection */ = {
+			isa = PBXGroup;
+			children = (
+				31C6B23829C85817001C585A /* PhotosPickerFactory.swift */,
+			);
+			path = Injection;
 			sourceTree = "<group>";
 		};
 		31CC2DC8298B9BDC00B73E9C /* Application */ = {
@@ -1304,6 +1396,40 @@
 				31CC2DCF298BD6B400B73E9C /* NotificationsPermissionsCoordinator.swift */,
 			);
 			path = Coordinator;
+			sourceTree = "<group>";
+		};
+		31EF34AB29C4942C0022BF83 /* Photo */ = {
+			isa = PBXGroup;
+			children = (
+				31C6B23729C85802001C585A /* Injection */,
+				31C6B23429C8540A001C585A /* Coordinator */,
+				31B7828229BB6DFB0060B403 /* Resource */,
+			);
+			path = Photo;
+			sourceTree = "<group>";
+		};
+		31EF34AC29C494380022BF83 /* Injection */ = {
+			isa = PBXGroup;
+			children = (
+				31EF34AD29C494630022BF83 /* PickersContainer.swift */,
+			);
+			path = Injection;
+			sourceTree = "<group>";
+		};
+		31EF34AF29C4B5E50022BF83 /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				31EF34B029C4B5ED0022BF83 /* PickerInteractor.swift */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		31EF34B229C4B6330022BF83 /* Resource */ = {
+			isa = PBXGroup;
+			children = (
+				31EF34B329C4B6380022BF83 /* PickerResource.swift */,
+			);
+			path = Resource;
 			sourceTree = "<group>";
 		};
 		37C9395D28F04C5F00A1C8E6 /* Tests */ = {
@@ -1372,6 +1498,7 @@
 		AB1E020224534B9B003A039C /* NodeCell */ = {
 			isa = PBXGroup;
 			children = (
+				310FB4F329C1B67B005EA929 /* Domain */,
 				18C79584261DC3C200AF145D /* FileType.swift */,
 				18C729BA26087ACE00116771 /* NodeSecondLine */,
 				AB1E020324534BA8003A039C /* NodeCellWithProgressConfiguration.swift */,
@@ -2761,6 +2888,7 @@
 				1879521D24F278A00047F5A0 /* UploadManagementMenuViewModel.swift in Sources */,
 				ABC2092D2456A85300BDA52F /* MenuViewModel.swift in Sources */,
 				18CBD6812554B29B00D5AC11 /* EditNodeViewController.swift in Sources */,
+				31B7828429BB6E050060B403 /* PhotoPickerResource.swift in Sources */,
 				D934B803284D7E3D0041C621 /* UIApplication+topViewController.swift in Sources */,
 				187BD62F24F1A16B00EC711C /* EditSectionEnvironment.swift in Sources */,
 				D95C9317284F6CC3003807F8 /* FailingAlert.swift in Sources */,
@@ -2859,9 +2987,11 @@
 				189C1AE52695B07700F410AF /* PhotosPicker.swift in Sources */,
 				318DA41E296EC8310070329F /* UploadOperationInteractor.swift in Sources */,
 				187D904724B8443F00755FE3 /* EditSectionViewModel.swift in Sources */,
+				31C6B23629C85416001C585A /* PhotosPickerCoordinator.swift in Sources */,
 				AB45D81A24A87A7E00C3F76E /* NodeCellSimpleConfiguration.swift in Sources */,
 				31CC2DCD298B9E8B00B73E9C /* LocalNotificationsResource.swift in Sources */,
 				AB716D0624A0FA6200A20B8C /* FinderViewModel.swift in Sources */,
+				31EF34B129C4B5ED0022BF83 /* PickerInteractor.swift in Sources */,
 				318DA414296EC54B0070329F /* OperationInteractor.swift in Sources */,
 				AB96DE2125B85103002BDCFF /* FinderMenu.swift in Sources */,
 				D9F86A5F291033DA00040C8C /* ShareLinkDecryptionErrorModel.swift in Sources */,
@@ -2872,16 +3002,21 @@
 				D968263C28466873009DA22B /* ProtectCoordinator.swift in Sources */,
 				311ECF8029A5249E00F76062 /* InterruptedUploadsController.swift in Sources */,
 				ABE794D62497C16E00F89D7A /* NSRange+Extension.swift in Sources */,
+				31EF34B429C4B6380022BF83 /* PickerResource.swift in Sources */,
 				AB38BC9024CEBC00001CD0FC /* HasRefreshControl.swift in Sources */,
 				AB45D81C24A87F3C00C3F76E /* NodeCellPlaceholderConfiguration.swift in Sources */,
 				318DA417296EC54B0070329F /* ApplicationRunningStateResource.swift in Sources */,
 				D92363F72857403500C295D5 /* ShareLinkView.swift in Sources */,
 				AB4B38BE24DAD6FB008B7A4B /* NoSpaceView+Endpoint.swift in Sources */,
 				AB3D3274248684660042EF66 /* EditNodeViewModel.swift in Sources */,
+				31E1D43D29C9B1A3000DD73D /* ItemProviderLoadOperation.swift in Sources */,
 				AB0C5AC0246571350002C0AA /* CameraPicker.swift in Sources */,
 				187E456824C81EAE001DAB75 /* TrashViewCoordinator.swift in Sources */,
 				ABDDDF8D2416A4B300EA585C /* FinderView.swift in Sources */,
+				310FB4F529C1B692005EA929 /* NodeStatePolicy.swift in Sources */,
+				31EF34AE29C494630022BF83 /* PickersContainer.swift in Sources */,
 				ABF3C8F82478234500263101 /* NodeDetailsViewModel.swift in Sources */,
+				31C6B23929C85817001C585A /* PhotosPickerFactory.swift in Sources */,
 				187B2ACC24F30F450008EABD /* TrashViewModel+DeleteAlert.swift in Sources */,
 				D9628CA2284CAEC500573F80 /* DC+Launch.swift in Sources */,
 				316B59D829682C6000449FCE /* SelectionAnimationModifier.swift in Sources */,
@@ -2902,6 +3037,7 @@
 				31CC2DD3298BF85700B73E9C /* NotificationsPermissionsFlowController.swift in Sources */,
 				76E93E4428A237DD004A885B /* DeleteAccountViewModel.swift in Sources */,
 				187C3BEF25560601008E3BED /* EditableNode.swift in Sources */,
+				31B7828929BB6E9B0060B403 /* PhotoItemProviderLoadResource.swift in Sources */,
 				AB3D32722486844C0042EF66 /* EditNodeModel.swift in Sources */,
 				D92363F328573D7900C295D5 /* SeparatedModifier.swift in Sources */,
 				7685A32D27EC5B7500F6CF29 /* String+Empty.swift in Sources */,
@@ -3284,7 +3420,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.8.0;
+				MARKETING_VERSION = 1.9.0;
 				OTHER_CODE_SIGN_FLAGS = "--deep";
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -3448,7 +3584,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.8.0;
+				MARKETING_VERSION = 1.9.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.fileprovider;
@@ -3523,7 +3659,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.8.0;
+				MARKETING_VERSION = 1.9.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "ch.protonmail.drive.fileprovider-ui";

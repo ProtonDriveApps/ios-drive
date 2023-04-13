@@ -30,6 +30,7 @@ class MenuViewModel: ObservableObject, LogoutRequesting {
     @Published var accountInfo: AccountInfo = .blank
     @Published var usagePercent: Double = 0.0
     @Published var usageBreakdown: String = ""
+    @Published var isStorageButtonAvailable: Bool = false
     
     private var cancellables: Set<AnyCancellable> = []
     private let selectedScreenSubject = CurrentValueSubject<Destination, Never>(.myFiles)
@@ -70,6 +71,7 @@ class MenuViewModel: ObservableObject, LogoutRequesting {
     private func apply(userInfo: UserInfo) {
         usagePercent = userInfo.usedSpace / max(userInfo.maxSpace, 1)
         usageBreakdown = "\(formatter.string(for: userInfo.usedSpace) ?? "?") of \(formatter.string(for: userInfo.maxSpace) ?? "?") used"
+        isStorageButtonAvailable = !userInfo.isPaid
     }
 
     func subscribeToUserInfoChanges() {

@@ -87,8 +87,11 @@ struct FinderListCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
                             .accessibility(identifier: "NodeCell.Text.\(vm.name)")
 
                         HStack(spacing: 0) {
-                            NodeListSecondLineView(vm: vm.secondLine)
-                                .accessibility(identifier: "NodeListSecondLineView.\(vm.name)")
+                            NodeListSecondLineView(
+                                vm: vm.secondLine,
+                                parentIdentifier: "NodeListSecondLineView.\(vm.name)"
+                            )
+                            .accessibilityElement(children: .contain)
                             Spacer()
                         }
 

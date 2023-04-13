@@ -109,18 +109,6 @@ extension FileDraft {
         }
     }
 
-    func getUploadableRevision() throws -> UploadableRevision {
-        guard let moc = file.moc else { throw File.noMOC() }
-
-        return try moc.performAndWait {
-            guard let revision = file.activeRevisionDraft else {
-                throw File.InvalidState(message: "Invalid File, it should have already an activeRevisionDraft")
-            }
-
-            return revision.unsafeUploadableRevision
-        }
-    }
-
     func getRequestedUploadForActiveRevisionDraft() throws -> Date {
         guard let moc = file.moc else { throw File.noMOC() }
 
@@ -161,24 +149,11 @@ extension FileDraft {
         }
     }
 
-    func getSealableRevision() throws -> Revision {
-        guard let moc = file.managedObjectContext else {
-            throw NSError(domain: "Attempted to get moc from file already deleted for Revision Sealer", code: 0)
-        }
-
-        let revision: Revision = try moc.performAndWait {
-            guard let revision = file.activeRevisionDraft else {
-                throw NSError(domain: "Revision Sealer invalid state - File has no active revision", code: 0)
-            }
-
-            guard revision.uploadState == .uploaded else {
-                throw NSError(domain: "Revision Sealer invalid state - Active revision is not uploaded", code: 0)
-            }
-
-            return revision
+    func getUploadableRevision() throws -> Revision {
+        guard let revision = file.activeRevisionDraft else {
+            throw file.invalidState("No active revision found")
         }
 
         return revision
     }
-
 }

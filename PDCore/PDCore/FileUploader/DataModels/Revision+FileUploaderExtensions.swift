@@ -16,16 +16,6 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 extension Revision {
-
-    var unsafeUploadableRevision: UploadableRevision {
-        UploadableRevision(
-            identifier: RevisionIdentifier(share: file.shareID, file: file.id, revision: id),
-            blocks: uploadableUploadBlocks().compactMap(UploadableBlock.init),
-            thumbnail: thumbnail?.uploadable,
-            signatureEmail: file.signatureEmail
-        )
-    }
-
     var unsafeFullUploadableThumbnail: FullUploadableThumbnail? {
         thumbnail?.unsafeFullUploadableThumbnail
     }

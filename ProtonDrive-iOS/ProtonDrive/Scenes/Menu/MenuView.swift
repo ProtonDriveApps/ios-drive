@@ -134,6 +134,19 @@ struct MenuView: View {
                 isStoreKitReady: Constants.isStoreKitReady
             )
             .onAppear(perform: vm.subscribeToUserInfoChanges)
+
+            #if HAS_PAYMENTS
+            storageButton
+            #endif
+        }
+    }
+
+    @ViewBuilder
+    private var storageButton: some View {
+        if vm.isStorageButtonAvailable {
+            GradientButton(title: "Get more storage") {
+                vm.go(to: .servicePlans)
+            }
         }
     }
 

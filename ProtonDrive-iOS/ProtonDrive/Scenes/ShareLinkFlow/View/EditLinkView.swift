@@ -50,6 +50,7 @@ struct EditLinkView: View {
                     textField
 
                     Button(action: { vm.isSecure.toggle() }, label: { textFieldIcon })
+                        .accessibilityIdentifier("EditLinkView.PasswordTextField.RevealButton")
                 }
                 .padding(.horizontal)
                 .background(
@@ -140,9 +141,11 @@ struct EditLinkView: View {
         Group {
             if vm.isSecure {
                 SecureField(vm.passwordPlaceholder, text: $vm.password)
+                    .accessibilityIdentifier("EditLinkView.PasswordTextField")
             } else {
                 TextField(vm.passwordPlaceholder, text: $vm.password)
                     .disableAutocorrection(true)
+                    .accessibilityIdentifier("EditLinkView.PasswordTextField")
             }
         }
         .animation(.easeInOut(duration: 0.2), value: vm.isSecure)

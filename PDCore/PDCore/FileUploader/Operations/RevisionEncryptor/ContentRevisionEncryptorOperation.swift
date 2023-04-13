@@ -50,7 +50,8 @@ final class ContentRevisionEncryptorOperation: AsynchronousOperation {
     }
 
     override func cancel() {
-        super.cancel()
+        ConsoleLogger.shared?.log("🙅‍♂️🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
         contentEncryptor.cancel()
+        super.cancel()
     }
 }

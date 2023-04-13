@@ -297,7 +297,7 @@ extension SessionVault {
         guard let info = self.userInfo else {
             return nil
         }
-        return .init(usedSpace: info.usedSpace, maxSpace: info.maxSpace, invoiceState: InvoiceUserState(rawValue: info.delinquent) ?? .onTime)
+        return .init(usedSpace: info.usedSpace, maxSpace: info.maxSpace, invoiceState: InvoiceUserState(rawValue: info.delinquent) ?? .onTime, isPaid: info.subscribed > 0)
     }
 }
 
@@ -327,11 +327,13 @@ public struct UserInfo: Equatable {
     public let usedSpace: Double
     public let maxSpace: Double
     public let invoiceState: InvoiceUserState
+    public let isPaid: Bool
 
-    public init(usedSpace: Double, maxSpace: Double, invoiceState: InvoiceUserState) {
+    public init(usedSpace: Double, maxSpace: Double, invoiceState: InvoiceUserState, isPaid: Bool) {
         self.usedSpace = usedSpace
         self.maxSpace = maxSpace
         self.invoiceState = invoiceState
+        self.isPaid = isPaid
     }
 
     public var availableStorage: Int {

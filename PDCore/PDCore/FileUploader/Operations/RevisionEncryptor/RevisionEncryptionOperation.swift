@@ -69,7 +69,6 @@ final class RevisionEncryptionOperation: AsynchronousOperation, UploadOperation 
 
                 case .failure(let error):
                     ConsoleLogger.shared?.log("STAGE: 2 🏞📦 Encrypt revision finished ❌", osLogType: FileUploader.self)
-                    ConsoleLogger.shared?.log(error, osLogType: FileUploader.self)
                     self.onError(error)
                 }
             }
@@ -80,9 +79,9 @@ final class RevisionEncryptionOperation: AsynchronousOperation, UploadOperation 
     }
 
     override func cancel() {
-        ConsoleLogger.shared?.log("🙅‍♂️🙅‍♂️🙅‍♂️🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
-        super.cancel()
+        ConsoleLogger.shared?.log("🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
         revisionEncryptor.cancel()
+        super.cancel()
     }
 
     var recordingName: String { "encryptingRevision" }

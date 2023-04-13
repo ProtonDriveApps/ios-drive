@@ -53,7 +53,7 @@ final class FileDraftUploaderOperation: AsynchronousOperation, UploadOperation {
             switch result {
             case .success:
                 ConsoleLogger.shared?.log("STAGE: 1 Upload draft ✍️☁️ finished ✅", osLogType: FileUploader.self)
-                self.progress.unitsOfWorkCompleted = self.unitOfWork
+                self.progress.complete()
                 self.state = .finished
 
             case .failure(let error):
@@ -64,9 +64,9 @@ final class FileDraftUploaderOperation: AsynchronousOperation, UploadOperation {
     }
 
     override func cancel() {
-        ConsoleLogger.shared?.log("🙅‍♂️🙅‍♂️🙅‍♂️🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
-        super.cancel()
+        ConsoleLogger.shared?.log("🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
         fileDraftUploader.cancel()
+        super.cancel()
     }
 
     var recordingName: String { "creatingFileDraft" }

@@ -101,6 +101,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         // Core Feature Flags
         FeatureFactory.shared.enable(&.unauthSession)
+        FeatureFactory.shared.enable(&.externalSignup)
 
         #if DEBUG
         FeatureFactory.shared.enable(&.enforceUnauthSessionStrictVerificationOnBackend)

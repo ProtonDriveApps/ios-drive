@@ -21,7 +21,7 @@ import Combine
 public class ProgressTracker {
     public enum Direction { case upstream, downstream }
     
-    public var progress: Progress?
+    public private(set) var progress: Progress?
     public let direction: Direction
     
     internal init(operation: OperationWithProgress) {

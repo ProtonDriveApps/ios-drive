@@ -23,7 +23,6 @@ public final class ItemActionsOutlet: LogObject {
     public typealias SuccessfulCompletion = (NSFileProviderItem?, NSFileProviderItemFields, Bool)
     public typealias Completion = (NSFileProviderItem?, NSFileProviderItemFields, Bool, Error?) -> Void
     public static var osLog: OSLog = OSLog(subsystem: "ProtonDriveFileProvider", category: "ItemActionsOutlet")
-    private var nodeFetcher: NodeFetcher?
 
     public init() { }
     
@@ -112,6 +111,23 @@ public final class ItemActionsOutlet: LogObject {
                 completionHandler(nil, [], false, Errors.nodeNotFound)
                 return Progress()
             }
+            if #available(macOS 12.0, *) {
+                // Renaming an item just after creation might fail because it has not been uploaded yet
+                // and modifying it will return an error. So needs to be created first
+                if let node = self.node(tower: tower, of: item.itemIdentifier),
+                   let parentFolder = self.parent(tower: tower, of: item),
+                   let state = node.state, state == .deleted {
+                    let (updatedItem, conflicted) = resolveConflictOnItemIfNeeded(tower: tower, item: item, changeType: .create, request: request)
+                    if conflicted {
+                        completionHandler(updatedItem, [], false, nil)
+                    } else {
+                        tower.createFolder(named: item.filename, under: parentFolder) {
+                            completion($0.map { $0 as Node })
+                        }
+                    }
+                    return Progress()
+                }
+            }
             tower.rename(node: nodeID, cleartextName: item.filename, handler: completion)
             return Progress()
             
@@ -139,8 +155,8 @@ public final class ItemActionsOutlet: LogObject {
                 completion($0.map { $0 as Node })
             }
             
-            return (operation as OperationWithProgress).progress
-            
+            return operation.progress
+
         default:
             ConsoleLogger.shared?.log("Irrelevant changes", osLogType: Self.self)
             return Progress()
@@ -178,8 +194,10 @@ public final class ItemActionsOutlet: LogObject {
         if itemTemplate.isFolder {
             ConsoleLogger.shared?.log("Item is a folder", osLogType: Self.self)
             // Check for conflicts
-            let nodes = retrieveNodes(tower: tower, basedOn: itemTemplate).compactMap { $0 as? Folder }
-            if !detectConflicts(tower: tower, between: itemTemplate, and: nodes, completionHandler: completionHandler) {
+            let (updatedItem, conflicted) = resolveConflictOnItemIfNeeded(tower: tower, item: itemTemplate, changeType: .create, request: request)
+            if conflicted {
+                completionHandler(updatedItem, [], false, nil)
+            } else {
                 tower.createFolder(named: itemTemplate.filename, under: parent) {
                     completion($0.map { $0 as Node })
                 }
@@ -211,38 +229,6 @@ public final class ItemActionsOutlet: LogObject {
         }
     }
 
-    private func retrieveNodes(tower: Tower, basedOn itemTemplate: NSFileProviderItem) -> [Node] {
-        guard let shareID = self.node(tower: tower, of: itemTemplate.parentItemIdentifier)?.shareID else {
-            return []
-        }
-
-        return tower.storage.fetchNodes(of: shareID, moc: tower.storage.mainContext)
-    }
-
-    private func detectConflicts(tower: Tower, between itemTemplate: NSFileProviderItem, and nodes: [Node], completionHandler: @escaping Completion) -> Bool {
-        if #available(macOS 12.0, *) {
-            if itemTemplate.isFolder {
-                let folders = nodes.compactMap { $0 as? Folder }
-                // Only deal with one conflict at a time
-                if let conflictedFolder = folders.first(
-                    where: {
-                        guard let parentLink = $0.parentLink,
-                              let parentItemIdentifier = self.parent(tower: tower, of: itemTemplate)?.id else {
-                            return false
-                        }
-                        return $0.decryptedName == itemTemplate.filename && parentLink.id == parentItemIdentifier
-                    }
-                ) {
-                    os_log("Event requires unknown lane type: %@ ", log: Self.osLog, type: .default, "\(conflictedFolder.decryptedName)")
-                    let item = NodeItem(node: conflictedFolder)
-                    completionHandler(item, [], false, nil)
-                    return true
-                }
-            }
-        }
-        return false
-
-    }
 }
 
 extension ItemActionsOutlet {

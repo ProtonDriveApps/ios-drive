@@ -1,10 +1,19 @@
+// Copyright (c) 2023 Proton AG
 //
-//  NotificationsPermissionsFlowController.swift
-//  ProtonDrive
+// This file is part of Proton Drive.
 //
-//  Created by Jan Halousek on 02.02.2023.
-//  Copyright © 2023 ProtonMail. All rights reserved.
+// Proton Drive is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
 //
+// Proton Drive is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
 
@@ -18,5 +27,15 @@ protocol NotificationsPermissionsFlowController {
 }
 
 final class NotificationsPermissionsFlowControllerImpl: NotificationsPermissionsFlowController {
+    private let signOutPublisher: AnyPublisher<Void, Never>
+    private var cancellable: AnyCancellable?
+    
     let event: PassthroughSubject<NotificationsPermissionsEvent, Never> = .init()
+    
+    init(signOutPublisher: AnyPublisher<Void, Never>) {
+        self.signOutPublisher = signOutPublisher
+        cancellable = signOutPublisher.sink { [weak self] in
+            self?.event.send(.close)
+        }
+    }
 }

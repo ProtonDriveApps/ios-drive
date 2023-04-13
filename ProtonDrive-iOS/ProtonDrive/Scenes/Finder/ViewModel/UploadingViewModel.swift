@@ -21,9 +21,12 @@ import PDCore
 import PDUIComponents
 
 protocol UploadingViewModel: AnyObject {
+    typealias UploadProgresses = [UUID: Progress]
     var childrenUploadCancellable: AnyCancellable? { get set }
     var showsUploadsErrorBanner: Bool { get }
-    var uploadsCount: (active: Int, total: Int) { get set }
-    var uploadProgresses: [UUID: Progress] { get set }
+    var uploadsCount: Int { get set }
+    var uploadProgresses: UploadProgresses { get set }
     var uploadErrors: ErrorRegulator { get }
+    var failedCount: Int { get }
+    var nodeStatePolicy: NodeStatePolicy { get }
 }

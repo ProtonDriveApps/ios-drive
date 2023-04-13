@@ -63,18 +63,18 @@ extension CloudSlot: AvailableHashChecker {
 // MARK: - CloudContentCreator
 protocol CloudContentCreator {
     typealias Completion = (Result<FullUploadableRevision, Error>) -> Void
-    func create(from revision: UploadableRevision, addressID: String, onCompletion: @escaping CloudContentCreator.Completion)
+    func create(from revision: UploadableRevision, onCompletion: @escaping CloudContentCreator.Completion)
 }
 
 extension CloudSlot: CloudContentCreator {
-    func create(from revision: UploadableRevision, addressID: String, onCompletion: @escaping CloudContentCreator.Completion) {
+    func create(from revision: UploadableRevision, onCompletion: @escaping CloudContentCreator.Completion) {
         let parameters = NewBlocksParameters(
             blockList: revision.blocks.map(NewBlockMeta.init),
             thumbnail: NewThumbnailMeta(thumbnail: revision.thumbnail),
-            addressID: addressID,
-            shareID: revision.identifier.share,
-            linkID: revision.identifier.file,
-            revisionID: revision.identifier.revision
+            addressID: revision.addressID,
+            shareID: revision.shareID,
+            linkID: revision.nodeID,
+            revisionID: revision.revisionID
         )
 
         client.postBlocks(
@@ -84,86 +84,28 @@ extension CloudSlot: CloudContentCreator {
     }
 }
 
-// MARK: - RevisionSealer
-extension CloudSlot: RevisionSealer {
-    enum CloudRevisionSealerError: Error {
-        case revisionNotFound
-    }
-    
-    func makeData(revision: Revision) throws -> RevisionSealData {
-        return try moc.performAndWait {
-            let revision = revision.in(moc: self.moc)
-            // TODO: Use revision signature email instead
-            guard let email = revision.signatureAddress else {
-                throw revision.invalidState("No signature email in revision.")
-            }
-            let signersKit = try signersKitFactory.make(forSigner: .address(email))
-            let addressKey = signersKit.addressKey.privateKey
-            let addressPassphrase = signersKit.addressPassphrase
-            let signatureAddress = signersKit.address.email
-            
-            let sortedBlocks = revision.uploadedBlocks()
-            var contentHashes = sortedBlocks.compactMap { $0.sha256 }
-            
-            if revision.thumbnail?.isUploaded == true,
-               let thumbnailsha256 = revision.thumbnail?.uploadable?.sha256 {
-                contentHashes.insert(thumbnailsha256, at: 0)
-            }
-            
-            let manifestSignature = try Encryptor.sign(list: Data(contentHashes.joined()),
-                                                       addressKey: addressKey,
-                                                       addressPassphrase: addressPassphrase)
-            
-            let blockList = sortedBlocks.map { UpdateRevisionBlocks(index: Int($0.index), token: $0.uploadToken!) }
-            return RevisionSealData(
-                shareID: revision.file.shareID,
-                fileID: revision.file.id,
-                revisionID: revision.id,
-                blockList: blockList,
-                manifestSignature: manifestSignature,
-                signatureAddress: signatureAddress,
-                xAttributes: revision.xAttributes
-            )
-        }
-    }
-    
-    func sealRemote(data: RevisionSealData, completion: @escaping (Result<Void, Error>) -> Void) {
+// MARK: - CloudRevisionCommiter
+protocol CloudRevisionCommiter {
+    func commit(_ revision: CommitableRevision, completion: @escaping (Result<Void, Error>) -> Void)
+}
+
+extension CloudSlot: CloudRevisionCommiter {
+    func commit(_ revision: CommitableRevision, completion: @escaping (Result<Void, Error>) -> Void) {
         let parameters = UpdateRevisionParameters(
             state: .active,
-            blockList: data.blockList,
-            manifestSignature: data.manifestSignature,
-            signatureAddress: data.signatureAddress,
-            extendedAttributes: data.xAttributes
+            blockList: revision.blockList.map { UpdateRevisionBlocks(index: $0.index, token: $0.token) },
+            manifestSignature: revision.manifestSignature,
+            signatureAddress: revision.signatureAddress,
+            extendedAttributes: revision.xAttributes
         )
-        client.putRevision(shareID: data.shareID, fileID: data.fileID, revisionID: data.revisionID, parameters: parameters, completion: completion)
-    }
-    
-    func sealLocal(data: RevisionSealData, revisionURI: URL) throws {
-        try moc.performAndWait {
-            guard let revision: Revision = self.moc.existingObject(with: revisionURI) else {
-                throw CloudRevisionSealerError.revisionNotFound
-            }
-            revision.created = Date()
-            revision.manifestSignature = data.manifestSignature
-            revision.state = .active
-            
-            let file = revision.file
-            file.activeRevision = revision
-            file.addToRevisions(revision)
-            file.size = revision.size
-            file.state = .active
-            
-            file.uploadID = nil
-            file.activeRevisionDraft = nil
-            file.clientUID = nil
-            
-            do {
-                try self.moc.save()
-            } catch {
-                self.moc.rollback()
-                throw error
-            }
-        }
+
+        client.putRevision(
+            shareID: revision.shareID,
+            fileID: revision.fileID,
+            revisionID: revision.revisionID,
+            parameters: parameters,
+            completion: completion
+        )
     }
 }
 

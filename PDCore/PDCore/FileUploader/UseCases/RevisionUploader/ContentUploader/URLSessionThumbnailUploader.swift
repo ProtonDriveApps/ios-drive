@@ -18,64 +18,74 @@
 import Foundation
 import PDClient
 
-final class URLSessionThumbnailUploader: URLSessionContentUploader {
+final class URLSessionThumbnailUploader: URLSessionDataTaskUploader, ContentUploader {
 
-    private let thumbnail: FullUploadableThumbnail
-    private let service: Service
-    private let credentialProvider: CredentialProvider
+    private let thumbnail: Thumbnail
+    private let fullUploadableThumbnail: FullUploadableThumbnail
 
     init(
-        thumbnail: FullUploadableThumbnail,
+        thumbnail: Thumbnail,
+        fullUploadableThumbnail: FullUploadableThumbnail,
         progressTracker: Progress,
-        service: Service,
+        session: URLSession,
+        apiService: APIService,
         credentialProvider: CredentialProvider
     ) {
         self.thumbnail = thumbnail
-        self.service = service
-        self.credentialProvider = credentialProvider
-        super.init(progressTracker: progressTracker)
+        self.fullUploadableThumbnail = fullUploadableThumbnail
+        super.init(progressTracker: progressTracker, session: session, apiService: apiService, credentialProvider: credentialProvider)
     }
 
-    override func upload() {
+    func upload(completion: @escaping Completion) {
+        guard !isCancelled else { return }
+
         guard let credential = credentialProvider.clientCredential() else {
-            return onCompletion(.failure(Uploader.Errors.noCredentialInCloudSlot))
+            return completion(.failure(Uploader.Errors.noCredentialInCloudSlot))
         }
 
-        var data = thumbnail.uploadable.encrypted
-        let endpoint = UploadBlockFromDataEndpoint(url: thumbnail.uploadURL, data: &data, credential: credential, service: service)
+        do {
+            var data = fullUploadableThumbnail.uploadable.encrypted
+            let endpoint = UploadBlockFromDataEndpoint(url: fullUploadableThumbnail.uploadURL, data: &data, credential: credential, service: apiService)
 
-        let task = session.uploadTask(
-            with: endpoint.request,
-            from: data,
-            completionHandler: { [weak self] data, response, error in
+            try setWillStartUpload()
+
+            upload(data, request: endpoint.request) { [weak self] result in
                 guard let self = self, !self.isCancelled else { return }
 
-                if let error = error {
-                    return self.onCompletion(.failure(error))
-                }
-
-                if let data = data {
-                    let decoder = JSONDecoder()
-                    decoder.keyDecodingStrategy = .decapitaliseFirstLetter
-
-                    if let error = try? decoder.decode(PDClient.ErrorResponse.self, from: data) {
-                        self.onCompletion(.failure(error))
-
-                    } else {
-                        self.cleanSession()
-                        self.onCompletion(.success)
-                    }
-
-                } else {
-                    self.onCompletion(.failure(InvalidRepresentationError()))
-                }
-
+                self.handle(result, completion: completion)
             }
-        )
-        progressTracker.addChild(task.progress, withPendingUnitCount: 1)
 
-        self.task = task
+        } catch {
+            completion(.failure(error))
+        }
+    }
 
-        task.resume()
+    /// This will mark the thumbnail as invalid in case we want to resume the upload and we should request another URL
+    private func setWillStartUpload() throws {
+        guard let moc = thumbnail.moc else { throw Thumbnail.noMOC() }
+
+        try moc.performAndWait {
+            thumbnail.unsetUploadableState()
+            try moc.saveOrRollback()
+        }
+    }
+
+    override func saveUploadedState() {
+        guard let moc = thumbnail.moc else { return }
+
+        moc.performAndWait {
+            thumbnail.isUploaded = true
+            thumbnail.uploadURL = fullUploadableThumbnail.uploadURL.absoluteString
+            try? moc.save()
+        }
+    }
+
+    private func finalizeWithNoSpaceOnCloudError() {
+        guard let moc = thumbnail.moc else { return }
+
+        moc.performAndWait {
+            thumbnail.revision.file.state = .cloudImpediment
+            try? moc.saveOrRollback()
+        }
     }
 }

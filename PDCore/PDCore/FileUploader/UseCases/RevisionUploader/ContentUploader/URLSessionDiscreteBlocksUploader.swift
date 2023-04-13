@@ -18,87 +18,66 @@
 import Foundation
 import PDClient
 
-final class URLSessionDiscreteBlocksUploader: URLSessionContentUploader {
-
-    private let block: FullUploadableBlock
-    private let service: Service
-    private let credentialProvider: CredentialProvider
+final class URLSessionDiscreteBlocksUploader: URLSessionDataTaskUploader, ContentUploader {
+    private let uploadBlock: UploadBlock
+    private let fullUploadableBlock: FullUploadableBlock
 
     init(
-        block: FullUploadableBlock,
+        uploadBlock: UploadBlock,
+        fullUploadableBlock: FullUploadableBlock,
         progressTracker: Progress,
-        service: Service,
+        session: URLSession,
+        apiService: APIService,
         credentialProvider: CredentialProvider
     ) {
-        self.block = block
-        self.service = service
-        self.credentialProvider = credentialProvider
-        super.init(progressTracker: progressTracker)
+        self.uploadBlock = uploadBlock
+        self.fullUploadableBlock = fullUploadableBlock
+        super.init(progressTracker: progressTracker, session: session, apiService: apiService, credentialProvider: credentialProvider)
     }
 
-    override func upload() {
-        upload(attempt: 0)
-    }
-
-    func upload(attempt: Int) {
-        guard attempt < 3 else {
-            self.onCompletion(.failure(ConnectionLostError()))
-            return
-        }
+    func upload(completion: @escaping Completion) {
+        guard !isCancelled else { return }
 
         guard let credential = credentialProvider.clientCredential() else {
-            return onCompletion(.failure(Uploader.Errors.noCredentialInCloudSlot))
+            return completion(.failure(Uploader.Errors.noCredentialInCloudSlot))
         }
 
         do {
-            var data = try Data(contentsOf: block.localURL)
-            let endpoint = UploadBlockFromDataEndpoint(url: block.remoteURL, data: &data, credential: credential, service: service)
+            var data = try Data(contentsOf: fullUploadableBlock.localURL)
+            let endpoint = UploadBlockFromDataEndpoint(url: fullUploadableBlock.remoteURL, data: &data, credential: credential, service: apiService)
+            try setWillStartUpload()
 
-            guard session != nil else { return }
+            upload(data, request: endpoint.request) { [weak self] result in
+                guard let self = self, !self.isCancelled else { return }
 
-            let task = session.uploadTask(
-                with: endpoint.request,
-                from: data,
-                completionHandler: { [weak self] data, response, error in
-                    guard let self = self, !self.isCancelled else { return }
-
-                    if let nsError = error as? NSError,
-                       nsError.code == self.networkConnectionLostErrorCode {
-                        return self.upload(attempt: attempt + 1)
-                    } else if let error = error {
-                        return self.onCompletion(.failure(error))
-                    }
-
-                    if let data = data {
-                        let decoder = JSONDecoder()
-                        decoder.keyDecodingStrategy = .decapitaliseFirstLetter
-
-                        if let error = try? decoder.decode(PDClient.ErrorResponse.self, from: data) {
-                            self.onCompletion(.failure(error))
-
-                        } else {
-                            self.cleanSession()
-                            self.onCompletion(.success)
-                        }
-
-                    } else {
-                        self.onCompletion(.failure(InvalidRepresentationError()))
-                    }
-
-                }
-            )
-            progressTracker.addChild(task.progress, withPendingUnitCount: 1)
-
-            self.task = task
-
-            task.resume()
+                self.handle(result, completion: completion)
+            }
 
         } catch {
-            onCompletion(.failure(error))
+            completion(.failure(error))
         }
     }
 
-    var networkConnectionLostErrorCode: Int { -1005 }
+    override func saveUploadedState() {
+        guard let moc = uploadBlock.moc else { return }
 
-    struct ConnectionLostError: Error {}
+        moc.performAndWait {
+            uploadBlock.isUploaded = true
+            uploadBlock.uploadToken = fullUploadableBlock.uploadToken
+            uploadBlock.uploadUrl = fullUploadableBlock.remoteURL.absoluteString
+            try? moc.save()
+        }
+    }
+
+    /// This will mark the blocks as invalid in case we want to resume the upload and we should request another URL
+    private func setWillStartUpload() throws {
+        guard let moc = uploadBlock.moc else {
+            throw Block.noMOC()
+        }
+
+        try moc.performAndWait {
+            uploadBlock.unsetUploadableState()
+            try moc.saveIfNeeded()
+        }
+    }
 }

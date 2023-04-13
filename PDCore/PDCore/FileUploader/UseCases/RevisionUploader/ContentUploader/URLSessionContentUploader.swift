@@ -27,8 +27,6 @@ class URLSessionContentUploader: NSObject, ContentUploader, URLSessionTaskDelega
     var session: URLSession!
     var task: URLSessionUploadTask?
 
-    var onCompletion: ((Result<Void, Error>) -> Void) = { _ in }
-
     private(set) var isCancelled = false
     private var cancellables = Set<AnyCancellable>()
 
@@ -40,7 +38,7 @@ class URLSessionContentUploader: NSObject, ContentUploader, URLSessionTaskDelega
     }
 
     /// Override this property with the proper upload actions
-    func upload() {
+    func upload(completion: @escaping Completion) {
 
     }
 
@@ -53,7 +51,6 @@ class URLSessionContentUploader: NSObject, ContentUploader, URLSessionTaskDelega
 
     func cleanSession() {
         cleanTask()
-
         session?.invalidateAndCancel()
         session = nil
     }

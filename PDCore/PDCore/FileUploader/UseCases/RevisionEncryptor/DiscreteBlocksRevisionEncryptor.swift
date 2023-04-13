@@ -23,6 +23,7 @@ final class DiscreteBlocksRevisionEncryptor: RevisionEncryptor {
     private let maxBlockSize: Int
     private let progress: Progress
     private let moc: NSManagedObjectContext
+    private let digestBuilder: DigestBuilder
 
     private var isCancelled = false
     private var isExecuting = false
@@ -31,12 +32,14 @@ final class DiscreteBlocksRevisionEncryptor: RevisionEncryptor {
         signersKitFactory: SignersKitFactoryProtocol,
         maxBlockSize: Int,
         progress: Progress,
-        moc: NSManagedObjectContext
+        moc: NSManagedObjectContext,
+        digestBuilder: DigestBuilder
     ) {
         self.signersKitFactory = signersKitFactory
         self.maxBlockSize = maxBlockSize
         self.progress = progress
         self.moc = moc
+        self.digestBuilder = digestBuilder
     }
 
     func encrypt(_ draft: CreatedRevisionDraft, completion: @escaping Completion) {
@@ -97,6 +100,7 @@ extension DiscreteBlocksRevisionEncryptor {
             try autoreleasepool {
 
                 let pack = NewBlockDataCleartext(index: index, cleardata: data)
+                digestBuilder.add(data)
                 let encryptedBlock = try encryptBlock(pack, file: revision.file)
                 let encSignature = try encryptSignature(data, file: revision.file, signersKit: signersKit)
                 let block = try createNewBlock(encSignature, signersKit.address.email, encryptedBlock)
@@ -106,7 +110,7 @@ extension DiscreteBlocksRevisionEncryptor {
                 index += 1
                 data = reader.readData(ofLength: maxBlockSize)
 
-                progress.complete(1)
+                progress.complete(units: 1)
             }
         }
 

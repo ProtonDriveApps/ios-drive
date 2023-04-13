@@ -15,21 +15,30 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import CoreData
+
 final class RevisionCommitterOperationFactory: FileUploadOperationFactory {
 
-    private let revisionSealer: RevisionSealer
-    private let failedMarker: FailedUploadMarker
+    private let cloudRevisionCommitter: CloudRevisionCommiter
+    private let signersKitFactory: SignersKitFactoryProtocol
+    private let moc: NSManagedObjectContext
 
     init(
-        revisionSealer: RevisionSealer,
-        failedMarker: FailedUploadMarker
+        cloudRevisionCommitter: CloudRevisionCommiter,
+        signersKitFactory: SignersKitFactoryProtocol,
+        moc: NSManagedObjectContext
     ) {
-        self.revisionSealer = revisionSealer
-        self.failedMarker = failedMarker
+        self.cloudRevisionCommitter = cloudRevisionCommitter
+        self.signersKitFactory = signersKitFactory
+        self.moc = moc
     }
 
     func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> OperationWithProgress {
-        return RevisionCommitterOperation(draft: draft, sealer: revisionSealer, failedMarker: failedMarker, onError: { completion(.failure($0)) })
+        let committer = makeRevisionCommitter()
+        return RevisionCommitterOperation(draft: draft, commiter: committer, onError: { completion(.failure($0)) })
     }
 
+    func makeRevisionCommitter() -> RevisionCommitter {
+        NewFileRevisionCommitter(cloudRevisionCommiter: cloudRevisionCommitter, signersKitFactory: signersKitFactory, moc: moc)
+    }
 }

@@ -82,8 +82,12 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
     // MARK: UploadingViewModel
     var childrenUploadCancellable: AnyCancellable?
     let showsUploadsErrorBanner: Bool = true
-    @Published var uploadsCount: (active: Int, total: Int) = (0, 0)
-    @Published var uploadProgresses: [UUID: Progress] = [:]
+    @Published var uploadsCount: Int = 0
+    @Published var uploadProgresses: UploadProgresses = [:]
+    var failedCount: Int {
+        return transientChildren.map(\.node).filter(isUploadFailed).count
+    }
+    let nodeStatePolicy: NodeStatePolicy
     
     // MARK: DownloadingViewModel
     var childrenDownloadCancellable: AnyCancellable?
@@ -110,12 +114,13 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
     @Published var listState: ListState = .active
     
     // MARK: others
-    init(localSettings: LocalSettings, model: FolderErrorModel, node: Folder) {
+    init(localSettings: LocalSettings, model: FolderErrorModel, node: Folder, nodeStatePolicy: NodeStatePolicy) {
         self.localSettings = localSettings
         defer { self.model.loadFromCache() }
         self.model = model
         self.sorting = model.sorting
         self.layout = Layout(preference: model.layout)
+        self.nodeStatePolicy = nodeStatePolicy
         
         self.subscribeToSort()
         self.subscribeToChildren()

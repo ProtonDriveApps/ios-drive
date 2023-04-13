@@ -173,6 +173,15 @@ extension PMAPIClient: AuthDelegate {
 }
 
 extension PMAPIClient: HumanVerifyDelegate {
+    public var responseDelegateForLoginAndSignup: HumanVerifyResponseDelegate? {
+        get { nil }
+        set { _ = newValue }
+    }
+    
+    public var paymentDelegateForLoginAndSignup: HumanVerifyPaymentDelegate? {
+        get { nil }
+        set { _ = newValue }
+    }
     
     /// This method should not be called from the iOS App only from App extensions and the macOS app. The iOS App uses Core team's
     /// the HumanCheckHelper class

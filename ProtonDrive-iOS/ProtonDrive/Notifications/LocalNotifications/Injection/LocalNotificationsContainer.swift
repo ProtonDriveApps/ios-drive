@@ -24,19 +24,19 @@ final class LocalNotificationsContainer {
     private let controller: NotificationsPermissionsController
     private var coordinator: NotificationsPermissionsCoordinator?
     
-    init(tower: Tower) {
+    init(tower: Tower, windowScene: UIWindowScene) {
         localNotificationsController = factory.makeNotificationsController()
         let flowController = factory.makeFlowController()
         controller = factory.makePermissionsController(tower: tower, flowController: flowController)
-        startPermissionsCoordinator(flowController: flowController)
+        startPermissionsCoordinator(flowController: flowController, windowScene: windowScene)
     }
     
-    private func startPermissionsCoordinator(flowController: NotificationsPermissionsFlowController) {
+    private func startPermissionsCoordinator(flowController: NotificationsPermissionsFlowController, windowScene: UIWindowScene) {
         #if DEBUG
         if DebugConstants.commandLineContains(flags: [.uiTests, .skipNotificationPermissions]) {
             return
         }
         #endif
-        coordinator = factory.makePermissionsCoordinator(controller: controller, flowController: flowController)
+        coordinator = factory.makePermissionsCoordinator(controller: controller, flowController: flowController, windowScene: windowScene)
     }
 }

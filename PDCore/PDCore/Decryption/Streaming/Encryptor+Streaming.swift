@@ -29,7 +29,8 @@ extension Encryptor {
                               _ cyphertextUrl: URL,
                               _ nodeKey: String,
                               _ nodePassphrase: String,
-                              _ contentKeyPacket: Data) throws -> Data
+                              _ contentKeyPacket: Data,
+                              _ digestBuilder: DigestBuilder) throws -> Data
     {
         // prepare files
         if FileManager.default.fileExists(atPath: cyphertextUrl.path) {
@@ -52,7 +53,7 @@ extension Encryptor {
         let sessionKey = HelperDecryptSessionKey(nodeKey, Data(nodePassphrase.utf8), contentKeyPacket, &error)
         guard error == nil else { throw error! }
         
-        let hash = try Encryptor.encryptBinaryStream(sessionKey!, nil, readFileHandle, writeFileHandle, size, Constants.maxBlockChunkSize)
+        let hash = try Encryptor.encryptBinaryStream(sessionKey!, nil, readFileHandle, writeFileHandle, size, Constants.maxBlockChunkSize, digestBuilder)
         return hash
     }
     
@@ -99,7 +100,8 @@ extension Encryptor {
                                             _ blockFile: FileHandle,
                                             _ ciphertextFile: FileHandle,
                                             _ totalSize: Int,
-                                            _ bufferSize: Int ) throws -> Data
+                                            _ bufferSize: Int,
+                                            _ digestBuilder: DigestBuilder) throws -> Data
     // swiftlint:enable function_parameter_count
     {
         
@@ -113,6 +115,7 @@ extension Encryptor {
                 blockFile.seek(toFileOffset: UInt64(offset))
                 let currentBufferSize = offset + bufferSize > totalSize ? totalSize - offset : bufferSize
                 let currentBuffer = blockFile.readData(ofLength: currentBufferSize)
+                digestBuilder.add(currentBuffer)
                 try plaintextWriter.write(currentBuffer, n: &n)
                 offset += n
             }

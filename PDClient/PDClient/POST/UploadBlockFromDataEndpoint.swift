@@ -21,7 +21,7 @@ public struct UploadBlockFromDataEndpoint: Endpoint {
     public struct Response: Codable {
         var code: Int
     }
-    
+
     public private(set) var request: URLRequest
     
     public init(url: URL, data: inout Data, credential: ClientCredential, service: APIService) {
@@ -46,7 +46,7 @@ public struct UploadBlockFromDataEndpoint: Endpoint {
         headers["Accept"] = "*/*"
         headers.merge(service.authHeaders(credential), uniquingKeysWith: { $1 })
         headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
-        
+
         data = multipartData
         self.request = request
     }

@@ -30,4 +30,7 @@ extension OperationQueue {
         self.underlyingQueue = underlyingQueue
     }
 
+    static var serial: OperationQueue {
+        OperationQueue(maxConcurrentOperation: 1)
+    }
 }

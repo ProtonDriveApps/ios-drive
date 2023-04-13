@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		319D2C2E29C2FFA100C70A2B /* GradientButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 319D2C2D29C2FFA100C70A2B /* GradientButton.swift */; };
+		319D2C2F29C3059100C70A2B /* GradientButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 319D2C2D29C2FFA100C70A2B /* GradientButton.swift */; };
+		31C6B23C29C86115001C585A /* UIView+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31C6B23B29C86115001C585A /* UIView+Extensions.swift */; };
 		418DF0BBAC4766CD7AF3A059 /* Pods_PDUIComponentsMac.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2F667964EB22B7FDD020F0BF /* Pods_PDUIComponentsMac.framework */; };
 		7652ED5527E0996900C9DFA4 /* ContextMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7652ED5327E0996900C9DFA4 /* ContextMenuView.swift */; };
 		7685A32B27EC31D800F6CF29 /* ContextualMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7685A32927EC31D800F6CF29 /* ContextualMenu.swift */; };
@@ -172,6 +175,8 @@
 		2B16AFA7865B85276D61FD17 /* Pods_PDUIComponentsStatic.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PDUIComponentsStatic.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		2F667964EB22B7FDD020F0BF /* Pods_PDUIComponentsMac.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PDUIComponentsMac.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		315C38AF298AA5D50080BBE7 /* LinkButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkButton.swift; sourceTree = "<group>"; };
+		319D2C2D29C2FFA100C70A2B /* GradientButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradientButton.swift; sourceTree = "<group>"; };
+		31C6B23B29C86115001C585A /* UIView+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIView+Extensions.swift"; sourceTree = "<group>"; };
 		3B594A2CF458871693F3485F /* Pods-PDUIComponentsMac.release-store.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDUIComponentsMac.release-store.xcconfig"; path = "Target Support Files/Pods-PDUIComponentsMac/Pods-PDUIComponentsMac.release-store.xcconfig"; sourceTree = "<group>"; };
 		6522426854CFB28824811E02 /* Pods_PDUIComponents.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PDUIComponents.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		6F534580900072F82C6D9C02 /* Pods-PDUIComponentsMac.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDUIComponentsMac.debug.xcconfig"; path = "Target Support Files/Pods-PDUIComponentsMac/Pods-PDUIComponentsMac.debug.xcconfig"; sourceTree = "<group>"; };
@@ -437,6 +442,7 @@
 				ABBC707025419B4C0087E7D5 /* CloseButtonView.swift */,
 				ABBC707225419B4C0087E7D5 /* SearchButton.swift */,
 				D9F7557F2869D678009E4657 /* UIKitExtensions.swift */,
+				319D2C2D29C2FFA100C70A2B /* GradientButton.swift */,
 			);
 			path = Buttons;
 			sourceTree = "<group>";
@@ -477,6 +483,7 @@
 				ABBC708C25419B4D0087E7D5 /* Publishers+keyboard.swift */,
 				7650420B278790AE00B147CE /* Color+Hex.swift */,
 				D9684F9228FEBF030013AB46 /* UINavigationBarAppearance+drive.swift */,
+				31C6B23B29C86115001C585A /* UIView+Extensions.swift */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -716,6 +723,7 @@
 				ABE278D229917E0B008EC1B3 /* Toast.swift in Sources */,
 				ABE278AD29917DEB008EC1B3 /* SearchButton.swift in Sources */,
 				ABE278D129917E0B008EC1B3 /* Banner.swift in Sources */,
+				319D2C2F29C3059100C70A2B /* GradientButton.swift in Sources */,
 				ABE278AC29917DEB008EC1B3 /* CloseButtonView.swift in Sources */,
 				ABE278B629917DF3008EC1B3 /* UIApplication+Extension.swift in Sources */,
 				ABE278C929917DFF008EC1B3 /* MenuView+EnvironmentValues.swift in Sources */,
@@ -729,6 +737,7 @@
 				ABE278EE29917E28008EC1B3 /* RootDeeplinkableView.swift in Sources */,
 				ABE278E529917E22008EC1B3 /* ProtonSpinner.swift in Sources */,
 				ABE278D329917E10008EC1B3 /* RectangleToast.swift in Sources */,
+				31C6B23C29C86115001C585A /* UIView+Extensions.swift in Sources */,
 				ABE278DE29917E1B008EC1B3 /* FlatNavigationBar.swift in Sources */,
 				ABE278BF29917DF3008EC1B3 /* ContentHeightPreferenceKey.swift in Sources */,
 				ABE278CA29917E02008EC1B3 /* ModalView.swift in Sources */,

@@ -15829,9 +15829,9 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 IN THE SOFTWARE.
 </string>
 			<key>License</key>
-			<string>ProtonMail</string>
+			<string>Proton Mail</string>
 			<key>Title</key>
-			<string>pmtest</string>
+			<string>fusion</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>

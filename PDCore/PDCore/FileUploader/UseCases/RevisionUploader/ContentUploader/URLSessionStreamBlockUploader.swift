@@ -37,30 +37,35 @@ final class URLSessionStreamBlockUploader: URLSessionContentUploader {
     private var timer: Timer!
     private var boundStreams: Streams!
 
-    private let block: FullUploadableBlock
+    private let uploadBlock: UploadBlock
     private let service: Service
     private let credentialProvider: CredentialProvider
 
     init(
-        block: FullUploadableBlock,
+        uploadBlock: UploadBlock,
+        fullUploadableBlock: FullUploadableBlock,
         progressTracker: Progress,
         service: Service,
         credentialProvider: CredentialProvider
     ) {
-        self.block = block
+        self.uploadBlock = uploadBlock
         self.service = service
         self.credentialProvider = credentialProvider
-        self.remoteURL = block.remoteURL
-        self.localURL = block.localURL
+        self.remoteURL = fullUploadableBlock.remoteURL
+        self.localURL = fullUploadableBlock.localURL
         super.init(progressTracker: progressTracker)
     }
 
-    override func upload() {
+    private var completion: Completion?
+
+    override func upload(completion: @escaping Completion) {
         guard !isCancelled else { return }
 
         guard let credential = credentialProvider.clientCredential() else {
-            return onCompletion(.failure(Uploader.Errors.noCredentialInCloudSlot))
+            return completion(.failure(Uploader.Errors.noCredentialInCloudSlot))
         }
+
+        self.completion = completion
 
         do {
             let endpoint = try UploadBlockFromFileEndpoint(url: remoteURL, data: localURL, chunkSize: Constants.maxBlockChunkSize, credential: credential, service: service)
@@ -78,7 +83,7 @@ final class URLSessionStreamBlockUploader: URLSessionContentUploader {
             task.resume()
 
         } catch {
-            onCompletion(.failure(error))
+            completion(.failure(error))
         }
     }
 
@@ -139,6 +144,11 @@ final class URLSessionStreamBlockUploader: URLSessionContentUploader {
     deinit {
         closeStream()
     }
+
+    func completeWithFailure(_ error: Error) {
+        self.completion?(.failure(error))
+        self.completion = nil
+    }
 }
 
 // MARK: - URLSessionTaskDelegate + URLSessionDataDelegate
@@ -148,7 +158,7 @@ extension URLSessionStreamBlockUploader: URLSessionDataDelegate {
         guard !self.isCancelled,
               let error = error else { return }
 
-        onCompletion(.failure(error))
+        self.completeWithFailure(error)
     }
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
@@ -157,12 +167,12 @@ extension URLSessionStreamBlockUploader: URLSessionDataDelegate {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .decapitaliseFirstLetter
         if let error = try? decoder.decode(PDClient.ErrorResponse.self, from: data) {
-            onCompletion(.failure(error.nsError()))
+            self.completeWithFailure(error.nsError())
 
         } else {
             closeStream()
             cleanSession()
-            onCompletion(.success(Void()))
+            saveUploadedBlockState()
         }
     }
 
@@ -184,7 +194,7 @@ extension URLSessionStreamBlockUploader: StreamDelegate {
         }
 
         if eventCode.contains(.errorOccurred) {
-            onCompletion(.failure(Errors.streamingError))
+            self.completeWithFailure(Errors.streamingError)
         }
     }
 
@@ -199,5 +209,22 @@ extension URLSessionStreamBlockUploader {
     enum Errors: Error {
         case unableToReadLocalUrl
         case streamingError
+    }
+}
+
+extension URLSessionStreamBlockUploader {
+    private func saveUploadedBlockState() {
+        guard let moc = uploadBlock.moc else { return }
+
+        moc.performAndWait {
+            do {
+                uploadBlock.isUploaded = true
+                try moc.saveOrRollback()
+                self.completion?(.success)
+                self.completion = nil
+            } catch {
+                self.completeWithFailure(error)
+            }
+        }
     }
 }

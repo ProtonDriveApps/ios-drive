@@ -73,7 +73,8 @@ final class DefaultRevisionEncryptor: RevisionEncryptor {
             self.finalize(draft: draft, completion: completion)
         }
 
-        [thumbnailEncryptorOperation, blocksEncryptorOperation, xAttrEncryptorOperation].forEach(finishOperation.addDependency)
+        xAttrEncryptorOperation.addDependency(blocksEncryptorOperation)
+        [thumbnailEncryptorOperation, xAttrEncryptorOperation].forEach(finishOperation.addDependency)
         [thumbnailEncryptorOperation, blocksEncryptorOperation, xAttrEncryptorOperation, finishOperation].forEach(queue.addOperation)
     }
 

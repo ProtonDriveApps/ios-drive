@@ -65,7 +65,7 @@ final class AuthenticatedDependencyContainer {
         
         // Child containers
         childContainers = [
-            LocalNotificationsContainer(tower: tower),
+            LocalNotificationsContainer(tower: tower, windowScene: windowScene),
             InterruptedUploadsContainer(tower: tower)
         ]
     }

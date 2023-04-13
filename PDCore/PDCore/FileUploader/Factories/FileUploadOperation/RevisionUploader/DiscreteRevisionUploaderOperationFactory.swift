@@ -1,0 +1,141 @@
+// Copyright (c) 2023 Proton AG
+//
+// This file is part of Proton Drive.
+//
+// Proton Drive is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Proton Drive is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Proton Drive. If not, see https://www.gnu.org/licenses/.
+
+import Foundation
+import CoreData
+import PDClient
+
+class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
+    let api: APIService
+    let moc: NSManagedObjectContext
+    let cloudContentCreator: CloudContentCreator
+    let credentialProvider: CredentialProvider
+    let signersKitFactory: SignersKitFactoryProtocol
+
+    let session = URLSession(configuration: .ephemeral)
+
+    init(
+        api: APIService,
+        moc: NSManagedObjectContext,
+        cloudContentCreator: CloudContentCreator,
+        credentialProvider: CredentialProvider,
+        signersKitFactory: SignersKitFactoryProtocol
+    ) {
+        self.api = api
+        self.moc = moc
+        self.cloudContentCreator = cloudContentCreator
+        self.credentialProvider = credentialProvider
+        self.signersKitFactory = signersKitFactory
+    }
+
+    func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> OperationWithProgress {
+        let numberOfThumbnails = 1 // We aassume that the existence of a thumbnail will not affect the upload
+        let parentProgress = Progress(unitsOfWork: draft.numberOfBlocks + numberOfThumbnails)
+
+        let onError: OnError = { error in
+            parentProgress.cancel()
+            completion(.failure(error))
+        }
+
+        let uploader = PaginatedRevisionUploader(
+            pageSize: Constants.blocksPaginationPageSize,
+            parentProgress: parentProgress,
+            pageRevisionUploaderFactory: { [unowned self] page in
+                return self.makePageUploader(page, parentProgress, onError)
+            },
+            signersKitFactory: signersKitFactory,
+            queue: OperationQueue(maxConcurrentOperation: Constants.maxConcurrentPageOperations),
+            moc: moc
+        )
+
+        return PaginatedRevisionUploaderOperation(
+            draft: draft,
+            parentProgress: parentProgress,
+            uploader: uploader,
+            onError: { completion(.failure($0)) }
+        )
+    }
+
+    func makePageUploader(_ page: RevisionPage, _ parentProgress: Progress, _ onError: @escaping OnError) -> PageRevisionUploaderOperation {
+        let uploader = ConcurrentPageRevisionUploader(
+            page: page,
+            contentCreatorOperationFactory: { [unowned self] in self.makeCreatorOperation($0, onError) },
+            blockUploaderOperationFactory: { [unowned self] in self.makeBlockUploaderOperation($0, $1, parentProgress, onError) },
+            thumbnailUploaderOperationFactory: { [unowned self] in self.makeThumbnailUploaderOperation($0, $1, parentProgress) },
+            queue: OperationQueue(maxConcurrentOperation: Constants.discreteMaxConcurrentContentUploadOpeartions),
+            moc: moc
+        )
+        return PageRevisionUploaderOperation(uploader: uploader, onError: onError)
+    }
+
+    func makeCreatorOperation(_ page: RevisionPage, _ onError: @escaping OnError) -> Operation {
+        let contentCreator = PageRevisionContentCreator(
+            page: page,
+            contentCreator: cloudContentCreator,
+            signersKitFactory: signersKitFactory,
+            moc: moc
+        )
+        return ContentsCreatorOperation(contentCreator: contentCreator, onError: onError)
+    }
+
+    func makeBlockUploaderOperation(
+        _ block: UploadBlock,
+        _ fullUploadableBlock: FullUploadableBlock,
+        _ parentProgress: Progress,
+        _ onError: @escaping OnError
+    ) -> Operation {
+        let blockProgress = parentProgress.child(pending: 1)
+
+        let uploader = URLSessionDiscreteBlocksUploader(
+            uploadBlock: block,
+            fullUploadableBlock: fullUploadableBlock,
+            progressTracker: blockProgress,
+            session: session,
+            apiService: api,
+            credentialProvider: credentialProvider
+        )
+
+        return BlockUploaderOperation(
+            progressTracker: blockProgress,
+            blockIndex: fullUploadableBlock.uploadable.index,
+            contentUploader: uploader,
+            onError: onError
+        )
+    }
+
+    func makeThumbnailUploaderOperation(
+        _ thumbnail: Thumbnail,
+        _ fullUploadableThumbnail: FullUploadableThumbnail,
+        _ parentProgress: Progress
+    ) -> Operation {
+        let thumbnailProgress = parentProgress.child(pending: 1)
+
+        let uploader = URLSessionThumbnailUploader(
+            thumbnail: thumbnail,
+            fullUploadableThumbnail: fullUploadableThumbnail,
+            progressTracker: thumbnailProgress,
+            session: session,
+            apiService: api,
+            credentialProvider: credentialProvider
+        )
+
+        return ThumbnailUploaderOperation(
+            progressTracker: thumbnailProgress,
+            contentUploader: uploader
+        )
+    }
+}

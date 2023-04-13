@@ -16,62 +16,124 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import CoreData
 import PDClient
 
-final class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
-
-    private let api: APIService
-    private let contentCreator: CloudContentCreator
-    private let credentialProvider: CredentialProvider
-    private let signersKitFactory: SignersKitFactoryProtocol
+class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
+    let api: APIService
+    let moc: NSManagedObjectContext
+    let cloudContentCreator: CloudContentCreator
+    let credentialProvider: CredentialProvider
+    let signersKitFactory: SignersKitFactoryProtocol
 
     init(
         api: APIService,
-        contentCreator: CloudContentCreator,
+        moc: NSManagedObjectContext,
+        cloudContentCreator: CloudContentCreator,
         credentialProvider: CredentialProvider,
         signersKitFactory: SignersKitFactoryProtocol
     ) {
         self.api = api
-        self.contentCreator = contentCreator
+        self.moc = moc
+        self.cloudContentCreator = cloudContentCreator
         self.credentialProvider = credentialProvider
         self.signersKitFactory = signersKitFactory
     }
 
     func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> OperationWithProgress {
-        let progress = Progress(unitsOfWork: 0)
+        let parentProgress = Progress(unitsOfWork: draft.numberOfBlocks)
 
         let onError: OnError = { error in
-            progress.cancel()
+            parentProgress.cancel()
             completion(.failure(error))
         }
 
-        let contentCreatorFactory = ContentCreatorOperationFactory(draft: draft, progress: progress, contentCreator: contentCreator, signersKitFactory: signersKitFactory, onError: onError)
-        let blocksUploaderFactory = BlockUploaderOperationFactory(
-            draft: draft,
-            progress: progress,
-            uploader: { [unowned api, unowned credentialProvider] (block, tracker) in
-                URLSessionStreamBlockUploader(block: block, progressTracker: tracker, service: api, credentialProvider: credentialProvider)
+        let uploader = PaginatedRevisionUploader(
+            pageSize: Constants.blocksPaginationPageSize,
+            parentProgress: parentProgress,
+            pageRevisionUploaderFactory: { [unowned self] page in
+                return self.makePageUploader(page, parentProgress, onError)
             },
-            onError: onError
-        )
-        let thumbnailUploaderFactory = ThumbnailUploaderOperationFactory(draft: draft, progress: progress, api: api, credentialProvider: credentialProvider, onError: onError)
-        let blocksAndthumbnailsUploaderFactory = SequentialOperationIterator(
-            startIterator: blocksUploaderFactory,
-            endIterator: thumbnailUploaderFactory
+            signersKitFactory: signersKitFactory,
+            queue: OperationQueue(maxConcurrentOperation: Constants.maxConcurrentPageOperations),
+            moc: moc
         )
 
-        let uploaderProcessor = RevisionOperationsProcessor(
-            serial: contentCreatorFactory,
-            concurrent: blocksAndthumbnailsUploaderFactory,
-            maxConcurrentOperations: 1
-        )
-
-        return RevisionUploaderOperation(
+        return PaginatedRevisionUploaderOperation(
             draft: draft,
-            progress: progress,
-            uploader: uploaderProcessor,
+            parentProgress: parentProgress,
+            uploader: uploader,
+            onError: { completion(.failure($0)) }
+        )
+    }
+
+    func makePageUploader(_ page: RevisionPage, _ parentProgress: Progress, _ onError: @escaping OnError) -> PageRevisionUploaderOperation {
+        let uploader = ConcurrentPageRevisionUploader(
+            page: page,
+            contentCreatorOperationFactory: { [unowned self] in self.makeCreatorOperation($0, onError) },
+            blockUploaderOperationFactory: { [unowned self] in self.makeBlockUploaderOperation($0, $1, parentProgress, onError) },
+            thumbnailUploaderOperationFactory: { [unowned self] in self.makeThumbnailUploaderOperation($0, $1, parentProgress) },
+            queue: .serial,
+            moc: moc
+        )
+        return PageRevisionUploaderOperation(uploader: uploader, onError: onError)
+    }
+
+    func makeCreatorOperation(_ page: RevisionPage, _ onError: @escaping OnError) -> Operation {
+        let contentCreator = PageRevisionContentCreator(
+            page: page,
+            contentCreator: cloudContentCreator,
+            signersKitFactory: signersKitFactory,
+            moc: moc
+        )
+        return ContentsCreatorOperation(contentCreator: contentCreator, onError: onError)
+    }
+
+    func makeBlockUploaderOperation(
+        _ block: UploadBlock,
+        _ fullUploadableBlock: FullUploadableBlock,
+        _ parentProgress: Progress,
+        _ onError: @escaping OnError
+    ) -> Operation {
+        let blockProgress = parentProgress.child(pending: 1)
+
+        let uploader = URLSessionStreamBlockUploader(
+            uploadBlock: block,
+            fullUploadableBlock: fullUploadableBlock,
+            progressTracker: blockProgress,
+            service: api,
+            credentialProvider: credentialProvider
+        )
+        let session = URLSession(configuration: .ephemeral, delegate: uploader, delegateQueue: nil)
+        uploader.session = session
+
+        return BlockUploaderOperation(
+            progressTracker: blockProgress,
+            blockIndex: fullUploadableBlock.uploadable.index,
+            contentUploader: uploader,
             onError: onError
         )
     }
 
+    func makeThumbnailUploaderOperation(
+        _ thumbnail: Thumbnail,
+        _ fullUploadableThumbnail: FullUploadableThumbnail,
+        _ parentProgress: Progress
+    ) -> Operation {
+        let thumbnailProgress = parentProgress.child(pending: 1)
+
+        let uploader = URLSessionThumbnailUploader(
+            thumbnail: thumbnail,
+            fullUploadableThumbnail: fullUploadableThumbnail,
+            progressTracker: thumbnailProgress,
+            session: URLSession(configuration: .ephemeral),
+            apiService: api,
+            credentialProvider: credentialProvider
+        )
+
+        return ThumbnailUploaderOperation(
+            progressTracker: thumbnailProgress,
+            contentUploader: uploader
+        )
+    }
 }

@@ -88,4 +88,8 @@ public extension UTI {
         guard let type = UTType(value) else { return false }
         return type.conforms(to: .livePhoto)
     }
+
+    var isLiveAsset: Bool {
+        return isLivePhoto || value == "com.apple.live-photo-bundle"
+    }
 }

@@ -24,11 +24,15 @@ typealias OnError = (Error) -> Void
 typealias OnUploadSuccess = (FileDraft) -> Void
 public typealias OnUploadCompletion = (Result<File, Error>) -> Void
 
+public enum FileUploaderError: Error {
+    case missingOperations
+    case insuficientSpace
+    case expiredUploadURL
+    case expiredFileDraft
+}
+
 public final class FileUploader: LogObject {
-    private enum FileUploaderError: Error {
-        case missingOperations
-    }
-    
+
     public static let osLog: OSLog = OSLog(subsystem: "ProtonDrive", category: "FileUploader")
 
     private let fileUploadFactory: FileUploadOperationsProvider
@@ -195,8 +199,10 @@ extension FileUploader {
                 ConsoleLogger.shared?.log(DriveError(error, "FileUploader"))
 
                 self?.cancel(uploadID: uploadID)
-                self?.errorStream.send(error)
-                completion(.failure(error))
+                let uploadError = (error as? ResponseError)?.asFileUploadError ?? error
+                self?.handleControlledError(uploadError, file: file)
+                self?.errorStream.send(uploadError)
+                completion(.failure(uploadError))
             }
         }
 
@@ -205,4 +211,55 @@ extension FileUploader {
         return operations.last as! UploadOperation
     }
 
+    private func handleControlledError(_ error: Error, file: File) {
+        guard let error = error as? FileUploaderError else { return }
+        switch error {
+        case .insuficientSpace:
+            setNoSpaceOnCloudErrorTo(file)
+        case .expiredUploadURL:
+            setExpiredUploadURLsForRevisionIn(file)
+        default:
+            break
+        }
+    }
+
+    private func setNoSpaceOnCloudErrorTo(_ file: File) {
+        guard let moc = file.moc else { return }
+
+        moc.performAndWait {
+            file.state = .cloudImpediment
+            try? moc.saveOrRollback()
+        }
+    }
+
+    private func setExpiredUploadURLsForRevisionIn(_ file: File) {
+        guard let moc = file.moc else { return }
+
+        moc.performAndWait {
+            file.activeRevisionDraft?.uploadState = .encrypted
+            file.activeRevisionDraft?.blocks.compactMap(\.asUploadBlock).filter { !$0.isUploaded }.forEach{ $0.unsetUploadableState() }
+
+            let thumbnail = file.activeRevisionDraft?.thumbnail
+            if thumbnail?.isUploaded == false {
+                thumbnail?.unsetUploadableState()
+            }
+
+            try? moc.saveOrRollback()
+        }
+    }
+}
+
+extension ResponseError {
+    private var noSpaceOnCloud: Int { 200002 }
+    private var expiredResource: Int { 2501 }
+
+    var asFileUploadError: FileUploaderError? {
+        if httpCode == 422, code == expiredResource {
+            return .expiredFileDraft
+        } else if code == noSpaceOnCloud {
+            return .insuficientSpace
+        } else {
+            return nil
+        }
+    }
 }

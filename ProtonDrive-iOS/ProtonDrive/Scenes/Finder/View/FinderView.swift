@@ -193,7 +193,7 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
             && self.vm.isVisible
         {
             ProgressesStatusToast(uploadErrors: (self.vm as! UploadingViewModel).uploadErrors,
-                                  failedUploads: (self.vm as! UploadingViewModel).uploadsCount.total)
+                                  failedUploads: (self.vm as! UploadingViewModel).failedCount)
                 .transition(.move(edge: .bottom))
                 .padding(.bottom, errorToastSize)
                 .padding(.horizontal)

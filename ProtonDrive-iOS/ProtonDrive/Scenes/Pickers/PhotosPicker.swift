@@ -87,7 +87,9 @@ struct PhotoPicker: UIViewControllerRepresentable {
         }
         
         private func setupOverlay(on picker: UIViewController) {
-            let label = UILabel("Preparing upload", font: nil, textColor: ColorProvider.TextHint)
+            let label = UILabel("Importing the files. Please keep the app open to avoid interruptions.", font: nil, textColor: ColorProvider.TextHint)
+            label.numberOfLines = 0
+            label.textAlignment = .center
             
             let activity = UIActivityIndicatorView(style: .large)
             activity.color = ColorProvider.BrandNorm
@@ -105,6 +107,7 @@ struct PhotoPicker: UIViewControllerRepresentable {
             blur.fillSuperview()
             blur.contentView.addSubview(stack)
             stack.centerInSuperview()
+            stack.constrainBySuperviewBounds(padding: 20)
             
             UIView.animate(withDuration: 0.3) {
                 blur.alpha = 0.95

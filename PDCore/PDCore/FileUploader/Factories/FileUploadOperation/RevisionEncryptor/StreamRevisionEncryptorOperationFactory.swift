@@ -20,8 +20,8 @@ import CoreData
 final class StreamRevisionEncryptorOperationFactory: DiscreteRevisionEncryptorOperationFactory {
 
     // TODO: Make use of the progress in the FileProvider
-    override func makeBlocksRevisionEncryptor(progress: Progress, moc: NSManagedObjectContext) -> RevisionEncryptor {
-        return StreamRevisionEncryptor(signersKitFactory: signersKitFactory, maxBlockSize: maxBlockSize(), moc: moc)
+    override func makeBlocksRevisionEncryptor(progress: Progress, moc: NSManagedObjectContext, digestBuilder: DigestBuilder) -> RevisionEncryptor {
+        return StreamRevisionEncryptor(signersKitFactory: signersKitFactory, maxBlockSize: maxBlockSize(), moc: moc, digestBuilder: digestBuilder)
     }
 
 }

@@ -24,14 +24,16 @@ final class StreamRevisionEncryptor: RevisionEncryptor {
     let signersKitFactory: SignersKitFactoryProtocol
     let maxBlockSize: Int
     let moc: NSManagedObjectContext
+    private let digestBuilder: DigestBuilder
 
     private var isCancelled = false
     private var isExecuting = false
 
-    init( signersKitFactory: SignersKitFactoryProtocol, maxBlockSize: Int, moc: NSManagedObjectContext) {
+    init( signersKitFactory: SignersKitFactoryProtocol, maxBlockSize: Int, moc: NSManagedObjectContext, digestBuilder: DigestBuilder) {
         self.signersKitFactory = signersKitFactory
         self.maxBlockSize = maxBlockSize
         self.moc = moc
+        self.digestBuilder = digestBuilder
     }
 
     func encrypt(_ draft: CreatedRevisionDraft, completion: @escaping Completion) {
@@ -102,7 +104,7 @@ extension StreamRevisionEncryptor {
         let cleartextUrl = block.cleardata
         let cyphertextUrl = cleartextUrl.appendingPathExtension("\(block.index)")
 
-        let hash = try Encryptor.encryptStream(cleartextUrl, cyphertextUrl, file.nodeKey, nodePassphrase, contentKeyPacket)
+        let hash = try Encryptor.encryptStream(cleartextUrl, cyphertextUrl, file.nodeKey, nodePassphrase, contentKeyPacket, digestBuilder)
         let size = try FileManager.default.attributesOfItem(atPath: cyphertextUrl.path)[.size] as! UInt64
 
         return .init(index: block.index, cypherdata: cyphertextUrl, hash: hash, size: Int(size))

@@ -61,7 +61,7 @@ class MenuModel {
 }
 
 extension UserInfo {
-    static var blank: UserInfo = .init(usedSpace: 0, maxSpace: 1, invoiceState: .onTime)
+    static var blank: UserInfo = .init(usedSpace: 0, maxSpace: 1, invoiceState: .onTime, isPaid: false)
 }
 
 extension AccountInfo {

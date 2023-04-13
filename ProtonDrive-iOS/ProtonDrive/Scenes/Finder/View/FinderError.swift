@@ -43,10 +43,10 @@ enum FinderError: Error, Equatable {
             }
         }
 
-        private static func checkSpaceError(for error: NSError) -> FinderError {
-            if error.code == Uploader.Errors.noSpaceOnCloudError.code {
+        private static func checkSpaceError(for error: Error) -> FinderError {
+            if case FileUploaderError.insuficientSpace = error {
                 return .noSpaceOnCloud
-            } else if error.matches(Uploader.Errors.lackOfSpaceOnDiskError) || error.matches(Uploader.Errors.lackOfSpaceOnDeviceError) {
+            } else if (error as NSError).matches(Uploader.Errors.lackOfSpaceOnDiskError) || (error as NSError).matches(Uploader.Errors.lackOfSpaceOnDeviceError) {
                 return .noSpaceOnDevice
             } else {
                 return .toast(error: error)

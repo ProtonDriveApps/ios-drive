@@ -20,7 +20,6 @@ import Foundation
 protocol RevisionUploader {
     typealias Completion = (Result<Void, Error>) -> Void
 
-    var progress: Progress { get }
-
-    func upload(onCompletion: @escaping Completion)
+    func upload(_ draft: FileDraft, completion: @escaping Completion)
+    func cancel()
 }

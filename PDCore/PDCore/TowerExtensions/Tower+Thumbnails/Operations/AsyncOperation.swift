@@ -17,8 +17,8 @@
 
 import Foundation
 
-class AsynchronousOperation: Operation {
-    enum State: String {
+open class AsynchronousOperation: Operation {
+    public enum State: String {
         case ready
         case executing
         case finished
@@ -28,7 +28,7 @@ class AsynchronousOperation: Operation {
         }
     }
 
-    var state = State.ready {
+    public var state = State.ready {
         willSet {
             willChangeValue(forKey: newValue.keyPath)
             willChangeValue(forKey: state.keyPath)
@@ -37,19 +37,19 @@ class AsynchronousOperation: Operation {
             didChangeValue(forKey: state.keyPath)
         }
     }
-    override var isExecuting: Bool {
+    override public var isExecuting: Bool {
         state == .executing
     }
 
-    override var isFinished: Bool {
+    override public var isFinished: Bool {
         state == .finished
     }
 
-    override var isAsynchronous: Bool {
+    override public var isAsynchronous: Bool {
         true
     }
 
-    override func start() {
+    override public func start() {
         // Should be overriden only with custom state handling.
         // Put execution login into `main`.
         if isCancelled {
@@ -61,7 +61,7 @@ class AsynchronousOperation: Operation {
         main()
     }
 
-    override func cancel() {
+    override public func cancel() {
         super.cancel()
 
         guard isExecuting else { return }

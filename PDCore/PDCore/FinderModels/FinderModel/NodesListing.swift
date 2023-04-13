@@ -35,9 +35,6 @@ extension NodesListing {
             
             return (sortedActive, sortedUploading)
         }
-        .removeDuplicates(by: { previous, current in
-            return previous.0 == current.0 && previous.1 == current.1
-        })
         .eraseToAnyPublisher()
     }
     

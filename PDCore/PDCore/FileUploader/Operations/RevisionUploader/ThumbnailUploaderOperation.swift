@@ -20,15 +20,12 @@ import Foundation
 final class ThumbnailUploaderOperation: AsynchronousOperation {
 
     private let progressTracker: Progress
-    private let draft: FileDraft
     private let contentUploader: ContentUploader
 
     init(
-        draft: FileDraft,
         progressTracker: Progress,
         contentUploader: ContentUploader
     ) {
-        self.draft = draft
         self.progressTracker = progressTracker
         self.contentUploader = contentUploader
         super.init()
@@ -39,13 +36,13 @@ final class ThumbnailUploaderOperation: AsynchronousOperation {
 
         ConsoleLogger.shared?.log("STAGE: 3.1 Thumbnail upload 🏞☁️ started", osLogType: FileUploader.self)
 
-        let onCompletion: (Result<Void, Error>) -> Void = { [weak self] result in
+        contentUploader.upload() { [weak self] result in
             guard let self = self, !self.isCancelled else { return }
 
             switch result {
             case .success:
                 ConsoleLogger.shared?.log("STAGE: 3.1 Thumbnail upload 🏞☁️ finished ✅", osLogType: FileUploader.self)
-                self.finalizeThumbnailUpload()
+
             case .failure:
                 ConsoleLogger.shared?.log("STAGE: 3.1 Thumbnail upload 🏞☁️ finished ❌", osLogType: FileUploader.self)
             }
@@ -53,29 +50,12 @@ final class ThumbnailUploaderOperation: AsynchronousOperation {
             self.progressTracker.complete()
             self.state = .finished
         }
-        contentUploader.onCompletion = onCompletion
-
-        contentUploader.upload()
-    }
-
-    private func finalizeThumbnailUpload() {
-        let file = draft.file
-        guard let moc = file.moc else { return }
-
-        moc.performAndWait {
-            guard let revision = file.activeRevisionDraft,
-                  let thumbnail = revision.thumbnail else { return }
-
-            thumbnail.isUploaded = true
-
-            try? moc.save()
-        }
     }
 
     override func cancel() {
-        ConsoleLogger.shared?.log("🙅‍♂️🙅‍♂️🙅‍♂️🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
+        ConsoleLogger.shared?.log("🙅‍♂️🙅‍♂️🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
+        contentUploader.cancel()
         super.cancel()
-        progressTracker.cancel()
     }
 
 }

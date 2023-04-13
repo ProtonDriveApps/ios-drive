@@ -88,16 +88,19 @@ extension FinderViewModel {
     func subscribeToChildren() {
         self.childrenCancellable?.cancel()
         self.childrenCancellable = self.model.children()
-        .filter { [weak self] _, _ in
-            // reordering is heavy operation, so we do not want to perform it on all the folders at once when the app-wide setting is changed
-            // instead we will call refreshOnAppear() when the view is back visible
-            self?.isVisible == true
-        }
-        .sink { [weak self] activeSorted, uploading in
-            guard let self = self, self.isVisible else { return }
-            self.permanentChildren = activeSorted.map(NodeWrapper.init)
-            self.transientChildren = uploading.map(NodeWrapper.init)
-        }
+            .filter { [weak self] _, _ in
+                // reordering is heavy operation, so we do not want to perform it on all the folders at once when the app-wide setting is changed
+                // instead we will call refreshOnAppear() when the view is back visible
+                self?.isVisible == true
+            }
+            .removeDuplicates(by: { previous, current in
+                return previous.0 == current.0 && previous.1 == current.1
+            })
+            .sink { [weak self] activeSorted, uploading in
+                guard let self = self, self.isVisible else { return }
+                self.permanentChildren = activeSorted.map(NodeWrapper.init)
+                self.transientChildren = uploading.map(NodeWrapper.init)
+            }
     }
     
     func switchSorting(_ newValue: SortPreference) {
@@ -171,21 +174,53 @@ extension FinderViewModel where Self: HasMultipleSelection {
 
 extension FinderViewModel where Self: UploadingViewModel, Self: DownloadingViewModel, Self: HasMultipleSelection {
     func childViewModel(for node: Node) -> NodeCellConfiguration {
-        NodeCellWithProgressConfiguration(from: node,
-                                          // selection should not be available for uploading files
-                                          selectionModel: node.state?.existsOnCloud == true ? self.prepareSelectionModel() : nil,
-                                          // progresses come from Uploader a little later that nodes from db
-                                          uploadProgresses: self.uploadsCount.total > 0 ? self.uploadProgresses : nil,
-                                          downloadProgresses: self.downloadProgresses,
-                                          thumbnailLoader: self.model)
+        NodeCellWithProgressConfiguration(
+            from: node,
+            // selection should not be available for uploading files
+            selectionModel: node.state?.existsOnCloud == true ? self.prepareSelectionModel() : nil,
+            // progresses come from Uploader a little later that nodes from db
+            progressesAvailable: getNormalizedUploadProgresses() != nil,
+            progressTracker: makeFileProgressTracker(for: node),
+            downloadProgresses: self.downloadProgresses,
+            thumbnailLoader: self.model,
+            nodeStatePolicy: nodeStatePolicy
+        )
+    }
+
+    func makeFileProgressTracker(for node: Node) -> ProgressTracker? {
+        let uploadProgresses = getNormalizedUploadProgresses()
+        if let file = node as? File {
+            if let uploadID = file.uploadID,
+               let uploadProgress = uploadProgresses?[uploadID],
+               file.activeRevisionDraft != nil {
+                return ProgressTracker(progress: uploadProgress, direction: .upstream)
+            } else {
+                return downloadProgresses.first { $0.matches(file.id) }
+            }
+        }
+        return nil
+    }
+
+    func getNormalizedUploadProgresses() -> UploadProgresses? {
+        uploadsCount > 0 ? uploadProgresses : nil
+    }
+
+    func isUploadFailed(node: Node) -> Bool {
+        let progressTracker = makeFileProgressTracker(for: node)
+        let areProgressesAvailable = getNormalizedUploadProgresses() != nil
+        return nodeStatePolicy.isUploadFailed(for: node, progressTracker: progressTracker, areProgressesAvailable: areProgressesAvailable)
     }
 }
+
 extension FinderViewModel where Self: DownloadingViewModel, Self: HasMultipleSelection {
     func childViewModel(for node: Node) -> NodeCellConfiguration {
-        NodeCellWithProgressConfiguration(from: node,
-                                          selectionModel: self.prepareSelectionModel(),
-                                          downloadProgresses: self.downloadProgresses,
-                                          thumbnailLoader: self.model)
+        NodeCellWithProgressConfiguration(
+            from: node,
+            selectionModel: self.prepareSelectionModel(),
+            downloadProgresses: self.downloadProgresses,
+            thumbnailLoader: self.model,
+            nodeStatePolicy: DisabledNodeStatePolicy()
+        )
     }
 }
 
@@ -218,7 +253,7 @@ extension FinderViewModel where Self: UploadingViewModel, Self.Model: UploadsLis
         .sink(receiveCompletion: { [weak self] _ in
             self?.subscribeToChildrenUploading()
         }, receiveValue: { [weak self] files, progress in
-            self?.uploadsCount = (progress.count, files.count)
+            self?.uploadsCount = files.count
             self?.uploadProgresses = progress
         })
     }

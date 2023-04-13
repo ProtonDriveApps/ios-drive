@@ -18,14 +18,19 @@
 import Foundation
 
 protocol ContentUploader: AnyObject {
-    typealias OnCompletion = (Result<Void, Error>) -> Void
+    typealias Completion = (Result<Void, Error>) -> Void
+    func upload(completion: @escaping Completion)
 
-    var onCompletion: OnCompletion { get set }
-
-    func upload()
+    func cancel()
 }
 
-struct ExpiredLinkError: Error {
-    let file: File
-    let uploadID: UUID
+enum RetryPolicy {
+    static let maxAttempts = 3
+
+    static let retryableErrorCodes: Set<Int> = [
+        NSURLErrorNetworkConnectionLost
+    ]
 }
+struct UploadNonCompleted: Error {}
+struct URLSessionInvalidRepresentationError: Error {}
+struct URLSessionConnectionLostError: Error {}

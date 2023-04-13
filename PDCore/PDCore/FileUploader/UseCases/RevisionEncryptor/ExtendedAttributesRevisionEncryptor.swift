@@ -26,6 +26,7 @@ final class ExtendedAttributesRevisionEncryptor: RevisionEncryptor {
     private let maxBlockSize: Int
     private let progress: Progress
     private let moc: NSManagedObjectContext
+    private let digestBuilder: DigestBuilder
 
     private var isCancelled = false
     private var isExecuting = false
@@ -35,13 +36,15 @@ final class ExtendedAttributesRevisionEncryptor: RevisionEncryptor {
         signersKitFactory: SignersKitFactoryProtocol,
         maxBlockSize: Int,
         progress: Progress,
-        moc: NSManagedObjectContext
+        moc: NSManagedObjectContext,
+        digestBuilder: DigestBuilder
     ) {
         self.encryptAndSign = encryptAndSign
         self.signersKitFactory = signersKitFactory
         self.maxBlockSize = maxBlockSize
         self.progress = progress
         self.moc = moc
+        self.digestBuilder = digestBuilder
     }
 
     func encrypt(_ draft: CreatedRevisionDraft, completion: @escaping Completion) {
@@ -70,8 +73,9 @@ final class ExtendedAttributesRevisionEncryptor: RevisionEncryptor {
                     blockSizes = []
                 }
                 let modificationTime = draft.localURL.contentModificationDate ?? Date()
-
-                let commonAttributes = ExtendedAttributes.Common(modificationTime: modificationTime, size: totalSize, blockSizes: blockSizes)
+                let sha1 = self.digestBuilder.getResult().hexString()
+                let digests = ExtendedAttributes.Digests(sha1: sha1)
+                let commonAttributes = ExtendedAttributes.Common(modificationTime: modificationTime, size: totalSize, blockSizes: blockSizes, digests: digests)
                 let clearExtendedAttributes = try ExtendedAttributes(common: commonAttributes).encoded()
                 let xAttr = try self.encryptAndSign(clearExtendedAttributes, publicNodeKey, addressKey, addressPassphrase)
 

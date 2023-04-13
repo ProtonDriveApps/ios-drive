@@ -48,6 +48,9 @@ public final class PMActionSheetHeaderView: UIView, AccessibleView {
     ///   - subtitle: Subtitle of action sheet
     ///   - leftItem: Left item of header view, if `title` set, `icon` will be ignored
     ///   - rightItem: Right item of header view, if `title` set, `icon` will be ignored
+    ///   - leftTitleViews: Views added to the left of the title label. Adding them will shift the title label.
+    ///   - rightTitleViews: Views added to the right of the title label. Adding them will shift the title label.
+    ///   - hasSeparator: Whether to add a separator line between the header and the cells.
     public init(
         title: String,
         subtitle: String?,
@@ -87,7 +90,7 @@ extension PMActionSheetHeaderView {
         let titleView = self.createTitleView()
         self.setupTitleViewConstraint(titleView)
         // swiftlint:disable:next sorted_first_last
-        let refTitle = titleView.arrangedSubviews.sorted(by: { $0.frame.size.width >=  $1.frame.size.width }).first
+        let refTitle = titleView.arrangedSubviews.sorted(by: { $0.frame.size.width >= $1.frame.size.width }).first
         self.setupItem(item: self.leftItem,
                        isRightBtn: false,
                        refTitle: refTitle)
@@ -208,7 +211,7 @@ extension PMActionSheetHeaderView {
 
 extension PMActionSheetHeaderView {
     @objc private func clickButton(sender: UIButton) {
-        let item = sender.tag == 10 ? self.rightItem: self.leftItem
+        let item = sender.tag == 10 ? self.rightItem : self.leftItem
         guard let _item = item,
             let handler = _item.handler else { return }
         handler(_item)

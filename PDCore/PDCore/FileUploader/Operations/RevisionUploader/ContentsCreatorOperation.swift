@@ -16,29 +16,17 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import CoreData
 
-final class ContentsCreatorOperation: AsynchronousOperation, OperationWithProgress {
+final class ContentsCreatorOperation: AsynchronousOperation {
 
-    let progress = Progress(unitsOfWork: 1)
-
-    private let draft: FileDraft
-    private let contentCreator: CloudContentCreator
-    private let signersKitFactory: SignersKitFactoryProtocol
-    private let date: () -> Date
+    private let contentCreator: ContentCreator
     private let onError: OnError
 
     init(
-        draft: FileDraft,
-        contentCreator: CloudContentCreator,
-        signersKitFactory: SignersKitFactoryProtocol,
-        date: @escaping () -> Date = Date.init,
+        contentCreator: ContentCreator,
         onError: @escaping OnError
     ) {
-        self.draft = draft
         self.contentCreator = contentCreator
-        self.signersKitFactory = signersKitFactory
-        self.date = date
         self.onError = onError
         super.init()
     }
@@ -46,78 +34,22 @@ final class ContentsCreatorOperation: AsynchronousOperation, OperationWithProgre
     override func main() {
         guard !isCancelled else { return }
 
-        do {
-            let revision = try draft.getUploadableRevision()
-            let addressID = try signersKitFactory.make(forSigner: .address(revision.signatureEmail)).address.addressID
+        contentCreator.create() { [weak self] result in
+            guard let self = self, !self.isCancelled else { return }
 
-            let requestedUploadDate = date()
+            switch result {
+            case .success:
+                self.state = .finished
 
-            contentCreator.create(from: revision, addressID: addressID) { [weak self] result in
-                guard let self = self, !self.isCancelled else { return }
-
-                switch result {
-                case .success(let revision):
-                    self.finalize(revision, requestedUploadDate)
-
-                case .failure(let error as ResponseError) where error.responseCode == Uploader.Errors.noSpaceOnCloudError.code:
-                    self.finalizeWithNoSpaceOnCloudError(error)
-
-                case .failure(let error):
-                    self.onError(error)
-                }
-            }
-        } catch {
-            onError(error)
-        }
-    }
-
-    private func finalize(_ revision: FullUploadableRevision, _ requestedUploadDate: Date) {
-        let file = draft.file
-        guard let moc = file.moc else { return onError(File.noMOC()) }
-
-        moc.performAndWait {
-            do {
-                guard let rev = file.activeRevisionDraft else {
-                    throw File.InvalidState(message: "Invalid File, no active revision found for LocalContentCreatorFinalizer")
-                }
-                let blocks = rev.uploadableUploadBlocks()
-
-                zip(revision.blocks, blocks).forEach { fullUploadableBlock, block in
-                    block.uploadToken = fullUploadableBlock.uploadToken
-                    block.uploadUrl = fullUploadableBlock.remoteURL.absoluteString
-                }
-
-                if let thumbnail = revision.thumbnail  {
-                    rev.thumbnail?.uploadURL = thumbnail.uploadURL.absoluteString
-                }
-                rev.requestedUpload = requestedUploadDate
-
-                try moc.save()
-
-                progress.complete()
-                state = .finished
-
-            } catch {
-                moc.rollback()
-                onError(error)
+            case .failure(let error):
+                self.onError(error)
             }
         }
     }
 
-    private func finalizeWithNoSpaceOnCloudError(_ error: Error) {
-        let file = draft.file
-        // swiftlint:disable:next todo
-        // TODO: Would make sense complete with an error here at all?
-        guard let moc = file.moc else { return onError(File.noMOC()) }
-
-        moc.performAndWait {
-            do {
-                file.state = .cloudImpediment
-                try moc.save()
-            } catch {
-                moc.rollback()
-            }
-            onError(error)
-        }
+    override func cancel() {
+        ConsoleLogger.shared?.log("🙅‍♂️🙅‍♂️🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
+        contentCreator.cancel()
+        super.cancel()
     }
 }
