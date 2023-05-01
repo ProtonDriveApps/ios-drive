@@ -36,9 +36,11 @@ final class ItemProviderLoadOperation: AsynchronousOperation {
             return
         }
 
-        resource.execute(with: itemProvider) { [weak self] in
-            self?.completion($0)
-            self?.state = .finished
+        resource.execute(with: itemProvider) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.completion(result)
+                self?.state = .finished
+            }
         }
     }
 }

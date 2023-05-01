@@ -42,6 +42,8 @@
 		31B7828E29BB80400060B403 /* DigestBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31B7828D29BB80400060B403 /* DigestBuilder.swift */; };
 		31B7828F29BB80400060B403 /* DigestBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31B7828D29BB80400060B403 /* DigestBuilder.swift */; };
 		76369CB1279EB94A004DE45F /* PaymentsSecureStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 765B70A727914D0000F27670 /* PaymentsSecureStorage.swift */; };
+		765915E829DBE1E4009352C1 /* Tower+NodesAsync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 765915E729DBE1E3009352C1 /* Tower+NodesAsync.swift */; };
+		765915E929DBE1E4009352C1 /* Tower+NodesAsync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 765915E729DBE1E3009352C1 /* Tower+NodesAsync.swift */; };
 		AB0A899428A6276F000FCBF2 /* Upload+Errors.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB59F904261C524A0072C601 /* Upload+Errors.swift */; };
 		AB0A899828A629E4000FCBF2 /* Thumbnail+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB171DB725EFAE7800A24FF0 /* Thumbnail+Extension.swift */; };
 		AB0A899B28A62A7A000FCBF2 /* NewBlockCleartextCyphertext.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABF407C225F0ED610007652C /* NewBlockCleartextCyphertext.swift */; };
@@ -672,6 +674,7 @@
 		31B7828A29BB7E9C0060B403 /* SHA1DigestBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SHA1DigestBuilder.swift; sourceTree = "<group>"; };
 		31B7828D29BB80400060B403 /* DigestBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DigestBuilder.swift; sourceTree = "<group>"; };
 		6B0516C1198C907043B1533E /* Pods_PDCoreMac.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PDCoreMac.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		765915E729DBE1E3009352C1 /* Tower+NodesAsync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Tower+NodesAsync.swift"; sourceTree = "<group>"; };
 		765B70A727914D0000F27670 /* PaymentsSecureStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentsSecureStorage.swift; sourceTree = "<group>"; };
 		84030E8A6B40930053AEB42C /* Pods-PDCoreMac.release-store.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDCoreMac.release-store.xcconfig"; path = "Target Support Files/Pods-PDCoreMac/Pods-PDCoreMac.release-store.xcconfig"; sourceTree = "<group>"; };
 		AB063F8924445AF5004C525A /* ScanNodeOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanNodeOperation.swift; sourceTree = "<group>"; };
@@ -1057,6 +1060,7 @@
 				1897F3D0257501A900D3C384 /* Tower+ShareURL.swift */,
 				AB2B1736257FB3AC00CC3920 /* Tower+Trash.swift */,
 				AB2B173A257FB40D00CC3920 /* Tower+Nodes.swift */,
+				765915E729DBE1E3009352C1 /* Tower+NodesAsync.swift */,
 				AB90BE602872D53500CE3D26 /* Tower+Events.swift */,
 				188AB153262D444F00A90C49 /* Tower+Thumbnails */,
 			);
@@ -2471,6 +2475,7 @@
 				ABCD3AE22991244700432FE6 /* DarwinNotificationCenter.swift in Sources */,
 				ABCD3B102991247A00432FE6 /* OfflineSaver.swift in Sources */,
 				D961B99A29B04A9C0029FE32 /* StreamFileUploadOperationsProviderFactory.swift in Sources */,
+				765915E929DBE1E4009352C1 /* Tower+NodesAsync.swift in Sources */,
 				ABCD3B302991249000432FE6 /* Node+Decryption.swift in Sources */,
 				ABCD3BA82991251500432FE6 /* Result+Extension.swift in Sources */,
 				3123563129A60BCE00AC85C4 /* CommandInteractor.swift in Sources */,

@@ -102,8 +102,8 @@ public final class ItemActionsOutlet: LogObject {
                 completionHandler(nil, [], false, Errors.parentNotFound)
                 return Progress()
             }
-            tower.move(nodeID: nodeID, under: newParent, handler: completion)
-            return Progress()
+
+            return progressWithMove(tower: tower, item: item, nodeID: nodeID, newParent: newParent, changedFields: changedFields, request: request, nodeOperationCompletion: completion, completionHandler: completionHandler)
             
         case .filename: // rename
             ConsoleLogger.shared?.log("Renaming item...", osLogType: Self.self)
@@ -111,51 +111,21 @@ public final class ItemActionsOutlet: LogObject {
                 completionHandler(nil, [], false, Errors.nodeNotFound)
                 return Progress()
             }
-            if #available(macOS 12.0, *) {
-                // Renaming an item just after creation might fail because it has not been uploaded yet
-                // and modifying it will return an error. So needs to be created first
-                if let node = self.node(tower: tower, of: item.itemIdentifier),
-                   let parentFolder = self.parent(tower: tower, of: item),
-                   let state = node.state, state == .deleted {
-                    let (updatedItem, conflicted) = resolveConflictOnItemIfNeeded(tower: tower, item: item, changeType: .create, request: request)
-                    if conflicted {
-                        completionHandler(updatedItem, [], false, nil)
-                    } else {
-                        tower.createFolder(named: item.filename, under: parentFolder) {
-                            completion($0.map { $0 as Node })
-                        }
-                    }
-                    return Progress()
-                }
+            guard let parent = self.parent(tower: tower, of: item) else {
+                completionHandler(nil, [], false, Errors.parentNotFound)
+                return Progress()
             }
-            tower.rename(node: nodeID, cleartextName: item.filename, handler: completion)
-            return Progress()
-            
+
+            return progressWithRename(tower: tower, item: item, nodeID: nodeID, parent: parent, changedFields: changedFields, request: request, nodeOperationCompletion: completion, completionHandler: completionHandler)
+
         case .contents: // upload new revision
             ConsoleLogger.shared?.log("Uploading new contents...", osLogType: Self.self)
             guard tower.sessionVault.currentAddress() != nil else {
                 completionHandler(nil, [], false, Errors.noAddressInTower)
                 return Progress()
             }
-            guard let copy = self.prepare(forUpload: item, from: newContents) else {
-                completionHandler(nil, [], false, Errors.emptyUrlForFileUpload)
-                return Progress()
-            }
-            guard let file = node as? File else {
-                completionHandler(nil, [], false, Errors.nodeNotFound)
-                return Progress()
-            }
-            guard let newFile = try? tower.revisionImporter.importNewRevision(from: copy, into: file) else {
-                completionHandler(nil, [], false, Errors.failedToCreateModel)
-                return Progress()
-            }
 
-            let operation = tower.fileUploader.upload(newFile) {
-                try? FileManager.default.removeItem(at: copy.deletingLastPathComponent())
-                completion($0.map { $0 as Node })
-            }
-            
-            return operation.progress
+            return progressWithNewRevision(tower: tower, item: item, node: node, newContents: newContents, request: request, nodeOperationCompletion: completion, completionHandler: completionHandler)
 
         default:
             ConsoleLogger.shared?.log("Irrelevant changes", osLogType: Self.self)
@@ -227,6 +197,91 @@ public final class ItemActionsOutlet: LogObject {
 
             return op.progress
         }
+    }
+
+    // MARK: - Actions on items
+
+    func progressWithMove(tower: Tower, item: NSFileProviderItem, nodeID: NodeIdentifier,
+                          newParent: Folder, changedFields: NSFileProviderItemFields, request: NSFileProviderRequest?,
+                          nodeOperationCompletion: @escaping (Result<Node, Error>) -> Void,
+                          completionHandler: @escaping Completion) -> Progress {
+        // Check for conflicts
+        let (_, conflictEligible) = resolveConflictOnItemIfNeeded(tower: tower, item: item, changeType: .move(fields: changedFields), request: request)
+        Task {
+            if conflictEligible {
+                do {
+                    _ = try await tower.move(nodeID: nodeID, under: newParent)
+                    completionHandler(nil, [], false, nil)
+                } catch {
+                    _ = try? await tower.rename(node: nodeID, cleartextName: item.filename.conflictNodeName)
+                    tower.rename(node: nodeID, cleartextName: item.filename.conflictNodeName, handler: nodeOperationCompletion)
+                }
+            } else {
+                _ = try? await tower.move(nodeID: nodeID, under: newParent)
+            }
+        }
+        return Progress()
+    }
+
+    func progressWithRename(tower: Tower, item: NSFileProviderItem, nodeID: NodeIdentifier,
+                            parent: Folder, changedFields: NSFileProviderItemFields, request: NSFileProviderRequest?,
+                            nodeOperationCompletion: @escaping (Result<Node, Error>) -> Void,
+                            completionHandler: @escaping Completion) -> Progress {
+        // Check for conflicts
+        let actionChangeType: ItemActionChangeType = changedFields.contains(.parentItemIdentifier) ? .move(fields: changedFields) : .modifyMetadata(fields: changedFields)
+        let (_, conflictEligible) = resolveConflictOnItemIfNeeded(tower: tower, item: item, changeType: actionChangeType, request: request)
+        Task {
+            if conflictEligible {
+                do {
+                    _ = try await tower.rename(node: nodeID, cleartextName: item.filename)
+                    completionHandler(nil, [], false, nil)
+                } catch {
+                    tower.createFolder(named: item.filename.conflictNodeName, under: parent) {
+                        nodeOperationCompletion($0.map { $0 as Node })
+                    }
+                }
+            } else {
+                tower.rename(node: nodeID, cleartextName: item.filename, handler: nodeOperationCompletion)
+            }
+        }
+        return Progress()
+    }
+
+    func progressWithNewRevision(tower: Tower, item: NSFileProviderItem, node: Node,
+                                 newContents: URL?, request: NSFileProviderRequest?,
+                                 nodeOperationCompletion: @escaping (Result<Node, Error>) -> Void,
+                                 completionHandler: @escaping Completion) -> Progress {
+
+        guard let copy = self.prepare(forUpload: item, from: newContents) else {
+            completionHandler(nil, [], false, Errors.emptyUrlForFileUpload)
+            return Progress()
+        }
+        guard let file = node as? File else {
+            completionHandler(nil, [], false, Errors.nodeNotFound)
+            return Progress()
+        }
+        guard let newFile = try? tower.revisionImporter.importNewRevision(from: copy, into: file) else {
+            completionHandler(nil, [], false, Errors.failedToCreateModel)
+            return Progress()
+        }
+
+        let (_, conflictEligible) = resolveConflictOnItemIfNeeded(tower: tower, item: item, changeType: .modifyContents(contents: newContents), request: request)
+
+        Task {
+            if conflictEligible {
+                tower.restoreFromTrash(shareID: node.shareID, nodes: [node.identifier.nodeID]) {
+                    nodeOperationCompletion($0.flatMap { .success(node) })
+                }
+                return Progress()
+            } else {
+                let operation = tower.fileUploader.upload(newFile) {
+                    try? FileManager.default.removeItem(at: copy.deletingLastPathComponent())
+                    nodeOperationCompletion($0.map { $0 as Node })
+                }
+                return operation.progress
+            }
+        }
+        return Progress()
     }
 
 }

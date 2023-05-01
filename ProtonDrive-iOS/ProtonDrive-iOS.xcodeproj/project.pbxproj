@@ -72,13 +72,15 @@
 		18FBBA6224F1F087003295FF /* UploadSectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FBBA6124F1F087003295FF /* UploadSectionViewModel.swift */; };
 		2FF4922890232206DCCFABC0 /* Pods_ProtonDriveFileProviderUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F68BA7DF1533ED7CE46E4692 /* Pods_ProtonDriveFileProviderUI.framework */; };
 		310FB4F529C1B692005EA929 /* NodeStatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 310FB4F429C1B692005EA929 /* NodeStatePolicy.swift */; };
-		311ECF7F29A5249E00F76062 /* InterruptedUploadsContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311ECF7A29A5249E00F76062 /* InterruptedUploadsContainer.swift */; };
-		311ECF8029A5249E00F76062 /* InterruptedUploadsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311ECF7C29A5249E00F76062 /* InterruptedUploadsController.swift */; };
+		311ECF7F29A5249E00F76062 /* ForegroundTransitionContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311ECF7A29A5249E00F76062 /* ForegroundTransitionContainer.swift */; };
+		311ECF8029A5249E00F76062 /* ForegroundTransitionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311ECF7C29A5249E00F76062 /* ForegroundTransitionController.swift */; };
 		311ECF8129A5249E00F76062 /* InterruptedUploadsInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311ECF7E29A5249E00F76062 /* InterruptedUploadsInteractor.swift */; };
 		313F345229939E75000F5B9C /* LocalNotificationsContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 313F345129939E75000F5B9C /* LocalNotificationsContainer.swift */; };
 		313F345D2993C6CD000F5B9C /* DebugConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 313F345C2993C6CD000F5B9C /* DebugConstants.swift */; };
 		313F34602993D483000F5B9C /* LocalNotificationsFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 313F345F2993D483000F5B9C /* LocalNotificationsFactory.swift */; };
 		3151B3CB298289F8006C99AA /* DriveLoginAndSignupAuthenticator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3151B3CA298289F8006C99AA /* DriveLoginAndSignupAuthenticator.swift */; };
+		315663FF29D0393B00CBA7E9 /* ForegroundTransitionFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315663FE29D0393B00CBA7E9 /* ForegroundTransitionFactory.swift */; };
+		3156640129D03BC600CBA7E9 /* AggregatedOperationInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3156640029D03BC600CBA7E9 /* AggregatedOperationInteractor.swift */; };
 		315C38A5298A64870080BBE7 /* NotificationsPermissionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315C38A4298A64870080BBE7 /* NotificationsPermissionsView.swift */; };
 		315C38A8298A65D80080BBE7 /* NotificationsPermissionsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315C38A7298A65D80080BBE7 /* NotificationsPermissionsViewModel.swift */; };
 		316B59D829682C6000449FCE /* SelectionAnimationModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316B59D729682C6000449FCE /* SelectionAnimationModifier.swift */; };
@@ -92,6 +94,7 @@
 		318DA41C296EC6C80070329F /* ApplicationStateOperationsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318DA41B296EC6C80070329F /* ApplicationStateOperationsController.swift */; };
 		318DA41E296EC8310070329F /* UploadOperationInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318DA41D296EC8310070329F /* UploadOperationInteractor.swift */; };
 		319BF7A1299A2DCE004373DA /* NotificationsPermissionsHostingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 319BF7A0299A2DCE004373DA /* NotificationsPermissionsHostingViewController.swift */; };
+		31AD1E5929CC57C000AE4A72 /* InterruptedImportsInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31AD1E5829CC57C000AE4A72 /* InterruptedImportsInteractor.swift */; };
 		31B7828429BB6E050060B403 /* PhotoPickerResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31B7828329BB6E050060B403 /* PhotoPickerResource.swift */; };
 		31B7828929BB6E9B0060B403 /* PhotoItemProviderLoadResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31B7828829BB6E9B0060B403 /* PhotoItemProviderLoadResource.swift */; };
 		31BA8440297585E500A15143 /* BackgroundOperations.md in Resources */ = {isa = PBXBuildFile; fileRef = 31BA843F297585E500A15143 /* BackgroundOperations.md */; };
@@ -401,13 +404,15 @@
 		29A9511059D792B52A5DAD90 /* Pods-ProtonDrive.release-external.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ProtonDrive.release-external.xcconfig"; path = "Target Support Files/Pods-ProtonDrive/Pods-ProtonDrive.release-external.xcconfig"; sourceTree = "<group>"; };
 		3079F03FAE711FFB7CD6D683 /* Pods-ProtonDriveUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ProtonDriveUITests.debug.xcconfig"; path = "Target Support Files/Pods-ProtonDriveUITests/Pods-ProtonDriveUITests.debug.xcconfig"; sourceTree = "<group>"; };
 		310FB4F429C1B692005EA929 /* NodeStatePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeStatePolicy.swift; sourceTree = "<group>"; };
-		311ECF7A29A5249E00F76062 /* InterruptedUploadsContainer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InterruptedUploadsContainer.swift; sourceTree = "<group>"; };
-		311ECF7C29A5249E00F76062 /* InterruptedUploadsController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InterruptedUploadsController.swift; sourceTree = "<group>"; };
+		311ECF7A29A5249E00F76062 /* ForegroundTransitionContainer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ForegroundTransitionContainer.swift; sourceTree = "<group>"; };
+		311ECF7C29A5249E00F76062 /* ForegroundTransitionController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ForegroundTransitionController.swift; sourceTree = "<group>"; };
 		311ECF7E29A5249E00F76062 /* InterruptedUploadsInteractor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InterruptedUploadsInteractor.swift; sourceTree = "<group>"; };
 		313F345129939E75000F5B9C /* LocalNotificationsContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNotificationsContainer.swift; sourceTree = "<group>"; };
 		313F345C2993C6CD000F5B9C /* DebugConstants.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DebugConstants.swift; sourceTree = "<group>"; };
 		313F345F2993D483000F5B9C /* LocalNotificationsFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNotificationsFactory.swift; sourceTree = "<group>"; };
 		3151B3CA298289F8006C99AA /* DriveLoginAndSignupAuthenticator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriveLoginAndSignupAuthenticator.swift; sourceTree = "<group>"; };
+		315663FE29D0393B00CBA7E9 /* ForegroundTransitionFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundTransitionFactory.swift; sourceTree = "<group>"; };
+		3156640029D03BC600CBA7E9 /* AggregatedOperationInteractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AggregatedOperationInteractor.swift; sourceTree = "<group>"; };
 		315C38A4298A64870080BBE7 /* NotificationsPermissionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsPermissionsView.swift; sourceTree = "<group>"; };
 		315C38A7298A65D80080BBE7 /* NotificationsPermissionsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsPermissionsViewModel.swift; sourceTree = "<group>"; };
 		316B59D729682C6000449FCE /* SelectionAnimationModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionAnimationModifier.swift; sourceTree = "<group>"; };
@@ -421,6 +426,7 @@
 		318DA41B296EC6C80070329F /* ApplicationStateOperationsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationStateOperationsController.swift; sourceTree = "<group>"; };
 		318DA41D296EC8310070329F /* UploadOperationInteractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadOperationInteractor.swift; sourceTree = "<group>"; };
 		319BF7A0299A2DCE004373DA /* NotificationsPermissionsHostingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsPermissionsHostingViewController.swift; sourceTree = "<group>"; };
+		31AD1E5829CC57C000AE4A72 /* InterruptedImportsInteractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InterruptedImportsInteractor.swift; sourceTree = "<group>"; };
 		31B7828329BB6E050060B403 /* PhotoPickerResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPickerResource.swift; sourceTree = "<group>"; };
 		31B7828829BB6E9B0060B403 /* PhotoItemProviderLoadResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoItemProviderLoadResource.swift; sourceTree = "<group>"; };
 		31BA843F297585E500A15143 /* BackgroundOperations.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = BackgroundOperations.md; sourceTree = "<group>"; };
@@ -1114,20 +1120,21 @@
 			path = Domain;
 			sourceTree = "<group>";
 		};
-		311ECF7829A5249E00F76062 /* InterruptedUploads */ = {
+		311ECF7829A5249E00F76062 /* ForegroundTransition */ = {
 			isa = PBXGroup;
 			children = (
 				311ECF7929A5249E00F76062 /* Injection */,
 				311ECF7B29A5249E00F76062 /* Application */,
 				311ECF7D29A5249E00F76062 /* Domain */,
 			);
-			path = InterruptedUploads;
+			path = ForegroundTransition;
 			sourceTree = "<group>";
 		};
 		311ECF7929A5249E00F76062 /* Injection */ = {
 			isa = PBXGroup;
 			children = (
-				311ECF7A29A5249E00F76062 /* InterruptedUploadsContainer.swift */,
+				311ECF7A29A5249E00F76062 /* ForegroundTransitionContainer.swift */,
+				315663FE29D0393B00CBA7E9 /* ForegroundTransitionFactory.swift */,
 			);
 			path = Injection;
 			sourceTree = "<group>";
@@ -1135,7 +1142,7 @@
 		311ECF7B29A5249E00F76062 /* Application */ = {
 			isa = PBXGroup;
 			children = (
-				311ECF7C29A5249E00F76062 /* InterruptedUploadsController.swift */,
+				311ECF7C29A5249E00F76062 /* ForegroundTransitionController.swift */,
 			);
 			path = Application;
 			sourceTree = "<group>";
@@ -1144,6 +1151,7 @@
 			isa = PBXGroup;
 			children = (
 				311ECF7E29A5249E00F76062 /* InterruptedUploadsInteractor.swift */,
+				31AD1E5829CC57C000AE4A72 /* InterruptedImportsInteractor.swift */,
 			);
 			path = Domain;
 			sourceTree = "<group>";
@@ -1228,6 +1236,13 @@
 			path = Injection;
 			sourceTree = "<group>";
 		};
+		3156640329D03C2F00CBA7E9 /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
 		315C38A2298A64730080BBE7 /* Permissions */ = {
 			isa = PBXGroup;
 			children = (
@@ -1282,6 +1297,7 @@
 			children = (
 				318DA40B296EC54B0070329F /* OperationInteractor.swift */,
 				318DA41D296EC8310070329F /* UploadOperationInteractor.swift */,
+				3156640029D03BC600CBA7E9 /* AggregatedOperationInteractor.swift */,
 			);
 			path = Domain;
 			sourceTree = "<group>";
@@ -1319,6 +1335,13 @@
 			children = (
 			);
 			path = Subscription;
+			sourceTree = "<group>";
+		};
+		31AD1E5A29CC584100AE4A72 /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Domain;
 			sourceTree = "<group>";
 		};
 		31B7828229BB6DFB0060B403 /* Resource */ = {
@@ -1656,7 +1679,7 @@
 				AB74964925B1E9AF004E6694 /* Coordinator */,
 				1844B90D2665731600A3AB55 /* Deeplink */,
 				1844B9052665724700A3AB55 /* Notifications */,
-				311ECF7829A5249E00F76062 /* InterruptedUploads */,
+				311ECF7829A5249E00F76062 /* ForegroundTransition */,
 				ABD154152431EDA6000A7026 /* Scenes */,
 				AB54DABB2412AA08000570F7 /* Assets.xcassets */,
 				AB013484248A839F001377A9 /* Settings.bundle */,
@@ -2847,6 +2870,7 @@
 				AB309D3D24FCD22900A55ECB /* SharedViewModel.swift in Sources */,
 				18764CA32553F25B002B1845 /* NameEditingNode.swift in Sources */,
 				ABD154172431EDC7000A7026 /* FinderCoordinator.swift in Sources */,
+				315663FF29D0393B00CBA7E9 /* ForegroundTransitionFactory.swift in Sources */,
 				187BB70325B5E9A600B088E2 /* NameFormattingViewModel.swift in Sources */,
 				18E63613262B4F5200AD1558 /* ThumbnailImageViewModel.swift in Sources */,
 				AB864F9624D84A0F00678603 /* OfflineAvailableViewModel.swift in Sources */,
@@ -2911,13 +2935,15 @@
 				D9F7557E2869CCBE009E4657 /* SharedLinkEditorViewController.swift in Sources */,
 				318DA418296EC54B0070329F /* ProcessingBackgroundOperationController.swift in Sources */,
 				D9EA0B242877191800B938FD /* SharedLink.swift in Sources */,
-				311ECF7F29A5249E00F76062 /* InterruptedUploadsContainer.swift in Sources */,
+				311ECF7F29A5249E00F76062 /* ForegroundTransitionContainer.swift in Sources */,
 				D928D4A22869B354009D53C2 /* ShareLinkCreatorCoordinator.swift in Sources */,
 				AB1E020424534BA8003A039C /* NodeCellWithProgressConfiguration.swift in Sources */,
 				37C9395F28F04C5F00A1C8E6 /* LoginExternalAccountNotSupportedSetup.swift in Sources */,
 				ABC2092F2456A86600BDA52F /* MenuView.swift in Sources */,
+				3156640129D03BC600CBA7E9 /* AggregatedOperationInteractor.swift in Sources */,
 				1844B9072665726B00A3AB55 /* DriveNotifications.swift in Sources */,
 				AB07E6E524F7F55100775190 /* PMPreviewController.swift in Sources */,
+				31AD1E5929CC57C000AE4A72 /* InterruptedImportsInteractor.swift in Sources */,
 				AB00E36324D9C44B00E13A28 /* NoConnectionFolderView.swift in Sources */,
 				D9682632284662FE009DA22B /* NotificationCenter+postDriveNotification.swift in Sources */,
 				1887D44525FF4C4D00EC946A /* FinderConfigurationView.swift in Sources */,
@@ -3000,7 +3026,7 @@
 				AB55A95E2613592E00CAFA0C /* GridOrList.swift in Sources */,
 				187BD63524F1A21500EC711C /* NodeRowActionViewModel+TrashAlert.swift in Sources */,
 				D968263C28466873009DA22B /* ProtectCoordinator.swift in Sources */,
-				311ECF8029A5249E00F76062 /* InterruptedUploadsController.swift in Sources */,
+				311ECF8029A5249E00F76062 /* ForegroundTransitionController.swift in Sources */,
 				ABE794D62497C16E00F89D7A /* NSRange+Extension.swift in Sources */,
 				31EF34B429C4B6380022BF83 /* PickerResource.swift in Sources */,
 				AB38BC9024CEBC00001CD0FC /* HasRefreshControl.swift in Sources */,
@@ -3420,7 +3446,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.9.0;
+				MARKETING_VERSION = 1.10.0;
 				OTHER_CODE_SIGN_FLAGS = "--deep";
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -3584,7 +3610,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.9.0;
+				MARKETING_VERSION = 1.10.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.fileprovider;
@@ -3659,7 +3685,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.9.0;
+				MARKETING_VERSION = 1.10.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "ch.protonmail.drive.fileprovider-ui";

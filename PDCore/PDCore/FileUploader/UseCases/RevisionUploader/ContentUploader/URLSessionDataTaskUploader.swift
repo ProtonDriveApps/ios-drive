@@ -72,9 +72,10 @@ class URLSessionDataTaskUploader {
                     self.saveUploadedState()
                     completion(.success)
                 } else {
-                    let responseError = ResponseError(httpCode: httpResponse.statusCode, responseCode: response.code, userFacingMessage: response.error ?? response .errorDescription, underlyingError: nil)
+                    let responseError = ResponseError(httpCode: httpResponse.statusCode, responseCode: response.code, userFacingMessage: response.error ?? response.errorDescription, underlyingError: nil)
                     if responseError.httpCode == 422, response.code == 2501 {
-                        completion(.failure(FileUploaderError.expiredUploadURL))
+                        let newError = ResponseError(httpCode: responseError.httpCode, responseCode: responseError.responseCode, userFacingMessage: responseError.userFacingMessage, underlyingError: FileUploaderError.expiredUploadURL as NSError)
+                        completion(.failure(newError))
                     } else {
                         completion(.failure(responseError))
                     }

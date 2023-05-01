@@ -27,6 +27,10 @@ protocol PhotoPickerLoadResource {
     func set(itemProviders: [NSItemProvider])
 }
 
+enum PhotoPickerResourceError: Error {
+    case emptyProviders
+}
+
 final class PhotoPickerResource: PickerResource, PhotoPickerLoadResource {
     private let resource: ItemProviderLoadResource
     private let queue: OperationQueue
@@ -52,7 +56,10 @@ final class PhotoPickerResource: PickerResource, PhotoPickerLoadResource {
             .eraseToAnyPublisher()
     }
 
-    func start() {
+    func start() throws {
+        guard isExecuting else {
+            throw PhotoPickerResourceError.emptyProviders
+        }
         queue.isSuspended = false
     }
 
@@ -65,8 +72,11 @@ final class PhotoPickerResource: PickerResource, PhotoPickerLoadResource {
         let operations = itemProviders.map(makeOperation)
         queue.addOperations(operations, waitUntilFinished: false)
         queue.addBarrierBlock { [weak self] in
-            self?.finish()
+            DispatchQueue.main.sync {
+                self?.finish()
+            }
         }
+        queue.isSuspended = false
     }
 
     private func finish() {

@@ -27,7 +27,6 @@ protocol ItemProviderLoadResource {
 final class PhotoItemProviderLoadResource: ItemProviderLoadResource, LogObject {
     typealias URLErrorCompletion = ((URL?, Error?)) -> Void
     static var osLog = OSLog(subsystem: "ProtonDrive", category: "PhotoItemProviderResource")
-    private let queue = DispatchQueue(label: "PhotoItemProviderResource.queue")
 
     func execute(with itemProvider: NSItemProvider, completion: @escaping (URLResult) -> Void) {
         guard let typeIdentifier = itemProvider.registeredTypeIdentifiers.first else  {
@@ -35,9 +34,7 @@ final class PhotoItemProviderLoadResource: ItemProviderLoadResource, LogObject {
             return
         }
 
-        queue.async { [weak self] in
-            self?.execute(with: itemProvider, typeIdentifier: typeIdentifier, completion: completion)
-        }
+        execute(with: itemProvider, typeIdentifier: typeIdentifier, completion: completion)
     }
     
     private func execute(with itemProvider: NSItemProvider, typeIdentifier: String, completion: @escaping (URLResult) -> Void) {
@@ -54,9 +51,7 @@ final class PhotoItemProviderLoadResource: ItemProviderLoadResource, LogObject {
     
     private func finish(with result: (URL?, Error?), completion: @escaping (URLResult) -> Void) {
         let result = map(result: result)
-        DispatchQueue.main.async {
-            completion(result)
-        }
+        completion(result)
     }
     
     private func map(result: (URL?, Error?)) -> URLResult {

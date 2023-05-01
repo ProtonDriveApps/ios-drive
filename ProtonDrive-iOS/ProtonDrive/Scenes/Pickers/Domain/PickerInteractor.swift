@@ -19,9 +19,10 @@ import Combine
 
 final class PickerInteractor: OperationInteractor {
     private let resource: PickerResource
+    private let errorPublisher = PassthroughSubject<Void, Never>()
 
     var updatePublisher: AnyPublisher<Void, Never> {
-        resource.updatePublisher
+        Publishers.Merge(resource.updatePublisher, errorPublisher).eraseToAnyPublisher()
     }
 
     var state: OperationInteractorState {
@@ -33,7 +34,11 @@ final class PickerInteractor: OperationInteractor {
     }
 
     func start() {
-        resource.start()
+        do {
+            try resource.start()
+        } catch {
+            errorPublisher.send()
+        }
     }
 
     func cancel() {

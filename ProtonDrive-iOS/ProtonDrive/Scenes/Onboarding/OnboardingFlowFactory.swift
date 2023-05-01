@@ -19,8 +19,6 @@ import SwiftUI
 import PDCore
 
 struct OnboardingFlowFactory {
-    let settings: LocalSettings
-    
     let pageViewModels: [OnboardingPageViewModel] = [
         .init(imageName: "onboarding-welcome", title: "Welcome to Proton Drive", text: "The creators of Proton Mail bring you end-to-end encrypted cloud storage from Switzerland."),
         
@@ -31,7 +29,7 @@ struct OnboardingFlowFactory {
         .init(imageName: "onboarding-privacy", title: "Enjoy your private space", text: "Make your cloud storage your own. Add personal photos, ID cards, and anything that needs to stay private."),
     ]
     
-    func make() -> UIViewController {
+    func make(settings: LocalSettings) -> UIViewController {
         let flow = OnboardingFlow(settings: settings, pages: pageViewModels)
         let vc = UIHostingController(rootView: flow)
         vc.modalPresentationStyle = .fullScreen
@@ -41,28 +39,21 @@ struct OnboardingFlowFactory {
 
 #if DEBUG
 struct OnboardingFlowTestsManager {
-    private static var testArgument: String { "--uitests" }
-    private static var clearArgument: String { "--clear_all_preference" }
-    private static var skipArgument: String { "--skip_onboarding" }
     
     private static let localSettings = LocalSettings(suite: Constants.appGroup)
     
-    static func deafultOnboardingInTestsIfNeeded() {
-        let arguments = CommandLine.arguments
-        guard arguments.contains(testArgument),
-              arguments.contains(clearArgument) else { return }
-        
-        localSettings.isOnboarded = nil
-        if arguments.contains(skipArgument) {
-            localSettings.isOnboarded = true
+    static func defaultOnboardingInTestsIfNeeded() {
+        guard DebugConstants.commandLineContains(flags: [.uiTests, .defaultOnboarding]) else {
+            return
         }
+        localSettings.isOnboarded = false
+        DebugConstants.removeCommandLine(flags: [.defaultOnboarding])
     }
     
     static func skipOnboardingInTestsIfNeeded() {
-        let arguments = CommandLine.arguments
-        guard arguments.contains(testArgument),
-              arguments.contains(clearArgument),
-              arguments.contains(skipArgument) else { return }
+        guard DebugConstants.commandLineContains(flags: [.uiTests, .clearAllPreference, .skipOnboarding]) else {
+            return
+        }
         
         localSettings.isOnboarded = true
     }

@@ -23,6 +23,8 @@
 		7653639529BEB7EA0028D75B /* Tower+Conflict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7653639329BEB7EA0028D75B /* Tower+Conflict.swift */; };
 		765363BA29C1CF460028D75B /* ConflictRepresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 765363B929C1CF460028D75B /* ConflictRepresentation.swift */; };
 		765363BB29C1CF460028D75B /* ConflictRepresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 765363B929C1CF460028D75B /* ConflictRepresentation.swift */; };
+		766A076529D4199F001C0DB7 /* String+ConflictNodeName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 766A076429D4199F001C0DB7 /* String+ConflictNodeName.swift */; };
+		766A076629D4199F001C0DB7 /* String+ConflictNodeName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 766A076429D4199F001C0DB7 /* String+ConflictNodeName.swift */; };
 		87D7B15FECAABFEA7FC40578 /* Pods_PDFileProviderMac.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8C83D4B1BCDA4C5ECADFBE8F /* Pods_PDFileProviderMac.framework */; };
 		A60E6E6CA8EBDD32EE0C0AD3 /* Pods_PDFileProviderStatic.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 01F0423A62C38EDF235A7A2A /* Pods_PDFileProviderStatic.framework */; };
 		AB33B91E26243765007ED298 /* NSFileProviderItemIdentifier+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB33B91C26243765007ED298 /* NSFileProviderItemIdentifier+Extension.swift */; };
@@ -122,6 +124,7 @@
 		7653638C29BB10920028D75B /* ItemActionsOutlet+Conflict.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ItemActionsOutlet+Conflict.swift"; sourceTree = "<group>"; };
 		7653639329BEB7EA0028D75B /* Tower+Conflict.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Tower+Conflict.swift"; sourceTree = "<group>"; };
 		765363B929C1CF460028D75B /* ConflictRepresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConflictRepresentation.swift; sourceTree = "<group>"; };
+		766A076429D4199F001C0DB7 /* String+ConflictNodeName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+ConflictNodeName.swift"; sourceTree = "<group>"; };
 		8C83D4B1BCDA4C5ECADFBE8F /* Pods_PDFileProviderMac.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PDFileProviderMac.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		9AFA25662E9BD49902ADD93C /* Pods-PDFileProviderStatic.release-store.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderStatic.release-store.xcconfig"; path = "Target Support Files/Pods-PDFileProviderStatic/Pods-PDFileProviderStatic.release-store.xcconfig"; sourceTree = "<group>"; };
 		A5E56D9369C52CDDB6A6BDC4 /* Pods-PDFileProviderMac.release-store.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderMac.release-store.xcconfig"; path = "Target Support Files/Pods-PDFileProviderMac/Pods-PDFileProviderMac.release-store.xcconfig"; sourceTree = "<group>"; };
@@ -195,6 +198,7 @@
 				762C2CED29B638CF00416E31 /* ConflictResolutionStrategy.swift */,
 				762C2CF329B703AA00416E31 /* Tower+FileProvider.swift */,
 				7653639329BEB7EA0028D75B /* Tower+Conflict.swift */,
+				766A076429D4199F001C0DB7 /* String+ConflictNodeName.swift */,
 			);
 			path = Conflicts;
 			sourceTree = "<group>";
@@ -445,6 +449,7 @@
 				762C2CEF29B638CF00416E31 /* ConflictResolutionStrategy.swift in Sources */,
 				ABE2787829916F6F008EC1B3 /* NSFileProviderItemIdentifier+iOS.swift in Sources */,
 				762C2CCE29B2172B00416E31 /* Conflicting.swift in Sources */,
+				766A076629D4199F001C0DB7 /* String+ConflictNodeName.swift in Sources */,
 				762C2CEC29B6121100416E31 /* ConflictingOperation.swift in Sources */,
 				ABE2787D29916F73008EC1B3 /* ItemProvider.swift in Sources */,
 				ABE2787929916F6F008EC1B3 /* LogObfuscation.swift in Sources */,

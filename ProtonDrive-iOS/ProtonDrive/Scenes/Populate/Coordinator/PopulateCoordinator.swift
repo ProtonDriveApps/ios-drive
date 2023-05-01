@@ -21,17 +21,23 @@ import PDCore
 final class PopulateCoordinator {
     private(set) unowned var viewController: PopulateViewController
     private let populatedViewControllerFactory: (NodeIdentifier) -> UIViewController
+    private let onboardingViewControllerFactory: () -> UIViewController?
 
     public init(
         viewController: PopulateViewController,
-        populatedViewControllerFactory: @escaping (NodeIdentifier) -> UIViewController
+        populatedViewControllerFactory: @escaping (NodeIdentifier) -> UIViewController,
+        onboardingViewControllerFactory: @escaping () -> UIViewController?
     ) {
         self.viewController = viewController
         self.populatedViewControllerFactory = populatedViewControllerFactory
+        self.onboardingViewControllerFactory = onboardingViewControllerFactory
     }
 
     func showPopulated(root: NodeIdentifier) {
         let populated = populatedViewControllerFactory(root)
         viewController.navigationController?.pushViewController(populated, animated: false)
+        if let modal = onboardingViewControllerFactory() {
+            viewController.present(modal, animated: true)
+        }
     }
 }

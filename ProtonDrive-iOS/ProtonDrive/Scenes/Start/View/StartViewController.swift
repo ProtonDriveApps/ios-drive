@@ -25,7 +25,6 @@ public final class StartViewController: UIViewController {
     public var viewModel: StartViewModel!
     public var onAuthenticated: (() -> Void)?
     public var onNonAuthenticated: (() -> Void)?
-    public var onFirstTimeAuthenticated: (() -> Void)?
 
     override public func viewDidLoad() {
         super.viewDidLoad()
@@ -51,11 +50,7 @@ public final class StartViewController: UIViewController {
     }
 
     private func performAuthenticated() {
-        if viewModel.isFirstTimeAuthenticated {
-            onFirstTimeAuthenticated?()
-        } else {
-            onAuthenticated?()
-        }
+        onAuthenticated?()
     }
 
     private func performNonAuthenticated() {

@@ -15,22 +15,33 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import SwiftUI
-import PDCore
-import PDUIComponents
+import Combine
 
-struct RootFolderView: View {
-    let nodeID: NodeIdentifier
-    let coordinator: FinderCoordinator
-    
-    init(nodeID: NodeIdentifier, coordinator: FinderCoordinator) {
-        self.nodeID = nodeID
-        self.coordinator = coordinator
-    }
-    
-    var body: some View {
-        RootDeeplinkableView(navigationTracker: coordinator) {
-            coordinator.start(.folder(nodeID: nodeID))
+final class AggregatedOperationInteractor: OperationInteractor {
+    private let interactors: [OperationInteractor]
+
+    var state: OperationInteractorState {
+        if interactors.contains(where: { $0.state == .running }) {
+            return .running
+        } else {
+            return .idle
         }
+    }
+
+    var updatePublisher: AnyPublisher<Void, Never> {
+        Publishers.MergeMany(interactors.map(\.updatePublisher))
+            .eraseToAnyPublisher()
+    }
+
+    init(interactors: [OperationInteractor]) {
+        self.interactors = interactors
+    }
+
+    func start() {
+        interactors.forEach { $0.start() }
+    }
+
+    func cancel() {
+        interactors.forEach { $0.cancel() }
     }
 }

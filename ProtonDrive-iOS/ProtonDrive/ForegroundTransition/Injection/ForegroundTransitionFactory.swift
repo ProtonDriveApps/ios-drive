@@ -17,12 +17,13 @@
 
 import PDCore
 
-final class InterruptedUploadsContainer {
-    private let controller: InterruptedUploadsController
-    
-    init(tower: Tower) {
-        let interactor = InterruptedUploadsInteractor(fileUploader: tower.fileUploader)
+final class ForegroundTransitionFactory {
+    func makeController(tower: Tower, pickerResource: PickerResource) -> ForegroundTransitionController {
+        let interactors: [CommandInteractor] = [
+            InterruptedUploadsInteractor(fileUploader: tower.fileUploader),
+            InterruptedImportsInteractor(resource: pickerResource)
+        ]
         let applicationStateResource = ApplicationRunningStateResourceImpl()
-        controller = InterruptedUploadsController(applicationStateResource: applicationStateResource, interactor: interactor)
+        return ForegroundTransitionController(applicationStateResource: applicationStateResource, interactors: interactors)
     }
 }

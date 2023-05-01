@@ -29,4 +29,8 @@ public extension Notification.Name {
     static var didInterruptOnFileUpload: Notification.Name {
         Notification.Name("ch.protonmail.protondrive.didInterruptOnFileUpload")
     }
+
+    static var restartUploadExpired: Notification.Name {
+        Notification.Name("ch.protonmail.protondrive.restartUploadExpired")
+    }
 }

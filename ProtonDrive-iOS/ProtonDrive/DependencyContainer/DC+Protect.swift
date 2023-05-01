@@ -36,7 +36,14 @@ extension DriveDependencyContainer {
             network: networkService
         )
 
-        let authenticatedContainer = AuthenticatedDependencyContainer(tower: tower, keymaker: keymaker, networkService: networkService, windowScene: windowScene)
+        let authenticatedContainer = AuthenticatedDependencyContainer(
+            tower: tower, 
+            keymaker: keymaker,
+            networkService: networkService,
+            localSettings: LocalSettings(suite: appGroup),
+            windowScene: windowScene
+        )
+        
         self.authenticatedContainer = authenticatedContainer
 
         return authenticatedContainer.makeProtectViewController()

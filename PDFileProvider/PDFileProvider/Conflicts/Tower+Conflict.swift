@@ -43,8 +43,29 @@ extension Tower {
         switch strategy {
         case .merge:
             return (node.item, true)
-        case .discard, .preserve:  // Temporary
-            return (node.item, false)
+        case .preserve(let winner):
+            switch winner {
+            case .remote:
+                return (node.item, true)
+            case .delete where ((node as? File) != nil):
+                if let newItem = newFileItemFrom(node: node) {
+                    return (newItem, true)
+                } else {
+                    return (node.item, false)
+                }
+            case .delete:
+                return (node.item, false)
+            case .edit:
+                return (node.item, false) // Temporary
+            }
+        case .discard(let operation):
+            switch operation {
+            case .delete:
+                return (node.item, true)
+            default:
+                return (node.item, false) // Temporary
+
+            }
         }
     }
 
@@ -60,18 +81,52 @@ extension Tower {
 
     private func editConflictStrategy(on existingItem: NSFileProviderItem, with operation: ConflictingOperation?) -> ConflictResolutionStrategy {
         guard let operation = operation else {
-            return .discard(operation: .create(nil))
+            return .preserve(winner: .remote)
         }
-        return .discard(operation: .edit(nil))
+        switch operation {
+        case .move:
+            // Move-Create conflict resolution
+            return .preserve(winner: .remote)
+        case let .delete(parent: isParent):
+            if isParent {
+                return .preserve(winner: .delete)
+            } else {
+                return .discard(operation: .delete(parent: false))
+            }
+        case .edit:
+            return .preserve(winner: .remote)
+        default:
+            return .discard(operation: .edit(nil))
+        }
     }
 
     private func moveConflictStrategy(on existingItem: NSFileProviderItem, with operation: ConflictingOperation?) -> ConflictResolutionStrategy {
-        return .discard(operation: .move(nil))
+        switch operation {
+        case .edit:
+            // Move-Move conflict resolution
+            return .preserve(winner: .remote)
+        default: // Temporary
+            return .discard(operation: .move(nil))
+        }
     }
 
     // [DRVIOS-1770] Delete-Delete Pseudo conflict
     private func deleteConflictStrategy(on existingItem: NSFileProviderItem, parent: Bool, operation: ConflictingOperation) -> ConflictResolutionStrategy {
         return .discard(operation: .delete(parent: false))
+    }
+
+    private func newFileItemFrom(node: Conflicting) -> NSFileProviderItem? {
+        guard let file = node as? File else {
+            return nil
+        }
+        return NodeItem(node: file)
+    }
+
+    // MARK: - Conflict folder
+
+    func createConflictFolder(under parentFolder: Folder) async throws -> Folder {
+        let name = "Conflict"
+        return try await createFolder(named: name, under: parentFolder)
     }
 
 }

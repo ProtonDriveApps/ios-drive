@@ -82,7 +82,8 @@ extension AuthenticatedDependencyContainer {
     }
 
     private func makeFilesViewControllerFactory(root: NodeIdentifier) -> UIViewController {
-        let rootFolderView = RootFolderView(deeplink: nil, tower: tower, nodeID: root).any()
+        let coordinator = FinderCoordinator(tower: tower, photoPickerCoordinator: pickersContainer.getPhotoCoordinator())
+        let rootFolderView = RootFolderView(nodeID: root, coordinator: coordinator).any()
         let rootView = RootView(vm: RootViewModel(), activeArea: { rootFolderView })
         return UIHostingController(rootView: rootView)
     }

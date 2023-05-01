@@ -25,28 +25,19 @@ public final class StartCoordinator {
 
     private let authenticatedViewControllerFactory: () -> UIViewController
     private let nonAuthenticatedViewControllerFactory: () -> UIViewController
-    private let onboardingFactory: () -> UIViewController
 
     public init(
         viewController: StartViewController,
         authenticatedViewControllerFactory: @escaping () -> UIViewController,
-        nonAuthenticatedViewControllerFactory: @escaping () -> UIViewController,
-        onboardingFactory: @escaping () -> UIViewController
+        nonAuthenticatedViewControllerFactory: @escaping () -> UIViewController
     ) {
         self.viewController = viewController
         self.authenticatedViewControllerFactory = authenticatedViewControllerFactory
         self.nonAuthenticatedViewControllerFactory = nonAuthenticatedViewControllerFactory
-        self.onboardingFactory = onboardingFactory
     }
 
     func onAuthenticated() {
         push(authenticatedViewControllerFactory(), onto: viewController)
-    }
-
-    func onFirstTimeAuthenticated() {
-        onAuthenticated()
-        let onboardingViewController = onboardingFactory()
-        viewController.present(onboardingViewController, animated: false)
     }
 
     func onNonAuthenticated() {

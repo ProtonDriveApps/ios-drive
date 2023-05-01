@@ -61,6 +61,15 @@ public final class FileUploader: LogObject {
                 restartWaitingOperations(availableStorage: $0)
             }
             .store(in: &cancellables)
+
+        NotificationCenter.default
+            .publisher(for: .restartUploadExpired)
+            .delay(for: 0.5, scheduler: DispatchQueue.main)
+            .sink { [weak self] notification in
+                guard let file = notification.object as? File else { return }
+                self?.upload(file, completion: { _ in })
+            }
+            .store(in: &cancellables)
     }
 
     public func restartOperations() throws {
@@ -199,10 +208,8 @@ extension FileUploader {
                 ConsoleLogger.shared?.log(DriveError(error, "FileUploader"))
 
                 self?.cancel(uploadID: uploadID)
-                let uploadError = (error as? ResponseError)?.asFileUploadError ?? error
-                self?.handleControlledError(uploadError, file: file)
-                self?.errorStream.send(uploadError)
-                completion(.failure(uploadError))
+                self?.handleError(error, file: file)
+                completion(.failure(error))
             }
         }
 
@@ -211,16 +218,32 @@ extension FileUploader {
         return operations.last as! UploadOperation
     }
 
-    private func handleControlledError(_ error: Error, file: File) {
-        guard let error = error as? FileUploaderError else { return }
-        switch error {
-        case .insuficientSpace:
-            setNoSpaceOnCloudErrorTo(file)
-        case .expiredUploadURL:
-            setExpiredUploadURLsForRevisionIn(file)
-        default:
-            break
+    private func handleError(_ error: Error, file: File) {
+        if let fileUploadError = (error as? ResponseError)?.asFileUploadError {
+            switch fileUploadError {
+            case .insuficientSpace:
+                setNoSpaceOnCloudErrorTo(file)
+                errorStream.send(fileUploadError)
+
+            case .expiredUploadURL:
+                setExpiredUploadURLsForRevisionIn(file)
+
+            case .expiredFileDraft:
+                errorStream.send(fileUploadError)
+                /*
+                 Call:
+                 setExpiredRevisionDraft(file)
+                 when the BE does not send delete events for drafts anymore
+                 */
+
+            default:
+                errorStream.send(fileUploadError)
+            }
+
+        } else {
+            errorStream.send(error)
         }
+
     }
 
     private func setNoSpaceOnCloudErrorTo(_ file: File) {
@@ -236,6 +259,7 @@ extension FileUploader {
         guard let moc = file.moc else { return }
 
         moc.performAndWait {
+            file.state = .paused
             file.activeRevisionDraft?.uploadState = .encrypted
             file.activeRevisionDraft?.blocks.compactMap(\.asUploadBlock).filter { !$0.isUploaded }.forEach{ $0.unsetUploadableState() }
 
@@ -246,6 +270,26 @@ extension FileUploader {
 
             try? moc.saveOrRollback()
         }
+        NotificationCenter.default.post(name: .restartUploadExpired, object: file)
+    }
+
+    private func setExpiredRevisionDraft(_ file: File) {
+        guard let moc = file.moc else { return }
+
+        moc.performAndWait {
+            file.state = .paused
+
+            let uploadID = UUID()
+
+            file.uploadID = uploadID
+            file.id = uploadID.uuidString
+            file.clientUID = uploadID.uuidString
+            file.activeRevisionDraft?.id = uploadID.uuidString
+            file.activeRevisionDraft?.unsetUploadedState()
+
+            try? moc.saveOrRollback()
+        }
+        NotificationCenter.default.post(name: .restartUploadExpired, object: file)
     }
 }
 
@@ -255,7 +299,11 @@ extension ResponseError {
 
     var asFileUploadError: FileUploaderError? {
         if httpCode == 422, code == expiredResource {
-            return .expiredFileDraft
+            if (self.underlyingError as? FileUploaderError) == .expiredUploadURL {
+                return .expiredUploadURL
+            } else {
+                return .expiredFileDraft
+            }
         } else if code == noSpaceOnCloud {
             return .insuficientSpace
         } else {

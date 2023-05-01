@@ -15,22 +15,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import SwiftUI
-import PDCore
-import PDUIComponents
+extension String {
 
-struct RootFolderView: View {
-    let nodeID: NodeIdentifier
-    let coordinator: FinderCoordinator
-    
-    init(nodeID: NodeIdentifier, coordinator: FinderCoordinator) {
-        self.nodeID = nodeID
-        self.coordinator = coordinator
-    }
-    
-    var body: some View {
-        RootDeeplinkableView(navigationTracker: coordinator) {
-            coordinator.start(.folder(nodeID: nodeID))
-        }
+    var conflictNodeName: String {
+        self + "-Conflict"
     }
 }

@@ -20,6 +20,6 @@ import Combine
 protocol PickerResource {
     var isExecuting: Bool { get }
     var updatePublisher: AnyPublisher<Void, Never> { get }
-    func start()
+    func start() throws
     func cancel()
 }

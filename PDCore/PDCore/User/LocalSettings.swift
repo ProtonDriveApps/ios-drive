@@ -22,10 +22,10 @@ public class LocalSettings: NSObject {
     @SettingsStorage("sortPreferenceCache") private var sortPreferenceCache: SortPreference.RawValue?
     @SettingsStorage("layoutPreferenceCache") private var layoutPreferenceCache: LayoutPreference.RawValue?
     @SettingsStorage("isUploadingDisclaimerActiveValue") private var isUploadingDisclaimerActiveValue: Bool?
+    @SettingsStorage("isOnboarded") private var isOnboardedValue: Bool?
     
     @SettingsStorage("optOutFromTelemetry") var optOutFromTelemetry: Bool?
     @SettingsStorage("optOutFromCrashReports") var optOutFromCrashReports: Bool?
-    @SettingsStorage("isOnboarded") public var isOnboarded: Bool?
     @SettingsStorage("isNoticationPermissionsSkipped") public var isNoticationPermissionsSkipped: Bool?
 
     public init(suite: SettingsStorageSuite) {
@@ -35,7 +35,7 @@ public class LocalSettings: NSObject {
         self._layoutPreferenceCache.configure(with: suite)
         self._optOutFromTelemetry.configure(with: suite)
         self._optOutFromCrashReports.configure(with: suite)
-        self._isOnboarded.configure(with: suite)
+        self._isOnboardedValue.configure(with: suite)
         self._isUploadingDisclaimerActiveValue.configure(with: suite)
         self._isNoticationPermissionsSkipped.configure(with: suite)
 
@@ -54,7 +54,7 @@ public class LocalSettings: NSObject {
         self.layoutPreferenceCache = nil
         self.optOutFromTelemetry = nil
         self.optOutFromCrashReports = nil
-        // self.isOnboarded needs no clean up - we only show it for first login ever
+        // self.isOnboardedValue needs no clean up - we only show it for first login ever
         self.isUploadingDisclaimerActiveValue = nil
         self.isNoticationPermissionsSkipped = nil
     }
@@ -75,5 +75,10 @@ public class LocalSettings: NSObject {
         willSet {
             isUploadingDisclaimerActiveValue = newValue
         }
+    }
+    
+    public var isOnboarded: Bool {
+        get { isOnboardedValue == true }
+        set { isOnboardedValue = (newValue ? true : nil) }
     }
 }

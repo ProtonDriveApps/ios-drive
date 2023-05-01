@@ -20,18 +20,15 @@ import PDCore
 
 public final class StartViewModel {
     private var cancellables = Set<AnyCancellable>()
-    private let localSettings: LocalSettings
 
     public let isSignedInPublisher: AnyPublisher<Bool, Never>
     public let restartAppPublisher: AnyPublisher<Void, Never>
 
     public init(
         isSignedIn: @escaping () -> Bool,
-        localSettings: LocalSettings,
         restartAppPublisher: AnyPublisher<Void, Never>,
         checkAuthenticationPublisher: AnyPublisher<Void, Never>
     ) {
-        self.localSettings = localSettings
         let subject = CurrentValueSubject<Bool, Never>(isSignedIn())
         isSignedInPublisher = subject
             .removeDuplicates()
@@ -44,7 +41,4 @@ public final class StartViewModel {
             .store(in: &cancellables)
     }
 
-    var isFirstTimeAuthenticated: Bool {
-        localSettings.isOnboarded == nil
-    }
 }

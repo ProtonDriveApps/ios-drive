@@ -22,6 +22,10 @@ import ProtonCore_Networking
 import PDUIComponents
 
 final class TrashViewModel: ObservableObject, HasMultipleSelection {
+    struct NodeID {
+        let id: String
+        let type: NodeType
+    }
 
     var trashModel: TrashModelProtocol
     let selection: MultipleSelectionModel
@@ -30,6 +34,7 @@ final class TrashViewModel: ObservableObject, HasMultipleSelection {
     @Published var isUpdating = false
     @Published var listState: ListState = .active
     @Published private(set) var trashedNodes: [Node] = []
+    @Published private var nodeIDs = [NodeID]()
 
     let genericErrors = ErrorRegulator()
     private var deleteRequest: AnyCancellable?
@@ -43,6 +48,7 @@ final class TrashViewModel: ObservableObject, HasMultipleSelection {
                 guard let self = self else { return }
                 self.trashedNodes = trashed
                 self.selection.updateSelectable(Set(trashed.map(\.id)))
+                self.nodeIDs = trashed.map { NodeID(id: $0.id, type: $0 is Folder ? .folder : .file) }
             })
             .store(in: &cancellables)
     }
@@ -150,14 +156,15 @@ extension TrashViewModel {
     }
 
     func findNodesType(isAll: Bool) -> NodeType? {
-        let pool = Dictionary(uniqueKeysWithValues: trashedNodes.map { ($0.id, $0 is Folder) })
         let ids = isAll ? selection.selectable : selection.selected
-        let types = Set(ids.compactMap { pool[$0] })
-        let folder = true
-        if types.count == 2 {
+        let selectedIds = nodeIDs.filter { nodeId in
+            ids.contains(nodeId.id)
+        }
+        let selectedTypes = Set(selectedIds.map { $0.type })
+        if selectedTypes.isSuperset(of: [.file, .folder]) {
             return .mix
-        } else if types.count == 1  {
-            return types.first == folder ? .folder : .file
+        } else if selectedTypes.count == 1 {
+            return selectedTypes.first
         } else {
             return nil
         }

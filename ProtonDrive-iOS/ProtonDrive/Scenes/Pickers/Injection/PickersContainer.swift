@@ -19,6 +19,9 @@ final class PickersContainer {
     private let photosPickerFactory: PhotosPickerFactory
     private let photoResource: PhotoPickerResource
     let photoPickerInteractor: OperationInteractor
+    var photoPickerResource: PickerResource {
+        photoResource
+    }
     var photoPickerLoadResource: PhotoPickerLoadResource {
         photoResource
     }

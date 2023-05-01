@@ -23,13 +23,22 @@ struct UITestsFlag {
     let content: String
     
     static let uiTests = UITestsFlag(content: "--uitests")
+    static let clearAllPreference = UITestsFlag(content: "--clear_all_preference")
     static let skipNotificationPermissions = UITestsFlag(content: "--skip_notifications_permissions")
+    static let skipOnboarding = UITestsFlag(content: "--skip_onboarding")
+    static let defaultOnboarding = UITestsFlag(content: "--default_onboarding")
 }
 
 struct DebugConstants {
     static func commandLineContains(flags: [UITestsFlag]) -> Bool {
         let flagsRaw = flags.map(\.content)
         return Set(ProcessInfo.processInfo.arguments).isSuperset(of: flagsRaw)
+    }
+    
+    static func removeCommandLine(flags: [UITestsFlag]) {
+        let flagsRaw = flags.map(\.content)
+        let flagsToKeep = Set(ProcessInfo.processInfo.arguments).subtracting(flagsRaw)
+        CommandLine.arguments = Array(flagsToKeep)
     }
 }
 

@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Combine
 import UIKit
 import SwiftUI
 import os.log
@@ -29,13 +30,16 @@ struct PhotoPicker: UIViewControllerRepresentable {
 
     @EnvironmentObject var root: RootViewModel
     private weak var delegate: PickerDelegate?
+    private let resource: PhotoPickerLoadResource
+    private var cancellables = Set<AnyCancellable>()
 
-    init(delegate: PickerDelegate) {
+    init(resource: PhotoPickerLoadResource, delegate: PickerDelegate) {
         self.delegate = delegate
+        self.resource = resource
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(self)
+        Coordinator(resource: resource, parent: self)
     }
 
     func makeUIViewController(context: Context) -> PHPickerViewController {
@@ -67,10 +71,18 @@ struct PhotoPicker: UIViewControllerRepresentable {
     class Coordinator: PHPickerViewControllerDelegate, LogObject {
         static var osLog = OSLog(subsystem: "ProtonDrive", category: "PhotoPicker")
         private let parent: PhotoPicker
+        private let resource: PhotoPickerLoadResource
+        private var cancellables = Set<AnyCancellable>()
         private var didFinishSelecting = false
 
-        init(_ parent: PhotoPicker) {
+        init(resource: PhotoPickerLoadResource, parent: PhotoPicker) {
             self.parent = parent
+            self.resource = resource
+            resource.resultsPublisher
+                .sink { [weak self] results in
+                    self?.parent.picker(didFinishPicking: results)
+                }
+                .store(in: &cancellables)
         }
 
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
@@ -80,10 +92,8 @@ struct PhotoPicker: UIViewControllerRepresentable {
             if !results.isEmpty {
                 setupOverlay(on: picker)
             }
-            
-            DispatchQueue.global(qos: .default).async {
-                self.processFiles(for: results)
-            }
+
+            resource.set(itemProviders: results.map(\.itemProvider))
         }
         
         private func setupOverlay(on picker: UIViewController) {
@@ -115,95 +125,5 @@ struct PhotoPicker: UIViewControllerRepresentable {
                 stack.isHidden = false
             }
         }
-
-        private func processFiles(for results: [PHPickerResult]) {
-            var fileResults: [Result<URL, Error>] = []
-            let group = DispatchGroup()
-
-            for itemProvider in results.map(\.itemProvider) {
-                guard let typeIdentifier = itemProvider.registeredTypeIdentifiers.first else  {
-                    fileResults.append(.failure(Errors.noRegisteredTypeIdentifier))
-                    continue
-                }
-
-                group.enter()
-
-                let onCompletion: URLErrorCompletion = { url, error in
-                    switch (url, error) {
-                    case let (url?, nil):
-                        do {
-                            let copyURL = PDFileManager.prepareUrlForFile(named: url.lastPathComponent)
-                            try FileManager.default.moveItem(at: url, to: copyURL)
-                            fileResults.append(.success(copyURL))
-                        } catch {
-                            fileResults.append(.failure(error))
-                        }
-                    case let (nil, error?):
-                        ConsoleLogger.shared?.log(error, osLogType: Coordinator.self)
-                        fileResults.append(.failure(error))
-                    default:
-                        fileResults.append(.failure(Errors.invalidState))
-                    }
-                    group.leave()
-                }
-
-                if UTI(value: typeIdentifier).isLiveAsset {
-                    loadLivePhoto(with: itemProvider, completion: onCompletion)
-                } else {
-                    loadFileRepresentation(with: itemProvider, typeIdentifier: typeIdentifier, completion: onCompletion)
-                }
-            }
-
-            group.notify(queue: DispatchQueue.main) { [weak self] in
-                self?.parent.picker(didFinishPicking: fileResults)
-            }
-        }
-        
-        private func loadLivePhoto(with itemProvider: NSItemProvider, completion: @escaping URLErrorCompletion) {
-            itemProvider.loadObject(ofClass: PHLivePhoto.self) { [weak self] livePhoto, error in
-                let utTypeIdentifiers = itemProvider.registeredTypeIdentifiers.map { UTI(value: $0) }
-                
-                // If live photo load fails, we try to load the image representation instead.
-                let typeIdentifier = utTypeIdentifiers.first(where: { !$0.isLiveAsset && $0.isImage })?.value ?? ""
-                
-                guard let livePhoto = livePhoto as? PHLivePhoto else {
-                    self?.loadFileRepresentation(with: itemProvider, typeIdentifier: typeIdentifier, completion: completion)
-                    return
-                }
-                
-                let resources = PHAssetResource.assetResources(for: livePhoto)
-                guard let resource = resources.first(where: { $0.type == .photo }) else {
-                    self?.loadFileRepresentation(with: itemProvider, typeIdentifier: typeIdentifier, completion: completion)
-                    return
-                }
-
-                let copyURL = PDFileManager.prepareUrlForFile(named: resource.originalFilename)
-                PHAssetResourceManager.default().writeData(for: resource, toFile: copyURL, options: nil) { error in
-                    if let error = error {
-                        completion(nil, error)
-                    } else {
-                        completion(copyURL, nil)
-                    }
-                }
-            }
-        }
-        
-        private func loadFileRepresentation(with itemProvider: NSItemProvider, typeIdentifier: String, completion: @escaping URLErrorCompletion) {
-            itemProvider.loadFileRepresentation(forTypeIdentifier: typeIdentifier) { url, error in
-                completion(url, error)
-            }
-        }
-
-        enum Errors: Error {
-            case noRegisteredTypeIdentifier
-            case invalidState
-            case invalidLivePhoto
-        }
-    }
-}
-
-private extension UTI {
-    var isLiveAsset: Bool {
-        return isLivePhoto || value == "com.apple.live-photo-bundle"
     }
 }

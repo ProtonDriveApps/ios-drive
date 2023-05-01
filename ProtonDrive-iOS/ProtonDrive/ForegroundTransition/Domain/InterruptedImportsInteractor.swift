@@ -15,25 +15,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import Combine
 import PDCore
 
-final class InterruptedUploadsController {
-    private let applicationStateResource: ApplicationRunningStateResource
-    private let interactor: CommandInteractor
-    private var cancellables = Set<AnyCancellable>()
-    
-    init(applicationStateResource: ApplicationRunningStateResource, interactor: CommandInteractor) {
-        self.applicationStateResource = applicationStateResource
-        self.interactor = interactor
-        applicationStateResource.state.sink { [weak self] state in
-            self?.handle(state)
-        }.store(in: &cancellables)
+final class InterruptedImportsInteractor: CommandInteractor {
+    let resource: PickerResource
+
+    init(resource: PickerResource) {
+        self.resource = resource
     }
-    
-    private func handle(_ state: ApplicationRunningState) {
-        if state == .foreground {
-            interactor.execute()
-        }
+
+    func execute() {
+        try? resource.start()
     }
 }

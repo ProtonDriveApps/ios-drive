@@ -31,6 +31,7 @@ class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
     
     private let tower: Tower
     private let deeplink: Deeplink?
+    private let photoPickerCoordinator: PhotosPickerCoordinator?
     private(set) var onDisappear: () -> Void = { }
     private(set) var onAppear: () -> Void = { }
     private(set) var model: FinderModel? // Previously we had it weak but iOS 14 was mysteriously nullifying it after some Move manipulations - see DRVIOS-581
@@ -53,10 +54,11 @@ class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
         self?._presentedModal = $0
     }
 
-    init(tower: Tower, parent: FinderCoordinator? = nil, deeplink: Deeplink? = nil) {
+    init(tower: Tower, parent: FinderCoordinator? = nil, deeplink: Deeplink? = nil, photoPickerCoordinator: PhotosPickerCoordinator? = nil) {
         self.tower = tower
         self.deeplink = deeplink
         self.previousFolderCoordinator = parent
+        self.photoPickerCoordinator = photoPickerCoordinator
     }
 }
 
@@ -155,8 +157,10 @@ extension FinderCoordinator {
                 .edgesIgnoringSafeArea(.all)
 
         case .importPhoto where model is PickerDelegate:
-            PhotoPicker(delegate: model as! PickerDelegate)
-                .edgesIgnoringSafeArea(.bottom)
+            photoPickerCoordinator.map { coordinator in
+                coordinator.start(with: model as! PickerDelegate)
+                    .edgesIgnoringSafeArea(.bottom)
+            }
 
         case .camera where model is PickerDelegate:
             CameraPicker(delegate: model as! PickerDelegate)
@@ -196,7 +200,7 @@ extension FinderCoordinator {
     }
     
     private func goFolder(_ folder: Folder) -> some View {
-        let coordinator = FinderCoordinator(tower: tower, parent: self, deeplink: deeplink)
+        let coordinator = FinderCoordinator(tower: tower, parent: self, deeplink: deeplink, photoPickerCoordinator: photoPickerCoordinator)
         nextFolderCoordinator = coordinator
         return coordinator.start(.folder(nodeID: folder.identifier))
     }

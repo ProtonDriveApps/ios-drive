@@ -36,7 +36,6 @@ final class ProtectViewController: UIViewController {
             .sink { [weak self] in self?.handleLockStatusChange($0) }
 
         #if DEBUG
-        OnboardingFlowTestsManager.deafultOnboardingInTestsIfNeeded()
         logOutInTestsIfNeeded()
         #endif
     }
@@ -52,20 +51,16 @@ final class ProtectViewController: UIViewController {
 
 #if DEBUG
 extension ProtectViewController {
-    private var testArgument: String { "--uitests" }
-    private var clearArgument: String { "--clear_all_preference" }
 
     func logOutInTestsIfNeeded() {
-        let arguments = CommandLine.arguments
-        guard arguments.contains(testArgument),
-              arguments.contains(clearArgument) else { return }
+        guard DebugConstants.commandLineContains(flags: [.uiTests, .clearAllPreference]) else {
+            return
+        }
 
         cancellable?.cancel()
         cancellable = nil
 
-        CommandLine.arguments = arguments
-            .filter { $0 != clearArgument }
-
+        DebugConstants.removeCommandLine(flags: [.clearAllPreference])
         viewModel.requestLogout()
     }
 }

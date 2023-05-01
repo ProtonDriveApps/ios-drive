@@ -48,6 +48,8 @@ extension AppDelegate {
         if ProcessInfo.processInfo.arguments.contains("--human_verification") {
             HumanVerification.setupUITestsMocks()
         }
+        
+        OnboardingFlowTestsManager.skipOnboardingInTestsIfNeeded()
     }
 }
 #endif

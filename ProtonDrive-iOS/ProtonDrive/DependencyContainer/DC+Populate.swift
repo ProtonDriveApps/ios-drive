@@ -27,23 +27,28 @@ final class AuthenticatedDependencyContainer {
     let tower: Tower
     let keymaker: Keymaker
     let networkService: PMAPIService
+    let localSettings: LocalSettings
     let applicationStateController: ApplicationStateOperationsController
     let windowScene: UIWindowScene
     let factory = TabBarViewControllerFactory()
     let childContainers: [Any]
     var humanCheckHelper: HumanCheckHelper?
+    let pickersContainer: PickersContainer
 
-    init(tower: Tower, keymaker: Keymaker, networkService: PMAPIService, windowScene: UIWindowScene) {
+    init(tower: Tower, keymaker: Keymaker, networkService: PMAPIService, localSettings: LocalSettings, windowScene: UIWindowScene) {
         self.tower = tower
         self.keymaker = keymaker
         self.networkService = networkService
+        self.localSettings = localSettings
         self.windowScene = windowScene
 
+        pickersContainer = PickersContainer()
         let uploadOperationInteractor = UploadOperationInteractor(interactor: tower.fileUploader)
         let applicationRunningResource = ApplicationRunningStateResourceImpl()
+        let operationsInteractor = AggregatedOperationInteractor(interactors: [uploadOperationInteractor, pickersContainer.photoPickerInteractor])
         #if SUPPORTS_BACKGROUND_UPLOADS
         let processingController = ProcessingBackgroundOperationController(
-            operationInteractor: uploadOperationInteractor,
+            operationInteractor: operationsInteractor,
             taskResource: ProcessingExtensionBackgroundTaskResourceImpl()
         )
         let backgroundOperationController = ExtensionBackgroundOperationController(
@@ -53,7 +58,7 @@ final class AuthenticatedDependencyContainer {
         )
         #else
         let backgroundOperationController = ExtensionBackgroundOperationController(
-            operationInteractor: uploadOperationInteractor,
+            operationInteractor: operationsInteractor,
             taskResource: ExtensionBackgroundTaskResourceImpl()
         )
         #endif
@@ -66,7 +71,7 @@ final class AuthenticatedDependencyContainer {
         // Child containers
         childContainers = [
             LocalNotificationsContainer(tower: tower, windowScene: windowScene),
-            InterruptedUploadsContainer(tower: tower)
+            ForegroundTransitionContainer(tower: tower, pickerResource: pickersContainer.photoPickerResource)
         ]
     }
 
@@ -92,7 +97,10 @@ final class AuthenticatedDependencyContainer {
     private func makePopulateCoordinator(_ viewController: PopulateViewController) -> PopulateCoordinator {
         PopulateCoordinator(
             viewController: viewController,
-            populatedViewControllerFactory: makeHomeViewController
+            populatedViewControllerFactory: makeHomeViewController,
+            onboardingViewControllerFactory: { [localSettings] in
+                localSettings.isOnboarded ? nil : OnboardingFlowFactory().make(settings: localSettings)
+            }
         )
     }
 }

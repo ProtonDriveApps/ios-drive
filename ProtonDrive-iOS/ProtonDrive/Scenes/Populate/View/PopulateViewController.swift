@@ -40,5 +40,22 @@ final class PopulateViewController: UIViewController {
                 }
                 self?.viewModel.startEventsSystem()
             }
+        
+        #if DEBUG
+        modifyOnboardingFlowInTests()
+        #endif
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
     }
 }
+
+#if DEBUG
+extension PopulateViewController {
+    
+    func modifyOnboardingFlowInTests() {
+        OnboardingFlowTestsManager.defaultOnboardingInTestsIfNeeded()
+    }
+}
+#endif

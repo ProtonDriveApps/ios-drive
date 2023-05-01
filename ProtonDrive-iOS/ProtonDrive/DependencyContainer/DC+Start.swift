@@ -30,15 +30,12 @@ public extension DriveDependencyContainer {
         viewController.viewModel = viewModel
         viewController.onAuthenticated = coordinator.onAuthenticated
         viewController.onNonAuthenticated = coordinator.onNonAuthenticated
-        viewController.onFirstTimeAuthenticated = coordinator.onFirstTimeAuthenticated
 
         return navigationController
     }
 
     // MARK: - ViewModel
     private func makeStartViewModel() -> StartViewModel {
-        let localSettings = LocalSettings(suite: appGroup)
-
         let authenticationPublisher = DriveNotification.checkAuthentication.publisher
             .map { _ in Void() }
             .setFailureType(to: Never.self)
@@ -51,7 +48,6 @@ public extension DriveDependencyContainer {
         
         return StartViewModel(
             isSignedIn: sessionVault.isSignedIn,
-            localSettings: localSettings,
             restartAppPublisher: restartAppPublisher,
             checkAuthenticationPublisher: authenticationPublisher
         )
@@ -59,13 +55,10 @@ public extension DriveDependencyContainer {
 
     // MARK: - Coordinator
     private func makeStartCoordinator(_ viewController: StartViewController) -> StartCoordinator {
-        let localSettings = LocalSettings(suite: appGroup)
-        
-        return StartCoordinator(
+        StartCoordinator(
             viewController: viewController,
             authenticatedViewControllerFactory: makeProtectViewController,
-            nonAuthenticatedViewControllerFactory: makeAuthenticateViewController,
-            onboardingFactory: OnboardingFlowFactory(settings: localSettings).make
+            nonAuthenticatedViewControllerFactory: makeAuthenticateViewController
         )
     }
 }

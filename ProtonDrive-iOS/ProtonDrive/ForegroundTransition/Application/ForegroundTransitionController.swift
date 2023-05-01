@@ -15,22 +15,27 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import SwiftUI
+import Combine
 import PDCore
-import PDUIComponents
 
-struct RootFolderView: View {
-    let nodeID: NodeIdentifier
-    let coordinator: FinderCoordinator
+final class ForegroundTransitionController {
+    private let applicationStateResource: ApplicationRunningStateResource
+    private let interactors: [CommandInteractor]
+    private var cancellables = Set<AnyCancellable>()
     
-    init(nodeID: NodeIdentifier, coordinator: FinderCoordinator) {
-        self.nodeID = nodeID
-        self.coordinator = coordinator
+    init(applicationStateResource: ApplicationRunningStateResource, interactors: [CommandInteractor]) {
+        self.applicationStateResource = applicationStateResource
+        self.interactors = interactors
+        applicationStateResource.state.sink { [weak self] state in
+            self?.handle(state)
+        }.store(in: &cancellables)
     }
     
-    var body: some View {
-        RootDeeplinkableView(navigationTracker: coordinator) {
-            coordinator.start(.folder(nodeID: nodeID))
+    private func handle(_ state: ApplicationRunningState) {
+        guard state == .foreground else {
+            return
         }
+
+        interactors.forEach { $0.execute() }
     }
 }

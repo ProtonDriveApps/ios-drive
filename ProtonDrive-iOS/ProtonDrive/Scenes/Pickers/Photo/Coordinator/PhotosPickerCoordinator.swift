@@ -27,6 +27,6 @@ final class PhotosPickerCoordinator {
 
     @ViewBuilder
     func start(with delegate: PickerDelegate) -> some View {
-        PhotoPicker(delegate: delegate)
+        PhotoPicker(resource: resource, delegate: delegate)
     }
 }
