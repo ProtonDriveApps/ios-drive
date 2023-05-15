@@ -40,8 +40,25 @@ class RandomAction {
     func perform() {
         switch type {
         case .tap:
-            let coordinate = app.coordinate(withNormalizedOffset: generateRandomVector())
-            coordinate.tap()
+            let randomCoordinate = app.coordinate(withNormalizedOffset: generateRandomVector())
+
+            if app.buttons["Crash"].exists {
+
+                let button = app.buttons["Crash"]
+
+                // Get the starting and ending screen points for the element
+                let startingScreenPoint = button.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: 0.0)).screenPoint
+                let endingScreenPoint = button.coordinate(withNormalizedOffset: CGVector(dx: 1.0, dy: 1.0)).screenPoint
+
+                let randomCoordinateScreenPoint = randomCoordinate.screenPoint
+
+                if startingScreenPoint.x <= randomCoordinateScreenPoint.x && randomCoordinateScreenPoint.x <= endingScreenPoint.x && startingScreenPoint.y <= randomCoordinateScreenPoint.y && randomCoordinateScreenPoint.y <= endingScreenPoint.y {
+                    // Random coordinate is within the horizontal and vertical range of the button element
+                    break // should not click
+                }
+            }
+
+            randomCoordinate.tap()
 
         case .burgermenu:
             let burgerMenu = app.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.1))
@@ -138,7 +155,7 @@ open class BaseMonkey : XCTestCase{
             if doNotAllowButton.exists {
                 doNotAllowButton.tap()
             }
-            
+
             let notNowButton = alert.buttons["Not Now"]
             if notNowButton.exists {
                 notNowButton.tap()
@@ -190,3 +207,4 @@ open class BaseMonkey : XCTestCase{
         }
     }
 }
+

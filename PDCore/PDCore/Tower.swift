@@ -68,7 +68,8 @@ public class Tower: NSObject, LogObject {
                 clientConfig: PDClient.APIService.Configuration,
                 network: PMAPIService,
                 eventObservers: [EventsListener] = [],
-                processEventsLocally: Bool = true)
+                processEventsLocally: Bool = true,
+                networkSpy: DriveAPIService? = nil)
     {
         self.storage = storage
         self.uiSlot = UISlot(storage: storage)
@@ -83,7 +84,7 @@ public class Tower: NSObject, LogObject {
         self.addressManager = AddressManager(authenticator: authenticator, sessionVault: sessionVault)
         self.authenticator = authenticator
         
-        let client = Client(credentialProvider: self.sessionVault, service: api, networking: networking)
+        let client = Client(credentialProvider: self.sessionVault, service: api, networking: networkSpy ?? network)
         client.errorMonitor = ErrorMonitor(ConsoleLogger.shared?.logDeserializationErrors)
         self.client = client
 

@@ -56,7 +56,7 @@ extension Tower {
             case .delete:
                 return (node.item, false)
             case .edit:
-                return (node.item, false) // Temporary
+                return (node.item, true)
             }
         case .discard(let operation):
             switch operation {
@@ -89,7 +89,7 @@ extension Tower {
             return .preserve(winner: .remote)
         case let .delete(parent: isParent):
             if isParent {
-                return .preserve(winner: .delete)
+                return .preserve(winner: .edit)
             } else {
                 return .discard(operation: .delete(parent: false))
             }

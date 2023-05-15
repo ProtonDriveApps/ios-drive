@@ -32,7 +32,7 @@ struct UITestsFlag {
 struct DebugConstants {
     static func commandLineContains(flags: [UITestsFlag]) -> Bool {
         let flagsRaw = flags.map(\.content)
-        return Set(ProcessInfo.processInfo.arguments).isSuperset(of: flagsRaw)
+        return Set(CommandLine.arguments).isSuperset(of: flagsRaw)
     }
     
     static func removeCommandLine(flags: [UITestsFlag]) {

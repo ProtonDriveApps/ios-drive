@@ -26,39 +26,38 @@ struct NoSpaceView: View {
     var storage: Storage
     
     var body: some View {
-        ScrollView {
-            VStack(alignment: .center) {
-                Spacer()
-                
-                Spacer()
-                .padding(.vertical, 30)
-                
-                Text(self.storage.title)
+        VStack(alignment: .center) {
+
+            Spacer()
+                .frame(height: 72)
+
+            Text(self.storage.title)
                 .font(.title)
                 .bold()
                 .foregroundColor(ColorProvider.TextNorm)
-                
-                Text(self.storage.subtitle)
+
+            Text(self.storage.subtitle)
                 .font(.subheadline)
                 .foregroundColor(ColorProvider.TextWeak)
                 .padding(.top, 8)
-                
-                if self.storage == .local {
-                    BlueRectButton(title: "Go to local storage settings",
-                                   action: self.openSettings)
-                    .fixedSize()
-                    .padding(.top, 30)
-                }
-                
-                if self.storage == .cloud {
-                    NoSpaceAdviceView()
-                }
+
+            if self.storage == .local {
+                BlueRectButton(title: "Go to local storage settings",
+                               action: self.openSettings)
+                .fixedSize()
+                .padding(.top, 30)
             }
-            .lineLimit(nil)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.horizontal)
+
+            if self.storage == .cloud {
+                NoSpaceAdviceView()
+            }
+
+            Spacer()
         }
+        .lineLimit(nil)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal)
         .closable { root.closeCurrentSheet.send() }
         .onDisappear {
             self.acknowledgedNotEnoughStorage.wrappedValue = true

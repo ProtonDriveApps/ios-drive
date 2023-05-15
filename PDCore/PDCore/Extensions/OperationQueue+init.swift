@@ -17,7 +17,7 @@
 
 import Foundation
 
-extension OperationQueue {
+public extension OperationQueue {
 
     convenience init(maxConcurrentOperation: Int, isSuspended: Bool = false, underlyingQueue: DispatchQueue? = nil) {
         self.init(isSuspended: isSuspended, underlyingQueue: underlyingQueue)

@@ -18,14 +18,16 @@
 import CryptoKit
 import Foundation
 
-final class SHA1DigestBuilder: DigestBuilder {
+public final class SHA1DigestBuilder: DigestBuilder {
     private var sha = Insecure.SHA1()
+
+    public init() {}
     
-    func add(_ data: Data) {
+    public func add(_ data: Data) {
         sha.update(data: data)
     }
     
-    func getResult() -> Data {
+    public func getResult() -> Data {
         let digest = sha.finalize()
         return Data(digest)
     }

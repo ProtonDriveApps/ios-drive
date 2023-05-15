@@ -207,6 +207,8 @@ public final class ItemActionsOutlet: LogObject {
                           completionHandler: @escaping Completion) -> Progress {
         // Check for conflicts
         let (_, conflictEligible) = resolveConflictOnItemIfNeeded(tower: tower, item: item, changeType: .move(fields: changedFields), request: request)
+        
+        // TODO: discuss completion handlers+async flows
         Task {
             if conflictEligible {
                 do {
@@ -269,10 +271,7 @@ public final class ItemActionsOutlet: LogObject {
 
         Task {
             if conflictEligible {
-                tower.restoreFromTrash(shareID: node.shareID, nodes: [node.identifier.nodeID]) {
-                    nodeOperationCompletion($0.flatMap { .success(node) })
-                }
-                return Progress()
+                return updateConflictingFiles(tower: tower, item: item, newContents: newContents, completion: nodeOperationCompletion)
             } else {
                 let operation = tower.fileUploader.upload(newFile) {
                     try? FileManager.default.removeItem(at: copy.deletingLastPathComponent())
@@ -282,6 +281,65 @@ public final class ItemActionsOutlet: LogObject {
             }
         }
         return Progress()
+    }
+
+    private func updateConflictingFiles(tower: Tower, item: NSFileProviderItem, newContents: URL?,
+                                        completion: @escaping (Result<Node, Error>) -> Void) -> Progress {
+        guard let node = self.node(tower: tower, of: item.itemIdentifier),
+              let newContents = newContents else {
+            return Progress()
+        }
+        if let parentFolder = tower.parentFolder(of: item),
+           let state = parentFolder.state, state == .deleted {
+            // Edit-ParentDelete
+            let parentItem = NodeItem(node: parentFolder)
+            // TODO: Harmonize Conflict node/item name
+            guard let conflictFolderParent = parentFolder.parentLink else {
+                return Progress()
+            }
+            tower.createFolder(named: parentItem.filename.conflictNodeName, under: conflictFolderParent) { result in
+                switch result {
+                case let .failure(error):
+                    completion(.failure(error))
+
+                case let .success(conflictFolder):
+                    let item = NodeItem(node: conflictFolder)
+                    // Move edited file inside Conflict folder
+                    let filename = item.filename
+                        .nameExcludingExtension
+                        .conflictNodeName
+                        .appending(item.filename.fileExtension)
+
+                    let newItem = NodeItem(node: node, filename: filename)
+                    guard let copy = self.prepare(forUpload: newItem, from: newContents) else {
+                        return
+                    }
+
+                    let completion: OnUploadCompletion = {
+                        try? FileManager.default.removeItem(at: copy.deletingLastPathComponent())
+                        completion($0.map { $0 as Node })
+                    }
+
+                    guard let newFile = try? tower.fileImporter.importFile(from: copy, to: conflictFolder) else {
+                        return
+                    }
+
+                    tower.fileUploader.upload(newFile) {
+                        try? FileManager.default.removeItem(at: copy.deletingLastPathComponent())
+                        completion($0.map { $0 as File })
+                    }
+                }
+            }
+            return Progress()
+
+        } else {
+            // Edit-Delete
+            tower.restoreFromTrash(shareID: node.shareID, nodes: [node.identifier.nodeID]) {
+                completion($0.flatMap { .success(node) })
+            }
+            return Progress()
+        }
+
     }
 
 }

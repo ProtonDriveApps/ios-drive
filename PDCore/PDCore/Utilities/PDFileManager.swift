@@ -112,6 +112,7 @@ public final class PDFileManager {
         try? FileManager.default.copyItem(at: sqlite_shm, to: sqlite_shm_copy)
         try? FileManager.default.copyItem(at: sqlite_wal, to: sqlite_wal_copy)
 
+        dump("Recorder 🔴: key 🔑 - \(Data(SessionVault.current.mainKeyProvider.mainKey!).base64EncodedString()) ")
         dump("Recorder 🔴: stage 📁 - \(destination.absoluteURL)")
     }
 }

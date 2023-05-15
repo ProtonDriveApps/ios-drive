@@ -72,7 +72,9 @@ enum Constants: LogObject {
     
     // MARK: - Background mode
     static let backgroundTaskIdentifier = "ch.protonmail.protondrive.processing"
-    
+
+    // MARK: - Photos
+    static let photosAssetsParalelProcessingCount = 5
 }
 
 extension Constants {

@@ -17,7 +17,7 @@
 
 import Foundation
 
-protocol DigestBuilder {
+public protocol DigestBuilder {
     /// Adds data in sequential order, does not allow multithreading.
     func add(_ data: Data)
     /// Builds the digest result from previously added data.

@@ -22,4 +22,34 @@ public indirect enum ConflictingOperation {
     case edit(ConflictingOperation?)
     case move(ConflictingOperation?)
     case delete(parent: Bool)
+    
+        
+    /* TODO: migrate to destinct cases
+     // pseudo
+    case createCreate
+    case moveMove
+    case editEdit
+    case deleteDelete
+     
+     // name clash
+    case createCreate
+    case moveCreate
+    case moveMoveDestination
+     
+     // edit conflict
+    case editEdit
+     
+     // delete conflict
+    case editDelete
+    case editParentDelete
+    case moveDelete
+     
+     // move conflict
+    case moveMoveSource
+     
+     // indirect conflict
+    case moveParentDeleteDestination
+    case createParentDelete
+    case moveMoveCycle
+    */
 }

@@ -21,4 +21,10 @@ public enum ConflictResolutionStrategy {
     case discard(operation: ConflictingOperation?)
     case preserve(winner: ConflictWinner)
     case merge
+    
+    /* TODO: discuss https://confluence.protontech.ch/pages/viewpage.action?pageId=7931647#Conflictresolutionpolicy-Summary
+    case merge
+    case perserveBoth
+    case discard
+    */
 }

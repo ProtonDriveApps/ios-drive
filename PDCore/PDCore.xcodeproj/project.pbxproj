@@ -37,6 +37,8 @@
 		313E883E29B632700055652F /* FinderErrorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 313E883C29B632700055652F /* FinderErrorModel.swift */; };
 		318E16CA29B8E2880056860F /* Data+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318E16C929B8E2880056860F /* Data+Extensions.swift */; };
 		318E16CB29B8E2880056860F /* Data+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318E16C929B8E2880056860F /* Data+Extensions.swift */; };
+		31A629D229E595F60036BCE9 /* Sequence+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A629D129E595F60036BCE9 /* Sequence+Extensions.swift */; };
+		31A629D329E595F60036BCE9 /* Sequence+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A629D129E595F60036BCE9 /* Sequence+Extensions.swift */; };
 		31B7828B29BB7E9C0060B403 /* SHA1DigestBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31B7828A29BB7E9C0060B403 /* SHA1DigestBuilder.swift */; };
 		31B7828C29BB7E9C0060B403 /* SHA1DigestBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31B7828A29BB7E9C0060B403 /* SHA1DigestBuilder.swift */; };
 		31B7828E29BB80400060B403 /* DigestBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31B7828D29BB80400060B403 /* DigestBuilder.swift */; };
@@ -465,6 +467,8 @@
 		D9318B692922BEF90049E644 /* SignersKitFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9318B672922BEF90049E644 /* SignersKitFactory.swift */; };
 		D93A950429D0727D00981CBB /* NewFileRevisionCommitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D93A950329D0727D00981CBB /* NewFileRevisionCommitter.swift */; };
 		D93A950529D0727D00981CBB /* NewFileRevisionCommitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D93A950329D0727D00981CBB /* NewFileRevisionCommitter.swift */; };
+		D94059E129E6D13A00D7E51E /* Photo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D94059DE29E6D13A00D7E51E /* Photo.swift */; };
+		D94059E229E6D13A00D7E51E /* Photo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D94059DE29E6D13A00D7E51E /* Photo.swift */; };
 		D9415C72278893E900B870E3 /* RevisionUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9415C70278893E900B870E3 /* RevisionUploader.swift */; };
 		D9419AE6299D0B20005B9A12 /* File+UploadState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9419AE5299D0B20005B9A12 /* File+UploadState.swift */; };
 		D9419AE7299D0B20005B9A12 /* File+UploadState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9419AE5299D0B20005B9A12 /* File+UploadState.swift */; };
@@ -530,6 +534,8 @@
 		D984DC6C29D199BA0016775F /* URLSessionDataTaskUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = D984DC6B29D199BA0016775F /* URLSessionDataTaskUploader.swift */; };
 		D984DC6D29D199BA0016775F /* URLSessionDataTaskUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = D984DC6B29D199BA0016775F /* URLSessionDataTaskUploader.swift */; };
 		D985A25028DF1FCC00BF44A8 /* PDFThumbnailProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D985A24E28DF1FCC00BF44A8 /* PDFThumbnailProvider.swift */; };
+		D98D39AB29E6F514005B8669 /* PhotoRevision.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98D39AA29E6F514005B8669 /* PhotoRevision.swift */; };
+		D98D39AC29E6F520005B8669 /* PhotoRevision.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98D39AA29E6F514005B8669 /* PhotoRevision.swift */; };
 		D98EA92527957C9E00AEB5D4 /* File+changeState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98EA92327957C9E00AEB5D4 /* File+changeState.swift */; };
 		D98F5800277C354A004D8AB7 /* ValidNameDiscoverer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98F57FE277C354A004D8AB7 /* ValidNameDiscoverer.swift */; };
 		D992997727EAF9D200AA466E /* Revision+FileUploaderExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D992997527EAF9D200AA466E /* Revision+FileUploaderExtensions.swift */; };
@@ -671,6 +677,7 @@
 		313E883C29B632700055652F /* FinderErrorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderErrorModel.swift; sourceTree = "<group>"; };
 		3169FEAE2844957CDBE2EAB0 /* Pods-PDCoreIntegrationTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDCoreIntegrationTests.debug.xcconfig"; path = "Target Support Files/Pods-PDCoreIntegrationTests/Pods-PDCoreIntegrationTests.debug.xcconfig"; sourceTree = "<group>"; };
 		318E16C929B8E2880056860F /* Data+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data+Extensions.swift"; sourceTree = "<group>"; };
+		31A629D129E595F60036BCE9 /* Sequence+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sequence+Extensions.swift"; sourceTree = "<group>"; };
 		31B7828A29BB7E9C0060B403 /* SHA1DigestBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SHA1DigestBuilder.swift; sourceTree = "<group>"; };
 		31B7828D29BB80400060B403 /* DigestBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DigestBuilder.swift; sourceTree = "<group>"; };
 		6B0516C1198C907043B1533E /* Pods_PDCoreMac.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PDCoreMac.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -857,6 +864,8 @@
 		D9318B672922BEF90049E644 /* SignersKitFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignersKitFactory.swift; sourceTree = "<group>"; };
 		D9366B972993A20300E21990 /* Metadata v1.6.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "Metadata v1.6.xcdatamodel"; sourceTree = "<group>"; };
 		D93A950329D0727D00981CBB /* NewFileRevisionCommitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewFileRevisionCommitter.swift; sourceTree = "<group>"; };
+		D94059D429E6CF6F00D7E51E /* Metadata v1.11.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "Metadata v1.11.xcdatamodel"; sourceTree = "<group>"; };
+		D94059DE29E6D13A00D7E51E /* Photo.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Photo.swift; sourceTree = "<group>"; };
 		D9415C70278893E900B870E3 /* RevisionUploader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevisionUploader.swift; sourceTree = "<group>"; };
 		D9419AE5299D0B20005B9A12 /* File+UploadState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "File+UploadState.swift"; sourceTree = "<group>"; };
 		D9424CC929BE075900362261 /* PaginatedRevisionUploader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaginatedRevisionUploader.swift; sourceTree = "<group>"; };
@@ -903,6 +912,7 @@
 		D97D3015287214F20017C35B /* String+toByteArray.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+toByteArray.swift"; sourceTree = "<group>"; };
 		D984DC6B29D199BA0016775F /* URLSessionDataTaskUploader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLSessionDataTaskUploader.swift; sourceTree = "<group>"; };
 		D985A24E28DF1FCC00BF44A8 /* PDFThumbnailProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFThumbnailProvider.swift; sourceTree = "<group>"; };
+		D98D39AA29E6F514005B8669 /* PhotoRevision.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoRevision.swift; sourceTree = "<group>"; };
 		D98EA92327957C9E00AEB5D4 /* File+changeState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "File+changeState.swift"; sourceTree = "<group>"; };
 		D98F57FE277C354A004D8AB7 /* ValidNameDiscoverer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ValidNameDiscoverer.swift; sourceTree = "<group>"; };
 		D992997327EA08EF00AA466E /* URLSessionContentUploader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLSessionContentUploader.swift; sourceTree = "<group>"; };
@@ -1363,6 +1373,8 @@
 				ABA696D924AC924B0010C4C0 /* DownloadBlock+CoreDataClass.swift */,
 				ABA696CF24AC924B0010C4C0 /* DownloadBlock+CoreDataProperties.swift */,
 				D94D01C629911150005A2A01 /* File */,
+				D94059DC29E6D13A00D7E51E /* Photo */,
+				D98D39A929E6F4EF005B8669 /* PhotoRevision */,
 				D94D01D6299131B7005A2A01 /* Folder */,
 				ABA696D324AC924B0010C4C0 /* Metadata.xcdatamodeld */,
 				ABA696D724AC924B0010C4C0 /* Node+CoreDataClass.swift */,
@@ -1807,6 +1819,7 @@
 				D95A2C8A278B3362005DB3DC /* Operation+addDependencies.swift */,
 				D9D27C402795BED300A27B0A /* OperationQueue+init.swift */,
 				ABDE84CF28855E3300DE54CA /* Sequence+sortByKeyPath.swift */,
+				31A629D129E595F60036BCE9 /* Sequence+Extensions.swift */,
 				AB947D6D28BE6D39003EAD2B /* Key+Extension.swift */,
 				D9A6C4C628E2F294004E46AA /* CGImage+jpegData.swift */,
 				D92BB55D2987D67000B147F7 /* Combine+asyncMap.swift */,
@@ -1861,6 +1874,14 @@
 				D961B98A29AFF6D60029FE32 /* FileUploadOperation */,
 			);
 			path = Factories;
+			sourceTree = "<group>";
+		};
+		D94059DC29E6D13A00D7E51E /* Photo */ = {
+			isa = PBXGroup;
+			children = (
+				D94059DE29E6D13A00D7E51E /* Photo.swift */,
+			);
+			path = Photo;
 			sourceTree = "<group>";
 		};
 		D9415C6F278893AE00B870E3 /* RevisionUploader */ = {
@@ -2131,6 +2152,14 @@
 			path = ContentUploader;
 			sourceTree = "<group>";
 		};
+		D98D39A929E6F4EF005B8669 /* PhotoRevision */ = {
+			isa = PBXGroup;
+			children = (
+				D98D39AA29E6F514005B8669 /* PhotoRevision.swift */,
+			);
+			path = PhotoRevision;
+			sourceTree = "<group>";
+		};
 		D9B06C7027A035000033EA0C /* SpecialOperations */ = {
 			isa = PBXGroup;
 			children = (
@@ -2390,6 +2419,7 @@
 				D952CC3B299A64CC0066871B /* ExtendedAttributesRevisionEncryptor.swift in Sources */,
 				ABCD3B62299124BB00432FE6 /* StorageManager+FileNameReencryptor.swift in Sources */,
 				D961B9AB29B07B280029FE32 /* NameHashPair.swift in Sources */,
+				D98D39AC29E6F520005B8669 /* PhotoRevision.swift in Sources */,
 				D9424CD129BE6ABF00362261 /* PageRevisionUploader.swift in Sources */,
 				ABCD3B1E2991248000432FE6 /* FastStorage.swift in Sources */,
 				ABCD3AEA2991245000432FE6 /* FolderModel.swift in Sources */,
@@ -2399,6 +2429,7 @@
 				ABCD3BAD2991251500432FE6 /* ManagedEnum.swift in Sources */,
 				ABCD3B67299124C000432FE6 /* ThumbnailRevisionEncryptor.swift in Sources */,
 				ABCD3B4A299124A300432FE6 /* FileUploader+Notifications.swift in Sources */,
+				31A629D329E595F60036BCE9 /* Sequence+Extensions.swift in Sources */,
 				ABCD3B92299124FE00432FE6 /* PDFThumbnailProvider.swift in Sources */,
 				ABCD3B8A299124F000432FE6 /* DiscreteRevisionUploaderOperationFactory.swift in Sources */,
 				ABCD3BB72991251D00432FE6 /* ShareURL+CoreDataProperties.swift in Sources */,
@@ -2582,6 +2613,7 @@
 				ABCD3AE02991244700432FE6 /* PostLoginServices+Extension.swift in Sources */,
 				ABCD3B2F2991249000432FE6 /* FileMobileWriter.swift in Sources */,
 				ABCD3BC32991252200432FE6 /* Volume+CoreDataProperties.swift in Sources */,
+				D94059E229E6D13A00D7E51E /* Photo.swift in Sources */,
 				ABCD3AF92991245A00432FE6 /* Tower.swift in Sources */,
 				ABCD3B66299124C000432FE6 /* StreamBlocksRevisionEncryptor.swift in Sources */,
 				ABCD3B982991250500432FE6 /* Downloader.swift in Sources */,
@@ -3643,6 +3675,7 @@
 		ABA696D324AC924B0010C4C0 /* Metadata.xcdatamodeld */ = {
 			isa = XCVersionGroup;
 			children = (
+				D94059D429E6CF6F00D7E51E /* Metadata v1.11.xcdatamodel */,
 				D9366B972993A20300E21990 /* Metadata v1.6.xcdatamodel */,
 				3111015129841DCA00C6978C /* Metadata v1.5.xcdatamodel */,
 				D91F43C32743C1D00050D0EE /* Metadata v1.3.xcdatamodel */,
@@ -3650,7 +3683,7 @@
 				1805FB63261B7B58005F43B8 /* Metadata v1.1.xcdatamodel */,
 				ABA696D424AC924B0010C4C0 /* Metadata.xcdatamodel */,
 			);
-			currentVersion = D9366B972993A20300E21990 /* Metadata v1.6.xcdatamodel */;
+			currentVersion = D94059D429E6CF6F00D7E51E /* Metadata v1.11.xcdatamodel */;
 			path = Metadata.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;

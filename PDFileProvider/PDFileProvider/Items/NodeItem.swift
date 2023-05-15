@@ -68,6 +68,11 @@ public class NodeItem: NSObject, NSFileProviderItem {
         self.itemVersion = .init(contentVersion: contentVersion, metadataVersion: metadataVersion)
     }
 
+    public convenience init(node: Node, filename: String) {
+        self.init(node: node)
+        self.filename = filename
+    }
+
     public var isUploaded: Bool
     public var isDownloaded: Bool
     public var isShared: Bool

@@ -27,6 +27,7 @@ public class LocalSettings: NSObject {
     @SettingsStorage("optOutFromTelemetry") var optOutFromTelemetry: Bool?
     @SettingsStorage("optOutFromCrashReports") var optOutFromCrashReports: Bool?
     @SettingsStorage("isNoticationPermissionsSkipped") public var isNoticationPermissionsSkipped: Bool?
+    @SettingsStorage("isPhotosBackupEnabled") public var isPhotosBackupEnabled: Bool?
 
     public init(suite: SettingsStorageSuite) {
         super.init()
@@ -38,6 +39,7 @@ public class LocalSettings: NSObject {
         self._isOnboardedValue.configure(with: suite)
         self._isUploadingDisclaimerActiveValue.configure(with: suite)
         self._isNoticationPermissionsSkipped.configure(with: suite)
+        self._isPhotosBackupEnabled.configure(with: suite)
 
         if let sortPreferenceCache = self.sortPreferenceCache {
             nodesSortPreference = SortPreference(rawValue: sortPreferenceCache) ?? SortPreference.default
@@ -57,6 +59,7 @@ public class LocalSettings: NSObject {
         // self.isOnboardedValue needs no clean up - we only show it for first login ever
         self.isUploadingDisclaimerActiveValue = nil
         self.isNoticationPermissionsSkipped = nil
+        self.isPhotosBackupEnabled = nil
     }
     
     @objc public dynamic var nodesSortPreference: SortPreference = SortPreference.default {

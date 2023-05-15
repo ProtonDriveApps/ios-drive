@@ -28,6 +28,7 @@ public enum ItemActionChangeType {
 
 extension ItemActionsOutlet: ConflictDetection {
 
+    // Return values: (detectedConflict: ConflictingOperation?, remoteVersion: Node?)
     public func identifyConflict(
         tower: Tower,
         basedOn item: NSFileProviderItem,
@@ -37,14 +38,20 @@ extension ItemActionsOutlet: ConflictDetection {
             switch changeType {
             case .create:
                 return conflictOnCreate(tower: tower, item: item, request: request)
+                
             case .move(let fields):
+                // parent changed
                 return conflictOnMove(tower: tower, item: item, changedFields: fields, request: request)
+                
             case .modifyMetadata(let fields):
+                // + renamed
                 return conflictOnMetadata(tower: tower, item: item, changedFields: fields, request: request)
+                
             case .modifyContents(let contentURL):
                 return conflictOnContents(tower: tower, item: item, contents: contentURL, request: request)
+                
             case .delete:
-                return (nil, nil)
+                return (nil, nil) // TODO: implement
             }
     }
 
@@ -89,10 +96,18 @@ extension ItemActionsOutlet: ConflictDetection {
         if newContent == nil, item.isFolder {
             return (nil, nil)
         }
+
+        if let parentFolder = tower.parentFolder(of: item),
+           let state = parentFolder.state, state == .deleted {
+            let node = tower.node(itemIdentifier: item.itemIdentifier)
+            return (.edit(.delete(parent: true)), node)
+        }
+
         if item.parentItemIdentifier == .trashContainer,
             let node = tower.node(itemIdentifier: item.itemIdentifier) {
             return (.edit(.delete(parent: false)), node)
         }
+        
         if tower.node(itemIdentifier: item.itemIdentifier) == nil {
             if let parentNode = tower.node(itemIdentifier: item.parentItemIdentifier), parentNode.state == .deleted {
                 return (.edit(.delete(parent: true)), nil)
@@ -114,21 +129,21 @@ extension ItemActionsOutlet: ConflictDetection {
     }
 
     private func conflictOnMetadata(tower: Tower, item: NSFileProviderItem, changedFields: NSFileProviderItemFields, request: NSFileProviderRequest?) -> (ConflictingOperation?, Node?) {
-        let nodes = tower.retrieveNodes(basedOn: item)
-        if changedFields.contains(.filename) && changedFields.contains(.parentItemIdentifier) {
+        if changedFields.contains(.filename) && changedFields.contains(.parentItemIdentifier) { //  this is Move case!
             return (nil, nil)
         }
+        
+        guard let nodeRemote = tower.node(itemIdentifier: item.itemIdentifier) else {
+            return (nil, nil)
+        }
+
         if changedFields.contains(.filename) {
-            if let eligibleNode = nodes.first(
-                where: {
-                    let nodeItem = NodeItem(node: $0)
-                    return $0.decryptedName == item.filename && item.contentType == nodeItem.contentType
-                }
-            ) {
-                // Subject to conflict on move
-                return (.edit(.move(nil)), eligibleNode)
-            } else {
+            if nodeRemote.decryptedName == item.filename {
+                // Move-Move pseudoconflict, both replicas renamed node to the same name
                 return (nil, nil)
+            } else {
+                // Move-Mode-Source conflict with renaming, needs to be solved
+                return (.move(.move(nil)), nodeRemote)
             }
         } else {
             return (nil, nil)
@@ -141,6 +156,7 @@ extension ItemActionsOutlet: ConflictDetection {
 
 extension ItemActionsOutlet: ConflictResolution {
 
+    // Return values: (finalItem: NSFileProviderItem, conflictEligible: Bool)
     public func resolveConflictOnItemIfNeeded(
         tower: Tower, item: NSFileProviderItem, changeType: ItemActionChangeType,
         request: NSFileProviderRequest?) -> (NSFileProviderItem, Bool) {

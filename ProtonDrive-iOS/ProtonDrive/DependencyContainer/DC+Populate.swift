@@ -34,6 +34,9 @@ final class AuthenticatedDependencyContainer {
     let childContainers: [Any]
     var humanCheckHelper: HumanCheckHelper?
     let pickersContainer: PickersContainer
+    #if HAS_PHOTOS
+    let photosContainer: PhotosContainer
+    #endif
 
     init(tower: Tower, keymaker: Keymaker, networkService: PMAPIService, localSettings: LocalSettings, windowScene: UIWindowScene) {
         self.tower = tower
@@ -42,10 +45,19 @@ final class AuthenticatedDependencyContainer {
         self.localSettings = localSettings
         self.windowScene = windowScene
 
-        pickersContainer = PickersContainer()
         let uploadOperationInteractor = UploadOperationInteractor(interactor: tower.fileUploader)
+        var operationInteractors: [OperationInteractor] = [uploadOperationInteractor]
+
+        pickersContainer = PickersContainer()
+        operationInteractors.append(pickersContainer.photoPickerInteractor)
+
+        #if HAS_PHOTOS
+        photosContainer = PhotosContainer(localSettings: tower.localSettings)
+        operationInteractors.append(photosContainer.operationInteractor)
+        #endif
+
         let applicationRunningResource = ApplicationRunningStateResourceImpl()
-        let operationsInteractor = AggregatedOperationInteractor(interactors: [uploadOperationInteractor, pickersContainer.photoPickerInteractor])
+        let operationsInteractor = AggregatedOperationInteractor(interactors: operationInteractors)
         #if SUPPORTS_BACKGROUND_UPLOADS
         let processingController = ProcessingBackgroundOperationController(
             operationInteractor: operationsInteractor,

@@ -46,11 +46,11 @@ extension String {
         return (iteration, stringWithoutIteration, pathExtension)
     }
 
-    func fileName() -> String {
+    public func fileName() -> String {
         return URL(fileURLWithPath: self).deletingPathExtension().lastPathComponent
     }
 
-    func fileExtension() -> String {
+    public func fileExtension() -> String {
         return URL(fileURLWithPath: self).pathExtension
     }
 }
@@ -61,5 +61,12 @@ extension String {
             throw error
         }
         return self
+    }
+}
+
+public extension Array where Element == String {
+    func joinedNonEmpty(separator: String) -> String {
+        let elements = filter { !$0.isEmpty }
+        return elements.joined(separator: separator)
     }
 }
