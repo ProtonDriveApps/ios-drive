@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import PDCore
+
 /// The idea is to resolve duplicities as soon as possible.
 /// Some duplicities are possible to be resolved with identifiers, some only after we have the contentHash.
 protocol PhotoLibraryFilterPolicy {

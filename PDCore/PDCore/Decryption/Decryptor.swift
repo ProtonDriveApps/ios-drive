@@ -152,25 +152,38 @@ extension Decryptor {
 
     static func decryptAndVerifyThumbnail(
         _ thumbnailDataPacket: DataPacket,
-        sessionKey: SessionKey,
+        contentSessionKey: SessionKey,
         verificationKeys: [ArmoredKey]
     ) throws -> VerifiedBinary {
-        let cryptoSessionKey = try makeCryptoSessionKey(sessionKey)
-        let verificationKeyRing = try buildPublicKeyRing(armoredKeys: verificationKeys)
+        try decryptAndVerifyAttachedUnarmoredBinary(
+            dataPacket: thumbnailDataPacket,
+            sessionKey: contentSessionKey,
+            verificationKeys: verificationKeys
+        )
+    }
 
-        let explicitMessage = try executeAndUnwrap {
-            HelperDecryptSessionKeyExplicitVerify(thumbnailDataPacket, cryptoSessionKey, verificationKeyRing, CryptoGetUnixTime(), &$0)
-        }
+    static func decryptAndVerifyExif(
+        _ exifDataPacket: DataPacket,
+        contentSessionKey: SessionKey,
+        verificationKeys: [ArmoredKey]
+    ) throws -> VerifiedBinary {
+        try decryptAndVerifyAttachedUnarmoredBinary(
+            dataPacket: exifDataPacket,
+            sessionKey: contentSessionKey,
+            verificationKeys: verificationKeys
+        )
+    }
 
-        guard let message = explicitMessage.message?.getBinary() else {
-            throw Errors.emptyResult
-        }
-
-        if explicitMessage.signatureVerificationError == nil {
-            return .verified(message)
-        } else {
-            return .unverified(message, VerificationError(message: explicitMessage.signatureVerificationError?.message))
-        }
+    static func decryptAndVerifyMetadata(
+        _ metadataDataPacket: DataPacket,
+        contentSessionKey: SessionKey,
+        verificationKeys: [ArmoredKey]
+    ) throws -> VerifiedBinary {
+        try decryptAndVerifyAttachedUnarmoredBinary(
+            dataPacket: metadataDataPacket,
+            sessionKey: contentSessionKey,
+            verificationKeys: verificationKeys
+        )
     }
 }
 
@@ -267,6 +280,29 @@ extension Decryptor {
         }
 
         return explicitMessage
+    }
+
+    static func decryptAndVerifyAttachedUnarmoredBinary(
+        dataPacket: DataPacket,
+        sessionKey: SessionKey,
+        verificationKeys: [ArmoredKey]
+    ) throws -> VerifiedBinary {
+        let cryptoSessionKey = try makeCryptoSessionKey(sessionKey)
+        let verificationKeyRing = try buildPublicKeyRing(armoredKeys: verificationKeys)
+
+        let explicitMessage = try executeAndUnwrap {
+            HelperDecryptSessionKeyExplicitVerify(dataPacket, cryptoSessionKey, verificationKeyRing, CryptoGetUnixTime(), &$0)
+        }
+
+        guard let message = explicitMessage.message?.getBinary() else {
+            throw Errors.emptyResult
+        }
+
+        if explicitMessage.signatureVerificationError == nil {
+            return .verified(message)
+        } else {
+            return .unverified(message, VerificationError(message: explicitMessage.signatureVerificationError?.message))
+        }
     }
 
     private static func decryptAndVerifyDetachedBinaryMessage(

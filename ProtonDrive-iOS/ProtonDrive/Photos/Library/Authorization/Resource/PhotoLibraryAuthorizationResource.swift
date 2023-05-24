@@ -19,15 +19,15 @@ import Combine
 import Photos
 
 protocol PhotoLibraryAuthorizationResource {
-    var isAuthorized: AnyPublisher<Bool, Never> { get }
+    var permissions: AnyPublisher<PhotoLibraryPermissions, Never> { get }
     func authorize()
 }
 
 final class LocalPhotoLibraryAuthorizationResource: PhotoLibraryAuthorizationResource {
-    private let isAuthorizedSubject = CurrentValueSubject<Bool, Never>(false)
+    private let permissionsSubject = CurrentValueSubject<PhotoLibraryPermissions, Never>(.undetermined)
 
-    var isAuthorized: AnyPublisher<Bool, Never> {
-        isAuthorizedSubject.eraseToAnyPublisher()
+    var permissions: AnyPublisher<PhotoLibraryPermissions, Never> {
+        permissionsSubject.eraseToAnyPublisher()
     }
 
     init() {
@@ -36,12 +36,27 @@ final class LocalPhotoLibraryAuthorizationResource: PhotoLibraryAuthorizationRes
 
     func authorize() {
         PHPhotoLibrary.requestAuthorization(for: .readWrite) { [weak self] _ in
-            self?.update()
+            DispatchQueue.main.async {
+                self?.update()
+            }
         }
     }
 
     private func update() {
-        let isAuthorized = PHPhotoLibrary.authorizationStatus(for: .readWrite) == .authorized
-        isAuthorizedSubject.send(isAuthorized)
+        let permissions = getPermissions()
+        permissionsSubject.send(permissions)
+    }
+
+    private func getPermissions() -> PhotoLibraryPermissions {
+        switch PHPhotoLibrary.authorizationStatus(for: .readWrite) {
+        case .authorized:
+            return .full
+        case .notDetermined:
+            return .undetermined
+        case .denied, .limited, .restricted:
+            return .restricted
+        @unknown default:
+            return .restricted
+        }
     }
 }

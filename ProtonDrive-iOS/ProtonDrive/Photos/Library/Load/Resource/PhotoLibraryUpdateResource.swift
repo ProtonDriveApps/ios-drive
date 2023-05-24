@@ -17,6 +17,7 @@
 
 import Combine
 import Photos
+import PDCore
 
 final class LocalPhotoLibraryUpdateResource: NSObject, PhotoLibraryIdentifiersResource, PHPhotoLibraryChangeObserver {
     private let updateSubject = PassthroughSubject<PhotoIdentifiers, Never>()

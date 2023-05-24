@@ -63,6 +63,20 @@ public final class PDFileManager {
         self.createIfNeeded(&temp)
         return temp
     }
+
+    /// Directory for caching cleartext Photos. Placed in temporary directory of current process in order to benefit from OS-driven periodic cleanups to protect "forgotten" cleartext files
+    public static var cleartextPhotosCacheDirectory: URL {
+        var temp = cleartextCacheDirectory.appendingPathComponent("Photos")
+        self.createIfNeeded(&temp)
+        return temp
+    }
+
+    /// Creates a random subfolder under cleartext photos cache directory, returns new URL with requested last component
+    public static func prepareUrlForPhotoFile(named filename: String) -> URL {
+        var url = self.cleartextPhotosCacheDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        self.createIfNeeded(&url)
+        return url.appendingPathComponent(filename)
+    }
     
     /// Directory for caching cleartext. Placed in App Groups directory because encrypted data can be safely stored for a long time
     public static var cypherBlocksCacheDirectory: URL {

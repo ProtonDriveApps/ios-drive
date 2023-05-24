@@ -61,7 +61,7 @@ extension Thumbnail {
             let addressKeys = try revision.getAddressPublicKeysOfRevisionCreator()
             let decrypted = try Decryptor.decryptAndVerifyThumbnail(
                 thumbnailDataPacket,
-                sessionKey: sessionKey,
+                contentSessionKey: sessionKey,
                 verificationKeys: addressKeys
             )
 

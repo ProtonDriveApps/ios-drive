@@ -75,6 +75,7 @@ enum Constants: LogObject {
 
     // MARK: - Photos
     static let photosAssetsParalelProcessingCount = 5
+    static let photosAssetsMaximalFolderSize = 2_000_000_000 // bytes count
 }
 
 extension Constants {

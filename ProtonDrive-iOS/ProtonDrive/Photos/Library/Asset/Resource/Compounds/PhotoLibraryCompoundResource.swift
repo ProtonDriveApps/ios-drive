@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Photos
+import PDCore
 
 protocol PhotoLibraryCompoundResource {
     func execute(with identifier: PhotoIdentifier, asset: PHAsset) async throws -> [PhotoAssetCompound]

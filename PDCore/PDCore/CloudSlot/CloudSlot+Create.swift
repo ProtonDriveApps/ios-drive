@@ -200,6 +200,8 @@ extension CloudSlot {
                 let oldNodePassphrase = node.nodePassphrase
                 let (oldParentPassphrase, oldParentKey) = try node.getDirectParentPack()
 
+                let oldHash = node.nodeHash
+
                 node.clearPassphrase = nil
 
                 node.parentLink = newParent
@@ -232,7 +234,8 @@ extension CloudSlot {
                     parentLinkID: newParent.id,
                     nodePassphrase: newPassphrase,
                     nodePassphraseSignature: node.nodePassphraseSignature,
-                    signatureAddress: node.signatureEmail
+                    signatureAddress: node.signatureEmail,
+                    originalHash: oldHash
                 )
 
                 self.client.putMoveNode(shareID: node.shareID, nodeID: node.id, parameters: parameters) { result in

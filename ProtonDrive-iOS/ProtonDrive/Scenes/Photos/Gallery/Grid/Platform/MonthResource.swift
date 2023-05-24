@@ -17,16 +17,20 @@
 
 import Foundation
 
-struct PhotoIdentifier: Equatable, Hashable {
-    let localIdentifier: String
-    let cloudIdentifier: String
-    let creationDate: Date?
-    let modifiedDate: Date?
-
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(cloudIdentifier)
-        hasher.combine(modifiedDate)
-    }
+struct Month: Equatable {
+    let month: Int
+    let year: Int
 }
 
-typealias PhotoIdentifiers = [PhotoIdentifier]
+protocol MonthResource {
+    func getMonth(from date: Date) -> Month
+}
+
+final class PlatformMonthResource: MonthResource {
+    private static let calendar = Calendar.current
+
+    func getMonth(from date: Date) -> Month {
+        let components = PlatformMonthResource.calendar.dateComponents([.month, .year], from: date)
+        return Month(month: components.month ?? 0, year: components.year ?? 0)
+    }
+}

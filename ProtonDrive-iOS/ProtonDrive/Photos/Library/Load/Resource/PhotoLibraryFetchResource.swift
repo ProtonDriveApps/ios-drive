@@ -17,6 +17,7 @@
 
 import Combine
 import Photos
+import PDCore
 
 enum PhotoLibraryFetchResourceError: Error {
     case missingMapping

@@ -56,7 +56,7 @@ extension String {
 }
 
 extension String {
-    func validateNodeName(validator: Validator<String>) throws -> String {
+    public func validateNodeName(validator: Validator<String>) throws -> String {
         for error in validator.validate(self) {
             throw error
         }

@@ -32,7 +32,7 @@ final class LocalPhotoLibraryFileContentResource: PhotoLibraryFileContentResourc
     }
 
     func copyFile(with resource: PHAssetResource) async throws -> URL {
-        let url = PDFileManager.prepareUrlForFile(named: resource.originalFilename)
+        let url = PDFileManager.prepareUrlForPhotoFile(named: resource.originalFilename)
         let options = makeOptions()
         try await PHAssetResourceManager.default().writeData(for: resource, toFile: url, options: options)
         return url

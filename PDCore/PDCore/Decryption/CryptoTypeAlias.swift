@@ -36,5 +36,5 @@ typealias PlainData = Data
 typealias ArmoredEncryptionKey = ArmoredKey
 typealias ArmoredSigningKey = ArmoredKey
 
-typealias SessionKey = Data
+public typealias SessionKey = Data
 typealias PublicKey = String

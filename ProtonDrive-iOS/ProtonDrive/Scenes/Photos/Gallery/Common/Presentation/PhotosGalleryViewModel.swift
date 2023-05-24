@@ -15,12 +15,27 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-protocol PhotoImportInteractor {
-    func execute(with compounds: [PhotoAssetCompound])
+import Foundation
+
+protocol PhotosGalleryViewModelProtocol {
+    var viewData: PhotosGalleryViewData { get }
 }
 
-// TODO: replace with real implementation
-final class DummyPhotoImportInteractor: PhotoImportInteractor {
-    func execute(with compounds: [PhotoAssetCompound]) {}
+struct PhotosGalleryViewData {
+    let content: Content
+    // TODO: next MR: banners, other states
+
+    enum Content {
+        case loading
+        case grid
+    }
 }
 
+final class PhotosGalleryViewModel: PhotosGalleryViewModelProtocol {
+    var viewData: PhotosGalleryViewData
+
+    init() {
+        // TODO: next MR
+        viewData = PhotosGalleryViewData(content: .grid)
+    }
+}

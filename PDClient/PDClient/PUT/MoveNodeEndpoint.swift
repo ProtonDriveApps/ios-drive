@@ -23,7 +23,8 @@ public struct MoveNodeParameters: Codable {
                 parentLinkID: String,
                 nodePassphrase: String,
                 nodePassphraseSignature: String,
-                signatureAddress: String)
+                signatureAddress: String,
+                originalHash: String)
     {
         self.Name = name
         self.Hash = hash
@@ -31,6 +32,7 @@ public struct MoveNodeParameters: Codable {
         self.NodePassphrase = nodePassphrase
         self.NodePassphraseSignature = nodePassphraseSignature
         self.SignatureAddress = signatureAddress
+        self.OriginalHash = originalHash
     }
     
     var Name: String
@@ -39,6 +41,7 @@ public struct MoveNodeParameters: Codable {
     var NodePassphrase: String
     var NodePassphraseSignature: String
     var SignatureAddress: String
+    var OriginalHash: String
 }
 
 struct MoveNodeEndpoint: Endpoint {

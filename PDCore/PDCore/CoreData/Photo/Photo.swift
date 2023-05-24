@@ -33,4 +33,7 @@ public class Photo: File {
 
     @available(*, deprecated, message: "Not needed")
     @NSManaged override public var activeRevision: Revision?
+
+    // Transient
+    @NSManaged public var monthIdentifier: String?
 }

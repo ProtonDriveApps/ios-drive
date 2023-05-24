@@ -18,23 +18,29 @@
 import PDCore
 
 struct PhotosFactory {
-    func makeAssetsController(interactor: PhotoLibraryAssetsInteractor) -> PhotoAssetsController {
-        LocalPhotoAssetsController(interactor: interactor)
+    func makeSettingsController(localSettings: LocalSettings) -> PhotoBackupSettingsController {
+        LocalPhotoBackupSettingsController(localSettings: localSettings)
     }
 
-    func makeLoadController(localSettings: LocalSettings, assetsInteractor: PhotoLibraryAssetsInteractor) -> PhotoLibraryLoadController {
-        let authorizationController = LocalPhotoLibraryAuthorizationController(resource: LocalPhotoLibraryAuthorizationResource())
-        let settingsController = LocalPhotoBackupSettingsController(localSettings: localSettings)
+    func makeAuthorizationController() -> PhotoLibraryAuthorizationController {
+        LocalPhotoLibraryAuthorizationController(resource: LocalPhotoLibraryAuthorizationResource())
+    }
+
+    func makeAssetsController(constraintsController: PhotoBackupConstraintsController, interactor: PhotoLibraryAssetsInteractor) -> PhotoAssetsController {
+        LocalPhotoAssetsController(constraintsController: constraintsController, interactor: interactor)
+    }
+
+    func makeBackupController(settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController) -> PhotosBackupController {
+        return DrivePhotosBackupController(authorizationController: authorizationController, settingsController: settingsController)
+    }
+
+    func makeLoadController(backupController: PhotosBackupController, assetsInteractor: PhotoLibraryAssetsInteractor) -> PhotoLibraryLoadController {
         let mappingResource = LocalPhotoLibraryMappingResource()
         let interactor = LocalPhotoLibraryLoadInteractor(assetsInteractor: assetsInteractor, resources: [
             LocalPhotoLibraryFetchResource(mappingResource: mappingResource),
             LocalPhotoLibraryUpdateResource(mappingResource: mappingResource),
         ])
-        return LocalPhotoLibraryLoadController(
-            authorizationController: authorizationController,
-            settingsController: settingsController,
-            interactor: interactor
-        )
+        return LocalPhotoLibraryLoadController(backupController: backupController, interactor: interactor)
     }
 
     func makeAssetsOperationInteractor(queueResource: PhotoLibraryAssetsQueueResource) -> OperationInteractor {
@@ -44,7 +50,7 @@ struct PhotosFactory {
     func makeAssetsQueueResource() -> PhotoLibraryAssetsQueueResource {
         let contentResource = LocalPhotoLibraryFileContentResource(digestBuilderFactory: { SHA1DigestBuilder() })
         let assetFactory = LocalPhotoAssetFactory(nameStrategy: LocalPhotoLibraryFilenameStrategy())
-        let assetResource = LocalPhotoLibraryAssetResource(contentResource: contentResource, assetFactory: assetFactory)
+        let assetResource = LocalPhotoLibraryAssetResource(contentResource: contentResource, assetFactory: assetFactory, exifResource: LocalPhotoLibraryExifResource())
         let nameResource = PHAssetNameResource()
         let plainCompoundResource = PhotoLibraryPlainCompoundResource(assetResource: assetResource, nameResource: nameResource)
         let livePhotoResource = PhotoLibraryLivePhotoCompoundResource(assetResource: assetResource, nameResource: nameResource)
@@ -56,4 +62,16 @@ struct PhotosFactory {
     func makeAssetsInteractor(queueResource: PhotoLibraryAssetsQueueResource) -> LocalPhotoLibraryAssetsInteractor {
         return LocalPhotoLibraryAssetsInteractor(resource: queueResource, policy: DummyPhotoLibraryFilterPolicy(), importInteractor: DummyPhotoImportInteractor())
     }
+
+    func makeConstraintsController(backupController: PhotosBackupController) -> PhotoBackupConstraintsController {
+        let resource = LocalPhotoAssetsStorageSizeResource(updateResource: LocalFolderUpdateResource(), sizeResource: LocalFolderSizeResource())
+        let interactor = LocalPhotoAssetsStorageConstraintInteractor(resource: resource)
+        let storageController = PhotoAssetsStorageController(backupController: backupController, interactor: interactor)
+        return LocalPhotoBackupConstraintsController(storageController: storageController, networkController: PhotoBackupNetworkController())
+    }
+}
+
+// TODO: replace with real implementation
+final class DummyPhotoImportInteractor: PhotoImportInteractor {
+    func execute(with compounds: [PhotoAssetCompound]) {}
 }

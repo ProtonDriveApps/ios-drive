@@ -17,25 +17,31 @@
 
 import Combine
 
+enum PhotoLibraryPermissions {
+    case undetermined
+    case restricted
+    case full
+}
+
 protocol PhotoLibraryAuthorizationController {
-    var isAuthorized: AnyPublisher<Bool, Never> { get }
+    var permissions: AnyPublisher<PhotoLibraryPermissions, Never> { get }
     func authorize()
 }
 
 final class LocalPhotoLibraryAuthorizationController: PhotoLibraryAuthorizationController {
     private let resource: PhotoLibraryAuthorizationResource
-    private let isAuthorizedSubject = CurrentValueSubject<Bool, Never>(false)
+    private let permissionsSubject = CurrentValueSubject<PhotoLibraryPermissions, Never>(.undetermined)
     private var cancellables = Set<AnyCancellable>()
 
-    var isAuthorized: AnyPublisher<Bool, Never> {
-        isAuthorizedSubject.eraseToAnyPublisher()
+    var permissions: AnyPublisher<PhotoLibraryPermissions, Never> {
+        permissionsSubject.eraseToAnyPublisher()
     }
 
     init(resource: PhotoLibraryAuthorizationResource) {
         self.resource = resource
-        resource.isAuthorized
+        resource.permissions
             .sink { [weak self] value in
-                self?.isAuthorizedSubject.send(value)
+                self?.permissionsSubject.send(value)
             }
             .store(in: &cancellables)
     }

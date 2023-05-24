@@ -88,6 +88,10 @@ extension SessionVault: SessionStore {
     }
 
     public func storeCredential(_ credential: CoreCredential) {
+        guard !credential.userID.isEmpty ||
+                !self._credential.hasCyphertext() ||
+                (self._credential.wrappedValue?.userID ?? "").isEmpty
+        else { return }
         self.credential = credential
     }
 

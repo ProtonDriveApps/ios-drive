@@ -15,26 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import Foundation
-
-struct PhotoAsset: Equatable {
-    let url: URL
-    let filename: String
-    let filenameHash: String
-    let contentHash: String
-    let exif: [String: String]
-    let metadata: Metadata
-
-    struct Metadata: Equatable {
-        let cloudIdentifier: String
-        let creationDate: Date?
-        let modifiedDate: Date?
-    }
-}
-
-typealias PhotoAssets = [PhotoAsset]
-
-struct PhotoAssetCompound: Equatable {
-    let primary: PhotoAsset
-    let secondary: PhotoAssets
+protocol PhotosPermissionsCoordinator {
+    func openSettings()
 }

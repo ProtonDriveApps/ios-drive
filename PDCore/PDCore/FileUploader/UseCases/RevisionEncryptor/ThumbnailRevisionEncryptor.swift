@@ -112,7 +112,7 @@ final class ThumbnailRevisionEncryptor: RevisionEncryptor {
         return uploadableThumbnailData
     }
 
-    private func encrypt(clearThumbnail thumbnail: Data, for file: File) throws -> Encryptor.EncryptedBlock {
+    private func encrypt(clearThumbnail thumbnail: Data, for file: File) throws -> Encryptor.EncryptedBinary {
         guard let rawContentKeyPacket = file.contentKeyPacket,
               let contentKeyPacket = Data(base64Encoded: rawContentKeyPacket) else {
                   throw Uploader.Errors.noFileKeyPacket

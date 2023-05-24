@@ -16,9 +16,19 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDCore
+
+struct PhotoAssetFactoryData {
+    let identifier: PhotoIdentifier
+    let url: URL
+    let hash: Data
+    let filename: String
+    let exif: PhotoAsset.Exif
+    let isOriginal: Bool
+}
 
 protocol PhotoAssetFactory {
-    func makeAsset(identifier: PhotoIdentifier, url: URL, hash: Data, filename: String, isOriginal: Bool) -> PhotoAsset
+    func makeAsset(from data: PhotoAssetFactoryData) throws -> PhotoAsset
 }
 
 final class LocalPhotoAssetFactory: PhotoAssetFactory {
@@ -28,28 +38,25 @@ final class LocalPhotoAssetFactory: PhotoAssetFactory {
         self.nameStrategy = nameStrategy
     }
 
-    func makeAsset(identifier: PhotoIdentifier, url: URL, hash: Data, filename: String, isOriginal: Bool) -> PhotoAsset {
-        let filename = makeName(filename: filename, isOriginal: isOriginal)
-        let filenameHash = "" // TODO: next MR
+    func makeAsset(from data: PhotoAssetFactoryData) throws -> PhotoAsset {
         return PhotoAsset(
-            url: url,
-            filename: filename,
-            filenameHash: filenameHash,
-            contentHash: hash.hexString(),
-            exif: [:], // TODO: next MR
+            url: data.url,
+            filename: makeName(from: data),
+            contentHash: data.hash.hexString(),
+            exif: data.exif,
             metadata: PhotoAsset.Metadata(
-                cloudIdentifier: identifier.cloudIdentifier,
-                creationDate: identifier.creationDate,
-                modifiedDate: identifier.modifiedDate
+                cloudIdentifier: data.identifier.cloudIdentifier,
+                creationDate: data.identifier.creationDate,
+                modifiedDate: data.identifier.modifiedDate
             )
         )
     }
 
-    private func makeName(filename: String, isOriginal: Bool) -> String {
-        if isOriginal {
-            return filename
+    private func makeName(from data: PhotoAssetFactoryData) -> String {
+        if data.isOriginal {
+            return data.filename
         } else {
-            return nameStrategy.makeModifiedFilename(from: filename)
+            return nameStrategy.makeModifiedFilename(from: data.filename)
         }
     }
 }

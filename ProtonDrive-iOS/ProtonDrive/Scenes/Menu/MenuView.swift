@@ -147,6 +147,7 @@ struct MenuView: View {
             GradientButton(title: "Get more storage") {
                 vm.go(to: .servicePlans)
             }
+            .accessibilityIdentifier("MenuView.storageButton")
         }
     }
 
@@ -156,6 +157,7 @@ struct MenuView: View {
             .foregroundColor(ColorProvider.SidebarTextWeak)
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.top, 32)
+            .accessibilityIdentifier("MenuView.appVersion")
     }
 
     private func sectionHeader(title: String) -> some View {

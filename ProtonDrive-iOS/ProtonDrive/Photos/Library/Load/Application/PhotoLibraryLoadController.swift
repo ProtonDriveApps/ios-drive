@@ -20,21 +20,18 @@ import Combine
 protocol PhotoLibraryLoadController {}
 
 final class LocalPhotoLibraryLoadController: PhotoLibraryLoadController {
-    private let authorizationController: PhotoLibraryAuthorizationController
+    private let backupController: PhotosBackupController
     private let interactor: PhotoLibraryLoadInteractor
-    private let settingsController: PhotoBackupSettingsController
     private var cancellables = Set<AnyCancellable>()
 
-    init(authorizationController: PhotoLibraryAuthorizationController, settingsController: PhotoBackupSettingsController, interactor: PhotoLibraryLoadInteractor) {
-        self.authorizationController = authorizationController
-        self.settingsController = settingsController
+    init(backupController: PhotosBackupController, interactor: PhotoLibraryLoadInteractor) {
+        self.backupController = backupController
         self.interactor = interactor
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
-        Publishers.CombineLatest(authorizationController.isAuthorized, settingsController.isEnabled)
-            .map { $0 && $1 }
+        backupController.isAvailable
             .sink { [weak self] isBackupAvailable in
                 self?.handleUpdate(isBackupAvailable: isBackupAvailable)
             }

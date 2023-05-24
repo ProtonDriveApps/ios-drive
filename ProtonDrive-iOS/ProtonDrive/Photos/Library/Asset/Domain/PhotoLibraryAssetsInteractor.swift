@@ -15,11 +15,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import PDCore
 import Combine
 
 protocol PhotoLibraryAssetsInteractor {
     var error: AnyPublisher<Error, Never> { get }
     func execute(with identifiers: PhotoIdentifiers)
+    func update(isConstrained: Bool)
 }
 
 final class LocalPhotoLibraryAssetsInteractor: PhotoLibraryAssetsInteractor {
@@ -61,5 +63,9 @@ final class LocalPhotoLibraryAssetsInteractor: PhotoLibraryAssetsInteractor {
     func execute(with identifiers: PhotoIdentifiers) {
         let validIdentifiers = policy.filterIdentifiers(identifiers)
         resource.execute(with: validIdentifiers)
+    }
+
+    func update(isConstrained: Bool) {
+        resource.update(isConstrained: isConstrained)
     }
 }

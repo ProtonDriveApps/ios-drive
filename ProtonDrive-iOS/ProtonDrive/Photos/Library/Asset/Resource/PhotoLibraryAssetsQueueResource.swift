@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import PDCore
 import Combine
 import Foundation
 
@@ -24,6 +25,7 @@ protocol PhotoLibraryAssetsQueueResource {
     func isExecuting() -> Bool
     func start() throws
     func cancel()
+    func update(isConstrained: Bool)
 }
 
 enum LocalPhotoLibraryAssetsQueueResourceError: Error {
@@ -35,6 +37,7 @@ final class LocalPhotoLibraryAssetsQueueResource: PhotoLibraryAssetsQueueResourc
     private let queue: OperationQueue
     private let resultsSubject = PassthroughSubject<PhotoAssetCompoundsResult, Never>()
     private var identifiersInProgress = Set<PhotoIdentifier>()
+    private var isConstrained = false
 
     var results: AnyPublisher<PhotoAssetCompoundsResult, Never> {
         resultsSubject.eraseToAnyPublisher()
@@ -58,13 +61,22 @@ final class LocalPhotoLibraryAssetsQueueResource: PhotoLibraryAssetsQueueResourc
     }
 
     func isExecuting() -> Bool {
-        return !identifiersInProgress.isEmpty
+        return !identifiersInProgress.isEmpty && !isConstrained
     }
 
     func execute(with identifiers: PhotoIdentifiers) {
         let operations = identifiers.map(makeOperation)
         identifiersInProgress.formUnion(identifiers)
         queue.addOperations(operations, waitUntilFinished: false)
+    }
+
+    func update(isConstrained: Bool) {
+        self.isConstrained = isConstrained
+        if isConstrained {
+            cancel()
+        } else {
+            try? start()
+        }
     }
 
     private func makeOperation(with identifier: PhotoIdentifier) -> Operation {

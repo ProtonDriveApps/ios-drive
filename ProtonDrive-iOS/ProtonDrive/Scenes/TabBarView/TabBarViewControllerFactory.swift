@@ -22,15 +22,22 @@ final class TabBarViewControllerFactory {
     func configureFilesTab(in controller: UIViewController) {
         controller.tabBarItem.title = "Files"
         controller.tabBarItem.image = IconProvider.folder
-        controller.tabBarItem.selectedImage = IconProvider.folderFilled
+        controller.tabBarItem.selectedImage = IconProvider.folder
         controller.tabBarItem.accessibilityIdentifier = "TabBarViewControllerFactory.tabBarItem.Files"
     }
-    
+
     func configureSharedTab(in controller: UIViewController) {
         controller.tabBarItem.title = "Shared"
         controller.tabBarItem.image = IconProvider.link
         controller.tabBarItem.selectedImage = IconProvider.link
         controller.tabBarItem.accessibilityIdentifier = "TabBarViewControllerFactory.tabBarItem.Shared"
+    }
+
+    func configurePhotosTab(in controller: UIViewController) {
+        controller.tabBarItem.title = "Photos"
+        controller.tabBarItem.image = IconProvider.image
+        controller.tabBarItem.selectedImage = IconProvider.image
+        controller.tabBarItem.accessibilityIdentifier = "TabBarViewControllerFactory.tabBarItem.Photos"
     }
     
     func makeTabBarController(children: [UIViewController]) -> UIViewController {

@@ -32,21 +32,34 @@ protocol PhotoLibraryAssetResource {
 final class LocalPhotoLibraryAssetResource: PhotoLibraryAssetResource {
     private let contentResource: PhotoLibraryFileContentResource
     private let assetFactory: PhotoAssetFactory
+    private let exifResource: PhotoLibraryExifResource
 
-    init(contentResource: PhotoLibraryFileContentResource, assetFactory: PhotoAssetFactory) {
+    init(contentResource: PhotoLibraryFileContentResource, assetFactory: PhotoAssetFactory, exifResource: PhotoLibraryExifResource) {
         self.contentResource = contentResource
         self.assetFactory = assetFactory
+        self.exifResource = exifResource
     }
 
     func execute(with data: PhotoAssetData) async throws -> PhotoAsset {
-        async let url = contentResource.copyFile(with: data.resource)
-        async let hash = contentResource.createHash(with: data.resource)
-        return assetFactory.makeAsset(
+        let url = try await contentResource.copyFile(with: data.resource)
+        let exif = try await getExif(from: data.resource, url: url)
+        let hash = try await contentResource.createHash(with: data.resource)
+        let factoryData = PhotoAssetFactoryData(
             identifier: data.identifier,
-            url: try await url,
-            hash: try await hash,
+            url: url,
+            hash: hash,
             filename: data.filename,
+            exif: exif,
             isOriginal: data.isOriginal
         )
+        return try assetFactory.makeAsset(from: factoryData)
+    }
+
+    private func getExif(from resource: PHAssetResource, url: URL) async throws -> PhotoAsset.Exif {
+        if resource.isImage() {
+            return try exifResource.getPhotoExif(at: url)
+        } else {
+            return try await exifResource.getVideoExif(at: url)
+        }
     }
 }

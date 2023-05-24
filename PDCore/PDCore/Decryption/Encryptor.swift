@@ -20,7 +20,8 @@ import GoLibs
 import ProtonCore_KeyManager
 
 public struct RevisionContentKeys {
-    public let contentSessionKey: Data
+    public let contentSessionKey: SessionKey
+    public let contentKeyPacket: KeyPacket
     public let contentKeyPacketBase64: ArmoredMessage
     public let contentKeyPacketSignature: ArmoredSignature
 }
@@ -30,7 +31,7 @@ public struct RevisionContentKeys {
 class Encryptor {
     
     typealias CoreEncryptor = ProtonCore_KeyManager.Encryptor
-    typealias EncryptedBlock = CoreEncryptor.EncryptedBlock
+    typealias EncryptedBinary = CoreEncryptor.EncryptedBlock
     typealias Errors = CoreEncryptor.Errors
     
     static func hmac(filename: String, parentHashKey: String) throws -> String {
@@ -52,7 +53,7 @@ class Encryptor {
     static func encryptBinary(chunk: Data,
                               contentKeyPacket: Data,
                               nodeKey: String,
-                              nodePassphrase: String) throws -> EncryptedBlock
+                              nodePassphrase: String) throws -> EncryptedBinary
     {
         try CoreEncryptor.encryptBinary(chunk: chunk, contentKeyPacket: contentKeyPacket, nodeKey: nodeKey, nodePassphrase: nodePassphrase)
     }
@@ -77,8 +78,14 @@ class Encryptor {
     }
     
     // swiftlint:disable function_parameter_count
-    static func encryptAndSignBinary(clearData: Data, contentKeyPacket: Data, privateKey: String, passphrase: String, addressKey: String, addressPassphrase: String) throws -> EncryptedBlock {
+    static func encryptAndSignBinary(clearData: Data, contentKeyPacket: Data, privateKey: String, passphrase: String, addressKey: String, addressPassphrase: String) throws -> EncryptedBinary {
         try CoreEncryptor.encryptAndSignBinary(clearData: clearData, contentKeyPacket: contentKeyPacket, privateKey: privateKey, passphrase: passphrase, addressKey: addressKey, addressPassphrase: addressPassphrase)
+    }
+    
+    static func encryptAndSignBinaryWithSessionKey(clearData: Data, sessionKey: SessionKey, signingKeyRing: CryptoKeyRing) throws -> Data {
+        let sessionKey = try unwrap { CryptoNewSessionKeyFromToken(sessionKey, ConstantsAES256) }
+        let plainMessage = try unwrap { CryptoNewPlainMessage(clearData) }
+        return try sessionKey.encryptAndSign(plainMessage, sign: signingKeyRing)
     }
     // swiftlint:enable function_parameter_count
 
@@ -284,6 +291,7 @@ extension Encryptor {
 
         return RevisionContentKeys(
             contentSessionKey: contentSessionKey,
+            contentKeyPacket: contentKeyPacket,
             contentKeyPacketBase64: contentKeyPacketBase64,
             contentKeyPacketSignature: contentKeyPacketSignature
         )

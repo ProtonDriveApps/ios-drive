@@ -18,16 +18,28 @@
 import PDCore
 
 final class PhotosContainer {
+    private let backupController: PhotosBackupController
+    private let constraintsController: PhotoBackupConstraintsController
     private let loadController: PhotoLibraryLoadController
     private let assetsController: PhotoAssetsController
     let operationInteractor: OperationInteractor
+    let settingsController: PhotoBackupSettingsController
+    let authorizationController: PhotoLibraryAuthorizationController
 
     init(localSettings: LocalSettings) {
         let factory = PhotosFactory()
         let queueResource = factory.makeAssetsQueueResource()
         let assetsInteractor = factory.makeAssetsInteractor(queueResource: queueResource)
         operationInteractor = factory.makeAssetsOperationInteractor(queueResource: queueResource)
-        loadController = factory.makeLoadController(localSettings: localSettings, assetsInteractor: assetsInteractor)
-        assetsController = factory.makeAssetsController(interactor: assetsInteractor)
+        let settingsController = factory.makeSettingsController(localSettings: localSettings)
+        let authorizationController = factory.makeAuthorizationController()
+        let backupController = factory.makeBackupController(settingsController: settingsController, authorizationController: authorizationController)
+        let constraintsController = factory.makeConstraintsController(backupController: backupController)
+        loadController = factory.makeLoadController(backupController: backupController, assetsInteractor: assetsInteractor)
+        assetsController = factory.makeAssetsController(constraintsController: constraintsController, interactor: assetsInteractor)
+        self.constraintsController = constraintsController
+        self.backupController = backupController
+        self.authorizationController = authorizationController
+        self.settingsController = settingsController
     }
 }

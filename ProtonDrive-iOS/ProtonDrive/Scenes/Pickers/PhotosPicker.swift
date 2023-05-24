@@ -45,9 +45,9 @@ struct PhotoPicker: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> PHPickerViewController {
         var configuration = PHPickerConfiguration()
         #if SUPPORTS_UNLIMITED_PICKER_SELECTION
-        configuration.selectionLimit = 250
+            configuration.selectionLimit = 250
         #else
-        configuration.selectionLimit = 10
+            configuration.selectionLimit = 10
         #endif
 
         let controller = PHPickerViewController(configuration: configuration)

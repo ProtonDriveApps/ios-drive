@@ -40,9 +40,9 @@ struct DocumentPicker: UIViewControllerRepresentable {
         let documentPickerController = UIDocumentPickerViewController(forOpeningContentTypes: supportedTypes, asCopy: true)
         documentPickerController.delegate = context.coordinator
         #if SUPPORTS_UNLIMITED_PICKER_SELECTION
-        documentPickerController.allowsMultipleSelection = true
+            documentPickerController.allowsMultipleSelection = true
         #else
-        documentPickerController.allowsMultipleSelection = false
+            documentPickerController.allowsMultipleSelection = false
         #endif
         return documentPickerController
     }

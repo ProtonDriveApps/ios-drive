@@ -21,8 +21,8 @@ protocol PhotoAssetsController {
     var error: AnyPublisher<Error, Never> { get }
 }
 
-// TODO: should react to low local storage or try processing assets in batches?
 final class LocalPhotoAssetsController: PhotoAssetsController {
+    private let constraintsController: PhotoBackupConstraintsController
     private let interactor: PhotoLibraryAssetsInteractor
     private let errorSubject = PassthroughSubject<Error, Never>()
     private var cancellables = Set<AnyCancellable>()
@@ -31,8 +31,19 @@ final class LocalPhotoAssetsController: PhotoAssetsController {
         errorSubject.eraseToAnyPublisher()
     }
 
-    init(interactor: PhotoLibraryAssetsInteractor) {
+    init(constraintsController: PhotoBackupConstraintsController, interactor: PhotoLibraryAssetsInteractor) {
+        self.constraintsController = constraintsController
         self.interactor = interactor
+        subscribeToUpdates()
+    }
+
+    private func subscribeToUpdates() {
+        constraintsController.constraints
+            .sink { [weak self] constraints in
+                self?.interactor.update(isConstrained: !constraints.isEmpty)
+            }
+            .store(in: &cancellables)
+
         interactor.error
             .sink { [weak self] error in
                 self?.errorSubject.send(error)

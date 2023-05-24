@@ -20,16 +20,33 @@ import PDCore
 
 protocol PhotoBackupSettingsController {
     var isEnabled: AnyPublisher<Bool, Never> { get }
+    func setEnabled(_ isEnabled: Bool)
 }
 
 final class LocalPhotoBackupSettingsController: PhotoBackupSettingsController {
+    private let localSettings: LocalSettings
     private let isEnabledSubject: CurrentValueSubject<Bool, Never>
-
-    init(localSettings: LocalSettings) {
-        isEnabledSubject = .init(localSettings.isPhotosBackupEnabled ?? false) 
-    }
+    private var cancellables = Set<AnyCancellable>()
 
     var isEnabled: AnyPublisher<Bool, Never> {
         isEnabledSubject.eraseToAnyPublisher()
+    }
+
+    init(localSettings: LocalSettings) {
+        self.localSettings = localSettings
+        isEnabledSubject = .init(localSettings.isPhotosBackupEnabled)
+        subscribeToUpdates()
+    }
+
+    private func subscribeToUpdates() {
+        localSettings.publisher(for: \.isPhotosBackupEnabled)
+            .sink { [weak self] value in
+                self?.isEnabledSubject.send(value)
+            }
+            .store(in: &cancellables)
+    }
+
+    func setEnabled(_ isEnabled: Bool) {
+        localSettings.isPhotosBackupEnabled = isEnabled
     }
 }
