@@ -19,6 +19,7 @@ import PDClient
 import Reachability
 import ProtonCore_Authentication
 import ProtonCore_DataModel
+import ProtonCore_HumanVerification
 import ProtonCore_Services
 import ProtonCore_Networking
 import GoLibs
@@ -43,7 +44,9 @@ public class PMAPIClient: NSObject, APIServiceDelegate {
     internal var authenticator: AuthenticatorInterface?
     internal var apiService: PMAPIService?
 
-    public var authSessionInvalidatedDelegateForLoginAndSignup: ProtonCore_Services.AuthSessionInvalidatedDelegate?
+    public weak var responseDelegateForLoginAndSignup: HumanVerifyResponseDelegate?
+    public weak var paymentDelegateForLoginAndSignup: HumanVerifyPaymentDelegate?
+    public weak var authSessionInvalidatedDelegateForLoginAndSignup: AuthSessionInvalidatedDelegate?
 
     // To be observed by UI layer in order to communicate with the user
     @objc public internal(set) dynamic var currentActivity: NSUserActivity?
@@ -173,16 +176,12 @@ extension PMAPIClient: AuthDelegate {
 }
 
 extension PMAPIClient: HumanVerifyDelegate {
-    public var responseDelegateForLoginAndSignup: HumanVerifyResponseDelegate? {
-        get { nil }
-        set { _ = newValue }
+    /// This method should not be called from the iOS App only from App extensions and the macOS app. The iOS App uses Core team's
+    /// the HumanCheckHelper class
+    public func onDeviceVerify(parameters: DeviceVerifyParameters) -> String? {
+        nil
     }
-    
-    public var paymentDelegateForLoginAndSignup: HumanVerifyPaymentDelegate? {
-        get { nil }
-        set { _ = newValue }
-    }
-    
+
     /// This method should not be called from the iOS App only from App extensions and the macOS app. The iOS App uses Core team's
     /// the HumanCheckHelper class
     public func onHumanVerify(parameters: HumanVerifyParameters, currentURL: URL?, completion: @escaping ((HumanVerifyFinishReason) -> Void)) {

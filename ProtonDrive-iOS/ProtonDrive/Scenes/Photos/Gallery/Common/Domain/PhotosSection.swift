@@ -16,14 +16,14 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDCore
 
-struct PhotosSection {
+struct PhotosSection: Equatable {
     let month: Date
     let photos: [Photo]
 
-    struct Photo {
-        let id: String
-        let thumbnailId: String // TODO: next MR
+    struct Photo: Equatable {
+        let id: NodeIdentifier
         let duration: UInt?
     }
 }

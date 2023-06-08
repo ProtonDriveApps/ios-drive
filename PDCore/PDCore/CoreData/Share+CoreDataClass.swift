@@ -60,6 +60,10 @@ public class Share: NSManagedObject, HasTransientValues {
         super.willTurnIntoFault()
         NotificationCenter.default.removeObserver(_observation as Any)
     }
+
+    public var isMain: Bool {
+        flags.contains(.main)
+    }
 }
 
 extension Optional where Wrapped == PDClient.Share.Flags {

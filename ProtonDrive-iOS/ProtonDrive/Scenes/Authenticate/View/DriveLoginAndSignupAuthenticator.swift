@@ -43,10 +43,20 @@ final class DriveLoginAndSignupAuthenticator {
             switch result {
             case .dismissed:
                 fatalError()
-            case .loginStateChanged(.dataIsAvailable(let data)), .signupStateChanged(.dataIsAvailable(let data)):
-                userDataBlock(data)
-            case .loginStateChanged(.loginFinished), .signupStateChanged(.signupFinished):
-                onCompletion()
+            case .loginStateChanged(let state):
+                switch state {
+                case .dataIsAvailable(let data):
+                    userDataBlock(data)
+                case .loginFinished:
+                    onCompletion()
+                }
+            case .signupStateChanged(let state):
+                switch state {
+                case .dataIsAvailable(let data):
+                    userDataBlock(data)
+                case .signupFinished:
+                    onCompletion()
+                }
             }
         }
     }

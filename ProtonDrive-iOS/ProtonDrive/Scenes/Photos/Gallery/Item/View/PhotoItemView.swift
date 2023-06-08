@@ -19,7 +19,7 @@ import ProtonCore_UIFoundations
 import SwiftUI
 
 struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
-    private let viewModel: ViewModel
+    @ObservedObject private var viewModel: ViewModel
 
     init(viewModel: ViewModel) {
         self.viewModel = viewModel
@@ -29,12 +29,14 @@ struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
         Button(action: viewModel.openPreview) {
             content
         }
+        .onAppear(perform: viewModel.onAppear)
+        .onDisappear(perform: viewModel.onDisappear)
     }
 
     private var content: some View {
         ZStack {
             ColorProvider.BackgroundDeep
-            image
+            viewModel.image.map(makeImage)
         }
         .overlay(alignment: .bottom) {
             viewModel.duration.map(makeDurationView)
@@ -42,9 +44,13 @@ struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
     }
 
     @ViewBuilder
-    private var image: some View {
-        if let imageData = viewModel.image {
-            Image(uiImage: UIImage(data: imageData) ?? UIImage())
+    private func makeImage(with data: Data) -> some View {
+        GeometryReader { geometry in
+            Image(uiImage: UIImage(data: data) ?? UIImage())
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .clipped()
         }
     }
 

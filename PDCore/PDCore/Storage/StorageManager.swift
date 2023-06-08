@@ -229,7 +229,7 @@ public class StorageManager: NSObject {
         self.backgroundContext.performAndWait {
             self.backgroundContext.reset()
             
-            [Node.self, Block.self, Revision.self, Volume.self, Share.self, Thumbnail.self, ShareURL.self].forEach { entity in
+            [Node.self, Block.self, Revision.self, Volume.self, Share.self, Thumbnail.self, ShareURL.self, Photo.self, Device.self, PhotoRevision.self].forEach { entity in
                 let request = NSBatchDeleteRequest(fetchRequest: NSFetchRequest<NSFetchRequestResult>(entityName: String(describing: entity)))
                 request.resultType = .resultTypeObjectIDs
                 do {

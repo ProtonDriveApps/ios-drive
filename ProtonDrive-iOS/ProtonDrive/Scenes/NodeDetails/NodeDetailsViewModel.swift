@@ -21,8 +21,8 @@ import UniformTypeIdentifiers
 
 class NodeDetailsViewModel: ObservableObject {
     struct NodeDetailViewModel: Identifiable {
-        var id: String
-        var value: String
+        let id: String
+        let value: String
     }
     
     var node: Node

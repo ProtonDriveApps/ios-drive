@@ -24,12 +24,12 @@ protocol PhotoLibraryLoadInteractor {
 }
 
 final class LocalPhotoLibraryLoadInteractor: PhotoLibraryLoadInteractor {
-    private let assetsInteractor: PhotoLibraryAssetsInteractor
+    private let identifiersInteractor: FilteredPhotoIdentifiersInteractor
     private let resources: [PhotoLibraryIdentifiersResource]
     private var cancellables = Set<AnyCancellable>()
 
-    init(assetsInteractor: PhotoLibraryAssetsInteractor, resources: [PhotoLibraryIdentifiersResource]) {
-        self.assetsInteractor = assetsInteractor
+    init(identifiersInteractor: FilteredPhotoIdentifiersInteractor, resources: [PhotoLibraryIdentifiersResource]) {
+        self.identifiersInteractor = identifiersInteractor
         self.resources = resources
         resources.forEach(subscribe)
     }
@@ -38,7 +38,7 @@ final class LocalPhotoLibraryLoadInteractor: PhotoLibraryLoadInteractor {
         resource.updatePublisher
             .filter { !$0.isEmpty }
             .sink { [weak self] identifiers in
-                self?.assetsInteractor.execute(with: identifiers)
+                self?.identifiersInteractor.execute(with: identifiers)
             }
             .store(in: &cancellables)
     }

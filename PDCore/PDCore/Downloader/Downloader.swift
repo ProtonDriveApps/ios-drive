@@ -18,6 +18,7 @@
 import Foundation
 import os.log
 import Combine
+import PDClient
 
 public class Downloader: NSObject, ProgressTrackerProvider, LogObject {
     public typealias Enumeration = (Node) -> Void
@@ -38,14 +39,16 @@ public class Downloader: NSObject, ProgressTrackerProvider, LogObject {
     
     public static var osLog = OSLog.init(subsystem: "ch.protondrive.PDCore", category: "Downloader")
     private var cloudSlot: CloudSlot
+    private let endpointFactory: EndpointFactory
     internal lazy var queue: OperationQueue = {
         let queue = OperationQueue()
         queue.maxConcurrentOperationCount = 3
         return queue
     }()
     
-    init(cloudSlot: CloudSlot) {
+    init(cloudSlot: CloudSlot, endpointFactory: EndpointFactory) {
         self.cloudSlot = cloudSlot
+        self.endpointFactory = endpointFactory
     }
     
     func cancelAll() {
@@ -123,7 +126,7 @@ public class Downloader: NSObject, ProgressTrackerProvider, LogObject {
             return presentOperation
         }
 
-        let operation = DownloadFileOperation(file, cloudSlot: self.cloudSlot) { result in
+        let operation = DownloadFileOperation(file, cloudSlot: self.cloudSlot, endpointFactory: endpointFactory) { result in
             result.sendNotificationIfFailure(with: Self.downloadFail)
             completion(result)
         }
@@ -139,6 +142,7 @@ public class Downloader: NSObject, ProgressTrackerProvider, LogObject {
         let downloadTree = DownloadTreeOperation(node: folder,
                                                  cloudSlot: self.cloudSlot,
                                                  enumeration: enumeration,
+                                                 endpointFactory: endpointFactory,
                                                  completion: completion)
         self.queue.addOperation(downloadTree)
         return downloadTree
@@ -152,6 +156,7 @@ public class Downloader: NSObject, ProgressTrackerProvider, LogObject {
         let downloadTree = ScanChildrenOperation(node: folder,
                                                  cloudSlot: self.cloudSlot,
                                                  enumeration: enumeration,
+                                                 endpointFactory: endpointFactory,
                                                  completion: completion)
         self.queue.addOperation(downloadTree)
         return downloadTree

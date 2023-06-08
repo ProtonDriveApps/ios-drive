@@ -17,7 +17,7 @@
 
 import Foundation
 
-protocol PhotosGalleryViewModelProtocol {
+protocol PhotosGalleryViewModelProtocol: ObservableObject {
     var viewData: PhotosGalleryViewData { get }
 }
 

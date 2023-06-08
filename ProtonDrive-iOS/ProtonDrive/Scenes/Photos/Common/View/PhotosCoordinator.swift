@@ -19,7 +19,14 @@ import Foundation
 import UIKit
 import ProtonCore_Foundations
 
-final class PhotosCoordinator: PhotosRootCoordinator, PhotosPermissionsCoordinator {
+final class PhotosCoordinator: PhotosRootCoordinator, PhotosPermissionsCoordinator, PhotoItemCoordinator {
+    weak var rootViewController: UIViewController?
+    weak var container: PhotosContainer?
+
+    private var navigationViewController: UINavigationController? {
+        rootViewController?.navigationController
+    }
+
     func openMenu() {
         NotificationCenter.default.post(.toggleSideMenu)
     }
@@ -28,5 +35,14 @@ final class PhotosCoordinator: PhotosRootCoordinator, PhotosPermissionsCoordinat
         if let url = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.openURLIfPossible(url)
         }
+    }
+
+    func openPreview(with id: PhotoId) {
+        guard let container = container else {
+            return
+        }
+        let viewController = container.makePreviewViewController(with: id)
+        viewController.modalPresentationStyle = .fullScreen
+        navigationViewController?.present(viewController, animated: true)
     }
 }

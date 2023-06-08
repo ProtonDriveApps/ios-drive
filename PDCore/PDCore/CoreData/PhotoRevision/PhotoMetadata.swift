@@ -25,8 +25,13 @@ public struct PhotoMetadata: Equatable, Codable {
         public let cloudIdentifier: String
         public let creationDate: Date?
         public let modifiedDate: Date?
-    }
 
+        public init(cloudIdentifier: String, creationDate: Date?, modifiedDate: Date?) {
+            self.cloudIdentifier = cloudIdentifier
+            self.creationDate = creationDate
+            self.modifiedDate = modifiedDate
+        }
+    }
 }
 
 extension PhotoMetadata {

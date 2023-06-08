@@ -52,7 +52,7 @@ final class AuthenticatedDependencyContainer {
         operationInteractors.append(pickersContainer.photoPickerInteractor)
 
         #if HAS_PHOTOS
-        photosContainer = PhotosContainer(localSettings: tower.localSettings)
+        photosContainer = PhotosContainer(tower: tower)
         operationInteractors.append(photosContainer.operationInteractor)
         #endif
 

@@ -17,7 +17,7 @@
 
 import Combine
 
-protocol PhotosGridViewModelProtocol {
+protocol PhotosGridViewModelProtocol: ObservableObject {
     var sections: [PhotosGridViewSection] { get }
 }
 
@@ -27,7 +27,7 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
     private let durationFormatter: DurationFormatter
     private var cancellables = Set<AnyCancellable>()
 
-    var sections: [PhotosGridViewSection] = []
+    @Published var sections: [PhotosGridViewSection] = []
 
     init(controller: PhotosGalleryController, monthFormatter: MonthFormatter, durationFormatter: DurationFormatter) {
         self.controller = controller
@@ -57,8 +57,8 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
 
     private func makePhoto(from photo: PhotosSection.Photo) -> PhotoGridViewItem {
         PhotoGridViewItem(
-            id: photo.id,
-            thumbnailId: photo.thumbnailId,
+            photoId: photo.id.nodeID,
+            shareId: photo.id.shareID,
             duration: photo.duration.map { durationFormatter.formatDuration(from: $0) }
         )
     }

@@ -35,5 +35,20 @@ public class Photo: File {
     @NSManaged override public var activeRevision: Revision?
 
     // Transient
-    @NSManaged public var monthIdentifier: String?
+    @objc public var monthIdentifier: String? {
+        willAccessValue(forKey: "monthIdentifier")
+        var cachedIdentifier = primitiveValue(forKey: "monthIdentifier") as? String
+        didAccessValue(forKey: "monthIdentifier")
+
+        if cachedIdentifier == nil {
+            let calendar = Photo.calendar
+            let components = calendar.dateComponents([.year, .month], from: timestamp)
+            let year = components.year ?? 0
+            let month = components.month ?? 0
+            cachedIdentifier = "\(year) \(month)"
+            setPrimitiveValue(cachedIdentifier, forKey: "monthIdentifier")
+        }
+        return cachedIdentifier
+    }
+    private static let calendar = Calendar.current
 }

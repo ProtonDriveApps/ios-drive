@@ -22,10 +22,10 @@ struct ShareEndpoint: Endpoint {
     
     var request: URLRequest
     
-    init(volumeID: Share.ShareID, service: APIService, credential: ClientCredential) {
+    init(shareID: Share.ShareID, service: APIService, credential: ClientCredential) {
         // url
         var url = service.url(of: "/shares")
-        url.appendPathComponent(volumeID)
+        url.appendPathComponent(shareID)
         
         // request
         var request = URLRequest(url: url)

@@ -17,6 +17,7 @@
 
 import Foundation
 import CoreData
+import PDClient
 
 /// Downloads whole tree of Drive objects under a Folder, including ecnrypted blocks of active revisions of files
 class DownloadTreeOperation: SynchronousOperation, OperationWithProgress {
@@ -30,10 +31,11 @@ class DownloadTreeOperation: SynchronousOperation, OperationWithProgress {
         return queue
     }()
     
-    internal init(node: Folder, cloudSlot: CloudSlot, enumeration: @escaping Enumeration, completion: @escaping Completion) {
+    internal init(node: Folder, cloudSlot: CloudSlot, enumeration: @escaping Enumeration, endpointFactory: EndpointFactory, completion: @escaping Completion) {
         self.node = node
         self.enumeration = enumeration
         self.cloudSlot = cloudSlot
+        self.endpointFactory = endpointFactory
         self.completion = completion
 
         super.init()
@@ -44,6 +46,7 @@ class DownloadTreeOperation: SynchronousOperation, OperationWithProgress {
     private var node: Folder
     fileprivate var enumeration: Enumeration?
     fileprivate weak var cloudSlot: CloudSlot!
+    private let endpointFactory: EndpointFactory
     
     lazy var progress: Progress = {
         let progress = Progress(totalUnitCount: 0)
@@ -105,7 +108,7 @@ class DownloadTreeOperation: SynchronousOperation, OperationWithProgress {
                     // need to download only files that are not downloaded yet
                     file.activeRevision?.blocksAreValid() != true
                 }.map { file in
-                    DownloadFileOperation(file, cloudSlot: self.cloudSlot) { [weak self] in
+                    DownloadFileOperation(file, cloudSlot: self.cloudSlot, endpointFactory: self.endpointFactory) { [weak self] in
                         // remember error or execute enumeration block
                         switch $0 {
                         case .success(let node):

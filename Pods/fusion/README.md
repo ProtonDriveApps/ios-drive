@@ -9,6 +9,9 @@
 - Easy to use `onChild()` and `onDescendant()` functions allow you to point your actions or assertions to the desired `XCUIElement` that belongs to the located ancestor.
 - Simplified UI interruption mechanism makes it easier to add UI interruptions monitor for a single element or group of elements of the same type.
 
+### Implement new features in fusion 
+ - It's a swift package so you can open the Package.swift file instead of the project file. 
+
 ### Table of contents
 1. [Installation](#installation)
 2. [Usage](#usage)

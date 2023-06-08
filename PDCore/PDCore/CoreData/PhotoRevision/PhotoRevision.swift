@@ -25,7 +25,6 @@ public class PhotoRevision: Revision {
     @NSManaged public var sha256Exif: Data
     @NSManaged public var sha256Metadata: Data
 
-    @NSManaged public var mlThumbnail: Thumbnail?
     @NSManaged public var photoThumbnail: Thumbnail?
 
     @NSManaged public var photo: Photo

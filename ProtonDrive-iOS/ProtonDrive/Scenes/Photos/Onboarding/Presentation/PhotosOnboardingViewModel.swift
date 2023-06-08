@@ -24,14 +24,17 @@ protocol PhotosOnboardingViewModelProtocol {
 final class PhotosOnboardingViewModel: PhotosOnboardingViewModelProtocol {
     private let settingsController: PhotoBackupSettingsController
     private let authorizationController: PhotoLibraryAuthorizationController
+    private let photosBootstrapController: PhotosBootstrapController
 
-    init(settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController) {
+    init(settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController, photosBootstrapController: PhotosBootstrapController) {
         self.settingsController = settingsController
         self.authorizationController = authorizationController
+        self.photosBootstrapController = photosBootstrapController
     }
 
     func enableBackup() {
         settingsController.setEnabled(true)
         authorizationController.authorize()
+        photosBootstrapController.bootstrap()
     }
 }

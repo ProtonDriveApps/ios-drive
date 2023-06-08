@@ -26,8 +26,7 @@ protocol PhotoLibraryAssetsInteractor {
 
 final class LocalPhotoLibraryAssetsInteractor: PhotoLibraryAssetsInteractor {
     private let resource: PhotoLibraryAssetsQueueResource
-    private let policy: PhotoLibraryFilterPolicy
-    private let importInteractor: PhotoImportInteractor
+    private let compoundsInteractor: FilteredPhotoCompoundsInteractor
     private let errorSubject = PassthroughSubject<Error, Never>()
     private var cancellables = Set<AnyCancellable>()
 
@@ -35,10 +34,9 @@ final class LocalPhotoLibraryAssetsInteractor: PhotoLibraryAssetsInteractor {
         errorSubject.eraseToAnyPublisher()
     }
 
-    init(resource: PhotoLibraryAssetsQueueResource, policy: PhotoLibraryFilterPolicy, importInteractor: PhotoImportInteractor) {
+    init(resource: PhotoLibraryAssetsQueueResource, compoundsInteractor: FilteredPhotoCompoundsInteractor) {
         self.resource = resource
-        self.policy = policy
-        self.importInteractor = importInteractor
+        self.compoundsInteractor = compoundsInteractor
         subscribeToUpdates()
     }
 
@@ -53,16 +51,14 @@ final class LocalPhotoLibraryAssetsInteractor: PhotoLibraryAssetsInteractor {
     private func handle(_ result: PhotoAssetCompoundsResult) {
         switch result {
         case let .success(compounds):
-            let filteredCompounds = policy.filterCompounds(compounds)
-            importInteractor.execute(with: filteredCompounds)
+            compoundsInteractor.execute(with: compounds)
         case let .failure(error):
             errorSubject.send(error)
         }
     }
 
     func execute(with identifiers: PhotoIdentifiers) {
-        let validIdentifiers = policy.filterIdentifiers(identifiers)
-        resource.execute(with: validIdentifiers)
+        resource.execute(with: identifiers)
     }
 
     func update(isConstrained: Bool) {

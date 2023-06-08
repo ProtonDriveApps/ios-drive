@@ -13,6 +13,7 @@ ${BUILT_PRODUCTS_DIR}/ProtonCore-FeatureSwitch-dynamic/ProtonCore_FeatureSwitch.
 ${BUILT_PRODUCTS_DIR}/ProtonCore-Foundations-dynamic/ProtonCore_Foundations.framework
 ${BUILT_PRODUCTS_DIR}/ProtonCore-GoLibs-dynamic/ProtonCore_Crypto.framework
 ${BUILT_PRODUCTS_DIR}/ProtonCore-Hash-dynamic/ProtonCore_Hash.framework
+${BUILT_PRODUCTS_DIR}/ProtonCore-HumanVerification-dynamic/ProtonCore_HumanVerification.framework
 ${BUILT_PRODUCTS_DIR}/ProtonCore-KeyManager-dynamic/ProtonCore_KeyManager.framework
 ${BUILT_PRODUCTS_DIR}/ProtonCore-Keymaker-dynamic/ProtonCore_Keymaker.framework
 ${BUILT_PRODUCTS_DIR}/ProtonCore-Log-dynamic/ProtonCore_Log.framework

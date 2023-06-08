@@ -47,7 +47,7 @@ extension UINavigationBarAppearance {
     }
 }
 
-private extension UIBarButtonItemAppearance {
+extension UIBarButtonItemAppearance {
     static var clear: UIBarButtonItemAppearance {
         let appearance = UIBarButtonItemAppearance(style: .plain)
         appearance.normal.titleTextAttributes = [.font: UIFont.systemFont(ofSize: .zero), .foregroundColor: UIColor.clear]

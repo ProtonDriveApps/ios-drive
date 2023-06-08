@@ -17,14 +17,14 @@ RSYNC_PROTECT_TMP_FILES=(--filter "P .*.??????")
 variant_for_slice()
 {
   case "$1" in
+  "OpenPGP.xcframework/ios-arm64_armv7")
+    echo ""
+    ;;
   "OpenPGP.xcframework/ios-arm64_i386_x86_64-simulator")
     echo "simulator"
     ;;
   "OpenPGP.xcframework/ios-arm64_x86_64-maccatalyst")
     echo "maccatalyst"
-    ;;
-  "OpenPGP.xcframework/ios-arm64_armv7")
-    echo ""
     ;;
   "OpenPGP.xcframework/macos-arm64_x86_64")
     echo ""
@@ -35,14 +35,14 @@ variant_for_slice()
 archs_for_slice()
 {
   case "$1" in
+  "OpenPGP.xcframework/ios-arm64_armv7")
+    echo "arm64 armv7"
+    ;;
   "OpenPGP.xcframework/ios-arm64_i386_x86_64-simulator")
     echo "arm64 i386 x86_64"
     ;;
   "OpenPGP.xcframework/ios-arm64_x86_64-maccatalyst")
     echo "arm64 x86_64"
-    ;;
-  "OpenPGP.xcframework/ios-arm64_armv7")
-    echo "arm64 armv7"
     ;;
   "OpenPGP.xcframework/macos-arm64_x86_64")
     echo "arm64 x86_64"

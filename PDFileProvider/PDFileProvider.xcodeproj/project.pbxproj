@@ -351,6 +351,7 @@
 			buildPhases = (
 				FA991C005A8C0DE7422C1885 /* [CP] Check Pods Manifest.lock */,
 				ABE2786229916E39008EC1B3 /* Sources */,
+				D4D5CCFE2A0D2FF100CEA03D /* Linter */,
 				ABE2786329916E39008EC1B3 /* Frameworks */,
 				ABE2786429916E39008EC1B3 /* CopyFiles */,
 			);
@@ -407,6 +408,25 @@
 /* End PBXProject section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		D4D5CCFE2A0D2FF100CEA03D /* Linter */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = Linter;
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [[ $CI ]]; then\n  echo \"Skipping linting on the CI\"\n  exit 0\nfi\n\nif [[ -f \"${PODS_ROOT}/SwiftLint/swiftlint\" ]]; then\n  ${PODS_ROOT}/SwiftLint/swiftlint --config ${PROJECT_DIR}/../.swiftlint.yml\nelse\n  echo \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"\nfi\n";
+		};
 		FA991C005A8C0DE7422C1885 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;

@@ -28,6 +28,7 @@ public class LocalSettings: NSObject {
     @SettingsStorage("optOutFromCrashReports") var optOutFromCrashReports: Bool?
     @SettingsStorage("isNoticationPermissionsSkipped") public var isNoticationPermissionsSkipped: Bool?
     @SettingsStorage("isPhotosBackupEnabledValue") private(set) var isPhotosBackupEnabledValue: Bool?
+    @SettingsStorage("isPhotosBackupConnectionConstrainedValue") private(set) var isPhotosBackupConnectionConstrainedValue: Bool?
 
     public init(suite: SettingsStorageSuite) {
         super.init()
@@ -40,6 +41,7 @@ public class LocalSettings: NSObject {
         self._isUploadingDisclaimerActiveValue.configure(with: suite)
         self._isNoticationPermissionsSkipped.configure(with: suite)
         self._isPhotosBackupEnabledValue.configure(with: suite)
+        self._isPhotosBackupConnectionConstrainedValue.configure(with: suite)
 
         if let sortPreferenceCache = self.sortPreferenceCache {
             nodesSortPreference = SortPreference(rawValue: sortPreferenceCache) ?? SortPreference.default
@@ -50,6 +52,7 @@ public class LocalSettings: NSObject {
         nodesLayoutPreference = LayoutPreference(cachedValue: layoutPreferenceCache)
         isUploadingDisclaimerActive = isUploadingDisclaimerActiveValue ?? true
         isPhotosBackupEnabled = isPhotosBackupEnabledValue ?? false
+        isPhotosBackupConnectionConstrained = isPhotosBackupConnectionConstrainedValue ?? true
     }
     
     public func cleanUp() {
@@ -61,6 +64,7 @@ public class LocalSettings: NSObject {
         self.isUploadingDisclaimerActiveValue = nil
         self.isNoticationPermissionsSkipped = nil
         self.isPhotosBackupEnabledValue = nil
+        self.isPhotosBackupConnectionConstrainedValue = nil
     }
     
     @objc public dynamic var nodesSortPreference: SortPreference = SortPreference.default {
@@ -84,6 +88,12 @@ public class LocalSettings: NSObject {
     @objc public dynamic var isPhotosBackupEnabled: Bool = false {
         willSet {
             isPhotosBackupEnabledValue = newValue
+        }
+    }
+
+    @objc public dynamic var isPhotosBackupConnectionConstrained: Bool = true {
+        willSet {
+            isPhotosBackupConnectionConstrainedValue = newValue
         }
     }
     

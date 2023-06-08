@@ -24,6 +24,7 @@ protocol PhotosBackupController {
 final class DrivePhotosBackupController: PhotosBackupController {
     private let authorizationController: PhotoLibraryAuthorizationController
     private let settingsController: PhotoBackupSettingsController
+    private let bootstrapController: PhotosBootstrapController
     private var cancellables = Set<AnyCancellable>()
     private let isAvailableSubject = CurrentValueSubject<Bool, Never>(false)
 
@@ -31,15 +32,16 @@ final class DrivePhotosBackupController: PhotosBackupController {
         isAvailableSubject.eraseToAnyPublisher()
     }
 
-    init(authorizationController: PhotoLibraryAuthorizationController, settingsController: PhotoBackupSettingsController) {
+    init(authorizationController: PhotoLibraryAuthorizationController, settingsController: PhotoBackupSettingsController, bootstrapController: PhotosBootstrapController) {
         self.authorizationController = authorizationController
         self.settingsController = settingsController
+        self.bootstrapController = bootstrapController
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
-        Publishers.CombineLatest(authorizationController.permissions, settingsController.isEnabled)
-            .map { $0 == .full && $1 }
+        Publishers.CombineLatest3(authorizationController.permissions, settingsController.isEnabled, bootstrapController.isReady)
+            .map { $0 == .full && $1 && $2 }
             .sink { [weak self] isAvailable in
                 self?.isAvailableSubject.send(isAvailable)
             }

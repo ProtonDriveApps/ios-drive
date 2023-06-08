@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDClient
 
 /// Accepts: File with short metadata
 /// Works:
@@ -142,11 +143,13 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
     public var progress: Progress
     internal let fileIdentifier: NodeIdentifier
     private weak var cloudSlot: CloudSlot!
+    private let endpointFactory: EndpointFactory
     private var completion: Completion?
     
-    init(_ file: File, cloudSlot: CloudSlot, completion: @escaping Completion) {
+    init(_ file: File, cloudSlot: CloudSlot, endpointFactory: EndpointFactory, completion: @escaping Completion) {
         self.fileIdentifier = file.identifier
         self.cloudSlot = cloudSlot
+        self.endpointFactory = endpointFactory
         self.completion = completion
         self.progress = Progress(totalUnitCount: 0)
            
@@ -163,7 +166,7 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
     }
     
     private func createOperationFor(_ block: DownloadBlock) -> DownloadBlockOperation {
-        DownloadBlockOperation(downloadTaskURL: URL(string: block.downloadUrl)!) { [weak self] result in
+        DownloadBlockOperation(downloadTaskURL: URL(string: block.downloadUrl)!, endpointFactory: endpointFactory) { [weak self] result in
             guard let self = self else { return }
             switch result {
             case .success(let intermediateUrl):

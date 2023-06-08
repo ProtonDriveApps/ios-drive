@@ -30,14 +30,13 @@ extension Share {
     @NSManaged public var key: String?
     @NSManaged public var passphrase: String?
     @NSManaged public var passphraseSignature: String?
+
+    // Relationships
     @NSManaged public var root: Node?
     @NSManaged public var volume: Volume?
+    @NSManaged public var device: Device?
     @NSManaged public var shareUrls: Set<ShareURL>
     
     // transient
     @NSManaged internal var clearPassphrase: String?
-    
-    public var isMain: Bool {
-        flags.contains(.main)
-    }
 }

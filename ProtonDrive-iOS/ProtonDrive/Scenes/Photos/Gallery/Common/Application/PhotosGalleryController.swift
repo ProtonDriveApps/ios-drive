@@ -18,26 +18,25 @@
 import Combine
 import Foundation
 
-protocol PhotosGalleryController {
+protocol PhotosGalleryController: AnyObject {
     var sections: AnyPublisher<[PhotosSection], Never> { get }
 }
 
 final class LocalPhotosGalleryController: PhotosGalleryController {
+    private let repository: PhotosRepository
     private let subject = CurrentValueSubject<[PhotosSection], Never>([])
+    private var cancellables = Set<AnyCancellable>()
 
     var sections: AnyPublisher<[PhotosSection], Never> {
         subject.eraseToAnyPublisher()
     }
 
-    init() {
-        // TODO: next MR. This is just debug
-        subject.send([
-            .init(month: Date(timeIntervalSinceReferenceDate: 0), photos: [
-                .init(id: "1", thumbnailId: "", duration: 123),
-                .init(id: "2", thumbnailId: "", duration: 3789),
-                .init(id: "3", thumbnailId: "", duration: nil),
-                .init(id: "4", thumbnailId: "", duration: nil),
-            ])
-        ])
+    init(repository: PhotosRepository) {
+        self.repository = repository
+        repository.updatePublisher
+            .sink { [weak self] section in
+                self?.subject.send(section)
+            }
+            .store(in: &cancellables)
     }
 }

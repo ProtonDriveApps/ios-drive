@@ -79,24 +79,13 @@ extension AuthenticatedDependencyContainer {
         var viewControllers = [myFilesViewController, sharedViewController]
 
         #if HAS_PHOTOS
-            let photosViewController = makePhotosViewController()
+            let photosViewController = photosContainer.makeRootViewController()
             factory.configurePhotosTab(in: photosViewController)
             viewControllers.insert(photosViewController, at: 1)
         #endif
 
         return factory.makeTabBarController(children: viewControllers)
     }
-
-    #if HAS_PHOTOS
-    private func makePhotosViewController() -> UIViewController {
-        let factory = PhotosScenesFactory()
-        let rootViewController = factory.makeRootPhotosViewController(
-            settingsController: photosContainer.settingsController,
-            authorizationController: photosContainer.authorizationController
-        )
-        return UINavigationController(rootViewController: rootViewController)
-    }
-    #endif
 
     private func makeFilesViewControllerFactory(root: NodeIdentifier) -> UIViewController {
         let coordinator = FinderCoordinator(tower: tower, photoPickerCoordinator: pickersContainer.getPhotoCoordinator())

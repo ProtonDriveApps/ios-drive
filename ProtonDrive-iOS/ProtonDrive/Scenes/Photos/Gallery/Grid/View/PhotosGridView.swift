@@ -19,7 +19,7 @@ import SwiftUI
 import ProtonCore_UIFoundations
 
 struct PhotosGridView<ViewModel: PhotosGridViewModelProtocol, ItemView: View>: View {
-    private let viewModel: ViewModel
+    @ObservedObject private var viewModel: ViewModel
     private let item: (PhotoGridViewItem) -> ItemView
     private let spacing: CGFloat = 1.5
 
@@ -29,8 +29,8 @@ struct PhotosGridView<ViewModel: PhotosGridViewModelProtocol, ItemView: View>: V
     }
 
     var body: some View {
-        ScrollView {
-            GeometryReader { geometry in
+        GeometryReader { geometry in
+            ScrollView {
                 LazyVGrid(columns: columns, alignment: .leading, spacing: spacing) {
                     ForEach(viewModel.sections) {
                         view(from: $0, height: (geometry.size.width / 3) * 1.4)

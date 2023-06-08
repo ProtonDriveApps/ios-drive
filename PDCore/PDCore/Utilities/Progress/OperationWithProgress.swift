@@ -48,5 +48,7 @@ public protocol RecordableOperation where Self: Operation {
 extension RecordableOperation where Self: UploadOperation {
     var recordingName: String { "uploading" }
 
-    func record() { }
+    func record() {
+//        PDFileManager.copyMetadata(stage: recordingName)
+    }
 }

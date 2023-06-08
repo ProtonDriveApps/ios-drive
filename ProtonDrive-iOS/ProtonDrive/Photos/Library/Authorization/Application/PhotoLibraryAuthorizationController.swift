@@ -40,6 +40,7 @@ final class LocalPhotoLibraryAuthorizationController: PhotoLibraryAuthorizationC
     init(resource: PhotoLibraryAuthorizationResource) {
         self.resource = resource
         resource.permissions
+            .removeDuplicates()
             .sink { [weak self] value in
                 self?.permissionsSubject.send(value)
             }

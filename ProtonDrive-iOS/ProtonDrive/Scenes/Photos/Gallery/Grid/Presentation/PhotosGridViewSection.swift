@@ -25,7 +25,11 @@ struct PhotosGridViewSection: Identifiable {
 }
 
 struct PhotoGridViewItem: Identifiable {
-    let id: String
-    let thumbnailId: String
+    var id: String {
+        photoId
+    }
+
+    let photoId: String
+    let shareId: String
     let duration: String?
 }

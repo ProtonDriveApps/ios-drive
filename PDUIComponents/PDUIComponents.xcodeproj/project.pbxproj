@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		310447FA2A128A950037F4CE /* UIToolbar+Appearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 310447F82A128A950037F4CE /* UIToolbar+Appearance.swift */; };
 		319D2C2E29C2FFA100C70A2B /* GradientButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 319D2C2D29C2FFA100C70A2B /* GradientButton.swift */; };
 		319D2C2F29C3059100C70A2B /* GradientButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 319D2C2D29C2FFA100C70A2B /* GradientButton.swift */; };
 		31C6B23C29C86115001C585A /* UIView+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31C6B23B29C86115001C585A /* UIView+Extensions.swift */; };
@@ -66,7 +67,6 @@
 		ABE278A329917DE0008EC1B3 /* ContextMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7652ED5327E0996900C9DFA4 /* ContextMenuView.swift */; };
 		ABE278A429917DE0008EC1B3 /* ContextualMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7685A32927EC31D800F6CF29 /* ContextualMenu.swift */; };
 		ABE278A529917DE0008EC1B3 /* ContextMenuItemActionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76EAFB0D28241A27007EB3DB /* ContextMenuItemActionView.swift */; };
-		ABE278A629917DE3008EC1B3 /* ActionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABBC706625419B4C0087E7D5 /* ActionSheet.swift */; };
 		ABE278A729917DE7008EC1B3 /* DialogSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76B347F6286AA5D7005A3FDC /* DialogSheet.swift */; };
 		ABE278A829917DEB008EC1B3 /* HighlightableButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F755772869C672009E4657 /* HighlightableButtonStyle.swift */; };
 		ABE278A929917DEB008EC1B3 /* LightButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABBC706D25419B4C0087E7D5 /* LightButton.swift */; };
@@ -174,6 +174,7 @@
 		1E67218553C82E1322ADCE7C /* Pods-PDUIComponentsMac.release-external.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDUIComponentsMac.release-external.xcconfig"; path = "Target Support Files/Pods-PDUIComponentsMac/Pods-PDUIComponentsMac.release-external.xcconfig"; sourceTree = "<group>"; };
 		2B16AFA7865B85276D61FD17 /* Pods_PDUIComponentsStatic.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PDUIComponentsStatic.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		2F667964EB22B7FDD020F0BF /* Pods_PDUIComponentsMac.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PDUIComponentsMac.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		310447F82A128A950037F4CE /* UIToolbar+Appearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIToolbar+Appearance.swift"; sourceTree = "<group>"; };
 		315C38AF298AA5D50080BBE7 /* LinkButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkButton.swift; sourceTree = "<group>"; };
 		319D2C2D29C2FFA100C70A2B /* GradientButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradientButton.swift; sourceTree = "<group>"; };
 		31C6B23B29C86115001C585A /* UIView+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIView+Extensions.swift"; sourceTree = "<group>"; };
@@ -196,7 +197,6 @@
 		ABBA70FA25BAF8B2006E3872 /* RootDeeplinkableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootDeeplinkableView.swift; sourceTree = "<group>"; };
 		ABBC705925419AFA0087E7D5 /* PDUIComponents.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PDUIComponents.h; sourceTree = "<group>"; };
 		ABBC705A25419AFA0087E7D5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		ABBC706625419B4C0087E7D5 /* ActionSheet.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ActionSheet.swift; sourceTree = "<group>"; };
 		ABBC706725419B4C0087E7D5 /* AccountHeaderView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AccountHeaderView.swift; sourceTree = "<group>"; };
 		ABBC706A25419B4C0087E7D5 /* RoundButtonView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RoundButtonView.swift; sourceTree = "<group>"; };
 		ABBC706B25419B4C0087E7D5 /* MenuButton.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MenuButton.swift; sourceTree = "<group>"; };
@@ -404,7 +404,6 @@
 				D9FBBAFA283DFBC30090E5BA /* AccountHeader */,
 				D9FBBAF8283DFB8B0090E5BA /* ColorsExtension.swift */,
 				7685A32527EBEFBE00F6CF29 /* ContextMenu */,
-				ABBC706525419B4C0087E7D5 /* ActionSheet */,
 				76B347F5286AA5B1005A3FDC /* DialogSheet */,
 				ABBC706825419B4C0087E7D5 /* Buttons */,
 				ABBC707C25419B4D0087E7D5 /* Helpers */,
@@ -418,14 +417,6 @@
 				ABBA70F825BAF8A0006E3872 /* DeeplinkableViews */,
 			);
 			path = PDUIComponents;
-			sourceTree = "<group>";
-		};
-		ABBC706525419B4C0087E7D5 /* ActionSheet */ = {
-			isa = PBXGroup;
-			children = (
-				ABBC706625419B4C0087E7D5 /* ActionSheet.swift */,
-			);
-			path = ActionSheet;
 			sourceTree = "<group>";
 		};
 		ABBC706825419B4C0087E7D5 /* Buttons */ = {
@@ -506,6 +497,7 @@
 				AB67B52D26C0FD79009AFAE7 /* AssertionView.swift */,
 				ABBC70B125419B4D0087E7D5 /* WarningBadgeView.swift */,
 				ABBC70B325419B4D0087E7D5 /* SheetHeaderView.swift */,
+				310447F82A128A950037F4CE /* UIToolbar+Appearance.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -624,6 +616,7 @@
 			buildPhases = (
 				6A8384EA64112991D4A3E5C4 /* [CP] Check Pods Manifest.lock */,
 				ABE2789329917D75008EC1B3 /* Sources */,
+				D4D5CD002A0D32A400CEA03D /* Linter */,
 				ABE2789429917D75008EC1B3 /* Frameworks */,
 				ABE2789529917D75008EC1B3 /* CopyFiles */,
 			);
@@ -691,6 +684,25 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
+		D4D5CD002A0D32A400CEA03D /* Linter */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = Linter;
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [[ $CI ]]; then\n  echo \"Skipping linting on the CI\"\n  exit 0\nfi\n\nif [[ -f \"${PODS_ROOT}/SwiftLint/swiftlint\" ]]; then\n  ${PODS_ROOT}/SwiftLint/swiftlint --config ${PROJECT_DIR}/../.swiftlint.yml\nelse\n  echo \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"\nfi\n";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -719,7 +731,6 @@
 				ABE278E729917E25008EC1B3 /* SheetHeaderView.swift in Sources */,
 				ABE278A329917DE0008EC1B3 /* ContextMenuView.swift in Sources */,
 				ABE278D729917E14008EC1B3 /* TabBarViewModel.swift in Sources */,
-				ABE278A629917DE3008EC1B3 /* ActionSheet.swift in Sources */,
 				ABE278D229917E0B008EC1B3 /* Toast.swift in Sources */,
 				ABE278AD29917DEB008EC1B3 /* SearchButton.swift in Sources */,
 				ABE278D129917E0B008EC1B3 /* Banner.swift in Sources */,
@@ -738,6 +749,7 @@
 				ABE278E529917E22008EC1B3 /* ProtonSpinner.swift in Sources */,
 				ABE278D329917E10008EC1B3 /* RectangleToast.swift in Sources */,
 				31C6B23C29C86115001C585A /* UIView+Extensions.swift in Sources */,
+				310447FA2A128A950037F4CE /* UIToolbar+Appearance.swift in Sources */,
 				ABE278DE29917E1B008EC1B3 /* FlatNavigationBar.swift in Sources */,
 				ABE278BF29917DF3008EC1B3 /* ContentHeightPreferenceKey.swift in Sources */,
 				ABE278CA29917E02008EC1B3 /* ModalView.swift in Sources */,

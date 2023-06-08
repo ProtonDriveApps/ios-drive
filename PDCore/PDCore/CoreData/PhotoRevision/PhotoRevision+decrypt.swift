@@ -58,6 +58,7 @@ extension PhotoRevision {
         do {
             if let transientClearMetadata {
                 // Value cached after the property could be decoded at least once
+                // swiftlint:disable:next force_try
                 return try! JSONDecoder().decode(PhotoMetadata.self, from: transientClearMetadata)
             }
 

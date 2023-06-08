@@ -19,7 +19,7 @@ import ProtonCore_UIFoundations
 import SwiftUI
 
 struct PhotosGalleryView<ViewModel: PhotosGalleryViewModelProtocol, GridView: View>: View {
-    private let viewModel: ViewModel
+    @ObservedObject private var viewModel: ViewModel
     private let grid: () -> GridView
 
     init(viewModel: ViewModel, grid: @escaping () -> GridView) {

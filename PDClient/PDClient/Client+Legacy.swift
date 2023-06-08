@@ -49,7 +49,7 @@ extension Client {
         guard let credential = self.credentialProvider?.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
-        let endpoint = ShareEndpoint(volumeID: id, service: self.service, credential: credential)
+        let endpoint = ShareEndpoint(shareID: id, service: self.service, credential: credential)
         request(endpoint, completion: completion)
     }
     

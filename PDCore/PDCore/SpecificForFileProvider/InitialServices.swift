@@ -25,6 +25,7 @@ import ProtonCore_FeatureSwitch
 import ProtonCore_Keymaker
 import ProtonCore_Services
 import ProtonCore_Authentication
+import ProtonCore_Observability
 import ProtonCore_Environment
 import Reachability
 
@@ -105,6 +106,8 @@ public class InitialServices {
         serviceDelegate.apiService = networking
         serviceDelegate.authenticator = authenticator
         serviceDelegate.generalReachability = try? Reachability(hostname: clientConfig.host)
+
+        ObservabilityEnv.current.setupWorld(requestPerformer: networking)
 
         return (sessionVault, networking, serviceDelegate, authenticator)
     }

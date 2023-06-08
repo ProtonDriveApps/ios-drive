@@ -23,7 +23,7 @@ Pod::Spec.new do |spec|
   spec.macos.deployment_target = "11.0"
 
   #  Crypto library variant
-  crypto_variant = "Crypto-patched-Go1.19.4"
+  crypto_variant = "Crypto-patched-Go1.20.2"
 
   # ――― Source Location ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
   #

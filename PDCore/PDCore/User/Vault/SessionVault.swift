@@ -76,6 +76,13 @@ public class SessionVault: CredentialProvider, LogObject, ObservableObject {
         guard let credential = self.credential else { return nil }
         return .init(credential)
     }
+
+    public func getCredential() throws -> ClientCredential {
+        guard let credential = clientCredential() else {
+            throw CredentialProviderError.missingCredential
+        }
+        return credential
+    }
 }
 
 extension SessionVault: SessionStore {
@@ -301,7 +308,7 @@ extension SessionVault {
         guard let info = self.userInfo else {
             return nil
         }
-        return .init(usedSpace: info.usedSpace, maxSpace: info.maxSpace, invoiceState: InvoiceUserState(rawValue: info.delinquent) ?? .onTime, isPaid: info.subscribed > 0)
+        return .init(usedSpace: info.usedSpace, maxSpace: info.maxSpace, invoiceState: InvoiceUserState(rawValue: info.delinquent) ?? .onTime, isPaid: info.hasAnySubscription)
     }
 }
 

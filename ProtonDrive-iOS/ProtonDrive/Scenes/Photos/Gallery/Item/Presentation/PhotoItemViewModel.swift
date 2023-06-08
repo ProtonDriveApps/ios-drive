@@ -17,10 +17,13 @@
 
 import Combine
 import Foundation
+import PDCore
 
 protocol PhotoItemViewModelProtocol: ObservableObject {
     var duration: String? { get }
     var image: Data? { get }
+    func onAppear()
+    func onDisappear()
     func openPreview()
 }
 
@@ -31,16 +34,54 @@ struct PhotoItemViewModelData {
 
 final class PhotoItemViewModel: PhotoItemViewModelProtocol {
     private let item: PhotoGridViewItem
+    private let thumbnailController: ThumbnailController
+    private let coordinator: PhotoItemCoordinator
+    private var cancellables = Set<AnyCancellable>()
 
     let duration: String?
-    var image: Data?
+    @Published var image: Data?
 
-    init(item: PhotoGridViewItem) {
+    init(item: PhotoGridViewItem, thumbnailController: ThumbnailController, coordinator: PhotoItemCoordinator) {
         self.item = item
+        self.thumbnailController = thumbnailController
+        self.coordinator = coordinator
         duration = item.duration
+        subscribeToUpdates()
+    }
+
+    private func subscribeToUpdates() {
+        thumbnailController.updatePublisher
+            .sink { [weak self] _ in
+                self?.reloadImage()
+            }
+            .store(in: &cancellables)
+    }
+
+    func onAppear() {
+        if let image = thumbnailController.getImage() {
+            self.image = image
+        } else {
+            thumbnailController.load()
+        }
+    }
+
+    func onDisappear() {
+        thumbnailController.cancel()
+    }
+
+    private func makeThumbnailIdentifier() -> NodeIdentifier {
+        NodeIdentifier(item.photoId, item.shareId)
+    }
+
+    private func reloadImage() {
+        let image = thumbnailController.getImage()
+        if self.image != image {
+            self.image = image
+        }
     }
 
     func openPreview() {
-        // TODO: next MR
+        let identifier = makeThumbnailIdentifier()
+        coordinator.openPreview(with: identifier)
     }
 }

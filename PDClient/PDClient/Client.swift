@@ -18,7 +18,14 @@
 import Foundation
 
 public protocol CredentialProvider: AnyObject {
+    /// Obtaining credential optionally
     func clientCredential() -> ClientCredential?
+    /// Obtaining credential or throwing an error
+    func getCredential() throws -> ClientCredential
+}
+
+public enum CredentialProviderError: Error {
+    case missingCredential
 }
 
 public class Client {
@@ -33,10 +40,31 @@ public class Client {
         self.networking = networking
     }
 
+    // swiftlint:disable:next todo
+    // TODO: Make credential provider non optional
+    func credential() throws -> ClientCredential {
+        guard let credentialProvider else {
+            throw Errors.couldNotObtainCredential
+        }
+        return try credentialProvider.getCredential()
+    }
+
     func request<E: Endpoint, Response>(_ endpoint: E, completion: @escaping (Result<Response, Error>) -> Void) where Response == E.Response {
         networking.request(from: endpoint) { [errorMonitor] result in
             errorMonitor?.monitorWithContext(endpoint, result)
             completion(result)
+        }
+    }
+    public func request<E: Endpoint, Response>(_ endpoint: E) async throws -> Response where Response == E.Response {
+        return try await withCheckedThrowingContinuation { continuation in
+            request(endpoint) { result in
+                switch result {
+                case .success(let folder):
+                    continuation.resume(returning: folder)
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            }
         }
     }
 

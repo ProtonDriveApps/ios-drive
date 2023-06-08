@@ -29,6 +29,16 @@ public extension StorageManager {
         }
         return result
     }
+
+    // Results
+    func photosDevice(moc: NSManagedObjectContext) -> Device? {
+        let request = requestDevices()
+        request.predicate = NSPredicate(format: "%K == %d", #keyPath(Device.type), Device.´Type´.photos.rawValue)
+
+        return moc.performAndWait {
+            return (try? moc.fetch(request))?.first
+        }
+    }
     
     // Results
     func volumes(moc: NSManagedObjectContext) -> [Volume] {
@@ -149,8 +159,28 @@ public extension StorageManager {
         }
         return files
     }
+
+    func fetchPrimaryPhotos(moc: NSManagedObjectContext) -> [Photo] {
+        return moc.performAndWait {
+            let fetchRequest = requestPhotos(moc: moc)
+            return (try? moc.fetch(fetchRequest)) ?? []
+        }
+    }
+
+    func fetchPhoto(id: NodeIdentifier, moc: NSManagedObjectContext) -> Photo? {
+        return moc.performAndWait {
+            let fetchRequest = requestPhoto(id: id)
+            return try? moc.fetch(fetchRequest).first
+        }
+    }
     
     // Subscriptions
+
+    func subscriptionToPhotoDevices() -> NSFetchedResultsController<Device> {
+        let request = requestDevices()
+        request.predicate = NSPredicate(format: "%K == %d", #keyPath(Device.type), Device.´Type´.photos.rawValue)
+        return NSFetchedResultsController(fetchRequest: request, managedObjectContext: backgroundContext, sectionNameKeyPath: nil, cacheName: nil)
+    }
     
     func subscriptionToUploadingFiles() -> NSFetchedResultsController<File> {
         return NSFetchedResultsController(fetchRequest: self.requestUploading(moc: mainContext),
@@ -208,8 +238,33 @@ public extension StorageManager {
                                           sectionNameKeyPath: #keyPath(Node.stateRaw),
                                           cacheName: nil)
     }
+
+    func subscriptionToPhotos(moc: NSManagedObjectContext) -> NSFetchedResultsController<Photo> {
+        return NSFetchedResultsController(
+            fetchRequest: requestPhotos(moc: moc),
+            managedObjectContext: moc,
+            sectionNameKeyPath: #keyPath(Photo.monthIdentifier),
+            cacheName: "PhotoFetchCache"
+        )
+    }
+
+    func subscriptionToThumbnails(moc: NSManagedObjectContext) -> NSFetchedResultsController<Thumbnail> {
+        return NSFetchedResultsController(
+            fetchRequest: requestThumbnails(),
+            managedObjectContext: moc,
+            sectionNameKeyPath: nil,
+            cacheName: nil
+        )
+    }
     
     // Requests
+    private func requestDevices() -> NSFetchRequest<Device> {
+        let fetchRequest = NSFetchRequest<Device>()
+        fetchRequest.entity = Device.entity()
+        fetchRequest.sortDescriptors = [.init(key: #keyPath(Device.id), ascending: true)]
+        return fetchRequest
+    }
+
     private func requestVolumes() -> NSFetchRequest<Volume> {
         let fetchRequest = NSFetchRequest<Volume>()
         fetchRequest.entity = Volume.entity()
@@ -381,6 +436,32 @@ public extension StorageManager {
         fetchRequest.predicate = NSPredicate(format: "%K < %i AND %K == %d",
                                              #keyPath(Node.size), NSNumber(value: maxSize).intValue,
                                              #keyPath(Node.stateRaw), Node.State.cloudImpediment.rawValue)
+        return fetchRequest
+    }
+
+    private func requestPhotos(moc: NSManagedObjectContext) -> NSFetchRequest<Photo> {
+        let fetchRequest = NSFetchRequest<Photo>()
+        fetchRequest.entity = Photo.entity()
+        fetchRequest.sortDescriptors = [.init(key: #keyPath(Photo.timestamp), ascending: false)]
+        // Will return only primary photos
+        fetchRequest.predicate = NSPredicate(format: "%K == nil", #keyPath(Photo.parent))
+        return fetchRequest
+    }
+
+    private func requestThumbnails() -> NSFetchRequest<Thumbnail> {
+        let fetchRequest = NSFetchRequest<Thumbnail>()
+        fetchRequest.entity = Thumbnail.entity()
+        fetchRequest.sortDescriptors = [.init(key: #keyPath(Thumbnail.revision.id), ascending: false)]
+        return fetchRequest
+    }
+
+    private func requestPhoto(id: NodeIdentifier) -> NSFetchRequest<Photo> {
+        let fetchRequest = NSFetchRequest<Photo>()
+        fetchRequest.entity = Photo.entity()
+        fetchRequest.sortDescriptors = [.init(key: #keyPath(Photo.id), ascending: true)]
+        fetchRequest.predicate = NSPredicate(format: "%K == %@ AND %K == %@",
+                                             #keyPath(Photo.id), id.nodeID,
+                                             #keyPath(Photo.shareID), id.shareID)
         return fetchRequest
     }
 }

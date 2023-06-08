@@ -41,7 +41,7 @@ install_framework()
 
   if [ -L "${source}" ]; then
     echo "Symlinked..."
-    source="$(readlink "${source}")"
+    source="$(readlink -f "${source}")"
   fi
 
   if [ -d "${source}/${BCSYMBOLMAP_DIR}" ]; then
@@ -190,6 +190,7 @@ if [[ "$CONFIGURATION" == "Debug" ]]; then
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-Foundations-dynamic/ProtonCore_Foundations.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-GoLibs-dynamic/ProtonCore_Crypto.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-Hash-dynamic/ProtonCore_Hash.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-HumanVerification-dynamic/ProtonCore_HumanVerification.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-KeyManager-dynamic/ProtonCore_KeyManager.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-Keymaker-dynamic/ProtonCore_Keymaker.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-Log-dynamic/ProtonCore_Log.framework"
@@ -220,6 +221,7 @@ if [[ "$CONFIGURATION" == "Release-External" ]]; then
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-Foundations-dynamic/ProtonCore_Foundations.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-GoLibs-dynamic/ProtonCore_Crypto.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-Hash-dynamic/ProtonCore_Hash.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-HumanVerification-dynamic/ProtonCore_HumanVerification.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-KeyManager-dynamic/ProtonCore_KeyManager.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-Keymaker-dynamic/ProtonCore_Keymaker.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-Log-dynamic/ProtonCore_Log.framework"
@@ -250,6 +252,7 @@ if [[ "$CONFIGURATION" == "Release-QA" ]]; then
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-Foundations-dynamic/ProtonCore_Foundations.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-GoLibs-dynamic/ProtonCore_Crypto.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-Hash-dynamic/ProtonCore_Hash.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-HumanVerification-dynamic/ProtonCore_HumanVerification.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-KeyManager-dynamic/ProtonCore_KeyManager.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-Keymaker-dynamic/ProtonCore_Keymaker.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-Log-dynamic/ProtonCore_Log.framework"
@@ -280,6 +283,7 @@ if [[ "$CONFIGURATION" == "Release-Store" ]]; then
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-Foundations-dynamic/ProtonCore_Foundations.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-GoLibs-dynamic/ProtonCore_Crypto.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-Hash-dynamic/ProtonCore_Hash.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-HumanVerification-dynamic/ProtonCore_HumanVerification.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-KeyManager-dynamic/ProtonCore_KeyManager.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-Keymaker-dynamic/ProtonCore_Keymaker.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/ProtonCore-Log-dynamic/ProtonCore_Log.framework"

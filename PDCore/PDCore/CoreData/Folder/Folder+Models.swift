@@ -20,7 +20,7 @@ import Foundation
 // MARK: - EncryptingParent
 
 /// DTO that represents a Folder and gives the minimum data required for creating new File within said Folder.
-struct EncryptingParent {
+struct EncryptingFolder {
     let id: String
     let shareID: String
     let hashKey: HashKey
@@ -28,10 +28,10 @@ struct EncryptingParent {
 }
 
 extension Folder {
-    func encrypting() throws -> EncryptingParent {
+    func encrypting() throws -> EncryptingFolder {
         let nodeHashKey = try decryptNodeHashKey()
 
-        return EncryptingParent(
+        return EncryptingFolder(
             id: id,
             shareID: shareID,
             hashKey: nodeHashKey,

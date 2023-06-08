@@ -36,7 +36,6 @@ class RandomAction {
         self.type = type
     }
 
-
     func perform() {
         switch type {
         case .tap:
@@ -151,18 +150,19 @@ open class BaseMonkey : XCTestCase{
 
     open func handleInterruption() -> Bool {
         addUIInterruptionMonitor(withDescription: "*") { (alert) -> Bool in
-            let doNotAllowButton = alert.buttons["Don’t Allow"]
-            if doNotAllowButton.exists {
-                doNotAllowButton.tap()
-            }
-
-            let notNowButton = alert.buttons["Not Now"]
-            if notNowButton.exists {
-                notNowButton.tap()
-            }
+            self.tapButton(on: alert, with: "Don’t Allow")
+            self.tapButton(on: alert, with: "Not Now")
+            self.tapButton(on: alert, with: "Cancel")
             return true
         }
         return false
+    }
+
+    func tapButton(on alert: XCUIElement, with title: String) {
+        let button = alert.buttons[title]
+        if button.exists {
+            button.tap()
+        }
     }
 
     open override func tearDown() {

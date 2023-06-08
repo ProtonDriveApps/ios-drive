@@ -46,7 +46,7 @@ public class Tower: NSObject, LogObject {
 
     internal let api: PDClient.APIService
     public let storage: StorageManager
-    internal let client: PDClient.Client
+    public let client: PDClient.Client
     internal let sharingManager: SharingManager
     internal let thumbnailLoader: AsyncThumbnailLoader
     internal let generalSettings: GeneralSettings
@@ -90,8 +90,9 @@ public class Tower: NSObject, LogObject {
 
         let cloudSlot = CloudSlot(client: client, storage: storage, signersKitFactory: sessionVault)
         self.cloudSlot = cloudSlot
-        
-        let downloader = Downloader(cloudSlot: cloudSlot)
+
+        let endpointFactory = DriveEndpointFactory(service: api, credentialProvider: sessionVault)
+        let downloader = Downloader(cloudSlot: cloudSlot, endpointFactory: endpointFactory)
         self.downloader = downloader
         
         self.offlineSaver = OfflineSaver(clientConfig: clientConfig, storage: storage, downloader: downloader)

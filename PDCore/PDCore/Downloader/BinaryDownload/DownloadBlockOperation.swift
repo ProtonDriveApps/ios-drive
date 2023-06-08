@@ -16,14 +16,17 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDClient
 
 class DownloadBlockOperation: DownloadBinaryOperation {
     typealias Completion = (Result<URL, Error>) -> Void
 
     let completion: Completion
+    private let endpointFactory: EndpointFactory
     private(set) var progress: Progress!
     
-    init(downloadTaskURL: URL, completionHandler: @escaping Completion) {
+    init(downloadTaskURL: URL, endpointFactory: EndpointFactory, completionHandler: @escaping Completion) {
+        self.endpointFactory = endpointFactory
         self.completion = completionHandler
         self.progress = Progress(totalUnitCount: 1)
 
@@ -40,17 +43,14 @@ class DownloadBlockOperation: DownloadBinaryOperation {
         super.start()
         guard !self.isCancelled else { return }
 
-        guard let url = url else {
+        guard let request = makeRequest() else {
             cancel()
             return
         }
 
         let okStatusCode = 200
-        
-        task = session?.downloadTask(with: url, completionHandler: { [weak self] localURL, response, error in
-            let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .decapitaliseFirstLetter
-            
+
+        task = session?.downloadTask(with: request, completionHandler: { [weak self] localURL, response, error in
             guard let self = self, !self.isCancelled else {
                 return
             }
@@ -77,6 +77,13 @@ class DownloadBlockOperation: DownloadBinaryOperation {
         }
         
         self.task?.resume()
+    }
+
+    private func makeRequest() -> URLRequest? {
+        guard let url = url else {
+            return nil
+        }
+        return try? endpointFactory.makeDownloadBlockEndpoint(url: url).request
     }
     
     override func cancel() {

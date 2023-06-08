@@ -38,9 +38,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         lockOrientationIfNeeded(in: .portrait)
         UINavigationBar.setupFlatNavigationBarSystemWide()
+        UIToolbar.setupApparance()
         UNUserNotificationCenter.current().delegate = self
 
         configureFeatureSwitches()
+        
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--uitests") {
+            UIView.setAnimationsEnabled(false)
+        }
+        #endif
 
         // swiftlint:disable no_print
         #if DEBUG
@@ -101,11 +108,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         // Core Feature Flags
         FeatureFactory.shared.enable(&.unauthSession)
+        FeatureFactory.shared.enable(&.observability)
         FeatureFactory.shared.enable(&.externalSignup)
-
-        #if DEBUG
-        FeatureFactory.shared.enable(&.enforceUnauthSessionStrictVerificationOnBackend)
-        #endif
     }
 }
 

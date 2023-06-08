@@ -35,8 +35,8 @@ class MonkeyTests : BaseMonkey {
     override var stack: ScreenshotStack { get { return ScreenshotStack(size: 10) } }
     override var numberOfSteps: Int {
         var numberOfSteps: Int = 10
-        if let numberOfStepsArgument = ProcessInfo.processInfo.environment["MONKEY_NUMBER_OF_STEPS"], let overridenNumberOfSteps = Int(numberOfStepsArgument) {
-            numberOfSteps = overridenNumberOfSteps
+        if let numberOfStepsArgument = ProcessInfo.processInfo.environment["MONKEY_NUMBER_OF_STEPS"], let overriddenNumberOfSteps = Int(numberOfStepsArgument) {
+            numberOfSteps = overriddenNumberOfSteps
         }
 
         return numberOfSteps
