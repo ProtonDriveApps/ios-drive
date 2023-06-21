@@ -20,6 +20,7 @@ import Foundation
 public protocol GenericEvent {
     var genericType: GenericEventType { get }
     var eventId: String { get }
+    var shareId: String { get }
     var inLaneNodeId: String { get }
     var inLaneParentId: String? { get }
     var eventEmittedAt: TimeInterval { get }

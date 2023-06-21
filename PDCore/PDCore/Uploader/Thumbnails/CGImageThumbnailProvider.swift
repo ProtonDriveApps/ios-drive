@@ -19,16 +19,23 @@ import CoreServices
 import CoreImage
 
 final class CGImageThumbnailProvider: ThumbnailProvider {
-    var next: ThumbnailProvider?
 
-    func getThumbnail(from url: URL) -> Image? {
-        guard MimeType(fromFileExtension: url.pathExtension)?.isImage == true else { return next?.getThumbnail(from: url) }
+    var next: ThumbnailProvider?
+    
+    init(next: ThumbnailProvider? = nil) {
+        self.next = next
+    }
+
+    func getThumbnail(from url: URL, ofSize size: CGSize) -> Image? {
+        guard MimeType(fromFileExtension: url.pathExtension)?.isImage == true else {
+            return next?.getThumbnail(from: url, ofSize: size)
+        }
 
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageIfAbsent: true,
             kCGImageSourceCreateThumbnailWithTransform: true,
             kCGImageSourceShouldCacheImmediately: true,
-            kCGImageSourceThumbnailMaxPixelSize: self.maximumSize.height
+            kCGImageSourceThumbnailMaxPixelSize: size.height
         ]
 
         guard let imageSource = CGImageSourceCreateWithURL(url as NSURL, nil),

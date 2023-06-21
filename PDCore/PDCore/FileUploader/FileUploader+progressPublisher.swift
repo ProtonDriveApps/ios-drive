@@ -38,7 +38,7 @@ public extension FileUploader {
                 operations
                     .compactMap { $0 as? MainFileUploaderOperation }
                     .reduce(into: [OperationID: CurrentProgress]()) { partialResult, op in
-                        partialResult[op.uploadID] = op.progress
+                        partialResult[op.id] = op.progress
                     }
             }
             .removeDuplicates()

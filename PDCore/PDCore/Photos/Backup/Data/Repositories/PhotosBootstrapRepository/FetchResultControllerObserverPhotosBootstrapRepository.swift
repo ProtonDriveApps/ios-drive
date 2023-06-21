@@ -26,7 +26,7 @@ public final class FetchResultControllerObserverPhotosBootstrapRepository: Photo
     }
 
     public var isPhotosRootReady: AnyPublisher<Bool, Never> {
-        observer.publisher.map { devices in
+        observer.getPublisher().map { devices in
             return devices.count == 1
         }
         .eraseToAnyPublisher()

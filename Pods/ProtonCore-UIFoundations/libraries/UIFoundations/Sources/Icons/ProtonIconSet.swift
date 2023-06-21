@@ -604,6 +604,9 @@ public struct ProtonIconSet {
     
     public let vpnWordmarkNoBackground = ProtonIcon(name: "VPNWordmarkNoBackground",
                                                     vpnFallbackName: "VPNWordmarkNoBackgroundAlwaysDark")
+
+    public let passWordmarkNoBackground = ProtonIcon(name: "PassWordmarkNoBackground",
+                                                     vpnFallbackName: "PassWordmarkNoBackgroundAlwaysDark")
     
     // LoginUI-specific
 
@@ -614,6 +617,8 @@ public struct ProtonIconSet {
     public let mailTopImage = ProtonIcon(name: "MailTopImage")
 
     public let vpnTopImage = ProtonIcon(name: "VPNTopImage")
+
+    public let passTopImage = ProtonIcon(name: "PassTopImage")
     
     public let calendarWordmarkNoIcon = ProtonIcon(name: "CalendarWordmarkNoIcon")
     

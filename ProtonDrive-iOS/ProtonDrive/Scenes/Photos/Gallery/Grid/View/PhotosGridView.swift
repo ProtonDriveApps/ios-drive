@@ -35,6 +35,7 @@ struct PhotosGridView<ViewModel: PhotosGridViewModelProtocol, ItemView: View>: V
                     ForEach(viewModel.sections) {
                         view(from: $0, height: (geometry.size.width / 3) * 1.4)
                     }
+                    bottomView
                 }
             }
         }
@@ -57,5 +58,11 @@ struct PhotosGridView<ViewModel: PhotosGridViewModelProtocol, ItemView: View>: V
                 .foregroundColor(ColorProvider.TextWeak)
                 .padding(EdgeInsets(top: 24, leading: 16, bottom: 8, trailing: 16))
         })
+    }
+
+    private var bottomView: some View {
+        Color.clear
+            .frame(width: 0, height: 0, alignment: .bottom)
+            .onAppear(perform: viewModel.didShowLastItem)
     }
 }

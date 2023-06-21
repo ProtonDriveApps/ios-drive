@@ -19,15 +19,15 @@ import Foundation
 import CoreImage
 import CoreData
 
-final class ThumbnailRevisionEncryptor: RevisionEncryptor {
+class ThumbnailRevisionEncryptor: RevisionEncryptor {
 
-    private let thumbnailProvider: ThumbnailProvider
-    private let signersKitFactory: SignersKitFactoryProtocol
-    private let progress: Progress
-    private let moc: NSManagedObjectContext
+   let thumbnailProvider: ThumbnailProvider
+   let signersKitFactory: SignersKitFactoryProtocol
+   let progress: Progress
+   let moc: NSManagedObjectContext
 
-    private var isCancelled = false
-    private var isExecuting = false
+   var isCancelled = false
+   var isExecuting = false
 
     init(
         thumbnailProvider: ThumbnailProvider,
@@ -49,16 +49,9 @@ final class ThumbnailRevisionEncryptor: RevisionEncryptor {
         moc.perform {
             do {
                 let revision = draft.revision.in(moc: self.moc)
-                revision.removeOldThumbnail(in: self.moc)
-                guard let thumbnail = self.thumbnailProvider.getThumbnail(from: draft.localURL) else {
-                    throw ThumbnailGenerationError.generation
-                }
-                let thumbnailData = try self.compressAndEncrypt(thumbnail, draft: draft)
-
-                let coreDatathumbnail = Thumbnail(context: self.moc)
-                coreDatathumbnail.encrypted = thumbnailData.encrypted
-                coreDatathumbnail.sha256 = thumbnailData.hash
-                coreDatathumbnail.revision = revision
+                revision.removeOldThumbnails(in: self.moc)
+                let thumbnail = try self.makeCoreDataThumbnail(ofSize: Constants.defaultThumbnailMaxSize, maxWeight: Constants.thumbnailMaxWeight, draft)
+                revision.addToThumbnails(thumbnail)
 
                 try self.moc.saveOrRollback()
                 
@@ -78,25 +71,36 @@ final class ThumbnailRevisionEncryptor: RevisionEncryptor {
         isCancelled = true
     }
 
-    private func compressAndEncrypt(_ cgImage: CGImage, draft: CreatedRevisionDraft) throws -> EncryptedThumbnailData {
+    func makeCoreDataThumbnail(ofSize size: CGSize, maxWeight: Int, _ draft: CreatedRevisionDraft) throws -> Thumbnail {
+        guard let rawThumbnail = self.thumbnailProvider.getThumbnail(from: draft.localURL, ofSize: size) else {
+            throw ThumbnailGenerationError.generation
+        }
+        let thumbnail = try self.compressAndEncrypt(rawThumbnail, maxThumbnailWeight: maxWeight, draft: draft)
+        let coreDataThumbnail = Thumbnail(context: self.moc)
+        coreDataThumbnail.encrypted = thumbnail.encrypted
+        coreDataThumbnail.sha256 = thumbnail.hash
+        return coreDataThumbnail
+    }
+
+    func compressAndEncrypt(_ cgImage: CGImage, maxThumbnailWeight: Int, draft: CreatedRevisionDraft) throws -> EncryptedThumbnailData {
         for quality in [1.0, 0.7, 0.4, 0.2, 0.1, 0] {
             guard let compressed = cgImage.jpegData(compressionQuality: quality) else {
                 throw ThumbnailGenerationError.compression
             }
 
-            guard compressed.count <= Constants.thumbnailMaxWeight else { continue }
+            guard compressed.count <= maxThumbnailWeight else { continue }
 
             let encryptedThumbnail = try encrypt(compressed, draft: draft)
 
-            if encryptedThumbnail.encrypted.count <= Constants.thumbnailMaxWeight {
+            if encryptedThumbnail.encrypted.count <= maxThumbnailWeight {
                 return encryptedThumbnail
             }
         }
 
-        throw Uploader.Errors.invalidSizeThumbnail
+        throw UploaderErrors.invalidSizeThumbnail
     }
 
-    private func encrypt(_ thumbnail: Data, draft: CreatedRevisionDraft) throws -> EncryptedThumbnailData {
+    func encrypt(_ thumbnail: Data, draft: CreatedRevisionDraft) throws -> EncryptedThumbnailData {
         let moc = draft.revision.managedObjectContext!
 
         let uploadableThumbnailData: EncryptedThumbnailData = try moc.performAndWait {
@@ -112,10 +116,10 @@ final class ThumbnailRevisionEncryptor: RevisionEncryptor {
         return uploadableThumbnailData
     }
 
-    private func encrypt(clearThumbnail thumbnail: Data, for file: File) throws -> Encryptor.EncryptedBinary {
+    func encrypt(clearThumbnail thumbnail: Data, for file: File) throws -> Encryptor.EncryptedBinary {
         guard let rawContentKeyPacket = file.contentKeyPacket,
               let contentKeyPacket = Data(base64Encoded: rawContentKeyPacket) else {
-                  throw Uploader.Errors.noFileKeyPacket
+                  throw UploaderErrors.noFileKeyPacket
         }
 
         let nodePassphrase = try file.decryptPassphrase()

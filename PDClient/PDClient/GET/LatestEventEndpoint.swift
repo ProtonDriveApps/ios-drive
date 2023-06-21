@@ -18,7 +18,6 @@
 import Foundation
 
 public typealias EventID = String
-public typealias MoreEvents = Bool
 
 struct LatestEventEndpoint: Endpoint {
     public struct Response: Codable {
@@ -28,10 +27,10 @@ struct LatestEventEndpoint: Endpoint {
     
     var request: URLRequest
     
-    init(shareID: Share.ShareID, service: APIService, credential: ClientCredential) {
+    init(volumeID: Volume.VolumeID, service: APIService, credential: ClientCredential) {
         // url
-        var url = service.url(of: "/shares")
-        url.appendPathComponent(shareID)
+        var url = service.url(of: "/volumes")
+        url.appendPathComponent(volumeID)
         url.appendPathComponent("/events")
         url.appendPathComponent("/latest")
         

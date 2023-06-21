@@ -23,6 +23,7 @@ typealias PhotoId = NodeIdentifier
 typealias PhotoIdsSet = Set<PhotoId>
 
 protocol ThumbnailsController: AnyObject {
+    /// Publishes only ids that changed recently
     var updatePublisher: AnyPublisher<PhotoIdsSet, Never> { get }
     func getImage(for photoId: PhotoId) -> Data?
     func load(_ identifier: PhotoId)
@@ -32,11 +33,12 @@ protocol ThumbnailsController: AnyObject {
 final class LocalThumbnailsController: ThumbnailsController {
     private let repository: ThumbnailsRepository
     private let thumbnailLoader: ThumbnailLoader
-    private let identifiersSubject = CurrentValueSubject<PhotoIdsSet, Never>([])
+    private var identifiers = PhotoIdsSet()
+    private let updateSubject = PassthroughSubject<PhotoIdsSet, Never>()
     private var cancellables = Set<AnyCancellable>()
 
     var updatePublisher: AnyPublisher<PhotoIdsSet, Never> {
-        identifiersSubject.eraseToAnyPublisher()
+        updateSubject.eraseToAnyPublisher()
     }
 
     init(repository: ThumbnailsRepository, thumbnailLoader: ThumbnailLoader) {
@@ -44,13 +46,14 @@ final class LocalThumbnailsController: ThumbnailsController {
         self.thumbnailLoader = thumbnailLoader
         repository.updatePublisher
             .sink { [weak self] identifiers in
-                self?.identifiersSubject.send(identifiers)
+                self?.identifiers.formUnion(identifiers)
+                self?.updateSubject.send(identifiers)
             }
             .store(in: &cancellables)
     }
 
     func getImage(for photoId: PhotoId) -> Data? {
-        guard identifiersSubject.value.contains(photoId) else {
+        guard identifiers.contains(photoId) else {
             return nil
         }
         return repository.getData(for: photoId)

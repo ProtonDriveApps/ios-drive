@@ -19,7 +19,7 @@ import Foundation
 
 final class FileDraftUploaderOperation: AsynchronousOperation, UploadOperation {
     let progress: Progress
-    let uploadID: UUID
+    let id: UUID
 
     private let unitOfWork: UnitOfWork
     private let draft: FileDraft
@@ -37,7 +37,7 @@ final class FileDraftUploaderOperation: AsynchronousOperation, UploadOperation {
         self.draft = draft
         self.fileDraftUploader = fileDraftUploader
         self.onError = onError
-        self.uploadID = draft.uploadID
+        self.id = draft.uploadID
         super.init()
     }
 

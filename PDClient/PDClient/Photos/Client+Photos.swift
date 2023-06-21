@@ -101,3 +101,17 @@ extension Client: PhotoShareDeleting {
         _ = try await request(endpoint)
     }
 }
+
+// MARK: - Listing
+
+extension Client: PhotosListing {
+    public func getPhotosList(with parameters: PhotosListRequestParameters) async throws -> PhotosListResponse {
+        let endpoint = PhotosListEndpoint(service: service, credential: try credential(), parameters: parameters)
+        return try await request(endpoint)
+    }
+
+    public func getLinksMetadata(with parameters: LinksMetadataParameters) async throws -> LinksResponse {
+        let endpoint = LinksMetadataEndpoint(service: service, credential: try credential(), parameters: parameters)
+        return try await request(endpoint)
+    }
+}

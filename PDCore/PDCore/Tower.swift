@@ -44,16 +44,18 @@ public class Tower: NSObject, LogObject {
     public let paymentsStorage: PaymentsSecureStorage
     public let offlineSaver: OfflineSaver!
 
-    internal let api: PDClient.APIService
+    public let api: PDClient.APIService
     public let storage: StorageManager
     public let client: PDClient.Client
     internal let sharingManager: SharingManager
-    internal let thumbnailLoader: AsyncThumbnailLoader
+    internal let thumbnailLoader: CancellableThumbnailLoader
     internal let generalSettings: GeneralSettings
     
-    public let eventsConveyor: EventsConveyor
-    public let eventProcessor: EventsProcessor
+    // internal for Tower+Events.swift
+    internal let eventsConveyor: EventsConveyor
     internal let coreEventManager: CoreEventLoopManager
+    internal let eventObservers: [EventsListener]
+    internal let eventProcessingMode: DriveEventsLoopMode
     
     private let addressManager: AddressManager
     private let networking: PMAPIService
@@ -67,8 +69,8 @@ public class Tower: NSObject, LogObject {
                 authenticator: Authenticator,
                 clientConfig: PDClient.APIService.Configuration,
                 network: PMAPIService,
-                eventObservers: [EventsListener] = [],
-                processEventsLocally: Bool = true,
+                eventObservers: [EventsListener],
+                eventProcessingMode: DriveEventsLoopMode,
                 networkSpy: DriveAPIService? = nil)
     {
         self.storage = storage
@@ -99,19 +101,18 @@ public class Tower: NSObject, LogObject {
         self.sharingManager = SharingManager(cloudSlot: cloudSlot, sessionVault: sessionVault)
 
         // Thumbnails
-        let thumbnailsOperatiosFactory = LoadThumbnailOperationsFactory(store: storage, cloud: cloudSlot)
-        let thumbnailLoader = AsyncThumbnailLoader(operationsFactory: thumbnailsOperatiosFactory)
-        self.thumbnailLoader = thumbnailLoader
-        
+        self.thumbnailLoader = ThumbnailLoaderFactory().makeFileThumbnailLoader(storage: storage, cloudSlot: cloudSlot)
+
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).last!
         self.fileSystemSlot = FileSystemSlot(baseURL: documents, storage: self.storage)
         
         // Events
         let paymentsStorage = PaymentsSecureStorage(mainKeyProvider: mainKeyProvider)
-        let (conveyor, processor) = Self.makeDriveEventsSystem(storage: storage, eventStorage: eventStorage, appGroup: appGroup, eventObservers: eventObservers, eventProviders: [cloudSlot], processLocally: processEventsLocally)
         self.paymentsStorage = paymentsStorage
-        self.eventsConveyor = conveyor
-        self.eventProcessor = processor
+        
+        self.eventsConveyor = EventsConveyor(storage: eventStorage)
+        self.eventObservers = eventObservers
+        self.eventProcessingMode = eventProcessingMode
         self.coreEventManager = Self.makeCoreEventsSystem(appGroup: appGroup, sessionVault: sessionVault, generalSettings: generalSettings, paymentsSecureStorage: paymentsStorage, network: network)
         
         // Files
@@ -209,20 +210,18 @@ public class Tower: NSObject, LogObject {
         guard let signersKit = try? SignersKit(address: primaryAddress, sessionVault: self.sessionVault) else {
             return completion(.failure(SignersKit.Errors.noAddressWithRequestedSignature))
         }
+        
+        self.generalSettings.fetchUserSettings() // opportunistic, no need to abort the boot if this call fails
 
         let withMainShare: (Result<Share, Error>) -> Void = { sharesResult in
-            guard case Result.success(let share) = sharesResult else {
-                return completion( sharesResult.flatMap { _ in .success(Void()) })
-            }
-            
-            self.cloudSlot.scanEventsFromRemote(of: share.id) { _ in
+            switch sharesResult {
+            case let .failure(error):
+                completion(.failure(error))
+            case .success:
                 completion(.success(Void()))
             }
-            
-            // opportunistic, no need to abort the boot if this call fails
-            self.generalSettings.fetchUserSettings()
         }
-        
+
         self.cloudSlot.scanRoots(onFoundMainShare: withMainShare, onMainShareNotFound: {
             // if there are no main shares - try to create a Volume, but only once
             self.cloudSlot.createVolume(signersKit: signersKit) { createVolumeResult in
@@ -243,30 +242,22 @@ public class Tower: NSObject, LogObject {
         // clean old events from EventsConveyor storage
         try? self.eventsConveyor.persistentQueue.periodicalCleanup()
         
-        let moc = self.storage.backgroundContext
-        moc.performAndWait {
-            let addressIDs = self.sessionVault.addressIDs
-            if let mainShare = self.storage.mainShareOfVolume(by: addressIDs, moc: moc) {
-                if runEventsProcessor {
-                    self.startEventsPolling(shareId: mainShare.id)
-                }
-                self.offlineSaver.start()
-                
-                if let uid = self.sessionVault.credential?.UID {
-                    self.networking.setSessionUID(uid: uid)
-                }
-            }
+        offlineSaver.start()
+        
+        intializeEventsSystem()
+        if runEventsProcessor {
+            runEventsSystem()
+        }
+
+        if let uid = self.sessionVault.credential?.UID {
+            self.networking.setSessionUID(uid: uid)
         }
     }
     
     // stop recurrent work without cleanup
     @objc public func stop() {
-        pauseEventsPolling()
-        self.offlineSaver.cleanUp()
-    }
-
-    public var eventProcessorIsRunning: Bool {
-        self.eventProcessor.isRunning
+        pauseEventsSystem()
+        offlineSaver.cleanUp()
     }
     
     @available(*, deprecated, message: "Only used in tests")

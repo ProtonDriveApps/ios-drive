@@ -37,6 +37,7 @@ open class AsynchronousOperation: Operation {
             didChangeValue(forKey: state.keyPath)
         }
     }
+
     override public var isExecuting: Bool {
         state == .executing
     }
@@ -49,9 +50,9 @@ open class AsynchronousOperation: Operation {
         true
     }
 
+    /// Should be overriden only with custom state handling.
+    /// Put execution login into `main`.
     override public func start() {
-        // Should be overriden only with custom state handling.
-        // Put execution login into `main`.
         if isCancelled {
             state = .finished
             return

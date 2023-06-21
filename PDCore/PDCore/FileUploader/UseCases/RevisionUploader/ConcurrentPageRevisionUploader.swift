@@ -69,11 +69,17 @@ final class ConcurrentPageRevisionUploader: PageRevisionUploader {
     }
 
     func makeThumbnailUploaderOperations() -> [Operation] {
-        guard let thumbnail = page.thumbnail else { return [] }
+        guard !page.thumbnails.isEmpty else { return [] }
 
         return moc.performAndWait {
-            guard let fullUploadableThumbnail = thumbnail.unsafeFullUploadableThumbnail, !thumbnail.isUploaded else { return [] }
-            return [self.thumbnailUploaderOperationFactory(thumbnail, fullUploadableThumbnail)]
+            var operations = [Operation]()
+            
+            for thumbnail in self.page.thumbnails {
+                if let fullUploadableThumbnail = thumbnail.unsafeFullUploadableThumbnail, !thumbnail.isUploaded {
+                    operations.append(thumbnailUploaderOperationFactory(thumbnail, fullUploadableThumbnail))
+                }   
+            }
+            return operations
         }
     }
 

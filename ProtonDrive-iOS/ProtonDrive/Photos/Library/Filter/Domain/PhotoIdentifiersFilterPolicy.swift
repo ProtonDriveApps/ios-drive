@@ -17,19 +17,27 @@
 
 import PDCore
 
+struct PhotoIdentifiersFilterResult {
+    let validIdentifiers: [PhotoIdentifier]
+    let invalidIdentifiers: [PhotoIdentifier]
+}
+
 protocol PhotoIdentifiersFilterPolicyProtocol {
-    func filter(identifiers: [PhotoIdentifier], metadata: [PhotoMetadata.iOSMeta]) -> [PhotoIdentifier]
+    func filter(identifiers: [PhotoIdentifier], metadata: [PhotoMetadata.iOSMeta]) -> PhotoIdentifiersFilterResult
 }
 
 final class PhotoIdentifiersFilterPolicy: PhotoIdentifiersFilterPolicyProtocol {
-    func filter(identifiers: [PhotoIdentifier], metadata: [PhotoMetadata.iOSMeta]) -> [PhotoIdentifier] {
+    func filter(identifiers: [PhotoIdentifier], metadata: [PhotoMetadata.iOSMeta]) -> PhotoIdentifiersFilterResult {
         var validIdentifiers = [PhotoIdentifier]()
+        var invalidIdentifiers = [PhotoIdentifier]()
         identifiers.forEach { identifier in
             if !metadata.contains(where: { isEqual(identifier: identifier, metadata: $0) }) {
                 validIdentifiers.append(identifier)
+            } else {
+                invalidIdentifiers.append(identifier)
             }
         }
-        return validIdentifiers
+        return PhotoIdentifiersFilterResult(validIdentifiers: validIdentifiers, invalidIdentifiers: invalidIdentifiers)
     }
 
     private func isEqual(identifier: PhotoIdentifier, metadata: PhotoMetadata.iOSMeta) -> Bool {

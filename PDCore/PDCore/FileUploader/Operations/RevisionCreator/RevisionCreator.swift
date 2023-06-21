@@ -17,8 +17,9 @@
 
 import Foundation
 
-final class RevisionCreatorOperation: AsynchronousOperation, OperationWithProgress {
+final class RevisionCreatorOperation: AsynchronousOperation, UploadOperation {
 
+    let id: UUID
     let progress: Progress = Progress(unitsOfWork: 1)
     let draft: FileDraft
     let creator: CloudRevisionCreator
@@ -31,6 +32,7 @@ final class RevisionCreatorOperation: AsynchronousOperation, OperationWithProgre
         finalizer: LocalRevisionCreatorFinalizer,
         onError: @escaping OnError
     ) {
+        self.id = draft.uploadID
         self.draft = draft
         self.creator = creator
         self.finalizer = finalizer

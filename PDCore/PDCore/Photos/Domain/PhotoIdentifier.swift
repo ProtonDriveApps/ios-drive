@@ -18,19 +18,26 @@
 import Foundation
 
 public typealias PhotoIdentifiers = [PhotoIdentifier]
+public typealias PhotoLibraryIdentifier = String
 
 public struct PhotoIdentifier: Equatable, Hashable {
 
     public let localIdentifier: String
-    public let cloudIdentifier: String
+    public let cloudIdentifier: PhotoLibraryIdentifier
     public let creationDate: Date?
     public let modifiedDate: Date?
+    public let width: Int
+    public let height: Int
+    public let duration: Double?
 
-    public init(localIdentifier: String, cloudIdentifier: String, creationDate: Date? = nil, modifiedDate: Date? = nil) {
+    public init(localIdentifier: String, cloudIdentifier: PhotoLibraryIdentifier, creationDate: Date? = nil, modifiedDate: Date? = nil, width: Int, height: Int, duration: Double?) {
         self.localIdentifier = localIdentifier
         self.cloudIdentifier = cloudIdentifier
         self.creationDate = creationDate
         self.modifiedDate = modifiedDate
+        self.width = width
+        self.height = height
+        self.duration = duration
     }
 
     public func hash(into hasher: inout Hasher) {

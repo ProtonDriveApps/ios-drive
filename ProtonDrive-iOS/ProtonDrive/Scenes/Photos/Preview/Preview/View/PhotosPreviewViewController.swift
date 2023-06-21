@@ -93,10 +93,9 @@ final class PhotosPreviewViewController<ViewModel: PhotosPreviewViewModelProtoco
     }
 
     private func setupFirstPreview() {
-        if let viewController = factory.makeViewController(with: viewModel.getCurrentItem()) {
-            setViewControllers([viewController], direction: .forward, animated: false)
-            updateCurrentItem()
-        }
+        let viewController = factory.makeViewController(with: viewModel.getCurrentItem())
+        setViewControllers([viewController], direction: .forward, animated: false)
+        updateCurrentItem()
     }
 
     private func makeBarButtons() -> [UIBarButtonItem] {
@@ -128,11 +127,7 @@ final class PhotosPreviewViewController<ViewModel: PhotosPreviewViewModelProtoco
     }
 
     private func makeViewController(with item: PhotosPreviewItem?) -> UIViewController? {
-        if let item = item {
-            return factory.makeViewController(with: item)
-        } else {
-            return nil
-        }
+        return item.map(factory.makeViewController)
     }
 
     func pageViewController(_ pageViewController: UIPageViewController, didFinishAnimating finished: Bool, previousViewControllers: [UIViewController], transitionCompleted completed: Bool) {

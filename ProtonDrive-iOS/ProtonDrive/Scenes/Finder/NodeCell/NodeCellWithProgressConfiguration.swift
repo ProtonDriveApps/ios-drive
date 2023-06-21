@@ -89,7 +89,7 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
     }
 
     private var thumbnail: Thumbnail? {
-        file?.activeRevision?.thumbnail
+        file?.activeRevision?.thumbnails.first
     }
     
     var buttons: [NodeCellButton] {

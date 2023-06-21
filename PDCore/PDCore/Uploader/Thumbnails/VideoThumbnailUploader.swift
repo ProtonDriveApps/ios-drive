@@ -18,17 +18,25 @@
 import AVFoundation
 
 final class VideoThumbnailProvider: ThumbnailProvider {
+
     var next: ThumbnailProvider?
 
-    func getThumbnail(from url: URL) -> Image? {
-        guard MimeType(fromFileExtension: url.pathExtension)?.isVideo == true else { return next?.getThumbnail(from: url) }
+    init(next: ThumbnailProvider? = nil) {
+        self.next = next
+    }
+
+    func getThumbnail(from url: URL, ofSize size: CGSize) -> Image? {
+        guard MimeType(fromFileExtension: url.pathExtension)?.isVideo == true else {
+            return next?.getThumbnail(from: url, ofSize: size)
+        }
 
         let asset = AVURLAsset(url: url)
         let imageGenerator = AVAssetImageGenerator(asset: asset)
         imageGenerator.appliesPreferredTrackTransform = true
-        imageGenerator.maximumSize = self.maximumSize
+        imageGenerator.maximumSize = size
 
         guard let image = try? imageGenerator.copyCGImage(at: .zero, actualTime: nil) else { return nil }
         return image
     }
+
 }

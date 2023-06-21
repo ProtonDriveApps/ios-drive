@@ -51,8 +51,17 @@ struct IncompleteThumbnail: ThumbnailModel, Equatable {
 /// `UploadableThumbnail` a thumbnail ready to start the uploading process, but for which we don't yet have the URL to be uploaded.
 struct UploadableThumbnail: ThumbnailModel, Equatable {
     let id: Identifier
+    let type: Int
     let encrypted: Data
     let sha256: Data
+
+    var size: Int {
+        encrypted.count
+    }
+
+    var hash: String {
+        sha256.base64EncodedString()
+    }
 }
 
 /// `FullUploadableThumbnail` represents a thumbnail ready to be uploaded, the uploadURL property is the URL where the encrypted data should be uploaded.

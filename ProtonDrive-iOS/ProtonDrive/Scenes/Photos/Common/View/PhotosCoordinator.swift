@@ -20,11 +20,15 @@ import UIKit
 import ProtonCore_Foundations
 
 final class PhotosCoordinator: PhotosRootCoordinator, PhotosPermissionsCoordinator, PhotoItemCoordinator {
+    private let container: PhotosScenesContainer
     weak var rootViewController: UIViewController?
-    weak var container: PhotosContainer?
 
     private var navigationViewController: UINavigationController? {
         rootViewController?.navigationController
+    }
+
+    init(container: PhotosScenesContainer) {
+        self.container = container
     }
 
     func openMenu() {
@@ -38,10 +42,7 @@ final class PhotosCoordinator: PhotosRootCoordinator, PhotosPermissionsCoordinat
     }
 
     func openPreview(with id: PhotoId) {
-        guard let container = container else {
-            return
-        }
-        let viewController = container.makePreviewViewController(with: id)
+        let viewController = container.makePreviewController(id: id)
         viewController.modalPresentationStyle = .fullScreen
         navigationViewController?.present(viewController, animated: true)
     }

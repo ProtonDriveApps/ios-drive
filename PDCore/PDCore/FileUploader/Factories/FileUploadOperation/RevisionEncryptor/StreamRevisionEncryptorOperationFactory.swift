@@ -25,11 +25,6 @@ final class StreamRevisionEncryptorOperationFactory: DiscreteRevisionEncryptorOp
     }
     
     override func makeThumbnailProvider() -> ThumbnailProvider {
-        let provider = CGImageThumbnailProvider()
-        
-        provider
-            .setNext(VideoThumbnailProvider())
-        
         /*
          For some PDF files with a certain structure, `PDFThumbnailProvider` (specifically, underlying `PDFPage.thumbnail(of:for:)` call) exceeds memory limit of FileProvider extension on iOS.
          That does not seem to depend on characteristics of requested thumbnail, only on inner structure of exact PDF file.
@@ -37,8 +32,7 @@ final class StreamRevisionEncryptorOperationFactory: DiscreteRevisionEncryptorOp
          So in FileProvider extensions we do not support thumbnail provider for PDFs for now.
         */
 
-        return provider
-
+        CGImageThumbnailProvider(next: VideoThumbnailProvider())
     }
 
 }

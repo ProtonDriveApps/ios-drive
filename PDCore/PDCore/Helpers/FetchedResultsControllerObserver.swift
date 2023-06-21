@@ -23,7 +23,7 @@ public final class FetchedResultsControllerObserver<ResultType: NSFetchRequestRe
 
     @Published public private(set) var cache: [ResultType] = []
 
-    public var publisher: AnyPublisher<[ResultType], Never> {
+    public func getPublisher() -> AnyPublisher<[ResultType], Never> {
         $cache.eraseToAnyPublisher()
     }
 
@@ -38,7 +38,7 @@ public final class FetchedResultsControllerObserver<ResultType: NSFetchRequestRe
             try fetchedResultsController.performFetch()
             cache = fetchedResultsController.fetchedObjects ?? []
         } catch {
-            // swiftlint:disable:next
+            // swiftlint:disable:next no_print
             print("Failed to fetch items: \(error)")
         }
     }

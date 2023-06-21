@@ -23,6 +23,7 @@ public enum CornerRadius: CGFloat {
     case medium = 4 // max 128px height
     case large = 6 // min 320px height
     case huge = 8
+    case extraHuge = 12
 }
 
 public extension View {

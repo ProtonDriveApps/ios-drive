@@ -19,7 +19,7 @@ import Foundation
 
 final class PaginatedRevisionUploaderOperation: AsynchronousOperation, UploadOperation {
 
-    let uploadID: UUID
+    let id: UUID
     let progress: Progress
 
     private let draft: FileDraft
@@ -35,7 +35,7 @@ final class PaginatedRevisionUploaderOperation: AsynchronousOperation, UploadOpe
         self.draft = draft
         self.progress = parentProgress
         self.uploader = uploader
-        self.uploadID = draft.uploadID
+        self.id = draft.uploadID
         self.onError = onError
         super.init()
     }

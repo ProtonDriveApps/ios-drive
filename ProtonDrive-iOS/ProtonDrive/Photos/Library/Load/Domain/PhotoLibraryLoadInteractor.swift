@@ -25,12 +25,14 @@ protocol PhotoLibraryLoadInteractor {
 
 final class LocalPhotoLibraryLoadInteractor: PhotoLibraryLoadInteractor {
     private let identifiersInteractor: FilteredPhotoIdentifiersInteractor
+    private let progressRepository: PhotoLibraryLoadProgressRepository
     private let resources: [PhotoLibraryIdentifiersResource]
     private var cancellables = Set<AnyCancellable>()
 
-    init(identifiersInteractor: FilteredPhotoIdentifiersInteractor, resources: [PhotoLibraryIdentifiersResource]) {
+    init(identifiersInteractor: FilteredPhotoIdentifiersInteractor, resources: [PhotoLibraryIdentifiersResource], progressRepository: PhotoLibraryLoadProgressRepository) {
         self.identifiersInteractor = identifiersInteractor
         self.resources = resources
+        self.progressRepository = progressRepository
         resources.forEach(subscribe)
     }
 
@@ -38,6 +40,8 @@ final class LocalPhotoLibraryLoadInteractor: PhotoLibraryLoadInteractor {
         resource.updatePublisher
             .filter { !$0.isEmpty }
             .sink { [weak self] identifiers in
+                let ids = Set(identifiers.map { $0.cloudIdentifier })
+                self?.progressRepository.add(ids)
                 self?.identifiersInteractor.execute(with: identifiers)
             }
             .store(in: &cancellables)

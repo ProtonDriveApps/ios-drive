@@ -17,7 +17,7 @@
 
 extension Revision {
     var unsafeFullUploadableThumbnail: FullUploadableThumbnail? {
-        thumbnail?.unsafeFullUploadableThumbnail
+        thumbnails.first?.unsafeFullUploadableThumbnail
     }
 
     var unsafeFullUploadableBlocks: [FullUploadableBlock] {
@@ -34,5 +34,9 @@ extension Revision {
 
     func uploadedBlocks() -> [UploadBlock] {
         unsafeSortedUploadBlocks.filter({ $0.isUploaded })
+    }
+
+    func uploadedThumbnails() -> [Thumbnail] {
+        thumbnails.filter({ $0.isUploaded }).sorted(by: { $0.type.rawValue < $1.type.rawValue })
     }
 }

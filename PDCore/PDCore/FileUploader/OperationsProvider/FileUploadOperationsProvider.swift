@@ -17,6 +17,6 @@
 
 import Foundation
 
-protocol FileUploadOperationsProvider {
-    func getOperations(for draft: FileDraft, completion: @escaping OnUploadCompletion) -> [Operation]
+public protocol FileUploadOperationsProvider {
+    func getOperations(for draft: FileDraft, completion: @escaping OnUploadCompletion) -> any UploadOperation
 }

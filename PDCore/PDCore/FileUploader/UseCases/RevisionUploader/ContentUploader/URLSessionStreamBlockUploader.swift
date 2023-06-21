@@ -62,7 +62,7 @@ final class URLSessionStreamBlockUploader: URLSessionContentUploader {
         guard !isCancelled else { return }
 
         guard let credential = credentialProvider.clientCredential() else {
-            return completion(.failure(Uploader.Errors.noCredentialInCloudSlot))
+            return completion(.failure(UploaderErrors.noCredentialInCloudSlot))
         }
 
         self.completion = completion

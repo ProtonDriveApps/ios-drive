@@ -20,8 +20,7 @@ import PDCore
 
 protocol EnumeratorWithChanges: LogObject {
     var shareID: String { get }
-    var eventsProcessor: EventsProcessor { get }
-    var eventsConveyor: EventsConveyor { get }
+    var eventsManager: EventsSystemManager { get }
     var fileSystemSlot: FileSystemSlot { get }
     var cloudSlot: CloudSlot { get }
 }
@@ -38,7 +37,7 @@ extension EnumeratorWithChanges {
     }
 
     private func latestAnchorIOS() -> NSFileProviderSyncAnchor? {
-        guard let eventID = eventsConveyor.lastProcessedEvent()?.eventId ?? cloudSlot.lastScannedEventID,
+        guard let eventID = eventsManager.lastProcessedEvent()?.eventId ?? cloudSlot.lastScannedEventID,
               let referenceDate = cloudSlot.referenceDate else
         {
             return nil
@@ -48,7 +47,7 @@ extension EnumeratorWithChanges {
     }
 
     private func latestAnchorMacOS() -> NSFileProviderSyncAnchor? {
-        guard let event = eventsConveyor.lastReceivedEvent() else {
+        guard let event = eventsManager.lastReceivedEvent() else {
             return nil
         }
 
@@ -86,7 +85,7 @@ extension EnumeratorWithChanges {
 
     private func enumerateChangesMacOS(_ observer: NSFileProviderChangeObserver, _ syncAnchor: NSFileProviderSyncAnchor) {
         // on macOS we only process events here, latestAnchor might be nil on the first run
-        self.eventsProcessor.process()
+        eventsManager.forceProcessEvents()
 
         // no known events means no changes
         guard let newSyncAnchor = self.latestAnchor() else {
@@ -115,9 +114,9 @@ extension EnumeratorWithChanges {
         var nodesToUpdate: [Node] = []
 
         do {
-            let events = try self.eventsConveyor.history(since: syncAnchor[\.eventID])
+            let events = try eventsManager.eventsHistory(since: syncAnchor[\.eventID])
             ConsoleLogger.shared?.log("History: \(events.count) events", osLogType: Self.self)
-            events.forEach{ self.categorize(row: $0, into: &nodesToUpdate, or: &itemsToDelete) }
+            events.forEach { self.categorize(row: $0, into: &nodesToUpdate, or: &itemsToDelete) }
         } catch let error {
             ConsoleLogger.shared?.log(error, osLogType: Self.self)
         }
@@ -146,7 +145,7 @@ extension EnumeratorWithChanges {
         }
     }
     
-    private func categorize(row: EventsConveyor.HistoryRow,
+    private func categorize(row: EventsSystemManager.EventsHistoryRow,
                             into nodesToUpdate: inout [Node],
                             or itemsToDelete: inout [NSFileProviderItemIdentifier])
     {

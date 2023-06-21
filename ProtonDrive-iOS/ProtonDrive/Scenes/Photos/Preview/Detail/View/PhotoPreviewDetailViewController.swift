@@ -39,8 +39,12 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
         super.viewDidLoad()
         setupView()
         subscribeToUpdates()
-        handleUpdate()
         viewModel.viewDidLoad()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        handleUpdate()
     }
 
     private func subscribeToUpdates() {
@@ -52,13 +56,15 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
 
     private func handleUpdate() {
         contentView.subviews.forEach { $0.removeFromSuperview() }
-        if let thumbnail = viewModel.thumbnail {
-            addThumbnailView(data: thumbnail)
+        guard let state = viewModel.state else {
+            return
         }
-        if let loading = viewModel.loading {
-            addLoading(text: loading)
-        }
-        if let fullPreview = viewModel.fullPreview {
+
+        switch state {
+        case let .loading(loadingText, thumbnail):
+            thumbnail.map { addThumbnailView(data: $0) }
+            addLoading(text: loadingText)
+        case let .preview(fullPreview):
             addFullPreview(fullPreview)
         }
     }
@@ -83,7 +89,7 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
 
     private func addLoading(text: String) {
         let loadingView = LoadingWithTextView(text: text)
-        view.addSubview(loadingView)
+        contentView.addSubview(loadingView)
         loadingView.centerInSuperview()
     }
 
@@ -120,5 +126,18 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
 
     func share() {
         viewModel.share()
+    }
+
+    private func getShareItem() -> Any? {
+        guard case let .preview(fullPreview) = viewModel.state else {
+            return nil
+        }
+
+        switch fullPreview {
+        case let .photo(data):
+            return data
+        case let .video(url):
+            return url
+        }
     }
 }

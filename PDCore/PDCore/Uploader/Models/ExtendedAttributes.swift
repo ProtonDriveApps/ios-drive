@@ -19,23 +19,32 @@ import Foundation
 
 public struct ExtendedAttributes: Codable {
     public let common: Common?
-
-    public init(common: Common) {
+    public let location: Location?
+    public let camera: Camera?
+    public let media: Media?
+    public let iOSPhotos: iOSPhotos?
+    
+    public init(common: ExtendedAttributes.Common? = nil, location: ExtendedAttributes.Location? = nil, camera: ExtendedAttributes.Camera? = nil, media: ExtendedAttributes.Media? = nil, iOSPhotos: ExtendedAttributes.iOSPhotos? = nil) {
         self.common = common
+        self.location = location
+        self.camera = camera
+        self.media = media
+        self.iOSPhotos = iOSPhotos
     }
 
+    enum CodingKeys: String, CodingKey {
+        case common = "Common"
+        case location = "Location"
+        case camera = "Camera"
+        case media = "Media"
+        case iOSPhotos = "iOS.photos"
+    }
+    
     public struct Common: Codable {
         public let modificationTime: String?
         public let size: Int?
         public let blockSizes: [Int]?
         public let digests: Digests?
-
-        public init(modificationTime: Date, size: Int, blockSizes: [Int], digests: Digests?) {
-            self.modificationTime = ISO8601DateFormatter().string(from: modificationTime)
-            self.size = size
-            self.blockSizes = blockSizes
-            self.digests = digests
-        }
 
         enum CodingKeys: String, CodingKey {
             case modificationTime = "ModificationTime"
@@ -48,17 +57,55 @@ public struct ExtendedAttributes: Codable {
     public struct Digests: Codable {
         public let sha1: String?
         
-        public init(sha1: String?) {
-            self.sha1 = sha1
-        }
-        
         enum CodingKeys: String, CodingKey {
             case sha1 = "SHA1"
         }
     }
 
-    enum CodingKeys: String, CodingKey {
-        case common = "Common"
+    public struct Location: Codable {
+        public let latitude: Double
+        public let longitude: Double
+
+        enum CodingKeys: String, CodingKey {
+            case latitude = "Latitude"
+            case longitude = "Longitude"
+        }
+    }
+    
+    public struct Camera: Codable {
+        public let captureTime: String?
+        public let device: String?
+        public let orientation: Int?
+        public let subjectCoordinates: [String: [Int]]?
+
+        enum CodingKeys: String, CodingKey {
+            case captureTime = "CaptureTime"
+            case device = "Device"
+            case orientation = "Orientation"
+            case subjectCoordinates = "SubjectCoordinates"
+        }
+    }
+    
+    public struct Media: Codable {
+        public let width: Int?
+        public let height: Int?
+        public let duration: Double?
+
+        enum CodfingKeys: String, CodingKey {
+            case width = "Width"
+            case height = "Height"
+            case duration = "Duration"
+        }
+    }
+    
+    public struct iOSPhotos: Codable {
+        public let iCloudID: String?
+        public let modificationDate: String?
+        
+        enum CodingKeys: String, CodingKey {
+            case iCloudID = "ICloudID"
+            case modificationDate = "ModificationDate"
+        }
     }
 
     func encoded() throws -> Data {

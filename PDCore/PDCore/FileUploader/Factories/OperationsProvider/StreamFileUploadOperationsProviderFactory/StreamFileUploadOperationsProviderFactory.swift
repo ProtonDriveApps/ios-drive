@@ -50,9 +50,7 @@ final class StreamFileUploadOperationsProviderFactory: FileUploadOperationsProvi
             fileDraftUploaderOperationFactory: fileDraftCreator,
             revisionCreatorOperationFactory: revisionDraftCreator,
             revisionUploaderOperationFactory: revisionUploader,
-            revisionSealerOperationFactory: revisionCommitter,
-            completedStepsFileUploadOperationFactory: ImmediatelyFinishingOperationFactory(),
-            mainFileUploaderOperationFactory: MainFileUploaderOperationFactory()
+            revisionSealerOperationFactory: revisionCommitter
         )
     }
 

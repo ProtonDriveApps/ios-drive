@@ -8,7 +8,7 @@
   "authors": "Anatoly Rosencrantz",
   "swift_versions": "5.5",
   "platforms": {
-    "ios": "13.0",
+    "ios": "15.0",
     "osx": "11.0"
   },
   "source": {
@@ -25,7 +25,7 @@
     "ProtonCore-Services": [
 
     ],
-    "ProtonCore-Payments/Crypto-patched-Go1.20.2": [
+    "ProtonCore-Payments/Crypto-patched-Go": [
 
     ]
   },

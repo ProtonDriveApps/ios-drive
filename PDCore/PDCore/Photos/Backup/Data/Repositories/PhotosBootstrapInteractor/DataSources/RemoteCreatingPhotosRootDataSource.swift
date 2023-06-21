@@ -40,11 +40,8 @@ public final class RemoteCreatingPhotosRootDataSource: PhotosDeviceDataSource {
             throw Volume.InvalidState(message: "No volume found while trying to create photos share.")
         }
 
-        let volumeID = try await moc.perform {
-            guard let id = volume.id else {
-                throw volume.invalidState("Volume should have id.")
-            }
-            return id
+        let volumeID = await moc.perform {
+            volume.id
         }
 
         let signersKit = try sessionVault.make(forSigner: .main)

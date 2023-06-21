@@ -36,7 +36,7 @@ public class PostLoginServices: LogObject {
                 appGroup: SettingsStorageSuite,
                 storage: StorageManager? = nil,
                 eventObservers: [EventsListener] = [],
-                processEventsLocally: Bool = true)
+                eventProcessingMode: DriveEventsLoopMode)
     {
         self.initialServices = initialServices
         self.storage = storage ?? StorageManager(suite: appGroup, sessionVault: initialServices.sessionVault)
@@ -50,7 +50,7 @@ public class PostLoginServices: LogObject {
                            clientConfig: initialServices.clientConfig,
                            network: initialServices.networkService,
                            eventObservers: eventObservers,
-                           processEventsLocally: processEventsLocally)
+                           eventProcessingMode: eventProcessingMode)
         
         self.initialServices.networkClient.publisher(for: \.currentActivity)
             .compactMap { $0 }

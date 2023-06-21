@@ -18,13 +18,13 @@
 import Foundation
 import CoreData
 
-final class NewFileRevisionCommitter: RevisionCommitter {
+class NewFileRevisionCommitter: RevisionCommitter {
     
-    private let cloudRevisionCommiter: CloudRevisionCommiter
-    private let signersKitFactory: SignersKitFactoryProtocol
-    private let moc: NSManagedObjectContext
+    let cloudRevisionCommiter: CloudRevisionCommiter
+    let signersKitFactory: SignersKitFactoryProtocol
+    let moc: NSManagedObjectContext
 
-    private var isCancelled = false
+    var isCancelled = false
 
     init(
         cloudRevisionCommiter: CloudRevisionCommiter,
@@ -63,7 +63,7 @@ final class NewFileRevisionCommitter: RevisionCommitter {
         }
     }
 
-    private func getCommitableRevision(from file: File) throws -> CommitableRevision {
+    func getCommitableRevision(from file: File) throws -> CommitableRevision {
         return try moc.performAndWait {
             guard let revision = file.activeRevisionDraft else {
                 throw file.invalidState("File should have an active revision draft.")
@@ -83,18 +83,18 @@ final class NewFileRevisionCommitter: RevisionCommitter {
             let signatureAddress = signersKit.address.email
 
             let uploadedBlocks = revision.uploadedBlocks().compactMap(\.asUploadedBlock)
+            let uploadedThumbnails = revision.uploadedThumbnails().compactMap(\.asUploadedThumbnail)
 
-            var partialContentHashes: [Data] = []
-            if let uploadedThumbnail = revision.thumbnail?.asUploadedThumbnail{
-                partialContentHashes.append(uploadedThumbnail.sha256)
-            }
-            let contentHashes = uploadedBlocks.reduce(into: partialContentHashes) { $0.append($1.sha256) }
+            let partialHashes = uploadedThumbnails.reduce(into: []) { $0.append($1.sha256) }
+            let contentHashes = uploadedBlocks.reduce(into: partialHashes) { $0.append($1.sha256) }
 
             let manifestSignature = try Encryptor.sign(
                 list: Data(contentHashes.joined()),
                 addressKey: addressKey,
                 addressPassphrase: addressPassphrase
             )
+
+            let photo = try getPhotoIfNeeded(revision: revision)
 
             return CommitableRevision(
                 shareID: revision.file.shareID,
@@ -103,9 +103,14 @@ final class NewFileRevisionCommitter: RevisionCommitter {
                 blockList: uploadedBlocks.map { CommitableBlock(index: $0.index, token: $0.token) },
                 manifestSignature: manifestSignature,
                 signatureAddress: signatureAddress,
-                xAttributes: revision.xAttributes
+                xAttributes: revision.xAttributes,
+                photo: photo
             )
         }
+    }
+
+    func getPhotoIfNeeded(revision: Revision) throws -> CommitableRevision.Photo? {
+        return nil
     }
 
     func finalizeRevision(in file: File, commitableRevision: CommitableRevision, completion: @escaping Completion) {
@@ -129,8 +134,8 @@ final class NewFileRevisionCommitter: RevisionCommitter {
 
             do {
                 try moc.saveOrRollback()
-                /// Perform immediately after saving 🚨, to ensure that there are no changes to the object’s relationships.
-                /// https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/CoreData/FaultingandUniquing.html
+                // Perform immediately after saving 🚨, to ensure that there are no changes to the object’s relationships.
+                // https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/CoreData/FaultingandUniquing.html
                 self.moc.refresh(revision, mergeChanges: false)
                 completion(.success)
             } catch let error {
@@ -199,7 +204,7 @@ extension Revision {
     }
 
     func unsetUploadedStateForThumbnail() {
-        thumbnail?.unsetUploadedState()
+        thumbnails.forEach { $0.unsetUploadedState() }
     }
 }
 

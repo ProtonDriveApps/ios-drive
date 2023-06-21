@@ -61,7 +61,7 @@ class URLSessionDataTaskUploader {
         task?.resume()
     }
 
-    func handle(_ result: Result<(Data, HTTPURLResponse),Error>, completion: @escaping (Result<Void, Error>) -> Void) {
+    func handle(_ result: Result<(Data, HTTPURLResponse), Error>, completion: @escaping (Result<Void, Error>) -> Void) {
         switch result {
         case .success((let data, let httpResponse)):
             do {

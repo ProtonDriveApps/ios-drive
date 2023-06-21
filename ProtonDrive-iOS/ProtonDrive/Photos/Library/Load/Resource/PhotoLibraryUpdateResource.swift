@@ -22,6 +22,7 @@ import PDCore
 final class LocalPhotoLibraryUpdateResource: NSObject, PhotoLibraryIdentifiersResource, PHPhotoLibraryChangeObserver {
     private let updateSubject = PassthroughSubject<PhotoIdentifiers, Never>()
     private let mappingResource: PhotoLibraryMappingResource
+    private var fetchResult: PHFetchResult<PHAsset>?
 
     var updatePublisher: AnyPublisher<PhotoIdentifiers, Never> {
         updateSubject.eraseToAnyPublisher()
@@ -32,6 +33,7 @@ final class LocalPhotoLibraryUpdateResource: NSObject, PhotoLibraryIdentifiersRe
     }
 
     func execute() {
+        fetchResult = PHAsset.fetchAssets(with: nil)
         PHPhotoLibrary.shared().register(self)
     }
 
@@ -42,11 +44,18 @@ final class LocalPhotoLibraryUpdateResource: NSObject, PhotoLibraryIdentifiersRe
     // MARK: - PHPhotoLibraryChangeObserver
 
     func photoLibraryDidChange(_ changeInstance: PHChange) {
-        let fetchResult = PHAsset.fetchAssets(with: nil)
+        guard let fetchResult = fetchResult else {
+            return
+        }
+        
         let details = changeInstance.changeDetails(for: fetchResult)
         let insertedObjects = details?.insertedObjects ?? []
         let changedObjects = details?.changedObjects ?? []
         let assets = mappingResource.map(assets: insertedObjects + changedObjects)
+        guard !assets.isEmpty else {
+            return
+        }
+
         DispatchQueue.main.async { [weak self] in
             self?.updateSubject.send(assets)
         }

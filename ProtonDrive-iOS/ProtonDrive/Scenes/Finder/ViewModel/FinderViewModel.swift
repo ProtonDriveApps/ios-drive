@@ -231,7 +231,7 @@ extension FinderViewModel where Self: UploadingViewModel, Self.Model: UploadsLis
         self.childrenUploadCancellable = self.model.childrenUploading()
         .catch {  [weak self] error -> Empty<([File], [FileUploader.OperationID: FileUploader.CurrentProgress]), Error> in
             switch error {
-            case Uploader.Errors.canceled:
+            case UploaderErrors.canceled:
                 break // not all errors should be propagated to UI
 
             case let error where error is CloudSlot.Errors:

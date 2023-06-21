@@ -68,18 +68,18 @@ protocol CloudContentCreator {
 
 extension CloudSlot: CloudContentCreator {
     func create(from revision: UploadableRevision, onCompletion: @escaping CloudContentCreator.Completion) {
-        let parameters = NewBlocksParameters(
-            blockList: revision.blocks.map(NewBlockMeta.init),
-            thumbnail: NewThumbnailMeta(thumbnail: revision.thumbnail),
+        let parameters = NewPhotoBlocksParameters(
             addressID: revision.addressID,
             shareID: revision.shareID,
             linkID: revision.nodeID,
-            revisionID: revision.revisionID
+            revisionID: revision.revisionID,
+            blockList: revision.blocks.map { .init(size: $0.size, index: $0.index, encSignature: $0.encryptedSignature, hash: $0.hash) },
+            thumbnailList: revision.thumbnails.map { .init(size: $0.size, type: $0.type, hash: $0.hash) }
         )
 
         client.postBlocks(
             parameters: parameters,
-            completion: { onCompletion($0.map { revision.makeFull(blockLinks: $0, thumbnailLink: $1) }) }
+            completion: { onCompletion($0.map { revision.makeFull(blockLinks: $0.blocks, thumbnailLinks: $0.thumbnails) }) }
         )
     }
 }
@@ -91,12 +91,15 @@ protocol CloudRevisionCommiter {
 
 extension CloudSlot: CloudRevisionCommiter {
     func commit(_ revision: CommitableRevision, completion: @escaping (Result<Void, Error>) -> Void) {
+        var photoParameter: UpdateRevisionParameters.Photo?
+        if let photo = revision.photo {
+            photoParameter = UpdateRevisionParameters.Photo(captureTime: photo.captureTime, mainPhotoID: photo.mainPhotoID, exif: photo.exif)
+        }
         let parameters = UpdateRevisionParameters(
-            state: .active,
-            blockList: revision.blockList.map { UpdateRevisionBlocks(index: $0.index, token: $0.token) },
             manifestSignature: revision.manifestSignature,
             signatureAddress: revision.signatureAddress,
-            extendedAttributes: revision.xAttributes
+            extendedAttributes: revision.xAttributes,
+            photo: photoParameter
         )
 
         client.putRevision(

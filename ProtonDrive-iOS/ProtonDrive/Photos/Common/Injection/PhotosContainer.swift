@@ -21,100 +21,67 @@ import UIKit
 final class PhotosContainer {
     private let tower: Tower
     private let backupController: PhotosBackupController
+    private let networkConstraintController: PhotoBackupConstraintController
     private let constraintsController: PhotoBackupConstraintsController
     private let loadController: PhotoLibraryLoadController
     private let assetsController: PhotoAssetsController
     let operationInteractor: OperationInteractor
+    private let uploader: PhotoUploader
     private let settingsController: PhotoBackupSettingsController
     private let authorizationController: PhotoLibraryAuthorizationController
     private let bootstrapController: PhotosBootstrapController
-
-    // We need to keep same reference for every constructed scene, but want them released when all screens are dismissed.
-    private weak var galleryController: PhotosGalleryController?
-    private weak var smallThumbnailsController: ThumbnailsController?
-    private weak var previewModeController: PhotosPreviewModeController?
-    private weak var detailController: PhotoPreviewDetailController?
-    private weak var previewController: PhotosPreviewController?
+    private let backupProgressController: PhotosBackupProgressController
+    // Child containers
+    lazy var settingsContainer = makeSettingsContainer()
 
     init(tower: Tower) {
         self.tower = tower
         let factory = PhotosFactory()
+        let devicesObserver = FetchedResultsControllerObserver(controller: tower.storage.subscriptionToPhotoDevices())
         let queueResource = factory.makeAssetsQueueResource()
-        let assetsInteractor = factory.makeAssetsInteractor(queueResource: queueResource, tower: tower)
+        let progressRepository = factory.makeBackupProgressRepository()
+        backupProgressController = factory.makeBackupProgressController(tower: tower, repository: progressRepository)
+        let assetsInteractor = factory.makeAssetsInteractor(observer: devicesObserver, queueResource: queueResource, tower: tower, progressRepository: progressRepository)
         operationInteractor = factory.makeAssetsOperationInteractor(queueResource: queueResource)
         let settingsController = factory.makeSettingsController(localSettings: tower.localSettings)
         let authorizationController = factory.makeAuthorizationController()
         let bootstrapController = factory.makePhotosBootstrapController(tower: tower)
         let backupController = factory.makeBackupController(settingsController: settingsController, authorizationController: authorizationController, bootstrapController: bootstrapController)
-        let constraintsController = factory.makeConstraintsController(backupController: backupController, settingsController: settingsController)
-        loadController = factory.makeLoadController(backupController: backupController, assetsInteractor: assetsInteractor, tower: tower)
+        let networkConstraintController = factory.makeNetworkConstraintController(backupController: backupController, settingsController: settingsController)
+        self.networkConstraintController = networkConstraintController
+        let constraintsController = factory.makeConstraintsController(backupController: backupController, settingsController: settingsController, networkConstraintController: networkConstraintController)
+        loadController = factory.makeLoadController(backupController: backupController, assetsInteractor: assetsInteractor, tower: tower, progressRepository: progressRepository)
         assetsController = factory.makeAssetsController(constraintsController: constraintsController, interactor: assetsInteractor)
         self.constraintsController = constraintsController
         self.backupController = backupController
         self.authorizationController = authorizationController
         self.settingsController = settingsController
         self.bootstrapController = bootstrapController
+        self.uploader = factory.makePhotoUploader(tower: tower)
+    }
+
+    private func makeSettingsContainer() -> PhotosSettingsContainer {
+        let dependencies = PhotosSettingsContainer.Dependencies(
+            settingsController: settingsController,
+            authorizationController: authorizationController,
+            bootstrapController: bootstrapController
+        )
+        return PhotosSettingsContainer(dependencies: dependencies)
     }
 
     // MARK: Views
 
     func makeRootViewController() -> UIViewController {
-        let factory = PhotosScenesFactory()
-        let coordinator = factory.makeCoordinator(container: self)
-        return factory.makeRootPhotosViewController(
-            coordinator: coordinator,
-            viewModel: factory.makeRootViewModel(coordinator: coordinator, settingsController: settingsController, authorizationController: authorizationController),
-            onboardingView: { [unowned self] in
-                factory.makeOnboardingView(settingsController: settingsController, authorizationController: authorizationController, bootstrapController: bootstrapController)
-            },
-            permissionsView: {
-                factory.makePermissionsView(coordinator: coordinator)
-            },
-            galleryView: { [unowned self] in
-                factory.makeGalleryView(tower: tower, coordinator: coordinator, galleryController: getGalleryController(), thumbnailsController: getSmallThumbnailsController())
-            }
+        let dependencies = PhotosScenesContainer.Dependencies(
+            tower: tower,
+            backupController: backupController,
+            settingsController: settingsController,
+            authorizationController: authorizationController,
+            bootstrapController: bootstrapController,
+            networkConstraintController: networkConstraintController,
+            backupProgressController: backupProgressController
         )
-    }
-
-    func makePreviewViewController(with id: PhotoId) -> UIViewController {
-        let factory = PhotosScenesFactory()
-        return factory.makePreviewViewController(previewController: getPreviewController(id: id), galleryController: getGalleryController(), container: self, modeController: getPreviewModeController(), detailController: getDetailController())
-    }
-
-    func makePreviewDetailViewController(with id: PhotoId) -> UIViewController {
-        let factory = PhotosScenesFactory()
-        return factory.makeDetailViewController(id: id, thumbnailsController: getSmallThumbnailsController(), modeController: getPreviewModeController(), previewController: getPreviewController(id: id), detailController: getDetailController())
-    }
-
-    // MARK: - Cached controllers
-
-    private func getGalleryController() -> PhotosGalleryController {
-        let galleryController = galleryController ?? PhotosScenesFactory().makeGalleryController(tower: tower)
-        self.galleryController = galleryController
-        return galleryController
-    }
-
-    private func getSmallThumbnailsController() -> ThumbnailsController {
-        let smallThumbnailsController = smallThumbnailsController ?? PhotosScenesFactory().makeSmallThumbnailsController(tower: tower)
-        self.smallThumbnailsController = smallThumbnailsController
-        return smallThumbnailsController
-    }
-
-    private func getPreviewController(id: PhotoId) -> PhotosPreviewController {
-        let previewController = previewController ?? PhotosScenesFactory().makePreviewController(galleryController: getGalleryController(), currentId: id)
-        self.previewController = previewController
-        return previewController
-    }
-
-    private func getPreviewModeController() -> PhotosPreviewModeController {
-        let previewModeController = previewModeController ?? PhotosScenesFactory().makePreviewModeController()
-        self.previewModeController = previewModeController
-        return previewModeController
-    }
-
-    private func getDetailController() -> PhotoPreviewDetailController {
-        let detailController = detailController ?? PhotosScenesFactory().makeDetailController(tower: tower)
-        self.detailController = detailController
-        return detailController
+        let container = PhotosScenesContainer(dependencies: dependencies)
+        return container.makeRootViewController()
     }
 }

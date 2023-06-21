@@ -34,6 +34,7 @@ final class HumanVerification {
             "Code": 9001,
             "Error": "Human verification required",
             "Details": {
+                "Title": "Human verification",
                 "HumanVerificationMethods": ["captcha", "sms", "email", "payment", "invite", "coupon"],
                 "HumanVerificationToken": "signup"
             },

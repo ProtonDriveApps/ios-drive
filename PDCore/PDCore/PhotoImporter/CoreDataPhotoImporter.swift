@@ -19,19 +19,21 @@ import Foundation
 import CoreData
 
 public class CoreDataPhotoImporter: PhotoImporter {
+
     private let moc: NSManagedObjectContext
-    private let root: Folder
+    private let rootRepository: PhotosRootFolderRepository
     private let signersKitFactory: SignersKitFactoryProtocol
 
-    public init(moc: NSManagedObjectContext, root: Folder, signersKitFactory: SignersKitFactoryProtocol) {
+    public init(moc: NSManagedObjectContext, rootRepository: PhotosRootFolderRepository, signersKitFactory: SignersKitFactoryProtocol) {
         self.moc = moc
-        self.root = root
+        self.rootRepository = rootRepository
         self.signersKitFactory = signersKitFactory
     }
 
     public func `import`(_ asset: PhotoAsset) throws -> PDCore.Photo {
         try moc.performAndWait {
             let signersKit = try signersKitFactory.make(forSigner: .main)
+            let root = try rootRepository.get()
             let parent = try root.encrypting()
 
             let uuid = UUID()
@@ -60,7 +62,19 @@ public class CoreDataPhotoImporter: PhotoImporter {
             coreDataPhoto.uploadID = uuid
             coreDataPhoto.createdDate = Date()
             coreDataPhoto.modifiedDate = Date()
-            coreDataPhoto.timestamp = asset.metadata.creationDate ?? Date()
+            coreDataPhoto.captureTime = asset.metadata.creationDate ?? Date()
+
+            // Temporary values
+            let metadata = TemporalMetadata(
+                location: nil,
+                camera: nil,
+                media: .init(width: asset.metadata.width, height: asset.metadata.height, duration: asset.metadata.duration),
+                iOSPhotos: .init(iCloudID: asset.metadata.cloudIdentifier, modificationDate: ISO8601DateFormatter().string(asset.metadata.modifiedDate))
+            ).base64Encoded()
+            coreDataPhoto.tempBase64Metadata = metadata
+
+            // Start Photo with the uploading state
+            coreDataPhoto.state = .uploading
             
             let signingKeyRing = try Decryptor.buildPrivateKeyRing(decryptionKeys: [.init(privateKey: signersKit.addressKey.privateKey, passphrase: signersKit.addressPassphrase)])
             defer { signingKeyRing.clearPrivateParams() }
@@ -72,19 +86,9 @@ public class CoreDataPhotoImporter: PhotoImporter {
                 signingKeyRing: signingKeyRing
             )
 
-            let encodedPhotoMetadata = try JSONEncoder().encode(PhotoMetadata(asset.metadata))
-            let encryptedPhotoMetadata = try Encryptor.encryptAndSignBinaryWithSessionKey(
-                clearData: encodedPhotoMetadata,
-                sessionKey: contentPack.contentSessionKey,
-                signingKeyRing: signingKeyRing
-            )
-
             // Create new Revision
             let coreDataPhotoRevision: PhotoRevision = NSManagedObject.newWithValue(uuid.uuidString, by: "id", in: moc)
             coreDataPhotoRevision.exif = encryptedExif.base64EncodedString()
-            coreDataPhotoRevision.sha256Exif = Decryptor.hashSha256(encryptedExif)
-            coreDataPhotoRevision.metadata = encryptedPhotoMetadata.base64EncodedString()
-            coreDataPhotoRevision.sha256Metadata = Decryptor.hashSha256(encryptedPhotoMetadata)
             coreDataPhotoRevision.uploadState = .created
             coreDataPhotoRevision.uploadableResourceURL = asset.url
             coreDataPhotoRevision.signatureAddress = signersKit.address.email

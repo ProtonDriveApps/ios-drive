@@ -16,5 +16,5 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 protocol FileUploadOperationFactory {
-    func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> OperationWithProgress
+    func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> any UploadOperation
 }

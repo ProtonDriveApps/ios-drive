@@ -33,7 +33,7 @@ final class LocalPhotosRepository: PhotosRepository {
     init(storageManager: StorageManager) {
         self.storageManager = storageManager
         managedObjectContext = storageManager.backgroundContext
-        let fetchedController = storageManager.subscriptionToPhotos(moc: managedObjectContext)
+        let fetchedController = storageManager.subscriptionToPrimaryUploadedPhotos(moc: managedObjectContext)
         observer = FetchedObjectsObserver(fetchedController)
         subscribeToUpdates()
         observer.start()
@@ -60,11 +60,17 @@ final class LocalPhotosRepository: PhotosRepository {
             guard !models.isEmpty else {
                 return nil
             }
-            return PhotosSection(month: photos[0].timestamp, photos: models)
+            return PhotosSection(month: photos[0].captureTime, photos: models)
         }
     }
 
     private func makePhoto(from photo: Photo) -> PhotosSection.Photo {
-        return PhotosSection.Photo(id: photo.identifier, duration: nil) // TODO: next MR read duration from metadata
+        let duration = makeDuration(from: photo)
+        return PhotosSection.Photo(id: photo.identifier, duration: duration)
+    }
+
+    private func makeDuration(from photo: Photo) -> UInt? {
+        let duration = try? photo.photoRevision.decryptExtendedAttributes().media?.duration
+        return duration.map { UInt($0) }
     }
 }

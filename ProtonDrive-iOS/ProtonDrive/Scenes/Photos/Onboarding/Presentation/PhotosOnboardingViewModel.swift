@@ -17,24 +17,61 @@
 
 import PDCore
 
+struct PhotosOnboardingViewData {
+    let title: String
+    let rows: [Row]
+    let button: String
+
+    struct Row: Identifiable {
+        var id: String {
+            title
+        }
+
+        let icon: Icon
+        let title: String
+        let subtitle: String
+
+        enum Icon {
+            case lock
+            case rotatingArrows
+        }
+    }
+}
+
 protocol PhotosOnboardingViewModelProtocol {
+    var data: PhotosOnboardingViewData { get }
     func enableBackup()
 }
 
 final class PhotosOnboardingViewModel: PhotosOnboardingViewModelProtocol {
-    private let settingsController: PhotoBackupSettingsController
-    private let authorizationController: PhotoLibraryAuthorizationController
-    private let photosBootstrapController: PhotosBootstrapController
+    private let startController: PhotosBackupStartController
 
-    init(settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController, photosBootstrapController: PhotosBootstrapController) {
-        self.settingsController = settingsController
-        self.authorizationController = authorizationController
-        self.photosBootstrapController = photosBootstrapController
+    lazy var data: PhotosOnboardingViewData = makeData()
+
+    init(startController: PhotosBackupStartController) {
+        self.startController = startController
     }
 
     func enableBackup() {
-        settingsController.setEnabled(true)
-        authorizationController.authorize()
-        photosBootstrapController.bootstrap()
+        startController.start()
+    }
+
+    private func makeData() -> PhotosOnboardingViewData {
+        PhotosOnboardingViewData(
+            title: "Encrypt and back up your photos and videos",
+            rows: [
+                .init(
+                    icon: .lock,
+                    title: "Protect your memories",
+                    subtitle: "Your photos are end-to-end encrypted, ensuring total privacy."
+                ),
+                .init(
+                    icon: .rotatingArrows,
+                    title: "Effortless backups",
+                    subtitle: "Photos are backed up over WiFi in their original quality."
+                ),
+            ],
+            button: "Turn on backup"
+        )
     }
 }

@@ -19,14 +19,14 @@ import Foundation
 
 struct NewBlocksEndpoint: Endpoint {
     public struct Response: Codable {
-        var code: Int
-        var uploadLinks: [BlockUploadLink]
-        var thumbnailLink: ThumbnailUploadLink?
+        let code: Int
+        let uploadLinks: [ContentUploadLink]
+        let thumbnailLinks: [ContentUploadLink]?
     }
     
     var request: URLRequest
     
-    init(parameters: NewBlocksParameters, service: APIService, credential: ClientCredential) {
+    init(parameters: NewPhotoBlocksParameters, service: APIService, credential: ClientCredential) {
         // url
         let url = service.url(of: "/blocks")
         

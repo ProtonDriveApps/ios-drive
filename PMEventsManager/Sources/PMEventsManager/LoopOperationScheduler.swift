@@ -20,7 +20,7 @@ import Foundation
 class LoopOperationScheduler<Loop: EventsLoop> {
     private typealias Response = Loop.Response
     
-    private let loop: Loop
+    internal let loop: Loop
     private let queue: OperationQueue
     
     init(loop: Loop, queue: OperationQueue) {

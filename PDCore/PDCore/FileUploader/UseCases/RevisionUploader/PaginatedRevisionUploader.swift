@@ -70,24 +70,25 @@ final class PaginatedRevisionUploader: RevisionUploader {
             let addressID = try signersKitFactory.make(forSigner: .address(identifier.signatureEmail)).address.addressID
 
             let uploadBlocks = revision.blocks.compactMap(\.asUploadBlock)
-            let uploadedBlocks = uploadBlocks.filter { !$0.isUploaded }
-            var blocksGroups = uploadedBlocks.splitInGroups(of: pageSize)
+            let nonUploadedBlocks = uploadBlocks.filter { !$0.isUploaded }
+
+            let uploadThumbnails = Array(revision.thumbnails)
+            let nonUploadedThumbnails = uploadThumbnails.filter { !$0.isUploaded }
+
+            var blocksGroups = nonUploadedBlocks.splitInGroups(of: pageSize)
 
             var pages: [RevisionPage] = []
-            if let thumbnail = revision.thumbnail, !thumbnail.isUploaded {
-                let group1 = blocksGroups.removeFirst()
-                let page1 = RevisionPage(identifier: identifier, addressID: addressID, revision: revision, blocks: group1, thumbnail: thumbnail)
-                pages.append(page1)
-            } else {
-                // We assume that if we do not have a thumbnail we can consider this task completed
-                updateProgress(uploadedThumbnails: 1)
-            }
+            let group1 = blocksGroups.removeLast()
+            let page1 = RevisionPage(identifier: identifier, addressID: addressID, revision: revision, blocks: group1, thumbnails: nonUploadedThumbnails)
+
+            pages.append(page1)
 
             for group in blocksGroups {
-                pages.append(RevisionPage(identifier: identifier, addressID: addressID, revision: revision, blocks: group, thumbnail: nil))
+                pages.append(RevisionPage(identifier: identifier, addressID: addressID, revision: revision, blocks: group, thumbnails: []))
             }
 
-            updateProgress(uploadedBlocks: uploadBlocks.count - uploadedBlocks.count)
+            updateProgress(uploadedBlocks: uploadBlocks.count - nonUploadedBlocks.count)
+            updateProgress(uploadedBlocks: uploadThumbnails.count - nonUploadedThumbnails.count)
             return (pages, revision)
         }
     }

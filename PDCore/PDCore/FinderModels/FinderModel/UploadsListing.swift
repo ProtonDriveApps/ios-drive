@@ -40,7 +40,7 @@ public struct UploaderError: Error {
 }
 
 extension UploadsListing {
-    typealias UploadError = Uploader.Errors
+    typealias UploadError = UploaderErrors
     public func childrenUploading() -> AnyPublisher<([File], [FileUploader.OperationID: FileUploader.CurrentProgress]), Error> {
         childrenUploadingObserver.objectWillChange
             .setFailureType(to: Error.self)

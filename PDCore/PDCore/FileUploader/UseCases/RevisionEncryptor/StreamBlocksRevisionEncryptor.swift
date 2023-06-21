@@ -19,7 +19,7 @@ import CoreData
 import Foundation
 
 final class StreamRevisionEncryptor: RevisionEncryptor {
-    typealias Errors = Uploader.Errors
+    typealias Errors = UploaderErrors
     
     let signersKitFactory: SignersKitFactoryProtocol
     let maxBlockSize: Int
@@ -49,7 +49,7 @@ final class StreamRevisionEncryptor: RevisionEncryptor {
                 let signersKit = try signersKitFactory.make(forSigner: .address(signatureAddress))
 
                 let uploadBlocks = try self.createEncryptedBlocks(draft.localURL, revision: revision, signersKit: signersKit)
-                self.finalize(uploadBlocks, thumbnail: nil, revision: revision, cleanupCleartext: draft.localURL, signersKit: signersKit)
+                self.finalize(uploadBlocks, revision: revision, cleanupCleartext: draft.localURL, signersKit: signersKit)
                 ConsoleLogger.shared?.log("STAGE: 1.2 Encrypt Revision 🏞📦📦 finished ✅", osLogType: FileUploader.self)
                 completion(.success(Void()))
 
@@ -115,18 +115,16 @@ extension StreamRevisionEncryptor {
         return encSignature
     }
 
-    private func finalize(_ blocks: [UploadBlock], thumbnail: Thumbnail?, revision: Revision, cleanupCleartext cleartextlUrl: URL, signersKit: SignersKit) {
+    private func finalize(_ blocks: [UploadBlock], revision: Revision, cleanupCleartext cleartextlUrl: URL, signersKit: SignersKit) {
         do {
             if !self.isCancelled {
                 blocks.forEach { $0.revision = revision }
                 revision.size = blocks.map(\.size).reduce(0, +)
                 revision.blocks = Set(blocks)
                 revision.signatureAddress = signersKit.address.email
-                revision.thumbnail = thumbnail
             } else {
                 ConsoleLogger.shared?.log("🧹 Clear blocks - Operation cancelled ", osLogType: FileUploader.self)
                 blocks.forEach(self.moc.delete)
-                [revision.thumbnail].compactMap({ $0 }).forEach(self.moc.delete)
             }
 
             try self.moc.save()

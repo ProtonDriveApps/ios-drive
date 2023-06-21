@@ -23,4 +23,12 @@ struct CommitableRevision {
     let manifestSignature: String
     let signatureAddress: String
     let xAttributes: String?
+
+    var photo: Photo?
+
+    struct Photo {
+        let mainPhotoID: String?
+        let captureTime: Int
+        let exif: String?
+    }
 }

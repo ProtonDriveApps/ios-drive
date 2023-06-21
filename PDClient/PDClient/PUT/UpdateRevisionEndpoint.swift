@@ -28,28 +28,33 @@ public struct UpdateRevisionBlocks: Codable {
 }
 
 public struct UpdateRevisionParameters: Codable {
+    let ManifestSignature: String
+    let SignatureAddress: String
+    let XAttr: String?
+    let Photo: Photo?
+
     public init(
-        state: UpdateRevisionParameters.State,
-        blockList: [UpdateRevisionBlocks],
         manifestSignature: String,
         signatureAddress: String,
-        extendedAttributes: String?
+        extendedAttributes: String?,
+        photo: Photo?
     ) {
-        self.State = state
-        self.BlockList = blockList
         self.ManifestSignature = manifestSignature
         self.SignatureAddress = signatureAddress
         self.XAttr = extendedAttributes
+        self.Photo = photo
     }
-    
-    var State: State
-    var BlockList: [UpdateRevisionBlocks]
-    var ManifestSignature: String
-    var SignatureAddress: String
-    var XAttr: String?
 
-    public enum State: Int, Codable {
-        case draft = 0, active, inactive
+    public struct Photo: Codable {
+        public let CaptureTime: Int
+        public let MainPhotoID: String?
+        public let Exif: String?
+
+        public init(captureTime: Int, mainPhotoID: String?, exif: String?) {
+            self.CaptureTime = captureTime
+            self.MainPhotoID = mainPhotoID
+            self.Exif = exif
+        }
     }
 }
 

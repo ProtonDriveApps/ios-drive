@@ -18,13 +18,20 @@
 import PDFKit
 
 final class PDFThumbnailProvider: ThumbnailProvider {
+
     var next: ThumbnailProvider?
 
-    func getThumbnail(from url: URL) -> Image? {
-        guard MimeType(fromFileExtension: url.pathExtension) == .pdf else { return next?.getThumbnail(from: url) }
+    init(next: ThumbnailProvider? = nil) {
+        self.next = next
+    }
+
+    func getThumbnail(from url: URL, ofSize size: CGSize) -> Image? {
+        guard MimeType(fromFileExtension: url.pathExtension) == .pdf else {
+            return next?.getThumbnail(from: url, ofSize: size)
+        }
 
         let document = PDFDocument(url: url)?.page(at: .zero)
-        let image = document?.thumbnail(of: self.maximumSize, for: .trimBox)
+        let image = document?.thumbnail(of: size, for: .trimBox)
 
         #if os(iOS)
             return image?.cgImage

@@ -47,6 +47,7 @@ final class PhotoItemViewModel: PhotoItemViewModelProtocol {
         self.coordinator = coordinator
         duration = item.duration
         subscribeToUpdates()
+        reloadImage()
     }
 
     private func subscribeToUpdates() {

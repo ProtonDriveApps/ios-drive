@@ -132,7 +132,7 @@ extension DiscreteBlocksRevisionEncryptor {
         guard let rawContentKeyPacket = file.contentKeyPacket,
               let contentKeyPacket = Data(base64Encoded: rawContentKeyPacket) else
         {
-            throw Uploader.Errors.noFileKeyPacket
+            throw UploaderErrors.noFileKeyPacket
         }
         let nodePassphrase = try file.decryptPassphrase()
 

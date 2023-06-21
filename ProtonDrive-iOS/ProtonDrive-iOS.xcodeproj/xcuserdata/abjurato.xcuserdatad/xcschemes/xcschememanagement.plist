@@ -7,12 +7,12 @@
 		<key>ProtonDrive-iOS-External.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>14</integer>
+			<integer>4</integer>
 		</dict>
 		<key>ProtonDrive-iOS-QA.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>15</integer>
+			<integer>5</integer>
 		</dict>
 		<key>ProtonDrive-iOS-Store.xcscheme_^#shared#^_</key>
 		<dict>

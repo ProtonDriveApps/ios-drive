@@ -24,7 +24,7 @@ final class RevisionEncryptionOperation: AsynchronousOperation, UploadOperation 
     private let onError: OnError
 
     let progress: Progress
-    let uploadID: UUID
+    let id: UUID
 
     init(
         progress: Progress,
@@ -36,7 +36,7 @@ final class RevisionEncryptionOperation: AsynchronousOperation, UploadOperation 
         self.draft = draft
         self.revisionEncryptor = revisionEncryptor
         self.onError = onError
-        self.uploadID = draft.uploadID
+        self.id = draft.uploadID
         super.init()
     }
 

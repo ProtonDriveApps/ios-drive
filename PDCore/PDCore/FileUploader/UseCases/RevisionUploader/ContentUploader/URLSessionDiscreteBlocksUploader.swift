@@ -39,7 +39,7 @@ final class URLSessionDiscreteBlocksUploader: URLSessionDataTaskUploader, Conten
         guard !isCancelled else { return }
 
         guard let credential = credentialProvider.clientCredential() else {
-            return completion(.failure(Uploader.Errors.noCredentialInCloudSlot))
+            return completion(.failure(UploaderErrors.noCredentialInCloudSlot))
         }
 
         do {

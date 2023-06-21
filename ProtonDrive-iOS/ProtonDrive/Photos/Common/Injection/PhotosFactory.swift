@@ -28,8 +28,8 @@ struct PhotosFactory {
     }
 
     func makePhotosBootstrapController(tower: Tower) -> PhotosBootstrapController {
-        let observer = FetchedResultsControllerObserver(controller: tower.storage.subscriptionToPhotoDevices())
-        let local = LocalPhotosRootDataSource(observer: observer)
+        let observer = makeDevicesObserver(tower: tower)
+        let local = makeLocalPhotosRootDataSource(observer: observer)
         let remoteFetching = RemoteFetchingPhotosRootDataSource(storage: tower.storage, photoShareListing: tower.client)
         let remoteCreating = RemoteCreatingPhotosRootDataSource(storage: tower.storage, sessionVault: tower.sessionVault, photoShareCreator: tower.client)
         
@@ -43,8 +43,15 @@ struct PhotosFactory {
             )
         )
         let repository = FetchResultControllerObserverPhotosBootstrapRepository(observer: observer)
-        
         return MonitoringBootstrapController(interactor: interactor, repository: repository)
+    }
+
+    func makeDevicesObserver(tower: Tower) -> FetchedResultsControllerObserver<Device> {
+        FetchedResultsControllerObserver(controller: tower.storage.subscriptionToPhotoDevices())
+    }
+
+    func makeLocalPhotosRootDataSource(observer: FetchedResultsControllerObserver<Device>) -> PhotosDeviceDataSource {
+        LocalPhotosRootDataSource(observer: observer)
     }
 
     func makeAssetsController(constraintsController: PhotoBackupConstraintsController, interactor: PhotoLibraryAssetsInteractor) -> PhotoAssetsController {
@@ -55,16 +62,17 @@ struct PhotosFactory {
         return DrivePhotosBackupController(authorizationController: authorizationController, settingsController: settingsController, bootstrapController: bootstrapController)
     }
 
-    func makeLoadController(backupController: PhotosBackupController, assetsInteractor: PhotoLibraryAssetsInteractor, tower: Tower) -> PhotoLibraryLoadController {
+    func makeLoadController(backupController: PhotosBackupController, assetsInteractor: PhotoLibraryAssetsInteractor, tower: Tower, progressRepository: PhotoLibraryLoadProgressRepository) -> PhotoLibraryLoadController {
         let mappingResource = LocalPhotoLibraryMappingResource()
         let identifiersInteractor = LocalFilteredPhotoIdentifiersInteractor(
             resource: DatabaseFilteredPhotoIdentifiersResource(storage: tower.storage, policy: PhotoIdentifiersFilterPolicy()),
-            assetsInteractor: assetsInteractor
+            assetsInteractor: assetsInteractor,
+            progressRepository: progressRepository
         )
         let interactor = LocalPhotoLibraryLoadInteractor(identifiersInteractor: identifiersInteractor, resources: [
             LocalPhotoLibraryFetchResource(mappingResource: mappingResource),
             LocalPhotoLibraryUpdateResource(mappingResource: mappingResource),
-        ])
+        ], progressRepository: progressRepository)
         return LocalPhotoLibraryLoadController(backupController: backupController, interactor: interactor)
     }
 
@@ -84,25 +92,47 @@ struct PhotosFactory {
         return LocalPhotoLibraryAssetsQueueResource(resource: resource)
     }
 
-    func makeAssetsInteractor(queueResource: PhotoLibraryAssetsQueueResource, tower: Tower) -> LocalPhotoLibraryAssetsInteractor {
+    func makeAssetsInteractor(observer: FetchedResultsControllerObserver<Device>, queueResource: PhotoLibraryAssetsQueueResource, tower: Tower, progressRepository: PhotoLibraryLoadProgressRepository) -> LocalPhotoLibraryAssetsInteractor {
+        let datasource = LocalPhotosRootFolderDatasource(observer: observer)
+        let repository = InMemoryCachingEncryptingPhotosRootRepository(datasource: datasource)
+        let photoImporter = CoreDataPhotoImporter(moc: tower.storage.backgroundContext, rootRepository: repository, signersKitFactory: tower.sessionVault)
+        let compoundImporter = CompoundPhotoCompoundImporter(importer: photoImporter, moc: tower.storage.backgroundContext)
+        let edditedPhotoImporter = EditedAssetPhotoImportInteractor(photoCompoundImporter: compoundImporter)
         let filteredCompoundsInteractor = LocalFilteredPhotoCompoundsInteractor(
             resource: DatabaseFilteredPhotoCompoundsResource(storage: tower.storage),
-            importInteractor: DummyPhotoImportInteractor()
+            importInteractor: edditedPhotoImporter,
+            progressRepository: progressRepository
         )
         return LocalPhotoLibraryAssetsInteractor(resource: queueResource, compoundsInteractor: filteredCompoundsInteractor)
     }
 
-    func makeConstraintsController(backupController: PhotosBackupController, settingsController: PhotoBackupSettingsController) -> PhotoBackupConstraintsController {
+    func makeNetworkConstraintController(backupController: PhotosBackupController, settingsController: PhotoBackupSettingsController) -> PhotoBackupConstraintController {
+        let networkInteractor = ConnectedNetworkStateInteractor(resource: MonitoringNetworkStateResource())
+        return PhotoBackupNetworkController(backupController: backupController, settingsController: settingsController, interactor: networkInteractor)
+    }
+
+    func makeConstraintsController(backupController: PhotosBackupController, settingsController: PhotoBackupSettingsController, networkConstraintController: PhotoBackupConstraintController) -> PhotoBackupConstraintsController {
         let resource = LocalPhotoAssetsStorageSizeResource(updateResource: LocalFolderUpdateResource(), sizeResource: LocalFolderSizeResource())
         let interactor = LocalPhotoAssetsStorageConstraintInteractor(resource: resource)
         let storageController = PhotoAssetsStorageController(backupController: backupController, interactor: interactor)
-        let networkInteractor = ConnectedNetworkStateInteractor(resource: MonitoringNetworkStateResource())
-        let networkController = PhotoBackupNetworkController(backupController: backupController, settingsController: settingsController, interactor: networkInteractor)
-        return LocalPhotoBackupConstraintsController(storageController: storageController, networkController: networkController)
+        return LocalPhotoBackupConstraintsController(storageController: storageController, networkController: networkConstraintController)
     }
-}
+    
+    func makePhotoUploader(tower: Tower) -> PhotoUploader {
+        let photosObserver = FetchedResultsControllerObserver(controller: tower.storage.subscriptionToUploadingPhotos())
+        let fileUploadFactory = PhotosUploadOperationsProviderFactory(storage: tower.storage, cloudSlot: tower.cloudSlot, sessionVault: tower.sessionVault, apiService: tower.api)
+        return PhotoUploader(photosRepository: photosObserver, fileUploadFactory: fileUploadFactory.make(), storage: tower.storage, sessionVault: tower.sessionVault)
+    }
 
-// TODO: replace with real implementation
-final class DummyPhotoImportInteractor: PhotoImportInteractor {
-    func execute(with compounds: [PhotoAssetCompound]) {}
+    func makeBackupProgressRepository() -> PhotoLibraryLoadProgressActionRepository & PhotoLibraryLoadProgressRepository {
+        LocalPhotoLibraryLoadProgressActionRepository()
+    }
+
+    func makeBackupProgressController(tower: Tower, repository: PhotoLibraryLoadProgressActionRepository) -> PhotosBackupProgressController {
+        let observer = FetchedResultsControllerObserver(controller: tower.storage.subscriptionToPrimaryUploadingPhotos(moc: tower.storage.backgroundContext))
+        let libraryLoadController = LocalPhotoLibraryLoadProgressController(interactor: repository)
+        let uploadsRepository = DatabasePhotoUploadsRepository(observer: observer)
+        let uploadsController = LocalPhotosUploadsProgressController(repository: uploadsRepository)
+        return LocalPhotosBackupProgressController(libraryLoadController: libraryLoadController, uploadsController: uploadsController)
+    }
 }

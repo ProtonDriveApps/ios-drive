@@ -123,5 +123,5 @@ install_xcframework() {
   echo "Copied $source to $destination"
 }
 
-install_xcframework "${PODS_ROOT}/ProtonCore-GoLibs/vendor/Crypto-patched-Go1.20.2/GoLibs.xcframework" "ProtonCore-GoLibs/Crypto-patched-Go1.20.2" "framework" "macos-arm64_x86_64"
+install_xcframework "${PODS_ROOT}/ProtonCore-GoLibs/vendor/Crypto-patched-Go/GoLibs.xcframework" "ProtonCore-GoLibs/Crypto-patched-Go" "framework" "macos-arm64_x86_64"
 

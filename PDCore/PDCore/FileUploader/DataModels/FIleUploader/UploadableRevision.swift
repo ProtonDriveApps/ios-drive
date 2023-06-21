@@ -25,18 +25,18 @@ struct UploadableRevision: Equatable {
     let signatureEmail: String
     let addressID: String
     let blocks: [UploadableBlock]
-    let thumbnail: UploadableThumbnail?
+    let thumbnails: [UploadableThumbnail]
 }
 
 extension UploadableRevision {
-    init(identifier: UploadableRevisionIdentifier, addressID: String, blocks: [UploadableBlock], thumbnail: UploadableThumbnail?) {
+    init(identifier: UploadableRevisionIdentifier, addressID: String, blocks: [UploadableBlock], thumbnails: [UploadableThumbnail]) {
         self.shareID = identifier.shareID
         self.nodeID = identifier.nodeID
         self.revisionID = identifier.revisionID
         self.signatureEmail = identifier.signatureEmail
         self.addressID = addressID
         self.blocks = blocks
-        self.thumbnail = thumbnail
+        self.thumbnails = thumbnails
     }
 }
 
@@ -63,21 +63,21 @@ extension Revision {
 }
 
 extension UploadableRevision {
-    func makeFull(blockLinks: [BlockUploadLink], thumbnailLink: ThumbnailUploadLink?) -> FullUploadableRevision {
+    func makeFull(blockLinks: [ContentUploadLink], thumbnailLinks: [ContentUploadLink]) -> FullUploadableRevision {
         let bl = zip(blocks, blockLinks).map { (block, link) in block.makeFull(with: link) }
-        return FullUploadableRevision(blocks: bl, thumbnail: thumbnail?.makeFull(with: thumbnailLink))
+        let th = zip(thumbnails, thumbnailLinks).map { (thumbnail, link) in thumbnail.makeFull(with: link) }
+        return FullUploadableRevision(blocks: bl, thumbnails: th)
     }
 }
 
 private extension UploadableThumbnail {
-    func makeFull(with link: ThumbnailUploadLink?) -> FullUploadableThumbnail? {
-        guard let link = link else { return nil }
-        return FullUploadableThumbnail(uploadURL: link.URL, uploadable: self)
+    func makeFull(with link: ContentUploadLink) -> FullUploadableThumbnail {
+        return FullUploadableThumbnail(uploadURL: URL(string: link.URL)!, uploadable: self)
     }
 }
 
 private extension UploadableBlock {
-    func makeFull(with block: BlockUploadLink) -> FullUploadableBlock {
+    func makeFull(with block: ContentUploadLink) -> FullUploadableBlock {
         FullUploadableBlock(remoteURL: URL(string: block.URL)!, uploadToken: block.token, uploadable: self)
     }
 }
@@ -87,5 +87,5 @@ struct RevisionPage: Equatable {
     let addressID: String
     let revision: Revision
     let blocks: [UploadBlock]
-    let thumbnail: Thumbnail?
+    let thumbnails: [Thumbnail]
 }

@@ -17,9 +17,13 @@
 
 import UIKit
 
-final class PhotosPreviewCoordinator: PhotosPreviewListCoordinator, PhotosPreviewDetailFactory {
-    weak var container: PhotosContainer?
+final class PhotosPreviewCoordinator: PhotosPreviewListCoordinator, PhotosPreviewDetailFactory, PhotoPreviewDetailCoordinator {
+    let container: PhotosPreviewContainer
     weak var rootViewController: UIViewController?
+
+    init(container: PhotosPreviewContainer) {
+        self.container = container
+    }
 
     // MARK: - PhotosPreviewListCoordinator
 
@@ -29,7 +33,29 @@ final class PhotosPreviewCoordinator: PhotosPreviewListCoordinator, PhotosPrevie
 
     // MARK: - PhotosPreviewDetailFactory
 
-    func makeViewController(with id: PhotoId) -> UIViewController? {
-        container?.makePreviewDetailViewController(with: id)
+    func makeViewController(with id: PhotoId) -> UIViewController {
+        container.makeDetailViewController(with: id)
+    }
+
+    // MARK: - PhotoPreviewDetailCoordinator
+
+    func openShare(with preview: PhotoFullPreview) {
+        guard let rootViewController = rootViewController else {
+            return
+        }
+
+        let item = getItem(from: preview)
+        let viewController = UIActivityViewController(activityItems: [item], applicationActivities: nil)
+        viewController.popoverPresentationController?.sourceView = rootViewController.view
+        rootViewController.present(viewController, animated: true, completion: nil)
+    }
+
+    private func getItem(from preview: PhotoFullPreview) -> Any {
+        switch preview {
+        case .photo(let data):
+            return data
+        case .video(let url):
+            return url
+        }
     }
 }

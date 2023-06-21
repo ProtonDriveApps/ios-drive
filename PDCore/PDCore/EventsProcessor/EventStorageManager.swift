@@ -139,13 +139,13 @@ public class EventStorageManager: NSObject {
 }
 
 extension EventStorageManager {
-    public func persist(events: Zip2Sequence<[GenericEvent], [Data]>, provider: ProviderType, shareId: ShareID) {
+    public func persist(events: Zip2Sequence<[GenericEvent], [Data]>, provider: ProviderType) {
         self.backgroundContext.performAndWait {
             events.forEach { event, packedOriginal in
                 let new = NSEntityDescription.insertNewObject(forEntityName: PersistedEvent.entity().managedObjectClassName, into: self.backgroundContext)
                 
                 new.setValue(provider, forKey: #keyPath(PersistedEvent.providerType))
-                new.setValue(shareId, forKey: #keyPath(PersistedEvent.shareId))
+                new.setValue(event.shareId, forKey: #keyPath(PersistedEvent.shareId))
                 new.setValue(packedOriginal, forKey: #keyPath(PersistedEvent.contents))
                 new.setValue(event.eventId, forKey: #keyPath(PersistedEvent.eventId))
                 new.setValue(event.eventEmittedAt, forKey: #keyPath(PersistedEvent.eventEmittedAt))
@@ -221,7 +221,7 @@ extension EventStorageManager {
             subpredicates.append(NSPredicate(format: "%K != %@", #keyPath(PersistedEvent.eventId), eventID))
         }
         if let excluding = excludeIsProcessedEqualTo {
-            subpredicates.append(NSPredicate(format: "%K != %@", #keyPath(PersistedEvent.isProcessed), NSNumber(booleanLiteral: excluding)))
+            subpredicates.append(NSPredicate(format: "%K != %@", #keyPath(PersistedEvent.isProcessed), NSNumber(value: excluding)))
         }
         
         let fetchRequest = self.baseRequest()
@@ -321,7 +321,7 @@ extension EventStorageManager {
     }
     
     public func events(since anchorID: EventID?) throws -> [Entry] {
-        var anchorTimestamp: TimeInterval? = nil
+        var anchorTimestamp: TimeInterval?
         if let anchorID = anchorID {
             guard let timestamp = try self.event(with: anchorID)?.eventEmittedAt else {
                 return []

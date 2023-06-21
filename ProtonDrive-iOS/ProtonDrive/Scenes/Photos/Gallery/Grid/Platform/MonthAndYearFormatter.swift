@@ -28,7 +28,8 @@ final class PlatformMonthAndYearFormatter: MonthAndYearFormatter {
 
     private static func makeFormatter(format: String) -> DateFormatter {
         let dateFormatter = DateFormatter()
-        dateFormatter.locale = Locale.autoupdatingCurrent
+        // Until we translate other texts on the screens, this needs to be english
+        dateFormatter.locale = Locale(identifier: "en")
         dateFormatter.dateFormat = format
         return dateFormatter
     }

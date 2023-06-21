@@ -19,9 +19,7 @@ import Foundation
 
 extension Tower: ThumbnailLoader {
     public func loadThumbnail(with id: ThumbnailLoader.Identifier) {
-        DispatchQueue.global().async { [weak self] in
-            self?.thumbnailLoader.loadThumbnail(with: id)
-        }
+        thumbnailLoader.loadThumbnail(with: id)
     }
 
     public func cancelThumbnailLoading(_ id: ThumbnailLoader.Identifier) {

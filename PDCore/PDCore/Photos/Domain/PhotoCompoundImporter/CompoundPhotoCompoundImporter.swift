@@ -27,20 +27,22 @@ public final class CompoundPhotoCompoundImporter: PhotoCompoundImporter {
         self.importer = importer
         self.moc = moc
     }
-
+    
     public func `import`(_ compound: PhotoAssetCompound) {
-        do {
-            let main = try importer.import(compound.primary)
+        moc.performAndWait {
+            do {
+                let main = try importer.import(compound.primary)
 
-            for secondaryAsset in compound.secondary {
-                let secondary = try importer.import(secondaryAsset)
-                main.children.insert(secondary)
+                for secondaryAsset in compound.secondary {
+                    let secondary = try importer.import(secondaryAsset)
+                    main.children.insert(secondary)
+                }
+
+                try moc.saveOrRollback()
+
+            } catch {
+                ConsoleLogger.shared?.log(PhotoError(stage: .importPhoto, context: "CompoundPhotoCompoundImporter", error: error))
             }
-
-            try moc.saveOrRollback()
-
-        } catch {
-            ConsoleLogger.shared?.log(PhotoError(stage: .importPhoto, context: "CompoundPhotoCompoundImporter", error: error))
         }
     }
 

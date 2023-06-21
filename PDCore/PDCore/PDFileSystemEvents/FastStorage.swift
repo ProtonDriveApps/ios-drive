@@ -31,7 +31,7 @@ public struct FastStorage<T: Codable> {
             return try? JSONDecoder().decode(T.self, from: data)
         }
         set {
-            guard let encoded = try? JSONEncoder().encode(newValue) else {
+            guard newValue != nil, let encoded = try? JSONEncoder().encode(newValue) else {
                 return UserDefaults.standard.removeObject(forKey: key)
             }
             UserDefaults.standard.set(encoded, forKey: key)

@@ -20,16 +20,16 @@ import CoreData
 
 typealias EncryptAndSign = (PlainData, ArmoredEncryptionKey, ArmoredSigningKey, Passphrase) throws -> ArmoredMessage
 
-final class ExtendedAttributesRevisionEncryptor: RevisionEncryptor {
-    private let encryptAndSign: EncryptAndSign
-    private let signersKitFactory: SignersKitFactoryProtocol
-    private let maxBlockSize: Int
-    private let progress: Progress
-    private let moc: NSManagedObjectContext
-    private let digestBuilder: DigestBuilder
+class ExtendedAttributesRevisionEncryptor: RevisionEncryptor {
+   let encryptAndSign: EncryptAndSign
+   let signersKitFactory: SignersKitFactoryProtocol
+   let maxBlockSize: Int
+   let progress: Progress
+   let moc: NSManagedObjectContext
+   let digestBuilder: DigestBuilder
 
-    private var isCancelled = false
-    private var isExecuting = false
+   var isCancelled = false
+   var isExecuting = false
 
     init(
         encryptAndSign: @escaping EncryptAndSign = Encryptor.encryptAndSignWithCompression,
@@ -63,20 +63,7 @@ final class ExtendedAttributesRevisionEncryptor: RevisionEncryptor {
                 let addressKey = signersKit.addressKey.privateKey
                 let addressPassphrase = signersKit.addressPassphrase
 
-                let totalSize: Int
-                let blockSizes: [Int]
-                if let fileSize = draft.localURL.fileSize {
-                    totalSize = fileSize
-                    blockSizes = fileSize.split(divisor: self.maxBlockSize)
-                } else {
-                    totalSize = .zero
-                    blockSizes = []
-                }
-                let modificationTime = draft.localURL.contentModificationDate ?? Date()
-                let sha1 = self.digestBuilder.getResult().hexString()
-                let digests = ExtendedAttributes.Digests(sha1: sha1)
-                let commonAttributes = ExtendedAttributes.Common(modificationTime: modificationTime, size: totalSize, blockSizes: blockSizes, digests: digests)
-                let clearExtendedAttributes = try ExtendedAttributes(common: commonAttributes).encoded()
+                let clearExtendedAttributes = try self.getXAttrs(draft)
                 let xAttr = try self.encryptAndSign(clearExtendedAttributes, publicNodeKey, addressKey, addressPassphrase)
 
                 revision.xAttributes = xAttr
@@ -92,6 +79,35 @@ final class ExtendedAttributesRevisionEncryptor: RevisionEncryptor {
                 completion(.failure(error))
             }
         }
+    }
+    
+    func getXAttrs(_ draft: CreatedRevisionDraft) throws -> Data {
+        let commonAttributes = commonAttributes(draft)
+        return try ExtendedAttributes(common: commonAttributes).encoded()
+    }
+    
+    func commonAttributes(_ draft: CreatedRevisionDraft) -> ExtendedAttributes.Common {
+        let (totalSize, blockSizes) = sizes(draft)
+        let modificationTime = modificationDate(draft)
+        let digests = digest()
+        return ExtendedAttributes.Common(modificationTime: modificationTime, size: totalSize, blockSizes: blockSizes, digests: digests)
+    }
+    
+    func sizes(_ draft: CreatedRevisionDraft) -> (totalSize: Int, blockSizes: [Int]) {
+        if let fileSize = draft.localURL.fileSize {
+            return (fileSize, fileSize.split(divisor: self.maxBlockSize))
+        } else {
+            return (.zero, [])
+        }
+    }
+    
+    func modificationDate(_ draft: CreatedRevisionDraft) -> String {
+        ISO8601DateFormatter().string(from: draft.localURL.contentModificationDate ?? Date())
+    }
+    
+    func digest() -> ExtendedAttributes.Digests {
+        let sha1 = self.digestBuilder.getResult().hexString()
+        return ExtendedAttributes.Digests(sha1: sha1)
     }
 
     func cancel() {

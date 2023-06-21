@@ -40,7 +40,7 @@ class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
         self.signersKitFactory = signersKitFactory
     }
 
-    func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> OperationWithProgress {
+    func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> any UploadOperation {
         let parentProgress = Progress(unitsOfWork: draft.numberOfBlocks)
 
         let onError: OnError = { error in

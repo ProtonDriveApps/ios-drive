@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="21513" systemVersion="22E261" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="21512" systemVersion="21G83" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
     <entity name="Block" representedClassName="Block" isAbstract="YES" syncable="YES">
         <attribute name="encSignature" optional="YES" attributeType="String"/>
         <attribute name="index" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
@@ -67,6 +67,8 @@
     </entity>
     <entity name="Photo" representedClassName="Photo" parentEntity="File" syncable="YES">
         <attribute name="monthIdentifier" optional="YES" transient="YES" attributeType="String"/>
+        <attribute name="tempBase64Exif" optional="YES" attributeType="Transformable" valueTransformerName="StringCryptoTransformer" customClassName="String"/>
+        <attribute name="tempBase64Metadata" optional="YES" attributeType="Transformable" valueTransformerName="StringCryptoTransformer" customClassName="String"/>
         <attribute name="timestamp" attributeType="Date" usesScalarValueType="NO"/>
         <relationship name="children" toMany="YES" deletionRule="Nullify" destinationEntity="Photo"/>
         <relationship name="parent" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Photo"/>
@@ -74,9 +76,7 @@
     </entity>
     <entity name="PhotoRevision" representedClassName="PhotoRevision" parentEntity="Revision" syncable="YES">
         <attribute name="exif" attributeType="String"/>
-        <attribute name="metadata" attributeType="String"/>
         <attribute name="sha256Exif" attributeType="Binary"/>
-        <attribute name="sha256Metadata" attributeType="Binary"/>
         <attribute name="transientClearExif" optional="YES" transient="YES" attributeType="Binary"/>
         <attribute name="transientClearMetadata" optional="YES" transient="YES" attributeType="Binary"/>
         <relationship name="photo" maxCount="1" deletionRule="Nullify" destinationEntity="Photo" inverseName="photoRevision" inverseEntity="Photo"/>

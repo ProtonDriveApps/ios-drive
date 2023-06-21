@@ -34,8 +34,8 @@ final class PhotosPermissionsViewModel: PhotosPermissionsViewModelProtocol {
     var viewData: PhotosPermissionsViewData {
         PhotosPermissionsViewData(
             headline: "Proton Drive needs full access to your photos",
-            text: "This is necessary to ensure that all your photos are backed up and available across all your devices.\nProton Drive takes your privacy seriously and will only access your photos for the purpose of syncing and backup.",
-            button: "Allow full access"
+            text: "This ensures all your photos are backed up and available across your devices.\n\nIn the next screen, change your settings to allow Proton Drive access to All Photos.",
+            button: "Give access"
         )
     }
 

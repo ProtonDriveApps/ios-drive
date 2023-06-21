@@ -19,13 +19,13 @@ import Foundation
 
 final class CompletionExecutingOperation: AsynchronousOperation, UploadOperation {
 
-    let uploadID: UUID
+    let id: UUID
     let progress = Progress(unitsOfWork: 1)
 
     private let onCompletion: () -> Void
 
     init(uploadID: UUID, onCompletion: @escaping () -> Void) {
-        self.uploadID = uploadID
+        self.id = uploadID
         self.onCompletion = onCompletion
         super.init()
     }

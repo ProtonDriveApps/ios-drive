@@ -24,7 +24,7 @@ extension Volume {
         return NSFetchRequest<Volume>(entityName: "Volume")
     }
 
-    @NSManaged public var id: String?
+    @NSManaged public var id: String
     @NSManaged public var maxSpace: Int
     @NSManaged public var usedSpace: Int
     @NSManaged public var shares: Set<Share>

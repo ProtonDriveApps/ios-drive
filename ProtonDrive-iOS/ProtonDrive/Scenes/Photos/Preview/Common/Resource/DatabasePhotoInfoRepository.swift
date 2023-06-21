@@ -34,12 +34,15 @@ final class DatabasePhotoInfoRepository: PhotoInfoRepository {
     }
 
     func execute(with id: PhotoId) {
-        storage.backgroundContext.perform {
-            guard let photo = self.storage.fetchPhoto(id: id, moc: self.storage.backgroundContext) else {
+        let managedObjectContext = storage.backgroundContext
+        managedObjectContext.perform {
+            guard let photo = try? self.storage.fetchPhoto(id: id, moc: managedObjectContext) else {
                 return
             }
 
-            let photoInfo = PhotoInfo(id: id, name: photo.decryptedName)
+            let duration = try? photo.photoRevision.decryptExtendedAttributes().media?.duration
+            let type: PhotoInfo.PhotoType = duration == nil ? .photo : .video
+            let photoInfo = PhotoInfo(id: id, name: photo.decryptedName, type: type)
             self.photoSubject.send(photoInfo)
         }
     }

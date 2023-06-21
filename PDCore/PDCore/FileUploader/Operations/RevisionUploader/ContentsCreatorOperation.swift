@@ -34,7 +34,7 @@ final class ContentsCreatorOperation: AsynchronousOperation {
     override func main() {
         guard !isCancelled else { return }
 
-        contentCreator.create() { [weak self] result in
+        contentCreator.create { [weak self] result in
             guard let self = self, !self.isCancelled else { return }
 
             switch result {

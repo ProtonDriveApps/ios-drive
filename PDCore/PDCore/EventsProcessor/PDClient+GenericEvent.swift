@@ -30,6 +30,9 @@ extension PDClient.Event: GenericEvent {
     public var eventEmittedAt: TimeInterval {
         self.createTime
     }
+    public var shareId: String {
+        self.contextShareID
+    }
     public var eventId: String {
         self.eventID
     }

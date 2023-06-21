@@ -70,13 +70,13 @@ class PageRevisionContentCreator: ContentCreator {
             let identifier = try revision.uploadableIdentifier()
             let addressID = try signersKitFactory.make(forSigner: .address(identifier.signatureEmail)).address.addressID
             let blocks = normalizedBlocks().compactMap(UploadableBlock.init)
-            let thumbnail = normalizedThumbnail()?.uploadable
+            let thumbnails = normalizedThumbnails().compactMap(\.uploadable)
 
-            guard !blocks.isEmpty || thumbnail != nil else {
+            guard !blocks.isEmpty || !thumbnails.isEmpty else {
                 throw EmptyPage()
             }
 
-            return UploadableRevision(identifier: identifier, addressID: addressID, blocks: blocks, thumbnail: thumbnail)
+            return UploadableRevision(identifier: identifier, addressID: addressID, blocks: blocks, thumbnails: thumbnails)
         }
     }
 
@@ -87,7 +87,10 @@ class PageRevisionContentCreator: ContentCreator {
                     block.uploadToken = fullUploadableBlock.uploadToken
                     block.uploadUrl = fullUploadableBlock.remoteURL.absoluteString
                 }
-                normalizedThumbnail()?.uploadURL = fullUploadableRevision.thumbnail?.uploadURL.absoluteString
+                
+                zip(fullUploadableRevision.thumbnails, normalizedThumbnails()).forEach { fullUploadableThumbnail, thumbnail in
+                    thumbnail.uploadURL = fullUploadableThumbnail.uploadURL.absoluteString
+                }
 
                 try moc.saveOrRollback()
                 completion(.success)
@@ -102,8 +105,8 @@ class PageRevisionContentCreator: ContentCreator {
         page.blocks.filter { $0.isUploaded == false }
     }
 
-    private func normalizedThumbnail() -> Thumbnail? {
-        [page.thumbnail].compactMap { $0 }.filter { $0.isUploaded == false }.first
+    private func normalizedThumbnails() -> [Thumbnail] {
+        page.thumbnails.filter { $0.isUploaded == false }.sorted { $0.type.rawValue < $1.type.rawValue }
     }
 
     func cancel() {

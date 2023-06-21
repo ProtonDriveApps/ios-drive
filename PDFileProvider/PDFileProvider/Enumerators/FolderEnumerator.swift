@@ -90,8 +90,7 @@ public class FolderEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWit
 
 extension FolderEnumerator: EnumeratorWithChanges {
     internal var shareID: String { self.nodeID.shareID }
-    internal var eventsProcessor: EventsProcessor { self.tower.eventProcessor }
-    internal var eventsConveyor: EventsConveyor { self.tower.eventsConveyor }
+    internal var eventsManager: EventsSystemManager { self.tower }
     internal var fileSystemSlot: FileSystemSlot { self.tower.fileSystemSlot! }
     internal var cloudSlot: CloudSlot { self.tower.cloudSlot! }
 }

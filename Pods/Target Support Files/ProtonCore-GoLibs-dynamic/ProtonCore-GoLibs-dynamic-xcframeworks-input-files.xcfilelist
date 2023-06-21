@@ -1,2 +1,2 @@
 ${PODS_ROOT}/Target Support Files/ProtonCore-GoLibs-dynamic/ProtonCore-GoLibs-dynamic-xcframeworks.sh
-${PODS_ROOT}/ProtonCore-GoLibs/vendor/Crypto-patched-Go1.20.2/GoLibs.xcframework
+${PODS_ROOT}/ProtonCore-GoLibs/vendor/Crypto-patched-Go/GoLibs.xcframework

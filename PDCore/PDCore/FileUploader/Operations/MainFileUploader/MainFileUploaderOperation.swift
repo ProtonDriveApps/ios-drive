@@ -17,27 +17,27 @@
 
 import Foundation
 
-final class MainFileUploaderOperation: AsynchronousOperation, UploadOperation {
+public final class MainFileUploaderOperation: AsynchronousOperation, UploadOperation {
 
-    let progress = Progress(unitsOfWork: 1)
-    let uploadID: UUID
+    public let progress = Progress(unitsOfWork: 1)
+    public let id: UUID
 
     private let draft: FileDraft
     private let onSuccess: (File) -> Void
 
     init(draft: FileDraft, onSuccess: @escaping (File) -> Void) {
-        self.uploadID = draft.uploadID
+        self.id = draft.uploadID
         self.draft = draft
         self.onSuccess = onSuccess
         super.init()
     }
 
-    override func main() {
+    override public func main() {
         guard !isCancelled else { return }
 
         record()
 
-        ConsoleLogger.shared?.log("🎉🎉🎉🎉  Completed File Upload, id: \(uploadID.uuidString) 🎉🎉🎉🎉", osLogType: FileUploader.self)
+        ConsoleLogger.shared?.log("🎉🎉🎉🎉  Completed File Upload, id: \(id.uuidString) 🎉🎉🎉🎉", osLogType: FileUploader.self)
         progress.complete()
         state = .finished
         onSuccess(draft.file)
@@ -60,12 +60,12 @@ final class MainFileUploaderOperation: AsynchronousOperation, UploadOperation {
         }
     }
 
-    override func cancel() {
+    override public func cancel() {
         ConsoleLogger.shared?.log("🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
         super.cancel()
         dependencies.reversed().forEach { $0.cancel() }
         progress.cancel()
     }
 
-    var recordingName: String { "uploadedFile" }
+    public var recordingName: String { "uploadedFile" }
 }

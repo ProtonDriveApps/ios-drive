@@ -213,14 +213,14 @@ extension CloudSlot {
     }
 
     private func addThumbnail(url: URL?, revision: Revision, in moc: NSManagedObjectContext) {
-        if revision.thumbnail == nil {
+        if revision.thumbnails.first == nil {
             let downloadThumbnail = Thumbnail.make(downloadURL: url, revision: revision, in: moc)
-            revision.thumbnail = downloadThumbnail
+            revision.addToThumbnails(downloadThumbnail)
             return
         }
 
-        if let thumbnail = revision.thumbnail,
-           let oldThumbnailURL = revision.thumbnail?.downloadURL,
+        if let thumbnail = revision.thumbnails.first,
+           let oldThumbnailURL = revision.thumbnails.first?.downloadURL,
            oldThumbnailURL != url?.absoluteString {
             thumbnail.downloadURL = url?.absoluteString
             return
@@ -377,5 +377,11 @@ extension CloudSlot {
 
     func restore(shareID: Client.ShareID, linkIDs: [Client.LinkID], completion: @escaping (Result<[PartialFailure], Error>) -> Void)  {
         client.retoreTrashNode(shareID: shareID, linkIDs: linkIDs, completion: completion)
+    }
+}
+
+extension CloudSlot: LocalLinksUpdateRepository {
+    public func update(links: [PDClient.Link], shareId: String) {
+        update(links, of: shareId, in: moc)
     }
 }

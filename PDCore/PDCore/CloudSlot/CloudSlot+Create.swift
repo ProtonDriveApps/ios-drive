@@ -299,9 +299,10 @@ extension CloudSlot {
                 guard let mainShare = allShares.first, mainShare.flags.contains(.main) == true else {
                     throw Errors.couldNotFindMainShareForNewShareCreation
                 }
-                guard let volume = mainShare.volume, let volumeId = volume.id else {
+                guard let volume = mainShare.volume else {
                     throw Errors.couldNotFindVolumeForNewShareCreation
                 }
+                let volumeId = volume.id
                 share.volume = mainShare.volume
                 node.directShares.insert(share)
 

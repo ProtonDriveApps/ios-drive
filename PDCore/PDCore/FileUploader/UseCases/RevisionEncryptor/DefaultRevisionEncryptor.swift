@@ -18,7 +18,7 @@
 import Foundation
 import CoreData
 
-final class DefaultRevisionEncryptor: RevisionEncryptor {
+class DefaultRevisionEncryptor: RevisionEncryptor {
     private let blocksEncryptor: RevisionEncryptor
     private let thumbnailEncryptor: RevisionEncryptor
     private let xAttributesEncryptor: RevisionEncryptor

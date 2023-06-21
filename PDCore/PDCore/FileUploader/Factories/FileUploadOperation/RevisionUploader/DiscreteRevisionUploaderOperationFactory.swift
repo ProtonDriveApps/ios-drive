@@ -42,7 +42,7 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
         self.signersKitFactory = signersKitFactory
     }
 
-    func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> OperationWithProgress {
+    func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> any UploadOperation {
         let numberOfThumbnails = 1 // We aassume that the existence of a thumbnail will not affect the upload
         let parentProgress = Progress(unitsOfWork: draft.numberOfBlocks + numberOfThumbnails)
 

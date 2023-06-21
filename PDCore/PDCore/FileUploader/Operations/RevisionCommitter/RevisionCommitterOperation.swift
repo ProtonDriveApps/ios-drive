@@ -19,7 +19,7 @@ import Foundation
 
 final class RevisionCommitterOperation: AsynchronousOperation, UploadOperation {
 
-    let uploadID: UUID
+    let id: UUID
     let progress = Progress(unitsOfWork: 1)
 
     private let draft: FileDraft
@@ -33,7 +33,7 @@ final class RevisionCommitterOperation: AsynchronousOperation, UploadOperation {
     ) {
         self.draft = draft
         self.commiter = commiter
-        self.uploadID = draft.uploadID
+        self.id = draft.uploadID
         self.onError = onError
         super.init()
     }

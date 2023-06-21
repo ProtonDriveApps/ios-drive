@@ -37,7 +37,6 @@ final class LocalPhotoLibraryAssetsQueueResource: PhotoLibraryAssetsQueueResourc
     private let queue: OperationQueue
     private let resultsSubject = PassthroughSubject<PhotoAssetCompoundsResult, Never>()
     private var identifiersInProgress = Set<PhotoIdentifier>()
-    private var isConstrained = false
 
     var results: AnyPublisher<PhotoAssetCompoundsResult, Never> {
         resultsSubject.eraseToAnyPublisher()
@@ -61,7 +60,7 @@ final class LocalPhotoLibraryAssetsQueueResource: PhotoLibraryAssetsQueueResourc
     }
 
     func isExecuting() -> Bool {
-        return !identifiersInProgress.isEmpty && !isConstrained
+        return !identifiersInProgress.isEmpty && !queue.isSuspended
     }
 
     func execute(with identifiers: PhotoIdentifiers) {
@@ -71,12 +70,7 @@ final class LocalPhotoLibraryAssetsQueueResource: PhotoLibraryAssetsQueueResourc
     }
 
     func update(isConstrained: Bool) {
-        self.isConstrained = isConstrained
-        if isConstrained {
-            cancel()
-        } else {
-            try? start()
-        }
+        queue.isSuspended = isConstrained
     }
 
     private func makeOperation(with identifier: PhotoIdentifier) -> Operation {

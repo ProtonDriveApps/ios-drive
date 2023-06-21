@@ -37,7 +37,9 @@ public enum Constants {
     public static let maxBlockSize: Int = 4 * 1024 * 1024   // block size convenient for cloud (storage restrictions)
     public static let maxBlockChunkSize: Int = 96 * 1024   // chunk size during block encryption/decryption, convenient for client (memory restrictions)
     public static let thumbnailMaxWeight: Int = 60 * 1024
-    public static let thumbnailMaxLength: Int = 512
+    public static let photoThumbnailMaxWeight: Int = 1024 * 1024
+    public static let defaultThumbnailMaxSize = CGSize(width: 512, height: 512)
+    public static let photoThumbnailMaxSize = CGSize(width: 1920, height: 1920)
 
     // Revision Upload
     public static let blocksPaginationPageSize = 50 // Maximum number of URLs requested per uploading a revision

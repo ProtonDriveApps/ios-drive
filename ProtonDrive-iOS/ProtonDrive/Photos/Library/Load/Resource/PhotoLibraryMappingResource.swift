@@ -44,7 +44,10 @@ final class LocalPhotoLibraryMappingResource: PhotoLibraryMappingResource {
             localIdentifier: asset.localIdentifier,
             cloudIdentifier: try getIdentifier(from: result),
             creationDate: asset.creationDate,
-            modifiedDate: asset.modificationDate
+            modifiedDate: asset.modificationDate,
+            width: asset.pixelWidth,
+            height: asset.pixelHeight,
+            duration: asset.duration
         )
     }
 

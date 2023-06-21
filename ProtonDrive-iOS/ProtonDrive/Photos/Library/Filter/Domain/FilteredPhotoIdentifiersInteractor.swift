@@ -25,18 +25,22 @@ protocol FilteredPhotoIdentifiersInteractor {
 final class LocalFilteredPhotoIdentifiersInteractor: FilteredPhotoIdentifiersInteractor {
     private let resource: FilteredPhotoIdentifiersResource
     private let assetsInteractor: PhotoLibraryAssetsInteractor
+    private let progressRepository: PhotoLibraryLoadProgressRepository
     private var cancellables = Set<AnyCancellable>()
 
-    init(resource: FilteredPhotoIdentifiersResource, assetsInteractor: PhotoLibraryAssetsInteractor) {
+    init(resource: FilteredPhotoIdentifiersResource, assetsInteractor: PhotoLibraryAssetsInteractor, progressRepository: PhotoLibraryLoadProgressRepository) {
         self.resource = resource
         self.assetsInteractor = assetsInteractor
+        self.progressRepository = progressRepository
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
         resource.result
-            .sink { [weak self] identifiers in
-                self?.assetsInteractor.execute(with: identifiers)
+            .sink { [weak self] result in
+                let removedIdentifiers = Set(result.invalidIdentifiers.map { $0.cloudIdentifier })
+                self?.progressRepository.discard(removedIdentifiers)
+                self?.assetsInteractor.execute(with: result.validIdentifiers)
             }
             .store(in: &cancellables)
     }

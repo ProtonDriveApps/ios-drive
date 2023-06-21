@@ -17,5 +17,5 @@
 
 struct FullUploadableRevision {
     let blocks: [FullUploadableBlock]
-    let thumbnail: FullUploadableThumbnail?
+    let thumbnails: [FullUploadableThumbnail]
 }

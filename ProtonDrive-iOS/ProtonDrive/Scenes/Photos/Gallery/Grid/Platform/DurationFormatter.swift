@@ -22,15 +22,21 @@ protocol DurationFormatter {
 }
 
 final class LocalizedDurationFormatter: DurationFormatter {
-    private static let formatter: DateComponentsFormatter = {
+    private static let hoursFormatter: DateComponentsFormatter = makeFormatter(units: [.hour, .minute, .second])
+    private static let minutesFormatter: DateComponentsFormatter = makeFormatter(units: [.minute, .second])
+
+    private static func makeFormatter(units: NSCalendar.Unit) -> DateComponentsFormatter {
         let formatter = DateComponentsFormatter()
-        formatter.allowedUnits = [.hour, .minute, .second]
-        formatter.unitsStyle = .positional
-        formatter.zeroFormattingBehavior = .dropLeading
+        formatter.allowedUnits = units
+        formatter.zeroFormattingBehavior = .pad
         return formatter
-    }()
+    }
 
     func formatDuration(from interval: UInt) -> String {
-        LocalizedDurationFormatter.formatter.string(from: TimeInterval(interval)) ?? ""
+        if interval > 360 {
+            return LocalizedDurationFormatter.hoursFormatter.string(from: TimeInterval(interval)) ?? ""
+        } else {
+            return LocalizedDurationFormatter.minutesFormatter.string(from: TimeInterval(interval)) ?? ""
+        }
     }
 }

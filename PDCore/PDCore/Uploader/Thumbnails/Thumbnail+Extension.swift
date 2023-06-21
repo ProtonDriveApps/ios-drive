@@ -27,6 +27,7 @@ extension Thumbnail {
 
         return UploadableThumbnail(
             id: revision.identifier,
+            type: Int(type.rawValue),
             encrypted: thumbnailData,
             sha256: sha256
         )

@@ -18,12 +18,13 @@
 import Foundation
 
 final class ImmediatelyFinishingOperation: AsynchronousOperation, OperationWithProgress {
+
     let progress = Progress(unitsOfWork: 1)
 
     override func main() {
         guard !isCancelled else { return }
-        state = .finished
         progress.complete()
+        state = .finished
     }
 
 }

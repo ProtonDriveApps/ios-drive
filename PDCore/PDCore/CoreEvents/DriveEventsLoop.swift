@@ -17,39 +17,129 @@
 
 import Foundation
 import PMEventsManager
+import PDClient
 
 class DriveEventsLoop: EventsLoop {
-    struct Response: EventPage {
-        let code = 501
-        let hasMorePages = false
-        let requiresClearCache = false
-        let lastEventID = ""
+    typealias Response = EventsEndpoint.Response
+    typealias LogHandler = (Error) -> Void
+    
+    private let volumeID: String // CloudSlot and EventPeriodicScheduler work with VolumeID
+    private let cloudSlot: CloudSlot
+    private let conveyor: EventsConveyor
+    private let observers: [EventsListener]
+    private let processor: DriveEventsLoopProcessor
+    private let logError: LogHandler?
+    
+    private let mode: DriveEventsLoopMode
+    
+    init(volumeID: String, cloudSlot: CloudSlot, processor: DriveEventsLoopProcessor, conveyor: EventsConveyor, observers: [EventsListener], mode: DriveEventsLoopMode, logError: LogHandler? = nil) {
+        self.volumeID = volumeID
+        self.cloudSlot = cloudSlot
+        self.conveyor = conveyor
+        self.observers = observers
+        self.processor = processor
+        self.mode = mode
+        self.logError = logError
     }
     
-    var latestLoopEventId: String?
+    var latestLoopEventId: String? {
+        get { cloudSlot.lastScannedEventID }
+        set { cloudSlot.lastScannedEventID = newValue }
+    }
+    
+    var referenceDate: Date? {
+        get { cloudSlot.referenceDate }
+        set { cloudSlot.referenceDate = newValue }
+    }
+    
+    var lastEventFetchTime: Date? {
+        get { cloudSlot.lastEventFetchTime }
+        set { cloudSlot.lastEventFetchTime = newValue }
+    }
+    
+    func initialEventUnknown() async {
+        do {
+            let eventID = try await cloudSlot.fetchInitialEvent(ofVolumeID: volumeID)
+            
+            latestLoopEventId = eventID
+            referenceDate = Date()
+            lastEventFetchTime = Date()
+        } catch {
+            onError(error)
+        }
+    }
     
     func poll(since loopEventID: String) async throws -> Response {
-        throw NSError.init(domain: "DriveEventsLoop", code: 777, localizedDescription: "Not implemented")
+        if mode.contains(.pollAndRecord) {
+            let response = try await cloudSlot.scanEventsFromRemote(ofVolumeID: volumeID, since: loopEventID)
+            lastEventFetchTime = Date()
+            return response
+        } else {
+            // when polling is switched off but the loop is running, we just return empty response
+            // because that is a valid situation
+            return Response(code: 200, events: [], eventID: loopEventID, more: .false, refresh: .false)
+        }
     }
 
     func process(_ response: Response) async throws {
-        // nothing
+        if mode.contains(.pollAndRecord) {
+            performRecording(events: response.events, till: response.lastEventID)
+        }
+        
+        if mode.contains(.processRecords) {
+            try performProcessing()
+        }
+    }
+    
+    func performRecording(events: [Event], till latest: EventID) {
+        // 1. record events into conveyor
+        conveyor.record(events)
+        
+        // 2. remember we've fetched this pack
+        latestLoopEventId = latest
+        
+        observers.forEach {
+            $0.processorReceivedEvents()
+        }
+    }
+
+    func performProcessing() throws {
+        conveyor.prepareForProcessing()
+        
+        let affectedNodes = try processor.process()
+        observers.forEach {
+            $0.processorAppliedEvents(affecting: affectedNodes)
+        }
     }
 
     func nukeCache() async {
-        // nothing
-    }
-
-    func initialEventUnknown() async {
-        // nothing
+        conveyor.clearUp()
+        latestLoopEventId = nil
+        lastEventFetchTime = nil
+        referenceDate = nil
     }
 
     func onError(_ error: Error) {
-        // log
+        guard !error.isNetworkIssueError else { return }
+        logError?(error)
     }
 
     func onProcessingError(_ error: Error) {
-        // log
+        logError?(error)
     }
 
+}
+
+extension DriveEventsLoop.Response: EventPage {
+    public var requiresClearCache: Bool {
+        refresh == Refresh.true
+    }
+    
+    public var hasMorePages: Bool {
+        more == More.true
+    }
+    
+    public var lastEventID: String {
+        eventID
+    }
 }

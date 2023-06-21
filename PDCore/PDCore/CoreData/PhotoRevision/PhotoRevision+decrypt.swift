@@ -18,11 +18,6 @@
 import Foundation
 
 extension PhotoRevision {
-    @NSManaged internal var transientClearExif: Data?
-    @NSManaged internal var transientClearMetadata: Data?
-}
-
-extension PhotoRevision {
     public func decryptExif() -> Data {
         do {
             if let transientClearExif {
@@ -51,41 +46,6 @@ extension PhotoRevision {
         } catch {
             ConsoleLogger.shared?.log(DecryptionError(error, "EXIF"))
             return Data()
-        }
-    }
-
-    public func decryptMetadata() -> PhotoMetadata {
-        do {
-            if let transientClearMetadata {
-                // Value cached after the property could be decoded at least once
-                // swiftlint:disable:next force_try
-                return try! JSONDecoder().decode(PhotoMetadata.self, from: transientClearMetadata)
-            }
-
-            let addressKeys = try getAddressPublicKeysOfRevisionCreator()
-
-            guard let dataPacket = Data(base64Encoded: metadata) else {
-                throw invalidState("Could not decode PhotoMetadata data packet.")
-            }
-
-            let sessionKey = try decryptContentSessionKey()
-            let decrypted = try Decryptor.decryptAndVerifyMetadata(dataPacket, contentSessionKey: sessionKey, verificationKeys: addressKeys)
-
-            switch decrypted {
-            case .verified(let photoMetadata):
-                let metadata = try JSONDecoder().decode(PhotoMetadata.self, from: photoMetadata)
-                self.transientClearMetadata = photoMetadata
-                return metadata
-
-            case .unverified(let photoMetadata, let error):
-                ConsoleLogger.shared?.log(SignatureError(error, "PhotoMetadata"))
-                let metadata = try JSONDecoder().decode(PhotoMetadata.self, from: photoMetadata)
-                self.transientClearMetadata = photoMetadata
-                return metadata
-            }
-        } catch {
-            ConsoleLogger.shared?.log(DecryptionError(error, "PhotoMetadata"))
-            return .blank
         }
     }
 }

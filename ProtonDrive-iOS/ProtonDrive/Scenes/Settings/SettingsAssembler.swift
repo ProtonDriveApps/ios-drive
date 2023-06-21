@@ -27,8 +27,14 @@ final class SettingsAssembler {
 
     private init() { }
 
-    static func assemble(apiService: APIService, tower: Tower, keymaker: Keymaker) -> UIViewController {
-        let appSettings = PMSettingsSectionViewModel.appSettings(with: keymaker)
+    static func assemble(apiService: APIService, tower: Tower, keymaker: Keymaker, photosContainer: PhotosSettingsContainer?) -> UIViewController {
+        var appSettings = PMSettingsSectionViewModel.appSettings(with: keymaker)
+        if let photosContainer = photosContainer {
+            appSettings = appSettings
+                .amending()
+                .append(row: photosContainer.makeSettingsCell())
+                .amend()
+        }
         let about = PMSettingsSectionViewModel.about
             .amending()
             .prepend(row: PMAcknowledgementsConfiguration.acknowledgements(url: Self.url))

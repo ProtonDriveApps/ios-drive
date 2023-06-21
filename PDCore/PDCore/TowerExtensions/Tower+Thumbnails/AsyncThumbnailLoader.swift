@@ -17,7 +17,7 @@
 
 import Foundation
 
-final class AsyncThumbnailLoader: ThumbnailLoader {
+final class AsyncThumbnailLoader: CancellableThumbnailLoader {
     private var denied = Set<Identifier>()
     private let scheduled: NSMapTable<NSString, ThumbnailIdentifiableOperation> = NSMapTable(keyOptions: .copyIn, valueOptions: .weakMemory)
     private let regulatingQueue = DispatchQueue(label: "thumbnail.loader.queue", attributes: .concurrent)

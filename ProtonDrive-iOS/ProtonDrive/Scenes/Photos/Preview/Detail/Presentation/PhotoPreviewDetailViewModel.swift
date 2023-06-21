@@ -19,13 +19,16 @@ import Combine
 import Foundation
 
 protocol PhotoPreviewDetailViewModelProtocol: ObservableObject {
-    var loading: String? { get }
-    var thumbnail: Data? { get }
-    var fullPreview: PhotoFullPreview? { get }
+    var state: PhotoPreviewDetailState? { get }
     func viewDidLoad()
     func toggleMode()
     func setActive()
     func share()
+}
+
+enum PhotoPreviewDetailState: Equatable {
+    case loading(text: String, thumbnail: Data?)
+    case preview(PhotoFullPreview)
 }
 
 final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
@@ -35,29 +38,31 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
     private let detailController: PhotoPreviewDetailController
     private let fullPreviewController: PhotoFullPreviewController
     private let id: PhotoId
+    private let coordinator: PhotoPreviewDetailCoordinator
     private var cancellables = Set<AnyCancellable>()
 
-    @Published var loading: String?
-    @Published var thumbnail: Data?
-    @Published var fullPreview: PhotoFullPreview?
+    @Published var state: PhotoPreviewDetailState?
 
-    init(thumbnailController: ThumbnailController, modeController: PhotosPreviewModeController, previewController: PhotosPreviewController, detailController: PhotoPreviewDetailController, fullPreviewController: PhotoFullPreviewController, id: PhotoId) {
+    init(thumbnailController: ThumbnailController, modeController: PhotosPreviewModeController, previewController: PhotosPreviewController, detailController: PhotoPreviewDetailController, fullPreviewController: PhotoFullPreviewController, id: PhotoId, coordinator: PhotoPreviewDetailCoordinator) {
         self.thumbnailController = thumbnailController
         self.modeController = modeController
         self.previewController = previewController
         self.detailController = detailController
         self.fullPreviewController = fullPreviewController
         self.id = id
+        self.coordinator = coordinator
         subscribeToUpdates()
-        updateLoading()
+    }
+
+    deinit {
+        fullPreviewController.clear()
     }
 
     func viewDidLoad() {
-        if let image = thumbnailController.getImage() {
-            thumbnail = image
-        } else {
+        if thumbnailController.getImage() == nil {
             thumbnailController.load()
         }
+        reloadData()
     }
 
     func toggleMode() {
@@ -70,26 +75,36 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
     }
 
     func share() {
-        // TODO: next MR
+        if let fullPreview = fullPreviewController.getPreview() {
+            coordinator.openShare(with: fullPreview)
+        }
     }
 
     private func subscribeToUpdates() {
         thumbnailController.updatePublisher
             .sink { [weak self] _ in
-                self?.reloadThumbnail()
+                self?.reloadData()
+            }
+            .store(in: &cancellables)
+        fullPreviewController.updatePublisher
+            .sink { [weak self] preview in
+                self?.reloadData()
             }
             .store(in: &cancellables)
     }
 
-    private func reloadThumbnail() {
-        guard let image = thumbnailController.getImage() else { return }
-        if thumbnail != image {
-            thumbnail = image
+    private func reloadData() {
+        let state = makeNewState()
+        if self.state != state {
+            self.state = state
         }
     }
 
-    private func updateLoading() {
-        let isLoading = fullPreview == nil
-        loading = isLoading ? "Loading..." : nil
+    private func makeNewState() -> PhotoPreviewDetailState {
+        if let fullPreview = fullPreviewController.getPreview() {
+            return .preview(fullPreview)
+        } else {
+            return .loading(text: "Loading...", thumbnail: thumbnailController.getImage())
+        }
     }
 }

@@ -24,6 +24,7 @@ public enum SplashScreenIBVariant: Int, CaseIterable {
     case calendar = 2
     case drive = 3
     case vpn = 4
+    case pass = 5
 }
 
 public enum SplashScreenViewControllerFactory {
@@ -40,6 +41,8 @@ public enum SplashScreenViewControllerFactory {
             storyboardName = "CalendarLaunchScreen"
         case .vpn:
             storyboardName = "VPNLaunchScreen"
+        case .pass:
+            storyboardName = "PassLaunchScreen"
         }
         let storyboard = UIStoryboard(name: storyboardName, bundle: bundle)
         guard let splash = storyboard.instantiateInitialViewController() else {

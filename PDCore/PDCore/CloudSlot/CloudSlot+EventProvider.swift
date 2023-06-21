@@ -16,118 +16,20 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import CoreData
 import PDClient
 
-private typealias Event = PDClient.Event
-
-extension CloudSlot: EventsProvider {
+extension CloudSlot {
     
-    func convert(_ inLaneNodeID: String?, storage: StorageManager, moc: NSManagedObjectContext) -> String? {
-        return inLaneNodeID
-    }
-    
-    func clearUp() {
-        self.lastScannedEventID = nil
-        self.lastEventFetchTime = nil
-        self.referenceDate = nil
-    }
-    
-    func moveLastScannedEventID(after eventsPack: ScanEventsResult) {
-        self.lastScannedEventID = eventsPack.latestEventID
-    }
-    
-    func scanEventsFromRemote(of shareID: String, handler: @escaping ScanEventsHandler) {
-        guard let lastKnown = self.lastScannedEventID else {
-            ConsoleLogger.shared?.log("No latest event recorded, getting one from server", osLogType: Self.self)
-            self.client.getLatestEvent(shareID) { [weak self] result in
-                switch result {
-                case .success(let eventID):
-                    self?.referenceDate = Date()
-                    self?.lastScannedEventID = eventID
-                    self?.lastEventFetchTime = Date()
-                    handler(.success(.init(latestEventID: eventID, events: [], more: false)))
-                case .failure(let error):
-                    handler(.failure(error))
-                }
-            }
-            return
-        }
-        
-        self.client.getEvents(shareID, since: lastKnown) { (result: Result<(EventID, [Event], MoreEvents), Error>) in
-            switch result {
-            case let .success((eventID, events, more)):
-                self.lastEventFetchTime = Date()
-                let scanned = ScanEventsResult(latestEventID: eventID, events: events, more: more)
-                handler(.success(scanned))
-            case let .failure(error):
-                handler(.failure(error))
-            }
+    func fetchInitialEvent(ofVolumeID volumeID: String) async throws -> EventID {
+        try await withCheckedThrowingContinuation { continuation in
+            client.getLatestEvent(volumeID, completion: continuation.resume)
         }
     }
     
-    func update(shareId: String, from event: GenericEvent, storage: StorageManager, moc: NSManagedObjectContext) -> [NodeIdentifier] {
-        guard let universalNodeID = self.convert(event.inLaneNodeId, storage: storage, moc: moc) else {
-            assert(false, "Could not find metadata for event with in-lane id \(event.inLaneNodeId)")
-            return []
-        }
-        guard let event = event as? Event else {
-            assert(false, "Wrong event type sent to \(#file)")
-            return []
-        }
-        
-        switch event.eventType {
-        case .delete:
-            guard let node = self.findNode(id: universalNodeID, storage: storage, moc: moc) else {
-                return []
-            }
-            moc.delete(node)
-            return [node.identifier, node.parentLink?.identifier].compactMap { $0 }
-            
-        case .create, .updateMetadata:
-            let nodes = self.update([event.link], of: shareId, in: moc)
-            nodes.forEach { node in
-                guard let parent = node.parentLink else { return }
-                node.isInheritingOfflineAvailable = parent.isInheritingOfflineAvailable || parent.isMarkedOfflineAvailable
-            }
-            var affectedNodes = nodes.compactMap(\.parentLink).map(\.identifier)
-            affectedNodes.append(contentsOf: nodes.map(\.identifier))
-            return affectedNodes
-
-        case .updateContent:
-            guard let file: File = storage.existing(with: [universalNodeID], in: moc).first else {
-                return []
-            }
-            if let revision = file.activeRevision {
-                storage.removeOldBlocks(of: revision)
-                file.activeRevision = nil
-            }
-            return [file.identifier]
+    func scanEventsFromRemote(ofVolumeID volumeID: String, since loopEventID: EventID) async throws -> EventsEndpoint.Response {
+        try await withCheckedThrowingContinuation { continuation in
+            client.getEvents(volumeID, since: loopEventID, completion: continuation.resume)
         }
     }
     
-    func ignored(event: GenericEvent, storage: StorageManager, moc: NSManagedObjectContext) {
-        // link may be shared or unshared - need to re-fetch Share URLs
-        storage.finishedFetchingShareURLs = false
-        
-        // link may be trashed or untrashed - need to re-fetch Trash
-        storage.finishedFetchingTrash = false
-    }
-    
-    static func pack(_ genericEvent: GenericEvent) -> Data? {
-        guard let event = genericEvent as? Event else {
-            assert(false, "Wrong event type sent to \(#file)")
-            return nil
-        }
-        
-        return try? JSONEncoder().encode(event)
-    }
-    
-    static func unpack(_ package: Data) -> GenericEvent? {
-        guard let event = try? JSONDecoder().decode(Event.self, from: package) else {
-            assert(false, "Wrong event type sent to \(#file)")
-            return nil
-        }
-        return event
-    }
 }

@@ -25,18 +25,22 @@ protocol FilteredPhotoCompoundsInteractor {
 final class LocalFilteredPhotoCompoundsInteractor: FilteredPhotoCompoundsInteractor {
     private let resource: FilteredPhotoCompoundsResource
     private let importInteractor: PhotoImportInteractor
+    private let progressRepository: PhotoLibraryLoadProgressRepository
     private var cancellables = Set<AnyCancellable>()
 
-    init(resource: FilteredPhotoCompoundsResource, importInteractor: PhotoImportInteractor) {
+    init(resource: FilteredPhotoCompoundsResource, importInteractor: PhotoImportInteractor, progressRepository: PhotoLibraryLoadProgressRepository) {
         self.resource = resource
         self.importInteractor = importInteractor
+        self.progressRepository = progressRepository
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
         resource.result
-            .sink { [weak self] compounds in
-                self?.importInteractor.execute(with: compounds)
+            .sink { [weak self] result in
+                self?.progressRepository.discard(result.invalidIdentifiers)
+                self?.progressRepository.finish(result.validIdentifiers)
+                self?.importInteractor.execute(with: result.compounds)
             }
             .store(in: &cancellables)
     }

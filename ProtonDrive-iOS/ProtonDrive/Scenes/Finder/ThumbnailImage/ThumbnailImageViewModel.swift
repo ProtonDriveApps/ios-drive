@@ -32,7 +32,7 @@ class ThumbnailImageViewModel {
         self.node = node
 
         if let file = node as? File {
-            thumbnail = file.activeRevision?.thumbnail
+            thumbnail = file.activeRevision?.thumbnails.first
         }
     }
 

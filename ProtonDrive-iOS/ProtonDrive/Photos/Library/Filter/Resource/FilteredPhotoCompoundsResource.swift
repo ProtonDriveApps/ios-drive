@@ -19,16 +19,22 @@ import Combine
 import CoreData
 import PDCore
 
+struct FilteredPhotoCompoundsResult {
+    let compounds: [PhotoAssetCompound]
+    let validIdentifiers: PhotoLibraryIds
+    let invalidIdentifiers: PhotoLibraryIds
+}
+
 protocol FilteredPhotoCompoundsResource {
-    var result: AnyPublisher<[PhotoAssetCompound], Never> { get }
+    var result: AnyPublisher<FilteredPhotoCompoundsResult, Never> { get }
     func execute(with compounds: [PhotoAssetCompound])
 }
 
 final class DatabaseFilteredPhotoCompoundsResource: FilteredPhotoCompoundsResource {
     private let storage: StorageManager
-    private let resultSubject = PassthroughSubject<[PhotoAssetCompound], Never>()
+    private let resultSubject = PassthroughSubject<FilteredPhotoCompoundsResult, Never>()
 
-    var result: AnyPublisher<[PhotoAssetCompound], Never> {
+    var result: AnyPublisher<FilteredPhotoCompoundsResult, Never> {
         resultSubject.eraseToAnyPublisher()
     }
 
@@ -43,8 +49,7 @@ final class DatabaseFilteredPhotoCompoundsResource: FilteredPhotoCompoundsResour
     }
 
     private func filter(compounds: [PhotoAssetCompound]) async {
-        let managedObjectContext = storage.backgroundContext
-        let photos = storage.fetchPrimaryPhotos(moc: managedObjectContext)
+        let photos = fetchPhotos()
         var validCompounds = [PhotoAssetCompound]()
         var invalidCompounds = [PhotoAssetCompound]()
         compounds.forEach { compound in
@@ -54,9 +59,22 @@ final class DatabaseFilteredPhotoCompoundsResource: FilteredPhotoCompoundsResour
                 validCompounds.append(compound)
             }
         }
-
         invalidCompounds.forEach(cleanUpInvalidCompound)
-        await finish(with: validCompounds)
+        let result = makeResult(valid: validCompounds, invalid: invalidCompounds)
+        await finish(with: result)
+    }
+
+    private func fetchPhotos() -> [Photo] {
+        let managedObjectContext = storage.backgroundContext
+        return storage.fetchPrimaryPhotos(moc: managedObjectContext)
+    }
+
+    private func makeResult(valid: [PhotoAssetCompound], invalid: [PhotoAssetCompound]) -> FilteredPhotoCompoundsResult {
+        FilteredPhotoCompoundsResult(
+            compounds: valid,
+            validIdentifiers: Set(invalid.map { $0.primary.metadata.cloudIdentifier }),
+            invalidIdentifiers: Set(invalid.map { $0.primary.metadata.cloudIdentifier })
+        )
     }
 
     private func cleanUpInvalidCompound(_ compound: PhotoAssetCompound) {
@@ -67,15 +85,17 @@ final class DatabaseFilteredPhotoCompoundsResource: FilteredPhotoCompoundsResour
     }
 
     private func isEqual(compound: PhotoAssetCompound, photo: Photo) -> Bool {
-        guard compound.secondary.count == photo.children.count else {
-            return false
-        }
+        storage.backgroundContext.performAndWait {
+            guard compound.secondary.count == photo.children.count else {
+                return false
+            }
 
-        guard isEqual(asset: compound.primary, photo: photo) else {
-            return false
-        }
+            guard isEqual(asset: compound.primary, photo: photo) else {
+                return false
+            }
 
-        return !areDifferent(assets: compound.secondary, photos: photo.children)
+            return !areDifferent(assets: compound.secondary, photos: photo.children)
+        }
     }
 
     private func areDifferent(assets: [PhotoAsset], photos: Set<Photo>) -> Bool {
@@ -99,7 +119,7 @@ final class DatabaseFilteredPhotoCompoundsResource: FilteredPhotoCompoundsResour
     }
 
     @MainActor
-    private func finish(with compounds: [PhotoAssetCompound]) {
-        resultSubject.send(compounds)
+    private func finish(with result: FilteredPhotoCompoundsResult) {
+        resultSubject.send(result)
     }
 }

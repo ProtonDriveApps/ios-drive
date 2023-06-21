@@ -18,32 +18,25 @@
 import Foundation
 
 public enum EventType: Int, Codable {
-    /* old_event => new_event
-     TYPE_CREATE => TYPE_CREATE,
-     TYPE_UPDATE => TYPE_UPDATE_METADATA,
-     TYPE_UPDATE_CONTENT => TYPE_UPDATE,
-     TYPE_TRASH => TYPE_UPDATE_METADATA,
-     TYPE_RESTORE => TYPE_UPDATE_METADATA,
-     TYPE_MOVE => TYPE_UPDATE_METADATA,
-     TYPE_DELETE => TYPE_DELETE,
-     */
-    
     case delete = 0
     case create = 1
-    case updateMetadata = 3
-    
-    /// update content
     case updateContent = 2
+    case updateMetadata = 3    
 }
 
 public struct Event: Encodable {
+    public var contextShareID: Share.ShareID
     public var eventID: EventID
     public var eventType: EventType
     public var createTime: TimeInterval
     public var link: Link
     
     enum CodingKeys: String, CodingKey {
-        case eventID, eventType, createTime, link
+        case eventID
+        case eventType
+        case createTime
+        case link
+        case contextShareID
     }
     
     private struct MinimalLink: Codable {
@@ -54,9 +47,17 @@ public struct Event: Encodable {
 extension Event: Decodable {
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
+        
         self.eventID = try values.decode(EventID.self, forKey: .eventID)
         self.eventType = try values.decode(EventType.self, forKey: .eventType)
         self.createTime = try values.decode(TimeInterval.self, forKey: .createTime)
+        
+        // contextShareID is allowed to be missing in .delete events, but others should have it
+        do {
+            self.contextShareID = try values.decode(Share.ShareID.self, forKey: .contextShareID)
+        } catch where eventType == .delete {
+            self.contextShareID = ""
+        }
 
         do {
             // .update and .create events come with a full link inside
@@ -75,15 +76,15 @@ extension Event: Decodable {
     }
 }
 
-struct EventsEndpoint: Endpoint {
-    typealias Response = EventsResponse
+public struct EventsEndpoint: Endpoint {
+    public typealias Response = EventsResponse
 
-    var request: URLRequest
+    public var request: URLRequest
     
-    init(shareID: Share.ShareID, since lastKnown: EventID, service: APIService, credential: ClientCredential) {
+    public init(volumeID: Volume.VolumeID, since lastKnown: EventID, service: APIService, credential: ClientCredential) {
         // url
-        var url = service.url(of: "/shares")
-        url.appendPathComponent(shareID)
+        var url = service.url(of: "/volumes")
+        url.appendPathComponent(volumeID)
         url.appendPathComponent("/events")
         url.appendPathComponent(lastKnown)
         
@@ -101,11 +102,11 @@ struct EventsEndpoint: Endpoint {
 }
 
 public struct EventsResponse: Codable {
-    let code: Int
-    let events: [Event]
-    let eventID: String
-    let more: More
-    let refresh: Refresh
+    public let code: Int
+    public let events: [Event]
+    public let eventID: String
+    public let more: More
+    public let refresh: Refresh
 
     public init(code: Int, events: [Event], eventID: String, more: More, refresh: Refresh) {
         self.code = code

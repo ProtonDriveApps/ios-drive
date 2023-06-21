@@ -18,5 +18,5 @@
 import UIKit
 
 protocol PhotosPreviewDetailFactory {
-    func makeViewController(with id: PhotosPreviewItem) -> UIViewController?
+    func makeViewController(with id: PhotosPreviewItem) -> UIViewController
 }

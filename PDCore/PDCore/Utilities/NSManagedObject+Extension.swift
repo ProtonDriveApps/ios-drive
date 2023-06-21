@@ -63,7 +63,7 @@ extension NSManagedObject {
         }
     }
 
-    static func noMOC(file: String = #filePath, line: Int = #line) -> NoMOCError {
+    public static func noMOC(file: String = #filePath, line: Int = #line) -> Error {
         NoMOCError(file: file, line: line)
     }
 

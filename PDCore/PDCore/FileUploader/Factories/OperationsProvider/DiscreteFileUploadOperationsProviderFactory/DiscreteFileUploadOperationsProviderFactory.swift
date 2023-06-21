@@ -19,14 +19,14 @@ import Foundation
 import PDClient
 import ProtonCore_APIClient
 
-final class DiscreteFileUploadOperationsProviderFactory: FileUploadOperationsProviderFactory {
+public final class DiscreteFileUploadOperationsProviderFactory: FileUploadOperationsProviderFactory {
 
     private let storage: StorageManager
     private let cloudSlot: CloudSlot
     private let sessionVault: SessionVault
     private let apiService: APIService
 
-    init(
+    public init(
         storage: StorageManager,
         cloudSlot: CloudSlot,
         sessionVault: SessionVault,
@@ -38,7 +38,7 @@ final class DiscreteFileUploadOperationsProviderFactory: FileUploadOperationsPro
         self.apiService = apiService
     }
 
-    func make() -> FileUploadOperationsProvider {
+    public func make() -> FileUploadOperationsProvider {
         let revisionEncryptor = DiscreteRevisionEncryptorOperationFactory(signersKitFactory: sessionVault, moc: storage.backgroundContext)
         let fileDraftCreator = FileDraftCreatorOperationFactory(hashChecker: cloudSlot, fileDraftCreator: cloudSlot, sessionVault: sessionVault, storage: storage)
         let revisionDraftCreator = RevisionDraftCreatorOperationFactory(revisionCreator: cloudSlot, finalizer: cloudSlot.storage)
@@ -50,9 +50,7 @@ final class DiscreteFileUploadOperationsProviderFactory: FileUploadOperationsPro
             fileDraftUploaderOperationFactory: fileDraftCreator,
             revisionCreatorOperationFactory: revisionDraftCreator,
             revisionUploaderOperationFactory: revisionUploader,
-            revisionSealerOperationFactory: revisionCommitter,
-            completedStepsFileUploadOperationFactory: ImmediatelyFinishingOperationFactory(),
-            mainFileUploaderOperationFactory: MainFileUploaderOperationFactory()
+            revisionSealerOperationFactory: revisionCommitter
         )
     }
 

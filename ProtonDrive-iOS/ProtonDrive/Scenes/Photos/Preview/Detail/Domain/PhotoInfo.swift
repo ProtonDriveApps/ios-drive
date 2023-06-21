@@ -15,7 +15,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-struct PhotoInfo {
+struct PhotoInfo: Equatable {
+    enum PhotoType {
+        case photo
+        case video
+    }
+
     let id: PhotoId
     let name: String
+    let type: PhotoType
 }

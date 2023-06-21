@@ -159,11 +159,11 @@ protocol LockManager {
 
 extension Tower: LockManager {
     func onLock() {
-        eventProcessor.suspend(true)
+        stop()
     }
 
     func onUnlock() {
-        eventProcessor.suspend(false)
+        startEventsSystem()
     }
 }
 

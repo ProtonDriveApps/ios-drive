@@ -33,7 +33,9 @@ extension DriveDependencyContainer {
             sessionVault: sessionVault,
             authenticator: authenticator,
             clientConfig: Constants.clientApiConfig,
-            network: networkService
+            network: networkService,
+            eventObservers: [],
+            eventProcessingMode: .full
         )
 
         let authenticatedContainer = AuthenticatedDependencyContainer(

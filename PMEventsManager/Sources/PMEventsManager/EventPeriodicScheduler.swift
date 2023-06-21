@@ -99,4 +99,12 @@ public class EventPeriodicScheduler<GeneralEventsLoop: EventsLoop, SpecialEvents
     public func currentlyEnabled() -> Set<LoopID> {
         Set(specialLoops.keys)
     }
+    
+    public func currentlyEnabledLoops() -> [SpecialEventsLoop] {
+        specialLoops.values.map(\.loop)
+    }
+    
+    public var isRunning: Bool {
+        timer?.isValid == true && !queue.isSuspended
+    }
 }

@@ -52,7 +52,7 @@ final class PhotoLibraryAssetsOperation: AsynchronousOperation {
     }
 
     @MainActor
-    private func finish(with result: PhotoAssetCompoundsResult) {
+    private func finish(with result: Result<[PhotoAssetCompound], Error>) {
         completion(result)
         state = .finished
     }

@@ -31,7 +31,7 @@ extension Revision {
     @NSManaged public var size: Int
     @NSManaged public var file: File
     @NSManaged public var blocks: Set<Block>
-    @NSManaged public var thumbnail: Thumbnail?
+    @NSManaged public var thumbnails: Set<Thumbnail>
     @NSManaged public var thumbnailHash: String?
     @NSManaged public var xAttributes: String?
 }
@@ -83,6 +83,23 @@ extension Revision {
     @objc(removeBlocks:)
     @NSManaged public func removeFromBlocks(_ values: Set<Block>)
 
+}
+
+// MARK: Generated accessors for thumbnails
+extension Revision {
+
+    // MARK: Generated accessors for thumbnails
+      @objc(addThumbnailsObject:)
+      @NSManaged public func addToThumbnails(_ value: Thumbnail)
+
+      @objc(removeThumbnailsObject:)
+      @NSManaged public func removeFromThumbnails(_ value: Thumbnail)
+
+      @objc(addThumbnails:)
+      @NSManaged public func addToThumbnails(_ values: Set<Thumbnail>)
+
+      @objc(removeThumbnails:)
+      @NSManaged public func removeFromThumbnails(_ values: Set<Thumbnail>)
 }
 
 public extension Revision {

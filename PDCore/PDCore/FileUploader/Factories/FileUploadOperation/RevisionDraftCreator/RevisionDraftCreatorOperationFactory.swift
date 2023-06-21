@@ -28,7 +28,7 @@ final class RevisionDraftCreatorOperationFactory: FileUploadOperationFactory {
         self.finalizer = finalizer
     }
 
-    func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> OperationWithProgress {
+    func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> any UploadOperation {
         RevisionCreatorOperation(draft: draft, creator: revisionCreator, finalizer: finalizer, onError: { completion(.failure($0)) })
     }
 

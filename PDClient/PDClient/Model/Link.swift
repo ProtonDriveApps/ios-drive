@@ -50,7 +50,7 @@ public struct Link: Codable {
     public let folderProperties: FolderProperties?
 }
 
-extension Link {
+public extension Link {
     static func emptyDeletedLink(id: Link.LinkID) -> Link {
         Link(
             linkID: id,

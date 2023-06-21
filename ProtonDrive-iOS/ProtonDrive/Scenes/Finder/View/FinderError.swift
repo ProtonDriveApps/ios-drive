@@ -46,7 +46,7 @@ enum FinderError: Error, Equatable {
         private static func checkSpaceError(for error: Error) -> FinderError {
             if case FileUploaderError.insuficientSpace = error {
                 return .noSpaceOnCloud
-            } else if (error as NSError).matches(Uploader.Errors.lackOfSpaceOnDiskError) || (error as NSError).matches(Uploader.Errors.lackOfSpaceOnDeviceError) {
+            } else if (error as NSError).matches(UploaderErrors.lackOfSpaceOnDiskError) || (error as NSError).matches(UploaderErrors.lackOfSpaceOnDeviceError) {
                 return .noSpaceOnDevice
             } else {
                 return .toast(error: error)
@@ -56,7 +56,7 @@ enum FinderError: Error, Equatable {
 }
 
 private extension NSError {
-    func matches(_ error: Uploader.Errors.ErrorElements) -> Bool {
+    func matches(_ error: UploaderErrors.ErrorElements) -> Bool {
         return domain == error.domain && code == error.code
     }
 }

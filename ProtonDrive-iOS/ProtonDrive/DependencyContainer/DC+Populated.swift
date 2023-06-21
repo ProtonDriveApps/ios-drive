@@ -132,6 +132,11 @@ extension AuthenticatedDependencyContainer {
     }
 
     private func makeSettingsViewController() -> UIViewController {
-        SettingsAssembler.assemble(apiService: networkService, tower: tower, keymaker: keymaker)
+        #if HAS_PHOTOS
+            let photosContainer = photosContainer.settingsContainer
+        #else
+            let photosContainer: PhotosSettingsContainer? = nil
+        #endif
+        return SettingsAssembler.assemble(apiService: networkService, tower: tower, keymaker: keymaker, photosContainer: photosContainer)
     }
 }

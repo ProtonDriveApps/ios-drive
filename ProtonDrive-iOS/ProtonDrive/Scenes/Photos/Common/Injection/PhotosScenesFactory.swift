@@ -23,10 +23,8 @@ struct PhotosScenesFactory {
 
     // MARK: - Views
 
-    func makeCoordinator(container: PhotosContainer) -> PhotosCoordinator {
-        let coordinator = PhotosCoordinator()
-        coordinator.container = container
-        return coordinator
+    func makeCoordinator(container: PhotosScenesContainer) -> PhotosCoordinator {
+        PhotosCoordinator(container: container)
     }
     
     func makeRootPhotosViewController(
@@ -45,9 +43,10 @@ struct PhotosScenesFactory {
     func makeRootViewModel(
         coordinator: PhotosRootCoordinator,
         settingsController: PhotoBackupSettingsController,
-        authorizationController: PhotoLibraryAuthorizationController
+        authorizationController: PhotoLibraryAuthorizationController,
+        galleryController: PhotosGalleryController
     ) -> any PhotosRootViewModelProtocol {
-        PhotosRootViewModel(coordinator: coordinator, settingsController: settingsController, authorizationController: authorizationController)
+        PhotosRootViewModel(coordinator: coordinator, settingsController: settingsController, authorizationController: authorizationController, galleryController: galleryController)
     }
 
     func makeOnboardingView(
@@ -55,7 +54,8 @@ struct PhotosScenesFactory {
         authorizationController: PhotoLibraryAuthorizationController,
         bootstrapController: PhotosBootstrapController
     ) -> some View {
-        PhotosOnboardingView(viewModel: PhotosOnboardingViewModel(settingsController: settingsController, authorizationController: authorizationController, photosBootstrapController: bootstrapController))
+        let startController = LocalPhotosBackupStartController(settingsController: settingsController, authorizationController: authorizationController, photosBootstrapController: bootstrapController)
+        return PhotosOnboardingView(viewModel: PhotosOnboardingViewModel(startController: startController))
     }
 
     func makePermissionsView(coordinator: PhotosPermissionsCoordinator) -> some View {
@@ -63,22 +63,57 @@ struct PhotosScenesFactory {
         return PhotosPermissionsView(viewModel: viewModel)
     }
 
-    func makeGalleryView(tower: Tower, coordinator: PhotosCoordinator, galleryController: PhotosGalleryController, thumbnailsController: ThumbnailsController) -> some View {
-        PhotosGalleryView(viewModel: PhotosGalleryViewModel(), grid: {
-            makeGridView(tower: tower, coordinator: coordinator, galleryController: galleryController, thumbnailsController: thumbnailsController)
-        })
+    func makeGalleryView(tower: Tower, coordinator: PhotosCoordinator, galleryController: PhotosGalleryController, thumbnailsController: ThumbnailsController, uploadController: PhotosBackupUploadAvailableController, progressController: PhotosBackupProgressController) -> some View {
+        PhotosGalleryView(
+            viewModel: PhotosGalleryViewModel(galleryController: galleryController, uploadController: uploadController),
+            grid: {
+                makeGridView(tower: tower, coordinator: coordinator, galleryController: galleryController, thumbnailsController: thumbnailsController)
+            },
+            placeholder: makeGalleryPlaceholderView,
+            state: {
+                makeStateView(progressController: progressController)
+            }
+        )
+    }
+
+    private func makeGalleryPlaceholderView() -> some View {
+        let viewModel = PhotosGalleryPlaceholderViewModel(timerFactory: MainQueueTimerFactory())
+        return PhotosGalleryPlaceholderView(viewModel: viewModel)
+    }
+
+    private func makeStateView(progressController: PhotosBackupProgressController) -> some View {
+        let controller = LocalPhotosUploadStateController(progressController: progressController)
+        let viewModel = PhotosStateViewModel(controller: controller)
+        return PhotosStateView(viewModel: viewModel) { items in
+            let viewModel = PhotosStateTitlesViewModel(timerFactory: MainQueueTimerFactory(), items: items)
+            return PhotosStateTitlesView(viewModel: viewModel)
+        }
     }
 
     private func makeGridView(tower: Tower, coordinator: PhotosCoordinator, galleryController: PhotosGalleryController, thumbnailsController: ThumbnailsController) -> some View {
         let monthFormatter = LocalizedMonthFormatter(dateResource: PlatformDateResource(), dateFormatter: PlatformMonthAndYearFormatter(), monthResource: PlatformMonthResource())
         let viewModel = PhotosGridViewModel(
             controller: galleryController,
+            loadController: makePagingLoadController(tower: tower),
             monthFormatter: monthFormatter,
             durationFormatter: LocalizedDurationFormatter()
         )
         return PhotosGridView(viewModel: viewModel) { item in
             makeItemView(item: item, thumbnailsController: thumbnailsController, coordinator: coordinator)
         }
+    }
+
+    private func makePagingLoadController(tower: Tower) -> RemotePhotosPagingLoadController {
+        let factory = PhotosFactory()
+        let observer = factory.makeDevicesObserver(tower: tower)
+        let dataSource = PhotosFactory().makeLocalPhotosRootDataSource(observer: observer)
+        let filterResource = CoreDataPhotosListFilterResource(storage: tower.storage, managedObjectContext: tower.storage.backgroundContext)
+        let listInteractor = PhotosListLoadInteractor(volumeIdDataSource: DatabasePhotosVolumeIdDataSource(deviceDataSource: dataSource), listing: tower.client)
+        let listFacadeInteractor = AsyncPhotosListLoadResultInteractor(interactor: listInteractor)
+        let metadataInteractor = PhotosMetadataLoadInteractor(shareIdDataSource: DatabasePhotoShareIdDataSource(dataSource: dataSource), listing: tower.client, updateRepository: tower.cloudSlot, filterResource: filterResource)
+        let metadataFacadeInteractor = AsyncPhotosMetadataLoadResultInteractor(interactor: metadataInteractor)
+        let interactor = RemotePhotosFullLoadInteractor(listInteractor: listFacadeInteractor, metadataInteractor: metadataFacadeInteractor)
+        return RemotePhotosPagingLoadController(interactor: interactor)
     }
 
     private func makeItemView(item: PhotoGridViewItem, thumbnailsController: ThumbnailsController, coordinator: PhotoItemCoordinator) -> some View {
@@ -88,34 +123,6 @@ struct PhotosScenesFactory {
         return PhotoItemView(viewModel: viewModel)
     }
 
-    func makePreviewViewController(
-        previewController: PhotosPreviewController,
-        galleryController: PhotosGalleryController,
-        container: PhotosContainer,
-        modeController: PhotosPreviewModeController,
-        detailController: PhotoPreviewDetailController
-    ) -> UIViewController {
-        let coordinator = PhotosPreviewCoordinator()
-        let viewModel = PhotosPreviewViewModel(controller: previewController, coordinator: coordinator, modeController: modeController, detailController: detailController)
-        let viewController = PhotosPreviewViewController(viewModel: viewModel, factory: coordinator)
-        coordinator.rootViewController = viewController
-        coordinator.container = container
-        return UINavigationController(rootViewController: viewController)
-    }
-
-    func makeDetailViewController(
-        id: PhotoId,
-        thumbnailsController: ThumbnailsController,
-        modeController: PhotosPreviewModeController,
-        previewController: PhotosPreviewController,
-        detailController: PhotoPreviewDetailController
-    ) -> UIViewController {
-        let fullPreviewController = DummyPhotoFullPreviewController()
-        let thumbnailController = LocalThumbnailController(thumbnailsController: thumbnailsController, id: id)
-        let viewModel = PhotoPreviewDetailViewModel(thumbnailController: thumbnailController, modeController: modeController, previewController: previewController, detailController: detailController, fullPreviewController: fullPreviewController, id: id)
-        return PhotoPreviewDetailViewController(viewModel: viewModel)
-    }
-
     // MARK: - Controllers
 
     func makeGalleryController(tower: Tower) -> PhotosGalleryController {
@@ -123,23 +130,21 @@ struct PhotosScenesFactory {
     }
 
     func makeSmallThumbnailsController(tower: Tower) -> ThumbnailsController {
-        makeThumbnailsController(tower: tower, filterStrategy: SmallThumbnailFilterStrategy())
+        let thumbnailLoader = ThumbnailLoaderFactory().makePhotoSmallThumbnailLoader(tower: tower)
+        return makeThumbnailsController(tower: tower, filterStrategy: SmallThumbnailFilterStrategy(), thumbnailLoader: thumbnailLoader)
     }
 
-    private func makeThumbnailsController(tower: Tower, filterStrategy: ThumbnailFilterStrategy) -> ThumbnailsController {
+    func makeBigThumbnailsController(tower: Tower) -> ThumbnailsController {
+        let thumbnailLoader = ThumbnailLoaderFactory().makePhotoBigThumbnailLoader(tower: tower)
+        return makeThumbnailsController(tower: tower, filterStrategy: BigThumbnailFilterStrategy(), thumbnailLoader: thumbnailLoader)
+    }
+
+    private func makeThumbnailsController(tower: Tower, filterStrategy: ThumbnailFilterStrategy, thumbnailLoader: ThumbnailLoader) -> ThumbnailsController {
         let managedObjectContext = tower.storage.backgroundContext
         let fetchedResultsController = tower.storage.subscriptionToThumbnails(moc: managedObjectContext)
         let observer = PhotoThumbnailsFetchedObjectsObserver(fetchedResultsController: fetchedResultsController, filterStrategy: filterStrategy)
         let repository = DatabaseThumbnailsRepository(managedObjectContext: managedObjectContext, observer: observer)
-        return LocalThumbnailsController(repository: repository, thumbnailLoader: tower)
-    }
-
-    func makePreviewModeController() -> PhotosPreviewModeController {
-        GalleryPhotosPreviewModeController()
-    }
-
-    func makeDetailController(tower: Tower) -> PhotoPreviewDetailController {
-        LocalPhotoPreviewDetailController(repository: DatabasePhotoInfoRepository(storage: tower.storage))
+        return LocalThumbnailsController(repository: repository, thumbnailLoader: thumbnailLoader)
     }
 
     func makePreviewController(galleryController: PhotosGalleryController, currentId: PhotoId) -> PhotosPreviewController {

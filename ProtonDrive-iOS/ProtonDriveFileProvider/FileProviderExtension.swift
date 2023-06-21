@@ -44,7 +44,7 @@ class FileProviderExtension: NSFileProviderExtension, LogObject {
         
         self.keymaker = keymaker
         self.initialServices = initialServices
-        self.postLoginServices = .init(initialServices: initialServices, appGroup: Constants.appGroup, eventObservers: [listener])
+        self.postLoginServices = PostLoginServices(initialServices: initialServices, appGroup: Constants.appGroup, eventObservers: [listener], eventProcessingMode: .full)
         
         super.init()
         

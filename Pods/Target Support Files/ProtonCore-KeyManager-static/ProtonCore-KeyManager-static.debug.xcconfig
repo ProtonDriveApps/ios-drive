@@ -1,7 +1,7 @@
 APPLICATION_EXTENSION_API_ONLY = YES
 CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO
 CONFIGURATION_BUILD_DIR = ${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-KeyManager-static
-FRAMEWORK_SEARCH_PATHS = $(inherited) "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-DataModel-static" "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-GoLibs-static" "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Log-static" "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Utilities-static" "${PODS_ROOT}/ProtonCore-GoLibs/vendor/Crypto-patched-Go1.20.2" "${PODS_XCFRAMEWORKS_BUILD_DIR}/ProtonCore-GoLibs/Crypto-patched-Go1.20.2"
+FRAMEWORK_SEARCH_PATHS = $(inherited) "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-DataModel-static" "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-GoLibs-static" "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Log-static" "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Utilities-static" "${PODS_ROOT}/ProtonCore-GoLibs/vendor/Crypto-patched-Go" "${PODS_XCFRAMEWORKS_BUILD_DIR}/ProtonCore-GoLibs/Crypto-patched-Go"
 GCC_PREPROCESSOR_DEFINITIONS = $(inherited) COCOAPODS=1
 OTHER_SWIFT_FLAGS = $(inherited) -D COCOAPODS
 PODS_BUILD_DIR = ${BUILD_DIR}

@@ -19,10 +19,6 @@ import PDCore
 
 final class SmallThumbnailFilterStrategy: ThumbnailFilterStrategy {
     func isValid(_ thumbnail: Thumbnail) -> Bool {
-        guard let revision = thumbnail.revision as? PhotoRevision else {
-            return false
-        }
-
-        return revision.thumbnail == thumbnail
+        thumbnail.type == .default
     }
 }

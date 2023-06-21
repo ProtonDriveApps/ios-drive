@@ -34,12 +34,12 @@ final class PhotosPreviewViewModel: PhotosPreviewViewModelProtocol {
     private let controller: PhotosPreviewController
     private let coordinator: PhotosPreviewListCoordinator
     private let modeController: PhotosPreviewModeController
-    private let detailController: PhotoPreviewDetailController
+    private let detailController: PhotoPreviewCurrentDetailController
 
     @Published var title: String = ""
     @Published var mode: PhotosPreviewViewMode = .default
 
-    init(controller: PhotosPreviewController, coordinator: PhotosPreviewListCoordinator, modeController: PhotosPreviewModeController, detailController: PhotoPreviewDetailController) {
+    init(controller: PhotosPreviewController, coordinator: PhotosPreviewListCoordinator, modeController: PhotosPreviewModeController, detailController: PhotoPreviewCurrentDetailController) {
         self.controller = controller
         self.coordinator = coordinator
         self.modeController = modeController

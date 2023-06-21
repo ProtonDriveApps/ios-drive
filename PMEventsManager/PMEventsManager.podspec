@@ -19,11 +19,11 @@ Pod::Spec.new do |spec|
   spec.swift_version = "5.5"
 
   #  When using multiple platforms
-  spec.ios.deployment_target = "13.0"
+  spec.ios.deployment_target = "15.0"
   spec.macos.deployment_target = "11.0"
 
   #  Crypto library variant
-  crypto_variant = "Crypto-patched-Go1.20.2"
+  crypto_variant = "Crypto-patched-Go"
 
   # ――― Source Location ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
   #

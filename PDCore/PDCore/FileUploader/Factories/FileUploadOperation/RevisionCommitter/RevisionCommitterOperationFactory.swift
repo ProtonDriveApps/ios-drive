@@ -17,11 +17,11 @@
 
 import CoreData
 
-final class RevisionCommitterOperationFactory: FileUploadOperationFactory {
+class RevisionCommitterOperationFactory: FileUploadOperationFactory {
 
-    private let cloudRevisionCommitter: CloudRevisionCommiter
-    private let signersKitFactory: SignersKitFactoryProtocol
-    private let moc: NSManagedObjectContext
+    let cloudRevisionCommitter: CloudRevisionCommiter
+    let signersKitFactory: SignersKitFactoryProtocol
+    let moc: NSManagedObjectContext
 
     init(
         cloudRevisionCommitter: CloudRevisionCommiter,
@@ -33,7 +33,7 @@ final class RevisionCommitterOperationFactory: FileUploadOperationFactory {
         self.moc = moc
     }
 
-    func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> OperationWithProgress {
+    func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> any UploadOperation {
         let committer = makeRevisionCommitter()
         return RevisionCommitterOperation(draft: draft, commiter: committer, onError: { completion(.failure($0)) })
     }

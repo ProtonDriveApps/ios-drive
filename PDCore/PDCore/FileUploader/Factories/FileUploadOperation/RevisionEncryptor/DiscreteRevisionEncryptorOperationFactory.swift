@@ -30,7 +30,7 @@ class DiscreteRevisionEncryptorOperationFactory: FileUploadOperationFactory {
         self.moc = moc
     }
 
-    func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> OperationWithProgress {
+    func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> any UploadOperation {
         let progress = Progress(unitsOfWork: draft.numberOfBlocks + 2)
 
         let revisionEncryptor = makeRevisionEncryptor(progress, blocks: draft.numberOfBlocks)
@@ -55,7 +55,12 @@ class DiscreteRevisionEncryptorOperationFactory: FileUploadOperationFactory {
     }
 
     func makeThumbnailRevisionEncryptor(progress: Progress, moc: NSManagedObjectContext) -> RevisionEncryptor {
-        ThumbnailRevisionEncryptor(thumbnailProvider: makeThumbnailProvider(), signersKitFactory: signersKitFactory, progress: progress, moc: moc)
+        return ThumbnailRevisionEncryptor(
+            thumbnailProvider: makeThumbnailProvider(),
+            signersKitFactory: signersKitFactory,
+            progress: progress,
+            moc: moc
+        )
     }
 
     func makeExtendedAttributesRevisionEncryptor(progress: Progress, moc: NSManagedObjectContext, digestBuilder: DigestBuilder) -> ExtendedAttributesRevisionEncryptor {
@@ -63,11 +68,7 @@ class DiscreteRevisionEncryptorOperationFactory: FileUploadOperationFactory {
     }
 
     func makeThumbnailProvider() -> ThumbnailProvider {
-        let provider = CGImageThumbnailProvider()
-        provider
-            .setNext(PDFThumbnailProvider())
-            .setNext(VideoThumbnailProvider())
-
+        let provider = CGImageThumbnailProvider(next: PDFThumbnailProvider(next: VideoThumbnailProvider()))
         return provider
     }
 

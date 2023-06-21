@@ -167,14 +167,13 @@ extension Client {
             completion( $0.flatMap { .success($0.folder) })
         }
     }
-
-    public func postBlocks(parameters: NewBlocksParameters, completion: @escaping (Result<(blocks: [BlockUploadLink], thumbnail: ThumbnailUploadLink?), Error>) -> Void) {
+    public func postBlocks(parameters: NewPhotoBlocksParameters, completion: @escaping (Result<(blocks: [ContentUploadLink], thumbnails: [ContentUploadLink]), Error>) -> Void) {
         guard let credential = self.credentialProvider?.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
-        let endpoint = NewBlocksEndpoint(parameters: parameters, service: self.service, credential: credential)
+        let endpoint = NewBlocksEndpoint(parameters: parameters, service: service, credential: credential)
         request(endpoint) { result in
-            completion( result.flatMap { .success((blocks: $0.uploadLinks, thumbnail: $0.thumbnailLink)) })
+            completion( result.flatMap { .success((blocks: $0.uploadLinks, thumbnails: $0.thumbnailLinks ?? [])) })
         }
     }
 
@@ -296,36 +295,26 @@ extension Client {
 }
 
 extension Client {
-    public func getLatestEvent(_ shareID: ShareID, completion: @escaping (Result<EventID, Error>) -> Void) {
+    public func getLatestEvent(_ volumeID: VolumeID, completion: @escaping (Result<EventID, Error>) -> Void) {
         guard let credential = self.credentialProvider?.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
-        let endpoint = LatestEventEndpoint(shareID: shareID, service: self.service, credential: credential)
+        let endpoint = LatestEventEndpoint(volumeID: volumeID, service: self.service, credential: credential)
         request(endpoint) {
             completion( $0.flatMap { .success($0.eventID) })
         }
     }
 
-    public func getEvents(_ shareID: ShareID, since lastKnown: EventID, completion: @escaping (Result<(EventID, [Event], MoreEvents), Error>) -> Void) {
+    public func getEvents(_ volumeID: VolumeID, since lastKnown: EventID, completion: @escaping (Result<EventsEndpoint.Response, Error>) -> Void) {
         guard let credential = self.credentialProvider?.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
-        let endpoint = EventsEndpoint(shareID: shareID, since: lastKnown, service: self.service, credential: credential)
+        let endpoint = EventsEndpoint(volumeID: volumeID, since: lastKnown, service: self.service, credential: credential)
         request(endpoint) {
-            completion(
-                $0.flatMap { response in
-                    if response.refresh == .true {
-                        return .failure(RefreshError())
-                    } else {
-                        return .success((response.eventID, response.events, response.more == .true))
-                    }
-                }
-            )
+            completion($0)
         }
     }
 }
-
-public struct RefreshError: Error { }
 
 extension Client {
     public func getTrash(shareID: ShareID, page: Int, pageSize size: Int, completion: @escaping (Result<(trash: [Link], parents: [Link]), Error>) -> Void) {

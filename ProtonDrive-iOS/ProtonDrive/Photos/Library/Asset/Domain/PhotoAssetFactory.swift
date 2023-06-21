@@ -47,7 +47,10 @@ final class LocalPhotoAssetFactory: PhotoAssetFactory {
             metadata: PhotoAsset.Metadata(
                 cloudIdentifier: data.identifier.cloudIdentifier,
                 creationDate: data.identifier.creationDate,
-                modifiedDate: data.identifier.modifiedDate
+                modifiedDate: data.identifier.modifiedDate,
+                width: data.identifier.width,
+                height: data.identifier.height,
+                duration: data.identifier.duration
             )
         )
     }

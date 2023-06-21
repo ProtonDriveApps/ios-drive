@@ -105,7 +105,7 @@ final class ThumbnailDecryptor {
         guard let node = self.store.fetchNode(id: identifier, moc: moc),
               let file = node as? File,
               let revision = file.activeRevision ?? file.activeRevisionDraft,
-              let thumbnail = revision.thumbnail else {
+              let thumbnail = revision.thumbnails.first else {
             throw ThumbnailLoaderError.nonRecoverable
         }
         return thumbnail

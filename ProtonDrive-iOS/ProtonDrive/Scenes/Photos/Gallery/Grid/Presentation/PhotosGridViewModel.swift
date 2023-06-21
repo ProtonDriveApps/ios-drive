@@ -19,21 +19,28 @@ import Combine
 
 protocol PhotosGridViewModelProtocol: ObservableObject {
     var sections: [PhotosGridViewSection] { get }
+    func didShowLastItem()
 }
 
 final class PhotosGridViewModel: PhotosGridViewModelProtocol {
     private let controller: PhotosGalleryController
+    private let loadController: PhotosPagingLoadController
     private let monthFormatter: MonthFormatter
     private let durationFormatter: DurationFormatter
     private var cancellables = Set<AnyCancellable>()
 
     @Published var sections: [PhotosGridViewSection] = []
 
-    init(controller: PhotosGalleryController, monthFormatter: MonthFormatter, durationFormatter: DurationFormatter) {
+    init(controller: PhotosGalleryController, loadController: PhotosPagingLoadController, monthFormatter: MonthFormatter, durationFormatter: DurationFormatter) {
         self.controller = controller
         self.monthFormatter = monthFormatter
         self.durationFormatter = durationFormatter
+        self.loadController = loadController
         subscribeToUpdates()
+    }
+
+    func didShowLastItem() {
+//        loadController.loadNext() // TODO: BE not ready
     }
 
     private func subscribeToUpdates() {

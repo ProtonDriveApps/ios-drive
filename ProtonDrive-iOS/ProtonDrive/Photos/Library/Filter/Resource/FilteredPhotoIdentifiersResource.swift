@@ -20,16 +20,16 @@ import CoreData
 import PDCore
 
 protocol FilteredPhotoIdentifiersResource {
-    var result: AnyPublisher<[PhotoIdentifier], Never> { get }
+    var result: AnyPublisher<PhotoIdentifiersFilterResult, Never> { get }
     func execute(with identifiers: [PhotoIdentifier])
 }
 
 final class DatabaseFilteredPhotoIdentifiersResource: FilteredPhotoIdentifiersResource {
     private let storage: StorageManager
     private let policy: PhotoIdentifiersFilterPolicyProtocol
-    private let resultSubject = PassthroughSubject<[PhotoIdentifier], Never>()
+    private let resultSubject = PassthroughSubject<PhotoIdentifiersFilterResult, Never>()
 
-    var result: AnyPublisher<[PhotoIdentifier], Never> {
+    var result: AnyPublisher<PhotoIdentifiersFilterResult, Never> {
         resultSubject.eraseToAnyPublisher()
     }
 
@@ -47,13 +47,25 @@ final class DatabaseFilteredPhotoIdentifiersResource: FilteredPhotoIdentifiersRe
     private func filter(identifiers: [PhotoIdentifier]) async {
         let managedObjectContext = storage.backgroundContext
         let photos = storage.fetchPrimaryPhotos(moc: managedObjectContext)
-        let metadata = photos.compactMap { $0.photoRevision.decryptMetadata().ios }
-        let filteredIdentifiers = policy.filter(identifiers: identifiers, metadata: metadata)
-        await finish(with: filteredIdentifiers)
+        let photosAttributes = managedObjectContext.performAndWait { photos.compactMap { try? $0.photoRevision.decryptExtendedAttributes().iOSPhotos } }
+        let formatter = ISO8601DateFormatter()
+
+        var metadata: [PhotoMetadata.iOSMeta] = []
+        for attribute in photosAttributes {
+            guard let cloudIdentifier = attribute.iCloudID else {
+                continue
+            }
+            let modifiedDate = formatter.date(attribute.modificationDate)
+
+            metadata.append(PhotoMetadata.iOSMeta(cloudIdentifier: cloudIdentifier, creationDate: nil, modifiedDate: modifiedDate))
+        }
+
+        let result = policy.filter(identifiers: identifiers, metadata: metadata)
+        await finish(with: result)
     }
 
     @MainActor
-    private func finish(with identifiers: [PhotoIdentifier]) {
-        resultSubject.send(identifiers)
+    private func finish(with result: PhotoIdentifiersFilterResult) {
+        resultSubject.send(result)
     }
 }

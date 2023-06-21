@@ -17,6 +17,6 @@
 
 import Foundation
 
-protocol EncryptingPhotosRootRepository {
-    func get() async throws -> EncryptingFolder
+public protocol PhotosRootFolderRepository {
+    func get() throws -> Folder
 }

@@ -15,12 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-final class FileDraftCreatorOperationFactory: FileUploadOperationFactory {
+class FileDraftCreatorOperationFactory: FileUploadOperationFactory {
 
-    private let hashChecker: AvailableHashChecker
-    private let fileDraftCreator: CloudFileDraftCreator
-    private let sessionVault: SessionVault
-    private let storage: StorageManager
+    let hashChecker: AvailableHashChecker
+    let fileDraftCreator: CloudFileDraftCreator
+    let sessionVault: SessionVault
+    let storage: StorageManager
 
     init(
         hashChecker: AvailableHashChecker,
@@ -34,7 +34,7 @@ final class FileDraftCreatorOperationFactory: FileUploadOperationFactory {
         self.storage = storage
     }
 
-    func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> OperationWithProgress {
+    func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> any UploadOperation {
         FileDraftUploaderOperation(
             unitOfWork: 100,
             draft: draft,

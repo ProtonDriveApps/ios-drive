@@ -19,20 +19,86 @@ import Foundation
 import PMEventsManager
 import ProtonCore_Services
 
-extension Tower {
-    static func makeDriveEventsSystem(storage: StorageManager, eventStorage: EventStorageManager, appGroup: SettingsStorageSuite, eventObservers: [EventsListener], eventProviders: [EventsProvider], processLocally: Bool) -> (EventsConveyor, EventsProcessor) {
-        let eventsConveyor = EventsConveyor(storage: eventStorage)
-        
-        let eventProcessor = EventsProcessor(
-            storage: storage,
-            eventsConveyor: eventsConveyor,
-            observers: eventObservers,
-            observedLanes: eventProviders,
-            processLocally: processLocally
-        )
-        
-        return (eventsConveyor, eventProcessor)
+public protocol EventsSystemManager {
+    typealias EventsHistoryRow = (event: GenericEvent, share: String)
+    
+    // event scheduler
+    func intializeEventsSystem()
+    func runEventsSystem()
+    func pauseEventsSystem()
+    
+    // event loops
+    func forceProcessEvents()
+    var eventProcessorIsRunning: Bool { get }
+    
+    // conveyor
+    func lastProcessedEvent() -> GenericEvent?
+    func lastReceivedEvent() -> GenericEvent?
+    func eventsHistory(since anchor: EventID?) throws -> [EventsHistoryRow]
+}
+
+extension Tower: EventsSystemManager {
+    
+    public func intializeEventsSystem() {
+        let moc = self.storage.backgroundContext
+        moc.performAndWait {
+            let addressIDs = self.sessionVault.addressIDs
+            let processor = DriveEventsLoopProcessor(cloudSlot: cloudSlot, conveyor: eventsConveyor, storage: storage)
+            
+            if let mainShare = self.storage.mainShareOfVolume(by: addressIDs, moc: moc),
+               let volumeID = mainShare.volume?.id
+            {
+                let logError: DriveEventsLoop.LogHandler = {
+                    ConsoleLogger.shared?.log($0, osLogType: Tower.self)
+                }
+                let loop = DriveEventsLoop(volumeID: volumeID, cloudSlot: self.cloudSlot, processor: processor, conveyor: self.eventsConveyor, observers: self.eventObservers, mode: self.eventProcessingMode, logError: logError)
+                
+                coreEventManager.enable(loop: loop, for: volumeID)
+            }
+        }
     }
+    
+    public func runEventsSystem() {
+        coreEventManager.start()
+    }
+    
+    public var eventProcessorIsRunning: Bool {
+        coreEventManager.isRunning
+    }
+    
+    public func pauseEventsSystem() {
+        coreEventManager.suspend()
+    }
+    
+    public func forceProcessEvents() {
+        coreEventManager.currentlyEnabledLoops().forEach { loop in
+            try? loop.performProcessing()
+        }
+    }
+    
+    public func lastProcessedEvent() -> GenericEvent? {
+        eventsConveyor.lastProcessedEvent()
+    }
+    
+    public func lastReceivedEvent() -> GenericEvent? {
+        eventsConveyor.lastReceivedEvent()
+    }
+    
+    public func eventsHistory(since anchor: EventID?) throws -> [EventsHistoryRow] {
+        try eventsConveyor.history(since: anchor)
+    }
+}
+
+extension Tower {
+    private static let refillInterval: TimeInterval = {
+        #if targetEnvironment(simulator)
+        return 10.0
+        #elseif os(iOS)
+        return 30.0
+        #elseif os(OSX)
+        return 15.0
+        #endif
+    }()
     
     static func makeCoreEventsSystem(appGroup: SettingsStorageSuite, sessionVault: SessionVault, generalSettings: GeneralSettings, paymentsSecureStorage: PaymentsSecureStorage, network: PMAPIService) -> CoreEventLoopManager {
         let processor = GeneralEventsLoopProcessor(sessionVault: sessionVault, generalSettings: generalSettings, paymentsVault: paymentsSecureStorage)
@@ -48,32 +114,18 @@ extension Tower {
         
         let coreEventManager = CoreEventLoopManager(
             generalLoop: generalEventsLoop,
-            refillPeriod: EventsProcessor.refillInterval
+            refillPeriod: refillInterval
         )
         
         return coreEventManager
     }
     
-    /// Start polling from current local state.
-    /// Some polling systems will fetch initial event ID, some require it to exist.
-    func startEventsPolling(shareId: EventStorageManager.ShareID) {
-        self.eventProcessor.start(for: shareId)
-        self.coreEventManager.start()
-    }
-    
     /// Stop active polling and clears local storages used by the polling system.
     /// After calling this method polling needs to be re-started from scratch including fetch of initial event ID.
     func discardEventsPolling() {
-        eventProcessor.discard()
-        
         coreEventManager.suspend()
         coreEventManager.destroyAnchors()
         coreEventManager.reset()
     }
     
-    /// Pause active polling, does not affect local storages.
-    func pauseEventsPolling() {
-        self.eventProcessor.stopTimer()
-        self.coreEventManager.suspend()
-    }
 }

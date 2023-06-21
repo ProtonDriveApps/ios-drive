@@ -22,15 +22,5 @@ protocol ThumbnailProvider: AnyObject {
 
     var next: ThumbnailProvider? { get set }
 
-    func getThumbnail(from url: URL) -> Image?
-}
-
-extension ThumbnailProvider {
-    var maximumSize: CGSize { CGSize(width: Constants.thumbnailMaxLength, height: Constants.thumbnailMaxLength) }
-
-    @discardableResult
-    func setNext(_ next: ThumbnailProvider) -> ThumbnailProvider {
-        self.next = next
-        return next
-    }
+    func getThumbnail(from url: URL, ofSize size: CGSize) -> Image?
 }

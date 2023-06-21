@@ -20,7 +20,7 @@ import Foundation
 // MARK: - EncryptingParent
 
 /// DTO that represents a Folder and gives the minimum data required for creating new File within said Folder.
-struct EncryptingFolder {
+public struct EncryptingFolder {
     let id: String
     let shareID: String
     let hashKey: HashKey

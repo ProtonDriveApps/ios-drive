@@ -25,16 +25,17 @@ protocol PhotoPreviewDetailController: AnyObject {
 
 final class LocalPhotoPreviewDetailController: PhotoPreviewDetailController {
     private let repository: PhotoInfoRepository
+    private let currentDetailController: PhotoPreviewCurrentDetailController
     private var cancellables = Set<AnyCancellable>()
     private let photoSubject = PassthroughSubject<PhotoInfo, Never>()
-    private var requestedId: PhotoId?
 
     var photo: AnyPublisher<PhotoInfo, Never> {
         photoSubject.eraseToAnyPublisher()
     }
 
-    init(repository: PhotoInfoRepository) {
+    init(repository: PhotoInfoRepository, currentDetailController: PhotoPreviewCurrentDetailController) {
         self.repository = repository
+        self.currentDetailController = currentDetailController
         subscribeToUpdates()
     }
 
@@ -47,13 +48,11 @@ final class LocalPhotoPreviewDetailController: PhotoPreviewDetailController {
     }
 
     private func handleUpdate(_ info: PhotoInfo) {
-        if requestedId == info.id {
-            photoSubject.send(info)
-        }
+        currentDetailController.setPhoto(info)
+        photoSubject.send(info)
     }
 
     func execute(with id: PhotoId) {
-        requestedId = id
         repository.execute(with: id)
     }
 }

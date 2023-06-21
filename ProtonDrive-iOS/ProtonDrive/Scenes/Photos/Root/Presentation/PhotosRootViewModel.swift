@@ -33,36 +33,39 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
     private let coordinator: PhotosRootCoordinator
     private let settingsController: PhotoBackupSettingsController
     private let authorizationController: PhotoLibraryAuthorizationController
+    private let galleryController: PhotosGalleryController
     private var cancellables = Set<AnyCancellable>()
 
     @Published var state: PhotosRootState = .onboarding
     let title = "Photos"
 
-    init(coordinator: PhotosRootCoordinator, settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController) {
+    init(coordinator: PhotosRootCoordinator, settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController, galleryController: PhotosGalleryController) {
         self.coordinator = coordinator
         self.settingsController = settingsController
         self.authorizationController = authorizationController
+        self.galleryController = galleryController
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
-        Publishers.CombineLatest(authorizationController.permissions, settingsController.isEnabled)
-            .sink { [weak self] permissions, isBackupEnabled in
-                self?.handle(permissions: permissions, isBackupEnabled: isBackupEnabled)
-            }
-            .store(in: &cancellables)
+        Publishers.CombineLatest3(
+            authorizationController.permissions,
+            settingsController.isEnabled,
+            galleryController.sections
+        )
+        .sink { [weak self] permissions, isBackupEnabled, sections in
+            self?.handle(permissions: permissions, isBackupEnabled: isBackupEnabled, hasPhotos: !sections.isEmpty)
+        }
+        .store(in: &cancellables)
     }
 
-    private func handle(permissions: PhotoLibraryPermissions, isBackupEnabled: Bool) {
-        switch (permissions, isBackupEnabled) {
-        case (_, false):
-            state = .onboarding
-        case (.restricted, _):
-            state = .permissions
-        case (.full, true):
+    private func handle(permissions: PhotoLibraryPermissions, isBackupEnabled: Bool, hasPhotos: Bool) {
+        if hasPhotos || (permissions == .full && isBackupEnabled) {
             state = .gallery
-        case (.undetermined, true):
+        } else if permissions == .undetermined {
             state = .onboarding
+        } else if permissions == .restricted {
+            state = .permissions
         }
     }
 

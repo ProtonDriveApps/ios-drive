@@ -21,10 +21,12 @@ final class LoadThumbnailOperationsFactory: ThumbnailOperationsFactory {
     let store: StorageManager
     let cloud: ThumbnailCloudClient
     let session = URLSession(configuration: .ephemeral)
+    private let thumbnailRepository: ThumbnailRepository
 
-    init(store: StorageManager, cloud: ThumbnailCloudClient) {
+    init(store: StorageManager, cloud: ThumbnailCloudClient, thumbnailRepository: ThumbnailRepository) {
         self.store = store
         self.cloud = cloud
+        self.thumbnailRepository = thumbnailRepository
     }
 
     func makeThumbnailModel(forFileWithID id: Identifier) throws -> ThumbnailIdentifiableOperation {
@@ -54,28 +56,19 @@ final class LoadThumbnailOperationsFactory: ThumbnailOperationsFactory {
     }
 
     private func makeThumbnail(fileID: Identifier) throws -> ThumbnailModel {
-        let moc = store.backgroundContext
-
-        let model: ThumbnailModel = try  moc.performAndWait {
-            let node = self.store.fetchNode(id: fileID, moc: moc)
-
-            guard let file = node as? File else {
-                throw ThumbnailLoaderError.nonRecoverable
-            }
-
-            guard let revision = file.latestRevision else {
-                throw ThumbnailLoaderError.noValidRevision
-            }
-
-            let thumbnail = try getThumbnail(from: revision)
-
-            return makeModel(thumbnail, id: revision.identifier)
+        let thumbnail = try thumbnailRepository.fetchThumbnail(fileID: fileID)
+        
+        guard let moc = thumbnail.moc else {
+            throw ThumbnailLoaderError.nonRecoverable
         }
 
-        return model
+        return moc.performAndWait {
+            makeModel(thumbnail)
+        }
     }
 
-    private func makeModel(_ thumbnail: Thumbnail, id: RevisionIdentifier) -> ThumbnailModel {
+    private func makeModel(_ thumbnail: Thumbnail) -> ThumbnailModel {
+        let id = thumbnail.revision.identifier
         if let data = thumbnail.encrypted {
             return FullThumbnail(id: id, encrypted: data)
         }
@@ -93,22 +86,10 @@ final class LoadThumbnailOperationsFactory: ThumbnailOperationsFactory {
             throw ThumbnailLoaderError.thumbnailNotYetCreated
         }
 
-        guard let thumbnail = revision.thumbnail else {
+        guard let thumbnail = revision.thumbnails.first else {
             throw ThumbnailLoaderError.nonRecoverable
         }
 
         return thumbnail
-    }
-}
-
-private extension File {
-    var latestRevision: Revision? {
-        if let revision = activeRevision {
-            return revision
-        } else if let revision = activeRevisionDraft {
-            return revision
-        } else {
-            return nil
-        }
     }
 }

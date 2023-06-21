@@ -40,11 +40,17 @@ public struct PhotoAsset: Equatable {
         public let cloudIdentifier: String
         public let creationDate: Date?
         public let modifiedDate: Date?
+        public let width: Int
+        public let height: Int
+        public let duration: Double?
 
-        public init(cloudIdentifier: String, creationDate: Date? = nil, modifiedDate: Date? = nil) {
+        public init(cloudIdentifier: String, creationDate: Date? = nil, modifiedDate: Date? = nil, width: Int, height: Int, duration: Double?) {
             self.cloudIdentifier = cloudIdentifier
             self.creationDate = creationDate
             self.modifiedDate = modifiedDate
+            self.width = width
+            self.height = height
+            self.duration = duration
         }
 
     }

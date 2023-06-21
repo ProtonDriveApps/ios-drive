@@ -18,24 +18,36 @@
 import ProtonCore_UIFoundations
 import SwiftUI
 
-struct PhotosGalleryView<ViewModel: PhotosGalleryViewModelProtocol, GridView: View>: View {
+struct PhotosGalleryView<ViewModel: PhotosGalleryViewModelProtocol, GridView: View, PlaceholderView: View, StateView: View>: View {
     @ObservedObject private var viewModel: ViewModel
     private let grid: () -> GridView
+    private let placeholder: () -> PlaceholderView
+    private let state: () -> StateView
 
-    init(viewModel: ViewModel, grid: @escaping () -> GridView) {
+    init(viewModel: ViewModel, grid: @escaping () -> GridView, placeholder: @escaping () -> PlaceholderView, state: @escaping () -> StateView) {
         self.viewModel = viewModel
         self.grid = grid
+        self.placeholder = placeholder
+        self.state = state
     }
 
     var body: some View {
-        switch viewModel.viewData.content {
+        VStack {
+            state()
+            Spacer(minLength: 0)
+            content
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch viewModel.content {
         case .grid:
             grid()
         case .loading:
-            ProgressView()
-                .progressViewStyle(
-                    CircularProgressViewStyle(tint: .BrandNorm)
-                )
+            placeholder()
+        case .empty:
+            EmptyView()
         }
     }
 }

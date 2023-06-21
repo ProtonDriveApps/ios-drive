@@ -15,27 +15,44 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Combine
 import Foundation
 
 protocol PhotosGalleryViewModelProtocol: ObservableObject {
-    var viewData: PhotosGalleryViewData { get }
+    var content: PhotosGalleryViewContent { get }
 }
 
-struct PhotosGalleryViewData {
-    let content: Content
-    // TODO: next MR: banners, other states
-
-    enum Content {
-        case loading
-        case grid
-    }
+enum PhotosGalleryViewContent {
+    case loading
+    case grid
+    case empty
 }
 
 final class PhotosGalleryViewModel: PhotosGalleryViewModelProtocol {
-    var viewData: PhotosGalleryViewData
+    private let galleryController: PhotosGalleryController
+    private let uploadController: PhotosBackupUploadAvailableController
 
-    init() {
-        // TODO: next MR
-        viewData = PhotosGalleryViewData(content: .grid)
+    @Published var content: PhotosGalleryViewContent = .empty
+
+    init(galleryController: PhotosGalleryController, uploadController: PhotosBackupUploadAvailableController) {
+        self.galleryController = galleryController
+        self.uploadController = uploadController
+        subscribeToUpdates()
+    }
+
+    private func subscribeToUpdates() {
+        Publishers.CombineLatest(
+            galleryController.sections.map { $0.isEmpty }.removeDuplicates(),
+            uploadController.isAvailable
+        )
+        .map { isEmpty, isUploading in
+            if !isEmpty {
+                return PhotosGalleryViewContent.grid
+            } else {
+                return isUploading ? .loading : .empty
+            }
+        }
+        .removeDuplicates()
+        .assign(to: &$content)
     }
 }

@@ -86,8 +86,7 @@ public final class TrashEnumerator: NSObject, NSFileProviderEnumerator, LogObjec
 
 extension TrashEnumerator: EnumeratorWithChanges {
     internal var shareID: String { self.model.shareID }
-    internal var eventsProcessor: EventsProcessor { self.tower.eventProcessor }
-    internal var eventsConveyor: EventsConveyor { self.tower.eventsConveyor }
+    internal var eventsManager: EventsSystemManager { self.tower }
     internal var fileSystemSlot: FileSystemSlot { self.tower.fileSystemSlot! }
     internal var cloudSlot: CloudSlot { self.tower.cloudSlot! }
 }

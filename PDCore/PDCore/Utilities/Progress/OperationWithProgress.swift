@@ -17,7 +17,7 @@
 
 import Foundation
 
-public typealias UploadOperation = OperationWithProgress & IdentifiableUploadOperation & RecordableOperation
+public protocol UploadOperation: IdentifiableOperation, OperationWithProgress, RecordableOperation { }
 
 public protocol OperationWithProgress where Self: Operation {
     var progress: Progress { get }
@@ -35,8 +35,8 @@ extension OperationWithProgress {
     }
 }
 
-public protocol IdentifiableUploadOperation where Self: Operation {
-    var uploadID: UUID { get }
+public protocol IdentifiableOperation: Operation, Identifiable {
+    var id: UUID { get }
 }
 
 public protocol RecordableOperation where Self: Operation {
@@ -45,7 +45,7 @@ public protocol RecordableOperation where Self: Operation {
     func record()
 }
 
-extension RecordableOperation where Self: UploadOperation {
+public extension RecordableOperation where Self: UploadOperation {
     var recordingName: String { "uploading" }
 
     func record() {

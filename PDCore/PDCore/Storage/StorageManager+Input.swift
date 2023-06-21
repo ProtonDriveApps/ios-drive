@@ -25,11 +25,10 @@ extension Revision {
         oldBlocks.forEach(moc.delete)
     }
 
-    func removeOldThumbnail(in moc: NSManagedObjectContext) {
-        if let oldThumbnail = thumbnail {
-            thumbnail = nil
-            moc.delete(oldThumbnail)
-        }
+    func removeOldThumbnails(in moc: NSManagedObjectContext) {
+        let oldThumbnails = thumbnails
+        thumbnails = Set([])
+        oldThumbnails.forEach(moc.delete)
     }
 }
 
