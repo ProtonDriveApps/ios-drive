@@ -239,12 +239,12 @@ extension Client {
 }
 
 extension Client {
-    public func getRevisionThumbnailURL(_ shareID: ShareID, fileID: FileID, revisionID: RevisionID, completion: @escaping (Result<URL, Error>) -> Void) {
+    public func getRevisionThumbnailURL(parameters: RevisionThumbnailParameters, completion: @escaping (Result<URL, Error>) -> Void) {
         guard let credential = credentialProvider?.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
 
-        let endpoint = RevisionThumbnailEndpoint(share: shareID, file: fileID, revision: revisionID, service: service, credential: credential)
+        let endpoint = RevisionThumbnailEndpoint(parameters: parameters, service: service, credential: credential)
 
         request(endpoint) {
             completion($0.flatMap { .success($0.thumbnailLink) })

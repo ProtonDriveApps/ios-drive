@@ -21,8 +21,8 @@ import PDCore
 
 struct FilteredPhotoCompoundsResult {
     let compounds: [PhotoAssetCompound]
-    let validIdentifiers: PhotoLibraryIds
-    let invalidIdentifiers: PhotoLibraryIds
+    let validIdentifiersCount: Int
+    let invalidIdentifiersCount: Int
 }
 
 protocol FilteredPhotoCompoundsResource {
@@ -72,8 +72,8 @@ final class DatabaseFilteredPhotoCompoundsResource: FilteredPhotoCompoundsResour
     private func makeResult(valid: [PhotoAssetCompound], invalid: [PhotoAssetCompound]) -> FilteredPhotoCompoundsResult {
         FilteredPhotoCompoundsResult(
             compounds: valid,
-            validIdentifiers: Set(invalid.map { $0.primary.metadata.cloudIdentifier }),
-            invalidIdentifiers: Set(invalid.map { $0.primary.metadata.cloudIdentifier })
+            validIdentifiersCount: valid.count,
+            invalidIdentifiersCount: invalid.count
         )
     }
 

@@ -49,9 +49,10 @@ extension StorageManager {
     /// Returns list of objects with named ids, finds present ones and creates new ones for missing ids
     internal func unique<Entity: NSManagedObject>(with ids: Set<String>,
                                                   uniqueBy keyPath: String = "id",
+                                                  allowSubclasses: Bool = false,
                                                   in moc: NSManagedObjectContext) -> [Entity]
     {
-        let existing: [Entity] = self.existing(with: ids, by: keyPath, in: moc)
+        let existing: [Entity] = self.existing(with: ids, by: keyPath, allowSubclasses: allowSubclasses, in: moc)
         var presentObjects: [Entity] = existing
         
         let presentIds = Set(presentObjects.compactMap { $0.value(forKey: keyPath) as? String })
@@ -75,11 +76,18 @@ extension StorageManager {
     
     internal func existing<Entity: NSManagedObject>(with ids: Set<String>,
                                                     by keyPath: String = "id",
+                                                    allowSubclasses: Bool = false,
                                                     in moc: NSManagedObjectContext) -> [Entity]
     {
         let fetchRequest = NSFetchRequest<Entity>()
         fetchRequest.entity = Entity.entity()
-        fetchRequest.predicate = NSPredicate(format: "(self.entity == %@ AND %K IN %@)", Entity.entity(), keyPath, ids)
+        if allowSubclasses {
+            // This allows also child entities
+            fetchRequest.predicate = NSPredicate(format: "(%K IN %@)", keyPath, ids)
+        } else {
+            // This allows only specific entity types
+            fetchRequest.predicate = NSPredicate(format: "(self.entity == %@ AND %K IN %@)", Entity.entity(), keyPath, ids)
+        }
         return (try? moc.fetch(fetchRequest) ) ?? []
     }
     

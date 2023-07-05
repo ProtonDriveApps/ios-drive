@@ -19,28 +19,28 @@ import Foundation
 
 public final class LocalPhotosRootFolderDatasource: PhotosRootFolderDatasource {
 
-    private let observer: FetchedResultsControllerObserver<Device>
+    private let observer: FetchedResultsControllerObserver<Share>
 
-    public init(observer: FetchedResultsControllerObserver<Device>) {
+    public init(observer: FetchedResultsControllerObserver<Share>) {
         self.observer = observer
     }
 
     public func getRoot() throws -> Folder {
         guard !observer.cache.isEmpty else {
-            throw LocalPhotosRootDataSourceError.noLocalDevices
+            throw LocalPhotosRootDataSourceError.noLocalPhotoShare
         }
 
-        guard let device = observer.cache.first,
-              [device] == observer.cache else {
-            throw LocalPhotosRootDataSourceError.moreThanOnePhotosDevice
+        guard let share = observer.cache.first,
+              [share] == observer.cache else {
+            throw LocalPhotosRootDataSourceError.moreThanOnePhotoShare
         }
 
-        guard let moc = device.moc else {
-            throw Device.noMOC()
+        guard let moc = share.moc else {
+            throw Share.noMOC()
         }
 
         return try moc.performAndWait {
-            guard let rootNode = device.share.root else {
+            guard let rootNode = share.root else {
                 throw LocalPhotosRootDataSourceError.noRootInPhotosShare
             }
 
@@ -54,8 +54,8 @@ public final class LocalPhotosRootFolderDatasource: PhotosRootFolderDatasource {
 }
 
 enum LocalPhotosRootDataSourceError: Error {
-    case noLocalDevices
-    case moreThanOnePhotosDevice
+    case noLocalPhotoShare
+    case moreThanOnePhotoShare
     case noRootInPhotosShare
     case photosRootInNotFolder
 }

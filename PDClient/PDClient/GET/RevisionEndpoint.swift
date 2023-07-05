@@ -17,15 +17,15 @@
 
 import Foundation
 
-struct RevisionEndpoint: Endpoint {
+public struct RevisionEndpoint: Endpoint {
     public struct Response: Codable {
-        var code: Int
-        var revision: Revision
+        public var code: Int
+        public var revision: Revision
     }
     
-    var request: URLRequest
+    public var request: URLRequest
     
-    init(shareID: Share.ShareID, fileID: Link.LinkID, revisionID: Revision.RevisionID, service: APIService, credential: ClientCredential) {
+    public init(shareID: Share.ShareID, fileID: Link.LinkID, revisionID: Revision.RevisionID, service: APIService, credential: ClientCredential) {
         // url
         var url = service.url(of: "/shares")
         url.appendPathComponent(shareID)

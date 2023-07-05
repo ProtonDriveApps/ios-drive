@@ -17,6 +17,7 @@
 
 import Foundation
 import PDClient
+import CoreData
 
 public final class PhotosUploadOperationsProviderFactory: FileUploadOperationsProviderFactory {
 
@@ -24,6 +25,10 @@ public final class PhotosUploadOperationsProviderFactory: FileUploadOperationsPr
     private let cloudSlot: CloudSlot
     private let sessionVault: SessionVault
     private let apiService: APIService
+
+    var moc: NSManagedObjectContext {
+        storage.backgroundContext
+    }
 
     public init(
         storage: StorageManager,
@@ -38,15 +43,15 @@ public final class PhotosUploadOperationsProviderFactory: FileUploadOperationsPr
     }
 
     public func make() -> FileUploadOperationsProvider {
-        let revisionEncryptor = PhotosRevisionEncryptorOperationFactory(signersKitFactory: sessionVault, moc: storage.backgroundContext)
-        let fileDraftCreator = PhotoDraftCreatorOperationFactory(hashChecker: cloudSlot, fileDraftCreator: cloudSlot, sessionVault: sessionVault, storage: storage)
+        let revisionEncryptor = PhotosRevisionEncryptorOperationFactory(signersKitFactory: sessionVault, moc: moc)
+        let fileDraftCreator = PhotoDraftCreatorOperationFactory(hashChecker: cloudSlot, fileDraftCreator: cloudSlot, sessionVault: sessionVault, moc: moc)
         let revisionDraftCreator = PhotoRevisionDraftCreatorOperationFactory()
-        let revisionUploader = DiscreteRevisionUploaderOperationFactory(api: apiService, moc: storage.backgroundContext, cloudContentCreator: cloudSlot, credentialProvider: sessionVault, signersKitFactory: sessionVault)
-        let revisionCommitter = PhotoRevisionCommitterOperationFactory(cloudRevisionCommitter: cloudSlot, signersKitFactory: sessionVault, moc: storage.backgroundContext)
+        let revisionUploader = DiscreteRevisionUploaderOperationFactory(api: apiService, cloudContentCreator: cloudSlot, credentialProvider: sessionVault, signersKitFactory: sessionVault, moc: moc)
+        let revisionCommitter = PhotoRevisionCommitterOperationFactory(cloudRevisionCommitter: cloudSlot, signersKitFactory: sessionVault, moc: moc)
 
         return DefaultFileUploadOperationsProvider(
             revisionEncryptorOperationFactory: revisionEncryptor,
-            fileDraftUploaderOperationFactory: fileDraftCreator,
+            fileDraftCreatorOperationFactory: fileDraftCreator,
             revisionCreatorOperationFactory: revisionDraftCreator,
             revisionUploaderOperationFactory: revisionUploader,
             revisionSealerOperationFactory: revisionCommitter

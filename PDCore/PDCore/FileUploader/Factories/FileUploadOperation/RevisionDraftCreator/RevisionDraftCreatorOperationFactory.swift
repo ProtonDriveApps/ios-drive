@@ -15,21 +15,28 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import CoreData
+
 final class RevisionDraftCreatorOperationFactory: FileUploadOperationFactory {
 
-    private let revisionCreator: CloudRevisionCreator
-    private let finalizer: LocalRevisionCreatorFinalizer
+    private let cloudRevisionCreator: CloudRevisionCreator
+    private let moc: NSManagedObjectContext
 
     init(
-        revisionCreator: CloudRevisionCreator,
-        finalizer: LocalRevisionCreatorFinalizer
+        cloudRevisionCreator: CloudRevisionCreator,
+        moc: NSManagedObjectContext
     ) {
-        self.revisionCreator = revisionCreator
-        self.finalizer = finalizer
+        self.cloudRevisionCreator = cloudRevisionCreator
+        self.moc = moc
     }
 
     func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> any UploadOperation {
-        RevisionCreatorOperation(draft: draft, creator: revisionCreator, finalizer: finalizer, onError: { completion(.failure($0)) })
+        let creator = makeCloudRevisionCreator()
+        return RevisionDraftCreatorOperation(draft: draft, creator: creator, onError: { completion(.failure($0)) })
+    }
+
+    func makeCloudRevisionCreator() -> RevisionDraftCreator {
+        FileRevisionDraftCreator(creator: cloudRevisionCreator, moc: moc)
     }
 
 }

@@ -17,15 +17,15 @@
 
 import Foundation
 
-public final class MainFileUploaderOperation: AsynchronousOperation, UploadOperation {
+public class MainFileUploaderOperation: AsynchronousOperation, UploadOperation {
 
     public let progress = Progress(unitsOfWork: 1)
     public let id: UUID
 
     private let draft: FileDraft
-    private let onSuccess: (File) -> Void
+    private let onSuccess: OnUploadSuccess
 
-    init(draft: FileDraft, onSuccess: @escaping (File) -> Void) {
+    init(draft: FileDraft, onSuccess: @escaping OnUploadSuccess) {
         self.id = draft.uploadID
         self.draft = draft
         self.onSuccess = onSuccess

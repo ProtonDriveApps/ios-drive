@@ -17,17 +17,20 @@
 
 import Foundation
 import Combine
+import CoreData
 import PDCore
 
 protocol FileContentResource {
     var result: AnyPublisher<URL, Error> { get }
-    func execute(with id: PhotoId)
+    func execute(with id: NodeIdentifier)
 }
 
 final class DecryptedFileContentResource: FileContentResource {
     private let storage: StorageManager
     private let downloader: Downloader
+    private let fetchResource: FileFetchResource
     private let subject = PassthroughSubject<URL, Error>()
+    private var ids = [NodeIdentifier]()
     private var task: Task<Void, Never>?
 
     var result: AnyPublisher<URL, Error> {
@@ -36,16 +39,19 @@ final class DecryptedFileContentResource: FileContentResource {
             .eraseToAnyPublisher()
     }
 
-    init(storage: StorageManager, downloader: Downloader) {
+    init(storage: StorageManager, downloader: Downloader, fetchResource: FileFetchResource) {
         self.downloader = downloader
         self.storage = storage
+        self.fetchResource = fetchResource
     }
 
     deinit {
         task?.cancel()
+        downloader.cancel(operationsOf: ids)
     }
 
-    func execute(with id: PhotoId) {
+    func execute(with id: NodeIdentifier) {
+        ids.append(id)
         task = Task { [weak self] in
             await self?.executeInBackground(id: id)
         }
@@ -61,7 +67,7 @@ final class DecryptedFileContentResource: FileContentResource {
         subject.send(completion: .failure(error))
     }
 
-    private func executeInBackground(id: PhotoId) async {
+    private func executeInBackground(id: NodeIdentifier) async {
         do {
             let file = try await loadFile(with: id)
             let url = try loadDecryptedURL(from: file)
@@ -71,7 +77,7 @@ final class DecryptedFileContentResource: FileContentResource {
         }
     }
 
-    private func loadFile(with id: PhotoId) async throws -> File {
+    private func loadFile(with id: NodeIdentifier) async throws -> File {
         let file = try fetchFile(with: id)
         if isCached(file: file) {
             return file
@@ -86,9 +92,8 @@ final class DecryptedFileContentResource: FileContentResource {
         } ?? false
     }
 
-    private func fetchFile(with id: PhotoId) throws -> File {
-        let context = storage.backgroundContext
-        return try storage.fetchPhoto(id: id, moc: context)
+    private func fetchFile(with id: NodeIdentifier) throws -> File {
+        return try fetchResource.fetchFile(with: id, context: storage.backgroundContext)
     }
 
     private func download(file: File) async throws -> File {
@@ -107,9 +112,15 @@ final class DecryptedFileContentResource: FileContentResource {
     }
 
     private func loadDecryptedURL(from file: File) throws -> URL {
-        guard let revision = file.activeRevision else {
-            throw Revision.noMOC()
+        guard let moc = file.moc else {
+            throw File.noMOC()
         }
-        return try revision.decryptFile()
+
+        return try moc.performAndWait {
+            guard let revision = file.activeRevision else {
+                throw file.invalidState("Uploaded file should have an active revision")
+            }
+            return try revision.decryptFile()
+        }
     }
 }

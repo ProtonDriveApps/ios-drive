@@ -40,8 +40,8 @@ final class DatabasePhotoInfoRepository: PhotoInfoRepository {
                 return
             }
 
-            let duration = try? photo.photoRevision.decryptExtendedAttributes().media?.duration
-            let type: PhotoInfo.PhotoType = duration == nil ? .photo : .video
+            let mimeType = MimeType(value: photo.mimeType)
+            let type: PhotoInfo.PhotoType = mimeType.isVideo ? .video : .photo
             let photoInfo = PhotoInfo(id: id, name: photo.decryptedName, type: type)
             self.photoSubject.send(photoInfo)
         }

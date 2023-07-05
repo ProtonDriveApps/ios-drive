@@ -46,9 +46,9 @@ extension Tower {
         }
     }
 
-    public func move(nodeID nodeIdentifier: NodeIdentifier, under newParent: Folder) async throws -> Node {
+    public func move(nodeID nodeIdentifier: NodeIdentifier, under newParent: Folder, withNewName newName: String? = nil) async throws -> Node {
         return try await withCheckedThrowingContinuation { continuation in
-            move(nodeID: nodeIdentifier, under: newParent) { result in
+            move(nodeID: nodeIdentifier, under: newParent, with: newName) { result in
                 switch result {
                 case .success(let node):
                     return continuation.resume(returning: node)
@@ -57,6 +57,45 @@ extension Tower {
                 }
             }
         }
+    }
+    
+    public func delete(nodeID nodeIdentifier: NodeIdentifier) async throws {
+        return try await withCheckedThrowingContinuation { continuation in
+            delete(nodes: [nodeIdentifier.nodeID], shareID: nodeIdentifier.shareID) { result in
+                switch result {
+                case .success:
+                    return continuation.resume(with: .success)
+                case .failure(let error):
+                    return continuation.resume(with: .failure(error))
+                }
+            }
+        } as Void
+    }
+    
+    public func trash(nodes: [Node]) async throws {
+        return try await withCheckedThrowingContinuation { continuation in
+            trash(nodes: nodes) { result in
+                switch result {
+                case .success:
+                    return continuation.resume(with: .success)
+                case .failure(let error):
+                    return continuation.resume(with: .failure(error))
+                }
+            }
+        } as Void
+    }
+    
+    public func restoreFromTrash(shareID: String, nodes: [String]) async throws {
+        return try await withCheckedThrowingContinuation { continuation in
+            restoreFromTrash(shareID: shareID, nodes: nodes) { result in
+                switch result {
+                case .success:
+                    return continuation.resume(with: .success)
+                case .failure(let error):
+                    return continuation.resume(with: .failure(error))
+                }
+            }
+        } as Void
     }
     
 }

@@ -24,6 +24,7 @@ final class DatabaseThumbnailsRepository: ThumbnailsRepository {
     private let observer: PhotoThumbnailsFetchedObjectsObserver
     private var cancellables = Set<AnyCancellable>()
     private let subject = CurrentValueSubject<PhotoIdsSet, Never>([])
+    private let backgroundQueue = DispatchQueue(label: "DatabaseThumbnailsRepository", qos: .userInteractive)
 
     var updatePublisher: AnyPublisher<PhotoIdsSet, Never> {
         subject.eraseToAnyPublisher()
@@ -39,12 +40,13 @@ final class DatabaseThumbnailsRepository: ThumbnailsRepository {
         return managedObjectContext.performAndWait {
             observer.getThumbnails().first(where: {
                 ($0.revision as? PhotoRevision)?.photo.identifier == photoId
-            })?.clearThumbnail
+            })?.clearData
         }
     }
 
     private func subscribeToUpdates() {
         observer.objectWillChange
+            .receive(on: backgroundQueue)
             .map { [weak self] in
                 self?.getDownloadedIds() ?? []
             }
@@ -68,7 +70,7 @@ final class DatabaseThumbnailsRepository: ThumbnailsRepository {
                 return nil
             }
 
-            guard thumbnail.clearThumbnail != nil else {
+            guard thumbnail.clearData != nil else {
                 return nil
             }
 

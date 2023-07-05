@@ -87,17 +87,21 @@
 		311ECF7F29A5249E00F76062 /* ForegroundTransitionContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311ECF7A29A5249E00F76062 /* ForegroundTransitionContainer.swift */; };
 		311ECF8029A5249E00F76062 /* ForegroundTransitionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311ECF7C29A5249E00F76062 /* ForegroundTransitionController.swift */; };
 		311ECF8129A5249E00F76062 /* InterruptedUploadsInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311ECF7E29A5249E00F76062 /* InterruptedUploadsInteractor.swift */; };
-		31274ED22A25D79D0076CCDF /* PhotoLibraryLoadProgressController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31274ED12A25D79D0076CCDF /* PhotoLibraryLoadProgressController.swift */; };
+		31274ED22A25D79D0076CCDF /* LocalPhotoLibraryLoadProgressController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31274ED12A25D79D0076CCDF /* LocalPhotoLibraryLoadProgressController.swift */; };
 		31274EE02A25E8820076CCDF /* PhotoLibraryLoadProgressRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31274EDF2A25E8820076CCDF /* PhotoLibraryLoadProgressRepository.swift */; };
 		31274EE22A25F4370076CCDF /* PhotosBackupProgressController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31274EE12A25F4370076CCDF /* PhotosBackupProgressController.swift */; };
 		31274EF22A25FF960076CCDF /* PhotoUploadsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31274EF12A25FF960076CCDF /* PhotoUploadsRepository.swift */; };
 		31274EF52A25FFCB0076CCDF /* DatabasePhotoUploadsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31274EF42A25FFCB0076CCDF /* DatabasePhotoUploadsRepository.swift */; };
 		31274EF92A26089F0076CCDF /* PhotosStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31274EF82A26089F0076CCDF /* PhotosStateView.swift */; };
 		31274EFC2A260FC50076CCDF /* PhotosStateViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31274EFB2A260FC50076CCDF /* PhotosStateViewModel.swift */; };
-		31274EFF2A26100D0076CCDF /* PhotosUploadStateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31274EFE2A26100D0076CCDF /* PhotosUploadStateController.swift */; };
+		31274EFF2A26100D0076CCDF /* PhotosBackupStateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31274EFE2A26100D0076CCDF /* PhotosBackupStateController.swift */; };
 		31274F012A2613360076CCDF /* PhotosStateTitlesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31274F002A2613360076CCDF /* PhotosStateTitlesView.swift */; };
 		31274F072A26170D0076CCDF /* PhotosStateTitlesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31274F062A26170D0076CCDF /* PhotosStateTitlesViewModel.swift */; };
 		3130E42D29F8134E001CDCA0 /* PhotosRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3130E42C29F8134E001CDCA0 /* PhotosRootView.swift */; };
+		3139CE232A31A24000B06AEE /* PhotoFetchResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3139CE222A31A24000B06AEE /* PhotoFetchResource.swift */; };
+		3139CE292A31AB1100B06AEE /* PhotosBackupStateStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3139CE282A31AB1100B06AEE /* PhotosBackupStateStrategy.swift */; };
+		3139CE2D2A31B33600B06AEE /* PhotosBackupCompleteController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3139CE2C2A31B33600B06AEE /* PhotosBackupCompleteController.swift */; };
+		3139CE302A31BE1900B06AEE /* ThrottleResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3139CE2F2A31BE1900B06AEE /* ThrottleResource.swift */; };
 		313BAC642A0BB2C0008F70E3 /* FilteredPhotoCompoundsInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 313BAC632A0BB2C0008F70E3 /* FilteredPhotoCompoundsInteractor.swift */; };
 		313BAC6B2A0BB320008F70E3 /* FilteredPhotoIdentifiersInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 313BAC6A2A0BB320008F70E3 /* FilteredPhotoIdentifiersInteractor.swift */; };
 		313BAC752A0BBE5F008F70E3 /* NetworkStateResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 313BAC742A0BBE5F008F70E3 /* NetworkStateResource.swift */; };
@@ -149,7 +153,6 @@
 		315C38A8298A65D80080BBE7 /* NotificationsPermissionsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315C38A7298A65D80080BBE7 /* NotificationsPermissionsViewModel.swift */; };
 		3160FC322A1C8F7300FCE676 /* PhotosOnboardingRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3160FC312A1C8F7300FCE676 /* PhotosOnboardingRowView.swift */; };
 		3160FC502A1F51B500FCE676 /* PhotosFullLoadInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3160FC4F2A1F51B500FCE676 /* PhotosFullLoadInteractor.swift */; };
-		3160FC562A1F5D5100FCE676 /* PhotosListFilterResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3160FC552A1F5D5100FCE676 /* PhotosListFilterResource.swift */; };
 		3163A2FA2A20E4360029443C /* PhotosBackupStartController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3163A2F92A20E4360029443C /* PhotosBackupStartController.swift */; };
 		3164D99829E530C1004B0843 /* PHAssetResource+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3164D99729E530C1004B0843 /* PHAssetResource+Extensions.swift */; };
 		316B59D829682C6000449FCE /* SelectionAnimationModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316B59D729682C6000449FCE /* SelectionAnimationModifier.swift */; };
@@ -161,6 +164,7 @@
 		3173315A29FA671A008F0A6D /* PhotosPermissionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3173315929FA671A008F0A6D /* PhotosPermissionsView.swift */; };
 		3173315D29FA68CE008F0A6D /* PhotosPermissionsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3173315C29FA68CE008F0A6D /* PhotosPermissionsViewModel.swift */; };
 		3173316029FA6920008F0A6D /* PhotosPermissionsCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3173315F29FA6920008F0A6D /* PhotosPermissionsCoordinator.swift */; };
+		317E0D872A3307C60091C7F6 /* PhotosLoadProgressController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 317E0D862A3307C60091C7F6 /* PhotosLoadProgressController.swift */; };
 		318DA414296EC54B0070329F /* OperationInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318DA40B296EC54B0070329F /* OperationInteractor.swift */; };
 		318DA415296EC54B0070329F /* ExtensionBackgroundTaskResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318DA40D296EC54B0070329F /* ExtensionBackgroundTaskResource.swift */; };
 		318DA416296EC54B0070329F /* ProcessingBackgroundTaskResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318DA40E296EC54B0070329F /* ProcessingBackgroundTaskResource.swift */; };
@@ -222,10 +226,15 @@
 		31D64A9F2A2896FC00B61BA3 /* FileContentController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31D64A9E2A2896FC00B61BA3 /* FileContentController.swift */; };
 		31D64AA22A289C8700B61BA3 /* FileContentResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31D64AA12A289C8700B61BA3 /* FileContentResource.swift */; };
 		31D64AA62A28C71300B61BA3 /* PhotoPreviewCurrentDetailController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31D64AA52A28C71300B61BA3 /* PhotoPreviewCurrentDetailController.swift */; };
+		31D64AAA2A2DB98A00B61BA3 /* VideoContentViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31D64AA92A2DB98A00B61BA3 /* VideoContentViewController.swift */; };
+		31D64AAE2A2DB9D900B61BA3 /* VideoContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31D64AAD2A2DB9D900B61BA3 /* VideoContentView.swift */; };
+		31D64AB02A2DB9F300B61BA3 /* VideoPlayerDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31D64AAF2A2DB9F300B61BA3 /* VideoPlayerDataSource.swift */; };
+		31D64AB22A2DBA5200B61BA3 /* SimultaneousTapGestureRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31D64AB12A2DBA5200B61BA3 /* SimultaneousTapGestureRecognizer.swift */; };
+		31D64AB72A2DC23E00B61BA3 /* LocalStorageResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31D64AB62A2DC23E00B61BA3 /* LocalStorageResource.swift */; };
 		31DED6292A24BA6F001F3B8C /* PhotosGalleryPlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DED6282A24BA6F001F3B8C /* PhotosGalleryPlaceholderView.swift */; };
 		31DED62C2A24C3FF001F3B8C /* TimerFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DED62B2A24C3FF001F3B8C /* TimerFactory.swift */; };
 		31DED62E2A24C419001F3B8C /* PhotosGalleryPlaceholderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DED62D2A24C419001F3B8C /* PhotosGalleryPlaceholderViewModel.swift */; };
-		31DED6342A24D7F9001F3B8C /* PhotosBackupUploadAvailableController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DED6332A24D7F9001F3B8C /* PhotosBackupUploadAvailableController.swift */; };
+		31DED6342A24D7F9001F3B8C /* LocalPhotosBackupUploadAvailableController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DED6332A24D7F9001F3B8C /* LocalPhotosBackupUploadAvailableController.swift */; };
 		31E1D43D29C9B1A3000DD73D /* ItemProviderLoadOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E1D43C29C9B1A3000DD73D /* ItemProviderLoadOperation.swift */; };
 		31EF34AE29C494630022BF83 /* PickersContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31EF34AD29C494630022BF83 /* PickersContainer.swift */; };
 		31EF34B129C4B5ED0022BF83 /* PickerInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31EF34B029C4B5ED0022BF83 /* PickerInteractor.swift */; };
@@ -558,17 +567,21 @@
 		311ECF7A29A5249E00F76062 /* ForegroundTransitionContainer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ForegroundTransitionContainer.swift; sourceTree = "<group>"; };
 		311ECF7C29A5249E00F76062 /* ForegroundTransitionController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ForegroundTransitionController.swift; sourceTree = "<group>"; };
 		311ECF7E29A5249E00F76062 /* InterruptedUploadsInteractor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InterruptedUploadsInteractor.swift; sourceTree = "<group>"; };
-		31274ED12A25D79D0076CCDF /* PhotoLibraryLoadProgressController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryLoadProgressController.swift; sourceTree = "<group>"; };
+		31274ED12A25D79D0076CCDF /* LocalPhotoLibraryLoadProgressController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalPhotoLibraryLoadProgressController.swift; sourceTree = "<group>"; };
 		31274EDF2A25E8820076CCDF /* PhotoLibraryLoadProgressRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryLoadProgressRepository.swift; sourceTree = "<group>"; };
 		31274EE12A25F4370076CCDF /* PhotosBackupProgressController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosBackupProgressController.swift; sourceTree = "<group>"; };
 		31274EF12A25FF960076CCDF /* PhotoUploadsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoUploadsRepository.swift; sourceTree = "<group>"; };
 		31274EF42A25FFCB0076CCDF /* DatabasePhotoUploadsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabasePhotoUploadsRepository.swift; sourceTree = "<group>"; };
 		31274EF82A26089F0076CCDF /* PhotosStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosStateView.swift; sourceTree = "<group>"; };
 		31274EFB2A260FC50076CCDF /* PhotosStateViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosStateViewModel.swift; sourceTree = "<group>"; };
-		31274EFE2A26100D0076CCDF /* PhotosUploadStateController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosUploadStateController.swift; sourceTree = "<group>"; };
+		31274EFE2A26100D0076CCDF /* PhotosBackupStateController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosBackupStateController.swift; sourceTree = "<group>"; };
 		31274F002A2613360076CCDF /* PhotosStateTitlesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosStateTitlesView.swift; sourceTree = "<group>"; };
 		31274F062A26170D0076CCDF /* PhotosStateTitlesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosStateTitlesViewModel.swift; sourceTree = "<group>"; };
 		3130E42C29F8134E001CDCA0 /* PhotosRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosRootView.swift; sourceTree = "<group>"; };
+		3139CE222A31A24000B06AEE /* PhotoFetchResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoFetchResource.swift; sourceTree = "<group>"; };
+		3139CE282A31AB1100B06AEE /* PhotosBackupStateStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosBackupStateStrategy.swift; sourceTree = "<group>"; };
+		3139CE2C2A31B33600B06AEE /* PhotosBackupCompleteController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosBackupCompleteController.swift; sourceTree = "<group>"; };
+		3139CE2F2A31BE1900B06AEE /* ThrottleResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThrottleResource.swift; sourceTree = "<group>"; };
 		313BAC632A0BB2C0008F70E3 /* FilteredPhotoCompoundsInteractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilteredPhotoCompoundsInteractor.swift; sourceTree = "<group>"; };
 		313BAC6A2A0BB320008F70E3 /* FilteredPhotoIdentifiersInteractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilteredPhotoIdentifiersInteractor.swift; sourceTree = "<group>"; };
 		313BAC742A0BBE5F008F70E3 /* NetworkStateResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkStateResource.swift; sourceTree = "<group>"; };
@@ -621,7 +634,6 @@
 		315C38A7298A65D80080BBE7 /* NotificationsPermissionsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsPermissionsViewModel.swift; sourceTree = "<group>"; };
 		3160FC312A1C8F7300FCE676 /* PhotosOnboardingRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosOnboardingRowView.swift; sourceTree = "<group>"; };
 		3160FC4F2A1F51B500FCE676 /* PhotosFullLoadInteractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosFullLoadInteractor.swift; sourceTree = "<group>"; };
-		3160FC552A1F5D5100FCE676 /* PhotosListFilterResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosListFilterResource.swift; sourceTree = "<group>"; };
 		3163A2F92A20E4360029443C /* PhotosBackupStartController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosBackupStartController.swift; sourceTree = "<group>"; };
 		3164D99729E530C1004B0843 /* PHAssetResource+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PHAssetResource+Extensions.swift"; sourceTree = "<group>"; };
 		316B59D729682C6000449FCE /* SelectionAnimationModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionAnimationModifier.swift; sourceTree = "<group>"; };
@@ -633,6 +645,7 @@
 		3173315929FA671A008F0A6D /* PhotosPermissionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosPermissionsView.swift; sourceTree = "<group>"; };
 		3173315C29FA68CE008F0A6D /* PhotosPermissionsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosPermissionsViewModel.swift; sourceTree = "<group>"; };
 		3173315F29FA6920008F0A6D /* PhotosPermissionsCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosPermissionsCoordinator.swift; sourceTree = "<group>"; };
+		317E0D862A3307C60091C7F6 /* PhotosLoadProgressController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosLoadProgressController.swift; sourceTree = "<group>"; };
 		318DA40B296EC54B0070329F /* OperationInteractor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OperationInteractor.swift; sourceTree = "<group>"; };
 		318DA40D296EC54B0070329F /* ExtensionBackgroundTaskResource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ExtensionBackgroundTaskResource.swift; sourceTree = "<group>"; };
 		318DA40E296EC54B0070329F /* ProcessingBackgroundTaskResource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ProcessingBackgroundTaskResource.swift; sourceTree = "<group>"; };
@@ -694,10 +707,15 @@
 		31D64A9E2A2896FC00B61BA3 /* FileContentController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileContentController.swift; sourceTree = "<group>"; };
 		31D64AA12A289C8700B61BA3 /* FileContentResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileContentResource.swift; sourceTree = "<group>"; };
 		31D64AA52A28C71300B61BA3 /* PhotoPreviewCurrentDetailController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPreviewCurrentDetailController.swift; sourceTree = "<group>"; };
+		31D64AA92A2DB98A00B61BA3 /* VideoContentViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoContentViewController.swift; sourceTree = "<group>"; };
+		31D64AAD2A2DB9D900B61BA3 /* VideoContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoContentView.swift; sourceTree = "<group>"; };
+		31D64AAF2A2DB9F300B61BA3 /* VideoPlayerDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlayerDataSource.swift; sourceTree = "<group>"; };
+		31D64AB12A2DBA5200B61BA3 /* SimultaneousTapGestureRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimultaneousTapGestureRecognizer.swift; sourceTree = "<group>"; };
+		31D64AB62A2DC23E00B61BA3 /* LocalStorageResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStorageResource.swift; sourceTree = "<group>"; };
 		31DED6282A24BA6F001F3B8C /* PhotosGalleryPlaceholderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosGalleryPlaceholderView.swift; sourceTree = "<group>"; };
 		31DED62B2A24C3FF001F3B8C /* TimerFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerFactory.swift; sourceTree = "<group>"; };
 		31DED62D2A24C419001F3B8C /* PhotosGalleryPlaceholderViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosGalleryPlaceholderViewModel.swift; sourceTree = "<group>"; };
-		31DED6332A24D7F9001F3B8C /* PhotosBackupUploadAvailableController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosBackupUploadAvailableController.swift; sourceTree = "<group>"; };
+		31DED6332A24D7F9001F3B8C /* LocalPhotosBackupUploadAvailableController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalPhotosBackupUploadAvailableController.swift; sourceTree = "<group>"; };
 		31E1D43C29C9B1A3000DD73D /* ItemProviderLoadOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemProviderLoadOperation.swift; sourceTree = "<group>"; };
 		31EF34AD29C494630022BF83 /* PickersContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickersContainer.swift; sourceTree = "<group>"; };
 		31EF34B029C4B5ED0022BF83 /* PickerInteractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickerInteractor.swift; sourceTree = "<group>"; };
@@ -1451,6 +1469,7 @@
 				3148AC9E2A13A37F00F8F631 /* InteractiveImageView.swift */,
 				3148AC912A13854500F8F631 /* LoadingWithTextView.swift */,
 				310447E32A1243D60037F4CE /* PhotoPreviewDetailViewController.swift */,
+				31D64AAB2A2DB99500B61BA3 /* Video */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -1542,7 +1561,7 @@
 		31274ED02A25D7870076CCDF /* Application */ = {
 			isa = PBXGroup;
 			children = (
-				31274ED12A25D79D0076CCDF /* PhotoLibraryLoadProgressController.swift */,
+				31274ED12A25D79D0076CCDF /* LocalPhotoLibraryLoadProgressController.swift */,
 			);
 			path = Application;
 			sourceTree = "<group>";
@@ -1569,6 +1588,7 @@
 			isa = PBXGroup;
 			children = (
 				31274EE12A25F4370076CCDF /* PhotosBackupProgressController.swift */,
+				317E0D862A3307C60091C7F6 /* PhotosLoadProgressController.swift */,
 				3195F1372A28658900F4CB8C /* PhotosUploadsProgressController.swift */,
 			);
 			path = Application;
@@ -1656,7 +1676,8 @@
 		31274EFD2A2610010076CCDF /* Application */ = {
 			isa = PBXGroup;
 			children = (
-				31274EFE2A26100D0076CCDF /* PhotosUploadStateController.swift */,
+				3139CE2C2A31B33600B06AEE /* PhotosBackupCompleteController.swift */,
+				31274EFE2A26100D0076CCDF /* PhotosBackupStateController.swift */,
 			);
 			path = Application;
 			sourceTree = "<group>";
@@ -1674,7 +1695,9 @@
 			isa = PBXGroup;
 			children = (
 				31274EFD2A2610010076CCDF /* Application */,
+				3139CE272A31AB0800B06AEE /* Domain */,
 				31274EFA2A260FB90076CCDF /* Presentation */,
+				3139CE2E2A31BE1400B06AEE /* Resource */,
 				31274EF72A26088D0076CCDF /* View */,
 			);
 			path = Common;
@@ -1716,6 +1739,7 @@
 			isa = PBXGroup;
 			children = (
 				3195F1342A2636D400F4CB8C /* Application */,
+				3139CE312A32054D00B06AEE /* Domain */,
 				31274F092A261BFE0076CCDF /* Presentation */,
 			);
 			path = Common;
@@ -1772,6 +1796,29 @@
 				3130E42C29F8134E001CDCA0 /* PhotosRootView.swift */,
 			);
 			path = View;
+			sourceTree = "<group>";
+		};
+		3139CE272A31AB0800B06AEE /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				3139CE282A31AB1100B06AEE /* PhotosBackupStateStrategy.swift */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		3139CE2E2A31BE1400B06AEE /* Resource */ = {
+			isa = PBXGroup;
+			children = (
+				3139CE2F2A31BE1900B06AEE /* ThrottleResource.swift */,
+			);
+			path = Resource;
+			sourceTree = "<group>";
+		};
+		3139CE312A32054D00B06AEE /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Domain;
 			sourceTree = "<group>";
 		};
 		313BAC6E2A0BB48C008F70E3 /* Filter */ = {
@@ -1984,7 +2031,7 @@
 			children = (
 				D97920EA2A11676A0034CD03 /* MonitoringBootstrapController.swift */,
 				314166F329F2702F00D7ECC4 /* PhotosBackupController.swift */,
-				31DED6332A24D7F9001F3B8C /* PhotosBackupUploadAvailableController.swift */,
+				31DED6332A24D7F9001F3B8C /* LocalPhotosBackupUploadAvailableController.swift */,
 				9398F6122A138C4D0033970A /* PhotosBootstrapController.swift */,
 			);
 			path = Application;
@@ -2520,7 +2567,6 @@
 		3160FC4B2A1F517A00FCE676 /* Resource */ = {
 			isa = PBXGroup;
 			children = (
-				3160FC552A1F5D5100FCE676 /* PhotosListFilterResource.swift */,
 				31AC3DC62A20AB640090097A /* PhotosVolumeIdDataSource.swift */,
 				31AC3DC82A20AB840090097A /* PhotoShareIdDataSource.swift */,
 			);
@@ -3226,8 +3272,21 @@
 			isa = PBXGroup;
 			children = (
 				31D64AA12A289C8700B61BA3 /* FileContentResource.swift */,
+				3139CE222A31A24000B06AEE /* PhotoFetchResource.swift */,
+				31D64AB62A2DC23E00B61BA3 /* LocalStorageResource.swift */,
 			);
 			path = Resource;
+			sourceTree = "<group>";
+		};
+		31D64AAB2A2DB99500B61BA3 /* Video */ = {
+			isa = PBXGroup;
+			children = (
+				31D64AB12A2DBA5200B61BA3 /* SimultaneousTapGestureRecognizer.swift */,
+				31D64AAD2A2DB9D900B61BA3 /* VideoContentView.swift */,
+				31D64AA92A2DB98A00B61BA3 /* VideoContentViewController.swift */,
+				31D64AAF2A2DB9F300B61BA3 /* VideoPlayerDataSource.swift */,
+			);
+			path = Video;
 			sourceTree = "<group>";
 		};
 		31DED6252A24BA1D001F3B8C /* GalleryPlaceholder */ = {
@@ -4943,6 +5002,7 @@
 				31C7661A2A04E95400B81F94 /* MonthResource.swift in Sources */,
 				ABD154172431EDC7000A7026 /* FinderCoordinator.swift in Sources */,
 				315663FF29D0393B00CBA7E9 /* ForegroundTransitionFactory.swift in Sources */,
+				31D64AAE2A2DB9D900B61BA3 /* VideoContentView.swift in Sources */,
 				31EFDE5729ED86E500F217B4 /* PhotoAssetsController.swift in Sources */,
 				3173315D29FA68CE008F0A6D /* PhotosPermissionsViewModel.swift in Sources */,
 				314A6BD22A17B48D00A2A401 /* PhotoPreviewDetailCoordinator.swift in Sources */,
@@ -4957,10 +5017,10 @@
 				318DA41C296EC6C80070329F /* ApplicationStateOperationsController.swift in Sources */,
 				1879522124F281140047F5A0 /* UploadManagementMenuViewModel+UploadManagementMenu.swift in Sources */,
 				AB3D32702486842F0042EF66 /* EditNodeCoordinator.swift in Sources */,
-				31274EFF2A26100D0076CCDF /* PhotosUploadStateController.swift in Sources */,
+				31274EFF2A26100D0076CCDF /* PhotosBackupStateController.swift in Sources */,
 				AB54DAB62412AA05000570F7 /* AppDelegate.swift in Sources */,
 				3130E42D29F8134E001CDCA0 /* PhotosRootView.swift in Sources */,
-				31274ED22A25D79D0076CCDF /* PhotoLibraryLoadProgressController.swift in Sources */,
+				31274ED22A25D79D0076CCDF /* LocalPhotoLibraryLoadProgressController.swift in Sources */,
 				AB0C229D24A6A882004C4728 /* UploadingViewModel.swift in Sources */,
 				D92BB5612987DC0900B147F7 /* LocalNotification.swift in Sources */,
 				318DA416296EC54B0070329F /* ProcessingBackgroundTaskResource.swift in Sources */,
@@ -5036,6 +5096,7 @@
 				AB24891024A6262B005B99D0 /* FetchingViewModel.swift in Sources */,
 				AB07E6E324F7C64300775190 /* FileModel.swift in Sources */,
 				31AC3DCF2A20B4070090097A /* PhotosPagingLoadController.swift in Sources */,
+				31D64AAA2A2DB98A00B61BA3 /* VideoContentViewController.swift in Sources */,
 				18FBBA5F24F1DC00003295FF /* TrashAlertEnvironment.swift in Sources */,
 				1879521F24F280D30047F5A0 /* UploadManagementEnvironment.swift in Sources */,
 				D968264528466A01009DA22B /* PopulateViewModel.swift in Sources */,
@@ -5047,11 +5108,13 @@
 				311ECF7F29A5249E00F76062 /* ForegroundTransitionContainer.swift in Sources */,
 				3148AC9F2A13A37F00F8F631 /* InteractiveImageView.swift in Sources */,
 				31AC3DCB2A20ABA20090097A /* PhotosMetadataLoadInteractor.swift in Sources */,
+				31D64AB22A2DBA5200B61BA3 /* SimultaneousTapGestureRecognizer.swift in Sources */,
 				3173315A29FA671A008F0A6D /* PhotosPermissionsView.swift in Sources */,
 				313BAC752A0BBE5F008F70E3 /* NetworkStateResource.swift in Sources */,
 				D928D4A22869B354009D53C2 /* ShareLinkCreatorCoordinator.swift in Sources */,
 				AB1E020424534BA8003A039C /* NodeCellWithProgressConfiguration.swift in Sources */,
 				37C9395F28F04C5F00A1C8E6 /* LoginExternalAccountNotSupportedSetup.swift in Sources */,
+				3139CE2D2A31B33600B06AEE /* PhotosBackupCompleteController.swift in Sources */,
 				31F97D9929F1530E0025D389 /* FolderSizeResource.swift in Sources */,
 				ABC2092F2456A86600BDA52F /* MenuView.swift in Sources */,
 				3156640129D03BC600CBA7E9 /* AggregatedOperationInteractor.swift in Sources */,
@@ -5091,6 +5154,7 @@
 				76E93E4828A2BF16004A885B /* DeleteAccountView.swift in Sources */,
 				AB6C071D2925171100B86056 /* OnboardingPage.swift in Sources */,
 				AB6C072129264BC000B86056 /* OnboardingPageViewModel.swift in Sources */,
+				31D64AB02A2DB9F300B61BA3 /* VideoPlayerDataSource.swift in Sources */,
 				18237FE725136347005AC15E /* TrashViewModel.swift in Sources */,
 				18573AE425505A72002F0562 /* DriveLogoutManager.swift in Sources */,
 				76E93E4228A22D89004A885B /* DeleteAccountViewController.swift in Sources */,
@@ -5132,7 +5196,7 @@
 				ABDE84D62887CAE900DE54CA /* TabBarViewControllerFactory.swift in Sources */,
 				3148AC942A1385C900F8F631 /* BlurredImageView.swift in Sources */,
 				3190839A2A026076009E160C /* PhotosRepository.swift in Sources */,
-				31DED6342A24D7F9001F3B8C /* PhotosBackupUploadAvailableController.swift in Sources */,
+				31DED6342A24D7F9001F3B8C /* LocalPhotosBackupUploadAvailableController.swift in Sources */,
 				31F025222A20EDE2005C3707 /* PhotosSettingsRowViewModel.swift in Sources */,
 				31495B3D2A0BE28A00162FE2 /* PhotosSettingsView.swift in Sources */,
 				AB9EC87D25409A940026D662 /* Deeplink.swift in Sources */,
@@ -5141,10 +5205,12 @@
 				AB6A4615245B024500F51C10 /* EmptyFolderView.swift in Sources */,
 				D9628CA5284CB24300573F80 /* LaunchCoordinator.swift in Sources */,
 				18764C9F2553F203002B1845 /* EditNodeNameViewModel.swift in Sources */,
+				3139CE292A31AB1100B06AEE /* PhotosBackupStateStrategy.swift in Sources */,
 				D977525328476D7100772EED /* UIViewController+add+remove.swift in Sources */,
 				1844B90C266572C600A3AB55 /* LogoutRequesting.swift in Sources */,
 				31F97D9B29F158470025D389 /* FolderUpdateResource.swift in Sources */,
 				1882D772267748FA00FDC471 /* AppDelegate+Mocks.swift in Sources */,
+				3139CE302A31BE1900B06AEE /* ThrottleResource.swift in Sources */,
 				3148ACB32A13C31800F8F631 /* ThumbnailController.swift in Sources */,
 				18FBBA5D24F1AC73003295FF /* TrashAlertViewModel.swift in Sources */,
 				D9682630284660CF009DA22B /* AuthenticateViewController.swift in Sources */,
@@ -5164,7 +5230,6 @@
 				AB45D81A24A87A7E00C3F76E /* NodeCellSimpleConfiguration.swift in Sources */,
 				31CC2DCD298B9E8B00B73E9C /* LocalNotificationsResource.swift in Sources */,
 				AB716D0624A0FA6200A20B8C /* FinderViewModel.swift in Sources */,
-				3160FC562A1F5D5100FCE676 /* PhotosListFilterResource.swift in Sources */,
 				31EF34B129C4B5ED0022BF83 /* PickerInteractor.swift in Sources */,
 				318DA414296EC54B0070329F /* OperationInteractor.swift in Sources */,
 				AB96DE2125B85103002BDCFF /* FinderMenu.swift in Sources */,
@@ -5189,6 +5254,7 @@
 				D92363F72857403500C295D5 /* ShareLinkView.swift in Sources */,
 				AB4B38BE24DAD6FB008B7A4B /* NoSpaceView+Endpoint.swift in Sources */,
 				AB3D3274248684660042EF66 /* EditNodeViewModel.swift in Sources */,
+				31D64AB72A2DC23E00B61BA3 /* LocalStorageResource.swift in Sources */,
 				3160FC322A1C8F7300FCE676 /* PhotosOnboardingRowView.swift in Sources */,
 				31A8594C29DD95B200071ECF /* PhotoLibraryAuthorizationController.swift in Sources */,
 				31E1D43D29C9B1A3000DD73D /* ItemProviderLoadOperation.swift in Sources */,
@@ -5201,6 +5267,7 @@
 				31FD486729FA873E00935CA9 /* PhotosOnboardingViewModel.swift in Sources */,
 				31C6B23929C85817001C585A /* PhotosPickerFactory.swift in Sources */,
 				31A629D529E596310036BCE9 /* PhotoLibraryLivePhotoCompoundResource.swift in Sources */,
+				317E0D872A3307C60091C7F6 /* PhotosLoadProgressController.swift in Sources */,
 				31BB526329EE8867003E1567 /* PhotoAssetResourceNameResource.swift in Sources */,
 				187B2ACC24F30F450008EABD /* TrashViewModel+DeleteAlert.swift in Sources */,
 				D9628CA2284CAEC500573F80 /* DC+Launch.swift in Sources */,
@@ -5266,6 +5333,7 @@
 				AB309D4224FCD62600A55ECB /* SortingViewModel.swift in Sources */,
 				AB96DE1D25B850E7002BDCFF /* FinderError.swift in Sources */,
 				18C72A182609357F00116771 /* FinderListCellModel.swift in Sources */,
+				3139CE232A31A24000B06AEE /* PhotoFetchResource.swift in Sources */,
 				31DED6292A24BA6F001F3B8C /* PhotosGalleryPlaceholderView.swift in Sources */,
 				18C79585261DC3C200AF145D /* FileType.swift in Sources */,
 				310447E82A12478B0037F4CE /* PhotosPreviewController.swift in Sources */,
@@ -5630,7 +5698,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.14.0;
+				MARKETING_VERSION = 1.15.0;
 				OTHER_CODE_SIGN_FLAGS = "--deep";
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -5794,7 +5862,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.14.0;
+				MARKETING_VERSION = 1.15.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.fileprovider;
@@ -5869,7 +5937,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.14.0;
+				MARKETING_VERSION = 1.15.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "ch.protonmail.drive.fileprovider-ui";

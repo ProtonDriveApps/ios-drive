@@ -40,8 +40,7 @@ final class LocalPhotoLibraryLoadInteractor: PhotoLibraryLoadInteractor {
         resource.updatePublisher
             .filter { !$0.isEmpty }
             .sink { [weak self] identifiers in
-                let ids = Set(identifiers.map { $0.cloudIdentifier })
-                self?.progressRepository.add(ids)
+                self?.progressRepository.add(identifiers.count)
                 self?.identifiersInteractor.execute(with: identifiers)
             }
             .store(in: &cancellables)

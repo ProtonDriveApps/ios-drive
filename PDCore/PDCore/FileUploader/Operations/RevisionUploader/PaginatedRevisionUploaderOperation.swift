@@ -24,13 +24,13 @@ final class PaginatedRevisionUploaderOperation: AsynchronousOperation, UploadOpe
 
     private let draft: FileDraft
     private let uploader: RevisionUploader
-    private let onError: OnError
+    private let onError: OnUploadError
 
     init(
         draft: FileDraft,
         parentProgress: Progress,
         uploader: RevisionUploader,
-        onError: @escaping OnError
+        onError: @escaping OnUploadError
     ) {
         self.draft = draft
         self.progress = parentProgress

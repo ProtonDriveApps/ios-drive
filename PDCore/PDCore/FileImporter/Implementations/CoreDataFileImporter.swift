@@ -26,15 +26,16 @@ final class CoreDataFileImporter: FileImporter {
         self.signersKitFactory = signersKitFactory
     }
 
-    func importFile(from url: URL, to folder: Folder) throws -> File {
+    func importFile(from url: URL, to folder: Folder, with localID: String? = nil) throws -> File {
         guard let moc = folder.moc else { throw Folder.noMOC() }
+        
         ConsoleLogger.shared?.log("STAGE: 0 Batch imported 🗂💾 started", osLogType: FileUploader.self)
         
         return try moc.performAndWait {
             let parent = folder.in(moc: moc)
 
             do {
-                let newFile = try makeEncryptedImportedFile(url, parent)
+                let newFile = try makeEncryptedImportedFile(url, parent, localID)
                 let coreDataFile = File.`import`(newFile, moc: moc)
                 coreDataFile.parentLink = folder
                 try moc.save()
@@ -55,7 +56,7 @@ final class CoreDataFileImporter: FileImporter {
         }
     }
 
-    private func makeEncryptedImportedFile(_ url: URL, _ folder: Folder) throws -> EncryptedImportedFile {
+    private func makeEncryptedImportedFile(_ url: URL, _ folder: Folder, _ localID: String? = nil) throws -> EncryptedImportedFile {
         let signersKit = try generateSignersKit()
         let parent = try folder.encrypting()
 
@@ -83,7 +84,8 @@ final class CoreDataFileImporter: FileImporter {
             clientUID: uuid.uuidString,
             shareID: parent.shareID,
             uploadID: uuid,
-            resourceURL: url
+            resourceURL: url,
+            localID: localID
         )
     }
 

@@ -21,25 +21,20 @@ protocol PhotoShareIdDataSource {
     func getShareId() async throws -> String
 }
 
-enum DatabasePhotoShareIdDataSourceError: Error {
-    case missingId
-}
-
 final class DatabasePhotoShareIdDataSource: PhotoShareIdDataSource {
-    private let dataSource: PhotosDeviceDataSource
+    private let dataSource: PhotosShareDataSource
 
-    init(dataSource: PhotosDeviceDataSource) {
+    init(dataSource: PhotosShareDataSource) {
         self.dataSource = dataSource
     }
 
     func getShareId() async throws -> String {
-        let device = try await dataSource.getPhotosDevice()
-        let id = device.moc?.performAndWait {
-            device.share.id
-        }
-        guard let id else {
+        let share = try await dataSource.getPhotoShare()
+        guard let moc = share.moc else {
             throw Device.noMOC()
         }
-        return id
+        return moc.performAndWait {
+            share.id
+        }
     }
 }

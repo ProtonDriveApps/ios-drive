@@ -22,21 +22,24 @@ public struct ThumbnailLoaderFactory {
     
     func makeFileThumbnailLoader(storage: StorageManager, cloudSlot: CloudSlot) -> CancellableThumbnailLoader {
         let repository = FileThumbnailRepository(store: storage)
-        return makeLoader(storage: storage, cloudSlot: cloudSlot, repository: repository)
+        let typeStrategy = DefaultThumbnailTypeStrategy()
+        return makeLoader(storage: storage, cloudSlot: cloudSlot, repository: repository, typeStrategy: typeStrategy)
     }
 
     public func makePhotoSmallThumbnailLoader(tower: Tower) -> ThumbnailLoader {
-        let repository = PhotoSmallThumbnailRepository(store: tower.storage)
-        return makeLoader(storage: tower.storage, cloudSlot: tower.cloudSlot, repository: repository)
+        let typeStrategy = DefaultThumbnailTypeStrategy()
+        let repository = PhotoThumbnailRepository(store: tower.storage, typeStrategy: typeStrategy)
+        return makeLoader(storage: tower.storage, cloudSlot: tower.cloudSlot, repository: repository, typeStrategy: typeStrategy)
     }
 
     public func makePhotoBigThumbnailLoader(tower: Tower) -> ThumbnailLoader {
-        let repository = PhotoBigThumbnailRepository(store: tower.storage)
-        return makeLoader(storage: tower.storage, cloudSlot: tower.cloudSlot, repository: repository)
+        let typeStrategy = PhotoBigThumbnailTypeStrategy()
+        let repository = PhotoThumbnailRepository(store: tower.storage, typeStrategy: typeStrategy)
+        return makeLoader(storage: tower.storage, cloudSlot: tower.cloudSlot, repository: repository, typeStrategy: typeStrategy)
     }
 
-    private func makeLoader(storage: StorageManager, cloudSlot: CloudSlot, repository: ThumbnailRepository) -> DispatchedAsyncThumbnailLoader {
-        let thumbnailsOperatiosFactory = LoadThumbnailOperationsFactory(store: storage, cloud: cloudSlot, thumbnailRepository: repository)
+    private func makeLoader(storage: StorageManager, cloudSlot: CloudSlot, repository: ThumbnailRepository, typeStrategy: ThumbnailTypeStrategy) -> DispatchedAsyncThumbnailLoader {
+        let thumbnailsOperatiosFactory = LoadThumbnailOperationsFactory(store: storage, cloud: cloudSlot, thumbnailRepository: repository, typeStrategy: typeStrategy)
         let asyncLoader = AsyncThumbnailLoader(operationsFactory: thumbnailsOperatiosFactory)
         return DispatchedAsyncThumbnailLoader(thumbnailLoader: asyncLoader)
     }

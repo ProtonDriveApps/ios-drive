@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		186051E2261DFDA50023BAF3 /* RevisionThumbnailEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1810B99A261610A200489B37 /* RevisionThumbnailEndpoint.swift */; };
 		18C79518261D945C00AF145D /* NewBlocksParameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 188DF507261CB22800EC5E0C /* NewBlocksParameters.swift */; };
-		18C7951B261D946D00AF145D /* ContentUploadLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 188DF50D261CB27B00EC5E0C /* ContentUploadLink.swift */; };
 		18C7951E261D947B00AF145D /* NewBlocksEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 188DF506261CB22800EC5E0C /* NewBlocksEndpoint.swift */; };
 		31495B6C2A0E792B00162FE2 /* DownloadBlockEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31495B6B2A0E792B00162FE2 /* DownloadBlockEndpoint.swift */; };
 		31495B6D2A0E792B00162FE2 /* DownloadBlockEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31495B6B2A0E792B00162FE2 /* DownloadBlockEndpoint.swift */; };
@@ -76,6 +75,7 @@
 		AB36A2072542D47500A2BD0A /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = AB283296240D4196009AD883 /* README.md */; };
 		AB376779268356D9005230A8 /* UploadBlockFromFileEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB376777268356D9005230A8 /* UploadBlockFromFileEndpoint.swift */; };
 		AB3DC21425F75C4400AD8F60 /* NewRevisionEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3DC21225F75C4400AD8F60 /* NewRevisionEndpoint.swift */; };
+		AB5615962A38E0E200995C27 /* ContentUploadLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 188DF50D261CB27B00EC5E0C /* ContentUploadLink.swift */; };
 		AB7077DD2937580400F52BE5 /* ErrorMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB7077DB2937580400F52BE5 /* ErrorMonitor.swift */; };
 		AB99ED2D256E519800BAB023 /* ShareURLMeta.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB99ED29256E518700BAB023 /* ShareURLMeta.swift */; };
 		AB99ED30256E519B00BAB023 /* NewShareURLEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB99ED25256E4F9A00BAB023 /* NewShareURLEndpoint.swift */; };
@@ -142,6 +142,10 @@
 		D979213E2A1246070034CD03 /* ListDevicesEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = D979213C2A1246070034CD03 /* ListDevicesEndpoint.swift */; };
 		D97921432A12949F0034CD03 /* PhotosRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97921422A12949F0034CD03 /* PhotosRoot.swift */; };
 		D97921442A12949F0034CD03 /* PhotosRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97921422A12949F0034CD03 /* PhotosRoot.swift */; };
+		D9B6274E2A2E132000CC5D33 /* CreatePhotosShareEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9B6274D2A2E132000CC5D33 /* CreatePhotosShareEndpoint.swift */; };
+		D9B6274F2A2E132000CC5D33 /* CreatePhotosShareEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9B6274D2A2E132000CC5D33 /* CreatePhotosShareEndpoint.swift */; };
+		D9B627522A2E340400CC5D33 /* ListSharesEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9B627512A2E340400CC5D33 /* ListSharesEndpoint.swift */; };
+		D9B627532A2E340400CC5D33 /* ListSharesEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9B627512A2E340400CC5D33 /* ListSharesEndpoint.swift */; };
 		D9BD8B902A0C4866008968BC /* CreateDeviceEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9BD8B8F2A0C4866008968BC /* CreateDeviceEndpoint.swift */; };
 		D9BD8B912A0C4866008968BC /* CreateDeviceEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9BD8B8F2A0C4866008968BC /* CreateDeviceEndpoint.swift */; };
 		D9BD8B932A0CD18B008968BC /* Client+Photos.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9BD8B922A0CD18B008968BC /* Client+Photos.swift */; };
@@ -268,6 +272,8 @@
 		D96D6506286D5E2200B606B2 /* UpdateShareURLEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateShareURLEndpoint.swift; sourceTree = "<group>"; };
 		D979213C2A1246070034CD03 /* ListDevicesEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListDevicesEndpoint.swift; sourceTree = "<group>"; };
 		D97921422A12949F0034CD03 /* PhotosRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosRoot.swift; sourceTree = "<group>"; };
+		D9B6274D2A2E132000CC5D33 /* CreatePhotosShareEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreatePhotosShareEndpoint.swift; sourceTree = "<group>"; };
+		D9B627512A2E340400CC5D33 /* ListSharesEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListSharesEndpoint.swift; sourceTree = "<group>"; };
 		D9BD8B8F2A0C4866008968BC /* CreateDeviceEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateDeviceEndpoint.swift; sourceTree = "<group>"; };
 		D9BD8B922A0CD18B008968BC /* Client+Photos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Client+Photos.swift"; sourceTree = "<group>"; };
 		D9BD8B962A0CD757008968BC /* NewPhotoShare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewPhotoShare.swift; sourceTree = "<group>"; };
@@ -429,6 +435,7 @@
 				1810B99A261610A200489B37 /* RevisionThumbnailEndpoint.swift */,
 				31495B6B2A0E792B00162FE2 /* DownloadBlockEndpoint.swift */,
 				D979213C2A1246070034CD03 /* ListDevicesEndpoint.swift */,
+				D9B627512A2E340400CC5D33 /* ListSharesEndpoint.swift */,
 				3160FC3A2A1F3A7800FCE676 /* PhotosListEndpoint.swift */,
 			);
 			path = GET;
@@ -463,6 +470,7 @@
 				187A18EA24DA9E9E0077D48F /* RestoreLinkEndpoint.swift */,
 				D9BD8B8F2A0C4866008968BC /* CreateDeviceEndpoint.swift */,
 				3160FC5D2A1F680500FCE676 /* LinksMetadataEndpoint.swift */,
+				D9B6274D2A2E132000CC5D33 /* CreatePhotosShareEndpoint.swift */,
 			);
 			path = POST;
 			sourceTree = "<group>";
@@ -630,6 +638,7 @@
 				3160FC5C2A1F65C200FCE676 /* LinksResponse.swift in Sources */,
 				ABCD3A93299121B200432FE6 /* ShareURLMeta.swift in Sources */,
 				D97921442A12949F0034CD03 /* PhotosRoot.swift in Sources */,
+				D9B6274F2A2E132000CC5D33 /* CreatePhotosShareEndpoint.swift in Sources */,
 				3160FC4A2A1F483100FCE676 /* PhotosListResponse.swift in Sources */,
 				ABCD3AB8299121D000432FE6 /* VolumesEndpoint.swift in Sources */,
 				ABCD3AA2299121C700432FE6 /* TrashLinkEndpoint.swift in Sources */,
@@ -679,6 +688,7 @@
 				ABCD3A9A299121BB00432FE6 /* NewShareURLEndpoint.swift in Sources */,
 				ABCD3AA4299121C700432FE6 /* NewRevisionEndpoint.swift in Sources */,
 				ABCD3ABE299121D400432FE6 /* Endpoint+PrettyPrinting.swift in Sources */,
+				D9B627532A2E340400CC5D33 /* ListSharesEndpoint.swift in Sources */,
 				ABCD3A9F299121C000432FE6 /* NewBlocksParameters.swift in Sources */,
 				ABCD3AAF299121D000432FE6 /* EventsEndpoint.swift in Sources */,
 				ABCD3AAC299121CB00432FE6 /* RenameNodeEndpoint.swift in Sources */,
@@ -765,10 +775,10 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_ASSET_PATHS = README.md;
-				DEVELOPMENT_TEAM = 2SB5Z68H26;
+				DEVELOPMENT_TEAM = "";
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
@@ -787,9 +797,10 @@
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				OTHER_CODE_SIGN_FLAGS = "--deep";
+				OTHER_CODE_SIGN_FLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.PDClient;
 				PRODUCT_NAME = PDClient;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = macosx;
@@ -1017,7 +1028,7 @@
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				OTHER_CODE_SIGN_FLAGS = "--deep";
+				OTHER_CODE_SIGN_FLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.PDClient;
 				PRODUCT_NAME = PDClient;
 				SDKROOT = macosx;
@@ -1038,10 +1049,10 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_ASSET_PATHS = README.md;
-				DEVELOPMENT_TEAM = 2SB5Z68H26;
+				DEVELOPMENT_TEAM = "";
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
@@ -1060,9 +1071,10 @@
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				OTHER_CODE_SIGN_FLAGS = "--deep";
+				OTHER_CODE_SIGN_FLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.PDClient;
 				PRODUCT_NAME = PDClient;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = macosx;
@@ -1080,10 +1092,10 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_ASSET_PATHS = README.md;
-				DEVELOPMENT_TEAM = 2SB5Z68H26;
+				DEVELOPMENT_TEAM = "";
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
@@ -1103,9 +1115,10 @@
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				OTHER_CODE_SIGN_FLAGS = "--deep";
+				OTHER_CODE_SIGN_FLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.PDClient;
 				PRODUCT_NAME = PDClient;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = macosx;

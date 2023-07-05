@@ -18,7 +18,7 @@
 import Foundation
 import PDClient
 
-public final class RemoteCreatingPhotosRootDataSource: PhotosDeviceDataSource {
+public final class RemoteCreatingPhotosRootDataSource: PhotosShareDataSource {
     
     private let storage: StorageManager
     private let sessionVault: SessionVault
@@ -30,7 +30,7 @@ public final class RemoteCreatingPhotosRootDataSource: PhotosDeviceDataSource {
         self.photoShareCreator = photoShareCreator
     }
 
-    public func getPhotosDevice() async throws -> Device {
+    public func getPhotoShare() async throws -> Share {
         
         let shareName = "PhotosShare"
         let RootName = "PhotosRoot"
@@ -70,23 +70,16 @@ public final class RemoteCreatingPhotosRootDataSource: PhotosDeviceDataSource {
         return try await moc.perform {
             let creator = signersKit.address.email
 
-            let share: Share = self.storage.new(with: response.device.shareID, by: #keyPath(Share.id), in: moc)
+            let share: Share = self.storage.new(with: response.share.shareID, by: #keyPath(Share.id), in: moc)
             share.addressID = signersKit.address.addressID
             share.creator = creator
             share.key = shareKeys.key
             share.passphrase = shareKeys.passphrase
             share.passphraseSignature = shareKeys.signature
+            share.type = .photos
 
-            let device: Device = self.storage.new(with: response.device.deviceID, by: #keyPath(Device.id), in: moc)
-            device.createTime = Date()
-            device.lastSyncTime = nil
-            device.modifyTime = nil
-            device.syncState = .off
-            device.type = .photos
-
-            let root: Folder = self.storage.new(with: "123", by: #keyPath(Folder.id), in: moc)
-            root.id = response.device.linkID
-            root.shareID = response.device.linkID
+            let root: Folder = self.storage.new(with: response.share.linkID, by: #keyPath(Folder.id), in: moc)
+            root.shareID = response.share.shareID
             root.nodeKey = rootKeys.key
             root.nodePassphrase = rootKeys.passphrase
             root.nodePassphraseSignature = rootKeys.signature
@@ -100,13 +93,11 @@ public final class RemoteCreatingPhotosRootDataSource: PhotosDeviceDataSource {
             root.modifiedDate = Date()
 
             share.volume = volume
-            share.device = device
             share.root = root
-            device.volume = volume
 
             try moc.saveOrRollback()
 
-            return device
+            return share
         }
     }
 

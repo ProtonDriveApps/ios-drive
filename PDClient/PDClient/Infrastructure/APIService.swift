@@ -58,6 +58,14 @@ public class APIService {
         }
         return url.appendingPathComponent(path)
     }
+
+    func url(of path: String, queries: [URLQueryItem]?) -> URL {
+        if let queries, !queries.isEmpty {
+            return url(of: path, parameters: queries)
+        } else {
+            return url(of: path)
+        }
+    }
 }
 
 public extension APIService {

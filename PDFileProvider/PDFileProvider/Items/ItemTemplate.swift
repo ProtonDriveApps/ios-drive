@@ -22,11 +22,13 @@ import UniformTypeIdentifiers
 
 public class ItemTemplate: NSObject, NSFileProviderItem {
     
-    public init(parentId: NSFileProviderItemIdentifier, filename: String, type: String) {
-        self.itemIdentifier = .init(UUID().uuidString)
+    public init(itemIdentifier: NSFileProviderItemIdentifier? = nil, parentId: NSFileProviderItemIdentifier, filename: String, type: String) {
+        self.itemIdentifier = itemIdentifier ?? .init(UUID().uuidString)
         self.parentItemIdentifier = parentId
         self.filename = filename
-        
+
+        self.itemVersion = .init()
+
         #if os(OSX)
         self.contentType = UTType(type) ?? .data
         #else
@@ -34,14 +36,51 @@ public class ItemTemplate: NSObject, NSFileProviderItem {
         #endif
         
         super.init()
+
+        let metadataVersion = MetadataVersion(item: self).encoded()
+        self.itemVersion = .init(contentVersion: Data(), metadataVersion: metadataVersion)
+    }
+
+    public init(item: NodeItem) {
+        self.itemIdentifier = item.itemIdentifier
+        self.parentItemIdentifier = item.parentItemIdentifier
+        self.filename = item.filename
+
+        self.itemVersion = item.itemVersion
+
+        #if os(OSX)
+        self.contentType = item.contentType
+        #else
+        self.typeIdentifier = item.contentType.identifier
+        #endif
+
+        super.init()
+
+        self.itemVersion = item.itemVersion
     }
     
     public var itemIdentifier: NSFileProviderItemIdentifier
     public var parentItemIdentifier: NSFileProviderItemIdentifier
     public var filename: String
+    public var itemVersion: NSFileProviderItemVersion
     #if os(OSX)
     public var contentType: UTType
     #else
     public var typeIdentifier: String
     #endif
+}
+
+public class ItemPlaceholder: NSObject, NSFileProviderItem {
+    
+    public init(id: NSFileProviderItemIdentifier) {
+        self.itemIdentifier = id
+        self.parentItemIdentifier = NSFileProviderItemIdentifier(rawValue: "")
+        self.filename = ".\(UUID().uuidString)"
+        
+        super.init()
+    }
+    
+    public var itemIdentifier: NSFileProviderItemIdentifier
+    public var parentItemIdentifier: NSFileProviderItemIdentifier
+    public var filename: String
 }

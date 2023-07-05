@@ -17,13 +17,15 @@
 
 import Foundation
 
-struct LinkEndpoint: Endpoint {
+public struct LinkEndpoint: Endpoint {
     public struct Response: Codable {
-        var code: Int
-        var link: Link
+        public typealias Link = PDClient.Link
+
+        public var code: Int
+        public var link: Link
     }
     
-    var request: URLRequest
+    public var request: URLRequest
     
     init(shareID: Share.ShareID, linkID: Link.LinkID, service: APIService, credential: ClientCredential) {
         // url

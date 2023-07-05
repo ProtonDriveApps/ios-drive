@@ -23,13 +23,13 @@ final class BlockUploaderOperation: AsynchronousOperation, OperationWithProgress
 
     private let blockIndex: Int
     private let contentUploader: ContentUploader
-    private let onError: OnError
+    private let onError: OnUploadError
 
     init(
         progressTracker: Progress,
         blockIndex: Int,
         contentUploader: ContentUploader,
-        onError: @escaping OnError
+        onError: @escaping OnUploadError
     ) {
         self.progress = progressTracker
         self.blockIndex = blockIndex

@@ -18,25 +18,25 @@
 import Foundation
 // MARK: - List Photos Share
 public protocol PhotoShareListing {
-    func getPhotosDevice() async throws -> PhotosRoot
+    func getPhotosRoot() async throws -> PhotosRoot
 }
 
 extension Client: PhotoShareListing {
-    public func getPhotosDevice() async throws -> PhotosRoot {
-        let response = try await listPhotoDevice()
+    public func getPhotosRoot() async throws -> PhotosRoot {
+        let response = try await listPhotoShares()
+        async let share = try bootstrapPhotosShare(shareID: response.shareID)
+        async let root = try bootstrapPhotosRoot(shareID: response.shareID, nodeID: response.linkID)
 
-        async let share = try bootstrapPhotosShare(shareID: response.share.shareID)
-        async let root = try bootstrapPhotosRoot(shareID: response.share.shareID, nodeID: response.share.linkID)
-
-        return try await PhotosRoot(link: root, share: share, device: response.device)
+        return try await PhotosRoot(link: root, share: share)
     }
 
-    private func listPhotoDevice() async throws -> ListDevicesEndpoint.Response.ShareDevice {
-        let endpoint = ListDevicesEndpoint(service: service, credential: try credential())
+    private func listPhotoShares() async throws -> ListSharesEndpoint.Response.Share {
+        let parameters = ListSharesEndpoint.Parameters(shareType: .photos, showAll: .default)
+        let endpoint = ListSharesEndpoint(parameters: parameters, service: service, credential: try credential())
         let reponse = try await request(endpoint)
 
-        guard let shareDevice = reponse.devices.first(where: { $0.device.type == 4 }) else {
-            throw NSError(domain: "Volume has no Photos Device", code: 0)
+        guard let shareDevice = reponse.shares.first else {
+            throw NSError(domain: "No Photos Share found", code: 0)
         }
 
         return shareDevice
@@ -56,20 +56,15 @@ extension Client: PhotoShareListing {
 
 // MARK: - Create
 public protocol PhotoShareCreator {
-    func createPhotosShare(photoShare: NewPhotoShare) async throws -> CreateDeviceEndpoint.Response
+    func createPhotosShare(photoShare: NewPhotoShare) async throws -> CreatePhotosShareEndpoint.Response
 }
 
 extension Client: PhotoShareCreator {
-    public func createPhotosShare(photoShare: NewPhotoShare) async throws -> CreateDeviceEndpoint.Response {
-        let parameters = CreateDeviceEndpoint.Parameters(
+    public func createPhotosShare(photoShare: NewPhotoShare) async throws -> CreatePhotosShareEndpoint.Response {
+        let parameters = CreatePhotosShareEndpoint.Parameters(
+            volumeId: photoShare.volumeID,
             body: .init(
-                device: .init(
-                    volumeID: photoShare.volumeID,
-                    syncState: .on,
-                    type: .photos
-                ),
                 share: .init(
-                    name: photoShare.shareName,
                     addressID: photoShare.addressID,
                     key: photoShare.shareKey,
                     passphrase: photoShare.sharePassphrase,
@@ -85,7 +80,7 @@ extension Client: PhotoShareCreator {
             )
         )
 
-        let endpoint = try CreateDeviceEndpoint(parameters: parameters, service: service, credential: try credential())
+        let endpoint = try CreatePhotosShareEndpoint(parameters: parameters, service: service, credential: try credential())
         return try await request(endpoint)
     }
 }

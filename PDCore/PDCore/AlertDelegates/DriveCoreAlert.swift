@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import ProtonCore_CoreTranslation
+
 public enum DriveCoreAlert: Equatable {
     case logout
     case trustKitFailure
@@ -43,7 +45,7 @@ public enum DriveCoreAlert: Equatable {
     public var message: String {
         switch self {
         case .logout:
-            return "Access token expired or the session was revoked. Please, login back"
+            return CoreString._ls_info_session_expired
         case .trustKitFailure:
             return "TLS certificate validation failed. Your connection may be monitored and the app is temporarily blocked for your safety.\n\nswitch  networks immediately"
         case .trustKitHardFailure:

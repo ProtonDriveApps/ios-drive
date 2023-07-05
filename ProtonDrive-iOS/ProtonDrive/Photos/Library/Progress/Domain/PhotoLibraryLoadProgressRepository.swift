@@ -18,9 +18,9 @@
 import Combine
 
 protocol PhotoLibraryLoadProgressRepository {
-    func add(_ identifiers: PhotoLibraryIds)
-    func discard(_ identifiers: PhotoLibraryIds)
-    func finish(_ identifiers: PhotoLibraryIds)
+    func add(_ count: Int)
+    func discard(_ count: Int)
+    func finish(_ count: Int)
 }
 
 protocol PhotoLibraryLoadProgressActionRepository {
@@ -28,9 +28,9 @@ protocol PhotoLibraryLoadProgressActionRepository {
 }
 
 enum PhotoLibraryLoadAction: Equatable {
-    case added(PhotoLibraryIds)
-    case discarded(PhotoLibraryIds)
-    case finished(PhotoLibraryIds)
+    case added(Int)
+    case discarded(Int)
+    case finished(Int)
 }
 
 final class LocalPhotoLibraryLoadProgressActionRepository: PhotoLibraryLoadProgressActionRepository, PhotoLibraryLoadProgressRepository {
@@ -40,15 +40,15 @@ final class LocalPhotoLibraryLoadProgressActionRepository: PhotoLibraryLoadProgr
         actionSubject.eraseToAnyPublisher()
     }
 
-    func add(_ identifiers: PhotoLibraryIds) {
-        actionSubject.send(.added(identifiers))
+    func add(_ count: Int) {
+        actionSubject.send(.added(count))
     }
 
-    func discard(_ identifiers: PhotoLibraryIds) {
-        actionSubject.send(.discarded(identifiers))
+    func discard(_ count: Int) {
+        actionSubject.send(.discarded(count))
     }
 
-    func finish(_ identifiers: PhotoLibraryIds) {
-        actionSubject.send(.finished(identifiers))
+    func finish(_ count: Int) {
+        actionSubject.send(.finished(count))
     }
 }

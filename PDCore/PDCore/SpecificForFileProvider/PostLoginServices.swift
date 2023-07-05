@@ -31,15 +31,18 @@ public class PostLoginServices: LogObject {
     private let initialServices: InitialServices
     private let storage: StorageManager
     private var observations: Set<AnyCancellable> = []
+    private let activityObserver: ((NSUserActivity) -> Void)
     
     public init(initialServices: InitialServices,
                 appGroup: SettingsStorageSuite,
                 storage: StorageManager? = nil,
                 eventObservers: [EventsListener] = [],
-                eventProcessingMode: DriveEventsLoopMode)
+                eventProcessingMode: DriveEventsLoopMode,
+                activityObserver: @escaping ((NSUserActivity) -> Void))
     {
         self.initialServices = initialServices
         self.storage = storage ?? StorageManager(suite: appGroup, sessionVault: initialServices.sessionVault)
+        self.activityObserver = activityObserver
         
         self.tower = Tower(storage: self.storage,
                            eventStorage: EventStorageManager(suiteUrl: appGroup.directoryUrl),
@@ -53,6 +56,7 @@ public class PostLoginServices: LogObject {
                            eventProcessingMode: eventProcessingMode)
         
         self.initialServices.networkClient.publisher(for: \.currentActivity)
+            .dropFirst() // ignore the current value
             .compactMap { $0 }
             .sink(receiveValue: { [weak self] activity in self?.currentActivityChanged(activity) })
             .store(in: &observations)
@@ -99,18 +103,6 @@ public class PostLoginServices: LogObject {
     
     private func currentActivityChanged(_ activity: NSUserActivity) {
         ConsoleLogger.shared?.fireWarning(event: "\(activity.activityType)")
-        
-        switch activity {
-        case PMAPIClient.Activity.logout:
-            self.signOut()
-            
-        case PMAPIClient.Activity.trustKitFailure: break
-
-        case PMAPIClient.Activity.humanVerification: break
-        
-        case PMAPIClient.Activity.forceUpgrade: break
-        
-        default: break
-        }
+        self.activityObserver(activity)
     }
 }

@@ -114,22 +114,13 @@ extension CloudSlot: CloudRevisionCommiter {
 
 // MARK: - CloudRevisionCreator
 protocol CloudRevisionCreator {
-    func createRevision(for file: File, onCompletion: @escaping (Result<RevisionIdentifier, Error>) -> Void)
+    func createRevision(for file: NodeIdentifier, onCompletion: @escaping (Result<RevisionIdentifier, Error>) -> Void)
 }
 
 extension CloudSlot: CloudRevisionCreator {
-
-    func createRevision(for file: File, onCompletion: @escaping (Result<RevisionIdentifier, Error>) -> Void) {
-        guard let moc = file.moc else {
-            onCompletion(.failure(File.noMOC()))
-            return
-        }
-
-        let identifier = moc.performAndWait { file.identifier }
-
-        client.postRevision(identifier.nodeID, shareID: identifier.shareID) { result in
-            onCompletion(result.map { RevisionIdentifier(share: identifier.shareID, file: identifier.nodeID, revision: $0.ID) })
+    func createRevision(for file: NodeIdentifier, onCompletion: @escaping (Result<RevisionIdentifier, Error>) -> Void) {
+        client.postRevision(file.nodeID, shareID: file.shareID) { result in
+            onCompletion(result.map { RevisionIdentifier(share: file.shareID, file: file.nodeID, revision: $0.ID) })
         }
     }
-
 }

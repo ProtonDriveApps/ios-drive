@@ -31,6 +31,7 @@ extension File {
         coreDataFile.contentKeyPacket = file.contentKeyPacket
         coreDataFile.contentKeyPacketSignature = file.contentKeyPacketSignature
         coreDataFile.clientUID = file.clientUID
+        coreDataFile.localID = file.localID
 
         coreDataFile.shareID = file.shareID
         coreDataFile.signatureEmail = file.signatureAddress

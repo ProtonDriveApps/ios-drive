@@ -46,8 +46,7 @@ final class LocalPhotoLibraryMappingResource: PhotoLibraryMappingResource {
             creationDate: asset.creationDate,
             modifiedDate: asset.modificationDate,
             width: asset.pixelWidth,
-            height: asset.pixelHeight,
-            duration: asset.duration
+            height: asset.pixelHeight
         )
     }
 

@@ -46,9 +46,11 @@ struct PhotosStateView<ViewModel: PhotosStateViewModelProtocol, TitleView: View>
                 }
                 data.progress.map(makeProgress)
             }
+            .animation(.default, value: viewModel.viewData)
             .padding(.vertical, 6)
             .padding(.horizontal, 12)
         }
+        .frame(minHeight: 46)
         .fixedSize(horizontal: false, vertical: true)
         .cornerRadius(.huge)
         .padding(16)

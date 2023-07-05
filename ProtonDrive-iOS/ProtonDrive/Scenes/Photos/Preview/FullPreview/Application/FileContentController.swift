@@ -17,10 +17,11 @@
 
 import Foundation
 import Combine
+import PDCore
 
 protocol FileContentController {
     var url: AnyPublisher<URL, Never> { get }
-    func execute(with id: PhotoId)
+    func execute(with id: NodeIdentifier)
 }
 
 final class LocalFileContentController: FileContentController {
@@ -48,7 +49,7 @@ final class LocalFileContentController: FileContentController {
 
     }
 
-    func execute(with id: PhotoId) {
+    func execute(with id: NodeIdentifier) {
         resource.execute(with: id)
     }
 }

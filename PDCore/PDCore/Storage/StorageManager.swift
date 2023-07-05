@@ -202,7 +202,21 @@ public class StorageManager: NSObject {
         return context
     }()
     
+    public func newBackgroundContext() -> NSManagedObjectContext {
+        let context = self.persistentContainer.newBackgroundContext()
+        context.automaticallyMergesChangesFromParent = true
+        context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
+        return context
+    }
+    
     lazy var eventsContext: NSManagedObjectContext = {
+        let context = self.persistentContainer.newBackgroundContext()
+        context.automaticallyMergesChangesFromParent = true
+        context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
+        return context
+    }()
+    
+    lazy var photoUploadContext: NSManagedObjectContext = {
         let context = self.persistentContainer.newBackgroundContext()
         context.automaticallyMergesChangesFromParent = true
         context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump

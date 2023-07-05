@@ -43,7 +43,6 @@ final class NotificationsPermissionsCoordinator {
     private func setupObserving() {
         cancellable = controller.event
             .removeDuplicates()
-            .delay(for: .seconds(2), scheduler: DispatchQueue.main)
             .sink { [weak self] event in
                 self?.handle(event)
             }
@@ -52,7 +51,9 @@ final class NotificationsPermissionsCoordinator {
     private func handle(_ event: NotificationsPermissionsEvent) {
         switch event {
         case .open:
-            open()
+            DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) { [weak self] in
+                self?.open()
+            }
         case .close:
             close()
         }

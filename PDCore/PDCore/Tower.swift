@@ -126,14 +126,15 @@ public class Tower: NSObject, LogObject {
         if Constants.runningInExtension {
             fileUploadFactory = StreamFileUploadOperationsProviderFactory(storage: storage, cloudSlot: cloudSlot, sessionVault: sessionVault, apiService: api)
         } else {
-            fileUploadFactory = DiscreteFileUploadOperationsProviderFactory(storage: storage, cloudSlot: cloudSlot, sessionVault: sessionVault, apiService: api)
+            fileUploadFactory = iOSFileUploadOperationsProviderFactory(storage: storage, cloudSlot: cloudSlot, sessionVault: sessionVault, apiService: api)
         }
         #endif
 
         self.fileUploader = FileUploader(
             fileUploadFactory: fileUploadFactory.make(),
             storage: storage,
-            sessionVault: sessionVault
+            sessionVault: sessionVault,
+            moc: storage.backgroundContext
         )
 
         super.init()

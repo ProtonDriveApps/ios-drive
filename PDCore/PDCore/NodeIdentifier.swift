@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import FileProvider
 
 public struct NodeIdentifier: Equatable, Hashable {
     public let nodeID: String

@@ -17,17 +17,4 @@
 
 import Foundation
 
-final class PhotoDraftCreatorOperationFactory: FileDraftCreatorOperationFactory {
-
-    override func makeFileDraftUploader() -> FileDraftUploader {
-        // TODO: Replace with a version that does not append an extra value
-        let nameDiscoverer = makeNameDiscoverer()
-        return NameClashResolvingFileDraftUploader(
-            cloudFileCreator: fileDraftCreator,
-            validNameDiscoverer: nameDiscoverer,
-            signersKitFactory: sessionVault,
-            nameReencryptor: storage
-        )
-    }
-
-}
+final class PhotoDraftCreatorOperationFactory: NameResolvingFileDraftCreatorOperationFactory { }

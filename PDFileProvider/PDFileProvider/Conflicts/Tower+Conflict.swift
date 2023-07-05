@@ -20,99 +20,83 @@ import FileProvider
 
 extension Tower {
 
-    // MARK: - Detect conflict
-
-    func conflictStrategy(for existingItem: NSFileProviderItem, _ conflictOperation: ConflictingOperation) throws -> ConflictResolutionStrategy {
-
-        switch conflictOperation {
-        case .create(let operation):
-            return createConflictStrategy(on: existingItem, with: operation)
-        case .edit(let operation):
-            return editConflictStrategy(on: existingItem, with: operation)
-        case .move(let operation):
-            return moveConflictStrategy(on: existingItem, with: operation)
-        case .delete(let isParent):
-            return deleteConflictStrategy(on: existingItem, parent: isParent, operation: conflictOperation)
-        }
-    }
-
     // MARK: - Resolve conflict
 
-    func resolveConflict(on node: Conflicting, with strategy: ConflictResolutionStrategy) -> (NSFileProviderItem, Bool) {
-
-        switch strategy {
-        case .merge:
-            return (node.item, true)
-        case .preserve(let winner):
-            switch winner {
-            case .remote:
-                return (node.item, true)
-            case .delete where ((node as? File) != nil):
-                if let newItem = newFileItemFrom(node: node) {
-                    return (newItem, true)
-                } else {
-                    return (node.item, false)
+    func resolveConflict(between item: NSFileProviderItem, with url: URL?, and conflictingNode: Node?, applying action: ResolutionAction) async throws -> NSFileProviderItem {
+        switch action {
+        case .ignore:
+            // if the conflict is direct, then `conflictingNode` will be the remote version of item,
+            // however in the case of indirect conflicts, will represent a different node
+            guard let remoteNode = node(itemIdentifier: item.itemIdentifier) else {
+                guard let conflictingNode else {
+                    return item
                 }
-            case .delete:
-                return (node.item, false)
-            case .edit:
-                return (node.item, true)
+                return NodeItem(node: conflictingNode)
             }
-        case .discard(let operation):
-            switch operation {
-            case .delete:
-                return (node.item, true)
-            default:
-                return (node.item, false) // Temporary
+            return NodeItem(node: remoteNode)
 
+        case .recreate:
+            guard let parent = parentFolder(of: item) else {
+                throw Errors.parentNotFound
             }
-        }
-    }
-
-    private func createConflictStrategy(on existingItem: NSFileProviderItem, with operation: ConflictingOperation?) -> ConflictResolutionStrategy {
-        // [DRVIOS-1768] Create-Create file
-        if operation == nil {
-            // Create-Create Pseudo conflict for folder and Create-Create Name clash conflict for a file (renaming)
-            return existingItem.isFolder ? .merge : .preserve(winner: .remote)
-        }
-        // [DRVIOS-1779] Create/parentDelete file/folder conflict resolution
-        return .preserve(winner: .delete)
-    }
-
-    private func editConflictStrategy(on existingItem: NSFileProviderItem, with operation: ConflictingOperation?) -> ConflictResolutionStrategy {
-        guard let operation = operation else {
-            return .preserve(winner: .remote)
-        }
-        switch operation {
-        case .move:
-            // Move-Create conflict resolution
-            return .preserve(winner: .remote)
-        case let .delete(parent: isParent):
-            if isParent {
-                return .preserve(winner: .edit)
+            if item.isFolder {
+                let recreatedFolder = try await createFolder(named: item.filename, under: parent)
+                return NodeItem(node: recreatedFolder)
             } else {
-                return .discard(operation: .delete(parent: false))
+                let recreatedFile = try await createFile(item: item, with: url, under: parent)
+                return (NodeItem(node: recreatedFile))
             }
-        case .edit:
-            return .preserve(winner: .remote)
-        default:
-            return .discard(operation: .edit(nil))
-        }
-    }
 
-    private func moveConflictStrategy(on existingItem: NSFileProviderItem, with operation: ConflictingOperation?) -> ConflictResolutionStrategy {
-        switch operation {
-        case .edit:
-            // Move-Move conflict resolution
-            return .preserve(winner: .remote)
-        default: // Temporary
-            return .discard(operation: .move(nil))
-        }
-    }
+        case .createWithUniqueSuffixInConflictsFolder:
+            let conflictsFolder = try rootFolder()
+            let newItem = NodeItem(item: item, filename: item.filename.conflictNodeName)
+            if item.isFolder {
+                let createdNode = try await createFolder(named: newItem.filename, under: conflictsFolder)
+                return NodeItem(node: createdNode)
+            } else {
+                let file = try await createFile(item: newItem, with: url, under: conflictsFolder)
+                return (NodeItem(node: file))
+            }
 
-    // [DRVIOS-1770] Delete-Delete Pseudo conflict
-    private func deleteConflictStrategy(on existingItem: NSFileProviderItem, parent: Bool, operation: ConflictingOperation) -> ConflictResolutionStrategy {
-        return .discard(operation: .delete(parent: false))
+        case .createWithUniqueSuffix:
+            let newItem = NodeItem(item: item, filename: item.filename.conflictNodeName)
+            guard let parent = parentFolder(of: item) else {
+                throw Errors.parentNotFound
+            }
+            if item.isFolder {
+                let createdNode = try await createFolder(named: newItem.filename, under: parent)
+                return NodeItem(node: createdNode)
+            } else {
+                let createdFile = try await createFile(item: newItem, with: url, under: parent)
+                return (NodeItem(node: createdFile))
+            }
+            
+        case .renameWithUniqueSuffix:
+            let newItem = NodeItem(item: item, filename: item.filename.conflictNodeName)
+            guard let nodeIdentifier = nodeIdentifier(for: newItem.itemIdentifier) else {
+                assertionFailure("Could not create nodeIdentifier from newItem.itemIdentifier: \(newItem.itemIdentifier.debugDescription)")
+                throw NSFileProviderError(.noSuchItem)
+            }
+
+            _ = try await rename(node: nodeIdentifier, cleartextName: newItem.filename)
+
+            return newItem
+            
+        case .moveAndRenameWithUniqueSuffix:
+            let newItem = NodeItem(item: item, filename: item.filename.conflictNodeName)
+            guard let nodeIdentifier = nodeIdentifier(for: newItem.itemIdentifier) else {
+                assertionFailure("Could not create nodeIdentifier from newItem.itemIdentifier: \(newItem.itemIdentifier.debugDescription)")
+                throw NSFileProviderError(.noSuchItem)
+            }
+
+            guard let newParent = parentFolder(of: newItem) else {
+                throw Errors.parentNotFound
+            }
+            
+            _ = try await move(nodeID: nodeIdentifier, under: newParent, withNewName: newItem.filename)
+
+            return newItem
+        }
     }
 
     private func newFileItemFrom(node: Conflicting) -> NSFileProviderItem? {
@@ -122,11 +106,33 @@ extension Tower {
         return NodeItem(node: file)
     }
 
-    // MARK: - Conflict folder
+    private func createFile(item: NSFileProviderItem, with url: URL?, under parent: Folder) async throws -> File {
+        guard let copy = self.prepare(forUpload: item, from: url) else {
+            throw Errors.emptyUrlForFileUpload
+        }
 
-    func createConflictFolder(under parentFolder: Folder) async throws -> Folder {
-        let name = "Conflict"
-        return try await createFolder(named: name, under: parentFolder)
+        defer { try? FileManager.default.removeItem(at: copy.deletingLastPathComponent()) }
+
+        // Fetch the draft if it already exists otherwise create a new one
+        let draft: File
+        if let existingDraft = self.draft(for: item) {
+            draft = existingDraft
+        } else {
+            draft = try fileImporter.importFile(from: copy, to: parent, with: item.itemIdentifier.rawValue)
+        }
+        return try await fileUploader.upload(draft)
+    }
+
+    private func prepare(forUpload itemTemplate: NSFileProviderItem, from url: URL?) -> URL? {
+        guard let url = url else { return nil }
+        // copy file from system temporary location to app temporary location so it will have correct mime and name
+        // TODO: inject mime and name directly into Uploader
+        let copyParent = FileManager.default.temporaryDirectory.appendingPathComponent(url.lastPathComponent)
+        let copy = copyParent.appendingPathComponent(itemTemplate.filename)
+        try? FileManager.default.removeItem(atPath: copyParent.path)
+        try? FileManager.default.createDirectory(at: copyParent, withIntermediateDirectories: true, attributes: nil)
+        try? FileManager.default.copyItem(at: url, to: copy)
+        return copy
     }
 
 }

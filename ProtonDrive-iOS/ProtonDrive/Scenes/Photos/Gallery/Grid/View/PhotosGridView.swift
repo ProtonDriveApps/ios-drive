@@ -30,10 +30,11 @@ struct PhotosGridView<ViewModel: PhotosGridViewModelProtocol, ItemView: View>: V
 
     var body: some View {
         GeometryReader { geometry in
+            let height = (geometry.size.width / 3) * 1.4
             ScrollView {
                 LazyVGrid(columns: columns, alignment: .leading, spacing: spacing) {
                     ForEach(viewModel.sections) {
-                        view(from: $0, height: (geometry.size.width / 3) * 1.4)
+                        view(from: $0, height: height)
                     }
                     bottomView
                 }
@@ -61,8 +62,9 @@ struct PhotosGridView<ViewModel: PhotosGridViewModelProtocol, ItemView: View>: V
     }
 
     private var bottomView: some View {
-        Color.clear
-            .frame(width: 0, height: 0, alignment: .bottom)
+        ColorProvider.BackgroundNorm
+            .frame(maxWidth: .infinity)
+            .frame(height: 1)
             .onAppear(perform: viewModel.didShowLastItem)
     }
 }

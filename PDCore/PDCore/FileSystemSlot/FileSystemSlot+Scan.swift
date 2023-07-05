@@ -57,10 +57,11 @@ public class FileSystemSlot {
     // MARK: - SUBSCRIBE TO DB CHANGES
     
     public func getNode(_ identifier: NodeIdentifier) -> Node? {
-        guard let file = self.storage.fetchNode(id: identifier, moc: self.moc) else {
-            return nil
-        }
-        return file
+        self.storage.fetchNode(id: identifier, moc: self.moc)
+    }
+    
+    public func getDraft(_ localID: String, shareID: String) -> File? {
+        self.storage.fetchDraft(localID: localID, shareID: shareID, moc: self.moc)
     }
     
     public func getMainShare(of creatorAddresses: Set<String>) -> Share? {

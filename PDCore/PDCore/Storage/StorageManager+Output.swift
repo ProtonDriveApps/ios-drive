@@ -92,6 +92,15 @@ public extension StorageManager {
         }
         return node
     }
+    
+    func fetchDraft(localID: String, shareID: String, moc: NSManagedObjectContext) -> File? {
+        var draft: File?
+        moc.performAndWait {
+            let fetchRequest = self.requestDraft(localID: localID, share: shareID, moc: moc)
+            draft = try? moc.fetch(fetchRequest).first
+        }
+        return draft
+    }
 
     func fetchNodes(ids: [String], moc: NSManagedObjectContext) -> Set<Node> {
         var nodes: [Node]?
@@ -194,12 +203,12 @@ public extension StorageManager {
     
     // Subscriptions
 
-    func subscriptionToPhotoDevices() -> NSFetchedResultsController<Device> {
-        let request = requestDevices()
-        request.predicate = NSPredicate(format: "%K == %d", #keyPath(Device.type), Device.´Type´.photos.rawValue)
+    func subscriptionToPhotoShares() -> NSFetchedResultsController<Share> {
+        let request = requestShares()
+        request.predicate = NSPredicate(format: "%K == %d", #keyPath(Share.type), Share.ShareType.photos.rawValue)
         return NSFetchedResultsController(fetchRequest: request, managedObjectContext: backgroundContext, sectionNameKeyPath: nil, cacheName: nil)
     }
-    
+
     func subscriptionToUploadingPhotos() -> NSFetchedResultsController<Photo> {
         return NSFetchedResultsController(fetchRequest: self.requestUploadingPhotos(),
                                           managedObjectContext: backgroundContext,
@@ -341,6 +350,16 @@ public extension StorageManager {
         fetchRequest.sortDescriptors = [.init(key: #keyPath(Node.id), ascending: true)]
         fetchRequest.predicate = NSPredicate(format: "%K == %@ AND %K == %@",
                                              #keyPath(Node.id), nodeID,
+                                             #keyPath(Node.shareID), shareID)
+        return fetchRequest
+    }
+    
+    private func requestDraft(localID: String, share shareID: String, moc: NSManagedObjectContext) -> NSFetchRequest<File> {
+        let fetchRequest = NSFetchRequest<File>()
+        fetchRequest.entity = File.entity()
+        fetchRequest.sortDescriptors = [.init(key: #keyPath(Node.localID), ascending: true)]
+        fetchRequest.predicate = NSPredicate(format: "%K == %@ AND %K == %@",
+                                             #keyPath(Node.localID), localID,
                                              #keyPath(Node.shareID), shareID)
         return fetchRequest
     }
@@ -492,7 +511,10 @@ public extension StorageManager {
     private func requestPrimaryUploadedPhotos(moc: NSManagedObjectContext) -> NSFetchRequest<Photo> {
         let fetchRequest = NSFetchRequest<Photo>()
         fetchRequest.entity = Photo.entity()
-        fetchRequest.sortDescriptors = [.init(key: #keyPath(Photo.captureTime), ascending: false)]
+        fetchRequest.sortDescriptors = [
+            .init(key: #keyPath(Photo.captureTime), ascending: false),
+            .init(key: #keyPath(Photo.id), ascending: false),
+        ]
         fetchRequest.predicate = NSPredicate(format: "%K == nil AND %K == %d ",
                                              #keyPath(Photo.parent),
                                              #keyPath(Node.stateRaw), Node.State.active.rawValue)

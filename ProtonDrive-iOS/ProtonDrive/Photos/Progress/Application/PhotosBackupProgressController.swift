@@ -17,22 +17,13 @@
 
 import Combine
 
-struct PhotosBackupProgress: Equatable {
-    let total: Int
-    let inProgress: Int
-
-    func isCompleted() -> Bool {
-        return inProgress == 0
-    }
-}
-
 protocol PhotosBackupProgressController {
     var progress: AnyPublisher<PhotosBackupProgress?, Never> { get }
 }
 
 final class LocalPhotosBackupProgressController: PhotosBackupProgressController {
-    private let libraryLoadController: PhotoLibraryLoadProgressController
-    private let uploadsController: PhotosUploadsProgressController
+    private let libraryLoadController: PhotosLoadProgressController
+    private let uploadsController: PhotosLoadProgressController
     private let subject = CurrentValueSubject<PhotosBackupProgress?, Never>(nil)
     private var cancellables = Set<AnyCancellable>()
 
@@ -40,7 +31,7 @@ final class LocalPhotosBackupProgressController: PhotosBackupProgressController 
         subject.eraseToAnyPublisher()
     }
 
-    init(libraryLoadController: PhotoLibraryLoadProgressController, uploadsController: PhotosUploadsProgressController) {
+    init(libraryLoadController: PhotosLoadProgressController, uploadsController: PhotosLoadProgressController) {
         self.libraryLoadController = libraryLoadController
         self.uploadsController = uploadsController
         subscribeToUpdates()
@@ -55,12 +46,20 @@ final class LocalPhotosBackupProgressController: PhotosBackupProgressController 
                 )
             }
             .map { progress in
-                progress.isCompleted() ? nil : progress
+                progress.isCompleted ? nil : progress
             }
             .removeDuplicates()
             .sink { [weak self] progress in
-                self?.subject.send(progress)
+                self?.handleUpdate(progress)
             }
             .store(in: &cancellables)
+    }
+
+    private func handleUpdate(_ progress: PhotosBackupProgress?) {
+        if progress == nil {
+            libraryLoadController.resetTotal()
+            uploadsController.resetTotal()
+        }
+        subject.send(progress)
     }
 }

@@ -44,9 +44,10 @@ class FileProviderExtension: NSFileProviderExtension, LogObject {
         
         self.keymaker = keymaker
         self.initialServices = initialServices
-        self.postLoginServices = PostLoginServices(initialServices: initialServices, appGroup: Constants.appGroup, eventObservers: [listener], eventProcessingMode: .full)
         
         super.init()
+        
+        self.postLoginServices = PostLoginServices(initialServices: initialServices, appGroup: Constants.appGroup, eventObservers: [listener], eventProcessingMode: .full, activityObserver: currentActivityChanged(_:))
         
         // events fetching
         self.postLoginServices?.tower.start(runEventsProcessor: true)
@@ -64,6 +65,15 @@ class FileProviderExtension: NSFileProviderExtension, LogObject {
     }
     
     // MARK: - Session management
+    
+    private func currentActivityChanged(_ activity: NSUserActivity) {
+        switch activity {
+        case PMAPIClient.Activity.logout:
+            postLoginServices?.signOut()
+        default:
+            break
+        }
+    }
     
     func didLogout() {
         ConsoleLogger.shared?.log("Some process sends DidLogout", osLogType: Self.self)
@@ -216,7 +226,7 @@ extension FileProviderExtension {
         }
         
         ConsoleLogger.shared?.log("Provide file for \(~item) - schedule download", osLogType: Self.self)
-        itemProvider.fetchContents(for: identifier, slot: tower.fileSystemSlot!, downloader: tower.downloader!) { copyUrl, item, fpError in
+        itemProvider.fetchContents(for: identifier, slot: tower.fileSystemSlot!, downloader: tower.downloader!, storage: tower.storage) { copyUrl, item, fpError in
             if let fsError = PDFileProvider.Errors.mapToFileProviderError(fpError) {
                 return completionHandler(fsError)
             }
@@ -240,7 +250,7 @@ extension FileProviderExtension {
             let tower = try self.towerIfExists()
             let item = try self.item(for: identifier)
             ConsoleLogger.shared?.log("Item changed for \(~item)", osLogType: Self.self)
-            itemActionsOutlet.modifyItem(tower: tower, item: item, changedFields: .contents, contents: url) { modifiedItem, _, _, error in
+            itemActionsOutlet.modifyItem(tower: tower, item: item, baseVersion: nil, changedFields: .contents, contents: url) { modifiedItem, _, _, error in
                 if let error = error {
                     ConsoleLogger.shared?.log(error, osLogType: Self.self)
                 } else {
@@ -311,7 +321,7 @@ extension FileProviderExtension {
                 throw NSFileProviderError(NSFileProviderError.Code.noSuchItem)
             }
             item.filename = itemName
-            itemActionsOutlet.modifyItem(tower: tower, item: item, changedFields: .filename, contents: nil) { item, _, _, error in
+            itemActionsOutlet.modifyItem(tower: tower, item: item, baseVersion: nil, changedFields: .filename, contents: nil) { item, _, _, error in
                 let fsError = PDFileProvider.Errors.mapToFileProviderError(error)
                 completionHandler(item, fsError)
             }
@@ -337,7 +347,7 @@ extension FileProviderExtension {
                 changedFields.insert(.filename)
             }
             
-            itemActionsOutlet.modifyItem(tower: tower, item: item, changedFields: changedFields, contents: nil) { item, _, _, error in
+            itemActionsOutlet.modifyItem(tower: tower, item: item, baseVersion: nil, changedFields: changedFields, contents: nil) { item, _, _, error in
                 let fsError = PDFileProvider.Errors.mapToFileProviderError(error)
                 completionHandler(item, fsError)
             }
@@ -351,7 +361,7 @@ extension FileProviderExtension {
     override func deleteItem(withIdentifier itemIdentifier: NSFileProviderItemIdentifier, completionHandler: @escaping (Error?) -> Void) {
         ConsoleLogger.shared?.log("Delete item \(itemIdentifier)", osLogType: Self.self)
         guard let tower = towerIfExists(completionHandler) else { return }
-        itemActionsOutlet.deleteItem(tower: tower, identifier: itemIdentifier, completionHandler: completionHandler)
+        itemActionsOutlet.deleteItem(tower: tower, identifier: itemIdentifier, baseVersion: nil, completionHandler: completionHandler)
     }
     
     override func trashItem(withIdentifier itemIdentifier: NSFileProviderItemIdentifier, completionHandler: @escaping (NSFileProviderItem?, Error?) -> Void) {

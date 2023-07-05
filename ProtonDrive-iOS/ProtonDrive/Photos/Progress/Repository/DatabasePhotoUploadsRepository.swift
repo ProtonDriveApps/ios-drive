@@ -44,7 +44,6 @@ final class DatabasePhotoUploadsRepository: PhotoUploadsRepository {
                 photos.count
             }
             .removeDuplicates()
-            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] count in
                 self?.subject.send(count)

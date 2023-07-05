@@ -68,12 +68,14 @@ class ThumbnailDecryptorOperation: ThumbnailIdentifiableOperation {
 final class ThumbnailDecryptor {
     let identifier: NodeIdentifier
     let store: NodeStore
+    let thumbnailRepository: ThumbnailRepository
 
     private var isCancelled = false
 
-    init(identifier: NodeIdentifier, store: NodeStore) {
+    init(identifier: NodeIdentifier, store: NodeStore, thumbnailRepository: ThumbnailRepository) {
         self.identifier = identifier
         self.store = store
+        self.thumbnailRepository = thumbnailRepository
     }
 
     func decrypt(
@@ -86,7 +88,7 @@ final class ThumbnailDecryptor {
         moc.performAndWait {
 
             do {
-                let thumbnail = try getThumbnail(in: moc)
+                let thumbnail = try thumbnailRepository.fetchThumbnail(fileID: identifier)
                 thumbnail.encrypted = encrypted
                 thumbnail.downloadURL = nil
                 thumbnail.clearData = thumbnail.clearThumbnail
@@ -102,13 +104,8 @@ final class ThumbnailDecryptor {
     }
 
     private func getThumbnail(in moc: NSManagedObjectContext) throws -> Thumbnail {
-        guard let node = self.store.fetchNode(id: identifier, moc: moc),
-              let file = node as? File,
-              let revision = file.activeRevision ?? file.activeRevisionDraft,
-              let thumbnail = revision.thumbnails.first else {
-            throw ThumbnailLoaderError.nonRecoverable
-        }
-        return thumbnail
+        let thumbnail = try thumbnailRepository.fetchThumbnail(fileID: identifier)
+        return thumbnail.in(moc: moc)
     }
 
     func cancel() {

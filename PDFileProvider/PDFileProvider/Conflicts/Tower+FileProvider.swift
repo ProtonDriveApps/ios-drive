@@ -20,12 +20,26 @@ import FileProvider
 
 extension Tower {
 
-    func retrieveNodes(basedOn itemTemplate: NSFileProviderItem) -> [Node] {
-        guard let shareID = self.node(itemIdentifier: itemTemplate.parentItemIdentifier)?.shareID else {
+    func retrieveSiblings(of itemTemplate: NSFileProviderItem) throws -> [Node] {
+        guard let shareID = self.node(itemIdentifier: itemTemplate.parentItemIdentifier)?.shareID,
+              let parentID = nodeIdentifier(for: itemTemplate.parentItemIdentifier) else {
             return []
         }
 
-        return storage.fetchNodes(of: shareID, moc: storage.mainContext)
+        let siblingsAndSelf = try storage.fetchChildren(of: parentID.nodeID, share: shareID, sorting: .default, moc: storage.mainContext)
+        let siblings = siblingsAndSelf.filter { child in
+            child.identifier != nodeIdentifier(for: itemTemplate.itemIdentifier)
+            && child.localID != itemTemplate.itemIdentifier.rawValue
+        }
+        return siblings
+    }
+
+    func rootFolder() throws -> Folder {
+        guard let root = node(itemIdentifier: .rootContainer) as? Folder else {
+            assertionFailure("Could not find rootContainer")
+            throw NSFileProviderError(.noSuchItem)
+        }
+        return root
     }
 
     func nodeIdentifier(for itemIdentifier: NSFileProviderItemIdentifier) -> NodeIdentifier? {
@@ -33,7 +47,7 @@ extension Tower {
             return nil
         }
         guard itemIdentifier != .rootContainer else {
-            return rootFolder()
+            return rootFolderIdentifier()
         }
         return NodeIdentifier(itemIdentifier)
     }
@@ -43,10 +57,17 @@ extension Tower {
     }
 
     func node(itemIdentifier: NSFileProviderItemIdentifier) -> Node? {
-        guard let parentIdentifier = self.nodeIdentifier(for: itemIdentifier) else {
+        guard let nodeIdentifier = self.nodeIdentifier(for: itemIdentifier) else {
             return nil
         }
-        return fileSystemSlot?.getNode(parentIdentifier)
+        return fileSystemSlot?.getNode(nodeIdentifier)
+    }
+    
+    func draft(for item: NSFileProviderItem) -> File? {
+        guard let parent = parentFolder(of: item) else {
+            return nil
+        }
+        return fileSystemSlot?.getDraft(item.itemIdentifier.rawValue, shareID: parent.shareID) as? File
     }
 
 }

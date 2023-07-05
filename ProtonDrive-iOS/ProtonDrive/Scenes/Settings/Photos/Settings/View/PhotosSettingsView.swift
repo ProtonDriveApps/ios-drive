@@ -58,5 +58,6 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModel>: View {
             viewModel.setEnabled(value)
         }))
         .toggleStyle(SwitchToggleStyle(tint: ColorProvider.InteractionNorm))
+        .accessibilityIdentifier("PhotosBackupSettings.Switch")
     }
 }

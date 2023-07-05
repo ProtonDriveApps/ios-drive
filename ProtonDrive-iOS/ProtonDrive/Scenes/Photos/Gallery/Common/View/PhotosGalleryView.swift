@@ -22,18 +22,18 @@ struct PhotosGalleryView<ViewModel: PhotosGalleryViewModelProtocol, GridView: Vi
     @ObservedObject private var viewModel: ViewModel
     private let grid: () -> GridView
     private let placeholder: () -> PlaceholderView
-    private let state: () -> StateView
+    private let stateView: StateView
 
-    init(viewModel: ViewModel, grid: @escaping () -> GridView, placeholder: @escaping () -> PlaceholderView, state: @escaping () -> StateView) {
+    init(viewModel: ViewModel, grid: @escaping () -> GridView, placeholder: @escaping () -> PlaceholderView, stateView: StateView) {
         self.viewModel = viewModel
         self.grid = grid
         self.placeholder = placeholder
-        self.state = state
+        self.stateView = stateView
     }
 
     var body: some View {
         VStack {
-            state()
+            stateView
             Spacer(minLength: 0)
             content
         }

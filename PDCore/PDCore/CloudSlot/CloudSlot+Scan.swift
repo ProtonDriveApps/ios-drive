@@ -210,7 +210,7 @@ public class CloudSlot: LogObject {
                 self.moc.performAndWait {
                     let obj = self.update(revisionMeta, inFileID: revisionID.file, of: revisionID.share, in: self.moc)
                     do {
-                        try self.moc.save()
+                        try self.moc.saveOrRollback()
                     } catch let error {
                         return handler(.failure(error))
                     }

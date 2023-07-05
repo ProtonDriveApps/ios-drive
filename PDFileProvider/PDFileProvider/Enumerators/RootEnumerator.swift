@@ -21,7 +21,7 @@ import PDCore
 
 public final class RootEnumerator: FolderEnumerator {
     public init(tower: Tower) throws {
-        guard let rootID = tower.rootFolder() else {
+        guard let rootID = tower.rootFolderIdentifier() else {
             throw Errors.rootNotFound
         }
         try super.init(tower: tower, nodeID: rootID)

@@ -25,6 +25,7 @@ final class LocalPhotosRepository: PhotosRepository {
     private let observer: FetchedObjectsObserver<Photo>
     private var cancellables = Set<AnyCancellable>()
     private let subject = PassthroughSubject<[PhotosSection], Never>()
+    private let backgroundQueue = DispatchQueue(label: "LocalPhotosRepository", qos: .userInteractive)
 
     var updatePublisher: AnyPublisher<[PhotosSection], Never> {
         subject.eraseToAnyPublisher()
@@ -41,6 +42,7 @@ final class LocalPhotosRepository: PhotosRepository {
 
     private func subscribeToUpdates() {
         observer.objectWillChange
+            .receive(on: backgroundQueue)
             .map { [weak self] in
                 guard let self = self else { return [] }
                 let sections = self.observer.getSections()

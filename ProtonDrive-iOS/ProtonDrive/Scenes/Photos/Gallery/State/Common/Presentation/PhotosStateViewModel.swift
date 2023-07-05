@@ -25,6 +25,12 @@ struct PhotosStateViewData: Equatable {
     let titles: [PhotosStateTitle]
     let rightText: String?
     let progress: Float?
+
+    init(titles: [PhotosStateTitle], rightText: String? = nil, progress: Float? = nil) {
+        self.titles = titles
+        self.rightText = rightText
+        self.progress = progress
+    }
 }
 
 struct PhotosStateTitle: Equatable {
@@ -37,17 +43,16 @@ struct PhotosStateTitle: Equatable {
         case complete
         case failure
         case disabled
-        case noWifi
     }
 }
 
 final class PhotosStateViewModel: PhotosStateViewModelProtocol {
-    private let controller: PhotosUploadStateController
+    private let controller: PhotosBackupStateController
     private var cancellables = Set<AnyCancellable>()
 
     @Published var viewData: PhotosStateViewData?
 
-    init(controller: PhotosUploadStateController) {
+    init(controller: PhotosBackupStateController) {
         self.controller = controller
         subscribeToUpdates()
     }
@@ -60,19 +65,24 @@ final class PhotosStateViewModel: PhotosStateViewModelProtocol {
             .store(in: &cancellables)
     }
 
-    private func handle(_ state: PhotosUploadState) {
+    private func handle(_ state: PhotosBackupState) {
         viewData = makeData(from: state)
     }
 
-    private func makeData(from state: PhotosUploadState) -> PhotosStateViewData? {
+    private func makeData(from state: PhotosBackupState) -> PhotosStateViewData? {
         switch state {
         case .empty:
             return nil
         case let .inProgress(progress):
             return makeData(from: progress)
-        default:
-            // TODO: next MR other states
-            return nil
+        case .complete:
+            return PhotosStateViewData(titles: [.init(title: "Backup complete", icon: .complete)])
+        case .restrictedPermissions:
+            return PhotosStateViewData(titles: [.init(title: "Permission required for backup", icon: .failure)])
+        case .disabled:
+            return PhotosStateViewData(titles: [.init(title: "Backup is disabled", icon: .disabled)])
+        case .networkConstrained:
+            return PhotosStateViewData(titles: makeInProgressTitles())
         }
     }
 
@@ -80,13 +90,17 @@ final class PhotosStateViewModel: PhotosStateViewModelProtocol {
         let progressValue = Float(progress.total - progress.inProgress) / Float(progress.total)
         let normalizedProgressValue = min(1, max(0, progressValue))
         return PhotosStateViewData(
-            titles: [
-                PhotosStateTitle(title: "Encrypting...", icon: .lock),
-                PhotosStateTitle(title: "Backing up...", icon: .progress)
-            ],
+            titles: makeInProgressTitles(),
             rightText: makeProgressRightText(from: progress.inProgress),
             progress: normalizedProgressValue
         )
+    }
+
+    private func makeInProgressTitles() -> [PhotosStateTitle] {
+        [
+            PhotosStateTitle(title: "Encrypting...", icon: .lock),
+            PhotosStateTitle(title: "Backing up...", icon: .progress)
+        ]
     }
 
     private func makeProgressRightText(from leftCount: Int) -> String? {

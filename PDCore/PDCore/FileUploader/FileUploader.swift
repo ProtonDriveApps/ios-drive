@@ -19,11 +19,6 @@ import Combine
 import CoreData
 import os.log
 
-typealias UnitOfWork = Int
-typealias OnError = (Error) -> Void
-typealias OnUploadSuccess = (FileDraft) -> Void
-public typealias OnUploadCompletion = (Result<File, Error>) -> Void
-
 public enum FileUploaderError: Error {
     case missingOperations
     case insuficientSpace
@@ -47,14 +42,16 @@ public class FileUploader: OperationProcessor<MainFileUploaderOperation>, LogObj
     private var cancellables = Set<AnyCancellable>()
 
     init(
+        concurrentOperations: Int = 5,
         fileUploadFactory: FileUploadOperationsProvider,
         storage: StorageManager,
-        sessionVault: SessionVault
+        sessionVault: SessionVault,
+        moc: NSManagedObjectContext
     ) {
         self.fileUploadFactory = fileUploadFactory
-        self.moc = storage.backgroundContext
         self.storage = storage
-        super.init(queue: OperationQueue(maxConcurrentOperation: 5))
+        self.moc = moc
+        super.init(queue: OperationQueue(maxConcurrentOperation: concurrentOperations))
 
         sessionVault
             .objectWillChange
@@ -71,7 +68,7 @@ public class FileUploader: OperationProcessor<MainFileUploaderOperation>, LogObj
             .delay(for: 0.5, scheduler: DispatchQueue.main)
             .sink { [weak self] notification in
                 guard let file = notification.object as? File else { return }
-                self?.upload(file, completion: { _ in })
+                self?.upload(file)
             }
             .store(in: &cancellables)
     }
@@ -91,17 +88,7 @@ public class FileUploader: OperationProcessor<MainFileUploaderOperation>, LogObj
     
     private func restartFilesUpload(files: [File]) {
         for file in files {
-            file.managedObjectContext?.performAndWait {
-                let uploadID = file.uploadID
-                self.upload(file) { [weak self] result in
-                    switch result {
-                    case .success:
-                        break
-                    case .failure:
-                        self?.cancel(uploadID: uploadID)
-                    }
-                }
-            }
+            self.upload(file)
         }
     }
 
@@ -186,37 +173,36 @@ extension FileUploader {
 }
 
 extension FileUploader {
+    
     @discardableResult
-    public func upload(_ file: File, completion: @escaping OnUploadCompletion) -> any UploadOperation {
-        let draft = FileDraft.extract(from: file, moc: storage.backgroundContext)
-        let uploadID = draft.uploadID
-
-        let operation = fileUploadFactory.getOperations(for: draft) { [weak self] result in
-            switch result {
-            case .success(let file):
-                completion(.success(file))
-            case .failure(let error):
-                NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
-                ConsoleLogger.shared?.log(DriveError(error, "FileUploader"))
-
-                self?.cancel(uploadID: uploadID)
-                self?.handleError(error, file: file)
-                completion(.failure(error))
+    public func upload(_ file: File, completion: @escaping OnUploadCompletion = { _ in }) -> any UploadOperation {
+        return moc.performAndWait {
+            let file = file.in(moc: moc)
+            let draft = FileDraft.extract(from: file, moc: moc)
+            let uploadID = draft.uploadID
+            
+            let operation = fileUploadFactory.getOperations(for: draft) { [weak self] result in
+                switch result {
+                case .success(let file):
+                    completion(.success(file))
+                case .failure(let error):
+                    NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
+                    ConsoleLogger.shared?.log(DriveError(error, "FileUploader"))
+                    
+                    self?.cancel(uploadID: uploadID)
+                    self?.handleError(error, file: file)
+                    completion(.failure(error))
+                }
             }
+            draft.file.changeState(to: .uploading)
+            addOperation(operation)
+            return operation
         }
-
-        draft.file.changeState(to: .uploading)
-        addOperation(operation as! MainFileUploaderOperation)
-        return operation
     }
 
     private func handleError(_ error: Error, file: File) {
         if let fileUploadError = (error as? ResponseError)?.asFileUploadError {
             switch fileUploadError {
-            case .insuficientSpace:
-                setNoSpaceOnCloudErrorTo(file)
-                errorStream.send(fileUploadError)
-
             case .expiredUploadURL:
                 setExpiredUploadURLsForRevisionIn(file)
 
@@ -236,15 +222,6 @@ extension FileUploader {
             errorStream.send(error)
         }
 
-    }
-
-    private func setNoSpaceOnCloudErrorTo(_ file: File) {
-        guard let moc = file.moc else { return }
-
-        moc.performAndWait {
-            file.state = .cloudImpediment
-            try? moc.saveOrRollback()
-        }
     }
 
     private func setExpiredUploadURLsForRevisionIn(_ file: File) {
@@ -296,52 +273,5 @@ extension ResponseError {
         } else {
             return nil
         }
-    }
-}
-
-public class OperationProcessor<O: IdentifiableOperation> {
-
-    let processingQueue: OperationQueue
-    private let scheduledOperations: NSMapTable<NSUUID, O>
-    private let regulatingQueue: DispatchQueue
-
-    public init(
-        queue processingQueue: OperationQueue
-    ) {
-        self.processingQueue = processingQueue
-        self.regulatingQueue = DispatchQueue(label: "\(type(of: self))".lowercased() + ".queue", attributes: .concurrent)
-        self.scheduledOperations = NSMapTable(keyOptions: .copyIn, valueOptions: .weakMemory)
-    }
-
-    /// Adds the operation to an Operation queue as well as all of its first level dependencies.
-    /// and stores wekly a reference to that operation so that it can be cancelled more easily.
-    /// - Parameter op: Any IdentifiableOperation
-    public final func addOperation(_ op: O) {
-        scheduledOperations.setObject(op, forKey: op.id as NSUUID)
-        processingQueue.addOperation(op)
-        processingQueue.addOperations(op.dependencies, waitUntilFinished: false)
-    }
-
-    public final func cancelOperation(with id: UUID) {
-        getProcessingOperation(with: id)?.cancel()
-    }
-
-    public final func cancellAllOperations() {
-        processingQueue.cancelAllOperations()
-    }
-
-    public final func getProcessingOperation(with id: UUID) -> O? {
-        scheduledOperations.object(forKey: id as NSUUID)
-    }
-
-    /// Returns an array of all Operations of type O
-    /// Beware this method is inherently a race condition.
-    /// - Returns: Scheduled Operations of type O
-    public final func getAllScheduledOperations() -> [O] {
-        processingQueue.operations.compactMap { $0 as? O }
-    }
-
-    public final var isProcessingOperations: Bool {
-        scheduledOperations.count != .zero
     }
 }

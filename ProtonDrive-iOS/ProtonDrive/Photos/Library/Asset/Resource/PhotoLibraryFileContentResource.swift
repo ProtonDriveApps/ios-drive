@@ -22,6 +22,7 @@ import Photos
 protocol PhotoLibraryFileContentResource {
     func copyFile(with resource: PHAssetResource) async throws -> URL
     func createHash(with resource: PHAssetResource) async throws -> Data
+    func getVideoDuration(at url: URL) -> Double
 }
 
 final class LocalPhotoLibraryFileContentResource: PhotoLibraryFileContentResource {
@@ -53,6 +54,12 @@ final class LocalPhotoLibraryFileContentResource: PhotoLibraryFileContentResourc
                 }
             }
         }
+    }
+
+    func getVideoDuration(at url: URL) -> Double {
+        let asset = AVAsset(url: url)
+        let duration = asset.duration
+        return CMTimeGetSeconds(duration)
     }
 
     private func makeOptions() -> PHAssetResourceRequestOptions {

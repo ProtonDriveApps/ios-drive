@@ -34,6 +34,7 @@ final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
     private let detailController: PhotoPreviewDetailController
     private let thumbnailController: ThumbnailController
     private let contentController: FileContentController
+    private let storageResource: LocalStorageResource
     private let publisher = ObservableObjectPublisher()
     private var fullPreview: PhotoFullPreview?
     private var cancellables = Set<AnyCancellable>()
@@ -42,10 +43,11 @@ final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
         publisher.eraseToAnyPublisher()
     }
 
-    init(detailController: PhotoPreviewDetailController, thumbnailController: ThumbnailController, contentController: FileContentController) {
+    init(detailController: PhotoPreviewDetailController, thumbnailController: ThumbnailController, contentController: FileContentController, storageResource: LocalStorageResource) {
         self.detailController = detailController
         self.thumbnailController = thumbnailController
         self.contentController = contentController
+        self.storageResource = storageResource
         subscribeToUpdates()
     }
 
@@ -104,7 +106,7 @@ final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
 
     func clear() {
         if case let .video(url) = fullPreview {
-            // TODO: delete file at url
+            try? storageResource.delete(at: url)
         }
     }
 }

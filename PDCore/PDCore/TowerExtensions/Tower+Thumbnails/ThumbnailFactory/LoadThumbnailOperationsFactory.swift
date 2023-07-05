@@ -22,11 +22,13 @@ final class LoadThumbnailOperationsFactory: ThumbnailOperationsFactory {
     let cloud: ThumbnailCloudClient
     let session = URLSession(configuration: .ephemeral)
     private let thumbnailRepository: ThumbnailRepository
+    private let typeStrategy: ThumbnailTypeStrategy
 
-    init(store: StorageManager, cloud: ThumbnailCloudClient, thumbnailRepository: ThumbnailRepository) {
+    init(store: StorageManager, cloud: ThumbnailCloudClient, thumbnailRepository: ThumbnailRepository, typeStrategy: ThumbnailTypeStrategy) {
         self.store = store
         self.cloud = cloud
         self.thumbnailRepository = thumbnailRepository
+        self.typeStrategy = typeStrategy
     }
 
     func makeThumbnailModel(forFileWithID id: Identifier) throws -> ThumbnailIdentifiableOperation {
@@ -34,25 +36,29 @@ final class LoadThumbnailOperationsFactory: ThumbnailOperationsFactory {
 
         switch thumbnail {
         case let fullThumbnail as FullThumbnail:
-            let decryptor = ThumbnailDecryptor(identifier: fullThumbnail.id.nodeIdentifier, store: store)
+            let decryptor = makeThumbnailDecryptor(identifier: fullThumbnail.id.nodeIdentifier)
             let operation = ThumbnailDecryptorOperation(model: fullThumbnail, decryptor: decryptor)
             return operation
 
         case let inProgressThumbnail as InProgressThumbnail:
             let downloader = URLSessionThumbnailDownloader(session: session)
-            let decryptor = ThumbnailDecryptor(identifier: inProgressThumbnail.id.nodeIdentifier, store: store)
+            let decryptor = makeThumbnailDecryptor(identifier: inProgressThumbnail.id.nodeIdentifier)
             let operation = DownloadThumbnailOperation(model: inProgressThumbnail, downloader: downloader, decryptor: decryptor)
             return operation
 
         case let incompleteThumbnail as IncompleteThumbnail:
             let downloader = URLSessionThumbnailDownloader(session: session)
-            let decryptor = ThumbnailDecryptor(identifier: incompleteThumbnail.id.nodeIdentifier, store: store)
-            let operation = IncompleteThumbnailDownloaderOperation(model: incompleteThumbnail, cloud: cloud, downloader: downloader, decryptor: decryptor)
+            let decryptor = makeThumbnailDecryptor(identifier: incompleteThumbnail.id.nodeIdentifier)
+            let operation = IncompleteThumbnailDownloaderOperation(model: incompleteThumbnail, cloud: cloud, downloader: downloader, decryptor: decryptor, typeStrategy: typeStrategy)
             return operation
 
         default:
             throw ThumbnailLoaderError.nonRecoverable
         }
+    }
+
+    private func makeThumbnailDecryptor(identifier: NodeIdentifier) -> ThumbnailDecryptor {
+        ThumbnailDecryptor(identifier: identifier, store: store, thumbnailRepository: thumbnailRepository)
     }
 
     private func makeThumbnail(fileID: Identifier) throws -> ThumbnailModel {

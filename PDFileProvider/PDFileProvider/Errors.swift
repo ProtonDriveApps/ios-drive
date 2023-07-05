@@ -33,6 +33,8 @@ public enum Errors: Error, LocalizedError {
     case requestedItemForWorkingSet, requestedItemForTrash
     case failedToCreateModel
     
+    case deletionRejected(updatedItem: NSFileProviderItem)
+    
     public var errorDescription: String? {
         String(describing: self)
     }
@@ -58,6 +60,7 @@ extension Errors {
         case .some(Errors.emptyUrlForFileUpload): return NSFileProviderError(.noSuchItem)
         case .some(Errors.couldNotProduceSyncAnchor): return NSFileProviderError(.syncAnchorExpired)
         case .some(Errors.failedToCreateModel): return NSFileProviderError(.pageExpired)
+        case .some(Errors.deletionRejected(updatedItem: let updatedItem)): return NSFileProviderError(_nsError: NSError.fileProviderErrorForRejectedDeletion(of: updatedItem))
             
         case let .some(networkingError as NSError) where networkingError.domain == NSURLErrorDomain:
             return NSFileProviderError(.serverUnreachable)

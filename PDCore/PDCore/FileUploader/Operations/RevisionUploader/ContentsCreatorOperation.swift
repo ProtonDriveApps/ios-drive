@@ -20,11 +20,11 @@ import Foundation
 final class ContentsCreatorOperation: AsynchronousOperation {
 
     private let contentCreator: ContentCreator
-    private let onError: OnError
+    private let onError: OnUploadError
 
     init(
         contentCreator: ContentCreator,
-        onError: @escaping OnError
+        onError: @escaping OnUploadError
     ) {
         self.contentCreator = contentCreator
         self.onError = onError

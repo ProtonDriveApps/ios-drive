@@ -18,7 +18,7 @@
 import Foundation
 
 extension Tower {
-    public func rootFolder() -> NodeIdentifier? {
+    public func rootFolderIdentifier() -> NodeIdentifier? {
         var rootIdentifier: NodeIdentifier?
         let moc = self.storage.backgroundContext
         moc.performAndWait {
@@ -56,7 +56,7 @@ extension Tower {
         }
     }
     
-    public func rename(node: NodeIdentifier, cleartextName newName: String, handler:  @escaping (Result<Node, Error>) -> Void) {
+    public func rename(node: NodeIdentifier, cleartextName newName: String, handler: @escaping (Result<Node, Error>) -> Void) {
         let scratchpadMoc = storage.privateChildContext(of: storage.backgroundContext)
         scratchpadMoc.performAndWait {
             do {
@@ -82,7 +82,7 @@ extension Tower {
         }
     }
 
-    public func setFavourite(_ favorite: Bool, nodes: [Node], handler:  @escaping (Result<[Node], Error>) -> Void) {
+    public func setFavourite(_ favorite: Bool, nodes: [Node], handler: @escaping (Result<[Node], Error>) -> Void) {
         // local operation - no need for scratchpad moc as it can't fail
         self.storage.backgroundContext.performAndWait {
             let nodes = nodes.map { $0.in(moc: self.storage.backgroundContext) }
@@ -97,7 +97,7 @@ extension Tower {
         }
     }
     
-    public func markOfflineAvailable(_ mark: Bool, nodes: [Node], handler:  @escaping (Result<[Node], Error>) -> Void) {
+    public func markOfflineAvailable(_ mark: Bool, nodes: [Node], handler: @escaping (Result<[Node], Error>) -> Void) {
         // performing this on background context will make observation by OfflineSaver less error-prone
         // local operation - no need for scratchpad moc as it can't fail
         self.storage.backgroundContext.perform {
@@ -113,15 +113,18 @@ extension Tower {
         }
     }
     
-    public func move(nodeID nodeIdentifier: NodeIdentifier, under newParent: Folder, handler: @escaping (Result<Node, Error>) -> Void) {
+    public func move(nodeID nodeIdentifier: NodeIdentifier, under newParent: Folder, with newName: String? = nil, handler: @escaping (Result<Node, Error>) -> Void) {
         let scratchpadMoc = storage.privateChildContext(of: storage.backgroundContext)
         scratchpadMoc.performAndWait {
             do {
                 guard let node = self.storage.fetchNode(id: nodeIdentifier, moc: scratchpadMoc) else {
                     return  handler(.failure(CloudSlot.Errors.noNodeFound))
                 }
+                guard newParent.identifier != node.parentLink?.identifier else {
+                    return handler(.success(node))
+                }
                 let signersKit = try SignersKit(sessionVault: sessionVault)
-                self.cloudSlot?.move(node: node, under: newParent, signersKit: signersKit, handler: handler)
+                self.cloudSlot?.move(node: node, under: newParent, with: newName, signersKit: signersKit, handler: handler)
             } catch let error {
                 DispatchQueue.main.async {
                     handler(.failure(error))

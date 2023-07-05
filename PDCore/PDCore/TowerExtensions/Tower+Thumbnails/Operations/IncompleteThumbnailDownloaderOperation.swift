@@ -15,13 +15,17 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import PDClient
+
 final class IncompleteThumbnailDownloaderOperation: DownloadThumbnailOperation {
     private let id: RevisionIdentifier
     private let cloud: ThumbnailCloudClient
+    private let typeStrategy: ThumbnailTypeStrategy
 
-    init(id: RevisionIdentifier, cloud: ThumbnailCloudClient, downloader: ThumbnailDownloader, decryptor: ThumbnailDecryptor) {
+    init(id: RevisionIdentifier, cloud: ThumbnailCloudClient, downloader: ThumbnailDownloader, decryptor: ThumbnailDecryptor, typeStrategy: ThumbnailTypeStrategy) {
         self.id = id
         self.cloud = cloud
+        self.typeStrategy = typeStrategy
         super.init(url: nil, downloader: downloader, decryptor: decryptor, identifier: id.nodeIdentifier)
     }
 
@@ -29,15 +33,18 @@ final class IncompleteThumbnailDownloaderOperation: DownloadThumbnailOperation {
         model: IncompleteThumbnail,
         cloud: ThumbnailCloudClient,
         downloader: ThumbnailDownloader,
-        decryptor: ThumbnailDecryptor
+        decryptor: ThumbnailDecryptor,
+        typeStrategy: ThumbnailTypeStrategy
     ) {
-        self.init(id: model.id, cloud: cloud, downloader: downloader, decryptor: decryptor)
+        self.init(id: model.id, cloud: cloud, downloader: downloader, decryptor: decryptor, typeStrategy: typeStrategy)
     }
 
     override func main() {
         guard !self.isCancelled else { return }
 
-        cloud.downloadThumbnailURL(id: id) { [weak self] result in
+        let thumbnailType = typeStrategy.getType().rawValue
+        let parameters = RevisionThumbnailParameters(shareId: id.share, fileId: id.file, revisionId: id.revision, type: Int(thumbnailType))
+        cloud.downloadThumbnailURL(parameters: parameters) { [weak self] result in
             guard let self = self,
                   !self.isCancelled else {
                 return

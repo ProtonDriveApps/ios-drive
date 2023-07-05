@@ -83,7 +83,7 @@ final class ConcurrentPageRevisionUploader: PageRevisionUploader {
         }
     }
 
-    func makeBlockUploaderOperations(onError: @escaping OnError) -> [Operation] {
+    func makeBlockUploaderOperations(onError: @escaping OnUploadError) -> [Operation] {
         return moc.performAndWait {
             var operations = [Operation]()
             for block in self.page.blocks {

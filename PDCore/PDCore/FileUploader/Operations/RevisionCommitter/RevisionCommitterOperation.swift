@@ -24,12 +24,12 @@ final class RevisionCommitterOperation: AsynchronousOperation, UploadOperation {
 
     private let draft: FileDraft
     private let commiter: RevisionCommitter
-    private let onError: OnError
+    private let onError: OnUploadError
 
     init(
         draft: FileDraft,
         commiter: RevisionCommitter,
-        onError: @escaping OnError
+        onError: @escaping OnUploadError
     ) {
         self.draft = draft
         self.commiter = commiter

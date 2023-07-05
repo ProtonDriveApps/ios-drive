@@ -18,16 +18,13 @@
 import Foundation
 
 public struct PhotosRoot {
-    public typealias Device = ListDevicesEndpoint.Response.Device
 
     public let link: Link
     public let share: Share
-    public let device: Device
 
-    public init(link: Link, share: Share, device: Device) {
+    public init(link: LinkEndpoint.Response.Link, share: Share) {
         self.link = link
         self.share = share
-        self.device = device
     }
 
 }

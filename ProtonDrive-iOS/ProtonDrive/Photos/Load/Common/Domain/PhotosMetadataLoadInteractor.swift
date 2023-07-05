@@ -22,29 +22,26 @@ final class PhotosMetadataLoadInteractor: Interactor {
     private let shareIdDataSource: PhotoShareIdDataSource
     private let listing: PhotosListing
     private let updateRepository: LocalLinksUpdateRepository
-    private let filterResource: PhotosListFilterResource
 
-    init(shareIdDataSource: PhotoShareIdDataSource, listing: PhotosListing, updateRepository: LocalLinksUpdateRepository, filterResource: PhotosListFilterResource) {
+    init(shareIdDataSource: PhotoShareIdDataSource, listing: PhotosListing, updateRepository: LocalLinksUpdateRepository) {
         self.shareIdDataSource = shareIdDataSource
         self.listing = listing
         self.updateRepository = updateRepository
-        self.filterResource = filterResource
     }
 
     func execute(with list: PhotosList) async throws -> PhotosListIds {
         let shareId = try await shareIdDataSource.getShareId()
         try await updateLocalLinks(with: list, shareId: shareId)
-        return list.photos.map { $0.linkId }
+        return list.photos.map { $0.linkID }
     }
 
     private func updateLocalLinks(with list: PhotosList, shareId: String) async throws {
-        let relevantList = filterResource.filter(list)
-        let linkIds = relevantList.photos.map { $0.linkId }
+        let linkIds = list.photos.map { $0.linkID }
         guard !linkIds.isEmpty else {
             return
         }
         let parameters = LinksMetadataParameters(shareId: shareId, linkIds: linkIds)
         let links = try await listing.getLinksMetadata(with: parameters).links
-        updateRepository.update(links: links, shareId: shareId)
+        try updateRepository.update(links: links, shareId: shareId)
     }
 }

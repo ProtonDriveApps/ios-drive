@@ -17,6 +17,7 @@
 
 import Combine
 import Foundation
+import PDCore
 
 protocol PhotosGalleryViewModelProtocol: ObservableObject {
     var content: PhotosGalleryViewContent { get }
@@ -30,26 +31,26 @@ enum PhotosGalleryViewContent {
 
 final class PhotosGalleryViewModel: PhotosGalleryViewModelProtocol {
     private let galleryController: PhotosGalleryController
-    private let uploadController: PhotosBackupUploadAvailableController
+    private let settingsController: PhotoBackupSettingsController
 
     @Published var content: PhotosGalleryViewContent = .empty
 
-    init(galleryController: PhotosGalleryController, uploadController: PhotosBackupUploadAvailableController) {
+    init(galleryController: PhotosGalleryController, settingsController: PhotoBackupSettingsController) {
         self.galleryController = galleryController
-        self.uploadController = uploadController
+        self.settingsController = settingsController
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
         Publishers.CombineLatest(
             galleryController.sections.map { $0.isEmpty }.removeDuplicates(),
-            uploadController.isAvailable
+            settingsController.isEnabled
         )
-        .map { isEmpty, isUploading in
+        .map { isEmpty, isBackupEnabled in
             if !isEmpty {
                 return PhotosGalleryViewContent.grid
             } else {
-                return isUploading ? .loading : .empty
+                return isBackupEnabled ? .loading : .empty
             }
         }
         .removeDuplicates()

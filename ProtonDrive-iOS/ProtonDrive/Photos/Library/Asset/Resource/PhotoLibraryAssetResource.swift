@@ -26,7 +26,8 @@ struct PhotoAssetData {
 }
 
 protocol PhotoLibraryAssetResource {
-    func execute(with data: PhotoAssetData) async throws -> PhotoAsset
+    func executePhoto(with data: PhotoAssetData) async throws -> PhotoAsset
+    func executeVideo(with data: PhotoAssetData) async throws -> PhotoAsset
 }
 
 final class LocalPhotoLibraryAssetResource: PhotoLibraryAssetResource {
@@ -40,8 +41,18 @@ final class LocalPhotoLibraryAssetResource: PhotoLibraryAssetResource {
         self.exifResource = exifResource
     }
 
-    func execute(with data: PhotoAssetData) async throws -> PhotoAsset {
+    func executePhoto(with data: PhotoAssetData) async throws -> PhotoAsset {
         let url = try await contentResource.copyFile(with: data.resource)
+        return try await execute(with: data, url: url, duration: nil)
+    }
+
+    func executeVideo(with data: PhotoAssetData) async throws -> PhotoAsset {
+        let url = try await contentResource.copyFile(with: data.resource)
+        let duration = contentResource.getVideoDuration(at: url)
+        return try await execute(with: data, url: url, duration: duration)
+    }
+
+    private func execute(with data: PhotoAssetData, url: URL, duration: Double?) async throws -> PhotoAsset {
         let exif = try await getExif(from: data.resource, url: url)
         let hash = try await contentResource.createHash(with: data.resource)
         let factoryData = PhotoAssetFactoryData(
@@ -50,7 +61,8 @@ final class LocalPhotoLibraryAssetResource: PhotoLibraryAssetResource {
             hash: hash,
             filename: data.filename,
             exif: exif,
-            isOriginal: data.isOriginal
+            isOriginal: data.isOriginal,
+            duration: duration
         )
         return try assetFactory.makeAsset(from: factoryData)
     }

@@ -52,6 +52,10 @@ class NewFileRevisionCommitter: RevisionCommitter {
                 case .failure(let error as ResponseError) where CommitPolicy.invalidRevision.contains(error.responseCode):
                     self.rollbackUploadedStatus(in: draft.file)
                     completion(.failure(error))
+                    
+                case .failure(let error as ResponseError) where CommitPolicy.quotaExceeded.contains(error.responseCode):
+                    self.setCloudImpedimentState(in: draft.file)
+                    completion(.failure(error))
 
                 case .failure(let error):
                     completion(.failure(error))
@@ -147,6 +151,13 @@ class NewFileRevisionCommitter: RevisionCommitter {
     func rollbackUploadedStatus(in file: File) {
         moc.performAndWait {
             file.activeRevisionDraft?.unsetUploadedState()
+            try? moc.saveOrRollback()
+        }
+    }
+    
+    func setCloudImpedimentState(in file: File) {
+        moc.performAndWait {
+            file.state = .cloudImpediment
             try? moc.saveOrRollback()
         }
     }

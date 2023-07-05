@@ -28,7 +28,7 @@ protocol NetworkStateResource {
 final class MonitoringNetworkStateResource: NetworkStateResource {
     private var monitor: NWPathMonitor?
     private let queue = DispatchQueue(label: "NetworkStateResourceQueue")
-    private let stateSubject: CurrentValueSubject<NetworkState, Never> = .init(.other)
+    private let stateSubject = PassthroughSubject<NetworkState, Never>()
 
     var state: AnyPublisher<NetworkState, Never> {
         stateSubject
@@ -44,6 +44,7 @@ final class MonitoringNetworkStateResource: NetworkStateResource {
         }
         monitor.start(queue: queue)
         self.monitor = monitor
+        handleUpdate(monitor.currentPath)
     }
 
     func cancel() {

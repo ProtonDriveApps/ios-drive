@@ -15,9 +15,22 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Foundation
+
 extension String {
 
+   // TODO: Compute suitable Node name according name clash pattern 
     var conflictNodeName: String {
-        self + "-Conflict"
+        let conflictName = "-Conflict"
+        if self.fileExtension.isEmpty {
+            return self + conflictName
+        } else {
+            let newNameWithoutExtension = self.nameExcludingExtension
+            let finalName = newNameWithoutExtension + conflictName
+            let url = URL(fileURLWithPath: finalName).appendingPathExtension(self.fileExtension)
+
+            return url.relativeString
+        }
     }
+
 }

@@ -31,17 +31,18 @@ final class PhotosContainer {
     private let authorizationController: PhotoLibraryAuthorizationController
     private let bootstrapController: PhotosBootstrapController
     private let backupProgressController: PhotosBackupProgressController
+    private let backupUploadAvailableController: PhotosBackupUploadAvailableController
     // Child containers
     lazy var settingsContainer = makeSettingsContainer()
 
     init(tower: Tower) {
         self.tower = tower
         let factory = PhotosFactory()
-        let devicesObserver = FetchedResultsControllerObserver(controller: tower.storage.subscriptionToPhotoDevices())
+        let photoSharesObserver = FetchedResultsControllerObserver(controller: tower.storage.subscriptionToPhotoShares())
         let queueResource = factory.makeAssetsQueueResource()
         let progressRepository = factory.makeBackupProgressRepository()
         backupProgressController = factory.makeBackupProgressController(tower: tower, repository: progressRepository)
-        let assetsInteractor = factory.makeAssetsInteractor(observer: devicesObserver, queueResource: queueResource, tower: tower, progressRepository: progressRepository)
+        let assetsInteractor = factory.makeAssetsInteractor(observer: photoSharesObserver, queueResource: queueResource, tower: tower, progressRepository: progressRepository)
         operationInteractor = factory.makeAssetsOperationInteractor(queueResource: queueResource)
         let settingsController = factory.makeSettingsController(localSettings: tower.localSettings)
         let authorizationController = factory.makeAuthorizationController()
@@ -57,7 +58,8 @@ final class PhotosContainer {
         self.authorizationController = authorizationController
         self.settingsController = settingsController
         self.bootstrapController = bootstrapController
-        self.uploader = factory.makePhotoUploader(tower: tower)
+        self.backupUploadAvailableController = factory.makePhotosBackupUploadAvailableController(backupController: backupController, networkConstraintController: networkConstraintController)
+        self.uploader = factory.makePhotoUploader(tower: tower, isAvailableController: backupUploadAvailableController)
     }
 
     private func makeSettingsContainer() -> PhotosSettingsContainer {

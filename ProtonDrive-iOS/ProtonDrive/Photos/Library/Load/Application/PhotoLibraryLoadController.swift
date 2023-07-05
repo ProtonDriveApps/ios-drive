@@ -32,6 +32,7 @@ final class LocalPhotoLibraryLoadController: PhotoLibraryLoadController {
 
     private func subscribeToUpdates() {
         backupController.isAvailable
+            .removeDuplicates()
             .sink { [weak self] isBackupAvailable in
                 self?.handleUpdate(isBackupAvailable: isBackupAvailable)
             }

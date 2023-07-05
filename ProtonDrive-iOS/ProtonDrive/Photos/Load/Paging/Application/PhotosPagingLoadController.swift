@@ -16,19 +16,22 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import PDCore
 
-protocol PhotosPagingLoadController {
+protocol PhotosPagingLoadController: AnyObject {
     func loadNext()
 }
 
 final class RemotePhotosPagingLoadController: PhotosPagingLoadController {
+    private let backupController: PhotosBackupUploadAvailableController
     private let interactor: PhotosFullLoadInteractor
     private var cancellables = Set<AnyCancellable>()
     private var currentId: PhotosListLoadId?
     private var lastId: PhotosListLoadId?
 
-    init(interactor: PhotosFullLoadInteractor) {
+    init(backupController: PhotosBackupUploadAvailableController, interactor: PhotosFullLoadInteractor) {
         self.interactor = interactor
+        self.backupController = backupController
         subscribeToUpdates()
     }
 
@@ -36,6 +39,15 @@ final class RemotePhotosPagingLoadController: PhotosPagingLoadController {
         interactor.result
             .sink { [weak self] result in
                 self?.handle(result)
+            }
+            .store(in: &cancellables)
+
+        backupController.isAvailable
+            .filter { [weak self] isAvailable in
+                self?.currentId == nil && isAvailable
+            }
+            .sink { [weak self] _ in
+                self?.loadNext()
             }
             .store(in: &cancellables)
     }

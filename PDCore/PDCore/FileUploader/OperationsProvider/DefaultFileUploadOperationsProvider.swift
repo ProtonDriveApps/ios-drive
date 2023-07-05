@@ -20,7 +20,7 @@ import Foundation
 final class DefaultFileUploadOperationsProvider: FileUploadOperationsProvider {
 
     private let revisionEncryptorOperationFactory: FileUploadOperationFactory
-    private let fileDraftUploaderOperationFactory: FileUploadOperationFactory
+    private let fileDraftCreatorOperationFactory: FileUploadOperationFactory
     private let revisionCreatorOperationFactory: FileUploadOperationFactory
     private let revisionUploaderOperationFactory: FileUploadOperationFactory
     private let revisionSealerOperationFactory: FileUploadOperationFactory
@@ -29,19 +29,19 @@ final class DefaultFileUploadOperationsProvider: FileUploadOperationsProvider {
 
     init(
         revisionEncryptorOperationFactory: FileUploadOperationFactory,
-        fileDraftUploaderOperationFactory: FileUploadOperationFactory,
+        fileDraftCreatorOperationFactory: FileUploadOperationFactory,
         revisionCreatorOperationFactory: FileUploadOperationFactory,
         revisionUploaderOperationFactory: FileUploadOperationFactory,
         revisionSealerOperationFactory: FileUploadOperationFactory
     ) {
-        self.fileDraftUploaderOperationFactory = fileDraftUploaderOperationFactory
+        self.fileDraftCreatorOperationFactory = fileDraftCreatorOperationFactory
         self.revisionCreatorOperationFactory = revisionCreatorOperationFactory
         self.revisionEncryptorOperationFactory = revisionEncryptorOperationFactory
         self.revisionUploaderOperationFactory = revisionUploaderOperationFactory
         self.revisionSealerOperationFactory = revisionSealerOperationFactory
     }
 
-    func getOperations(for draft: FileDraft, completion: @escaping OnUploadCompletion) -> any UploadOperation {
+    func getOperations(for draft: FileDraft, completion: @escaping OnUploadCompletion) -> MainFileUploaderOperation {
         switch draft.state {
         case .encryptingRevision:
             return encryptingRevisionOperations(file: draft, completion: completion)
@@ -75,17 +75,17 @@ final class DefaultFileUploadOperationsProvider: FileUploadOperationsProvider {
         let total: UnitOfWork = revisionEncryptionUOW + draftUploadUOW + revisionUploaderUOW + revisionSealerUOW
 
         let revisionEncryptorOperation = revisionEncryptorOperationFactory.make(from: file, completion: completion)
-        let fileDraftUploaderOperation = fileDraftUploaderOperationFactory.make(from: file, completion: completion)
+        let fileDraftCreatorOperation = fileDraftCreatorOperationFactory.make(from: file, completion: completion)
         let revisionUploaderOperation = revisionUploaderOperationFactory.make(from: file, completion: completion)
         let revisionSealerOperation = revisionSealerOperationFactory.make(from: file, completion: completion)
         let mainFileUploadOperation = makeMainFileUploadOperation(from: file, completion: completion)
 
-        fileDraftUploaderOperation.addDependency(revisionEncryptorOperation)
-        revisionUploaderOperation.addDependency(fileDraftUploaderOperation)
+        fileDraftCreatorOperation.addDependency(revisionEncryptorOperation)
+        revisionUploaderOperation.addDependency(fileDraftCreatorOperation)
         revisionSealerOperation.addDependency(revisionUploaderOperation)
         mainFileUploadOperation.addDependencies([
             revisionEncryptorOperation,
-            fileDraftUploaderOperation,
+            fileDraftCreatorOperation,
             revisionUploaderOperation,
             revisionSealerOperation
         ])
@@ -93,7 +93,7 @@ final class DefaultFileUploadOperationsProvider: FileUploadOperationsProvider {
         let mainFileUploaderProgress = mainFileUploadOperation.progress
         mainFileUploaderProgress.totalUnitsOfWork = total
         mainFileUploaderProgress.addChild(revisionEncryptorOperation.progress, pending: revisionEncryptionUOW)
-        mainFileUploaderProgress.addChild(fileDraftUploaderOperation.progress, pending: draftUploadUOW)
+        mainFileUploaderProgress.addChild(fileDraftCreatorOperation.progress, pending: draftUploadUOW)
         mainFileUploaderProgress.addChild(revisionUploaderOperation.progress, pending: revisionUploaderUOW)
         mainFileUploaderProgress.addChild(revisionSealerOperation.progress, pending: revisionSealerUOW)
 
@@ -109,17 +109,17 @@ final class DefaultFileUploadOperationsProvider: FileUploadOperationsProvider {
         let total: UnitOfWork = completedWorkProgress + draftUploadUOW + revisionUploaderUOW + revisionSealerUOW
 
         let completedWorkOperation = makeCompletedStepsOperation()
-        let fileDraftUploaderOperation = fileDraftUploaderOperationFactory.make(from: file, completion: completion)
+        let fileDraftCreatorOperation = fileDraftCreatorOperationFactory.make(from: file, completion: completion)
         let revisionUploaderOperation = revisionUploaderOperationFactory.make(from: file, completion: completion)
         let revisionSealerOperation = revisionSealerOperationFactory.make(from: file, completion: completion)
         let mainFileUploadOperation = makeMainFileUploadOperation(from: file, completion: completion)
 
-        fileDraftUploaderOperation.addDependency(completedWorkOperation)
-        revisionUploaderOperation.addDependency(fileDraftUploaderOperation)
+        fileDraftCreatorOperation.addDependency(completedWorkOperation)
+        revisionUploaderOperation.addDependency(fileDraftCreatorOperation)
         revisionSealerOperation.addDependency(revisionUploaderOperation)
         mainFileUploadOperation.addDependencies([
             completedWorkOperation,
-            fileDraftUploaderOperation,
+            fileDraftCreatorOperation,
             revisionUploaderOperation,
             revisionSealerOperation
         ])
@@ -127,7 +127,7 @@ final class DefaultFileUploadOperationsProvider: FileUploadOperationsProvider {
         let mainFileUploaderProgress = mainFileUploadOperation.progress
         mainFileUploaderProgress.totalUnitsOfWork = total
         mainFileUploaderProgress.addChild(completedWorkOperation.progress, pending: completedWorkProgress)
-        mainFileUploaderProgress.addChild(fileDraftUploaderOperation.progress, pending: draftUploadUOW)
+        mainFileUploaderProgress.addChild(fileDraftCreatorOperation.progress, pending: draftUploadUOW)
         mainFileUploaderProgress.addChild(revisionUploaderOperation.progress, pending: revisionUploaderUOW)
         mainFileUploaderProgress.addChild(revisionSealerOperation.progress, pending: revisionSealerUOW)
 

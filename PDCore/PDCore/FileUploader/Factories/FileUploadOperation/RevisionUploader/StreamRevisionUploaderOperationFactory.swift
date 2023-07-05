@@ -21,29 +21,29 @@ import PDClient
 
 class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
     let api: APIService
-    let moc: NSManagedObjectContext
     let cloudContentCreator: CloudContentCreator
     let credentialProvider: CredentialProvider
     let signersKitFactory: SignersKitFactoryProtocol
+    let moc: NSManagedObjectContext
 
     init(
         api: APIService,
-        moc: NSManagedObjectContext,
         cloudContentCreator: CloudContentCreator,
         credentialProvider: CredentialProvider,
-        signersKitFactory: SignersKitFactoryProtocol
+        signersKitFactory: SignersKitFactoryProtocol,
+        moc: NSManagedObjectContext
     ) {
         self.api = api
-        self.moc = moc
         self.cloudContentCreator = cloudContentCreator
         self.credentialProvider = credentialProvider
         self.signersKitFactory = signersKitFactory
+        self.moc = moc
     }
 
     func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> any UploadOperation {
         let parentProgress = Progress(unitsOfWork: draft.numberOfBlocks)
 
-        let onError: OnError = { error in
+        let onError: OnUploadError = { error in
             parentProgress.cancel()
             completion(.failure(error))
         }
@@ -67,7 +67,7 @@ class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
         )
     }
 
-    func makePageUploader(_ page: RevisionPage, _ parentProgress: Progress, _ onError: @escaping OnError) -> PageRevisionUploaderOperation {
+    func makePageUploader(_ page: RevisionPage, _ parentProgress: Progress, _ onError: @escaping OnUploadError) -> PageRevisionUploaderOperation {
         let uploader = ConcurrentPageRevisionUploader(
             page: page,
             contentCreatorOperationFactory: { [unowned self] in self.makeCreatorOperation($0, onError) },
@@ -79,7 +79,7 @@ class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
         return PageRevisionUploaderOperation(uploader: uploader, onError: onError)
     }
 
-    func makeCreatorOperation(_ page: RevisionPage, _ onError: @escaping OnError) -> Operation {
+    func makeCreatorOperation(_ page: RevisionPage, _ onError: @escaping OnUploadError) -> Operation {
         let contentCreator = PageRevisionContentCreator(
             page: page,
             contentCreator: cloudContentCreator,
@@ -93,7 +93,7 @@ class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
         _ block: UploadBlock,
         _ fullUploadableBlock: FullUploadableBlock,
         _ parentProgress: Progress,
-        _ onError: @escaping OnError
+        _ onError: @escaping OnUploadError
     ) -> Operation {
         let blockProgress = parentProgress.child(pending: 1)
 

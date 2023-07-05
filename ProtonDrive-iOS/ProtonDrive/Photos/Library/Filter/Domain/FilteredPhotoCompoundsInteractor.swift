@@ -38,9 +38,9 @@ final class LocalFilteredPhotoCompoundsInteractor: FilteredPhotoCompoundsInterac
     private func subscribeToUpdates() {
         resource.result
             .sink { [weak self] result in
-                self?.progressRepository.discard(result.invalidIdentifiers)
-                self?.progressRepository.finish(result.validIdentifiers)
                 self?.importInteractor.execute(with: result.compounds)
+                self?.progressRepository.discard(result.invalidIdentifiersCount)
+                self?.progressRepository.finish(result.validIdentifiersCount)
             }
             .store(in: &cancellables)
     }

@@ -35,6 +35,7 @@ public final class CompoundPhotoCompoundImporter: PhotoCompoundImporter {
 
                 for secondaryAsset in compound.secondary {
                     let secondary = try importer.import(secondaryAsset)
+                    secondary.parent = main
                     main.children.insert(secondary)
                 }
 

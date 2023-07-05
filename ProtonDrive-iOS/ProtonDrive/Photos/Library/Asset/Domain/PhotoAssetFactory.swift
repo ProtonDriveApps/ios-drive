@@ -25,6 +25,7 @@ struct PhotoAssetFactoryData {
     let filename: String
     let exif: PhotoAsset.Exif
     let isOriginal: Bool
+    let duration: Double?
 }
 
 protocol PhotoAssetFactory {
@@ -50,7 +51,7 @@ final class LocalPhotoAssetFactory: PhotoAssetFactory {
                 modifiedDate: data.identifier.modifiedDate,
                 width: data.identifier.width,
                 height: data.identifier.height,
-                duration: data.identifier.duration
+                duration: data.duration
             )
         )
     }

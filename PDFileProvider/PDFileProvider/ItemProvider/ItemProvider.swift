@@ -19,9 +19,12 @@ import Foundation
 import FileProvider
 import PDCore
 import os.log
+import CoreData
 
 public final class ItemProvider: LogObject {
     public static var osLog: OSLog = OSLog(subsystem: "ProtonDriveFileProvider", category: "ItemProvider")
+    
+    private let decryptor = RevisionDecryptor()
     
     public init() { }
     
@@ -71,9 +74,12 @@ public final class ItemProvider: LogObject {
                               version requestedVersion: NSFileProviderItemVersion? = nil,
                               slot: FileSystemSlot,
                               downloader: Downloader,
+                              storage: StorageManager,
                               completionHandler: @escaping (URL?, NSFileProviderItem?, Error?) -> Void) -> Progress
     {
         ConsoleLogger.shared?.log("Start fetching contents for \(itemIdentifier)", osLogType: Self.self)
+        
+        let moc = storage.newBackgroundContext()
         guard let fileId = NodeIdentifier(itemIdentifier), let file = slot.getNode(fileId) as? File else {
             ConsoleLogger.shared?.log(Errors.nodeNotFound, osLogType: Self.self)
             completionHandler(nil, nil, Errors.nodeNotFound)
@@ -81,37 +87,68 @@ public final class ItemProvider: LogObject {
         }
         ConsoleLogger.shared?.log("- identifier \(itemIdentifier) stands for \(~file)", osLogType: Self.self)
         
-        // check if cyphertext of active revision is already available locally and can be decrypted
-        if let revision = file.activeRevision, revision.blocksAreValid(), let clearUrl = try? revision.decryptFile() {
-            ConsoleLogger.shared?.log("Found cached cypherdata for \(~file), prepared cleartext at temp location", osLogType: Self.self)
-            completionHandler(clearUrl, NodeItem(node: file), nil)
-            return Progress()
-        }
-        
-        // if not cached or can not decrypt - proceed to download
-        ConsoleLogger.shared?.log("Schedule download operation for \(~file)", osLogType: Self.self)
-        let operation = downloader.scheduleDownloadFileProvider(cypherdataFor: file) { result in
-            switch result {
-            case let .success(file) where file.activeRevision != nil:
+        // check if cyphertext of active revision is already available locally
+        if let revision = cachedRevision(for: file, on: moc) {
+            Task {
                 do {
-                    let url = try file.activeRevision!.decryptFile()
-                    ConsoleLogger.shared?.log("Prepared cleartext content of \(~file) at temp location", osLogType: Self.self)
-                    completionHandler(url, NodeItem(node: file), nil)
+                    let clearUrl = try await decryptor.decrypt(revision, on: moc)
+                    ConsoleLogger.shared?.log("Found cached cypherdata for \(~file), prepared cleartext at temp location", osLogType: Self.self)
+                    completionHandler(clearUrl, NodeItem(node: file), nil)
                 } catch {
-                    ConsoleLogger.shared?.log(error, osLogType: Self.self)
-                    return completionHandler(nil, nil, error)
+                    // if can not decrypted, proceed to download
+                    downloadAndDecrypt(file, downloader: downloader, moc: moc, completionHandler: completionHandler)
+                }
+            }
+            return Progress()
+        } else {
+            // if not cached, proceed to download
+            return downloadAndDecrypt(file, downloader: downloader, moc: moc, completionHandler: completionHandler)
+        }
+    }
+    
+    @discardableResult
+    private func downloadAndDecrypt(_ file: File,
+                                    downloader: Downloader,
+                                    moc: NSManagedObjectContext,
+                                    completionHandler: @escaping (URL?, NSFileProviderItem?, Error?) -> Void) -> Progress {
+        ConsoleLogger.shared?.log("Schedule download operation for \(~file)", osLogType: Self.self)
+        let operation = downloader.scheduleDownloadFileProvider(cypherdataFor: file) { [unowned self] result in
+            switch result {
+            case let .success(file):
+                guard let revision = cachedRevision(for: file, on: moc) else {
+                    ConsoleLogger.shared?.log(Errors.revisionNotFound, osLogType: Self.self)
+                    completionHandler(nil, nil, Errors.revisionNotFound)
+                    return
+                }
+                
+                Task {
+                    do {
+                        let url = try await self.decryptor.decrypt(revision, on: moc)
+                        ConsoleLogger.shared?.log("Prepared cleartext content of \(~file) at temp location", osLogType: Self.self)
+                        completionHandler(url, NodeItem(node: file), nil)
+                    } catch {
+                        ConsoleLogger.shared?.log(error, osLogType: Self.self)
+                        completionHandler(nil, nil, error)
+                    }
                 }
                 
             case let .failure(error):
                 ConsoleLogger.shared?.log(error, osLogType: Self.self)
-                return completionHandler(nil, nil, error)
-                
-            default:
-                ConsoleLogger.shared?.log(Errors.revisionNotFound, osLogType: Self.self)
-                return completionHandler(nil, nil, Errors.revisionNotFound)
+                completionHandler(nil, nil, error)
             }
         }
 
         return (operation as? OperationWithProgress)?.progress ?? Progress()
+    }
+    
+    private func cachedRevision(for file: File, on moc: NSManagedObjectContext) -> Revision? {
+        return moc.performAndWait {
+            let file = file.in(moc: moc)
+            if let revision = file.activeRevision, revision.blocksAreValid() {
+                return revision
+            } else {
+                return nil
+            }
+        }
     }
 }

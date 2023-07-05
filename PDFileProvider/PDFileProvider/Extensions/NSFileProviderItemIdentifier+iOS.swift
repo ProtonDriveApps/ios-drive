@@ -67,4 +67,34 @@ public struct NSFileProviderCreateItemOptions: OptionSet {
         self.rawValue = rawValue
     }
 }
+
+extension Errors: Equatable {
+    public static func == (lhs: Errors, rhs: Errors) -> Bool {
+        switch (lhs, rhs) {
+        case (deletionRejected(let lhsItem), deletionRejected(let rhsItem)):
+            return lhsItem.itemIdentifier == rhsItem.itemIdentifier
+        case (.noMainShare, .noMainShare): fallthrough
+        case (.nodeNotFound, .nodeNotFound): fallthrough
+        case (.rootNotFound, .rootNotFound): fallthrough
+        case (.revisionNotFound, .revisionNotFound): fallthrough
+        case (.parentNotFound, .parentNotFound): fallthrough
+        case (.emptyUrlForFileUpload, .emptyUrlForFileUpload): fallthrough
+        case (.noAddressInTower, .noAddressInTower): fallthrough
+        case (.couldNotProduceSyncAnchor, .couldNotProduceSyncAnchor): fallthrough
+        case (.requestedItemForWorkingSet, .requestedItemForWorkingSet): fallthrough
+        case (.requestedItemForTrash, .requestedItemForTrash): fallthrough
+        case (.failedToCreateModel, .failedToCreateModel):
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+public extension NSError {
+    static func fileProviderErrorForRejectedDeletion(of updatedItem: NSFileProviderItem) -> NSError {
+        return NSError(domain: "PDFileProvider", code: 8756, localizedDescription: "This should never appear on iOS")
+    }
+}
+
 #endif

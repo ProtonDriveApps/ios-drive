@@ -49,8 +49,9 @@ struct PhotosPreviewFactory {
     ) -> UIViewController {
         let smallThumbnailController = LocalThumbnailController(thumbnailsController: smallThumbnailsController, id: id)
         let fullThumbnailController = LocalThumbnailController(thumbnailsController: bigThumbnailsController, id: id)
-        let contentController = LocalFileContentController(resource: DecryptedFileContentResource(storage: tower.storage, downloader: tower.downloader))
-        let fullPreviewController = LocalPhotoFullPreviewController(detailController: detailController, thumbnailController: fullThumbnailController, contentController: contentController)
+        let contentResource = DecryptedFileContentResource(storage: tower.storage, downloader: tower.downloader, fetchResource: PhotoFetchResource(storage: tower.storage))
+        let contentController = LocalFileContentController(resource: contentResource)
+        let fullPreviewController = LocalPhotoFullPreviewController(detailController: detailController, thumbnailController: fullThumbnailController, contentController: contentController, storageResource: LocalFileStorageResource())
         let viewModel = PhotoPreviewDetailViewModel(thumbnailController: smallThumbnailController, modeController: modeController, previewController: previewController, detailController: detailController, fullPreviewController: fullPreviewController, id: id, coordinator: coordinator)
         return PhotoPreviewDetailViewController(viewModel: viewModel)
     }

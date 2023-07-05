@@ -37,6 +37,7 @@ struct PhotosStateTitlesView<ViewModel: PhotosStateTitlesViewModelProtocol>: Vie
                 .foregroundColor(ColorProvider.TextNorm)
                 .font(.body)
         }
+        .animation(.default, value: viewModel.item)
         .onAppear(perform: viewModel.didAppear)
         .onDisappear(perform: viewModel.didDisappear)
     }
@@ -61,13 +62,9 @@ struct PhotosStateTitlesView<ViewModel: PhotosStateTitlesViewModelProtocol>: Vie
                 .renderingMode(.template)
                 .foregroundColor(ColorProvider.NotificationError)
         case .disabled:
-            IconProvider.exclamationCircle // TODO: next MR cloudSlash
+            Image("ic-cloud-slash")
                 .renderingMode(.template)
-                .foregroundColor(ColorProvider.NotificationError)
-        case .noWifi:
-            IconProvider.exclamationCircle // TODO: next MR noWifi
-                .renderingMode(.template)
-                .foregroundColor(ColorProvider.NotificationError)
+                .foregroundColor(ColorProvider.IconWeak)
         }
     }
 }

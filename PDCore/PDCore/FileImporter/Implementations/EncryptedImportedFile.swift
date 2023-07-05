@@ -34,7 +34,8 @@ struct EncryptedImportedFile {
 
     let shareID: String
 
-    // MARK: - Local iOS defined properties
+    // MARK: - Local (OS) defined properties
     let uploadID: UUID
     let resourceURL: URL
+    let localID: String?
 }

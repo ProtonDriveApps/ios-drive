@@ -92,6 +92,9 @@ class DriveEventsLoop: EventsLoop {
     }
     
     func performRecording(events: [Event], till latest: EventID) {
+        // 0. return early if there are no events to skip triggering observers
+        guard !events.isEmpty else { return }
+        
         // 1. record events into conveyor
         conveyor.record(events)
         

@@ -85,10 +85,10 @@ final class PhotoLibraryBurstCompoundResource: PhotoLibraryCompoundResource {
 
     private func loadBurst(with identifier: PhotoIdentifier, resources: BurstAssetResources, filename: String, isOriginal: Bool) async throws -> PhotoAssetCompound {
         let primaryData = PhotoAssetData(identifier: identifier, resource: resources.primaryResource, filename: filename, isOriginal: isOriginal)
-        let primaryAsset = try await assetResource.execute(with: primaryData)
+        let primaryAsset = try await assetResource.executePhoto(with: primaryData)
         let secondaryAssets = try await resources.secondaryResources.asyncMap {
             let data = PhotoAssetData(identifier: identifier, resource: $0, filename: filename, isOriginal: isOriginal)
-            return try await assetResource.execute(with: data)
+            return try await assetResource.executePhoto(with: data)
         }
         return PhotoAssetCompound(primary: primaryAsset, secondary: secondaryAssets)
     }

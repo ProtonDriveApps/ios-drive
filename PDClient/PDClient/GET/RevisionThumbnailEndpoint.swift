@@ -17,6 +17,20 @@
 
 import Foundation
 
+public struct RevisionThumbnailParameters {
+    let shareId: String
+    let fileId: String
+    let revisionId: String
+    let type: Int
+
+    public init(shareId: String, fileId: String, revisionId: String, type: Int) {
+        self.shareId = shareId
+        self.fileId = fileId
+        self.revisionId = revisionId
+        self.type = type
+    }
+}
+
 public struct RevisionThumbnailEndpoint: Endpoint {
     public struct Response: Codable {
         let code: Int
@@ -25,13 +39,14 @@ public struct RevisionThumbnailEndpoint: Endpoint {
 
     public let request: URLRequest
 
-    public init(share: String, file: String, revision: String, service: APIService, credential: ClientCredential) {
-        var revisionThumbnaiURL = service.url(of: "/shares")
-        revisionThumbnaiURL.appendPathComponent(share)
+    public init(parameters: RevisionThumbnailParameters, service: APIService, credential: ClientCredential) {
+        let queryItem = URLQueryItem(name: "Type", value: "\(parameters.type)")
+        var revisionThumbnaiURL = service.url(of: "/shares", queries: [queryItem])
+        revisionThumbnaiURL.appendPathComponent(parameters.shareId)
         revisionThumbnaiURL.appendPathComponent("/files")
-        revisionThumbnaiURL.appendPathComponent(file)
+        revisionThumbnaiURL.appendPathComponent(parameters.fileId)
         revisionThumbnaiURL.appendPathComponent("/revisions")
-        revisionThumbnaiURL.appendPathComponent(revision)
+        revisionThumbnaiURL.appendPathComponent(parameters.revisionId)
         revisionThumbnaiURL.appendPathComponent("/thumbnail")
 
         var request = URLRequest(url: revisionThumbnaiURL)

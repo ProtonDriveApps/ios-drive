@@ -9,18 +9,15 @@
 /* Begin PBXBuildFile section */
 		7619F5F129E54FD30065E510 /* String+Filename.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7619F5F029E54FD30065E510 /* String+Filename.swift */; };
 		7619F5F229E54FD30065E510 /* String+Filename.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7619F5F029E54FD30065E510 /* String+Filename.swift */; };
+		7619F60829E927D80065E510 /* ResolutionAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7619F60729E927D80065E510 /* ResolutionAction.swift */; };
+		7619F60929E927D80065E510 /* ResolutionAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7619F60729E927D80065E510 /* ResolutionAction.swift */; };
+		7619F60B29EE68BE0065E510 /* OptionSet+RemoveElement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7619F60A29EE68BE0065E510 /* OptionSet+RemoveElement.swift */; };
+		7619F60C29EE68BE0065E510 /* OptionSet+RemoveElement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7619F60A29EE68BE0065E510 /* OptionSet+RemoveElement.swift */; };
 		762C2CCD29B2172B00416E31 /* Conflicting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762C2CCC29B2172B00416E31 /* Conflicting.swift */; };
 		762C2CCE29B2172B00416E31 /* Conflicting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762C2CCC29B2172B00416E31 /* Conflicting.swift */; };
-		762C2CD329B2177C00416E31 /* Node+Conflict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762C2CD229B2177C00416E31 /* Node+Conflict.swift */; };
-		762C2CD429B2177C00416E31 /* Node+Conflict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762C2CD229B2177C00416E31 /* Node+Conflict.swift */; };
-		762C2CEB29B6121100416E31 /* ConflictingOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762C2CEA29B6121100416E31 /* ConflictingOperation.swift */; };
-		762C2CEC29B6121100416E31 /* ConflictingOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762C2CEA29B6121100416E31 /* ConflictingOperation.swift */; };
-		762C2CEE29B638CF00416E31 /* ConflictResolutionStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762C2CED29B638CF00416E31 /* ConflictResolutionStrategy.swift */; };
-		762C2CEF29B638CF00416E31 /* ConflictResolutionStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762C2CED29B638CF00416E31 /* ConflictResolutionStrategy.swift */; };
 		762C2CF429B703AA00416E31 /* Tower+FileProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762C2CF329B703AA00416E31 /* Tower+FileProvider.swift */; };
 		762C2CF529B703AA00416E31 /* Tower+FileProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762C2CF329B703AA00416E31 /* Tower+FileProvider.swift */; };
-		7653638D29BB10920028D75B /* ItemActionsOutlet+Conflict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7653638C29BB10920028D75B /* ItemActionsOutlet+Conflict.swift */; };
-		7653638E29BB10920028D75B /* ItemActionsOutlet+Conflict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7653638C29BB10920028D75B /* ItemActionsOutlet+Conflict.swift */; };
+		7653638D29BB10920028D75B /* ItemActionsOutlet+ConflictDetection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7653638C29BB10920028D75B /* ItemActionsOutlet+ConflictDetection.swift */; };
 		7653639429BEB7EA0028D75B /* Tower+Conflict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7653639329BEB7EA0028D75B /* Tower+Conflict.swift */; };
 		7653639529BEB7EA0028D75B /* Tower+Conflict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7653639329BEB7EA0028D75B /* Tower+Conflict.swift */; };
 		765363BA29C1CF460028D75B /* ConflictRepresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 765363B929C1CF460028D75B /* ConflictRepresentation.swift */; };
@@ -29,6 +26,8 @@
 		766A076629D4199F001C0DB7 /* String+ConflictNodeName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 766A076429D4199F001C0DB7 /* String+ConflictNodeName.swift */; };
 		87D7B15FECAABFEA7FC40578 /* Pods_PDFileProviderMac.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8C83D4B1BCDA4C5ECADFBE8F /* Pods_PDFileProviderMac.framework */; };
 		A60E6E6CA8EBDD32EE0C0AD3 /* Pods_PDFileProviderStatic.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 01F0423A62C38EDF235A7A2A /* Pods_PDFileProviderStatic.framework */; };
+		AB13F8252A16108600FBC0D2 /* ContentVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB13F8242A16108600FBC0D2 /* ContentVersion.swift */; };
+		AB13F8262A16108600FBC0D2 /* ContentVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB13F8242A16108600FBC0D2 /* ContentVersion.swift */; };
 		AB33B91E26243765007ED298 /* NSFileProviderItemIdentifier+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB33B91C26243765007ED298 /* NSFileProviderItemIdentifier+Extension.swift */; };
 		AB52A27F25DFE73200E3A7D1 /* NodeIdentifier+NSFileProviderItemIdentifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB52A27E25DFE73200E3A7D1 /* NodeIdentifier+NSFileProviderItemIdentifier.swift */; };
 		AB59FBA4261DA4FA0072C601 /* ItemTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB59FBA2261DA4FA0072C601 /* ItemTemplate.swift */; };
@@ -78,6 +77,12 @@
 		ABE2789229917775008EC1B3 /* PDCoreResources.bundle in Resources */ = {isa = PBXBuildFile; fileRef = ABE2788F2991775F008EC1B3 /* PDCoreResources.bundle */; };
 		ABF2708E29E426C700D530F0 /* ItemActionsOutlet+Async.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABF2708D29E426C700D530F0 /* ItemActionsOutlet+Async.swift */; };
 		ABF2708F29E426C700D530F0 /* ItemActionsOutlet+Async.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABF2708D29E426C700D530F0 /* ItemActionsOutlet+Async.swift */; };
+		D40A5FDD2A3B13A9002BA232 /* ItemVersionHasher.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40A5FDC2A3B13A9002BA232 /* ItemVersionHasher.swift */; };
+		D40A5FDE2A3B13A9002BA232 /* ItemVersionHasher.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40A5FDC2A3B13A9002BA232 /* ItemVersionHasher.swift */; };
+		D4B2823B29FAC6CD0064E097 /* MetadataVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4B2823A29FAC6CD0064E097 /* MetadataVersion.swift */; };
+		D4B2823C29FAC6CD0064E097 /* MetadataVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4B2823A29FAC6CD0064E097 /* MetadataVersion.swift */; };
+		D4CDADC02A01506C00234722 /* ItemActionsOutlet+ConflictResolution.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4CDADBF2A01506C00234722 /* ItemActionsOutlet+ConflictResolution.swift */; };
+		D4CDADC12A01506C00234722 /* ItemActionsOutlet+ConflictResolution.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4CDADBF2A01506C00234722 /* ItemActionsOutlet+ConflictResolution.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -121,12 +126,11 @@
 		58FD780C9EA3565FB54BE356 /* Pods-PDFileProviderTests.release-qa.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderTests.release-qa.xcconfig"; path = "Target Support Files/Pods-PDFileProviderTests/Pods-PDFileProviderTests.release-qa.xcconfig"; sourceTree = "<group>"; };
 		62E57EB2540196BA92C18CCD /* Pods-PDFileProviderStatic.release-external.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderStatic.release-external.xcconfig"; path = "Target Support Files/Pods-PDFileProviderStatic/Pods-PDFileProviderStatic.release-external.xcconfig"; sourceTree = "<group>"; };
 		7619F5F029E54FD30065E510 /* String+Filename.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Filename.swift"; sourceTree = "<group>"; };
+		7619F60729E927D80065E510 /* ResolutionAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResolutionAction.swift; sourceTree = "<group>"; };
+		7619F60A29EE68BE0065E510 /* OptionSet+RemoveElement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "OptionSet+RemoveElement.swift"; sourceTree = "<group>"; };
 		762C2CCC29B2172B00416E31 /* Conflicting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Conflicting.swift; sourceTree = "<group>"; };
-		762C2CD229B2177C00416E31 /* Node+Conflict.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Node+Conflict.swift"; sourceTree = "<group>"; };
-		762C2CEA29B6121100416E31 /* ConflictingOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConflictingOperation.swift; sourceTree = "<group>"; };
-		762C2CED29B638CF00416E31 /* ConflictResolutionStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConflictResolutionStrategy.swift; sourceTree = "<group>"; };
 		762C2CF329B703AA00416E31 /* Tower+FileProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Tower+FileProvider.swift"; sourceTree = "<group>"; };
-		7653638C29BB10920028D75B /* ItemActionsOutlet+Conflict.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ItemActionsOutlet+Conflict.swift"; sourceTree = "<group>"; };
+		7653638C29BB10920028D75B /* ItemActionsOutlet+ConflictDetection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ItemActionsOutlet+ConflictDetection.swift"; sourceTree = "<group>"; };
 		7653639329BEB7EA0028D75B /* Tower+Conflict.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Tower+Conflict.swift"; sourceTree = "<group>"; };
 		765363B929C1CF460028D75B /* ConflictRepresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConflictRepresentation.swift; sourceTree = "<group>"; };
 		766A076429D4199F001C0DB7 /* String+ConflictNodeName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+ConflictNodeName.swift"; sourceTree = "<group>"; };
@@ -134,6 +138,7 @@
 		9AFA25662E9BD49902ADD93C /* Pods-PDFileProviderStatic.release-store.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderStatic.release-store.xcconfig"; path = "Target Support Files/Pods-PDFileProviderStatic/Pods-PDFileProviderStatic.release-store.xcconfig"; sourceTree = "<group>"; };
 		A5E56D9369C52CDDB6A6BDC4 /* Pods-PDFileProviderMac.release-store.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderMac.release-store.xcconfig"; path = "Target Support Files/Pods-PDFileProviderMac/Pods-PDFileProviderMac.release-store.xcconfig"; sourceTree = "<group>"; };
 		AAF2EE6779523F2B1AB2EFC5 /* Pods-PDFileProviderStatic.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderStatic.debug.xcconfig"; path = "Target Support Files/Pods-PDFileProviderStatic/Pods-PDFileProviderStatic.debug.xcconfig"; sourceTree = "<group>"; };
+		AB13F8242A16108600FBC0D2 /* ContentVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentVersion.swift; sourceTree = "<group>"; };
 		AB22ED1F242AB5F400A97350 /* PDClient.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PDClient.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB33B91C26243765007ED298 /* NSFileProviderItemIdentifier+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSFileProviderItemIdentifier+Extension.swift"; sourceTree = "<group>"; };
 		AB3531312430C63200F7DF85 /* PDFileSystemEvents.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PDFileSystemEvents.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -178,6 +183,9 @@
 		C5676DED6587EB2030F2D589 /* Pods-PDFileProviderTests.release-store.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderTests.release-store.xcconfig"; path = "Target Support Files/Pods-PDFileProviderTests/Pods-PDFileProviderTests.release-store.xcconfig"; sourceTree = "<group>"; };
 		C655B8ACADAF31B56CA723A8 /* Pods-ProtonDrive.release-external.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ProtonDrive.release-external.xcconfig"; path = "Target Support Files/Pods-ProtonDrive/Pods-ProtonDrive.release-external.xcconfig"; sourceTree = "<group>"; };
 		CCC5EE3293577BFAE14CAF51 /* Pods-PDFileProviderTests.release-external.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderTests.release-external.xcconfig"; path = "Target Support Files/Pods-PDFileProviderTests/Pods-PDFileProviderTests.release-external.xcconfig"; sourceTree = "<group>"; };
+		D40A5FDC2A3B13A9002BA232 /* ItemVersionHasher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemVersionHasher.swift; sourceTree = "<group>"; };
+		D4B2823A29FAC6CD0064E097 /* MetadataVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataVersion.swift; sourceTree = "<group>"; };
+		D4CDADBF2A01506C00234722 /* ItemActionsOutlet+ConflictResolution.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ItemActionsOutlet+ConflictResolution.swift"; sourceTree = "<group>"; };
 		D84E1434C5AB23103284C6DD /* Pods-PDFileProviderStatic.release-qa.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderStatic.release-qa.xcconfig"; path = "Target Support Files/Pods-PDFileProviderStatic/Pods-PDFileProviderStatic.release-qa.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -198,13 +206,11 @@
 			isa = PBXGroup;
 			children = (
 				762C2CCC29B2172B00416E31 /* Conflicting.swift */,
-				762C2CD229B2177C00416E31 /* Node+Conflict.swift */,
-				762C2CEA29B6121100416E31 /* ConflictingOperation.swift */,
 				765363B929C1CF460028D75B /* ConflictRepresentation.swift */,
-				762C2CED29B638CF00416E31 /* ConflictResolutionStrategy.swift */,
 				762C2CF329B703AA00416E31 /* Tower+FileProvider.swift */,
 				7653639329BEB7EA0028D75B /* Tower+Conflict.swift */,
 				766A076429D4199F001C0DB7 /* String+ConflictNodeName.swift */,
+				7619F60729E927D80065E510 /* ResolutionAction.swift */,
 			);
 			path = Conflicts;
 			sourceTree = "<group>";
@@ -245,6 +251,7 @@
 				AB9F11F525E3FED100674280 /* OptionSetContainer.swift */,
 				ABCD8DDA26948DA700562CBB /* LogObfuscation.swift */,
 				7619F5F029E54FD30065E510 /* String+Filename.swift */,
+				7619F60A29EE68BE0065E510 /* OptionSet+RemoveElement.swift */,
 			);
 			path = Extensions;
 			sourceTree = "<group>";
@@ -254,6 +261,9 @@
 			children = (
 				ABD1909125A30FF7005D3E29 /* NodeItem.swift */,
 				AB59FBA2261DA4FA0072C601 /* ItemTemplate.swift */,
+				D4B2823A29FAC6CD0064E097 /* MetadataVersion.swift */,
+				AB13F8242A16108600FBC0D2 /* ContentVersion.swift */,
+				D40A5FDC2A3B13A9002BA232 /* ItemVersionHasher.swift */,
 			);
 			path = Items;
 			sourceTree = "<group>";
@@ -299,7 +309,8 @@
 				AB6391A525D2915C0051D563 /* ItemProvider.swift */,
 				AB5A16F525DECEBE00486D3A /* ItemActionsOutlet.swift */,
 				ABF2708D29E426C700D530F0 /* ItemActionsOutlet+Async.swift */,
-				7653638C29BB10920028D75B /* ItemActionsOutlet+Conflict.swift */,
+				7653638C29BB10920028D75B /* ItemActionsOutlet+ConflictDetection.swift */,
+				D4CDADBF2A01506C00234722 /* ItemActionsOutlet+ConflictResolution.swift */,
 			);
 			path = ItemProvider;
 			sourceTree = "<group>";
@@ -457,35 +468,37 @@
 			buildActionMask = 2147483647;
 			files = (
 				ABE2788329916F77008EC1B3 /* TrashEnumerator.swift in Sources */,
+				7619F60C29EE68BE0065E510 /* OptionSet+RemoveElement.swift in Sources */,
 				ABE2788429916F77008EC1B3 /* RootEnumerator.swift in Sources */,
 				ABE2787229916F67008EC1B3 /* Errors.swift in Sources */,
 				765363BB29C1CF460028D75B /* ConflictRepresentation.swift in Sources */,
 				ABE2787329916F67008EC1B3 /* FileProviderEventsListener.swift in Sources */,
 				ABE2788229916F77008EC1B3 /* WorkingSetEnumerator.swift in Sources */,
+				D4CDADC12A01506C00234722 /* ItemActionsOutlet+ConflictResolution.swift in Sources */,
 				ABE2787529916F6C008EC1B3 /* ItemTemplate.swift in Sources */,
 				ABE2787C29916F6F008EC1B3 /* OptionSetContainer.swift in Sources */,
 				ABE2788029916F77008EC1B3 /* EnumeratorWithItemsFromDB.swift in Sources */,
 				ABE2787F29916F77008EC1B3 /* EnumeratorWithItemsFromAPI.swift in Sources */,
-				762C2CD429B2177C00416E31 /* Node+Conflict.swift in Sources */,
 				ABE2788129916F77008EC1B3 /* FolderEnumerator.swift in Sources */,
+				D40A5FDE2A3B13A9002BA232 /* ItemVersionHasher.swift in Sources */,
 				7653639529BEB7EA0028D75B /* Tower+Conflict.swift in Sources */,
 				7619F5F229E54FD30065E510 /* String+Filename.swift in Sources */,
 				ABE2787629916F6F008EC1B3 /* NSFileProviderItemIdentifier+Extension.swift in Sources */,
+				AB13F8262A16108600FBC0D2 /* ContentVersion.swift in Sources */,
 				ABE2788529916F77008EC1B3 /* EnumeratorWithChanges.swift in Sources */,
 				ABE2787A29916F6F008EC1B3 /* NSFileProviderItem+Extension.swift in Sources */,
 				762C2CF529B703AA00416E31 /* Tower+FileProvider.swift in Sources */,
 				ABE2787429916F6C008EC1B3 /* NodeItem.swift in Sources */,
-				762C2CEF29B638CF00416E31 /* ConflictResolutionStrategy.swift in Sources */,
 				ABE2787829916F6F008EC1B3 /* NSFileProviderItemIdentifier+iOS.swift in Sources */,
 				762C2CCE29B2172B00416E31 /* Conflicting.swift in Sources */,
 				766A076629D4199F001C0DB7 /* String+ConflictNodeName.swift in Sources */,
+				D4B2823C29FAC6CD0064E097 /* MetadataVersion.swift in Sources */,
 				ABF2708F29E426C700D530F0 /* ItemActionsOutlet+Async.swift in Sources */,
-				762C2CEC29B6121100416E31 /* ConflictingOperation.swift in Sources */,
 				ABE2787D29916F73008EC1B3 /* ItemProvider.swift in Sources */,
 				ABE2787929916F6F008EC1B3 /* LogObfuscation.swift in Sources */,
+				7619F60929E927D80065E510 /* ResolutionAction.swift in Sources */,
 				ABE2787B29916F6F008EC1B3 /* NSFileProviderSyncAnchor+Extension.swift in Sources */,
 				ABE2787E29916F73008EC1B3 /* ItemActionsOutlet.swift in Sources */,
-				7653638E29BB10920028D75B /* ItemActionsOutlet+Conflict.swift in Sources */,
 				ABE2787729916F6F008EC1B3 /* NodeIdentifier+NSFileProviderItemIdentifier.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -599,14 +612,14 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = 2SB5Z68H26;
+				DEVELOPMENT_TEAM = "";
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
@@ -635,6 +648,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protondrive.ProtonDrive.PDFileProvider;
 				PRODUCT_MODULE_NAME = PDFileProvider;
 				PRODUCT_NAME = PDFileProvider;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -679,10 +693,11 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = 2SB5Z68H26;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -704,6 +719,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.PDFileProviderTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -856,14 +872,14 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = 2SB5Z68H26;
+				DEVELOPMENT_TEAM = "";
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
@@ -892,6 +908,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protondrive.ProtonDrive.PDFileProvider;
 				PRODUCT_MODULE_NAME = PDFileProvider;
 				PRODUCT_NAME = PDFileProvider;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -1268,14 +1285,14 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = 2SB5Z68H26;
+				DEVELOPMENT_TEAM = "";
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
@@ -1304,6 +1321,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protondrive.ProtonDrive.PDFileProvider;
 				PRODUCT_MODULE_NAME = PDFileProvider;
 				PRODUCT_NAME = PDFileProvider;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;

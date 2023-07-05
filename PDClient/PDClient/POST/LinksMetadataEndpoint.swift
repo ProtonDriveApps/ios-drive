@@ -30,7 +30,7 @@ public struct LinksMetadataEndpoint: Endpoint {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
-        request.httpBody = try? JSONEncoder().encode(parameters.linkIds)
+        request.httpBody = try? JSONEncoder().encode(["LinkIDs": parameters.linkIds])
         self.request = request
     }
 }

@@ -18,5 +18,5 @@
 import PDClient
 
 public protocol LocalLinksUpdateRepository {
-    func update(links: [PDClient.Link], shareId: String)
+    func update(links: [PDClient.Link], shareId: String) throws
 }

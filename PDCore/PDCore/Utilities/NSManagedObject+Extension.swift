@@ -32,8 +32,8 @@ extension NSManagedObjectContext {
     }
 }
 
-extension NSManagedObject {
-    public var moc: NSManagedObjectContext? {
+public extension NSManagedObject {
+    var moc: NSManagedObjectContext? {
         managedObjectContext
     }
 
@@ -46,12 +46,12 @@ extension NSManagedObject {
             self.line = line
         }
 
-        var errorDescription: String? {
+        public var errorDescription: String? {
             "Could not find NSManagedObjectContext in file: \(file), line: \(line)"
         }
     }
 
-    struct InvalidState: Error {
+    public struct InvalidState: Error {
         let line: Int
         let file: String
         let message: String
@@ -63,11 +63,11 @@ extension NSManagedObject {
         }
     }
 
-    public static func noMOC(file: String = #filePath, line: Int = #line) -> Error {
+    static func noMOC(file: String = #filePath, line: Int = #line) -> Error {
         NoMOCError(file: file, line: line)
     }
 
-    func invalidState(_ message: String, file: String = #filePath, line: Int = #line) -> InvalidState {
+    public func invalidState(_ message: String, file: String = #filePath, line: Int = #line) -> InvalidState {
         let message = "Invalid \(type(of: self)).\n" + message
         return InvalidState(message: message, file: file, line: line)
     }

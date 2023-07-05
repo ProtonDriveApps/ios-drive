@@ -17,15 +17,11 @@
 
 import Combine
 
-protocol PhotosUploadsProgressController {
-    var progress: AnyPublisher<PhotosBackupProgress, Never> { get }
-}
-
-final class LocalPhotosUploadsProgressController: PhotosUploadsProgressController {
+final class LocalPhotosUploadsProgressController: PhotosLoadProgressController {
     private let repository: PhotoUploadsRepository
     private let subject = CurrentValueSubject<PhotosBackupProgress, Never>(.init(total: 0, inProgress: 0))
     private var cancellables = Set<AnyCancellable>()
-    private let totalCount: Int
+    private var totalCount: Int
 
     var progress: AnyPublisher<PhotosBackupProgress, Never> {
         subject.eraseToAnyPublisher()
@@ -37,8 +33,13 @@ final class LocalPhotosUploadsProgressController: PhotosUploadsProgressControlle
         subscribeToUpdates()
     }
 
+    func resetTotal() {
+        totalCount = 0
+    }
+
     private func subscribeToUpdates() {
         repository.count
+            .removeDuplicates()
             .sink { [weak self] count in
                 self?.handleUpdate(count)
             }

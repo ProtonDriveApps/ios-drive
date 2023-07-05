@@ -15,30 +15,30 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-public class LocalPhotosRootDataSource: PhotosDeviceDataSource {
+public class LocalPhotosRootDataSource: PhotosShareDataSource {
     
-    private let observer: FetchedResultsControllerObserver<Device>
+    private let observer: FetchedResultsControllerObserver<Share>
 
-    public init(observer: FetchedResultsControllerObserver<Device>) {
+    public init(observer: FetchedResultsControllerObserver<Share>) {
         self.observer = observer
     }
 
-    public func getPhotosDevice() async throws -> Device {
+    public func getPhotoShare() async throws -> Share {
         guard !observer.cache.isEmpty else {
-            throw LocalPhotoDataSourceError.noLocalDevices
+            throw LocalPhotoDataSourceError.noLocalPhotoShare
         }
 
-        guard let device = observer.cache.first,
-              [device] == observer.cache else {
-            throw LocalPhotoDataSourceError.moreThanOnePhotosDevice
+        guard let share = observer.cache.first,
+              [share] == observer.cache else {
+            throw LocalPhotoDataSourceError.moreThanOnePhotosShare
         }
 
-        return device
+        return share
     }
 
 }
 
 enum LocalPhotoDataSourceError: Error {
-    case noLocalDevices
-    case moreThanOnePhotosDevice
+    case noLocalPhotoShare
+    case moreThanOnePhotosShare
 }

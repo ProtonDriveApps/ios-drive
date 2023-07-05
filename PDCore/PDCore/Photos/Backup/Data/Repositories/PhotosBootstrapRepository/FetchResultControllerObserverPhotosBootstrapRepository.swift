@@ -16,19 +16,21 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import Foundation
 
 public final class FetchResultControllerObserverPhotosBootstrapRepository: PhotosBootstrapRepository {
     
-    private let observer: FetchedResultsControllerObserver<Device>
+    private let observer: FetchedResultsControllerObserver<Share>
 
-    public init(observer: FetchedResultsControllerObserver<Device>) {
+    public init(observer: FetchedResultsControllerObserver<Share>) {
         self.observer = observer
     }
 
     public var isPhotosRootReady: AnyPublisher<Bool, Never> {
-        observer.getPublisher().map { devices in
-            return devices.count == 1
+        observer.getPublisher().map { shares in
+            return shares.count == 1
         }
+        .receive(on: DispatchQueue.main)
         .eraseToAnyPublisher()
     }
 

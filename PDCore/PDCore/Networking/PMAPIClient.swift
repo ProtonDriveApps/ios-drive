@@ -49,7 +49,7 @@ public class PMAPIClient: NSObject, APIServiceDelegate {
     public weak var authSessionInvalidatedDelegateForLoginAndSignup: AuthSessionInvalidatedDelegate?
 
     // To be observed by UI layer in order to communicate with the user
-    @objc public internal(set) dynamic var currentActivity: NSUserActivity?
+    @objc public internal(set) dynamic var currentActivity: NSUserActivity = Activity.none
 
     init(version: String, sessionVault: SessionStore, authenticator: AuthenticatorInterface? = nil) {
         self.appVersion = version
@@ -121,7 +121,6 @@ extension PMAPIClient: AuthDelegate {
 
     public func onAuthenticatedSessionInvalidated(sessionUID: String) {
         ConsoleLogger.shared?.log("Authenticated session invalidated from PMCommon", osLogType: Tower.self)
-        eraseSessionCredentials(sessionUID: sessionUID)
         self.currentActivity = Activity.logout
     }
 
@@ -130,12 +129,13 @@ extension PMAPIClient: AuthDelegate {
         eraseSessionCredentials(sessionUID: sessionUID)
     }
 
-     public enum Activity {
+    public enum Activity {
         public static let logout: NSUserActivity = NSUserActivity(activityType: "ch.protondrive.PDCore.Tower.Logout")
         public static let humanVerification: NSUserActivity = NSUserActivity(activityType: "ch.protondrive.PDCore.Tower.HumanVerification")
         public static let forceUpgrade: NSUserActivity = NSUserActivity(activityType: "ch.protondrive.PDCore.Tower.ForceUpgrade")
         public static let trustKitFailure: NSUserActivity = NSUserActivity(activityType: "ch.protondrive.PDCore.Tower.TrustKitFailure")
         public static let trustKitFailureHard: NSUserActivity = NSUserActivity(activityType: "ch.protondrive.PDCore.Tower.TrustKitFailureHard")
+        public static let none: NSUserActivity = NSUserActivity(activityType: "ch.protondrive.PDCore.Tower.None")
     }
     
     internal enum Errors: Error {

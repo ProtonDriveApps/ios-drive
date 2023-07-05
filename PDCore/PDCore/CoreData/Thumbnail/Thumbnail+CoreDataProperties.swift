@@ -20,7 +20,7 @@ import CoreData
 extension Thumbnail {
     @NSManaged public var revision: Revision
     @NSManaged public var encrypted: Data?
-    @NSManaged public var type: `Type`
+    @NSManaged public var type: ThumbnailType
 
     // MARK: - Download Thumbnail
     @NSManaged public var downloadURL: String?
@@ -31,20 +31,20 @@ extension Thumbnail {
     @NSManaged public var isUploaded: Bool
 
     // MARK: - Transient Properties
-    @NSManaged internal var clearData: Data?
+    @NSManaged public var clearData: Data?
 }
 
 extension Thumbnail {
-    static func make(downloadURL: URL?, revision: Revision, in moc: NSManagedObjectContext) -> Thumbnail {
+    static func make(downloadURL: URL?, revision: Revision, type: ThumbnailType, in moc: NSManagedObjectContext) -> Thumbnail {
         let thumbnail = Thumbnail(context: moc)
         thumbnail.downloadURL = downloadURL?.absoluteString
         thumbnail.revision = revision
-
+        thumbnail.type = type
         return thumbnail
     }
+}
 
-    @objc public enum `Type`: Int16, Equatable {
-        case `default` = 1
-        case photos = 2
-    }
+@objc public enum ThumbnailType: Int16, Equatable {
+    case `default` = 1
+    case photos = 2
 }

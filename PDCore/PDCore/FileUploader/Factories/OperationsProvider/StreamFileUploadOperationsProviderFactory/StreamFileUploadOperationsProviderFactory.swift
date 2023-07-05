@@ -18,6 +18,7 @@
 import Foundation
 import PDClient
 import ProtonCore_APIClient
+import CoreData
 
 final class StreamFileUploadOperationsProviderFactory: FileUploadOperationsProviderFactory {
 
@@ -25,6 +26,10 @@ final class StreamFileUploadOperationsProviderFactory: FileUploadOperationsProvi
     private let cloudSlot: CloudSlot
     private let sessionVault: SessionVault
     private let apiService: APIService
+
+    var moc: NSManagedObjectContext {
+        storage.backgroundContext
+    }
 
     init(
         storage: StorageManager,
@@ -39,15 +44,15 @@ final class StreamFileUploadOperationsProviderFactory: FileUploadOperationsProvi
     }
 
     func make() -> FileUploadOperationsProvider {
-        let revisionEncryptor = StreamRevisionEncryptorOperationFactory(signersKitFactory: sessionVault, moc: storage.backgroundContext)
-        let fileDraftCreator = FileDraftCreatorOperationFactory(hashChecker: cloudSlot, fileDraftCreator: cloudSlot, sessionVault: sessionVault, storage: storage)
-        let revisionDraftCreator = RevisionDraftCreatorOperationFactory(revisionCreator: cloudSlot, finalizer: cloudSlot.storage)
-        let revisionUploader = StreamRevisionUploaderOperationFactory(api: apiService, moc: storage.backgroundContext, cloudContentCreator: cloudSlot, credentialProvider: sessionVault, signersKitFactory: sessionVault)
-        let revisionCommitter = RevisionCommitterOperationFactory(cloudRevisionCommitter: cloudSlot, signersKitFactory: sessionVault, moc: storage.backgroundContext)
+        let revisionEncryptor = StreamRevisionEncryptorOperationFactory(signersKitFactory: sessionVault, moc: moc)
+        let fileDraftCreator = NameResolvingFileDraftCreatorOperationFactory(hashChecker: cloudSlot, fileDraftCreator: cloudSlot, sessionVault: sessionVault, moc: moc)
+        let revisionDraftCreator = RevisionDraftCreatorOperationFactory(cloudRevisionCreator: cloudSlot, moc: moc)
+        let revisionUploader = StreamRevisionUploaderOperationFactory(api: apiService, cloudContentCreator: cloudSlot, credentialProvider: sessionVault, signersKitFactory: sessionVault, moc: moc)
+        let revisionCommitter = RevisionCommitterOperationFactory(cloudRevisionCommitter: cloudSlot, signersKitFactory: sessionVault, moc: moc)
 
         return DefaultFileUploadOperationsProvider(
             revisionEncryptorOperationFactory: revisionEncryptor,
-            fileDraftUploaderOperationFactory: fileDraftCreator,
+            fileDraftCreatorOperationFactory: fileDraftCreator,
             revisionCreatorOperationFactory: revisionDraftCreator,
             revisionUploaderOperationFactory: revisionUploader,
             revisionSealerOperationFactory: revisionCommitter

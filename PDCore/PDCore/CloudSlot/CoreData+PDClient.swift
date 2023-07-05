@@ -83,6 +83,15 @@ public extension Folder {
     }
 }
 
+public extension Photo {
+    func fulfillPhoto(from meta: PDClient.Link) {
+        super.fulfill(from: meta)
+        if let captureInterval = meta.fileProperties?.activeRevision?.photo?.captureTime {
+            self.captureTime = Date(timeIntervalSince1970: captureInterval)
+        }
+    }
+}
+
 public extension Revision {
     func fulfill(from meta: PDClient.RevisionShort) {
         self.signatureAddress = meta.signatureAddress
@@ -102,6 +111,14 @@ public extension Revision {
         self.state = meta.state
         self.xAttributes = meta.XAttr
         self.thumbnailHash = meta.thumbnailHash
+    }
+}
+
+public extension PhotoRevision {
+    func fulfill(link: PDClient.Link, revision: PDClient.RevisionShort) {
+        super.fulfill(from: revision)
+        self.exif = revision.photo?.exif ?? ""
+        self.xAttributes = link.XAttr
     }
 }
 

@@ -63,14 +63,47 @@ public class NodeItem: NSObject, NSFileProviderItem {
         
         self.capabilities = self.capabilities(node)
         
-        let contentVersion = self.contentVersion(node).data(using: .utf8) ?? Data()
-        let metadataVersion = "\(self.metadataVersion())".data(using: .utf8) ?? Data()
+        let contentVersion = self.contentVersion(node).encoded()
+        let metadataVersion = self.metadataVersion().encoded()
         self.itemVersion = .init(contentVersion: contentVersion, metadataVersion: metadataVersion)
     }
 
     public convenience init(node: Node, filename: String) {
         self.init(node: node)
         self.filename = filename
+    }
+
+    public init(item: NSFileProviderItem, filename: String) {
+        self.filename = filename
+
+        self.itemIdentifier = item.itemIdentifier
+        self.parentItemIdentifier = item.parentItemIdentifier
+
+        self.capabilities = item.capabilities ?? []
+        self.contentType = item.contentType ?? .folder
+        self.isUploaded = item.isUploaded ?? false
+        self.isDownloaded = item.isDownloaded ?? false
+        self.creationDate = item.creationDate ?? Date()
+        self.contentModificationDate = item.contentModificationDate ?? Date()
+        self.documentSize = item.documentSize ?? 0
+        self.isShared = item.isShared ?? false
+        self.childItemCount = item.childItemCount ?? 0
+                
+        #if os(iOS)
+        self.isTrashed = item.isTrashed ?? false
+        #endif
+        
+        #if os(macOS)
+        self.itemVersion = item.itemVersion ?? NSFileProviderItemVersion()
+        #elseif os(iOS)
+        if #available(iOS 16.0, *), let itemVersion = item.itemVersion {
+            self.itemVersion = NSFileProviderItemVersion(contentVersion: itemVersion.contentVersion, metadataVersion: itemVersion.metadataVersion)
+        } else {
+            self.itemVersion = NSFileProviderItemVersion()
+        }
+        #endif
+
+        super.init()
     }
 
     public var isUploaded: Bool
@@ -85,38 +118,20 @@ public class NodeItem: NSObject, NSFileProviderItem {
     public var filename: String
     public var itemVersion: NSFileProviderItemVersion
     public var capabilities: NSFileProviderItemCapabilities
-    
-    #if os(OSX)
     public var contentType: UTType
-    #else
+
+    #if os(iOS)
     public var isTrashed: Bool
-    public var contentType: UTType
     #endif
     
     /// Node.modified is not modified by Cloud when metadata changes, so we needed to come up with some workaround for versioning
-    private func metadataVersion() -> Int {
-        var hasher = Hasher()
-        hasher.combine(isShared)
-        hasher.combine(creationDate)
-        hasher.combine(contentModificationDate)
-        hasher.combine(documentSize)
-        hasher.combine(childItemCount)
-        hasher.combine(itemIdentifier)
-        hasher.combine(parentItemIdentifier)
-        hasher.combine(filename)
-        return hasher.finalize()
+    private func metadataVersion() -> MetadataVersion {
+        return MetadataVersion(item: self)
     }
     
     /// Content version of a file is active revision id
-    private func contentVersion(_ node: Node) -> String {
-        // This logic is a workaround until BE will return activeRevision ID on GET /shares/ID/folders/ID/children endpoint:
-        // node is File and has more than one revision in local metadata DB -> need to bump verison to id of active revision
-        guard let file = node as? File, file.revisions.count > 1, let activeRevision = file.activeRevision else {
-            return String(describing: node.modifiedDate)
-        }
-        
-        // otherwise we can just use activeRevision ID to distinguish from previous revisions
-        return activeRevision.id
+    private func contentVersion(_ node: Node) -> ContentVersion {
+        return ContentVersion(node: node)
     }
     
     private func capabilities(_ node: Node) -> NSFileProviderItemCapabilities {

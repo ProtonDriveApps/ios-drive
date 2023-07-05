@@ -22,20 +22,22 @@ protocol PhotosVolumeIdDataSource {
 }
 
 final class DatabasePhotosVolumeIdDataSource: PhotosVolumeIdDataSource {
-    private let deviceDataSource: PhotosDeviceDataSource
+    private let photoShareDataSource: PhotosShareDataSource
 
-    init(deviceDataSource: PhotosDeviceDataSource) {
-        self.deviceDataSource = deviceDataSource
+    init(photoShareDataSource: PhotosShareDataSource) {
+        self.photoShareDataSource = photoShareDataSource
     }
 
     func getVolumeId() async throws -> String {
-        let device = try await deviceDataSource.getPhotosDevice()
-        let id = device.moc?.performAndWait {
-            device.volume.id
-        }
-        guard let id else {
+        let share = try await photoShareDataSource.getPhotoShare()
+        guard let moc = share.moc else {
             throw Device.noMOC()
         }
-        return id
+        return try moc.performAndWait {
+            guard let id = share.volume?.id else {
+                throw share.invalidState("Photos Share has no volume.")
+            }
+            return id
+        }
     }
 }

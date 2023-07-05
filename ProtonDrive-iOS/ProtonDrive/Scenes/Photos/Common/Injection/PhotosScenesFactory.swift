@@ -63,16 +63,23 @@ struct PhotosScenesFactory {
         return PhotosPermissionsView(viewModel: viewModel)
     }
 
-    func makeGalleryView(tower: Tower, coordinator: PhotosCoordinator, galleryController: PhotosGalleryController, thumbnailsController: ThumbnailsController, uploadController: PhotosBackupUploadAvailableController, progressController: PhotosBackupProgressController) -> some View {
-        PhotosGalleryView(
-            viewModel: PhotosGalleryViewModel(galleryController: galleryController, uploadController: uploadController),
+    // swiftlint:disable:next function_parameter_count
+    func makeGalleryView(
+        tower: Tower,
+        coordinator: PhotosCoordinator,
+        galleryController: PhotosGalleryController,
+        thumbnailsController: ThumbnailsController,
+        settingsController: PhotoBackupSettingsController,
+        loadController: PhotosPagingLoadController,
+        stateView: some View
+    ) -> some View {
+        return PhotosGalleryView(
+            viewModel: PhotosGalleryViewModel(galleryController: galleryController, settingsController: settingsController),
             grid: {
-                makeGridView(tower: tower, coordinator: coordinator, galleryController: galleryController, thumbnailsController: thumbnailsController)
+                makeGridView(tower: tower, coordinator: coordinator, galleryController: galleryController, thumbnailsController: thumbnailsController, loadController: loadController)
             },
             placeholder: makeGalleryPlaceholderView,
-            state: {
-                makeStateView(progressController: progressController)
-            }
+            stateView: stateView
         )
     }
 
@@ -81,8 +88,9 @@ struct PhotosScenesFactory {
         return PhotosGalleryPlaceholderView(viewModel: viewModel)
     }
 
-    private func makeStateView(progressController: PhotosBackupProgressController) -> some View {
-        let controller = LocalPhotosUploadStateController(progressController: progressController)
+    func makeStateView(progressController: PhotosBackupProgressController, settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController, networkController: PhotoBackupConstraintController) -> some View {
+        let completeController = LocalPhotosBackupCompleteController(progressController: progressController, timerFactory: MainQueueTimerFactory())
+        let controller = LocalPhotosBackupStateController(progressController: progressController, completeController: completeController, settingsController: settingsController, authorizationController: authorizationController, networkController: networkController, strategy: PrioritizedPhotosBackupStateStrategy(), throttleResource: MainQueueThrottleResource())
         let viewModel = PhotosStateViewModel(controller: controller)
         return PhotosStateView(viewModel: viewModel) { items in
             let viewModel = PhotosStateTitlesViewModel(timerFactory: MainQueueTimerFactory(), items: items)
@@ -90,11 +98,11 @@ struct PhotosScenesFactory {
         }
     }
 
-    private func makeGridView(tower: Tower, coordinator: PhotosCoordinator, galleryController: PhotosGalleryController, thumbnailsController: ThumbnailsController) -> some View {
+    private func makeGridView(tower: Tower, coordinator: PhotosCoordinator, galleryController: PhotosGalleryController, thumbnailsController: ThumbnailsController, loadController: PhotosPagingLoadController) -> some View {
         let monthFormatter = LocalizedMonthFormatter(dateResource: PlatformDateResource(), dateFormatter: PlatformMonthAndYearFormatter(), monthResource: PlatformMonthResource())
         let viewModel = PhotosGridViewModel(
             controller: galleryController,
-            loadController: makePagingLoadController(tower: tower),
+            loadController: loadController,
             monthFormatter: monthFormatter,
             durationFormatter: LocalizedDurationFormatter()
         )
@@ -103,17 +111,17 @@ struct PhotosScenesFactory {
         }
     }
 
-    private func makePagingLoadController(tower: Tower) -> RemotePhotosPagingLoadController {
+    func makePagingLoadController(tower: Tower, backupController: PhotosBackupController, networkConstraintController: PhotoBackupConstraintController) -> PhotosPagingLoadController {
         let factory = PhotosFactory()
-        let observer = factory.makeDevicesObserver(tower: tower)
+        let observer = factory.makePhotoSharesObserver(tower: tower)
         let dataSource = PhotosFactory().makeLocalPhotosRootDataSource(observer: observer)
-        let filterResource = CoreDataPhotosListFilterResource(storage: tower.storage, managedObjectContext: tower.storage.backgroundContext)
-        let listInteractor = PhotosListLoadInteractor(volumeIdDataSource: DatabasePhotosVolumeIdDataSource(deviceDataSource: dataSource), listing: tower.client)
+        let listInteractor = PhotosListLoadInteractor(volumeIdDataSource: DatabasePhotosVolumeIdDataSource(photoShareDataSource: dataSource), listing: tower.client)
         let listFacadeInteractor = AsyncPhotosListLoadResultInteractor(interactor: listInteractor)
-        let metadataInteractor = PhotosMetadataLoadInteractor(shareIdDataSource: DatabasePhotoShareIdDataSource(dataSource: dataSource), listing: tower.client, updateRepository: tower.cloudSlot, filterResource: filterResource)
+        let metadataInteractor = PhotosMetadataLoadInteractor(shareIdDataSource: DatabasePhotoShareIdDataSource(dataSource: dataSource), listing: tower.client, updateRepository: tower.cloudSlot)
         let metadataFacadeInteractor = AsyncPhotosMetadataLoadResultInteractor(interactor: metadataInteractor)
         let interactor = RemotePhotosFullLoadInteractor(listInteractor: listFacadeInteractor, metadataInteractor: metadataFacadeInteractor)
-        return RemotePhotosPagingLoadController(interactor: interactor)
+        let backupController = factory.makePhotosBackupUploadAvailableController(backupController: backupController, networkConstraintController: networkConstraintController)
+        return RemotePhotosPagingLoadController(backupController: backupController, interactor: interactor)
     }
 
     private func makeItemView(item: PhotoGridViewItem, thumbnailsController: ThumbnailsController, coordinator: PhotoItemCoordinator) -> some View {

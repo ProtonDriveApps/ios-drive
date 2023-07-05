@@ -124,7 +124,7 @@ protocol DrivePopulator {
 
 extension Tower: DrivePopulator {
     var state: PopulatedState {
-        if let root = rootFolder() {
+        if let root = rootFolderIdentifier() {
             return .populated(with: root)
         } else {
             return .unpopulated

@@ -37,7 +37,7 @@ public final class TrashModel {
 
     public init(tower: Tower) {
         self.tower = tower
-        self.shareID = tower.rootFolder()!.shareID
+        self.shareID = tower.rootFolderIdentifier()!.shareID
         let children = tower.uiSlot!.subscribeToTrash()
         let observer = FetchedObjectsObserver(children)
         childrenObserver = observer

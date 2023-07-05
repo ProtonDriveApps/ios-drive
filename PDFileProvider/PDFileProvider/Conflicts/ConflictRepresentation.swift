@@ -18,10 +18,12 @@
 import PDCore
 import FileProvider
 
-public enum ConflictWinner {
-    case remote
-    case edit
-    case delete
+public enum ItemActionChangeType {
+    case create
+    case move(version: NSFileProviderItemVersion)
+    case modifyMetadata(version: NSFileProviderItemVersion)
+    case modifyContents(version: NSFileProviderItemVersion, contents: URL?)
+    case delete(version: NSFileProviderItemVersion)
 }
 
 public protocol ConflictDetection {
@@ -30,14 +32,18 @@ public protocol ConflictDetection {
         tower: Tower,
         basedOn item: NSFileProviderItem,
         changeType: ItemActionChangeType,
-        request: NSFileProviderRequest?) -> (ConflictingOperation?, Node?)
+        fields: NSFileProviderItemFields) -> (ResolutionAction, Node?)?
 
 }
 
 public protocol ConflictResolution {
 
     /// Return the item and if there was a conflict that needed to be handled
-    func resolveConflictOnItemIfNeeded(
-        tower: Tower, item: NSFileProviderItem, changeType: ItemActionChangeType, request: NSFileProviderRequest?) -> (NSFileProviderItem, Bool)
+    func findAndResolveConflictIfNeeded(
+        tower: Tower,
+        item: NSFileProviderItem,
+        changeType: ItemActionChangeType,
+        fields: NSFileProviderItemFields,
+        contentsURL: URL?) async throws -> NSFileProviderItem?
 
 }

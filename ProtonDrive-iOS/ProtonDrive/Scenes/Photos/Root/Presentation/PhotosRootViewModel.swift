@@ -53,19 +53,20 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
             settingsController.isEnabled,
             galleryController.sections
         )
-        .sink { [weak self] permissions, isBackupEnabled, sections in
-            self?.handle(permissions: permissions, isBackupEnabled: isBackupEnabled, hasPhotos: !sections.isEmpty)
+        .compactMap { [weak self] permissions, isBackupEnabled, sections in
+            self?.map(permissions: permissions, isBackupEnabled: isBackupEnabled, hasPhotos: !sections.isEmpty)
         }
-        .store(in: &cancellables)
+        .removeDuplicates()
+        .assign(to: &$state)
     }
 
-    private func handle(permissions: PhotoLibraryPermissions, isBackupEnabled: Bool, hasPhotos: Bool) {
+    private func map(permissions: PhotoLibraryPermissions, isBackupEnabled: Bool, hasPhotos: Bool) -> PhotosRootState {
         if hasPhotos || (permissions == .full && isBackupEnabled) {
-            state = .gallery
-        } else if permissions == .undetermined {
-            state = .onboarding
+            return .gallery
         } else if permissions == .restricted {
-            state = .permissions
+            return .permissions
+        } else {
+            return .onboarding
         }
     }
 

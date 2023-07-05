@@ -36,6 +36,7 @@ final class PhotosScenesContainer {
     private weak var smallThumbnailsController: ThumbnailsController?
     private weak var previewModeController: PhotosPreviewModeController?
     private weak var previewController: PhotosPreviewController?
+    private weak var loadController: PhotosPagingLoadController?
 
     init(dependencies: Dependencies) {
         self.dependencies = dependencies
@@ -67,7 +68,20 @@ final class PhotosScenesContainer {
     private func makeGalleryView(coordinator: PhotosCoordinator) -> some View {
         let factory = PhotosScenesFactory()
         let uploadController = LocalPhotosBackupUploadAvailableController(backupController: dependencies.backupController, networkConstraintController: dependencies.networkConstraintController)
-        return factory.makeGalleryView(tower: dependencies.tower, coordinator: coordinator, galleryController: getGalleryController(), thumbnailsController: getSmallThumbnailsController(), uploadController: uploadController, progressController: dependencies.backupProgressController)
+        return factory.makeGalleryView(
+            tower: dependencies.tower,
+            coordinator: coordinator,
+            galleryController: getGalleryController(),
+            thumbnailsController: getSmallThumbnailsController(),
+            settingsController: dependencies.settingsController,
+            loadController: getLoadController(),
+            stateView: makeStateView()
+        )
+    }
+
+    private func makeStateView() -> some View {
+        let factory = PhotosScenesFactory()
+        return factory.makeStateView(progressController: dependencies.backupProgressController, settingsController: dependencies.settingsController, authorizationController: dependencies.authorizationController, networkController: dependencies.networkConstraintController)
     }
 
     func makePreviewController(id: PhotoId) -> UIViewController {
@@ -101,5 +115,11 @@ final class PhotosScenesContainer {
         let previewController = previewController ?? PhotosScenesFactory().makePreviewController(galleryController: getGalleryController(), currentId: id)
         self.previewController = previewController
         return previewController
+    }
+
+    private func getLoadController() -> PhotosPagingLoadController {
+        let loadController = loadController ?? PhotosScenesFactory().makePagingLoadController(tower: dependencies.tower, backupController: dependencies.backupController, networkConstraintController: dependencies.networkConstraintController)
+        self.loadController = loadController
+        return loadController
     }
 }

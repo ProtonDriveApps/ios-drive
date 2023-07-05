@@ -25,12 +25,27 @@ public struct RevisionShort: Codable {
     public let signatureAddress: String
     public let state: NodeState
     public let thumbnailDownloadUrl: URL?
-    private  let thumbnail: Int
+    private let thumbnail: Int
+    public let thumbnails: [Thumbnail]?
+    public let photo: Photo?
 
     public var hasThumbnail: Bool {
         NSNumber.init(value: thumbnail).boolValue
     }
 
+    public init(ID: Revision.RevisionID, createTime: TimeInterval, size: Int, manifestSignature: String, signatureAddress: String, state: NodeState, thumbnailDownloadUrl: URL? = nil, thumbnail: Int, thumbnails: [Thumbnail]? = nil, photo: Photo? = nil) {
+        self.ID = ID
+        self.createTime = createTime
+        self.size = size
+        self.manifestSignature = manifestSignature
+        self.signatureAddress = signatureAddress
+        self.state = state
+        self.thumbnailDownloadUrl = thumbnailDownloadUrl
+        self.thumbnail = thumbnail
+        self.thumbnails = thumbnails
+        self.photo = photo
+    }
+    
 }
 
 public struct Revision: Codable {
@@ -55,4 +70,18 @@ public struct Block: Codable {
     public let URL: URL
     public let encSignature: String
     public let signatureEmail: String?
+}
+
+public struct Thumbnail: Codable {
+    public let type: Int
+    public let hash: String
+    public let size: Int
+}
+
+public struct Photo: Codable {
+    public let linkID: String
+    public let captureTime: TimeInterval
+    public let mainPhotoLinkID: String?
+    public let hash: String
+    public let exif: String?
 }

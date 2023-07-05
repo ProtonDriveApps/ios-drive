@@ -18,5 +18,11 @@
 import Foundation
 
 public protocol FileImporter {
-    func importFile(from url: URL, to folder: Folder) throws -> File
+    func importFile(from url: URL, to folder: Folder, with localID: String?) throws -> File
+}
+
+extension FileImporter {
+    func importFile(from url: URL, to folder: Folder, with localID: String? = nil) throws -> File {
+        return try importFile(from: url, to: folder, with: localID)
+    }
 }

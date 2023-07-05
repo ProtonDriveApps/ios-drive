@@ -24,13 +24,3 @@ protocol RevisionCommitter {
     func commit(_ draft: FileDraft, completion: @escaping Completion)
     func cancel()
 }
-
-enum CommitPolicy {
-    private static var blocksUploadedWrongly: Int { 2000 }
-    private static var invalidManifestSignature: Int { 2001 }
-
-    static let invalidRevision: Set<Int?> = [
-        blocksUploadedWrongly,
-        invalidManifestSignature
-    ]
-}

@@ -17,41 +17,56 @@
 
 import Foundation
 import Combine
-
-public protocol UploadingPhotosRepository {
-    var photos: AnyPublisher<[Photo], Never> { get }
-}
+import CoreData
 
 public final class PhotoUploader: FileUploader, Uploader {
     private var cancellable: Cancellable?
     private let photosRepository: UploadingPhotosRepository
+    private let throttle: DispatchQueue.SchedulerTimeType.Stride
 
     public init(
         photosRepository: UploadingPhotosRepository,
-        fileUploadFactory: FileUploadOperationsProvider,
+        photoUploadAvailabilityController: PhotosBackupUploadAvailableController,
+        operationsProvider: FileUploadOperationsProvider,
+        throttle: DispatchQueue.SchedulerTimeType.Stride = 1,
         storage: StorageManager,
-        sessionVault: SessionVault
+        sessionVault: SessionVault,
+        moc: NSManagedObjectContext
     ) {
+        self.throttle = throttle
         self.photosRepository = photosRepository
-        super.init(fileUploadFactory: fileUploadFactory, storage: storage, sessionVault: sessionVault)
-        subscribeToPhotoUploads()
+        super.init(concurrentOperations: 1, fileUploadFactory: operationsProvider, storage: storage, sessionVault: sessionVault, moc: moc)
+        subscribeToPhotoUploads(isAvailable: photoUploadAvailabilityController.isAvailable, photos: photosRepository.photos)
     }
 
-    private func subscribeToPhotoUploads() {
-        self.cancellable = photosRepository.photos
-            .debounce(for: 1, scheduler: DispatchQueue.main)
-            .sink { [weak self] photos in
-                for photo in photos {
-                    self?.moc.performAndWait {
-                        self?.startUpload(photo)
-                    }
+    func subscribeToPhotoUploads(isAvailable: AnyPublisher<Bool, Never>, photos: AnyPublisher<[Photo], Never>) {
+
+        let isAvailableRegulator = isAvailable
+            .handleEvents(receiveOutput: { [weak self] isAvailable in
+                if !isAvailable {
+                    self?.stop()
                 }
-            }
-    }
+            })
+            .filter { $0 }
+            .eraseToAnyPublisher()
+        
+        let nonEmptyPhotos = photos
+            .filter { !$0.isEmpty }
 
-    private func startUpload(_ photo: Photo) {
-        guard canUploadPhoto(photo) else { return }
-        upload(photo, completion: { _ in })
+        cancellable = isAvailableRegulator
+            .flatMap { _ in nonEmptyPhotos }
+            .throttle(for: throttle, scheduler: DispatchQueue.main, latest: true)
+            .sink { [weak self] in self?.uploadPhotos($0) }
+    }
+    
+    private func uploadPhotos(_ photos: [Photo]) {
+        for photo in photos {
+            self.moc.perform { [weak self] in
+                guard let self else { return }
+                guard self.canUploadPhoto(photo) else { return }
+                self.upload(photo, completion: { _ in })
+            }
+        }
     }
 
     private func canUploadPhoto(_ photo: Photo) -> Bool {

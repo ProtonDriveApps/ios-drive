@@ -118,7 +118,7 @@ extension CloudSlot {
                          cleartextName newNameUnnormalized: String,
                          mimeType: String,
                          signersKit: SignersKit,
-                         handler:  @escaping (Result<Node, Error>) -> Void)
+                         handler: @escaping (Result<Node, Error>) -> Void)
     {
         let scratchpadMoc = node.managedObjectContext!
 
@@ -188,14 +188,14 @@ extension CloudSlot {
         }
     }
     
-    internal func move(node: Node, under newParent: Folder, signersKit: SignersKit, handler: @escaping (Result<Node, Error>) -> Void) {
+    internal func move(node: Node, under newParent: Folder, with newName: String?, signersKit: SignersKit, handler: @escaping (Result<Node, Error>) -> Void) {
         let scratchpadMoc = node.managedObjectContext!
 
         scratchpadMoc.performAndWait {
             do {
                 let node = node.in(moc: scratchpadMoc)
                 let newParent = newParent.in(moc: scratchpadMoc)
-                let clearname = try node.decryptName()
+                let clearname = try newName ?? node.decryptName()
 
                 let oldNodePassphrase = node.nodePassphrase
                 let (oldParentPassphrase, oldParentKey) = try node.getDirectParentPack()
@@ -215,21 +215,24 @@ extension CloudSlot {
                 )
                 node.nodePassphrase = newPassphrase
 
-                let newName = try node.reencryptNodeNameKeyPacket(
+                let encryptedName = try node.renameNode(
                     oldEncryptedName: node.name!,
                     oldParentKey: oldParentKey,
                     oldParentPassphrase: oldParentPassphrase,
-                    newParentKey: newParentKey
+                    newClearName: clearname,
+                    newParentKey: newParentKey,
+                    signersKit: signersKit
                 )
+
                 let hash = try node.hashFilename(cleartext: clearname)
 
-                node.name = newName
+                node.name = encryptedName
                 node.nodeHash = hash
                 node.createdDate = Date()
                 node.modifiedDate = Date()
 
                 let parameters = MoveNodeParameters(
-                    name: newName,
+                    name: encryptedName,
                     hash: hash,
                     parentLinkID: newParent.id,
                     nodePassphrase: newPassphrase,

@@ -21,31 +21,25 @@ import CoreData
 extension FileDraft {
 
     static func extract(from file: File, moc: NSManagedObjectContext) -> FileDraft {
-        let draft: FileDraft = moc.performAndWait {
-            let file = file.in(moc: moc)
-
-            let state = getCurrentState(of: file)
-
-            var numberOfBlocks: Int
-            if state == .creatingFileDraft || state == .creatingNewRevision || state == .uploadingRevision || state == .commitingRevision {
-                numberOfBlocks = file.activeRevisionDraft!.blocks.count
-            } else if state == .encryptingRevision || state == .encryptingNewRevision {
-                let url = file.activeRevisionDraft?.uploadableResourceURL
-                numberOfBlocks = Int(ceil(Double(url?.fileSize ?? .zero) / Double(Constants.maxBlockSize)))
-            } else {
-                numberOfBlocks = .zero
-            }
-
-            let id = file.uploadID!
-            return FileDraft(
-                uploadID: id,
-                file: file,
-                state: state,
-                numberOfBlocks: numberOfBlocks
-            )
+        let state = getCurrentState(of: file)
+        
+        var numberOfBlocks: Int
+        if state == .creatingFileDraft || state == .creatingNewRevision || state == .uploadingRevision || state == .commitingRevision {
+            numberOfBlocks = file.activeRevisionDraft!.blocks.count
+        } else if state == .encryptingRevision || state == .encryptingNewRevision {
+            let url = file.activeRevisionDraft?.uploadableResourceURL
+            numberOfBlocks = Int(ceil(Double(url?.fileSize ?? .zero) / Double(Constants.maxBlockSize)))
+        } else {
+            numberOfBlocks = .zero
         }
-
-        return draft
+        
+        let id = file.uploadID!
+        return FileDraft(
+            uploadID: id,
+            file: file,
+            state: state,
+            numberOfBlocks: numberOfBlocks
+        )
     }
 
     private static func getCurrentState(of file: File) -> FileDraft.State {
@@ -155,5 +149,57 @@ extension FileDraft {
         }
 
         return revision
+    }
+
+    func getNameResolvingFileDraft() throws -> FileDraftUploadableDraft {
+        guard let moc = file.moc else { throw File.noMOC() }
+
+        return try moc.performAndWait {
+            guard file.isCreatingFileDraft() else {
+                throw file.invalidState("The file is not in the correct state")
+            }
+
+            guard let parentLink = file.parentLink else {
+                throw file.invalidState("Uploadable file draft must have a parent link.")
+            }
+
+            let clearParentNodeHashKey = try parentLink.decryptNodeHashKey()
+
+            guard let armoredName = file.name else {
+                throw file.invalidState("NameChangeDraft must have an encrypted name.")
+            }
+
+            guard let contentKeyPacket = file.contentKeyPacket else {
+                throw file.invalidState("Uploadable file draft must have a content key packet.")
+            }
+
+            guard let contentKeyPacketSignature = file.contentKeyPacketSignature else {
+                throw file.invalidState("Uploadable file draft must have a content key packet signature.")
+            }
+
+            return FileDraftUploadableDraft(
+                hash: file.nodeHash,
+                clearName: file.decryptedName,
+                armoredName: armoredName,
+                nameSignatureAddress: file.signatureEmail,
+                nodeKey: file.nodeKey,
+                nodePassphrase: file.nodePassphrase,
+                nodePassphraseSignature: file.nodePassphraseSignature,
+                contentKeyPacket: contentKeyPacket,
+                contentKeyPacketSignature: contentKeyPacketSignature,
+                parent: parentLink.identifier,
+                parentNodeHashKey: clearParentNodeHashKey,
+                mimeType: file.mimeType,
+                file: file
+            )
+        }
+    }
+
+    func getFileIdentifier() throws -> NodeIdentifier {
+        guard let moc = file.moc else { throw File.noMOC() }
+
+        return moc.performAndWait {
+            file.identifier
+        }
     }
 }

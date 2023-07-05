@@ -18,7 +18,7 @@
 import PDClient
 import Foundation
 
-public final class RemoteFetchingPhotosRootDataSource: PhotosDeviceDataSource {
+public final class RemoteFetchingPhotosRootDataSource: PhotosShareDataSource {
 
     private let storage: StorageManager
     private let photoShareListing: PhotoShareListing
@@ -28,14 +28,14 @@ public final class RemoteFetchingPhotosRootDataSource: PhotosDeviceDataSource {
         self.photoShareListing = photoShareListing
     }
 
-    public func getPhotosDevice() async throws -> Device {
+    public func getPhotoShare() async throws -> Share {
         let moc = storage.backgroundContext
 
         guard let volume = storage.volumes(moc: moc).first else {
             throw Volume.InvalidState(message: "No volume found while trying to create photos share.")
         }
 
-        let response = try await photoShareListing.getPhotosDevice()
+        let response = try await photoShareListing.getPhotosRoot()
 
         return try await moc.perform {
             let share: Share = self.storage.new(with: response.share.shareID, by: #keyPath(Share.id), in: moc)
@@ -44,13 +44,7 @@ public final class RemoteFetchingPhotosRootDataSource: PhotosDeviceDataSource {
             share.key = response.share.key
             share.passphrase = response.share.passphrase
             share.passphraseSignature = response.share.passphraseSignature
-
-            let device: Device = self.storage.new(with: response.device.deviceID, by: #keyPath(Device.id), in: moc)
-            device.createTime = Date(timeIntervalSince1970: response.device.creationTime)
-            device.lastSyncTime = Date(timeIntervalSince1970: response.device.lastSyncTime)
-            device.modifyTime = Date(timeIntervalSince1970: response.device.modifyTime)
-            device.syncState = .off
-            device.type = .photos
+            share.type = .photos
 
             let root: Folder = self.storage.new(with: response.link.linkID, by: #keyPath(Folder.id), in: moc)
             root.shareID = response.share.shareID
@@ -67,13 +61,11 @@ public final class RemoteFetchingPhotosRootDataSource: PhotosDeviceDataSource {
             root.modifiedDate = Date(timeIntervalSince1970: response.link.modifyTime)
 
             share.volume = volume
-            share.device = device
             share.root = root
-            device.volume = volume
 
             try moc.saveOrRollback()
 
-            return device
+            return share
         }
 
     }

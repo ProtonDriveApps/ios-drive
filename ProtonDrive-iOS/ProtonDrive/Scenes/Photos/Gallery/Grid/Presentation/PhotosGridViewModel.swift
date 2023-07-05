@@ -40,7 +40,7 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
     }
 
     func didShowLastItem() {
-//        loadController.loadNext() // TODO: BE not ready
+        loadController.loadNext()
     }
 
     private func subscribeToUpdates() {

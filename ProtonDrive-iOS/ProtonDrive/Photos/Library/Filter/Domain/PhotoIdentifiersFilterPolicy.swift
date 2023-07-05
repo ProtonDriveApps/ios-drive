@@ -15,11 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Foundation
 import PDCore
 
 struct PhotoIdentifiersFilterResult {
     let validIdentifiers: [PhotoIdentifier]
-    let invalidIdentifiers: [PhotoIdentifier]
+    let invalidIdentifiersCount: Int
 }
 
 protocol PhotoIdentifiersFilterPolicyProtocol {
@@ -37,10 +38,19 @@ final class PhotoIdentifiersFilterPolicy: PhotoIdentifiersFilterPolicyProtocol {
                 invalidIdentifiers.append(identifier)
             }
         }
-        return PhotoIdentifiersFilterResult(validIdentifiers: validIdentifiers, invalidIdentifiers: invalidIdentifiers)
+        return PhotoIdentifiersFilterResult(validIdentifiers: validIdentifiers, invalidIdentifiersCount: invalidIdentifiers.count)
     }
 
     private func isEqual(identifier: PhotoIdentifier, metadata: PhotoMetadata.iOSMeta) -> Bool {
-        return identifier.cloudIdentifier == metadata.cloudIdentifier && identifier.modifiedDate == metadata.modifiedDate
+        return identifier.cloudIdentifier == metadata.cloudIdentifier && isEqualDate(identifier: identifier, metadata: metadata)
+    }
+
+    /// Due to Core data transformation between Date and String we need to approximate the difference.
+    private func isEqualDate(identifier: PhotoIdentifier, metadata: PhotoMetadata.iOSMeta) -> Bool {
+        if let identifierDate = identifier.modifiedDate, let metadataDate = metadata.modifiedDate {
+            return abs(identifierDate.timeIntervalSince1970 - metadataDate.timeIntervalSince1970) < 1
+        } else {
+            return false
+        }
     }
 }

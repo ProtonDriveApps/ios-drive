@@ -38,8 +38,7 @@ final class LocalFilteredPhotoIdentifiersInteractor: FilteredPhotoIdentifiersInt
     private func subscribeToUpdates() {
         resource.result
             .sink { [weak self] result in
-                let removedIdentifiers = Set(result.invalidIdentifiers.map { $0.cloudIdentifier })
-                self?.progressRepository.discard(removedIdentifiers)
+                self?.progressRepository.discard(result.invalidIdentifiersCount)
                 self?.assetsInteractor.execute(with: result.validIdentifiers)
             }
             .store(in: &cancellables)

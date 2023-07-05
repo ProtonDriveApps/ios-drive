@@ -39,7 +39,15 @@ final class PhotoLibraryPlainCompoundResource: PhotoLibraryCompoundResource {
     private func loadAsset(with identifier: PhotoIdentifier, resource: PHAssetResource, filename: String) async throws -> PhotoAssetCompound {
         let isOriginal = resource.isOriginalImage() || resource.isOriginalVideo()
         let data = PhotoAssetData(identifier: identifier, resource: resource, filename: filename, isOriginal: isOriginal)
-        let asset = try await assetResource.execute(with: data)
+        let asset = try await loadAsset(with: data, isVideo: resource.isVideo())
         return PhotoAssetCompound(primary: asset, secondary: [])
+    }
+
+    private func loadAsset(with data: PhotoAssetData, isVideo: Bool) async throws -> PhotoAsset {
+        if isVideo {
+            return try await assetResource.executeVideo(with: data)
+        } else {
+            return try await assetResource.executePhoto(with: data)
+        }
     }
 }

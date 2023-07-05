@@ -27,6 +27,7 @@ protocol PhotoLibraryAssetsInteractor {
 final class LocalPhotoLibraryAssetsInteractor: PhotoLibraryAssetsInteractor {
     private let resource: PhotoLibraryAssetsQueueResource
     private let compoundsInteractor: FilteredPhotoCompoundsInteractor
+    private let progressRepository: PhotoLibraryLoadProgressRepository
     private let errorSubject = PassthroughSubject<Error, Never>()
     private var cancellables = Set<AnyCancellable>()
 
@@ -34,9 +35,10 @@ final class LocalPhotoLibraryAssetsInteractor: PhotoLibraryAssetsInteractor {
         errorSubject.eraseToAnyPublisher()
     }
 
-    init(resource: PhotoLibraryAssetsQueueResource, compoundsInteractor: FilteredPhotoCompoundsInteractor) {
+    init(resource: PhotoLibraryAssetsQueueResource, compoundsInteractor: FilteredPhotoCompoundsInteractor, progressRepository: PhotoLibraryLoadProgressRepository) {
         self.resource = resource
         self.compoundsInteractor = compoundsInteractor
+        self.progressRepository = progressRepository
         subscribeToUpdates()
     }
 
@@ -51,8 +53,10 @@ final class LocalPhotoLibraryAssetsInteractor: PhotoLibraryAssetsInteractor {
     private func handle(_ result: PhotoAssetCompoundsResult) {
         switch result {
         case let .success(compounds):
+            progressRepository.add(compounds.count - 1)
             compoundsInteractor.execute(with: compounds)
         case let .failure(error):
+            progressRepository.discard(1)
             errorSubject.send(error)
         }
     }

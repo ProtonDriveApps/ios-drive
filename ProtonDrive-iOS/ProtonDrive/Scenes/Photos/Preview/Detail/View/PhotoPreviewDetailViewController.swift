@@ -25,6 +25,8 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
     private weak var rootViewController: UIViewController?
     private lazy var contentView = UIView()
     private var interactiveView: InteractiveImageView?
+    private var isFirstAppear = true
+    private var gestureRecognizers = [UIGestureRecognizer]()
 
     init(viewModel: ViewModel) {
         self.viewModel = viewModel
@@ -37,14 +39,18 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupView()
+        view.addSubview(contentView)
+        contentView.fillSuperview()
         subscribeToUpdates()
         viewModel.viewDidLoad()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        handleUpdate()
+        if isFirstAppear {
+            handleUpdate()
+            isFirstAppear = false
+        }
     }
 
     private func subscribeToUpdates() {
@@ -56,6 +62,8 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
 
     private func handleUpdate() {
         contentView.subviews.forEach { $0.removeFromSuperview() }
+        gestureRecognizers.forEach { view.removeGestureRecognizer($0) }
+
         guard let state = viewModel.state else {
             return
         }
@@ -69,18 +77,6 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
         }
     }
 
-    private func setupView() {
-        view.addSubview(contentView)
-        contentView.fillSuperview()
-        let tapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleTap))
-        tapGestureRecognizer.numberOfTapsRequired = 1
-        view.addGestureRecognizer(tapGestureRecognizer)
-        let doubleTapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap))
-        doubleTapGestureRecognizer.numberOfTapsRequired = 2
-        view.addGestureRecognizer(doubleTapGestureRecognizer)
-        tapGestureRecognizer.require(toFail: doubleTapGestureRecognizer)
-    }
-
     private func addThumbnailView(data: Data) {
         let imageView = BlurredImageView(data: data)
         contentView.addSubview(imageView)
@@ -91,6 +87,7 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
         let loadingView = LoadingWithTextView(text: text)
         contentView.addSubview(loadingView)
         loadingView.centerInSuperview()
+        addDefaultGestureRecognizers()
     }
 
     private func addInteractiveImageView(with data: Data) {
@@ -98,6 +95,32 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
         contentView.addSubview(imageView)
         imageView.fillSuperview()
         interactiveView = imageView
+        addDefaultGestureRecognizers()
+    }
+
+    private func addVideoView(with url: URL) {
+        let viewController = VideoContentViewController(url: url)
+        addChild(viewController)
+        contentView.addSubview(viewController.view)
+        viewController.view.fillSuperview()
+        viewController.didMove(toParent: self)
+        addVideoGestureRecognizers()
+    }
+
+    private func addDefaultGestureRecognizers() {
+        let tapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+        tapGestureRecognizer.numberOfTapsRequired = 1
+        let doubleTapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap))
+        doubleTapGestureRecognizer.numberOfTapsRequired = 2
+        tapGestureRecognizer.require(toFail: doubleTapGestureRecognizer)
+        gestureRecognizers = [tapGestureRecognizer, doubleTapGestureRecognizer]
+        gestureRecognizers.forEach { view.addGestureRecognizer($0) }
+    }
+
+    private func addVideoGestureRecognizers() {
+        let tapGestureRecognizer = SimultaneousTapGestureRecognizer(target: self, action: #selector(handleTap))
+        view.addGestureRecognizer(tapGestureRecognizer)
+        gestureRecognizers = [tapGestureRecognizer]
     }
 
     private func addFullPreview(_ preview: PhotoFullPreview) {
@@ -105,8 +128,7 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
         case let .photo(data):
             addInteractiveImageView(with: data)
         case let .video(url):
-            // TODO: next MR
-            break
+            addVideoView(with: url)
         }
     }
 
@@ -126,18 +148,5 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
 
     func share() {
         viewModel.share()
-    }
-
-    private func getShareItem() -> Any? {
-        guard case let .preview(fullPreview) = viewModel.state else {
-            return nil
-        }
-
-        switch fullPreview {
-        case let .photo(data):
-            return data
-        case let .video(url):
-            return url
-        }
     }
 }

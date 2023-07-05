@@ -21,7 +21,7 @@ final class RevisionEncryptionOperation: AsynchronousOperation, UploadOperation 
 
     private let draft: FileDraft
     private let revisionEncryptor: RevisionEncryptor
-    private let onError: OnError
+    private let onError: OnUploadError
 
     let progress: Progress
     let id: UUID
@@ -30,7 +30,7 @@ final class RevisionEncryptionOperation: AsynchronousOperation, UploadOperation 
         progress: Progress,
         draft: FileDraft,
         revisionEncryptor: RevisionEncryptor,
-        onError: @escaping OnError
+        onError: @escaping OnUploadError
     ) {
         self.progress = progress
         self.draft = draft

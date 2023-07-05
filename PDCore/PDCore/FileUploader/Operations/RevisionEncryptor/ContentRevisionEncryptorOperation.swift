@@ -21,12 +21,12 @@ final class ContentRevisionEncryptorOperation: AsynchronousOperation {
 
     private let revision: CreatedRevisionDraft
     private let contentEncryptor: RevisionEncryptor
-    private let onError: OnError
+    private let onError: OnUploadError
 
     init(
         revision: CreatedRevisionDraft,
         contentEncryptor: RevisionEncryptor,
-        onError: @escaping OnError
+        onError: @escaping OnUploadError
     ) {
         self.revision = revision
         self.contentEncryptor = contentEncryptor

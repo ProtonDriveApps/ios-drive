@@ -53,14 +53,9 @@ final class LocalPhotoLibraryAssetsResource: PhotoLibraryAssetsResource {
     }
 
     private func execute(identifier: PhotoIdentifier, asset: PHAsset) async throws -> [PhotoAssetCompound] {
-        switch asset.mediaSubtypes {
-        case .photoLive:
+        if asset.mediaSubtypes.contains(.photoLive) {
             return try await livePhotoResource.execute(with: identifier, asset: asset)
-        case .videoStreamed, .videoCinematic, .videoTimelapse, .videoHighFrameRate:
-            return try await plainResource.execute(with: identifier, asset: asset)
-        case .photoDepthEffect, .photoHDR, .photoPanorama, .photoScreenshot:
-            fallthrough
-        default:
+        } else {
             return try await plainResource.execute(with: identifier, asset: asset)
         }
     }

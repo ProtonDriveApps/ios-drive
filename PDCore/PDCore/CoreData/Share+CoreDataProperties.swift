@@ -30,6 +30,7 @@ extension Share {
     @NSManaged public var key: String?
     @NSManaged public var passphrase: String?
     @NSManaged public var passphraseSignature: String?
+    @NSManaged public var type: ShareType
 
     // Relationships
     @NSManaged public var root: Node?
@@ -39,4 +40,12 @@ extension Share {
     
     // transient
     @NSManaged internal var clearPassphrase: String?
+
+    @objc public enum ShareType: Int16 {
+        case undefined = 0
+        case main = 1
+        case standard = 2
+        case device = 3
+        case photos = 4
+    }
 }

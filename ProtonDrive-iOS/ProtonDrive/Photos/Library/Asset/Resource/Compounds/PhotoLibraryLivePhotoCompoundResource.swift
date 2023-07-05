@@ -79,8 +79,8 @@ final class PhotoLibraryLivePhotoCompoundResource: PhotoLibraryCompoundResource 
     private func loadLivePair(with identifier: PhotoIdentifier, resources: LivePhotoAssetResourcePair, isOriginal: Bool) async throws -> PhotoAssetCompound {
         let photoData = PhotoAssetData(identifier: identifier, resource: resources.photo, filename: resources.photoFilename, isOriginal: isOriginal)
         let videoData = PhotoAssetData(identifier: identifier, resource: resources.video, filename: resources.videoFilename, isOriginal: isOriginal)
-        let photoAsset = try await assetResource.execute(with: photoData)
-        let videoAsset = try await assetResource.execute(with: videoData)
+        let photoAsset = try await assetResource.executePhoto(with: photoData)
+        let videoAsset = try await assetResource.executeVideo(with: videoData)
         return PhotoAssetCompound(primary: photoAsset, secondary: [videoAsset])
     }
 }

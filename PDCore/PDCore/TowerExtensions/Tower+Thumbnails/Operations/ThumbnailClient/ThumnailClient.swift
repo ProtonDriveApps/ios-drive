@@ -19,17 +19,11 @@ import Foundation
 import PDClient
 
 protocol ThumbnailCloudClient {
-    func downloadThumbnailURL(id: RevisionIdentifier, completion: @escaping(Result<URL, Error>) -> Void)
+    func downloadThumbnailURL(parameters: RevisionThumbnailParameters, completion: @escaping(Result<URL, Error>) -> Void)
 }
 
 extension CloudSlot: ThumbnailCloudClient {
-    func downloadThumbnailURL(id: RevisionIdentifier, completion: @escaping(Result<URL, Error>) -> Void) {
-
-        client.getRevisionThumbnailURL(
-            id.share,
-            fileID: id.file,
-            revisionID: id.revision,
-            completion: completion
-        )
+    func downloadThumbnailURL(parameters: RevisionThumbnailParameters, completion: @escaping(Result<URL, Error>) -> Void) {
+        client.getRevisionThumbnailURL(parameters: parameters, completion: completion)
     }
 }

@@ -45,7 +45,7 @@ public struct Link: Codable {
     public let nbUrls: Int
     public let activeUrls: Int
     public let urlsExpired: Int
-    public let xAttr: String?
+    public let XAttr: String?
     public let fileProperties: FileProperties?
     public let folderProperties: FolderProperties?
 }
@@ -77,7 +77,7 @@ public extension Link {
             nbUrls: 0,
             activeUrls: 0,
             urlsExpired: 0,
-            xAttr: nil,
+            XAttr: nil,
             fileProperties: nil,
             folderProperties: nil
         )
