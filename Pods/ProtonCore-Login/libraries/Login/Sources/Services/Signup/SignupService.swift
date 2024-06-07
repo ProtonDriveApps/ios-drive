@@ -19,28 +19,26 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
-// swiftlint:disable function_parameter_count
-
 import Foundation
-import ProtonCore_Crypto
-import ProtonCore_APIClient
-import ProtonCore_Authentication
-import ProtonCore_Authentication_KeyGeneration
-import ProtonCore_DataModel
-import ProtonCore_Log
-import ProtonCore_Networking
-import ProtonCore_Services
-import ProtonCore_Utilities
-import ProtonCore_Foundations
+import ProtonCoreCrypto
+import ProtonCoreAPIClient
+import ProtonCoreAuthentication
+import ProtonCoreAuthenticationKeyGeneration
+import ProtonCoreDataModel
+import ProtonCoreLog
+import ProtonCoreNetworking
+import ProtonCoreServices
+import ProtonCoreUtilities
+import ProtonCoreFoundations
 
 public protocol Signup {
 
     func requestValidationToken(email: String, completion: @escaping (Result<Void, SignupError>) -> Void)
     func checkValidationToken(email: String, token: String, completion: @escaping (Result<Void, SignupError>) -> Void)
-    
+
     func createNewUsernameAccount(userName: String, password: String, email: String?, phoneNumber: String?, completion: @escaping (Result<(), SignupError>) -> Void)
     func createNewInternalAccount(userName: String, password: String, email: String?, phoneNumber: String?, domain: String, completion: @escaping (Result<(), SignupError>) -> Void)
-    func createNewExternalAccount(email: String, password: String, verifyToken: String, tokenType: String, completion: @escaping (Result<(), SignupError>) -> Void)
+    func createNewExternalAccount(email: String, password: String, verifyToken: String?, tokenType: String?, completion: @escaping (Result<(), SignupError>) -> Void)
     func validateEmailServerSide(email: String, completion: @escaping (Result<Void, SignupError>) -> Void)
     func validatePhoneNumberServerSide(number: String, completion: @escaping (Result<Void, SignupError>) -> Void)
 }
@@ -65,7 +63,7 @@ public class SignupService: Signup {
                 if response.responseCode != APIErrorCode.responseOK {
                     if let error = response.error {
                         completion(.failure(SignupError.generic(
-                            message: error.networkResponseMessageForTheUser,
+                            message: error.localizedDescription,
                             code: error.bestShotAtReasonableErrorCode,
                             originalError: error
                         )))
@@ -93,7 +91,7 @@ public class SignupService: Signup {
                     } else {
                         if let error = response.error {
                             completion(.failure(SignupError.generic(
-                                message: error.networkResponseMessageForTheUser,
+                                message: error.localizedDescription,
                                 code: error.bestShotAtReasonableErrorCode,
                                 originalError: error
                             )))
@@ -107,7 +105,7 @@ public class SignupService: Signup {
             }
         }
     }
-    
+
     public func createNewUsernameAccount(userName: String, password: String, email: String?, phoneNumber: String?, completion: @escaping (Result<(), SignupError>) -> Void) {
         getRandomSRPModulus { result in
             switch result {
@@ -118,7 +116,7 @@ public class SignupService: Signup {
             }
         }
     }
-    
+
     public func createNewInternalAccount(userName: String, password: String, email: String?, phoneNumber: String?, domain: String, completion: @escaping (Result<(), SignupError>) -> Void) {
         getRandomSRPModulus { result in
             switch result {
@@ -130,7 +128,7 @@ public class SignupService: Signup {
         }
     }
 
-    public func createNewExternalAccount(email: String, password: String, verifyToken: String, tokenType: String, completion: @escaping (Result<(), SignupError>) -> Void) {
+    public func createNewExternalAccount(email: String, password: String, verifyToken: String?, tokenType: String?, completion: @escaping (Result<(), SignupError>) -> Void) {
         getRandomSRPModulus { result in
             switch result {
             case .success(let modulus):
@@ -140,7 +138,7 @@ public class SignupService: Signup {
             }
         }
     }
-    
+
     public func validateEmailServerSide(email: String, completion: @escaping (Result<Void, SignupError>) -> Void) {
         let route = UserAPI.Router.validateEmail(email: email)
         apiService.perform(request: route, response: Response()) { (_, response) in
@@ -230,12 +228,12 @@ public class SignupService: Signup {
             if let signupError = error as? SignupError {
                 completion(.failure(signupError))
             } else {
-                completion(.failure(.generateVerifier(underlyingErrorDescription: error.messageForTheUser)))
+                completion(.failure(.generateVerifier(underlyingErrorDescription: error.localizedDescription)))
             }
         }
     }
 
-    private func createExternalUser(email: String, password: String, modulus: AuthService.ModulusEndpointResponse, verifyToken: String, tokenType: String, completion: @escaping (Result<(), SignupError>) -> Void) {
+    private func createExternalUser(email: String, password: String, modulus: AuthService.ModulusEndpointResponse, verifyToken: String?, tokenType: String?, completion: @escaping (Result<(), SignupError>) -> Void) {
 
         do {
             let authParameters = try generateAuthParameters(password: password, modulus: modulus.modulus)
@@ -259,7 +257,7 @@ public class SignupService: Signup {
             if let signupError = error as? SignupError {
                 completion(.failure(signupError))
             } else {
-                completion(.failure(.generateVerifier(underlyingErrorDescription: error.messageForTheUser)))
+                completion(.failure(.generateVerifier(underlyingErrorDescription: error.localizedDescription)))
             }
         }
     }

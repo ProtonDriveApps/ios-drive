@@ -19,26 +19,70 @@ import PDCore
 import Photos
 
 final class PhotoLibraryPlainCompoundResource: PhotoLibraryCompoundResource {
+    private let livePhotoResource: PhotoLibraryCompoundResource
     private let assetResource: PhotoLibraryAssetResource
     private let nameResource: PhotoLibraryNameResource
 
-    init(assetResource: PhotoLibraryAssetResource, nameResource: PhotoLibraryNameResource) {
+    init(livePhotoResource: PhotoLibraryCompoundResource, assetResource: PhotoLibraryAssetResource, nameResource: PhotoLibraryNameResource) {
+        self.livePhotoResource = livePhotoResource
         self.assetResource = assetResource
         self.nameResource = nameResource
     }
 
     func execute(with identifier: PhotoIdentifier, asset: PHAsset) async throws -> [PhotoAssetCompound] {
-        let allResources = PHAssetResource.assetResources(for: asset)
-        let filename = try nameResource.getFilename(from: allResources)
-        let filteredResources = allResources.filter { $0.isImage() || $0.isVideo() }
-        return try await filteredResources.asyncMap {
-            try await loadAsset(with: identifier, resource: $0, filename: filename)
+        // PHAsset can contain live photo.
+        do {
+            // If it does, we make live compounds and then compound for all other resources.
+            return try await executeLiveBasedPhoto(with: identifier, asset: asset)
+        } catch {
+            // If it doesn't, we fall back to retrieving plain files.
+            return try await executePlainPhoto(with: identifier, asset: asset)
         }
     }
 
-    private func loadAsset(with identifier: PhotoIdentifier, resource: PHAssetResource, filename: String) async throws -> PhotoAssetCompound {
+    private func executeLiveBasedPhoto(with identifier: PhotoIdentifier, asset: PHAsset) async throws -> [PhotoAssetCompound] {
+        let liveCompounds = try await livePhotoResource.execute(with: identifier, asset: asset)
+        let otherResources = getOtherResources(asset)
+        let otherCompounds = try await getAssets(identifier: identifier, asset: asset, resources: otherResources)
+        return liveCompounds + otherCompounds
+    }
+
+    private func executePlainPhoto(with identifier: PhotoIdentifier, asset: PHAsset) async throws -> [PhotoAssetCompound] {
+        let resources = getAllValidResources(asset)
+        return try await getAssets(identifier: identifier, asset: asset, resources: resources)
+    }
+
+    private func getAssets(identifier: PhotoIdentifier, asset: PHAsset, resources: [PHAssetResource]) async throws -> [PhotoAssetCompound] {
+        let allResources = PHAssetResource.assetResources(for: asset)
+        let originalFilename = try nameResource.getFilename(from: allResources)
+        return try await resources.asyncMap {
+            try await loadAsset(
+                identifier: identifier,
+                asset: asset,
+                resource: $0,
+                originalFilename: originalFilename,
+                filename: try $0.getNormalizedFilename()
+            )
+        }
+    }
+
+    private func getOtherResources(_ asset: PHAsset) -> [PHAssetResource] {
+        let allResources = PHAssetResource.assetResources(for: asset)
+        return allResources.filter { resource in
+            (resource.isImage() || resource.isVideo()) && !resource.isPartOfLivePhoto()
+        }
+    }
+
+    private func getAllValidResources(_ asset: PHAsset) -> [PHAssetResource] {
+        let allResources = PHAssetResource.assetResources(for: asset)
+        return allResources.filter { resource in
+            resource.isImage() || resource.isVideo()
+        }
+    }
+
+    private func loadAsset(identifier: PhotoIdentifier, asset: PHAsset, resource: PHAssetResource, originalFilename: String, filename: String) async throws -> PhotoAssetCompound {
         let isOriginal = resource.isOriginalImage() || resource.isOriginalVideo()
-        let data = PhotoAssetData(identifier: identifier, resource: resource, filename: filename, isOriginal: isOriginal)
+        let data = PhotoAssetData(identifier: identifier, asset: asset, resource: resource, originalFilename: originalFilename, fileExtension: filename.fileExtension(), isOriginal: isOriginal)
         let asset = try await loadAsset(with: data, isVideo: resource.isVideo())
         return PhotoAssetCompound(primary: asset, secondary: [])
     }

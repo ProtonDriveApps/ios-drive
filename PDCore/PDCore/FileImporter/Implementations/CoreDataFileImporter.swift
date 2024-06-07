@@ -20,16 +20,18 @@ import CoreData
 final class CoreDataFileImporter: FileImporter {
     private let moc: NSManagedObjectContext
     private let signersKitFactory: SignersKitFactoryProtocol
+    private let uploadClientUIDProvider: UploadClientUIDProvider
 
-    init(moc: NSManagedObjectContext, signersKitFactory: SignersKitFactoryProtocol) {
+    init(moc: NSManagedObjectContext, signersKitFactory: SignersKitFactoryProtocol, uploadClientUIDProvider: UploadClientUIDProvider) {
         self.moc = moc
         self.signersKitFactory = signersKitFactory
+        self.uploadClientUIDProvider = uploadClientUIDProvider
     }
 
     func importFile(from url: URL, to folder: Folder, with localID: String? = nil) throws -> File {
         guard let moc = folder.moc else { throw Folder.noMOC() }
         
-        ConsoleLogger.shared?.log("STAGE: 0 Batch imported 🗂💾 started", osLogType: FileUploader.self)
+        Log.info("STAGE: 0 Batch imported 🗂💾 started", domain: .uploader)
         
         return try moc.performAndWait {
             let parent = folder.in(moc: moc)
@@ -38,9 +40,9 @@ final class CoreDataFileImporter: FileImporter {
                 let newFile = try makeEncryptedImportedFile(url, parent, localID)
                 let coreDataFile = File.`import`(newFile, moc: moc)
                 coreDataFile.parentLink = folder
-                try moc.save()
+                try moc.saveWithParentLinkCheck()
 
-                ConsoleLogger.shared?.log("STAGE: 0 Batch imported 🗂💾 finished ✅", osLogType: FileUploader.self)
+                Log.info("STAGE: 0 Batch imported 🗂💾 finished ✅", domain: .uploader)
 
                 return coreDataFile
             } catch {
@@ -48,8 +50,8 @@ final class CoreDataFileImporter: FileImporter {
 
                 try? FileManager.default.removeItem(at: url)
 
-                ConsoleLogger.shared?.log("STAGE: 0 Batch imported 🗂💾 finished ❌", osLogType: FileUploader.self)
-                ConsoleLogger.shared?.log(DriveError(error, "FileUploader"))
+                Log.info("STAGE: 0 Batch imported 🗂💾 finished ❌", domain: .uploader)
+                Log.error(error, domain: .uploader)
 
                 throw error
             }
@@ -58,6 +60,7 @@ final class CoreDataFileImporter: FileImporter {
 
     private func makeEncryptedImportedFile(_ url: URL, _ folder: Folder, _ localID: String? = nil) throws -> EncryptedImportedFile {
         let signersKit = try generateSignersKit()
+        let clientUID = uploadClientUIDProvider.getUploadClientUID()
         let parent = try folder.encrypting()
 
         let uuid = UUID()
@@ -74,6 +77,7 @@ final class CoreDataFileImporter: FileImporter {
             name: encryptedName,
             hash: hash,
             mimeType: url.mimeType(),
+            size: try url.getFileSize(),
             nodeKey: nodeKeyPack.key,
             nodePassphrase: nodeKeyPack.passphrase,
             nodePassphraseSignature: nodeKeyPack.signature,
@@ -81,7 +85,7 @@ final class CoreDataFileImporter: FileImporter {
             contentKeyPacket: contentKeyPacket.contentKeyPacketBase64,
             contentKeyPacketSignature: contentKeyPacket.contentKeyPacketSignature,
             parentLinkID: parent.id,
-            clientUID: uuid.uuidString,
+            clientUID: clientUID,
             shareID: parent.shareID,
             uploadID: uuid,
             resourceURL: url,

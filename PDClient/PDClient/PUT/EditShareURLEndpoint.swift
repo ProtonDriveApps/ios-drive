@@ -18,7 +18,7 @@
 import Foundation
 
 public protocol EditShareURLParameters: Codable {
-    var parameters: [String : Any]? { get }
+    var parameters: [String: Any]? { get }
 }
 
 public struct EditShareURLPasswordAndDuration: EditShareURLParameters {

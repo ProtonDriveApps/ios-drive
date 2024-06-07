@@ -15,28 +15,43 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import SwiftUI
 
-struct PhotosGalleryView<ViewModel: PhotosGalleryViewModelProtocol, GridView: View, PlaceholderView: View, StateView: View>: View {
+struct PhotosGalleryView<
+    ViewModel: PhotosGalleryViewModelProtocol,
+    GridView: View,
+    PlaceholderView: View,
+    StateView: View,
+    LockingView: View,
+    StorageView: View
+>: View {
     @ObservedObject private var viewModel: ViewModel
     private let grid: () -> GridView
     private let placeholder: () -> PlaceholderView
     private let stateView: StateView
+    private let lockingBannerView: LockingView
+    private let storageView: StorageView
 
-    init(viewModel: ViewModel, grid: @escaping () -> GridView, placeholder: @escaping () -> PlaceholderView, stateView: StateView) {
+    init(viewModel: ViewModel, grid: @escaping () -> GridView, placeholder: @escaping () -> PlaceholderView, stateView: StateView, lockingBannerView: LockingView, storageView: StorageView) {
         self.viewModel = viewModel
         self.grid = grid
         self.placeholder = placeholder
         self.stateView = stateView
+        self.lockingBannerView = lockingBannerView
+        self.storageView = storageView
     }
 
     var body: some View {
-        VStack {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 10)
             stateView
+            lockingBannerView
+            storageView
             Spacer(minLength: 0)
             content
         }
+        .errorToast(location: .bottom, errors: viewModel.error)
     }
 
     @ViewBuilder

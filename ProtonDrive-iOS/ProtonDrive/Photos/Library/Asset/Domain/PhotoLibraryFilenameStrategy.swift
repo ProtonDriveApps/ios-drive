@@ -18,14 +18,13 @@
 import PDCore
 
 protocol PhotoLibraryFilenameStrategy {
-    func makeModifiedFilename(from name: String) -> String
+    func makeModifiedFilename(originalFilename: String, filenameExtension: String) -> String
 }
 
 final class LocalPhotoLibraryFilenameStrategy: PhotoLibraryFilenameStrategy {
-    func makeModifiedFilename(from name: String) -> String {
-        let fileExtension = name.fileExtension()
-        let filenameWithoutExtension = name.fileName()
+    func makeModifiedFilename(originalFilename: String, filenameExtension: String) -> String {
+        let filenameWithoutExtension = originalFilename.fileName()
         let filename = [filenameWithoutExtension, "modified"].joinedNonEmpty(separator: "_")
-        return [filename, fileExtension].joinedNonEmpty(separator: ".")
+        return [filename, filenameExtension].joinedNonEmpty(separator: ".")
     }
 }

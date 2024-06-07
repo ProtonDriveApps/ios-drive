@@ -19,6 +19,7 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
 import Foundation
 import UIKit
 
@@ -33,54 +34,54 @@ public protocol AccessibleCell {
 }
 
 public extension AccessibleCell {
-    
+
     func generateCellAccessibilityIdentifiers(_ uniqueIdentifier: String) {
         #if DEBUG
         let mirror = Mirror(reflecting: self)
         assignIdentifiers(mirror, uniqueIdentifier, 0)
         #endif
     }
-    
+
     #if DEBUG
     private func assignIdentifiers(_ mirror: Mirror, _ originalUniqueIdentifier: String, _ deepnessLevel: Int) {
-        
+
         if deepnessLevel > maxDeepness { return }
-        
+
         let cell = self as? UIView
         let uniqueIdentifier = originalUniqueIdentifier.replacingOccurrences(of: " ", with: "_")
-        
+
         cell?.accessibilityIdentifier = "\(type(of: self)).\(uniqueIdentifier)"
         cellIdentifiers.insert((cell?.accessibilityIdentifier)!)
-        
+
         for child in mirror.children {
             if let view = child.value as? UIView {
                 let identifier = child.label?.replacingOccurrences(of: ".storage", with: "")
                 let viewMirror = Mirror(reflecting: view)
-                
+
                 if viewMirror.children.count > 0 {
                    assignIdentifiers(viewMirror, uniqueIdentifier, deepnessLevel + 1)
                 }
-                
+
                 view.accessibilityIdentifier = "\(uniqueIdentifier).\(identifier!)"
                 cellIdentifiers.insert((cell?.accessibilityIdentifier)!)
            } else if let view = child.value as? UIButton,
                 let identifier = child.label?.replacingOccurrences(of: ".storage", with: "") {
                 let viewMirror = Mirror(reflecting: view)
-            
+
                 if viewMirror.children.count > 0 {
                     assignIdentifiers(viewMirror, uniqueIdentifier, deepnessLevel + 1)
                 }
-            
+
                 view.accessibilityIdentifier = "\(uniqueIdentifier).\(identifier)"
                 cellIdentifiers.insert(view.accessibilityIdentifier!)
            } else if let view = child.value as? UITextField,
                 let identifier = child.label?.replacingOccurrences(of: ".storage", with: "") {
                 let viewMirror = Mirror(reflecting: view)
-            
+
                 if viewMirror.children.count > 0 {
                    assignIdentifiers(viewMirror, uniqueIdentifier, deepnessLevel + 1)
                 }
-            
+
                 view.accessibilityIdentifier = "\(uniqueIdentifier).\(identifier)"
                 cellIdentifiers.insert(view.accessibilityIdentifier!)
            }
@@ -88,3 +89,4 @@ public extension AccessibleCell {
     }
     #endif
 }
+#endif

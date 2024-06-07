@@ -20,6 +20,7 @@ import Foundation
 protocol RevisionUploader {
     typealias Completion = (Result<Void, Error>) -> Void
 
-    func upload(_ draft: FileDraft, completion: @escaping Completion)
+    func prepareVerification(_ draft: FileDraft) async throws -> BlockVerification
+    func upload(_ draft: FileDraft, verification: BlockVerification, completion: @escaping Completion)
     func cancel()
 }

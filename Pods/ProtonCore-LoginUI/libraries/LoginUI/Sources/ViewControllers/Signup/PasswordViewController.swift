@@ -19,11 +19,13 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import ProtonCore_CoreTranslation
-import ProtonCore_Foundations
-import ProtonCore_UIFoundations
-import ProtonCore_Observability
+import ProtonCoreFoundations
+import ProtonCoreUIFoundations
+import ProtonCoreObservability
+import ProtonCoreTelemetry
 
 protocol PasswordViewControllerDelegate: AnyObject {
     func passwordIsShown()
@@ -31,23 +33,33 @@ protocol PasswordViewControllerDelegate: AnyObject {
     func passwordBackButtonPressed()
 }
 
-class PasswordViewController: UIViewController, AccessibleView, Focusable {
+class PasswordViewController: UIViewController, AccessibleView, Focusable, ProductMetricsMeasurable {
+    var productMetrics: ProductMetrics = .init(
+        group: TelemetryMeasurementGroup.signUp.rawValue,
+        flow: TelemetryFlow.signUpFull.rawValue,
+        screen: .signupPassword
+    )
+
+    enum MeasureConstants {
+        static let resultFailure = "failure"
+        static let resultSuccess = "success"
+    }
 
     weak var delegate: PasswordViewControllerDelegate?
     var viewModel: PasswordViewModel!
     var customErrorPresenter: LoginErrorPresenter?
     var signupAccountType: SignupAccountType!
     var signupPasswordRestrictions: SignupPasswordRestrictions!
-    
+
     var onDohTroubleshooting: () -> Void = { }
-    
+
     override var preferredStatusBarStyle: UIStatusBarStyle { darkModeAwarePreferredStatusBarStyle() }
 
     // MARK: Outlets
 
     @IBOutlet weak var createPasswordTitleLabel: UILabel! {
         didSet {
-            createPasswordTitleLabel.text = CoreString._su_password_view_title
+            createPasswordTitleLabel.text = LUITranslation.password_view_title.l10n
             createPasswordTitleLabel.textColor = ColorProvider.TextNorm
             createPasswordTitleLabel.font = .adjustedFont(forTextStyle: .title2, weight: .bold)
             createPasswordTitleLabel.adjustsFontForContentSizeCategory = true
@@ -56,26 +68,26 @@ class PasswordViewController: UIViewController, AccessibleView, Focusable {
     }
     @IBOutlet weak var passwordTextField: PMTextField! {
         didSet {
-            passwordTextField.title = CoreString._su_password_field_title
-            passwordTextField.assistiveText = CoreString._su_password_field_hint
+            passwordTextField.title = LUITranslation._core_password_field_title.l10n
+            passwordTextField.assistiveText = LUITranslation.password_field_minimum_length_hint.l10n
             passwordTextField.delegate = self
-            passwordTextField.textContentType = .password
+            passwordTextField.textContentType = .newPassword
             passwordTextField.autocorrectionType = .no
             passwordTextField.autocapitalizationType = .none
         }
     }
     @IBOutlet weak var repeatPasswordTextField: PMTextField! {
         didSet {
-            repeatPasswordTextField.title = CoreString._su_repeat_password_field_title
+            repeatPasswordTextField.title = LUITranslation.repeat_password_field_title.l10n
             repeatPasswordTextField.delegate = self
-            repeatPasswordTextField.textContentType = .password
+            repeatPasswordTextField.textContentType = .newPassword
             repeatPasswordTextField.autocorrectionType = .no
             repeatPasswordTextField.autocapitalizationType = .none
         }
     }
     @IBOutlet weak var nextButton: ProtonButton! {
         didSet {
-            nextButton.setTitle(CoreString._su_next_button, for: .normal)
+            nextButton.setTitle(LUITranslation.next_button.l10n, for: .normal)
         }
     }
     @IBOutlet weak var scrollView: UIScrollView!
@@ -96,10 +108,11 @@ class PasswordViewController: UIViewController, AccessibleView, Focusable {
         delegate?.passwordIsShown()
         ObservabilityEnv.report(.screenLoadCountTotal(screenName: .passwordCreation))
     }
-    
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         focusOnce(view: passwordTextField)
+        measureOnViewDisplayed()
     }
 
     override func viewDidLayoutSubviews() {
@@ -115,10 +128,12 @@ class PasswordViewController: UIViewController, AccessibleView, Focusable {
     @IBAction func onNextButtonTap(_ sender: ProtonButton) {
         PMBanner.dismissAll(on: self)
         validatePassword()
+        measureOnViewClicked(item: "next")
     }
 
     @objc func onBackButtonTap(_ sender: UIButton) {
         delegate?.passwordBackButtonPressed()
+        measureOnViewClosed()
     }
 
     // MARK: Private methods
@@ -133,7 +148,12 @@ class PasswordViewController: UIViewController, AccessibleView, Focusable {
                                                         repeatParrword: repeatPasswordTextField.value)
         switch result {
         case .failure(let error):
-            if self.customErrorPresenter?.willPresentError(error: error, from: self) == true { } else { self.showError(error: error) }
+            if let willPresentError = customErrorPresenter?.willPresentError(error: error, from: self),
+               willPresentError {
+                self.measureOnViewAction(action: .validate, additionalDimensions: [.result(MeasureConstants.resultFailure)])
+            } else {
+                self.showError(error: error)
+            }
         case .success:
             nextButton.isSelected = true
             lockUI()
@@ -141,6 +161,7 @@ class PasswordViewController: UIViewController, AccessibleView, Focusable {
                 self.nextButton.isSelected = false
                 self.unlockUI()
             }
+            measureOnViewAction(action: .validate, additionalDimensions: [.result(MeasureConstants.resultSuccess)])
         }
     }
 
@@ -213,6 +234,14 @@ extension PasswordViewController: PMTextFieldDelegate {
     func didBeginEditing(textField: PMTextField) {
         passwordTextField.isError = false
         repeatPasswordTextField.isError = false
+        switch textField {
+        case passwordTextField:
+            measureOnViewFocused(item: "password")
+        case repeatPasswordTextField:
+            measureOnViewFocused(item: "confirmation")
+        default:
+            break
+        }
     }
 }
 
@@ -229,9 +258,13 @@ extension PasswordViewController: SignUpErrorCapable, LoginErrorCapable {
             if restrictions.failedRestrictions(for: repeatPasswordTextField.value).isEmpty == false {
                 repeatPasswordTextField.isError = true
             }
+            measureOnViewAction(action: .validate, additionalDimensions: [.result("password_too_weak")])
         case .notEqual:
             passwordTextField.isError = true
             repeatPasswordTextField.isError = true
+            measureOnViewAction(action: .validate, additionalDimensions: [.result("password_mismatch")])
         }
     }
 }
+
+#endif

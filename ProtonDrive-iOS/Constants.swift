@@ -20,7 +20,7 @@ import os.log
 import PDClient
 import PDCore
 import FileProvider
-import ProtonCore_Environment
+import ProtonCoreEnvironment
 
 enum Constants: LogObject {
     static var osLog: OSLog = OSLog(subsystem: "ch.protondrive", category: "AppLevel")
@@ -31,6 +31,8 @@ enum Constants: LogObject {
         
         case appStorePageURL = "APPSTORE_PAGE_LINK"
         case appVersionIdentifier = "APP_VERSION_IDENTIFIER"
+        case photosReminderDelay = "DEFAULT_PHOTOS_REMINDER_DELAY"
+        case uploadedPhotoNotification = "UPLOADED_PHOTO_NOTIFICATION"
     }
     
     static let appGroup: SettingsStorageSuite = .group(named: "group.ch.protonmail.protondrive")
@@ -43,9 +45,12 @@ enum Constants: LogObject {
     
     // MARK: - Features
     static let isStoreKitReady: Bool = false         // removes "Upgrade" button in menu Storage section
-    
+    private(set) static var hasPhotosReminderStandardDelay = loadHasPhotosReminderStandardDelay()
+    private(set) static var uploadedPhotoNotification = loadUploadedPhotoNotification()
+
     // MARK: - Internal
     static let highStorageUsageRatio: Double = 0.9  // switches menu Storage section into "red" mode
+    static let maxNumberOfFailedUnlockAttempts: Int = 10
 
     // MARK: - Report a Bug
     static let reportBugURL = URL(string: "https://protonmail.com/support-form")!
@@ -72,10 +77,21 @@ enum Constants: LogObject {
     
     // MARK: - Background mode
     static let backgroundTaskIdentifier = "ch.protonmail.protondrive.processing"
+    static let checkNewPhotoInGallery = "ch.protonmail.checkNewPhotoInGallery"
 
     // MARK: - Photos
-    static let photosAssetsParalelProcessingCount = 5
-    static let photosAssetsMaximalFolderSize = 2_000_000_000 // bytes count
+    static let photosAssetsParallelProcessingCount = 1
+    static let photosLibraryProcessingBatchSize = 20
+    static let photosUploaderParallelProcessingCount = 2
+    static let photosAssetsMaximalFolderSize = 200_000_000 // bytes count
+    static let minimalSpaceForAllowingUpload = 25 * 1024 * 1024 // bytes count
+    static let photosNecessaryFreeStorage = 2_000_000_000 // Space needed to proceed with photos backup. Bytes count. Arbitrary number.
+    static let photosPlaceholderAssetName = "emptyName" // Name seems to be empty for assets coming from `PHAssetSourceType.typeiTunesSynced`. We need to return some name, otherwise the process fails.
+
+    // MARK: - Telemetry constants
+    enum Metrics {
+        static let photosBackupHeartbeatInterval: Double = 15 * 60 // 15 minutes
+    }
 }
 
 extension Constants {
@@ -118,16 +134,35 @@ extension Constants {
     }()
     
     private static func loadSettingValue(for key: SettingsBundleKeys) -> String {
+        #if HAS_QA_FEATURES
         // values should be placed in shared UserDefaults so appex will be able to read them
         let sharedUserDefaults = UserDefaults(suiteName: "group.ch.protonmail.protondrive")
         if let modifiedValue = sharedUserDefaults?.value(forKey: key.rawValue) as? String, !modifiedValue.isEmpty {
             return modifiedValue
-        } else if let defaultValue = Bundle.main.infoDictionary?[key.rawValue] as? String {
-            sharedUserDefaults?.setValue(defaultValue, forKey: key.rawValue)
+        } 
+        #endif
+        
+        if let defaultValue = Bundle.main.infoDictionary?[key.rawValue] as? String {
             return defaultValue
         } else {
             assert(false, "No value was defined for \(key.rawValue)")
             return ""
+        }
+    }
+
+    private static func loadSettingsValue<T>(for key: SettingsBundleKeys) -> T {
+        #if HAS_QA_FEATURES
+        // values should be placed in shared UserDefaults so appex will be able to read them
+        let sharedUserDefaults = UserDefaults(suiteName: "group.ch.protonmail.protondrive")
+        if let modifiedValue = sharedUserDefaults?.value(forKey: key.rawValue) as? T {
+            return modifiedValue
+        }
+        #endif
+        
+        if let defaultValue = Bundle.main.infoDictionary?[key.rawValue] as? T {
+            return defaultValue
+        } else {
+            fatalError("No value was defined for \(key.rawValue)")
         }
     }
 
@@ -172,15 +207,52 @@ extension Constants {
         return Configuration(environment: environment, clientVersion: clientVersion)
     }
 
-    private static var isUITest: Bool {
-        ProcessInfo.processInfo.arguments.contains("--uitests")
+    static var isUITest: Bool {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--uitests") {
+            return true
+        }
+
+        if let environmentVar = Bundle.main.infoDictionary?["IS_UI_TEST"] as? String,
+           let flag = Bool(environmentVar) {
+            // Bool(_ description: String) only accepts "true" or "false", case sensitive
+            return flag
+        }
+        #endif
+        return false
     }
 
     private static var dynamicDomain: String? {
-        if let domain = ProcessInfo.processInfo.environment["DYNAMIC_DOMAIN"], !domain.isEmpty {
+        if let domain = Bundle.main.infoDictionary?["DYNAMIC_DOMAIN"] as? String, !domain.isEmpty {
+            persistDynamicDomainIfNeeded(domain)
             return domain
         } else {
             return nil
         }
+    }
+
+    private static func loadHasPhotosReminderStandardDelay() -> Bool {
+        #if HAS_QA_FEATURES
+            return loadSettingsValue(for: .photosReminderDelay)
+        #else
+            return true
+        #endif
+    }
+
+    private static func loadUploadedPhotoNotification() -> Bool {
+        #if HAS_QA_FEATURES
+            return Constants.isUITest || loadSettingsValue(for: .uploadedPhotoNotification)
+        #else
+            return false
+        #endif
+    }
+    
+    private static func persistDynamicDomainIfNeeded(_ domain: String) {
+        guard ProcessInfo.processInfo.arguments.contains("--persist_dynamic_domain") else {
+            return
+        }
+        
+        let sharedUserDefaults = UserDefaults(suiteName: "group.ch.protonmail.protondrive")
+        sharedUserDefaults?.set(domain, forKey: SettingsBundleKeys.host.rawValue)
     }
 }

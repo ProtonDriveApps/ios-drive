@@ -17,8 +17,7 @@
 
 import Foundation
 
-final class MultipleSelectionModel {
-    typealias Identifier = String
+final class MultipleSelectionModel<Identifier: Hashable> {
     
     enum SelectedItem: Equatable {
         case all

@@ -17,28 +17,25 @@
 
 import PDCore
 import FileProvider
-import os.log
 
 public class FileProviderEventsListener: EventsListener {
-    private let logger: LogObject.Type
     private var manager: NSFileProviderManager?
     
-    public init(manager: NSFileProviderManager?, logger: LogObject.Type) {
+    public init(manager: NSFileProviderManager?) {
         self.manager = manager
-        self.logger = logger
     }
 
     public func processorReceivedEvents() { }
     
     public func processorAppliedEvents(affecting nodes: [NodeIdentifier]) {
-        ConsoleLogger.shared?.log("Received events for \(nodes.count) nodes and parents", osLogType: self.logger)
+        Log.info("Received events for \(nodes.count) nodes and parents", domain: .fileProvider)
         guard !nodes.isEmpty else { return }
         
         let completion: (Error?) -> Void = {
             if let error = $0 {
-                ConsoleLogger.shared?.log(error, osLogType: self.logger)
+                Log.error(error.localizedDescription, domain: .fileProvider)
             } else {
-                ConsoleLogger.shared?.log("Signaled change", osLogType: self.logger)
+                Log.info("Signaled change", domain: .fileProvider)
             }
         }
         

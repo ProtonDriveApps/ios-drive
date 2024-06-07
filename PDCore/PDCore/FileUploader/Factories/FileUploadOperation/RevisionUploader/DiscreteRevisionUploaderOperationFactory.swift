@@ -20,26 +20,43 @@ import CoreData
 import PDClient
 
 class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
+    let storage: StorageManager
+    let client: PDClient.Client
     let api: APIService
     let cloudContentCreator: CloudContentCreator
     let credentialProvider: CredentialProvider
     let signersKitFactory: SignersKitFactoryProtocol
+    let verifierFactory: UploadVerifierFactory
     let moc: NSManagedObjectContext
+    let pagesQueue: OperationQueue
+    let uploadQueue: OperationQueue
 
-    let session = URLSession(configuration: .ephemeral)
+    let session = URLSession(configuration: .forUploading)
 
     init(
+        storage: StorageManager,
+        client: PDClient.Client,
         api: APIService,
         cloudContentCreator: CloudContentCreator,
         credentialProvider: CredentialProvider,
         signersKitFactory: SignersKitFactoryProtocol,
-        moc: NSManagedObjectContext
+        verifierFactory: UploadVerifierFactory,
+        moc: NSManagedObjectContext,
+        globalPagesQueue: OperationQueue? = nil,
+        globalUploadQueue: OperationQueue? = nil
     ) {
+        self.storage = storage
+        self.client = client
         self.api = api
         self.cloudContentCreator = cloudContentCreator
         self.credentialProvider = credentialProvider
         self.signersKitFactory = signersKitFactory
+        self.verifierFactory = verifierFactory
         self.moc = moc
+        pagesQueue = globalPagesQueue ?? OperationQueue(maxConcurrentOperation: Constants.discreteMaxConcurrentContentUploadOperations)
+        pagesQueue.qualityOfService = .userInitiated
+        uploadQueue = globalUploadQueue ?? OperationQueue(maxConcurrentOperation: Constants.maxConcurrentPageOperations)
+        uploadQueue.qualityOfService = .userInitiated
     }
 
     func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> any UploadOperation {
@@ -54,11 +71,15 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
         let uploader = PaginatedRevisionUploader(
             pageSize: Constants.blocksPaginationPageSize,
             parentProgress: parentProgress,
-            pageRevisionUploaderFactory: { [unowned self] page in
-                return self.makePageUploader(page, parentProgress, onError)
+            verifierFactory: { [unowned self] identifier in
+                try await self.makeVerifier(identifier: identifier)
+            },
+            pageRevisionUploaderFactory: { [weak self] page in
+                guard let self else { return BlockOperation() }
+                return self.makePageUploader(draft.uploadID, page, parentProgress, onError)
             },
             signersKitFactory: signersKitFactory,
-            queue: OperationQueue(maxConcurrentOperation: Constants.maxConcurrentPageOperations),
+            queue: uploadQueue,
             moc: moc
         )
 
@@ -70,29 +91,44 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
         )
     }
 
-    func makePageUploader(_ page: RevisionPage, _ parentProgress: Progress, _ onError: @escaping OnUploadError) -> PageRevisionUploaderOperation {
-        let uploader = ConcurrentPageRevisionUploader(
-            page: page,
-            contentCreatorOperationFactory: { [unowned self] in self.makeCreatorOperation($0, onError) },
-            blockUploaderOperationFactory: { [unowned self] in self.makeBlockUploaderOperation($0, $1, parentProgress, onError) },
-            thumbnailUploaderOperationFactory: { [unowned self] in self.makeThumbnailUploaderOperation($0, $1, parentProgress) },
-            queue: OperationQueue(maxConcurrentOperation: Constants.discreteMaxConcurrentContentUploadOpeartions),
-            moc: moc
-        )
-        return PageRevisionUploaderOperation(uploader: uploader, onError: onError)
+    private func makeVerifier(identifier: UploadingFileIdentifier) async throws -> UploadVerifier {
+        try await verifierFactory.make(storage: storage, moc: moc, client: client, decryptionResource: Decryptor(), identifier: identifier)
     }
 
-    func makeCreatorOperation(_ page: RevisionPage, _ onError: @escaping OnUploadError) -> Operation {
+    func makePageUploader(_ id: UUID, _ page: RevisionPage, _ parentProgress: Progress, _ onError: @escaping OnUploadError) -> PageRevisionUploaderOperation {
+        let uploader = ConcurrentPageRevisionUploader(
+            page: page,
+            contentCreatorOperationFactory: { [weak self] in
+                guard let self else { return BlockOperation() }
+                return self.makeCreatorOperation(id, $0, onError)
+            },
+            blockUploaderOperationFactory: { [weak self] in
+                guard let self else { return BlockOperation() }
+                return self.makeBlockUploaderOperation(id, $0, $1, parentProgress, onError)
+            },
+            thumbnailUploaderOperationFactory: { [weak self] in
+                guard let self else { return BlockOperation() }
+                return self.makeThumbnailUploaderOperation(id, $0, $1, parentProgress, onError)
+            },
+            queue: pagesQueue,
+            moc: moc
+        )
+        let retryRevisionUploader = RetryPageRevisionUploader(decoratee: uploader, maximumRetryCount: 3, uploadID: id, page: page.index)
+        return PageRevisionUploaderOperation(uploader: retryRevisionUploader, onError: onError)
+    }
+
+    func makeCreatorOperation(_ id: UUID, _ page: RevisionPage, _ onError: @escaping OnUploadError) -> Operation {
         let contentCreator = PageRevisionContentCreator(
             page: page,
             contentCreator: cloudContentCreator,
             signersKitFactory: signersKitFactory,
             moc: moc
         )
-        return ContentsCreatorOperation(contentCreator: contentCreator, onError: onError)
+        return ContentsCreatorOperation(id: id, contentCreator: contentCreator, onError: onError)
     }
 
     func makeBlockUploaderOperation(
+        _ id: UUID,
         _ block: UploadBlock,
         _ fullUploadableBlock: FullUploadableBlock,
         _ parentProgress: Progress,
@@ -103,39 +139,51 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
         let uploader = URLSessionDiscreteBlocksUploader(
             uploadBlock: block,
             fullUploadableBlock: fullUploadableBlock,
+            uploadID: id,
             progressTracker: blockProgress,
             session: session,
             apiService: api,
-            credentialProvider: credentialProvider
+            credentialProvider: credentialProvider,
+            moc: moc
         )
 
         return BlockUploaderOperation(
+            id: id,
+            index: fullUploadableBlock.uploadable.index,
+            token: fullUploadableBlock.uploadToken,
             progressTracker: blockProgress,
-            blockIndex: fullUploadableBlock.uploadable.index,
             contentUploader: uploader,
             onError: onError
         )
     }
 
     func makeThumbnailUploaderOperation(
+        _ id: UUID,
         _ thumbnail: Thumbnail,
         _ fullUploadableThumbnail: FullUploadableThumbnail,
-        _ parentProgress: Progress
+        _ parentProgress: Progress,
+        _ onError: @escaping OnUploadError
     ) -> Operation {
         let thumbnailProgress = parentProgress.child(pending: 1)
 
         let uploader = URLSessionThumbnailUploader(
             thumbnail: thumbnail,
             fullUploadableThumbnail: fullUploadableThumbnail,
+            uploadID: id,
             progressTracker: thumbnailProgress,
             session: session,
             apiService: api,
-            credentialProvider: credentialProvider
+            credentialProvider: credentialProvider,
+            moc: moc
         )
 
         return ThumbnailUploaderOperation(
-            progressTracker: thumbnailProgress,
-            contentUploader: uploader
+            id: id,
+            index: fullUploadableThumbnail.uploadable.type,
+            token: fullUploadableThumbnail.uploadToken,
+            progress: thumbnailProgress,
+            contentUploader: uploader,
+            onError: onError
         )
     }
 }

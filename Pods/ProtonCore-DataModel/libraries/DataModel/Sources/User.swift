@@ -21,15 +21,19 @@
 
 import Foundation
 
-public struct User: Codable, Equatable {
-
+public struct User: Codable, Equatable, CustomDebugStringConvertible {
     public let ID: String
     public let name: String?
-    public let usedSpace: Double
+    public let usedSpace: Int64
+    public let usedBaseSpace: Int64?
+    public let usedDriveSpace: Int64?
     public let currency: String
     public let credit: Int
-    public let maxSpace: Double
-    public let maxUpload: Double
+    public let createTime: Double?
+    public let maxSpace: Int64
+    public let maxBaseSpace: Int64?
+    public let maxDriveSpace: Int64?
+    public let maxUpload: Int64
     public let role: Int
     public let `private`: Int
     public let subscribed: Subscribed
@@ -38,7 +42,10 @@ public struct User: Codable, Equatable {
     public let orgPrivateKey: String?
     public let email: String?
     public let displayName: String?
-    public let keys: [Key]
+    public var keys: [Key]
+
+    public let accountRecovery: AccountRecovery?
+    public let lockedFlags: LockedFlags?
     // public let driveEarlyAccess: Int
     // public let mailSettings: MailSetting
     // public let addresses: [Address]
@@ -64,11 +71,16 @@ public struct User: Codable, Equatable {
 
     public init(ID: String,
                 name: String?,
-                usedSpace: Double,
+                usedSpace: Int64,
+                usedBaseSpace: Int64?,
+                usedDriveSpace: Int64?,
                 currency: String,
                 credit: Int,
-                maxSpace: Double,
-                maxUpload: Double,
+                createTime: Double? = nil,
+                maxSpace: Int64,
+                maxBaseSpace: Int64?,
+                maxDriveSpace: Int64?,
+                maxUpload: Int64,
                 role: Int,
                 private: Int,
                 subscribed: Subscribed,
@@ -77,13 +89,20 @@ public struct User: Codable, Equatable {
                 orgPrivateKey: String?,
                 email: String?,
                 displayName: String?,
-                keys: [Key]) {
+                keys: [Key],
+                accountRecovery: AccountRecovery? = nil,
+                lockedFlags: LockedFlags? = nil) {
         self.ID = ID
         self.name = name
         self.usedSpace = usedSpace
+        self.usedBaseSpace = usedBaseSpace
+        self.usedDriveSpace = usedDriveSpace
         self.currency = currency
         self.credit = credit
+        self.createTime = createTime
         self.maxSpace = maxSpace
+        self.maxBaseSpace = maxBaseSpace
+        self.maxDriveSpace = maxDriveSpace
         self.maxUpload = maxUpload
         self.role = role
         self.private = `private`
@@ -94,17 +113,51 @@ public struct User: Codable, Equatable {
         self.email = email
         self.displayName = displayName
         self.keys = keys
+        self.accountRecovery = accountRecovery
+        self.lockedFlags = lockedFlags
+    }
+
+    public var description: String {
+        let redactedProperties: Set = [
+            "ID",
+            "name",
+            "email",
+            "displayName",
+        ]
+        let mirror = Mirror(reflecting: self)
+        var debugString = ""
+
+        mirror.children.forEach {
+            let label = $0.label ?? ""
+
+            let shouldRedactValue = redactedProperties.contains(label)
+            let value = shouldRedactValue ? "--redacted--" : "\($0.value)"
+
+            debugString += "\n\(label): \(value)"
+        }
+
+        return debugString
+    }
+
+    public var debugDescription: String {
+        return description
+    }
+
+    public mutating func setNewKeys(_ newKeys: [Key]) {
+        self.keys = newKeys
     }
 }
 
 @objc(UserInfo)
-public final class UserInfo: NSObject {
+public final class UserInfo: NSObject, Codable {
+    public var accountRecovery: AccountRecovery?
     public var attachPublicKey: Int
     public var autoSaveContact: Int
     public var conversationToolbarActions: ToolbarActions
     public var crashReports: Int
     public var credit: Int
     public var currency: String
+    public var createTime: Int64
     public var defaultSignature: String
     public var delaySendSeconds: Int
     public var delinquent: Int
@@ -120,6 +173,8 @@ public final class UserInfo: NSObject {
     public var linkConfirmation: LinkOpeningMode
     public var listToolbarActions: ToolbarActions
     public var maxSpace: Int64
+    public var maxBaseSpace: Int64?
+    public var maxDriveSpace: Int64?
     public var maxUpload: Int64
     public var messageToolbarActions: ToolbarActions
     public var notificationEmail: String
@@ -135,16 +190,20 @@ public final class UserInfo: NSObject {
     public var telemetry: Int
     public var twoFactor: Int
     public var usedSpace: Int64
+    public var usedBaseSpace: Int64?
+    public var usedDriveSpace: Int64?
     public var userAddresses: [Address]
     public var userId: String
     public var userKeys: [Key]
     public var weekStart: Int
+    public var lockedFlags: LockedFlags?
 
     public static func getDefault() -> UserInfo {
-        return .init(maxSpace: 0, usedSpace: 0, language: "",
+        return .init(maxSpace: 0, maxBaseSpace: 0, maxDriveSpace: 0, usedSpace: 0,
+                     usedBaseSpace: 0, usedDriveSpace: 0, language: "",
                      maxUpload: 0, role: 0, delinquent: 0,
                      keys: nil, userId: "", linkConfirmation: 0,
-                     credit: 0, currency: "", subscribed: DefaultValue.subscribed)
+                     credit: 0, currency: "", createTime: 0, subscribed: DefaultValue.subscribed)
     }
 
     // init from cache
@@ -154,9 +213,13 @@ public final class UserInfo: NSObject {
         hideRemoteImages: Int?,
         imageProxy: Int?,
         maxSpace: Int64?,
+        maxBaseSpace: Int64?,
+        maxDriveSpace: Int64?,
         notificationEmail: String?,
         signature: String?,
         usedSpace: Int64?,
+        usedBaseSpace: Int64?,
+        usedDriveSpace: Int64?,
         userAddresses: [Address]?,
         autoSC: Int?,
         language: String?,
@@ -173,6 +236,7 @@ public final class UserInfo: NSObject {
         linkConfirmation: String?,
         credit: Int?,
         currency: String?,
+        createTime: Int64?,
         pwdMode: Int?,
         twoFA: Int?,
         enableFolderColor: Int?,
@@ -189,7 +253,11 @@ public final class UserInfo: NSObject {
         referralProgram: ReferralProgram?)
     {
         self.maxSpace = maxSpace ?? DefaultValue.maxSpace
+        self.maxBaseSpace = maxBaseSpace ?? DefaultValue.maxBaseSpace
+        self.maxDriveSpace = maxDriveSpace ?? DefaultValue.maxDriveSpace
         self.usedSpace = usedSpace ?? DefaultValue.usedSpace
+        self.usedBaseSpace = usedBaseSpace ?? DefaultValue.usedBaseSpace
+        self.usedDriveSpace = usedDriveSpace ?? DefaultValue.usedDriveSpace
         self.language = language ?? DefaultValue.language
         self.maxUpload = maxUpload ?? DefaultValue.maxUpload
         self.role = role ?? DefaultValue.role
@@ -201,6 +269,7 @@ public final class UserInfo: NSObject {
         self.crashReports = crashReports ?? DefaultValue.crashReports
         self.credit = credit ?? DefaultValue.credit
         self.currency = currency ?? DefaultValue.currency
+        self.createTime = createTime ?? DefaultValue.createTime
         self.enableFolderColor = enableFolderColor ?? DefaultValue.enableFolderColor
         self.inheritParentFolderColor = inheritParentFolderColor ?? DefaultValue.inheritParentFolderColor
         self.notificationEmail = notificationEmail ?? DefaultValue.notificationEmail
@@ -234,11 +303,16 @@ public final class UserInfo: NSObject {
         self.messageToolbarActions = messageToolbarActions ?? DefaultValue.messageToolbarActions
         self.listToolbarActions = listToolbarActions ?? DefaultValue.listToolbarActions
         self.referralProgram = referralProgram
+        self.lockedFlags = DefaultValue.lockedFlags
     }
 
     // init from api
     public required init(maxSpace: Int64?,
+                         maxBaseSpace: Int64?,
+                         maxDriveSpace: Int64?,
                          usedSpace: Int64?,
+                         usedBaseSpace: Int64?,
+                         usedDriveSpace: Int64?,
                          language: String?,
                          maxUpload: Int64?,
                          role: Int?,
@@ -248,13 +322,18 @@ public final class UserInfo: NSObject {
                          linkConfirmation: Int?,
                          credit: Int?,
                          currency: String?,
-                         subscribed: User.Subscribed?) {
+                         createTime: Int64?,
+                         subscribed: User.Subscribed?,
+                         accountRecovery: AccountRecovery? = nil,
+                         lockedFlags: LockedFlags? = nil) {
+        self.accountRecovery = accountRecovery ?? DefaultValue.accountRecovery
         self.attachPublicKey = DefaultValue.attachPublicKey
         self.autoSaveContact = DefaultValue.autoSaveContact
         self.conversationToolbarActions = DefaultValue.conversationToolbarActions
         self.crashReports = DefaultValue.crashReports
         self.credit = credit ?? DefaultValue.credit
         self.currency = currency ?? DefaultValue.currency
+        self.createTime = createTime ?? DefaultValue.createTime
         self.defaultSignature = DefaultValue.defaultSignature
         self.delaySendSeconds = DefaultValue.delaySendSeconds
         self.delinquent = delinquent ?? DefaultValue.delinquent
@@ -269,6 +348,8 @@ public final class UserInfo: NSObject {
         self.linkConfirmation = linkConfirmation == 0 ? .openAtWill : DefaultValue.linkConfirmation
         self.listToolbarActions = DefaultValue.listToolbarActions
         self.maxSpace = maxSpace ?? DefaultValue.maxSpace
+        self.maxBaseSpace = maxBaseSpace ?? DefaultValue.maxBaseSpace
+        self.maxDriveSpace = maxDriveSpace ?? DefaultValue.maxDriveSpace
         self.maxUpload = maxUpload ?? DefaultValue.maxUpload
         self.messageToolbarActions = DefaultValue.messageToolbarActions
         self.notificationEmail = DefaultValue.notificationEmail
@@ -282,10 +363,13 @@ public final class UserInfo: NSObject {
         self.telemetry = DefaultValue.telemetry
         self.twoFactor = DefaultValue.twoFactor
         self.usedSpace = usedSpace ?? DefaultValue.usedSpace
+        self.usedBaseSpace = usedBaseSpace ?? DefaultValue.usedBaseSpace
+        self.usedDriveSpace = usedDriveSpace ?? DefaultValue.usedDriveSpace
         self.userAddresses = DefaultValue.userAddresses
         self.userId = userId ?? DefaultValue.userId
         self.userKeys = keys ?? DefaultValue.userKeys
         self.weekStart = DefaultValue.weekStart
+        self.lockedFlags = lockedFlags ?? DefaultValue.lockedFlags
     }
 
     /// Update user addresses
@@ -299,6 +383,7 @@ public final class UserInfo: NSObject {
     ///
     /// - Parameter userinfo: New user info
     public func set(userinfo: UserInfo) {
+        self.accountRecovery = nil
         self.delinquent = userinfo.delinquent
         self.language = userinfo.language
         self.linkConfirmation = userinfo.linkConfirmation
@@ -307,6 +392,8 @@ public final class UserInfo: NSObject {
         self.role = userinfo.role
         self.subscribed = userinfo.subscribed
         self.usedSpace = userinfo.usedSpace
+        self.usedBaseSpace = userinfo.usedBaseSpace
+        self.usedDriveSpace = userinfo.usedDriveSpace
         self.userId = userinfo.userId
         self.userKeys = userinfo.userKeys
     }
@@ -371,13 +458,81 @@ extension UserInfo {
     }
 }
 
+// MARK: LockedFlags
+public struct LockedFlags: OptionSet, Codable {
+
+    public let rawValue: Int
+
+    public static let mailStorageExceeded = LockedFlags(rawValue: 1 << 0)
+    public static let driveStorageExceeded = LockedFlags(rawValue: 1 << 1)
+    public static let storageExceeded: LockedFlags = [.mailStorageExceeded, .driveStorageExceeded]
+    public static let orgIssueForPrimaryAdmin = LockedFlags(rawValue: 1 << 2)
+    public static let orgIssueForMember = LockedFlags(rawValue: 1 << 3)
+
+    public init(rawValue: Int) {
+        self.rawValue = rawValue
+    }
+}
+
+// MARK: Account Recovery
+public struct AccountRecovery: Codable, Equatable {
+    public let state: RecoveryState
+    public let reason: RecoveryReason?
+    public let startTime: TimeInterval
+    public let endTime: TimeInterval
+    public let UID: String
+
+    public init(state: RecoveryState, reason: RecoveryReason? = nil, startTime: TimeInterval, endTime: TimeInterval, UID: String) {
+        self.state = state
+        self.reason = reason
+        self.startTime = startTime
+        self.endTime = endTime
+        self.UID = UID
+    }
+
+    public var isVisibleInSettings: Bool {
+        switch (state, reason) {
+        case (.none, _), (.cancelled, .none?), (.cancelled, .cancelled): return false
+        default: return true
+        }
+    }
+
+}
+
+public enum RecoveryState: Int, Codable {
+    case none = 0
+    case grace = 1
+    case cancelled = 2
+    case insecure = 3
+    case expired = 4
+}
+
+public enum RecoveryReason: Int, Codable {
+    case none = 0
+    case cancelled = 1
+    case authentication = 2
+
+    public var localizableDescription: String {
+        switch self {
+        case .cancelled:
+            return "Cancelled by the user"
+        case .authentication:
+            return "Authenticated in another session"
+        case .none:
+            return "none"
+        }
+    }
+}
+
 // MARK: Default values
 
 extension UserInfo {
     struct DefaultValue {
+        static let accountRecovery: AccountRecovery? = nil
         static let attachPublicKey: Int = 0
         static let autoSaveContact: Int = 0
         static let crashReports: Int = 1
+        static let createTime: Int64 = 0
         static let credit: Int = 0
         static let currency: String = "USD"
         static let defaultSignature: String = ""
@@ -393,6 +548,8 @@ extension UserInfo {
         static let language: String = "en_US"
         static let linkConfirmation: LinkOpeningMode = .confirmationAlert
         static let maxSpace: Int64 = 0
+        static let maxBaseSpace: Int64 = 0
+        static let maxDriveSpace: Int64 = 0
         static let maxUpload: Int64 = 0
         static let notificationEmail: String = ""
         static let notify: Int = 0
@@ -405,6 +562,8 @@ extension UserInfo {
         static let telemetry: Int = 1
         static let twoFactor: Int = 0
         static let usedSpace: Int64 = 0
+        static let usedBaseSpace: Int64 = 0
+        static let usedDriveSpace: Int64 = 0
         static let userAddresses: [Address] = []
         static let userId: String = ""
         static let userKeys: [Key] = []
@@ -412,5 +571,6 @@ extension UserInfo {
         static let conversationToolbarActions: ToolbarActions = .init(isCustom: false, actions: [])
         static let messageToolbarActions: ToolbarActions = .init(isCustom: false, actions: [])
         static let listToolbarActions: ToolbarActions = .init(isCustom: false, actions: [])
+        static let lockedFlags: LockedFlags? = nil
     }
 }

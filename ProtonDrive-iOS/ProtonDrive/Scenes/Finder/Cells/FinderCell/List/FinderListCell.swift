@@ -18,7 +18,7 @@
 import PDCore
 import SwiftUI
 import PDUIComponents
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 private let horizontalInset: CGFloat = 16
 
@@ -32,14 +32,17 @@ struct FinderListCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
     private let presentedModal: Binding<FinderCoordinator.Destination?>
     private let presentedSheet: Binding<FinderCoordinator.Destination?>
     private let menuItem: Binding<FinderMenu?>
+    private let index: Int
 
     init(vm: ViewModel,
          presentedModal: Binding<FinderCoordinator.Destination?>,
          presentedSheet: Binding<FinderCoordinator.Destination?>,
          menuItem: Binding<FinderMenu?>,
+         index: Int,
          onTap: @escaping () -> Void,
          onLongPress: @escaping () -> Void) {
         self.vm = vm
+        self.index = index
         self.presentedModal = presentedModal
         self.presentedSheet = presentedSheet
         self.menuItem = menuItem
@@ -85,6 +88,7 @@ struct FinderListCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
                             .foregroundColor(ColorProvider.TextNorm)
                             .lineLimit(1)
                             .accessibility(identifier: "NodeCell.Text.\(vm.name)")
+                            .accessibilityLabel("\(vm.name)_\(index)")
 
                         HStack(spacing: 0) {
                             NodeListSecondLineView(

@@ -15,9 +15,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import PDClient
 import PDCore
 import UIKit
 import Combine
+import ProtonCoreFeatureFlags
+import ProtonCoreAccountRecovery
+import ProtonCorePushNotifications
+import ProtonCoreServices
 
 public extension DriveDependencyContainer {
     func launchApp(on window: UIWindow) {
@@ -28,6 +33,7 @@ public extension DriveDependencyContainer {
         viewController.viewModel = viewModel
         viewController.onViewDidLoad = coordinator.launchApp
         viewController.onPresentAlert = coordinator.presentAlert
+        viewController.onPresentAccountRecovery = coordinator.presentAccountRecovery
 
         window.makeKeyAndVisible()
     }
@@ -56,18 +62,32 @@ public extension DriveDependencyContainer {
             .removeDuplicates()
             .eraseToAnyPublisher()
 
+        let accountRecoveryWrapper = AccountRecoveryWrapper(publisher: PassthroughSubject<Void, Never>(), 
+                                                            apiService: networkService)
+
+        if featureFlagRepository.isEnabled(CoreFeatureFlagType.accountRecovery) {
+            let driveHandler = AccountRecoveryHandler()
+            driveHandler.handler = { _ in
+                accountRecoveryWrapper.publisher.send()
+                return .success
+            }
+            NotificationType.allAccountRecoveryTypes.forEach {
+                pushNotificationService?.registerHandler(driveHandler, forType: $0)
+            }
+        }
+
         return LaunchViewModel(
             alertPresenting: networkClient.failureAlertPublisher,
             alertDismissing: alertDismissing,
             userPublisher: userPublisher,
             bannerPublisher: bannerPublisher,
+            accountRecoveryWrapper: accountRecoveryWrapper,
             configurator: configurator
         )
     }
 
     private func makeLaunchConfigurator() -> LaunchConfigurator {
-        let localSettings = LocalSettings(suite: appGroup)
-        let sentry = SentryLaunchConfigurator(sentryClient: SentryClient.shared, localSettings: localSettings)
+        let sentry = SentryLaunchConfigurator(sentryClient: SentryClient.shared, localSettings: localSettings) { [weak self] in self?.client }
         let keyChain = KeychainLaunchConfigurator(suite: Constants.appGroup)
 
         return iOSDriveLaunchConfigurator([sentry, keyChain])
@@ -117,4 +137,9 @@ public extension DriveDependencyContainer {
 
         return alertController
     }
+}
+
+public struct AccountRecoveryWrapper {
+    public let publisher: PassthroughSubject<Void, Never>
+    public let apiService: ProtonCoreServices.APIService
 }

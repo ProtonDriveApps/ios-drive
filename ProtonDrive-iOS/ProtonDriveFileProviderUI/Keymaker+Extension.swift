@@ -16,8 +16,8 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import ProtonCore_Keymaker
-import ProtonCore_Settings
+import ProtonCoreKeymaker
+import PMSettings
 import PDCore
 
 extension Keymaker: Unlocker {
@@ -30,7 +30,7 @@ extension Keymaker: Unlocker {
     }
     
     public func bioUnlock(completion: @escaping UnlockResult) {
-        obtainMainKey(with: BioProtection(keychain: DriveKeychain()), handler: { key in
+        obtainMainKey(with: BioProtection(keychain: DriveKeychain.shared), handler: { key in
             guard let key = key, !key.isEmpty else {
                 return completion(false)
             }
@@ -39,7 +39,7 @@ extension Keymaker: Unlocker {
     }
 
     public func pinUnlock(pin: String, completion: @escaping UnlockResult) {
-        obtainMainKey(with: PinProtection(pin: pin, keychain: DriveKeychain()), handler: { key in
+        obtainMainKey(with: PinProtection(pin: pin, keychain: DriveKeychain.shared), handler: { key in
             guard let key = key, !key.isEmpty else {
                 return completion(false)
             }

@@ -20,10 +20,12 @@ import Foundation
 import PDCore
 
 public final class RootEnumerator: FolderEnumerator {
-    public init(tower: Tower) throws {
-        guard let rootID = tower.rootFolderIdentifier() else {
-            throw Errors.rootNotFound
-        }
-        try super.init(tower: tower, nodeID: rootID)
+
+    public init(tower: Tower,
+                rootID: NodeIdentifier,
+                changeObserver: FileProviderChangeObserver? = nil,
+                shouldReenumerateItems: Bool = false) {
+        super.init(tower: tower, changeObserver: changeObserver, nodeID: rootID,
+                   shouldReenumerateItems: shouldReenumerateItems)
     }
 }

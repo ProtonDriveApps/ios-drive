@@ -17,7 +17,7 @@
 
 import Foundation
 import PDClient
-import ProtonCore_APIClient
+import ProtonCoreAPIClient
 import CoreData
 
 public class DiscreteFileUploadOperationsProviderFactory: FileUploadOperationsProviderFactory {
@@ -25,7 +25,9 @@ public class DiscreteFileUploadOperationsProviderFactory: FileUploadOperationsPr
     let storage: StorageManager
     let cloudSlot: CloudSlot
     let sessionVault: SessionVault
+    let verifierFactory: UploadVerifierFactory
     let apiService: APIService
+    let client: PDClient.Client
     
     var moc: NSManagedObjectContext {
         storage.backgroundContext
@@ -35,27 +37,31 @@ public class DiscreteFileUploadOperationsProviderFactory: FileUploadOperationsPr
         storage: StorageManager,
         cloudSlot: CloudSlot,
         sessionVault: SessionVault,
-        apiService: APIService
+        verifierFactory: UploadVerifierFactory,
+        apiService: APIService,
+        client: PDClient.Client
     ) {
         self.storage = storage
         self.cloudSlot = cloudSlot
         self.sessionVault = sessionVault
+        self.verifierFactory = verifierFactory
         self.apiService = apiService
+        self.client = client
     }
 
     public func make() -> FileUploadOperationsProvider {
         let revisionEncryptor = DiscreteRevisionEncryptorOperationFactory(signersKitFactory: sessionVault, moc: moc)
         let fileDraftCreator = DefaultFileDraftCreatorOperationFactory(fileDraftCreator: cloudSlot, sessionVault: sessionVault)
         let revisionDraftCreator = RevisionDraftCreatorOperationFactory(cloudRevisionCreator: cloudSlot, moc: moc)
-        let revisionUploader = DiscreteRevisionUploaderOperationFactory(api: apiService, cloudContentCreator: cloudSlot, credentialProvider: sessionVault, signersKitFactory: sessionVault, moc: moc)
-        let revisionCommitter = RevisionCommitterOperationFactory(cloudRevisionCommitter: cloudSlot, signersKitFactory: sessionVault, moc: moc)
+        let revisionUploader = DiscreteRevisionUploaderOperationFactory(storage: storage, client: client, api: apiService, cloudContentCreator: cloudSlot, credentialProvider: sessionVault, signersKitFactory: sessionVault, verifierFactory: verifierFactory, moc: moc)
+        let revisionCommitter = MacOSRevisionCommitterOperationFactory(cloudRevisionCommitter: cloudSlot, uploadedRevisionChecker: cloudSlot, signersKitFactory: sessionVault, moc: moc)
 
-        return DefaultFileUploadOperationsProvider(
+        return MyFilesFileUploadOperationsProvider(
             revisionEncryptorOperationFactory: revisionEncryptor,
             fileDraftCreatorOperationFactory: fileDraftCreator,
             revisionCreatorOperationFactory: revisionDraftCreator,
             revisionUploaderOperationFactory: revisionUploader,
-            revisionSealerOperationFactory: revisionCommitter
+            revisionCommitterOperationFactory: revisionCommitter
         )
     }
 

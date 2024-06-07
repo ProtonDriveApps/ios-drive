@@ -23,5 +23,4 @@ public enum ResolutionAction {
     case createWithUniqueSuffix
     case renameWithUniqueSuffix
     case moveAndRenameWithUniqueSuffix
-    case createWithUniqueSuffixInConflictsFolder
 }

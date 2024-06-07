@@ -58,8 +58,8 @@ final class TrashCellViewModel: ObservableObject {
 }
 
 extension TrashCellViewModel: NodeCellConfiguration {
-    var id: String {
-        node.id
+    var id: NodeIdentifier {
+        node.identifier
     }
     
     var name: String {
@@ -78,7 +78,7 @@ extension TrashCellViewModel: NodeCellConfiguration {
         defaultSecondLineSubtitle
     }
     var buttons: [NodeCellButton] {
-        [NodeCellButton(type: .trash(id: nodeID), action: {})]
+        [NodeCellButton(type: .trash(id: id), action: {})]
     }
 
     var nodeID: String {
@@ -98,7 +98,7 @@ extension TrashCellViewModel: NodeCellConfiguration {
     }
 
     func onTap() {
-        isSelecting ? selectionModel?.onTap(id: node.id) : ()
+        isSelecting ? selectionModel?.onTap(id: node.identifier) : ()
     }
 
     func onLongPress() {

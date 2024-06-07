@@ -19,17 +19,18 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
-import UIKit
-import ProtonCore_CoreTranslation
-import ProtonCore_FeatureSwitch
-import ProtonCore_Foundations
-import ProtonCore_HumanVerification
-import ProtonCore_Login
-import ProtonCore_Services
-import ProtonCore_UIFoundations
-import ProtonCore_Observability
+#if os(iOS)
 
-enum SignupAccountType {
+import UIKit
+import ProtonCoreFoundations
+import ProtonCoreHumanVerification
+import ProtonCoreLogin
+import ProtonCoreServices
+import ProtonCoreUIFoundations
+import ProtonCoreObservability
+import ProtonCoreTelemetry
+
+enum SignupAccountType: String {
     case `internal`
     case external
 }
@@ -42,7 +43,17 @@ protocol SignupViewControllerDelegate: AnyObject {
     func hvEmailAlreadyExists(email: String)
 }
 
-class SignupViewController: UIViewController, AccessibleView, Focusable {
+class SignupViewController: UIViewController, AccessibleView, Focusable, ProductMetricsMeasurable {
+    var productMetrics: ProductMetrics = .init(
+        group: TelemetryMeasurementGroup.signUp.rawValue,
+        flow: TelemetryFlow.signUpFull.rawValue,
+        screen: .signup
+    )
+
+    enum MeasureConstants {
+        static let resultFailure = "failure"
+        static let resultSuccess = "success"
+    }
 
     weak var delegate: SignupViewControllerDelegate?
     var viewModel: SignupViewModel!
@@ -53,13 +64,13 @@ class SignupViewController: UIViewController, AccessibleView, Focusable {
     var showSeparateDomainsButton = true
     var minimumAccountType: AccountType?
     var tapGesture: UITapGestureRecognizer?
-    
+
     // MARK: Outlets
 
     @IBOutlet weak var contentView: UIView!
     @IBOutlet weak var createAccountTitleLabel: UILabel! {
         didSet {
-            createAccountTitleLabel.text = CoreString._su_main_view_title
+            createAccountTitleLabel.text = LUITranslation.main_view_title.l10n
             createAccountTitleLabel.textColor = ColorProvider.TextNorm
             createAccountTitleLabel.font = .adjustedFont(forTextStyle: .title2, weight: .bold)
             createAccountTitleLabel.adjustsFontForContentSizeCategory = true
@@ -68,7 +79,7 @@ class SignupViewController: UIViewController, AccessibleView, Focusable {
     }
     @IBOutlet weak var createAccountDescriptionLabel: UILabel! {
         didSet {
-            createAccountDescriptionLabel.text = CoreString._su_main_view_desc
+            createAccountDescriptionLabel.text = LUITranslation.main_view_desc.l10n
             createAccountDescriptionLabel.textColor = ColorProvider.TextWeak
             createAccountDescriptionLabel.font = .adjustedFont(forTextStyle: .subheadline)
             createAccountDescriptionLabel.adjustsFontForContentSizeCategory = true
@@ -77,7 +88,7 @@ class SignupViewController: UIViewController, AccessibleView, Focusable {
     }
     @IBOutlet weak var internalNameTextField: PMTextField! {
         didSet {
-            internalNameTextField.title = CoreString._su_username_field_title
+            internalNameTextField.title = LUITranslation.username_field_title.l10n
             internalNameTextField.keyboardType = .default
             internalNameTextField.textContentType = .username
             internalNameTextField.isPassword = false
@@ -94,7 +105,7 @@ class SignupViewController: UIViewController, AccessibleView, Focusable {
     @IBOutlet weak var domainsBottomSeparatorView: UIView!
     @IBOutlet weak var externalEmailTextField: PMTextField! {
         didSet {
-            externalEmailTextField.title = CoreString._su_email_field_title
+            externalEmailTextField.title = LUITranslation.email_field_title.l10n
             externalEmailTextField.autocorrectionType = .no
             externalEmailTextField.keyboardType = .emailAddress
             externalEmailTextField.textContentType = .emailAddress
@@ -134,32 +145,32 @@ class SignupViewController: UIViewController, AccessibleView, Focusable {
     }
     @IBOutlet weak var nextButton: ProtonButton! {
         didSet {
-            nextButton.setTitle(CoreString._su_next_button, for: .normal)
+            nextButton.setTitle(LUITranslation.next_button.l10n, for: .normal)
             nextButton.isEnabled = false
         }
     }
     @IBOutlet weak var signinButton: ProtonButton! {
         didSet {
             signinButton.setMode(mode: .text)
-            signinButton.setTitle(CoreString._su_signin_button, for: .normal)
+            signinButton.setTitle(LUITranslation.signin_button.l10n, for: .normal)
         }
     }
     @IBOutlet weak var scrollView: UIScrollView!
-    
+
     @IBOutlet weak var brandLogo: UIImageView!
 
     var focusNoMore: Bool = false
     private let navigationBarAdjuster = NavigationBarAdjustingScrollViewDelegate()
-    
+
     var onDohTroubleshooting: () -> Void = {}
-    
+
     override var preferredStatusBarStyle: UIStatusBarStyle { darkModeAwarePreferredStatusBarStyle() }
 
     // MARK: View controller life cycle
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = ColorProvider.BackgroundNorm
-        
+
         brandLogo.image = IconProvider.masterBrandGlyph
         brandLogo.isHidden = false
         setupDomainsView()
@@ -173,7 +184,8 @@ class SignupViewController: UIViewController, AccessibleView, Focusable {
         requestDomain()
         configureAccountType(nil)
         generateAccessibilityIdentifiers()
-        
+
+        viewModel.challenge.reset()
         try? internalNameTextField.setUpChallenge(viewModel.challenge, type: .username)
         try? externalEmailTextField.setUpChallenge(viewModel.challenge, type: .username_email)
     }
@@ -184,10 +196,20 @@ class SignupViewController: UIViewController, AccessibleView, Focusable {
         scrollView.adjust(forKeyboardVisibilityNotification: nil)
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        measureOnViewDisplayed(additionalDimensions: [.accountType(signupAccountType.rawValue)])
+    }
+
     // MARK: Actions
 
     @IBAction func onOtherAccountButtonTap(_ sender: ProtonButton) {
         switchSignupAccountFlow(prefilledUsernameOrEmail: nil)
+        let switchingAccountType = signupAccountType == .internal ? "switch_external" : "switch_internal"
+        measureOnViewClicked(
+            item: switchingAccountType,
+            additionalDimensions: [.accountType(signupAccountType.rawValue)]
+        )
     }
 
     @IBAction func onNextButtonTap(_ sender: ProtonButton) {
@@ -200,6 +222,10 @@ class SignupViewController: UIViewController, AccessibleView, Focusable {
         } else {
             checkEmail(email: currentlyUsedTextField.value)
         }
+        measureOnViewClicked(
+            item: "next",
+            additionalDimensions: [.accountType(signupAccountType.rawValue)]
+        )
     }
 
     @IBAction func onSignInButtonTap(_ sender: ProtonButton) {
@@ -207,7 +233,7 @@ class SignupViewController: UIViewController, AccessibleView, Focusable {
         PMBanner.dismissAll(on: self)
         delegate?.signinButtonPressed()
     }
-    
+
     @IBAction private func onDomainsButtonTapped() {
         dismissKeyboard()
         var sheet: PMActionSheet?
@@ -221,7 +247,7 @@ class SignupViewController: UIViewController, AccessibleView, Focusable {
             }
         }
         let header = PMActionSheetHeaderView(
-            title: CoreString._su_domains_sheet_title,
+            title: LUITranslation.domains_sheet_title.l10n,
             subtitle: nil,
             leftItem: .right(IconProvider.crossSmall),
             rightItem: nil,
@@ -236,11 +262,16 @@ class SignupViewController: UIViewController, AccessibleView, Focusable {
         sheet = PMActionSheet(headerView: header, itemGroups: [itemGroup])
         sheet?.eventsListener = self
         sheet?.presentAt(self, animated: true)
+        measureOnViewClicked(
+            item: "domain",
+            additionalDimensions: [.accountType(signupAccountType.rawValue)]
+        )
     }
 
     @objc func onCloseButtonTap(_ sender: UIButton) {
         cancelFocus()
         delegate?.signupCloseButtonPressed()
+        measureOnViewClosed()
     }
 
     // MARK: Private methods
@@ -290,8 +321,8 @@ class SignupViewController: UIViewController, AccessibleView, Focusable {
             internalNameTextField.isHidden = false
         case .none: break
         }
-        let title = signupAccountType == .internal ? CoreString._su_email_address_button
-                                                   : CoreString._su_proton_address_button
+        let title = signupAccountType == .internal ? LUITranslation.email_address_button.l10n
+                                                   : LUITranslation.proton_address_button.l10n
         otherAccountButton.setTitle(title, for: .normal)
         configureDomainSuffix()
     }
@@ -303,7 +334,7 @@ class SignupViewController: UIViewController, AccessibleView, Focusable {
             internalNameTextField.suffix = "@\(viewModel.currentlyChosenSignUpDomain)"
             return
         }
-        
+
         domainsView.isHidden = false
         domainsButton.setTitle("@\(viewModel.currentlyChosenSignUpDomain)", for: .normal)
         if viewModel.allSignUpDomains.count > 1 {
@@ -314,15 +345,15 @@ class SignupViewController: UIViewController, AccessibleView, Focusable {
             domainsButton.setMode(mode: .image(type: .textWithImage(image: nil)))
         }
     }
-    
+
     private func setupDomainsView() {
         domainsButton.setMode(mode: .image(type: .textWithImage(image: nil)))
         domainsLabel.textColor = ColorProvider.TextNorm
-        domainsLabel.text = CoreString._su_domains_sheet_title
+        domainsLabel.text = LUITranslation.domains_sheet_title.l10n
         domainsLabel.font = .adjustedFont(forTextStyle: .caption1, weight: .semibold)
         domainsLabel.adjustsFontForContentSizeCategory = true
     }
-    
+
     private func setupGestures() {
         tapGesture = UITapGestureRecognizer(target: self, action: #selector(self.dismissKeyboard(_:)))
         tapGesture?.delaysTouchesBegan = false
@@ -358,12 +389,19 @@ class SignupViewController: UIViewController, AccessibleView, Focusable {
             case .success:
                 ObservabilityEnv.report(.protonAccountAvailableSignupTotal(status: .successful))
                 self.delegate?.validatedName(name: userName, signupAccountType: self.signupAccountType)
+                self.measureAPIResult(
+                    action: .createUser,
+                    additionalDimensions: [
+                        .result(MeasureConstants.resultSuccess),
+                        .accountType(self.signupAccountType.rawValue)
+                    ]
+                )
             case .failure(let error):
                 self.handleCheckFailure(error: error)
             }
         }
     }
-    
+
     private func checkUsernameWithinDomain(userName: String) {
         lockUI()
         viewModel.checkInternalAccount(username: userName) { result in
@@ -373,12 +411,19 @@ class SignupViewController: UIViewController, AccessibleView, Focusable {
             case .success:
                 ObservabilityEnv.report(.protonAccountAvailableSignupTotal(status: .successful))
                 self.delegate?.validatedName(name: userName, signupAccountType: self.signupAccountType)
+                self.measureAPIResult(
+                    action: .createUser,
+                    additionalDimensions: [
+                        .result(MeasureConstants.resultSuccess),
+                        .accountType(self.signupAccountType.rawValue)
+                    ]
+                )
             case .failure(let error):
                 self.handleCheckFailure(error: error)
             }
         }
     }
-    
+
     private func checkEmail(email: String) {
         lockUI()
         viewModel.checkExternalEmailAccount(email: email) { result in
@@ -388,6 +433,13 @@ class SignupViewController: UIViewController, AccessibleView, Focusable {
             case .success:
                 ObservabilityEnv.report(.externalAccountAvailableSignupTotal(status: .successful))
                 self.delegate?.validatedEmail(email: email, signupAccountType: self.signupAccountType)
+                self.measureAPIResult(
+                    action: .createUser,
+                    additionalDimensions: [
+                        .result(MeasureConstants.resultSuccess),
+                        .accountType(self.signupAccountType.rawValue)
+                    ]
+                )
             case .failure(let error):
                 self.handleCheckFailure(error: error, email: email, isExternalEmail: true)
             }
@@ -406,43 +458,72 @@ class SignupViewController: UIViewController, AccessibleView, Focusable {
         switch error {
         case .protonDomainUsedForExternalAccount:
             // this error is not user-facing
+            measureFailureAPIResult(resultValue: "domain_invalid")
             return
         case .generic(let message, let code, _):
-            if isExternalEmail, code == APIErrorCode.humanVerificationAddressAlreadyTaken {
-                self.delegate?.hvEmailAlreadyExists(email: email)
-            } else if self.customErrorPresenter?.willPresentError(error: error, from: self) == true { } else {
+            if code == APIErrorCode.humanVerificationAddressAlreadyTaken {
+                if isExternalEmail {
+                    ObservabilityEnv.report(.externalAccountAvailableSignupTotal(status: .notAvailable))
+                } else {
+                    ObservabilityEnv.report(.protonAccountAvailableSignupTotal(status: .notAvailable))
+                }
+                measureFailureAPIResult(httpCode: code, resultValue: "username_used")
+            } else {
                 if isExternalEmail {
                     ObservabilityEnv.report(.externalAccountAvailableSignupTotal(status: .failed))
                 } else {
                     ObservabilityEnv.report(.protonAccountAvailableSignupTotal(status: .failed))
                 }
+                measureFailureAPIResult(httpCode: code, resultValue: MeasureConstants.resultFailure)
+            }
+
+            if isExternalEmail, code == APIErrorCode.humanVerificationAddressAlreadyTaken {
+                self.delegate?.hvEmailAlreadyExists(email: email)
+            } else if self.customErrorPresenter?.willPresentError(error: error, from: self) == true { } else {
                 self.showError(message: message)
             }
         case .notAvailable(let message):
             if isExternalEmail {
-                ObservabilityEnv.report(.externalAccountAvailableSignupTotal(status: .failed))
+                ObservabilityEnv.report(.externalAccountAvailableSignupTotal(status: .notAvailable))
             } else {
-                ObservabilityEnv.report(.protonAccountAvailableSignupTotal(status: .failed))
+                ObservabilityEnv.report(.protonAccountAvailableSignupTotal(status: .notAvailable))
             }
             self.currentlyUsedTextField.isError = true
             if self.customErrorPresenter?.willPresentError(error: error, from: self) == true { } else {
                 self.showError(message: message)
             }
-        case let .apiMightBeBlocked(message, _):
+            measureFailureAPIResult(resultValue: "username_invalid")
+        case let .apiMightBeBlocked(message, originalError):
             if isExternalEmail {
-                ObservabilityEnv.report(.externalAccountAvailableSignupTotal(status: .failed))
+                ObservabilityEnv.report(.externalAccountAvailableSignupTotal(status: .apiMightBeBlocked))
             } else {
-                ObservabilityEnv.report(.protonAccountAvailableSignupTotal(status: .failed))
+                ObservabilityEnv.report(.protonAccountAvailableSignupTotal(status: .apiMightBeBlocked))
             }
             if self.customErrorPresenter?.willPresentError(error: error, from: self) == true { } else {
                 self.showError(message: message,
-                               button: CoreString._net_api_might_be_blocked_button) { [weak self] in
+                               button: LUITranslation._core_api_might_be_blocked_button.l10n) { [weak self] in
                     self?.onDohTroubleshooting()
                 }
             }
+            measureFailureAPIResult(httpCode: originalError.httpCode, resultValue: MeasureConstants.resultFailure)
         }
     }
-    
+
+    private func measureFailureAPIResult(httpCode: Int? = nil, resultValue: String) {
+        var additionalValues: [TelemetryValue] = []
+        if let httpCode {
+            additionalValues = [.httpCode(httpCode)]
+        }
+        measureAPIResult(
+            action: .createUser,
+            additionalValues: additionalValues,
+            additionalDimensions: [
+                .accountType(signupAccountType.rawValue),
+                .result(resultValue)
+            ]
+        )
+    }
+
     private func showError(message: String, button: String? = nil, action: (() -> Void)? = nil) {
         showBanner(message: message, button: button, action: action, position: PMBannerPosition.top)
     }
@@ -490,7 +571,20 @@ extension SignupViewController: PMTextFieldDelegate {
     }
 
     func didBeginEditing(textField: PMTextField) {
-
+        switch textField {
+        case internalNameTextField:
+            measureOnViewFocused(
+                item: "username",
+                additionalDimensions: [.accountType(signupAccountType.rawValue)]
+            )
+        case externalEmailTextField:
+            measureOnViewFocused(
+                item: "email",
+                additionalDimensions: [.accountType(signupAccountType.rawValue)]
+            )
+        default:
+            break
+        }
     }
 }
 
@@ -510,6 +604,8 @@ extension SignupViewController: PMActionSheetEventsListener {
         tapGesture?.cancelsTouchesInView = true
         domainsButton?.isSelected = false
     }
-    
+
     func didDismiss() { }
 }
+
+#endif

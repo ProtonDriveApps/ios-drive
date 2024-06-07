@@ -20,15 +20,15 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Doh
-import ProtonCore_Log
-import ProtonCore_Networking
-import ProtonCore_Utilities
+import ProtonCoreDoh
+import ProtonCoreLog
+import ProtonCoreNetworking
+import ProtonCoreUtilities
 
 // MARK: - Handling force upgrade
 
 extension PMAPIService {
-    
+
     func forceUpgradeHandler(errorMessage: String?) {
         if let delegate = forceUpgradeDelegate, isForceUpgradeUIPresented.transform({ $0 == false }) {
             isForceUpgradeUIPresented.mutate({ $0 = true })

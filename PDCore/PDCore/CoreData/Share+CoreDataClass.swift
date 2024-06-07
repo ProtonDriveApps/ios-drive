@@ -20,14 +20,16 @@ import CoreData
 import PDClient
 
 @objc(Share)
-public class Share: NSManagedObject, HasTransientValues {
+public class Share: NSManagedObject {
     public typealias Flags = PDClient.Share.Flags
     
     // private raw values
     @NSManaged fileprivate var linkTypeRaw: NSNumber?
     @NSManaged fileprivate var flagsRaw: Int
     @NSManaged fileprivate var permissionMaskRaw: Int
+    #if os(iOS)
     var _observation: Any?
+    #endif
     
     // public enums, wrapped
     @ManagedEnum(raw: #keyPath(flagsRaw)) public var flags: Flags?
@@ -39,12 +41,18 @@ public class Share: NSManagedObject, HasTransientValues {
     }
     
     deinit {
+        #if os(iOS)
         NotificationCenter.default.removeObserver(_observation as Any)
+        #endif
     }
     
     override public func awakeFromFetch() {
         super.awakeFromFetch()
-        self._observation = self.subscribeToContexts()
+        #if os(iOS)
+        if type != .photos {
+            self._observation = self.subscribeToContexts()
+        }
+        #endif
     }
     
     override public func willChangeValue(forKey key: String) {
@@ -58,13 +66,23 @@ public class Share: NSManagedObject, HasTransientValues {
 
     override public func willTurnIntoFault() {
         super.willTurnIntoFault()
+        #if os(iOS)
         NotificationCenter.default.removeObserver(_observation as Any)
+        #endif
     }
 
     public var isMain: Bool {
         flags.contains(.main)
     }
+
+    public var isCollaborativelyShared: Bool {
+        type == .standard
+    }
 }
+
+#if os(iOS)
+extension Share: HasTransientValues {}
+#endif
 
 extension Optional where Wrapped == PDClient.Share.Flags {
     public func contains(_ member: Wrapped) -> Bool {

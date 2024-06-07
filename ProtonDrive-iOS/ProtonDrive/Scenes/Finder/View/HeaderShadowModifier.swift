@@ -17,7 +17,7 @@
 
 import Foundation
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 /// Adds shadow to header view of a section.
 /// Used with ``GridOrList`` modified by ``HeaderScrollSignal`` and ``HeaderScrollObserver``.

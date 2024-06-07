@@ -18,7 +18,7 @@
 import SwiftUI
 import Combine
 import PDCore
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import PDUIComponents
 
 struct ProgressesStatusToast: View {

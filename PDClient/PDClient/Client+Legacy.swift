@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import ProtonCoreUtilities
 
 extension Client {
     public func getSRPModulus(_ completion: @escaping (Result<Modulus, Error>) -> Void) {
@@ -26,7 +27,7 @@ extension Client {
     }
     
     public func getVolumes(_ completion: @escaping (Result<[Volume], Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = VolumesEndpoint(service: self.service, credential: credential)
@@ -36,7 +37,7 @@ extension Client {
     }
     
     func getShares(_ completion: @escaping (Result<[ShareShort], Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = SharesEndpoint(service: self.service, credential: credential)
@@ -46,7 +47,7 @@ extension Client {
     }
     
     public func getShare(_ id: ShareID, completion: @escaping (Result<Share, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = ShareEndpoint(shareID: id, service: self.service, credential: credential)
@@ -54,7 +55,7 @@ extension Client {
     }
     
     public func getShareUrl(_ id: ShareID, completion: @escaping (Result<[ShareURLMeta], Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = ShareURLEndpoint(shareID: id, service: self.service, credential: credential)
@@ -64,7 +65,7 @@ extension Client {
     }
     
     public func getShareUrlRecursively(_ id: ShareID, page: Int = 0, pageSize size: Int = 0, completion: @escaping (Result<([Link], [ShareURLMeta]), Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         
@@ -79,7 +80,7 @@ extension Client {
     }
     
     public func getFolderChildren(_ shareID: ShareID, folderID: FolderID, parameters: [FolderChildrenEndpointParameters]? = nil, completion: @escaping (Result<[Link], Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = FolderChildrenEndpoint(shareID: shareID, folderID: folderID, parameters: parameters, service: self.service, credential: credential)
@@ -88,26 +89,31 @@ extension Client {
         }
     }
     
-    public func getNode(_ shareID: ShareID, nodeID: FolderID, completion: @escaping (Result<Link, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+    public func getNode(_ shareID: ShareID, nodeID: FolderID, breadcrumbs: Breadcrumbs, completion: @escaping (Result<Link, Error>) -> Void) {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
-        let endpoint = LinkEndpoint(shareID: shareID, linkID: nodeID, service: self.service, credential: credential)
-        request(endpoint) {
-            completion( $0.flatMap { .success($0.link) })
+        do {
+            let endpoint = try LinkEndpoint(shareID: shareID, linkID: nodeID, service: self.service, credential: credential,
+                                            breadcrumbs: breadcrumbs.collect())
+            request(endpoint, completionExecutor: .asyncExecutor(dispatchQueue: backgroundQueue)) {
+                completion( $0.flatMap { .success($0.link) })
+            }
+        } catch {
+            completion(.failure(error))
         }
     }
     
-    public func getFolder(_ shareID: ShareID, folderID: FolderID, completion: @escaping (Result<Link, Error>) -> Void) {
-        self.getNode(shareID, nodeID: folderID, completion: completion)
+    public func getFolder(_ shareID: ShareID, folderID: FolderID, breadcrumbs: Breadcrumbs, completion: @escaping (Result<Link, Error>) -> Void) {
+        self.getNode(shareID, nodeID: folderID, breadcrumbs: breadcrumbs.collect(), completion: completion)
     }
     
-    public func getFile(_ shareID: ShareID, fileID: FileID, completion: @escaping (Result<Link, Error>) -> Void) {
-        self.getNode(shareID, nodeID: fileID, completion: completion)
+    public func getFile(_ shareID: ShareID, fileID: FileID, breadcrumbs: Breadcrumbs, completion: @escaping (Result<Link, Error>) -> Void) {
+        self.getNode(shareID, nodeID: fileID, breadcrumbs: breadcrumbs.collect(), completion: completion)
     }
     
     public func getRevisions(_ shareID: ShareID, fileID: FileID, completion: @escaping (Result<[RevisionShort], Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = RevisionsEndpoint(shareID: shareID, fileID: fileID, service: self.service, credential: credential)
@@ -117,11 +123,11 @@ extension Client {
     }
     
     public func getRevision(_ shareID: ShareID, fileID: FileID, revisionID: RevisionID, completion: @escaping (Result<Revision, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = RevisionEndpoint(shareID: shareID, fileID: fileID, revisionID: revisionID, service: self.service, credential: credential)
-        request(endpoint) {
+        request(endpoint, completionExecutor: .asyncExecutor(dispatchQueue: backgroundQueue)) {
             completion( $0.flatMap { .success($0.revision) })
         }
     }
@@ -129,7 +135,7 @@ extension Client {
 
 extension Client {
     public func postFile(_ shareID: ShareID, parameters: NewFileParameters, completion: @escaping (Result<NewFile, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = NewFileEndpoint(shareID: shareID, parameters: parameters, service: self.service, credential: credential)
@@ -139,7 +145,7 @@ extension Client {
     }
 
     public func postRevision(_ fileID: LinkID, shareID: ShareID, completion: @escaping (Result<NewRevision, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = NewRevisionEndpoint(fileID: fileID, shareID: shareID, service: self.service, credential: credential)
@@ -149,7 +155,7 @@ extension Client {
     }
 
     public func deleteRevision(_ revisionID: RevisionID, _ fileID: LinkID, shareID: ShareID, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = DeleteRevisionEndpoint(shareID: shareID, fileID: fileID, revisionID: revisionID, service: self.service, credential: credential)
@@ -159,7 +165,7 @@ extension Client {
     }
 
     public func postFolder(_ shareID: ShareID, parameters: NewFolderParameters, completion: @escaping (Result<NewFolder, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = NewFolderEndpoint(shareID: shareID, parameters: parameters, service: self.service, credential: credential)
@@ -168,7 +174,7 @@ extension Client {
         }
     }
     public func postBlocks(parameters: NewPhotoBlocksParameters, completion: @escaping (Result<(blocks: [ContentUploadLink], thumbnails: [ContentUploadLink]), Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = NewBlocksEndpoint(parameters: parameters, service: service, credential: credential)
@@ -178,7 +184,7 @@ extension Client {
     }
 
     public func postVolume(parameters: NewVolumeParameters, completion: @escaping (Result<NewVolume, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = NewVolumeEndpoint(parameters: parameters, service: self.service, credential: credential)
@@ -188,7 +194,7 @@ extension Client {
     }
 
     public func postAvailableHashes(shareID: Share.ShareID, folderID: Link.LinkID, parameters: AvailableHashesParameters, completion: @escaping (Result<[String], Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = AvailableHashesEndpoint(shareID: shareID, folderID: folderID, parameters: parameters, service: self.service, credential: credential)
@@ -198,7 +204,7 @@ extension Client {
     }
 
     public func postShare(volumeID: Volume.VolumeID, parameters: NewShareParameters, completion: @escaping (Result<Share.ShareID, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = NewShareEndpoint(volumeID: volumeID, parameters: parameters, service: self.service, credential: credential)
@@ -208,7 +214,7 @@ extension Client {
     }
 
     public func deleteShare(id: ShareID, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = DeleteShareEndpoint(shareID: id, service: self.service, credential: credential)
@@ -218,7 +224,7 @@ extension Client {
     }
 
     public func postShareURL(shareID: Share.ShareID, parameters: NewShareURLParameters, completion: @escaping (Result<ShareURLMeta, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = NewShareURLEndpoint(shareID: shareID, parameters: parameters, service: self.service, credential: credential)
@@ -228,7 +234,7 @@ extension Client {
     }
 
     public func deleteShareURL(id shareURLID: String, shareID: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = DeleteSecureLinkEndpoint(shareID: shareID, shareURLID: shareURLID, service: self.service, credential: credential)
@@ -240,7 +246,7 @@ extension Client {
 
 extension Client {
     public func getRevisionThumbnailURL(parameters: RevisionThumbnailParameters, completion: @escaping (Result<URL, Error>) -> Void) {
-        guard let credential = credentialProvider?.clientCredential() else {
+        guard let credential = credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
 
@@ -254,7 +260,7 @@ extension Client {
 
 extension Client {
     public func putRevision(shareID: Share.ShareID, fileID: Link.LinkID, revisionID: Revision.RevisionID, parameters: UpdateRevisionParameters, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = UpdateRevisionEndpoint(shareID: shareID, fileID: fileID, revisionID: revisionID, parameters: parameters, service: self.service, credential: credential)
@@ -264,7 +270,7 @@ extension Client {
     }
 
     public func putRenameNode(shareID: Share.ShareID, nodeID: Link.LinkID, parameters: RenameNodeParameters, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = RenameNodeEndpoint(shareID: shareID, nodeID: nodeID, parameters: parameters, service: self.service, credential: credential)
@@ -273,18 +279,8 @@ extension Client {
         }
     }
 
-    public func putMoveNode(shareID: Share.ShareID, nodeID: Link.LinkID, parameters: MoveNodeParameters, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
-            return completion(.failure(Errors.couldNotObtainCredential))
-        }
-        let endpoint = MoveNodeEndpoint(shareID: shareID, nodeID: nodeID, parameters: parameters, service: self.service, credential: credential)
-        request(endpoint) {
-            completion( $0.flatMap { _ in .success(Void()) })
-        }
-    }
-
     public func putShareURL<Parameters: EditShareURLParameters>(shareURLID: ShareURLMeta.ID, shareID: Share.ShareID, parameters: Parameters, completion: @escaping (Result<ShareURLMeta, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = EditShareURLEndpoint(shareURLID: shareURLID, shareID: shareID, parameters: parameters, service: service, credential: credential)
@@ -296,7 +292,7 @@ extension Client {
 
 extension Client {
     public func getLatestEvent(_ volumeID: VolumeID, completion: @escaping (Result<EventID, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = LatestEventEndpoint(volumeID: volumeID, service: self.service, credential: credential)
@@ -306,7 +302,7 @@ extension Client {
     }
 
     public func getEvents(_ volumeID: VolumeID, since lastKnown: EventID, completion: @escaping (Result<EventsEndpoint.Response, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = EventsEndpoint(volumeID: volumeID, since: lastKnown, service: self.service, credential: credential)
@@ -318,7 +314,7 @@ extension Client {
 
 extension Client {
     public func getTrash(shareID: ShareID, page: Int, pageSize size: Int, completion: @escaping (Result<(trash: [Link], parents: [Link]), Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = TrashListingEndpoint(shareID: shareID, parameters: [.page(page), .pageSize(size)], service: service, credential: credential)
@@ -327,21 +323,23 @@ extension Client {
         }
     }
 
-    public func trashNodes(shareID: ShareID, parentLinkID: LinkID, linkIDs: [LinkID], completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
-            return completion(.failure(Errors.couldNotObtainCredential))
-        }
-        let parameters = TrashLinkEndpoint.Parameters(shareID: shareID, parentLinkID: parentLinkID, linkIDs: linkIDs)
-        let endpoint = TrashLinkEndpoint(parameters: parameters, service: service, credential: credential)
-        request(endpoint, completion: {
-            completion($0.flatMap { _ -> Result<Void, Error> in
-                .success
+    public func trashNodes(shareID: ShareID, parentLinkID: LinkID, linkIDs: [LinkID], breadcrumbs: Breadcrumbs, completion: @escaping (Result<Void, Error>) -> Void) {
+        do {
+            guard let credential = self.credentialProvider.clientCredential() else {
+                throw Errors.couldNotObtainCredential
+            }
+            let parameters = TrashLinksParameters(shareId: shareID, parentLinkId: parentLinkID, linkIds: linkIDs)
+            let endpoint = try TrashLinkEndpoint(parameters: parameters, service: service, credential: credential, breadcrumbs: breadcrumbs.collect())
+            request(endpoint, completion: {
+                completion($0.flatMap { _ -> Result<Void, Error> in .success })
             })
-        })
+        } catch {
+            completion(.failure(error))
+        }
     }
 
     public func deletePermanently(shareID: ShareID, linkIDs: [LinkID], completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let parameters = DeleteLinkEndpoint.Parameters(shareID: shareID, linkIDs: linkIDs)
@@ -352,7 +350,7 @@ extension Client {
     }
 
     public func deleteLinkInFolderPermanently(shareID: ShareID, folderID: LinkID, linkIDs: [LinkID], completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let parameters = DeleteLinkInFolderEndpoint.Parameters(shareID: shareID, folderID: folderID, linkIDs: linkIDs)
@@ -363,7 +361,7 @@ extension Client {
     }
 
     public func emptyTrash(shareID: ShareID, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = EmptyTrashEndpoint(shareID: shareID, service: service, credential: credential)
@@ -373,7 +371,7 @@ extension Client {
     }
 
     public func retoreTrashNode(shareID: ShareID, linkIDs: [LinkID], completion: @escaping (Result<[PartialFailure], Error>) -> Void) {
-        guard let credential = self.credentialProvider?.clientCredential() else {
+        guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let parameters = RestoreLinkEndpoint.Parameters(shareID: shareID, linkIDs: linkIDs)
@@ -384,6 +382,27 @@ extension Client {
                 return .success(failed)
             })
         })
+    }
+}
+
+extension Client {
+    
+    public func deletePermanently(shareID: ShareID, linkIDs: [LinkID]) async throws {
+        let parameters = DeleteLinkEndpoint.Parameters(shareID: shareID, linkIDs: linkIDs)
+        let endpoint = DeleteLinkEndpoint(parameters: parameters, service: service, credential: try credential())
+        _ = try await request(endpoint)
+    }
+    
+    public func emptyTrash(shareID: ShareID) async throws {
+        let endpoint = EmptyTrashEndpoint(shareID: shareID, service: service, credential: try credential())
+        _ = try await request(endpoint)
+    }
+
+    public func retoreTrashNode(shareID: ShareID, linkIDs: [LinkID]) async throws -> [PartialFailure] {
+        let parameters = RestoreLinkEndpoint.Parameters(shareID: shareID, linkIDs: linkIDs)
+        let endpoint = RestoreLinkEndpoint(parameters: parameters, service: service, credential: try credential())
+        let response = try await request(endpoint)
+        return response.responses.compactMap(PartialFailure.init)
     }
 }
 

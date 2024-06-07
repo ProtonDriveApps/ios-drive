@@ -19,10 +19,13 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import Foundation
-import ProtonCore_CoreTranslation
-import ProtonCore_Login
-import ProtonCore_UIFoundations
+import UIKit
+import ProtonCoreLogin
+import ProtonCoreUIFoundations
+import ProtonCoreServices
 
 enum DisplayProgressStep: Hashable {
     case createAccount
@@ -41,7 +44,7 @@ enum DisplayProgressState {
 class DisplayProgress {
     let step: DisplayProgressStep
     var state: DisplayProgressState
-    
+
     init(step: DisplayProgressStep, state: DisplayProgressState) {
         self.step = step
         self.state = state
@@ -51,15 +54,15 @@ class DisplayProgress {
 class CompleteViewModel {
     var signupService: Signup
     var loginService: Login
-    
+
     var displayProgress: [DisplayProgress] = []
     var displayProgressWidth: [CGFloat?] = []
-    
+
     init(signupService: Signup, loginService: Login, initDisplaySteps: [DisplayProgressStep]) {
         self.signupService = signupService
         self.loginService = loginService
         initProgressSteps(initDisplaySteps: initDisplaySteps)
-        
+
         self.loginService.startGeneratingAddress = {
             self.progressStepWait(progressStep: .generatingAddress)
         }
@@ -67,7 +70,7 @@ class CompleteViewModel {
             self.progressStepWait(progressStep: .generatingKeys)
         }
     }
-    
+
     var progressCompletion: (() -> Void)?
 
     func createNewUser(userName: String, password: String, email: String?, phoneNumber: String?,
@@ -83,7 +86,7 @@ class CompleteViewModel {
         }
     }
 
-    func createNewExternalAccount(email: String, password: String, verifyToken: String, tokenType: String,
+    func createNewExternalAccount(email: String, password: String, verifyToken: String?, tokenType: String?,
                                   completion: @escaping (Result<(LoginData), Error>) -> Void) {
         DispatchQueue.main.async {
             self.progressStepWait(progressStep: .createAccount)
@@ -101,7 +104,7 @@ class CompleteViewModel {
             }
         }
     }
-    
+
     func progressStepWait(progressStep: DisplayProgressStep) {
         // mark found item as waiting
         // mark all items before as done
@@ -115,7 +118,7 @@ class CompleteViewModel {
         }
         progressCompletion?()
     }
-    
+
     func progressStepAllDone() {
         // mark all items as done
         displayProgress.forEach {
@@ -127,7 +130,7 @@ class CompleteViewModel {
     }
 
     // MARK: Private methods
-    
+
     private func createNewUsernameAccount(userName: String, password: String, email: String?, phoneNumber: String?,
                                           completion: @escaping (Result<(LoginData), Error>) -> Void) {
         loginService.checkAvailabilityForUsernameAccount(username: userName) { [weak self] result in
@@ -157,7 +160,7 @@ class CompleteViewModel {
             }
         }
     }
-    
+
     private func createNewInternalAccount(userName: String, password: String, email: String?, phoneNumber: String?,
                                           completion: @escaping (Result<(LoginData), Error>) -> Void) {
         loginService.checkAvailabilityForInternalAccount(username: userName) { [weak self] result in
@@ -189,13 +192,13 @@ class CompleteViewModel {
     }
 
     private func login(name: String, password: String, completion: @escaping (Result<(LoginData), Error>) -> Void) {
-        loginService.login(username: name, password: password, challenge: nil) { result in
+        loginService.login(username: name, password: password, intent: .proton, challenge: nil) { result in
             switch result {
             case .success(let loginStatus):
                 switch loginStatus {
                 case .finished(let loginData):
                     completion(.success(loginData))
-                case .ask2FA, .askSecondPassword, .chooseInternalUsernameAndCreateInternalAddress:
+                case .askTOTP, .askSecondPassword, .chooseInternalUsernameAndCreateInternalAddress, .ssoChallenge, .askFIDO2, .askAny2FA:
                     completion(.failure(LoginError.invalidState))
                 }
             case .failure(let error):
@@ -205,7 +208,7 @@ class CompleteViewModel {
             }
         }
     }
-    
+
     private func initProgressSteps(initDisplaySteps: [DisplayProgressStep]) {
         // initial array
         initDisplaySteps.uniqued().forEach {
@@ -221,11 +224,11 @@ extension CompleteViewModel {
             displayProgressWidth.append(nil)
         }
     }
-    
+
     func updateProgressWidth(index: Int, width: CGFloat) {
         displayProgressWidth[index] = width
     }
-    
+
     var getMaxProgressWidth: CGFloat? {
         let widthArray = displayProgressWidth.compactMap { $0 }
         if widthArray.count == displayProgressWidth.count {
@@ -239,13 +242,13 @@ extension DisplayProgressStep {
     var localizedString: String {
         switch self {
         case .createAccount:
-            return CoreString._su_complete_step_creation
+            return LUITranslation.complete_step_creation.l10n
         case .generatingAddress:
-            return CoreString._su_complete_step_address_generation
+            return LUITranslation.complete_step_address_generation.l10n
         case .generatingKeys:
-            return CoreString._su_complete_step_keys_generation
+            return LUITranslation.complete_step_keys_generation.l10n
         case .payment:
-            return CoreString._su_complete_step_payment_verification
+            return LUITranslation.complete_step_payment_verification.l10n
         case .custom(let text):
             return text
         }
@@ -281,3 +284,5 @@ extension Sequence where Element: Hashable {
         return filter { set.insert($0).inserted }
     }
 }
+
+#endif

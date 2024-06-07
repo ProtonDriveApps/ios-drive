@@ -14,6 +14,9 @@
       location = "group:PDUIComponents/PDUIComponents.xcodeproj">
    </FileRef>
    <FileRef
+      location = "group:PDUploadVerifier/PDUploadVerifier.xcodeproj">
+   </FileRef>
+   <FileRef
       location = "group:Pods/Pods.xcodeproj">
    </FileRef>
    <FileRef

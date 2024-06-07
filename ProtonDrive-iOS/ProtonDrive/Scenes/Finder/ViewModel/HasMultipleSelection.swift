@@ -17,12 +17,14 @@
 
 import SwiftUI
 import PDUIComponents
+import PDCore
 
 protocol HasMultipleSelection: AnyObject {
     var isUpdating: Bool { get set }
     var listState: ListState { get set }
-    var selection: MultipleSelectionModel { get }
+    var selection: MultipleSelectionModel<NodeIdentifier> { get }
     func actionBarAction(_ tapped: ActionBarButtonViewModel?, sheet: Binding<FinderCoordinator.Destination?>, menuItem: Binding<FinderMenu?>)
+    func actionBarItems() -> [ActionBarButtonViewModel]
 }
 
 extension HasMultipleSelection {
@@ -49,12 +51,5 @@ extension HasMultipleSelection {
             self.listState = .active
             self.selection.clearSelected()
         }
-    }
-    
-}
-
-extension HasMultipleSelection {
-    func actionBarItems() -> [ActionBarButtonViewModel] {
-        [.trashMultiple, .moveMultiple, .offlineAvailableMultiple]
     }
 }

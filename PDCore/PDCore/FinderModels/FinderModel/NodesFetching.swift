@@ -68,12 +68,12 @@ extension NodesFetching where Self: NodesSorting {
             cloud.scanChildren(of: self.currentNodeID, parameters: params) { promise($0) }
         }
         .flatMap { [unowned self] nodes -> AnyPublisher<[Node], Error> in
-            ConsoleLogger.shared?.log("Fetched page: \(self.lastFetchedPage)", osLogType: FinderLogger.self)
+            Log.info("Fetched page: \(self.lastFetchedPage)", domain: .networking)
             if nodes.count < self.pageSize {
                 // this is last page
                 self.node.managedObjectContext?.performAndWait {
                     self.node.isChildrenListFullyFetched = true
-                    try? self.node.managedObjectContext?.save()
+                    try? self.node.managedObjectContext?.saveWithParentLinkCheck()
                 }
                 
                 return Just(nodes).setFailureType(to: Error.self).eraseToAnyPublisher()

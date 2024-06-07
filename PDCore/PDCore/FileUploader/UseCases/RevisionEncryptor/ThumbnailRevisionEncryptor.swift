@@ -45,24 +45,55 @@ class ThumbnailRevisionEncryptor: RevisionEncryptor {
         guard !isCancelled, !isExecuting else { return }
         isExecuting = true
 
-        ConsoleLogger.shared?.log("STAGE: 1.1 🏞 Encrypt thumbnail started", osLogType: FileUploader.self)
-        moc.perform {
-            do {
-                let revision = draft.revision.in(moc: self.moc)
-                revision.removeOldThumbnails(in: self.moc)
-                let thumbnail = try self.makeCoreDataThumbnail(ofSize: Constants.defaultThumbnailMaxSize, maxWeight: Constants.thumbnailMaxWeight, draft)
-                revision.addToThumbnails(thumbnail)
-
+        Log.info("STAGE: 1.1 🏞 Encrypt thumbnail started. UUID: \(draft.uploadID)", domain: .uploader)
+        do {
+            try encryptThrowing(draft)
+            Log.info("STAGE: 1.1 🏞 Encrypt thumbnail finished ✅. UUID: \(draft.uploadID)", domain: .uploader)
+            self.progress.complete()
+            completion(.success)
+            
+        } catch ThumbnailGenerationError.cancelled {
+            return
+        } catch {
+            Log.info("STAGE: 1.1 🏞 Encrypt thumbnail finished ❌. UUID: \(draft.uploadID)", domain: .uploader)
+            completion(.failure(error))
+        }
+    }
+    
+    func encryptThrowing(_ draft: CreatedRevisionDraft) throws {
+        let encryptionMetadata = try moc.performAndWait { [weak self] in
+            guard let self, !self.isCancelled else { throw ThumbnailGenerationError.cancelled }
+            
+            let revision = draft.revision.in(moc: moc)
+            return try getEncryptionMetadata(for: revision.file)
+        }
+        
+        let thumbnailData = try makeEncryptedThumbnailData(
+            ofSize: Constants.defaultThumbnailMaxSize,
+            maxWeight: Constants.thumbnailMaxWeight,
+            encryptionMetadata: encryptionMetadata,
+            localURL: draft.localURL
+        )
+        
+        guard !isCancelled else { throw ThumbnailGenerationError.cancelled }
+        
+        Log.info("STAGE: 1.1 🏞🏁 Encrypted thumbnail 1. UUID: \(draft.uploadID)", domain: .uploader)
+        
+        try moc.performAndWait { [weak self] in
+            guard let self, !self.isCancelled else { throw ThumbnailGenerationError.cancelled }
+            
+            let revision = draft.revision.in(moc: self.moc)
+            revision.removeOldThumbnails(in: self.moc)
+            
+            let thumbnail = makeThumbnail(from: thumbnailData, type: .default)
+            
+            revision.addToThumbnails(thumbnail)
+            
+            if self.isCancelled {
+                self.moc.rollback()
+                throw ThumbnailGenerationError.cancelled
+            } else {
                 try self.moc.saveOrRollback()
-                
-                ConsoleLogger.shared?.log("STAGE: 1.1 🏞 Encrypt thumbnail finished ✅", osLogType: FileUploader.self)
-
-                self.progress.complete()
-                completion(.success)
-
-            } catch {
-                ConsoleLogger.shared?.log("STAGE: 1.1 🏞 Encrypt thumbnail finished ❌", osLogType: FileUploader.self)
-                completion(.failure(error))
             }
         }
     }
@@ -71,73 +102,92 @@ class ThumbnailRevisionEncryptor: RevisionEncryptor {
         isCancelled = true
     }
 
-    func makeCoreDataThumbnail(ofSize size: CGSize, maxWeight: Int, _ draft: CreatedRevisionDraft) throws -> Thumbnail {
-        guard let rawThumbnail = self.thumbnailProvider.getThumbnail(from: draft.localURL, ofSize: size) else {
-            throw ThumbnailGenerationError.generation
+    func getEncryptionMetadata(for file: File) throws -> EncryptionMetadata {
+        guard let rawContentKeyPacket = file.contentKeyPacket,
+              let contentKeyPacket = Data(base64Encoded: rawContentKeyPacket) else {
+            throw ThumbnailGenerationError.noFileKeyPacket
         }
-        let thumbnail = try self.compressAndEncrypt(rawThumbnail, maxThumbnailWeight: maxWeight, draft: draft)
+        guard let signatureEmail = file.signatureEmail else {
+            throw ThumbnailGenerationError.noSignatureEmailInFile
+        }
+        let nodePassphrase = try file.decryptPassphrase()
+        return EncryptionMetadata(
+            nodeKey: file.nodeKey,
+            contentKeyPacket: contentKeyPacket,
+            passphrase: nodePassphrase,
+            signatureEmail: signatureEmail
+        )
+    }
+
+    func makeThumbnail(from thumbnailData: EncryptedThumbnailData, type: ThumbnailType) -> Thumbnail {
         let coreDataThumbnail = Thumbnail(context: self.moc)
-        coreDataThumbnail.encrypted = thumbnail.encrypted
-        coreDataThumbnail.sha256 = thumbnail.hash
+        coreDataThumbnail.encrypted = thumbnailData.encrypted
+        coreDataThumbnail.sha256 = thumbnailData.hash
+        coreDataThumbnail.type = type
         return coreDataThumbnail
     }
 
-    func compressAndEncrypt(_ cgImage: CGImage, maxThumbnailWeight: Int, draft: CreatedRevisionDraft) throws -> EncryptedThumbnailData {
+    func makeEncryptedThumbnailData(ofSize size: CGSize, maxWeight: Int, encryptionMetadata: EncryptionMetadata, localURL: URL) throws -> EncryptedThumbnailData {
+        guard let rawThumbnail = self.thumbnailProvider.getThumbnail(from: localURL, ofSize: size) else {
+            throw ThumbnailGenerationError.generation
+        }
+        return try self.compressAndEncrypt(rawThumbnail, maxThumbnailWeight: maxWeight, encryptionMetadata: encryptionMetadata)
+    }
+
+    private func compressAndEncrypt(_ cgImage: CGImage, maxThumbnailWeight: Int, encryptionMetadata: EncryptionMetadata) throws -> EncryptedThumbnailData {
         for quality in [1.0, 0.7, 0.4, 0.2, 0.1, 0] {
+            guard !isCancelled else {
+                throw ThumbnailGenerationError.cancelled
+            }
             guard let compressed = cgImage.jpegData(compressionQuality: quality) else {
                 throw ThumbnailGenerationError.compression
             }
 
             guard compressed.count <= maxThumbnailWeight else { continue }
 
-            let encryptedThumbnail = try encrypt(compressed, draft: draft)
+            guard !isCancelled else {
+                throw ThumbnailGenerationError.cancelled
+            }
+            let encryptedThumbnail = try encrypt(compressed, encryptionMetadata: encryptionMetadata)
 
             if encryptedThumbnail.encrypted.count <= maxThumbnailWeight {
                 return encryptedThumbnail
             }
         }
 
-        throw UploaderErrors.invalidSizeThumbnail
+        throw ThumbnailGenerationError.invalidSizeThumbnail
     }
 
-    func encrypt(_ thumbnail: Data, draft: CreatedRevisionDraft) throws -> EncryptedThumbnailData {
-        let moc = draft.revision.managedObjectContext!
+    func encrypt(_ thumbnail: Data, encryptionMetadata: EncryptionMetadata) throws -> EncryptedThumbnailData {
+        let encryptedThumbnail = try encrypt(clearThumbnail: thumbnail, encryptionMetadata: encryptionMetadata)
 
-        let uploadableThumbnailData: EncryptedThumbnailData = try moc.performAndWait {
-            let encryptedThumbnail = try encrypt(clearThumbnail: thumbnail, for: draft.revision.file)
-
-            // MARK: - NEW
-            return EncryptedThumbnailData(
-                encrypted: encryptedThumbnail.data,
-                hash: encryptedThumbnail.hash
-            )
-        }
-
-        return uploadableThumbnailData
+        // MARK: - NEW
+        return EncryptedThumbnailData(
+            encrypted: encryptedThumbnail.data,
+            hash: encryptedThumbnail.hash
+        )
     }
 
-    func encrypt(clearThumbnail thumbnail: Data, for file: File) throws -> Encryptor.EncryptedBinary {
-        guard let rawContentKeyPacket = file.contentKeyPacket,
-              let contentKeyPacket = Data(base64Encoded: rawContentKeyPacket) else {
-                  throw UploaderErrors.noFileKeyPacket
-        }
-
-        let nodePassphrase = try file.decryptPassphrase()
+    func encrypt(clearThumbnail thumbnail: Data, encryptionMetadata: EncryptionMetadata) throws -> Encryptor.EncryptedBinary {
         // TODO: Conceptually it should we should use draft.revision.signatureAddress, in this case is the same because the creator of the file is the same as the creator of the revision, and both are created at the same time
-        let signersKit = try signersKitFactory.make(forSigner: .address(file.signatureEmail))
+        let signersKit = try signersKitFactory.make(forSigner: .address(encryptionMetadata.signatureEmail))
 
         return try Encryptor.encryptAndSignBinary(
             clearData: thumbnail,
-            contentKeyPacket: contentKeyPacket,
-            privateKey: file.nodeKey,
-            passphrase: nodePassphrase,
+            contentKeyPacket: encryptionMetadata.contentKeyPacket,
+            privateKey: encryptionMetadata.nodeKey,
+            passphrase: encryptionMetadata.passphrase,
             addressKey: signersKit.addressKey.privateKey,
             addressPassphrase: signersKit.addressPassphrase
         )
     }
 }
 
-enum ThumbnailGenerationError: Error {
+enum ThumbnailGenerationError: String, LocalizedError {
+    case noFileKeyPacket
     case generation
     case compression
+    case cancelled
+    case invalidSizeThumbnail
+    case noSignatureEmailInFile
 }

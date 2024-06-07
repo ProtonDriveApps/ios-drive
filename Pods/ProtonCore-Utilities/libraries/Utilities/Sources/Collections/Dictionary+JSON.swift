@@ -20,10 +20,10 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Log
+import ProtonCoreLog
 
 extension Dictionary where Key == String, Value == Any {
-    
+
     /**
      base class for convert anyobject to a json string
 

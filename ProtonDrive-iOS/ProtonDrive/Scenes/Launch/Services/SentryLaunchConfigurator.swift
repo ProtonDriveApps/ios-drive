@@ -16,17 +16,22 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDClient
 
 final class SentryLaunchConfigurator: LaunchConfigurator {
     let sentryClient: SentryClient
     let localSettings: LocalSettings
+    let clientGetter: () -> Client?
 
-    init(sentryClient: SentryClient, localSettings: LocalSettings) {
+    init(sentryClient: SentryClient,
+         localSettings: LocalSettings,
+         clientGetter: @escaping () -> Client?) {
         self.sentryClient = sentryClient
         self.localSettings = localSettings
+        self.clientGetter = clientGetter
     }
 
     func onDriveLaunch() {
-        sentryClient.start(localSettings: localSettings)
+        sentryClient.start(localSettings: localSettings, clientGetter: clientGetter)
     }
 }

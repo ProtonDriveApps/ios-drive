@@ -32,12 +32,16 @@ enum PickerError: Error, LocalizedError {
 }
 
 extension FolderModel: PickerDelegate {
-    func picker(didFinishPicking items: [Result<URL, Error>]) {
+    func picker(didFinishPicking items: [URLResult]) {
         var errors = [Error]()
         for item in items {
             switch item {
-            case .success(let fileURL):
-                uploadFile(fileURL, to: currentFolder)
+            case .success(let content):
+                do {
+                    try uploadFile(content, to: currentFolder)
+                } catch {
+                    errors.append(error)
+                }
             case .failure(let error):
                 errors.append(error)
             }

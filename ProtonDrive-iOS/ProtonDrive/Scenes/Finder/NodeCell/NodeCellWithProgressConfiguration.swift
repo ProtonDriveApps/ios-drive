@@ -49,7 +49,7 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
     let progressDirection: ProgressTracker.Direction?
     let isDisabled = false
     let selectionModel: CellSelectionModel?
-    let id: String
+    let id: NodeIdentifier
     
     var actionButtonAction: () -> Void = { }
     var retryUploadAction: () -> Void = { }
@@ -67,7 +67,7 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
         self.progressesAvailable = progressesAvailable
         self.node = node
         self.selectionModel = selectionModel
-        self.id = node.id
+        self.id = node.identifier
         self.name = node.decryptedName
         self.nodeStatePolicy = nodeStatePolicy
 
@@ -117,7 +117,7 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
         nodeStatePolicy.isUploadPaused(for: node)
     }
     
-    private var percentFormatter: NumberFormatter = {
+    private static let percentFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .percent
         formatter.multiplier = 100
@@ -152,7 +152,7 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
     }
 
     var percentageDownloaded: String {
-        percentFormatter.string(from: self.progressCompleted as NSNumber) ?? ""
+        Self.percentFormatter.string(from: self.progressCompleted as NSNumber) ?? ""
     }
     
     var nodeType: NodeType {

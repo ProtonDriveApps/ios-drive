@@ -17,46 +17,65 @@
 
 import PDCore
 import UIKit
+import PDUIComponents
+import ProtonCoreServices
+import ProtonCoreKeymaker
 import SwiftUI
+import Combine
 
 final class PhotosScenesContainer {
     struct Dependencies {
         let tower: Tower
+        let keymaker: Keymaker
+        let networkService: PMAPIService
         let backupController: PhotosBackupController
         let settingsController: PhotoBackupSettingsController
         let authorizationController: PhotoLibraryAuthorizationController
         let bootstrapController: PhotosBootstrapController
         let networkConstraintController: PhotoBackupConstraintController
         let backupProgressController: PhotosBackupProgressController
+        let processingController: PhotosProcessingController
+        let uploader: PhotoUploader
+        let quotaStateController: QuotaStateController
+        let quotaConstraintController: PhotoBackupConstraintController
+        let availableSpaceController: PhotoBackupConstraintController
+        let featureFlagController: PhotoBackupConstraintController
+        let repository: ScreenLockingBannerRepository
+        let failedPhotosResource: DeletedPhotosIdentifierStoreResource
+        let backupStateController: LocalPhotosBackupStateController
+        let retryTriggerController: PhotoLibraryLoadRetryTriggerController
+        let constraintsController: PhotoBackupConstraintsController
     }
     private let dependencies: Dependencies
+    private let rootViewModel: RootViewModel
+    private lazy var thumbnailsContainer = ThumbnailsControllersContainer(tower: dependencies.tower)
 
     // We need to share same reference for multiple constructed scenes, but want them released when all screens are dismissed.
     private weak var galleryController: PhotosGalleryController?
-    private weak var smallThumbnailsController: ThumbnailsController?
-    private weak var previewModeController: PhotosPreviewModeController?
     private weak var previewController: PhotosPreviewController?
     private weak var loadController: PhotosPagingLoadController?
+    private weak var uploadedPhotosObserver: FetchedResultsSectionsController<Photo>?
 
     init(dependencies: Dependencies) {
         self.dependencies = dependencies
+        rootViewModel = RootViewModel()
     }
 
     func makeRootViewController() -> UIViewController {
         let factory = PhotosScenesFactory()
         let coordinator = factory.makeCoordinator(container: self)
+        let selectionController = factory.makeSelectionController()
         return factory.makeRootPhotosViewController(
             coordinator: coordinator,
-            viewModel: factory.makeRootViewModel(coordinator: coordinator, settingsController: dependencies.settingsController, authorizationController: dependencies.authorizationController, galleryController: getGalleryController()),
+            rootViewModel: rootViewModel,
+            viewModel: factory.makeRootViewModel(coordinator: coordinator, settingsController: dependencies.settingsController, authorizationController: dependencies.authorizationController, galleryController: getGalleryController(), selectionController: selectionController),
             onboardingView: { [unowned self] in
                 makeOnboardingView()
             },
             permissionsView: {
                 factory.makePermissionsView(coordinator: coordinator)
             },
-            galleryView: { [unowned self] in
-                makeGalleryView(coordinator: coordinator)
-            }
+            galleryView: makeGalleryView(coordinator: coordinator, selectionController: selectionController, backupStateController: dependencies.backupStateController)
         )
     }
 
@@ -65,50 +84,70 @@ final class PhotosScenesContainer {
         return factory.makeOnboardingView(settingsController: dependencies.settingsController, authorizationController: dependencies.authorizationController, bootstrapController: dependencies.bootstrapController)
     }
 
-    private func makeGalleryView(coordinator: PhotosCoordinator) -> some View {
+    private func makeGalleryView(coordinator: PhotosCoordinator, selectionController: PhotosSelectionController, backupStateController: LocalPhotosBackupStateController) -> some View {
         let factory = PhotosScenesFactory()
-        let uploadController = LocalPhotosBackupUploadAvailableController(backupController: dependencies.backupController, networkConstraintController: dependencies.networkConstraintController)
+        let backupStartController = LocalPhotosBackupStartController(
+            settingsController: dependencies.settingsController,
+            authorizationController: dependencies.authorizationController,
+            photosBootstrapController: dependencies.bootstrapController
+        )
+        let stateView = factory.makeStateView(
+            controller: backupStateController,
+            coordinator: coordinator,
+            constraintsController: dependencies.constraintsController,
+            backupStartController: backupStartController
+        )
+        let lockingBannerView = factory.makeLockingBannerView(notifier: backupStateController, repository: dependencies.repository)
         return factory.makeGalleryView(
             tower: dependencies.tower,
             coordinator: coordinator,
             galleryController: getGalleryController(),
-            thumbnailsController: getSmallThumbnailsController(),
+            thumbnailsContainer: thumbnailsContainer,
             settingsController: dependencies.settingsController,
             loadController: getLoadController(),
-            stateView: makeStateView()
+            errorControllers: [dependencies.processingController, dependencies.uploader],
+            selectionController: selectionController,
+            photosObserver: getUploadedPhotosObserver(),
+            stateView: stateView,
+            lockingBannerView: lockingBannerView,
+            storageView: factory.makeStorageView(quotaStateController: dependencies.quotaStateController, progressController: dependencies.backupProgressController, coordinator: coordinator)
         )
     }
 
-    private func makeStateView() -> some View {
-        let factory = PhotosScenesFactory()
-        return factory.makeStateView(progressController: dependencies.backupProgressController, settingsController: dependencies.settingsController, authorizationController: dependencies.authorizationController, networkController: dependencies.networkConstraintController)
-    }
-
     func makePreviewController(id: PhotoId) -> UIViewController {
-        let factory = PhotosScenesFactory()
         let dependencies = PhotosPreviewContainer.Dependencies(
             id: id,
             tower: dependencies.tower,
             galleryController: getGalleryController(),
-            smallThumbnailsController: getSmallThumbnailsController(),
-            bigThumbnailsController: factory.makeBigThumbnailsController(tower: dependencies.tower)
+            thumbnailsContainer: thumbnailsContainer
         )
         let container = PhotosPreviewContainer(dependencies: dependencies)
         return container.makeRootViewController(with: id)
     }
 
+    func makeShareViewController(id: PhotoId) -> UIViewController? {
+        let factory = PhotosScenesFactory()
+        return factory.makeShareViewController(id: id, tower: dependencies.tower, rootViewModel: rootViewModel)
+    }
+
+    func makeSubscriptionsViewController() -> UIViewController {
+        let dependencies = SubscriptionsContainer.Dependencies(tower: dependencies.tower, keymaker: dependencies.keymaker, networkService: dependencies.networkService)
+        let container = SubscriptionsContainer(dependencies: dependencies)
+        return container.makeRootViewController()
+    }
+    
+    func makeRetryViewController() -> UIViewController {
+        PhotosScenesFactory().makeRetryViewController(
+            deletedStoreResource: dependencies.failedPhotosResource, retryTriggerController: dependencies.retryTriggerController
+        )
+    }
+
     // MARK: - Cached controllers
 
     private func getGalleryController() -> PhotosGalleryController {
-        let galleryController = galleryController ?? PhotosScenesFactory().makeGalleryController(tower: dependencies.tower)
+        let galleryController = galleryController ?? PhotosScenesFactory().makeGalleryController(tower: dependencies.tower, observer: getUploadedPhotosObserver())
         self.galleryController = galleryController
         return galleryController
-    }
-
-    private func getSmallThumbnailsController() -> ThumbnailsController {
-        let smallThumbnailsController = smallThumbnailsController ?? PhotosScenesFactory().makeSmallThumbnailsController(tower: dependencies.tower)
-        self.smallThumbnailsController = smallThumbnailsController
-        return smallThumbnailsController
     }
 
     private func getPreviewController(id: PhotoId) -> PhotosPreviewController {
@@ -118,8 +157,18 @@ final class PhotosScenesContainer {
     }
 
     private func getLoadController() -> PhotosPagingLoadController {
-        let loadController = loadController ?? PhotosScenesFactory().makePagingLoadController(tower: dependencies.tower, backupController: dependencies.backupController, networkConstraintController: dependencies.networkConstraintController)
+        let loadController = loadController ?? PhotosScenesFactory().makePagingLoadController(
+            tower: dependencies.tower,
+            bootstrapController: dependencies.bootstrapController,
+            networkConstraintController: dependencies.networkConstraintController
+        )
         self.loadController = loadController
         return loadController
+    }
+
+    private func getUploadedPhotosObserver() -> FetchedResultsSectionsController<Photo> {
+        let uploadedPhotosObserver = uploadedPhotosObserver ?? PhotosScenesFactory().makeUploadedPhotosObserver(tower: dependencies.tower)
+        self.uploadedPhotosObserver = uploadedPhotosObserver
+        return uploadedPhotosObserver
     }
 }

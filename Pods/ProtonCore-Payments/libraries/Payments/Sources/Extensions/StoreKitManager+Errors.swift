@@ -20,7 +20,6 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_CoreTranslation
 
 public enum StoreKitManagerErrors: LocalizedError {
     case unavailableProduct
@@ -30,20 +29,20 @@ public enum StoreKitManagerErrors: LocalizedError {
     case alreadyPurchasedPlanDoesNotMatchBackend
     case noActiveUsername
     case transactionFailedByUnknownReason
-    case noNewSubscriptionInSuccessfullResponse
+    case noNewSubscriptionInSuccessfulResponse
     case wrongTokenStatus(PaymentToken.Status)
     case notAllowed
     case unknown(code: Int, originalError: NSError)
     case appIsLocked
     case pleaseSignIn
     case apiMightBeBlocked(message: String, originalError: Error)
-    
+
     @available(*, deprecated, message: "This is never returned anymore — the success callback with `.resolvingIAPToCreditsCausedByError` is returned instead")
     static var creditsApplied: StoreKitManagerErrors { .transactionFailedByUnknownReason }
-    
+
     @available(*, deprecated, message: "This is never returned anymore — the success callback with `.cancelled` is returned instead")
     static var cancelled: StoreKitManagerErrors { .transactionFailedByUnknownReason }
-    
+
     var isUnknown: Bool {
         switch self {
         case .unknown: return true
@@ -53,17 +52,17 @@ public enum StoreKitManagerErrors: LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .unavailableProduct: return CoreString._error_unavailable_product
-        case .invalidPurchase: return CoreString._error_invalid_purchase
-        case .receiptLost: return CoreString._error_reciept_lost
-        case .haveTransactionOfAnotherUser: return CoreString._error_another_user_transaction
-        case .alreadyPurchasedPlanDoesNotMatchBackend: return CoreString._error_backend_mismatch
-        case .noActiveUsername: return CoreString._error_no_active_username_in_user_data_service
-        case .transactionFailedByUnknownReason: return CoreString._error_transaction_failed_by_unknown_reason
-        case .noNewSubscriptionInSuccessfullResponse: return CoreString._error_no_new_subscription_in_response
-        case .appIsLocked: return CoreString._error_unlock_to_proceed_with_iap
-        case .pleaseSignIn: return CoreString._error_please_sign_in_iap
-        case .wrongTokenStatus: return CoreString._error_wrong_token_status
+        case .unavailableProduct: return PSTranslation._error_unavailable_product.l10n
+        case .invalidPurchase: return PSTranslation._error_invalid_purchase.l10n
+        case .receiptLost: return PSTranslation._error_receipt_lost.l10n
+        case .haveTransactionOfAnotherUser: return PSTranslation._error_another_user_transaction.l10n
+        case .alreadyPurchasedPlanDoesNotMatchBackend: return PSTranslation._error_backend_mismatch.l10n
+        case .noActiveUsername: return PSTranslation._error_no_active_username_in_user_data_service.l10n
+        case .transactionFailedByUnknownReason: return PSTranslation._error_transaction_failed_by_unknown_reason.l10n
+        case .noNewSubscriptionInSuccessfulResponse: return PSTranslation._error_no_new_subscription_in_response.l10n
+        case .appIsLocked: return PSTranslation._error_unlock_to_proceed_with_iap.l10n
+        case .pleaseSignIn: return PSTranslation._error_please_sign_in_iap.l10n
+        case .wrongTokenStatus: return PSTranslation._error_wrong_token_status.l10n
         case .notAllowed, .unknown: return nil
         case .apiMightBeBlocked(let message, _): return message
         }
@@ -74,16 +73,16 @@ extension StoreKitManagerErrors: Equatable {
     public static func == (lhs: StoreKitManagerErrors, rhs: StoreKitManagerErrors) -> Bool {
         switch (lhs, rhs) {
         case (.unavailableProduct, .unavailableProduct),
-             (.invalidPurchase, .invalidPurchase),
-             (.receiptLost, .receiptLost),
-             (.haveTransactionOfAnotherUser, .haveTransactionOfAnotherUser),
-             (.alreadyPurchasedPlanDoesNotMatchBackend, .alreadyPurchasedPlanDoesNotMatchBackend),
-             (.noActiveUsername, .noActiveUsername),
-             (.transactionFailedByUnknownReason, .transactionFailedByUnknownReason),
-             (.noNewSubscriptionInSuccessfullResponse, .noNewSubscriptionInSuccessfullResponse),
-             (.notAllowed, .notAllowed),
-             (.appIsLocked, .appIsLocked),
-             (.pleaseSignIn, .pleaseSignIn):
+            (.invalidPurchase, .invalidPurchase),
+            (.receiptLost, .receiptLost),
+            (.haveTransactionOfAnotherUser, .haveTransactionOfAnotherUser),
+            (.alreadyPurchasedPlanDoesNotMatchBackend, .alreadyPurchasedPlanDoesNotMatchBackend),
+            (.noActiveUsername, .noActiveUsername),
+            (.transactionFailedByUnknownReason, .transactionFailedByUnknownReason),
+            (.noNewSubscriptionInSuccessfulResponse, .noNewSubscriptionInSuccessfulResponse),
+            (.notAllowed, .notAllowed),
+            (.appIsLocked, .appIsLocked),
+            (.pleaseSignIn, .pleaseSignIn):
             return true
         case let (.wrongTokenStatus(ltoken), .wrongTokenStatus(rtoken)):
             return ltoken == rtoken
@@ -102,6 +101,6 @@ extension Error {
         if let storeKitError = self as? StoreKitManagerErrors {
             return storeKitError.errorDescription ?? storeKitError.localizedDescription
         }
-        return messageForTheUser
+        return localizedDescription
     }
 }

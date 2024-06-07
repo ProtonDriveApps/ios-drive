@@ -16,16 +16,18 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import UIKit
-import ProtonCore_Settings
+import PMSettings
 
 extension AuthenticatedDependencyContainer {
     func makeLockViewController() -> UIViewController {
         let logoutViewModel = LogoutAlertViewModel()
+        let failedAttemptsCounter = SecureFailedAttemptsCounter(maximumNumberOfAttempts: Constants.maxNumberOfFailedUnlockAttempts)
         return PMUnlockViewControllerComposer
             .assemble(
                 header: .drive(subtitle: nil),
                 unlocker: self.keymaker,
                 logoutManager: DriveLogoutManager(),
+                failedAttemptsCounter: failedAttemptsCounter,
                 logoutAlertSubtitle: logoutViewModel.message
             )
     }

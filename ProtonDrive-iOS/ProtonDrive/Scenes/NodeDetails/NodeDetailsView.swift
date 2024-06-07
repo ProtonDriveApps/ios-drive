@@ -17,7 +17,7 @@
 
 import SwiftUI
 import PDCore
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import PDUIComponents
 
 struct NodeDetailsView: View {

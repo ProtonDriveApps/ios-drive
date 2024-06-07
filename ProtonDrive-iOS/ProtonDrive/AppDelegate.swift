@@ -18,57 +18,52 @@
 import SwiftUI
 import UIKit
 import UserNotifications
+import PDClient
 import PDCore
 import PDUIComponents
-import ProtonCore_FeatureSwitch
-import ProtonCore_Services
-import BackgroundTasks
+import ProtonCoreServices
+import ProtonCoreCryptoGoImplementation
+import ProtonCoreFeatureFlags
+import ProtonCorePushNotifications
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, hasPushNotificationService {
     @SettingsStorage("firstLaunchHappened") private var firstLaunchHappened: Bool?
+    private var logConfigurator: LogsConfigurator?
 
     private var orientationLock = UIInterfaceOrientationMask.allButUpsideDown
+    public var pushNotificationService: PushNotificationServiceProtocol?
 
     override init() {
         self._firstLaunchHappened.configure(with: Constants.appGroup)
         PDFileManager.configure(with: Constants.appGroup)
+        super.init()
+    }
+
+    func application(_ application: UIApplication, willFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        // the feature flags are not available at this point. The Log.setup call will be repeated in the SceneDelegate because of that
+        self.logConfigurator = LogsConfigurator(logSystem: .iOSApp, featureFlags: LocalSettings.shared)
+        Log.info("application willFinishLaunchingWithOptions", domain: .application)
+        return true
     }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        Log.info("application didFinishLaunchingWithOptions", domain: .application)
+
         lockOrientationIfNeeded(in: .portrait)
+        injectDefaultCryptoImplementation()
+
         UINavigationBar.setupFlatNavigationBarSystemWide()
         UIToolbar.setupApparance()
         UNUserNotificationCenter.current().delegate = self
 
-        configureFeatureSwitches()
-        
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--uitests") {
             UIView.setAnimationsEnabled(false)
         }
-        #endif
-
-        // swiftlint:disable no_print
-        #if DEBUG
-        print("💠 Bundle: " + Bundle(for: type(of: self)).bundlePath)
-        #endif
-        // swiftlint:enable no_print
-
-        #if DEBUG
         setupUITestsMocks()
         #endif
-
-        #if SUPPORTS_BACKGROUND_UPLOADS
-        BGTaskScheduler.shared.register(
-            forTaskWithIdentifier: Constants.backgroundTaskIdentifier,
-            using: nil
-        ) {
-            ConsoleLogger.shared?.logAndNotify(title: "👶", message: "Start processing background task", osLogType: Constants.self)
-            NotificationCenter.default.post(name: .scheduleUploads, object: $0)
-        }
-        #endif
-
+        BackgroundModesRegistry.register()
         return true
     }
 
@@ -84,13 +79,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Called when the user discards a scene session.
         // If any sessions were discarded while the application was not running, this will be called shortly after application:didFinishLaunchingWithOptions.
         // Use this method to release any resources that were specific to the discarded scenes, as they will not return.
+        Log.info("application didDiscardSceneSessions sceneSessions", domain: .application)
     }
 
     func applicationDidReceiveMemoryWarning(_ application: UIApplication) {
+        #if HAS_BETA_FEATURES
+        // We only want to send errors to sentry from beta builds to see the occurrence of the issue.
+        Log.error("application applicationDidReceiveMemoryWarning ⚠️", domain: .application)
+        #else
+        Log.warning("application applicationDidReceiveMemoryWarning ⚠️", domain: .application)
+        #endif
         #if DEBUG
         let content = UNMutableNotificationContent()
         content.title = "⚠️ Memory warning"
-        content.subtitle = "App will be killed"
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
 
@@ -99,17 +100,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         #endif
     }
 
-    func applicationWillTerminate(_ application: UIApplication) {
-        Environment(\.storage).wrappedValue.prepareForTermination()
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        Log.info("applicationDidBecomeActive", domain: .application)
     }
 
-    private func configureFeatureSwitches() {
-        // These need to be set as early as possible in the app lifecycle
+    func applicationWillResignActive(_ application: UIApplication) {
+        Log.info("applicationWillResignActive", domain: .application)
+    }
 
-        // Core Feature Flags
-        FeatureFactory.shared.enable(&.unauthSession)
-        FeatureFactory.shared.enable(&.observability)
-        FeatureFactory.shared.enable(&.externalSignup)
+    func applicationWillTerminate(_ application: UIApplication) {
+        Log.info("applicationWillTerminate 🔴", domain: .application)
+        Environment(\.storage).wrappedValue.prepareForTermination()
     }
 }
 
@@ -127,6 +128,18 @@ extension AppDelegate {
         if UIDevice.current.userInterfaceIdiom == .phone {
             orientationLock = orientation
         }
+    }
+
+    // MARK: - Push Notifications
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        Log.info(#function, domain: .application)
+        pushNotificationService?.didRegisterForRemoteNotifications(withDeviceToken: deviceToken)
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        Log.info(#function, domain: .application)
+        pushNotificationService?.didFailToRegisterForRemoteNotifications(withError: error)
     }
 }
 

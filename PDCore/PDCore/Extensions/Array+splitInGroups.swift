@@ -16,9 +16,31 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 extension Array {
-    func splitInGroups(of size: Int) -> [[Element]] {
+    public func splitInGroups(of size: Int) -> [[Element]] {
         return stride(from: 0, to: count, by: size).map {
             Array(self[$0 ..< Swift.min($0 + size, count)])
         }
     }
+}
+
+extension Array where Element == NodeIdentifier {
+    public func splitIntoChunks() -> [(share: String, links: [String])] {
+        // Group nodeIdentifiers by shareID
+        let groupedById = Dictionary(grouping: self, by: { $0.shareID })
+
+        // Transform NodeIdentifier to nodeID
+        let transformedGroup: [String: [String]] = groupedById.mapValues { $0.map { $0.nodeID } }
+
+        // Split each group into chunks of maximum size 150
+        var result: [(String, [String])] = []
+        for (shareID, nodeIDs) in transformedGroup {
+            let chunks = nodeIDs.splitInGroups(of: 150)
+            for chunk in chunks {
+                result.append((shareID, chunk))
+            }
+        }
+
+        return result
+    }
+
 }

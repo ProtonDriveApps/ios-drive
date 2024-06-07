@@ -1,6 +1,6 @@
 //
 //  ServicePlanDataService+Extensions.swift
-//  ProtonCore_Payments - Created on 28/09/2022.
+//  ProtonCorePayments - Created on 28/09/2022.
 //
 //  Copyright (c) 2022 Proton Technologies AG
 //
@@ -22,7 +22,7 @@
 import Foundation
 
 extension ServicePlanDataServiceProtocol {
-    
+
     public var hasPaymentMethods: Bool {
         guard let paymentMethods = paymentMethods else {
             // if we don't know better, we default to assuming the user has payment methods available

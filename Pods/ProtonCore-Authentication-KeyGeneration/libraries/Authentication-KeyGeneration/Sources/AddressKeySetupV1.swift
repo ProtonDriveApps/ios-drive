@@ -19,15 +19,15 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
-import GoLibs
-import ProtonCore_Crypto
+import ProtonCoreCrypto
+import ProtonCoreCryptoGoInterface
 import Foundation
-import ProtonCore_Authentication
-import ProtonCore_DataModel
+import ProtonCoreAuthentication
+import ProtonCoreDataModel
 
 @available(*, deprecated, renamed: "AddressKeySetupV2", message: "keep this until AddressKeySetupV2 is fully tested")
 final class AddressKeySetupV1 {
-    
+
     struct GeneratedAddressKeyV1 {
         let password: String
         let armoredKey: String
@@ -37,12 +37,11 @@ final class AddressKeySetupV1 {
         guard !salt.isEmpty else {
             throw KeySetupError.invalidSalt
         }
-        
+
         let hashedPassword = PasswordHash.hashPassword(password, salt: salt)
-        
-        // new openpgp instance
+
         var error: NSError?
-        let armoredKey = HelperGenerateKey(keyName, email, hashedPassword.data(using: .utf8),
+        let armoredKey = CryptoGo.HelperGenerateKey(keyName, email, hashedPassword.data(using: .utf8),
                                            PublicKeyAlgorithms.x25519.raw, 0, &error)
         if let err = error {
             throw err
@@ -52,20 +51,20 @@ final class AddressKeySetupV1 {
 
     func setupCreateAddressKeyRoute(key: GeneratedAddressKeyV1, modulus: String, modulusId: String,
                                     addressId: String, isPrimary: Bool) throws -> AuthService.CreateAddressKeyEndpointV1 {
-        
+
         var error: NSError?
-        
-        let keyData = ArmorUnarmor(key.armoredKey, nil)!
-    
-        guard let cryptoKey = CryptoNewKey(keyData, &error) else {
+
+        let keyData = CryptoGo.ArmorUnarmor(key.armoredKey, nil)!
+
+        guard let cryptoKey = CryptoGo.CryptoNewKey(keyData, &error) else {
             throw KeySetupError.keyReadFailed
         }
-        
+
         let fingerprint = cryptoKey.getFingerprint()
 
         let unlockedKey = try cryptoKey.unlock(key.password.data(using: .utf8))
-        
-        guard let keyRing = CryptoKeyRing(unlockedKey) else {
+
+        guard let keyRing = CryptoGo.CryptoKeyRing(unlockedKey) else {
             throw KeySetupError.keyRingGenerationFailed
         }
 
@@ -78,9 +77,9 @@ final class AddressKeySetupV1 {
         let data = try JSONSerialization.data(withJSONObject: keylist)
         let jsonKeylist = String(data: data, encoding: .utf8)!
 
-        let message = CryptoNewPlainMessageFromString(jsonKeylist)
+        let message = CryptoGo.CryptoNewPlainMessageFromString(jsonKeylist)
         let signature = try keyRing.signDetached(message)
-        
+
         let signed = signature.getArmored(&error)
         let signedKeyList: [String: Any] = [
             "Data": jsonKeylist,
@@ -89,5 +88,5 @@ final class AddressKeySetupV1 {
 
         return AuthService.CreateAddressKeyEndpointV1(addressID: addressId, privateKey: key.armoredKey,
                                                       signedKeyList: signedKeyList, isPrimary: isPrimary)
-    }    
+    }
 }

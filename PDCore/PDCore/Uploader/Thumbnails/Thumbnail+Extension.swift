@@ -18,7 +18,6 @@
 import Foundation
 import CoreData
 import PDClient
-import os.log
 
 extension Thumbnail {
     var uploadable: UploadableThumbnail? {
@@ -26,7 +25,7 @@ extension Thumbnail {
               let sha256 = sha256 else { return nil }
 
         return UploadableThumbnail(
-            id: revision.identifier,
+            revisionId: revision.identifier,
             type: Int(type.rawValue),
             encrypted: thumbnailData,
             sha256: sha256

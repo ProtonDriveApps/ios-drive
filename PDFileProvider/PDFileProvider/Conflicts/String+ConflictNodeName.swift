@@ -17,20 +17,11 @@
 
 import Foundation
 
-extension String {
+public extension String {
+    
+    static func randomAlphaNumeric(length: Int) -> String {
+        let letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        return String((0..<length).map { _ in letters.randomElement()! })
 
-   // TODO: Compute suitable Node name according name clash pattern 
-    var conflictNodeName: String {
-        let conflictName = "-Conflict"
-        if self.fileExtension.isEmpty {
-            return self + conflictName
-        } else {
-            let newNameWithoutExtension = self.nameExcludingExtension
-            let finalName = newNameWithoutExtension + conflictName
-            let url = URL(fileURLWithPath: finalName).appendingPathExtension(self.fileExtension)
-
-            return url.relativeString
-        }
     }
-
 }

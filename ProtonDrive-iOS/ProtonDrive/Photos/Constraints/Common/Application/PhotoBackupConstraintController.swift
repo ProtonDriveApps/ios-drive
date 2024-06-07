@@ -20,10 +20,15 @@ import Combine
 enum PhotoBackupConstraint {
     case network
     case storage
+    case quota
+    case thermalState
+    case featureFlag
+    case circuitBroken
 }
 
 typealias PhotoBackupConstraints = Set<PhotoBackupConstraint>
 
-protocol PhotoBackupConstraintController {
+protocol PhotoBackupConstraintController: ConstraintController { }
+protocol ConstraintController {
     var constraint: AnyPublisher<Bool, Never> { get }
 }

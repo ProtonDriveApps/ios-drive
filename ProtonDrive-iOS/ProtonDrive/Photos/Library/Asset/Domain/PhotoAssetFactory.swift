@@ -21,11 +21,16 @@ import PDCore
 struct PhotoAssetFactoryData {
     let identifier: PhotoIdentifier
     let url: URL
-    let hash: Data
-    let filename: String
+    let mimeType: MimeType
+    let originalFilename: String
+    let filenameExtension: String
+    let width: Int
+    let height: Int
     let exif: PhotoAsset.Exif
     let isOriginal: Bool
     let duration: Double?
+    let camera: PhotoAssetMetadata.Camera
+    let location: PhotoAssetMetadata.Location?
 }
 
 protocol PhotoAssetFactory {
@@ -43,24 +48,22 @@ final class LocalPhotoAssetFactory: PhotoAssetFactory {
         return PhotoAsset(
             url: data.url,
             filename: makeName(from: data),
-            contentHash: data.hash.hexString(),
+            mimeType: data.mimeType,
             exif: data.exif,
-            metadata: PhotoAsset.Metadata(
-                cloudIdentifier: data.identifier.cloudIdentifier,
-                creationDate: data.identifier.creationDate,
-                modifiedDate: data.identifier.modifiedDate,
-                width: data.identifier.width,
-                height: data.identifier.height,
-                duration: data.duration
+            metadata: PhotoAssetMetadata(
+                media: PhotoAssetMetadata.Media(width: data.width, height: data.height, duration: data.duration),
+                camera: data.camera,
+                location: data.location,
+                iOSPhotos: PhotoAssetMetadata.iOSPhotos(identifier: data.identifier.cloudIdentifier, modificationTime: data.identifier.modifiedDate)
             )
         )
     }
 
     private func makeName(from data: PhotoAssetFactoryData) -> String {
         if data.isOriginal {
-            return data.filename
+            return data.originalFilename
         } else {
-            return nameStrategy.makeModifiedFilename(from: data.filename)
+            return nameStrategy.makeModifiedFilename(originalFilename: data.originalFilename, filenameExtension: data.filenameExtension)
         }
     }
 }

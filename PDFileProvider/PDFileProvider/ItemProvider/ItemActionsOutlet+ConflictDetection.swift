@@ -20,51 +20,52 @@ import PDCore
 
 extension ItemActionsOutlet: ConflictDetection {
 
-    // Return values: (detectedConflict: ConflictingOperation?, remoteVersion: Node?)
-    public func identifyConflict(
-        tower: Tower,
-        basedOn item: NSFileProviderItem,
-        changeType: ItemActionChangeType,
-        fields: NSFileProviderItemFields) -> (ResolutionAction, Node?)? {
+    /// Return values: (detectedConflict: ConflictingOperation?, remoteVersion: Node?)
+    /// Throws if conflict should be resolved by the system
+    public func identifyConflict(tower: Tower,
+                                 basedOn item: NSFileProviderItem,
+                                 changeType: ItemActionChangeType,
+                                 fields: NSFileProviderItemFields) throws -> (ResolutionAction, Node?)? {
 
-            switch changeType {
-            case .create:
-                return conflictOnCreate(tower: tower, item: item, fields: fields)
-                
-            case .move(let version):
-                // parent changed
-                return conflictOnMove(tower: tower, item: item, baseVersion: version, fields: fields)
-                
-            case .modifyMetadata(let version):
-                // + renamed
-                return conflictOnMetadata(tower: tower, item: item, baseVersion: version, fields: fields)
-                
-            case .modifyContents(let version, let contentsURL):
-                return conflictOnContents(tower: tower, item: item, baseVersion: version, fields: fields, contents: contentsURL)
-            
-            case .delete(version: let version):
-                return conflictOnDelete(tower: tower, item: item, baseVersion: version)
-            }
+        switch changeType {
+        case .create:
+            return try conflictOnCreate(tower: tower, item: item, fields: fields)
+
+        case .move(let version):
+            // parent changed
+            return try conflictOnMove(tower: tower, item: item, baseVersion: version, fields: fields)
+
+        case .modifyMetadata(let version):
+            // + renamed
+            return try conflictOnMetadata(tower: tower, item: item, baseVersion: version, fields: fields)
+
+        case .modifyContents(let version, let contentsURL):
+            return try conflictOnContents(tower: tower, item: item, baseVersion: version, fields: fields, contents: contentsURL)
+
+        case .trash(version: let version), .delete(version: let version):
+            return try conflictOnDelete(tower: tower, item: item, baseVersion: version)
+        }
     }
 
-    private func conflictOnCreate(tower: Tower, item: NSFileProviderItem, fields: NSFileProviderItemFields) -> (ResolutionAction, Node?)? {
-        guard tower.parentFolder(of: item) != nil else {
-            return (.createWithUniqueSuffixInConflictsFolder, nil)
+    private func conflictOnCreate(tower: Tower, item: NSFileProviderItem, fields: NSFileProviderItemFields) throws -> (ResolutionAction, Node?)? {
+        // Create-ParentDelete
+        guard let parent = tower.parentFolder(of: item) else {
+            throw Errors.conflictIdentified(reason: "Trying to create item, but parent not found")
         }
 
-        let siblings = try? tower.retrieveSiblings(of: item)
+        // Create-ParentTrash
+        // Only the top most trashed ancestor is marked as deleted, so we must search the tree to identify this conflict
+        guard !ancestorInTrash(startingParent: parent) else {
+            // ancestor node has been trashed remotely
+            throw Errors.conflictIdentified(reason: "Trying to create item, but parent in trash")
+        }
 
-        if let sibling = siblings?.first(where: {
-            return $0.decryptedName == item.filename
-        }) {
-            if item.isFolder {
-                if sibling is Folder { // Folder-Folder -> pseudo
-                    return (.ignore, sibling)
-                } else { // Folder-File
-                    return (.createWithUniqueSuffix, sibling)
-                }
-            } else { // File-File or File-Folder
-                return (.createWithUniqueSuffix, sibling)
+        // Create-Create/Rename/Move (Destination) - name conflict
+        if let conflictingNode = try tower.nodeWithName(of: item) {
+            if item.isFolder && conflictingNode is Folder { // Folder-Folder -> pseudo
+                return (.ignore, conflictingNode)
+            } else { // File-File, File-Folder or Folder-File
+                return (.createWithUniqueSuffix, conflictingNode)
             }
         }
 
@@ -74,51 +75,73 @@ extension ItemActionsOutlet: ConflictDetection {
     private func conflictOnMove(tower: Tower,
                                 item: NSFileProviderItem,
                                 baseVersion version: NSFileProviderItemVersion,
-                                fields: NSFileProviderItemFields) -> (ResolutionAction, Node?)? {
-        // Move-Move/Rename/Create (Destination) - different node IDs but same parent and same name
-        let siblings = try? tower.retrieveSiblings(of: item)
-        if let conflictingSibling = siblings?.first(where: { sibling in
-            item.filename == sibling.decryptedName
-        }) {
-            return (.moveAndRenameWithUniqueSuffix, conflictingSibling)
+                                fields: NSFileProviderItemFields) throws -> (ResolutionAction, Node?)? {
+        // Move-ParentDelete (Destination)
+        guard let parent = tower.parentFolder(of: item) else {
+            return (.ignore, nil)
         }
 
-        // Move-ParentDelete (Destination)
-        guard tower.parentFolder(of: item) != nil else {
+        // Move-ParentTrash (Destination)
+        // Only the top most trashed ancestor is marked as deleted, so we must search the tree to identify this conflict
+        guard !ancestorInTrash(startingParent: parent) else {
+            // ancestor node has been trashed remotely
             return (.ignore, nil)
+        }
+
+        if let conflictingNode = try tower.nodeWithName(of: item) {
+            return conflictingNode.moc?.performAndWait {
+                if conflictingNode.identifier == tower.nodeIdentifier(for: item.itemIdentifier) {
+                    // Move-Move (Pseudo) - everything's the same
+                    return (.ignore, conflictingNode)
+                } else {
+                    // Move-Move/Rename/Create (Destination) - name conflict, different node IDs but same parent and same name
+                    return (.moveAndRenameWithUniqueSuffix, conflictingNode)
+                }
+            }
         }
 
         // Move-Delete
         guard let remoteNode = tower.node(itemIdentifier: item.itemIdentifier) else {
-            // The remote version may have been trashed or definitely deleted
+            // The remote version may have been deleted
+            return (.recreate, nil)
+        }
+
+        var remoteNodeState: Node.State!
+        var remoteNodeParentIdentifier: NodeIdentifier?
+        remoteNode.moc!.performAndWait {
+            remoteNodeState = remoteNode.state
+            remoteNodeParentIdentifier = remoteNode.parentLink?.identifier
+        }
+
+        // Move-Trash
+        guard remoteNodeState != .deleted else {
+            // The remote version has been trashed
             return (.recreate, nil)
         }
 
         // Move-Move (Source) - same node ID but different parent
         let oldItemsParentIdentiferHash = MetadataVersion(from: version.metadataVersion)?.parentIdentifierHash
-        let remoteNodesParentIdentiferHash = ItemVersionHasher.hash(for: NodeItem(node: remoteNode).parentItemIdentifier)
-        if NodeIdentifier(item.parentItemIdentifier) != remoteNode.parentLink?.identifier,
-           oldItemsParentIdentiferHash != remoteNodesParentIdentiferHash {
-            return (.ignore, remoteNode)
+        do {
+            let remoteItem = try NodeItem(node: remoteNode)
+            let remoteNodesParentIdentiferHash = ItemVersionHasher.hash(for: remoteItem.parentItemIdentifier)
+            if NodeIdentifier(item.parentItemIdentifier) != remoteNodeParentIdentifier,
+               oldItemsParentIdentiferHash != remoteNodesParentIdentiferHash {
+                return (.ignore, remoteNode)
+            }
+        } catch {
+            Log.error("Move-Move (Source) check chouldn't be made due to inability to generate NodeItem: \(error)", domain: .fileProvider)
         }
 
-        // Move-Move (Pseudo) - everything's the same
-        if NodeIdentifier(item.parentItemIdentifier) == remoteNode.parentLink?.identifier {
-            return (.ignore, remoteNode)
-        }
-        
         // Move-Move (Cycle) - one of the new parent's ancestors is self
         var remoteAncestor: Node? = tower.node(itemIdentifier: item.parentItemIdentifier)
-        while remoteAncestor?.parentLink != nil {
-            guard let parentIdentifier = remoteAncestor?.parentLink?.identifier else {
-                break
-            }
-            
-            if NodeIdentifier(item.itemIdentifier) == remoteAncestor?.parentLink?.identifier {
+        var remoteAncestorParentIdentifier: NodeIdentifier? = remoteAncestor?.moc?.performAndWait { remoteAncestor?.parentLink?.identifier }
+        while let parentIdentifier = remoteAncestorParentIdentifier {
+            if NodeIdentifier(item.itemIdentifier) == parentIdentifier {
                 return (.ignore, remoteNode)
             }
             
             remoteAncestor = tower.node(itemIdentifier: NSFileProviderItemIdentifier(parentIdentifier))
+            remoteAncestorParentIdentifier = remoteAncestor?.moc?.performAndWait { remoteAncestor?.parentLink?.identifier }
         }
 
         return nil
@@ -127,37 +150,57 @@ extension ItemActionsOutlet: ConflictDetection {
     private func conflictOnMetadata(tower: Tower,
                                     item: NSFileProviderItem,
                                     baseVersion version: NSFileProviderItemVersion,
-                                    fields: NSFileProviderItemFields) -> (ResolutionAction, Node?)? {
+                                    fields: NSFileProviderItemFields) throws -> (ResolutionAction, Node?)? {
         if fields.contains(.filename) {
-            // Rename-Rename/Move/Create (Destination) - different node IDs but same parent and same name
-            let siblings = try? tower.retrieveSiblings(of: item)
-            if let conflictingSibling = siblings?.first(where: { sibling in
-                item.filename == sibling.decryptedName
-            }) {
-                return (.renameWithUniqueSuffix, conflictingSibling)
+            // Rename-ParentDelete
+            guard let parent = tower.parentFolder(of: item) else {
+                throw Errors.conflictIdentified(reason: "Trying to rename item, but parent not found")
             }
 
-            // Rename-ParentDelete
-            guard tower.parentFolder(of: item) != nil else {
-                return (.createWithUniqueSuffixInConflictsFolder, nil)
+            // Rename-ParentTrash
+            // Only the top most trashed ancestor is marked as deleted, so we must search the tree to identify this conflict
+            guard !ancestorInTrash(startingParent: parent) else {
+                // ancestor node has been trashed remotely
+                throw Errors.conflictIdentified(reason: "Trying to rename item, but parent in trash")
+            }
+
+            if let conflictingNode = try tower.nodeWithName(of: item) {
+                return conflictingNode.moc?.performAndWait {
+                    if conflictingNode.identifier == tower.nodeIdentifier(for: item.itemIdentifier) {
+                        // Rename-Rename (Pseudo) - everything's the same
+                        return (.ignore, conflictingNode)
+                    } else {
+                        // Rename-Rename/Move/Create (Destination) - name conflict - different node IDs but same parent and same name
+                        return (.renameWithUniqueSuffix, conflictingNode)
+                    }
+                }
             }
 
             // Rename-Delete
             guard let remoteNode = tower.node(itemIdentifier: item.itemIdentifier) else {
-                // The remote version may have been trashed or definitely deleted
+                // The remote version may have been deleted
+                return (.recreate, nil)
+            }
+
+            // Rename-Trash
+            var remoteNodeState: Node.State!
+            remoteNode.moc!.performAndWait {
+                remoteNodeState = remoteNode.state
+            }
+            guard remoteNodeState != .deleted else {
+                // The remote version has been trashed
                 return (.recreate, nil)
             }
 
             // Rename-Rename (Source) - same node ID but different name
             let oldItemsFilenameHash = MetadataVersion(from: version.metadataVersion)?.filenameHash
-            let remoteNodesFilenameHash = ItemVersionHasher.hash(for: remoteNode.decryptedName)
-            if item.filename != remoteNode.decryptedName,
-               oldItemsFilenameHash != remoteNodesFilenameHash {
-                return (.ignore, remoteNode)
+            var remoteName: String!
+            try remoteNode.moc!.performAndWait {
+                remoteName = try remoteNode.decryptName()
             }
-
-            // Rename-Rename (Pseudo) - everything's the same
-            if item.filename == remoteNode.decryptedName {
+            let remoteNodesFilenameHash = ItemVersionHasher.hash(for: remoteName)
+            if item.filename != remoteName,
+               oldItemsFilenameHash != remoteNodesFilenameHash {
                 return (.ignore, remoteNode)
             }
 
@@ -173,16 +216,36 @@ extension ItemActionsOutlet: ConflictDetection {
         baseVersion version: NSFileProviderItemVersion,
         fields: NSFileProviderItemFields,
         contents newContent: URL?
-    ) -> (ResolutionAction, Node?)? {
+    ) throws -> (ResolutionAction, Node?)? {
         // Edit-ParentDelete
-        guard tower.parentFolder(of: item) != nil else {
+        guard let parent = tower.parentFolder(of: item) else {
             // parent node has been deleted remotely
-            return (.createWithUniqueSuffixInConflictsFolder, nil)
+            throw Errors.conflictIdentified(reason: "Trying to edit file, but parent not found")
+        }
+
+        // Edit-ParentTrash
+        // Only the top most trashed ancestor is marked as deleted, so we must search the tree to identify this conflict
+        guard !ancestorInTrash(startingParent: parent) else {
+            // ancestor node has been trashed remotely
+            throw Errors.conflictIdentified(reason: "Trying to edit file, but parent in trash")
         }
         
         // Edit-Delete
         guard let remoteNode = tower.node(itemIdentifier: item.itemIdentifier) else {
             // file has been deleted remotely
+            return (.recreate, nil)
+        }
+
+        var remoteNodeState: Node.State!
+        var remoteContentVersion: Data!
+        remoteNode.moc!.performAndWait {
+            remoteNodeState = remoteNode.state
+            remoteContentVersion = ContentVersion(node: remoteNode).encoded()
+        }
+
+        // Edit-Trash
+        guard remoteNodeState != .deleted else {
+            // file has been trashed remotely
             return (.recreate, nil)
         }
         
@@ -191,24 +254,49 @@ extension ItemActionsOutlet: ConflictDetection {
         // - we had some revision locally before file was edited -> left hand value
         // - event system would update/nullify activeRevision if remote edits it -> right hand value
         // Edit-Edit
-        if version.contentVersion != ContentVersion(node: remoteNode).encoded() {
+        if version.contentVersion != remoteContentVersion {
             return (.createWithUniqueSuffix, nil)
         }
 
         return nil
     }
 
-    private func conflictOnDelete(tower: Tower, item: NSFileProviderItem, baseVersion version: NSFileProviderItemVersion) -> (ResolutionAction, Node?)? {
+    private func conflictOnDelete(tower: Tower, item: NSFileProviderItem, baseVersion version: NSFileProviderItemVersion) throws -> (ResolutionAction, Node?)? {
         guard let node = tower.node(itemIdentifier: item.itemIdentifier) else {
-            // node was already deleted
+            // node already deleted
             return (.ignore, nil)
         }
-        
-        guard version == NodeItem(node: node).itemVersion else {
-            // node was somehow modified (either metadata or content)
-            return (.ignore, nil)
+
+        let (state, isTrashInheriting) = node.moc!.performAndWait {
+            return (node.state, node.isTrashInheriting)
         }
         
+        guard state != .deleted && !isTrashInheriting else {
+            // node already trashed
+            return (.ignore, nil)
+        }
+
+        // Versions are not consistent in working reliably on macOS 14+
+//        guard version == NodeItem(node: node).itemVersion || version.metadataVersion == NSFileProviderItemVersion.beforeFirstSyncComponent else {
+//            // node was somehow modified (either metadata or content)
+//            return (.ignore, nil)
+//        }
+
         return nil
+    }
+
+    private func ancestorInTrash(startingParent parent: Folder) -> Bool {
+        var ancestor: Folder = parent
+        return ancestor.moc?.performAndWait {
+            while let nextAncestor = ancestor.parentLink {
+                guard ancestor.state != .deleted else {
+                    return true
+                }
+
+                ancestor = nextAncestor
+            }
+
+            return false
+        } ?? false
     }
 }

@@ -24,22 +24,48 @@ protocol EnumeratorWithItemsFromAPI: AnyObject, EnumeratorWithItemsFromDB where 
 }
 
 extension EnumeratorWithItemsFromAPI {
-    func fetchAllPagesFromAPI(_ observer: NSFileProviderEnumerationObserver) {
-        self.model.prepareForRefresh(fromPage: 0)
+    
+    func fetchPageFromAPI(_ page: Int, observers: [NSFileProviderEnumerationObserver]) {
+        self.model.prepareForRefresh(fromPage: page)
         self.fetchFromAPICancellable?.cancel()
-        self.fetchFromAPICancellable = self.model.fetchChildrenFromAPI(proceedTillLastPage: true)
+        self.fetchFromAPICancellable = self.model.fetchChildrenFromAPI(proceedTillLastPage: false)
         .receive(on: DispatchQueue.main)
         .sink { completion in
             if case let .failure(error) = completion {
-                ConsoleLogger.shared?.log(error, osLogType: Self.self)
+                Log.error("Error fetching page: \(error.localizedDescription)", domain: .fileProvider)
                 let fsError = Errors.mapToFileProviderError(error) ?? error
-                observer.finishEnumeratingWithError(fsError)
+                observers.forEach { $0.finishEnumeratingWithError(fsError) }
             } else {
-                ConsoleLogger.shared?.log("Finished fetching pages from cloud", osLogType: Self.self)
-                self.fetchAllChildrenFromDB(observer)
+                Log.info("Finished fetching page \(page) from cloud", domain: .fileProvider)
+
+                guard let moc = self.model.node.moc,
+                      moc.performAndWait({ !self.model.node.isChildrenListFullyFetched }) else {
+                    observers.forEach { $0.finishEnumerating(upTo: nil) }
+                    return
+                }
+
+                let nextPage = page + 1
+                let providerPage = NSFileProviderPage(nextPage)
+                observers.forEach { $0.finishEnumerating(upTo: providerPage) }
             }
-        } receiveValue: { _ in
-            ConsoleLogger.shared?.log("Received page from cloud", osLogType: Self.self)
+        } receiveValue: { nodes in
+            Log.info("Received page from cloud", domain: .fileProvider)
+
+            guard let moc = nodes.first?.managedObjectContext else {
+                return
+            }
+
+            let items = moc.performAndWait {
+                nodes.filter { $0.state != .deleted }.compactMap {
+                    do {
+                        return try NodeItem(node: $0)
+                    } catch {
+                        self.model.reportDecryptionError(for: $0, underlyingError: error)
+                        return nil
+                    }
+                }
+            }
+            observers.forEach { $0.didEnumerate(items) }
         }
     }
 }

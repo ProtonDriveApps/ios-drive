@@ -1,12 +1,13 @@
-#import "SentryScope.h"
 #import "NSMutableDictionary+Sentry.h"
-#import "SentryAttachment.h"
+#import "SentryAttachment+Private.h"
 #import "SentryBreadcrumb.h"
 #import "SentryEnvelopeItemType.h"
 #import "SentryEvent.h"
 #import "SentryGlobalEventProcessor.h"
 #import "SentryLevelMapper.h"
 #import "SentryLog.h"
+#import "SentryPropagationContext.h"
+#import "SentryScope+Private.h"
 #import "SentryScopeObserver.h"
 #import "SentrySession.h"
 #import "SentrySpan.h"
@@ -20,11 +21,6 @@ NS_ASSUME_NONNULL_BEGIN
 SentryScope ()
 
 /**
- * Set global user -> thus will be sent with every event
- */
-@property (atomic, strong) SentryUser *_Nullable userObject;
-
-/**
  * Set global tags -> these will be sent with every event
  */
 @property (atomic, strong) NSMutableDictionary<NSString *, NSString *> *tagDictionary;
@@ -35,12 +31,6 @@ SentryScope ()
 @property (atomic, strong) NSMutableDictionary<NSString *, id> *extraDictionary;
 
 /**
- * used to add values in event context.
- */
-@property (atomic, strong)
-    NSMutableDictionary<NSString *, NSDictionary<NSString *, id> *> *contextDictionary;
-
-/**
  * Contains the breadcrumbs which will be sent with the event
  */
 @property (atomic, strong) NSMutableArray<SentryBreadcrumb *> *breadcrumbArray;
@@ -49,11 +39,6 @@ SentryScope ()
  * This distribution of the application.
  */
 @property (atomic, copy) NSString *_Nullable distString;
-
-/**
- * The environment used in this scope.
- */
-@property (atomic, copy) NSString *_Nullable environmentString;
 
 /**
  * Set the fingerprint of an event to determine the grouping
@@ -91,6 +76,7 @@ SentryScope ()
         self.fingerprintArray = [NSMutableArray new];
         _spanLock = [[NSObject alloc] init];
         self.observers = [NSMutableArray new];
+        self.propagationContext = [[SentryPropagationContext alloc] init];
     }
     return self;
 }
@@ -110,16 +96,23 @@ SentryScope ()
         [_fingerprintArray addObjectsFromArray:[scope fingerprints]];
         [_attachmentArray addObjectsFromArray:[scope attachments]];
 
+        self.propagationContext = [[SentryPropagationContext alloc] init];
         self.maxBreadcrumbs = scope.maxBreadcrumbs;
         self.userObject = scope.userObject.copy;
         self.distString = scope.distString;
         self.environmentString = scope.environmentString;
         self.levelEnum = scope.levelEnum;
+        self.span = scope.span;
     }
     return self;
 }
 
 #pragma mark Global properties
+
+- (void)add:(SentryBreadcrumb *)crumb
+{
+    [self addBreadcrumb:crumb];
+}
 
 - (void)addBreadcrumb:(SentryBreadcrumb *)crumb
 {
@@ -148,9 +141,11 @@ SentryScope ()
 
 - (void)useSpan:(SentrySpanCallback)callback
 {
+    id<SentrySpan> localSpan = nil;
     @synchronized(_spanLock) {
-        callback(_span);
+        localSpan = _span;
     }
+    callback(localSpan);
 }
 
 - (void)clear
@@ -379,10 +374,28 @@ SentryScope ()
     }
 }
 
+- (void)includeAttachment:(SentryAttachment *)attachment
+{
+    [self addAttachment:attachment];
+}
+
 - (void)addAttachment:(SentryAttachment *)attachment
 {
     @synchronized(_attachmentArray) {
         [_attachmentArray addObject:attachment];
+    }
+}
+
+- (void)addCrashReportAttachmentInPath:(NSString *)filePath
+{
+    if ([filePath.lastPathComponent isEqualToString:@"view-hierarchy.json"]) {
+        [self addAttachment:[[SentryAttachment alloc]
+                                  initWithPath:filePath
+                                      filename:@"view-hierarchy.json"
+                                   contentType:@"application/json"
+                                attachmentType:kSentryAttachmentTypeViewHierarchy]];
+    } else {
+        [self addAttachment:[[SentryAttachment alloc] initWithPath:filePath]];
     }
 }
 
@@ -445,12 +458,12 @@ SentryScope ()
 - (void)applyToSession:(SentrySession *)session
 {
     SentryUser *userObject = self.userObject;
-    if (nil != userObject) {
+    if (userObject != nil) {
         session.user = userObject.copy;
     }
 
     NSString *environment = self.environmentString;
-    if (nil != environment) {
+    if (environment != nil) {
         // TODO: Make sure environment set on options is applied to the
         // scope so it's available now
         session.environment = environment;
@@ -460,7 +473,7 @@ SentryScope ()
 - (SentryEvent *__nullable)applyToEvent:(SentryEvent *)event
                           maxBreadcrumb:(NSUInteger)maxBreadcrumbs
 {
-    if (nil == event.tags) {
+    if (event.tags == nil) {
         event.tags = [self tags];
     } else {
         NSMutableDictionary *newTags = [NSMutableDictionary new];
@@ -469,7 +482,7 @@ SentryScope ()
         event.tags = newTags;
     }
 
-    if (nil == event.extra) {
+    if (event.extra == nil) {
         event.extra = [self extras];
     } else {
         NSMutableDictionary *newExtra = [NSMutableDictionary new];
@@ -479,29 +492,29 @@ SentryScope ()
     }
 
     NSArray *fingerprints = [self fingerprints];
-    if (fingerprints.count > 0 && nil == event.fingerprint) {
+    if (fingerprints.count > 0 && event.fingerprint == nil) {
         event.fingerprint = fingerprints;
     }
 
-    if (nil == event.breadcrumbs) {
+    if (event.breadcrumbs == nil) {
         NSArray *breadcrumbs = [self breadcrumbs];
         event.breadcrumbs = [breadcrumbs
             subarrayWithRange:NSMakeRange(0, MIN(maxBreadcrumbs, [breadcrumbs count]))];
     }
 
     SentryUser *user = self.userObject.copy;
-    if (nil != user) {
+    if (user != nil) {
         event.user = user;
     }
 
     NSString *dist = self.distString;
-    if (nil != dist && nil == event.dist) {
+    if (dist != nil && event.dist == nil) {
         // dist can also be set via options but scope takes precedence.
         event.dist = dist;
     }
 
     NSString *environment = self.environmentString;
-    if (nil != environment && nil == event.environment) {
+    if (environment != nil && event.environment == nil) {
         // environment can also be set via options but scope takes
         // precedence.
         event.environment = environment;
@@ -516,7 +529,7 @@ SentryScope ()
 
     NSMutableDictionary *newContext = [self context].mutableCopy;
     if (event.context != nil) {
-        [newContext mergeEntriesFromDictionary:event.context];
+        [SentryDictionary mergeEntriesFromDictionary:event.context intoDictionary:newContext];
     }
 
     if (self.span != nil) {
@@ -531,9 +544,15 @@ SentryScope ()
                 [span isKindOfClass:[SentryTracer class]]) {
                 event.transaction = [[(SentryTracer *)span transactionContext] name];
             }
-            newContext[@"trace"] = [span.context serialize];
+            newContext[@"trace"] = [span serialize];
         }
     }
+
+    if (newContext[@"trace"] == nil) {
+        // If this is an error event we need to add the distributed trace context.
+        newContext[@"trace"] = [self.propagationContext traceContextForEvent];
+    }
+
     event.context = newContext;
     return event;
 }

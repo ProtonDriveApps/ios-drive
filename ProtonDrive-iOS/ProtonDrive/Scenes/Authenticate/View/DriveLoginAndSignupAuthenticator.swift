@@ -15,8 +15,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import ProtonCore_Login
-import ProtonCore_LoginUI
+import PDCore
+import ProtonCoreLogin
+import ProtonCoreLoginUI
 
 final class DriveLoginAndSignupAuthenticator {
     private let authenticator: LoginAndSignupInterface
@@ -29,7 +30,8 @@ final class DriveLoginAndSignupAuthenticator {
     func authenticate(
         over parent: UIViewController,
         body: String,
-        userDataBlock: @escaping (UserData) -> Void,
+        customization: LoginCustomizationOptions = .empty,
+        userDataBlock: @escaping (UserData, @escaping (Error) -> Void) -> Void,
         onCompletion: @escaping () -> Void
     ) {
         #if DEBUG
@@ -39,40 +41,50 @@ final class DriveLoginAndSignupAuthenticator {
         }
         #endif
         
-        authenticator.presentFlowFromWelcomeScreen(over: parent, welcomeScreen: .drive(.init(body: body)), customization: .empty) { (result: LoginAndSignupResult) in
-            switch result {
-            case .dismissed:
-                fatalError()
-            case .loginStateChanged(let state):
-                switch state {
-                case .dataIsAvailable(let data):
-                    userDataBlock(data)
-                case .loginFinished:
-                    onCompletion()
-                }
-            case .signupStateChanged(let state):
-                switch state {
-                case .dataIsAvailable(let data):
-                    userDataBlock(data)
-                case .signupFinished:
-                    onCompletion()
+        authenticator.presentFlowFromWelcomeScreen(
+            over: parent,
+            welcomeScreen: .drive(.init(body: body)),
+            customization: customization
+        ) { [weak self] result in
+            self?.handleLoginResult(parent, result, userDataBlock, onCompletion)
+        }
+    }
+    
+    private func handleLoginResult(
+        _ parent: UIViewController,
+        _ result: LoginAndSignupResult,
+        _ userDataBlock: @escaping (UserData, @escaping (Error) -> Void) -> Void,
+        _ onCompletion: @escaping () -> Void
+    ) {
+        switch result {
+        case .dismissed:
+            fatalError()
+        case .loginStateChanged(.dataIsAvailable(let data)), .signupStateChanged(.dataIsAvailable(let data)):
+            userDataBlock(data) { [weak self] error in
+                guard let self else { return }
+                // in case of error, the file provider won't work at all
+                // therefore we retry the login
+                self.authenticator.presentLoginFlow(
+                    over: parent,
+                    customization: .init(initialError: error.localizedDescription)
+                ) { [weak self] (result: LoginAndSignupResult) in
+                    self?.handleLoginResult(parent, result, userDataBlock, onCompletion)
                 }
             }
+        case .loginStateChanged(.loginFinished), .signupStateChanged(.signupFinished):
+            onCompletion()
         }
     }
 }
 
 #if DEBUG
 extension DriveLoginAndSignupAuthenticator {
-    private var clearArgument: String { "--clear_all_preference" }
-
     func removeLogoutFlagIfNeeded() {
-        let arguments = CommandLine.arguments
-        guard arguments.contains(UITestsFlag.uiTests.content),
-              arguments.contains(clearArgument) else { return }
+        guard DebugConstants.commandLineContains(flags: [.uiTests, .clearAllPreference]) else {
+            return
+        }
 
-        CommandLine.arguments = arguments
-            .filter { $0 != clearArgument }
+        DebugConstants.removeCommandLine(flags: [.clearAllPreference])
     }
 }
 #endif

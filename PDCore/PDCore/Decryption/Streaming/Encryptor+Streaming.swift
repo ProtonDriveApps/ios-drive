@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import GoLibs
+import ProtonCoreCryptoGoInterface
 
 extension Encryptor {
     enum SigncryptError: Error {
@@ -25,6 +25,7 @@ extension Encryptor {
         case invalidPrivateKey
     }
 
+    // swiftlint:disable:next function_parameter_count
     static func encryptStream(_ cleartextUrl: URL,
                               _ cyphertextUrl: URL,
                               _ nodeKey: String,
@@ -39,9 +40,9 @@ extension Encryptor {
         FileManager.default.createFile(atPath: cyphertextUrl.path, contents: Data(), attributes: nil)
         
         let readFileHandle = try FileHandle(forReadingFrom: cleartextUrl)
-        defer { readFileHandle.closeFile() }
+        defer { try? readFileHandle.close() }
         let writeFileHandle = try FileHandle(forWritingTo: cyphertextUrl)
-        defer { writeFileHandle.closeFile() }
+        defer { try? writeFileHandle.close() }
         
         guard let size = try FileManager.default.attributesOfItem(atPath: cleartextUrl.path)[.size] as? Int else {
             throw SigncryptError.cleartextFileHasNoSize
@@ -50,7 +51,7 @@ extension Encryptor {
         // cryptography
         
         var error: NSError?
-        let sessionKey = HelperDecryptSessionKey(nodeKey, Data(nodePassphrase.utf8), contentKeyPacket, &error)
+        let sessionKey = CryptoGo.HelperDecryptSessionKey(nodeKey, Data(nodePassphrase.utf8), contentKeyPacket, &error)
         guard error == nil else { throw error! }
         
         let hash = try Encryptor.encryptBinaryStream(sessionKey!, nil, readFileHandle, writeFileHandle, size, Constants.maxBlockChunkSize, digestBuilder)
@@ -63,7 +64,7 @@ extension Encryptor {
                            _ addressPassphrase: String,
                            _ plaintextFile: URL) throws -> String
     {
-        guard var encryptionKey = CryptoKey(fromArmored: nodePublicKey) else {
+        guard var encryptionKey = CryptoGo.CryptoKey(fromArmored: nodePublicKey) else {
             throw SigncryptError.invalidPublicKey
         }
         
@@ -71,17 +72,17 @@ extension Encryptor {
             encryptionKey = try encryptionKey.toPublic()
         }
         
-        guard let encryptionKeyRing = CryptoKeyRing(encryptionKey) else {
+        guard let encryptionKeyRing = CryptoGo.CryptoKeyRing(encryptionKey) else {
             throw SigncryptError.invalidPublicKey
         }
         
-        guard let signKeyLocked = CryptoKey(fromArmored: addressPrivateKey) else {
+        guard let signKeyLocked = CryptoGo.CryptoKey(fromArmored: addressPrivateKey) else {
             throw SigncryptError.invalidPrivateKey
         }
         
         let signKeyUnlocked = try signKeyLocked.unlock(Data(addressPassphrase.utf8))
         
-        guard let signKeyRing = CryptoKeyRing(signKeyUnlocked) else {
+        guard let signKeyRing = CryptoGo.CryptoKeyRing(signKeyUnlocked) else {
             throw SigncryptError.invalidPrivateKey
         }
         
@@ -105,24 +106,29 @@ extension Encryptor {
     // swiftlint:enable function_parameter_count
     {
         
-        let ciphertextWriter = HelperMobile2GoWriterWithSHA256(FileMobileWriter(file: ciphertextFile))!
+        let ciphertextWriter = CryptoGo.HelperMobile2GoWriterWithSHA256(FileMobileWriter(file: ciphertextFile))!
         let plaintextWriter = try sessionKey.encryptStream(ciphertextWriter, plainMessageMetadata: nil, sign: signKeyRing)
-        
+
         var offset = 0
         var n = 0
-        while offset < totalSize {
-            try autoreleasepool {
-                blockFile.seek(toFileOffset: UInt64(offset))
-                let currentBufferSize = offset + bufferSize > totalSize ? totalSize - offset : bufferSize
-                let currentBuffer = blockFile.readData(ofLength: currentBufferSize)
-                digestBuilder.add(currentBuffer)
-                try plaintextWriter.write(currentBuffer, n: &n)
-                offset += n
+
+        do {
+            while offset < totalSize {
+                try autoreleasepool {
+                    try blockFile.seek(toOffset: UInt64(offset))
+                    let currentBufferSize = offset + bufferSize > totalSize ? totalSize - offset : bufferSize
+                    let currentBuffer = try blockFile.read(upToCount: currentBufferSize) ?? Data()
+                    digestBuilder.add(currentBuffer)
+                    try plaintextWriter.write(currentBuffer, n: &n)
+                    offset += n
+                }
             }
+            try? plaintextWriter.close() // Needs to be invoked before we read from `ciphertextWriter`.
+        } catch {
+            try? plaintextWriter.close()
+            throw error
         }
-        
-        try plaintextWriter.close()
-        
+
         return ciphertextWriter.getSHA256()!
     }
     
@@ -132,7 +138,7 @@ extension Encryptor {
     {
         var error: NSError?
         
-        let plaintextReader = HelperMobile2GoReader(FileMobileReader(file: plaintextFile))
+        let plaintextReader = CryptoGo.HelperMobile2GoReader(FileMobileReader(file: plaintextFile))
         
         let encSignature = try signKeyRing.signDetachedEncryptedStream(plaintextReader, encryptionKeyRing: encryptKeyRing)
         

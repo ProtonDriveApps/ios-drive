@@ -18,19 +18,21 @@
 import UIKit
 
 extension UIApplication {
-    func topViewController() -> UIViewController? {
-        var topViewController: UIViewController?
-        if #available(iOS 13, *) {
-            for scene in connectedScenes {
-                if let windowScene = scene as? UIWindowScene {
-                    for window in windowScene.windows where window.isKeyWindow {
-                        topViewController = window.rootViewController
-                    }
+    
+    func rootViewController() -> UIViewController? {
+        for scene in connectedScenes {
+            if let windowScene = scene as? UIWindowScene {
+                for window in windowScene.windows where window.isKeyWindow {
+                    return window.rootViewController
                 }
             }
-        } else {
-            topViewController = keyWindow?.rootViewController
         }
+        
+        return nil
+    }
+    
+    func topViewController() -> UIViewController? {
+        var topViewController = rootViewController()
         while true {
             if let presented = topViewController?.presentedViewController {
                 topViewController = presented
@@ -45,4 +47,5 @@ extension UIApplication {
         }
         return topViewController
     }
+    
 }

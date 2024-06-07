@@ -41,6 +41,6 @@ final class PHAssetNameResource: PhotoLibraryNameResource {
         guard let primaryResource = resource else {
             throw PhotoLibraryMappingResourceError.invalidAsset
         }
-        return primaryResource.originalFilename
+        return try primaryResource.getNormalizedFilename()
     }
 }

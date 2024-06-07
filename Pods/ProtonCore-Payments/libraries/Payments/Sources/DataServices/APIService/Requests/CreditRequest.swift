@@ -20,12 +20,12 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Log
-import ProtonCore_Networking
-import ProtonCore_Services
+import ProtonCoreLog
+import ProtonCoreNetworking
+import ProtonCoreServices
 
 public enum PaymentAction {
-    @available(*, deprecated) case apple(reciept: String)
+    @available(*, deprecated) case apple(receipt: String)
     case token(token: String)
 
     var getType: String {
@@ -44,13 +44,13 @@ public enum PaymentAction {
 
     var getValue: String {
         switch self {
-        case .apple(reciept: let reciept): return reciept
+        case .apple(receipt: let receipt): return receipt
         case .token(token: let token): return token
         }
     }
 }
 
-public class CreditRequest<T: Response>: BaseApiRequest<T> {
+public class CreditRequest: BaseApiRequest<CreditResponse> {
     private let paymentAction: PaymentAction
     private let amount: Int
 
@@ -65,13 +65,21 @@ public class CreditRequest<T: Response>: BaseApiRequest<T> {
     override public var path: String { super.path + "/v4/credit" }
 
     override public var parameters: [String: Any]? {
-        [
-            "Amount": amount,
-            "Currency": "USD",
-            "Payment": ["Type": paymentAction.getType,
-                        "Details": [paymentAction.getKey: paymentAction.getValue]
+        switch paymentAction {
+        case .token(let token):
+            return [
+                "Amount": amount,
+                "Currency": "USD",
+                "PaymentToken": token
             ]
-        ]
+        case .apple:
+            let paymentData: [String: Any] = ["Type": paymentAction.getType, "Details": [paymentAction.getKey: paymentAction.getValue]]
+            return [
+                "Amount": amount,
+                "Currency": "USD",
+                "Payment": paymentData
+            ]
+        }
     }
 }
 

@@ -17,9 +17,8 @@
 
 import SwiftUI
 import PDCore
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import PDUIComponents
-import Sentry
 
 struct MenuView: View {
     @ObservedObject var vm: MenuViewModel
@@ -102,10 +101,10 @@ struct MenuView: View {
     private var qaSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             sectionHeader(title: "QA Section")
-            
+
             Button("Send event to Sentry") {
-                let error = DriveError(NSError(domain: "SENTRY TELEMETRY", code: 420), "SENTRY TEST")
-                ConsoleLogger.shared?.log(error)
+                let error = DriveError(NSError(domain: "SENTRY TELEMETRY", code: 420))
+                Log.error(error, domain: .application)
             }
             
             Button("Crash") {

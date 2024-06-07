@@ -1,4 +1,4 @@
-framework module ProtonCore_KeyManager {
+framework module ProtonCoreKeyManager {
   umbrella header "ProtonCore-KeyManager-static-umbrella.h"
 
   export *

@@ -20,10 +20,8 @@ import Foundation
 public struct UserSettings: Codable, Equatable {
     
     enum CodingKeys: String, CodingKey {
-        case email
-        case phone
         case password
-        case twoFA = "_2FA" // required for .decapitaliseFirstLetter in ProtonCore_Utilities
+        case twoFA = "_2FA" // required for .decapitaliseFirstLetter in ProtonCoreUtilities
         case news
         case locale
         case logAuth
@@ -37,7 +35,6 @@ public struct UserSettings: Codable, Equatable {
         case welcome
         case welcomeFlag
         case earlyAccess
-        case fontSize
         case flags
         case referral
         case telemetry
@@ -47,8 +44,6 @@ public struct UserSettings: Codable, Equatable {
         case totp = "TOTP"
     }
     
-    public let email: Email
-    public let phone: Phone
     public let password: Password
     public let twoFA: TwoFA
     public let news: Int
@@ -64,7 +59,6 @@ public struct UserSettings: Codable, Equatable {
     public let welcome: Int
     public let welcomeFlag: Int
     public let earlyAccess: Int
-    public let fontSize: Int
     public let flags: Flags
     public let referral: Referral
     public let telemetry: Int
@@ -73,9 +67,7 @@ public struct UserSettings: Codable, Equatable {
     public let deviceRecovery: Int
     public let totp: Int
     
-    public init(email: Email, phone: Phone, password: Password, twoFA: TwoFA, news: Int, locale: String, logAuth: Int, invoiceText: String, density: Int, theme: String?, themeType: Int, weekStart: Int, dateFormat: Int, timeFormat: Int, welcome: Int, welcomeFlag: Int, earlyAccess: Int, fontSize: Int, flags: Flags, referral: Referral, telemetry: Int, crashReports: Int, passwordMode: Int, deviceRecovery: Int, totp: Int) {
-        self.email = email
-        self.phone = phone
+    public init(password: Password, twoFA: TwoFA, news: Int, locale: String, logAuth: Int, invoiceText: String, density: Int, theme: String?, themeType: Int, weekStart: Int, dateFormat: Int, timeFormat: Int, welcome: Int, welcomeFlag: Int, earlyAccess: Int, flags: Flags, referral: Referral, telemetry: Int, crashReports: Int, passwordMode: Int, deviceRecovery: Int, totp: Int) {
         self.password = password
         self.twoFA = twoFA
         self.news = news
@@ -91,7 +83,6 @@ public struct UserSettings: Codable, Equatable {
         self.welcome = welcome
         self.welcomeFlag = welcomeFlag
         self.earlyAccess = earlyAccess
-        self.fontSize = fontSize
         self.flags = flags
         self.referral = referral
         self.telemetry = telemetry

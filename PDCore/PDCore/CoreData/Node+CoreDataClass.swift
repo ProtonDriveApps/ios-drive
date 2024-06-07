@@ -20,7 +20,7 @@ import CoreData
 import PDClient
 
 @objc(Node)
-public class Node: NSManagedObject, HasTransientValues {
+public class Node: NSManagedObject {
     public enum State: Int, Codable {
         case active = 1
         case deleted = 2
@@ -31,8 +31,10 @@ public class Node: NSManagedObject, HasTransientValues {
         case paused = 6             // Paused by the user
         case interrupted = 7        // Paused by the system/app
     }
-    
+
+    #if os(iOS)
     var _observation: Any?
+    #endif
     @NSManaged private(set) var stateRaw: NSNumber? // used in fetch request predicated inside PDCore, should not be shown outside
     
     @ManagedEnum(raw: #keyPath(stateRaw)) public var state: State?
@@ -44,14 +46,25 @@ public class Node: NSManagedObject, HasTransientValues {
     }
     
     deinit {
+        #if os(iOS)
         NotificationCenter.default.removeObserver(_observation as Any)
+        #endif
     }
     
     override public func awakeFromFetch() {
         super.awakeFromFetch()
-        self._observation = self.subscribeToContexts()
+        #if os(iOS)
+        if !isRelatedToPhotos() {
+            // Photos never change name or passphrase, so we don't need this overhead of refreshing them.
+            self._observation = self.subscribeToContexts()
+        }
+        #endif
     }
-    
+
+    private func isRelatedToPhotos() -> Bool {
+        return (self.self is Photo) || (self.self is Folder && primaryDirectShare?.type == .photos)
+    }
+
     override public func willChangeValue(forKey key: String) {
         switch key {
         case #keyPath(name): self.clearName = nil
@@ -64,13 +77,20 @@ public class Node: NSManagedObject, HasTransientValues {
     
     override public func willTurnIntoFault() {
         super.willTurnIntoFault()
+        #if os(iOS)
         NotificationCenter.default.removeObserver(_observation as Any)
+        #endif
     }
 }
+
+#if os(iOS)
+extension Node: HasTransientValues {}
+#endif
 
 extension Node.State {
     init?(_ nodeState: PDClient.NodeState) {
         switch nodeState {
+        case .draft: return nil
         case .active: self = .active
         case .deleted: self = .deleted
         case .deleting: self = .deleting

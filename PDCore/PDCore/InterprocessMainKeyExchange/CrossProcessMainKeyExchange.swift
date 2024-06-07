@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import ProtonCore_Keymaker
+import ProtonCoreKeymaker
 
 public enum CrossProcessMainKeyExchange {
     private static var publicLabel = DriveKeychain.keychainGroup + ".ephemeral.public"
@@ -31,7 +31,7 @@ public enum CrossProcessMainKeyExchange {
 // this happens in FileProvider process
 extension CrossProcessMainKeyExchange {
     public static func getMainKeyOrThrowEphemeralKeypair() throws -> MainKey  {
-        let keychain = DriveKeychain()
+        let keychain = DriveKeychain.shared
         let secureEnclave = SecureEnclaveHelper(publicLabel: self.publicLabel, privateLabel: self.privateLabel)
         
         guard let pinData = keychain.data(forKey: self.keychainLabel),
@@ -70,7 +70,7 @@ extension CrossProcessMainKeyExchange {
             return
         }
 
-        let keychain = DriveKeychain()
+        let keychain = DriveKeychain.shared
         let secureEnclave = SecureEnclaveHelper(publicLabel: publicLabel, privateLabel: privateLabel)
         let publicKey = secureEnclave.createKey(ofClass: kSecAttrKeyClassPublic, from: publicKeyData)
 

@@ -17,13 +17,11 @@
 
 import Foundation
 
-public extension Notification.Name {
-    static var RequestLogout = Notification.Name(rawValue: "ch.protonmail.drive.RequestLogout")
-}
-
+#if os(iOS)
 public extension DarwinNotification.Name {
     static var DidLogout = DarwinNotification.Name("ch.protonmail.drive.DidLogout")
 }
+#endif
 
 // Approach by Antoine van der Lee from WeTransfer:  https://www.avanderlee.com/swift/core-data-app-extension-data-sharing
 extension DarwinNotification.Name {
@@ -43,3 +41,10 @@ extension DarwinNotification.Name {
     // Notification to be posted when the shared Core Data database has been saved to disk from the app. Posting this notification between processes can help us fetching new changes when needed.
     private static var AppDidSaveMOC = DarwinNotification.Name("ch.protonmail.drive.DidSaveMOCFromApp")
 }
+
+#if HAS_QA_FEATURES
+public extension DarwinNotification.Name {
+    static var SendErrorEventToTestSentry = DarwinNotification.Name("ch.protonmail.drive.qa.SendErrorEventToTestSentry")
+    static var DoCrashToTestSentry = DarwinNotification.Name("ch.protonmail.drive.qa.DoCrashToTestSentry")
+}
+#endif

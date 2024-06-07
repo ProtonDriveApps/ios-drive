@@ -23,28 +23,38 @@ public final class RemoteCreatingPhotosRootDataSource: PhotosShareDataSource {
     private let storage: StorageManager
     private let sessionVault: SessionVault
     private let photoShareCreator: PhotoShareCreator
+    private let finishResource: PhotoShareCreationFinishResource
 
-    public init(storage: StorageManager, sessionVault: SessionVault, photoShareCreator: PhotoShareCreator) {
+    public init(storage: StorageManager, sessionVault: SessionVault, photoShareCreator: PhotoShareCreator, finishResource: PhotoShareCreationFinishResource) {
         self.storage = storage
         self.sessionVault = sessionVault
         self.photoShareCreator = photoShareCreator
+        self.finishResource = finishResource
     }
 
     public func getPhotoShare() async throws -> Share {
         
         let shareName = "PhotosShare"
         let RootName = "PhotosRoot"
-        let moc = storage.backgroundContext
+        let moc = storage.newBackgroundContext()
 
         guard let volume = storage.volumes(moc: moc).first else {
             throw Volume.InvalidState(message: "No volume found while trying to create photos share.")
         }
 
-        let volumeID = await moc.perform {
-            volume.id
+        guard let mainShare = storage.mainShareOfVolume(by: sessionVault.addressIDs, moc: moc) else {
+            throw Share.InvalidState(message: "No main share found in volume.")
         }
 
-        let signersKit = try sessionVault.make(forSigner: .main)
+        let (volumeID, mainShareCreator) = await moc.perform {
+            (volume.id, mainShare.creator)
+        }
+
+        guard let mainShareCreator = mainShareCreator else {
+            throw Share.InvalidState(message: "No creator found in main share.")
+        }
+
+        let signersKit = try sessionVault.make(forSigner: .address(mainShareCreator))
         let addressID = signersKit.address.addressID
         let shareKeys = try Encryptor.generateNodeKeys(addressPassphrase: signersKit.addressPassphrase, addressPrivateKey: signersKit.addressKey.privateKey, parentKey: signersKit.addressKey.privateKey)
         let rootKeys = try Encryptor.generateNodeKeys(addressPassphrase: signersKit.addressPassphrase, addressPrivateKey: signersKit.addressKey.privateKey, parentKey: shareKeys.key)
@@ -66,6 +76,7 @@ public final class RemoteCreatingPhotosRootDataSource: PhotosShareDataSource {
         )
 
         let response = try await photoShareCreator.createPhotosShare(photoShare: photosShare)
+        finishResource.execute()
 
         return try await moc.perform {
             let creator = signersKit.address.email

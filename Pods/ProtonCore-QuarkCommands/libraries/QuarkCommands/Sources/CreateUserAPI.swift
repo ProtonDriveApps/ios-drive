@@ -20,8 +20,10 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 //
 
-import ProtonCore_Log
+import Foundation
+import ProtonCoreLog
 
+@available(*, deprecated, renamed: "User", message: "`QuarkCommands` has been updated to `Quark`.")
 public struct CreatedAccountDetails {
     public let details: String
     public let id: String
@@ -33,24 +35,25 @@ public enum CreateAccountError: Error {
     case cannotDecodeResponseBody
     case cannotFindAccountDetailsInResponseBody
     case actualError(Error)
-    
+
     public var userFacingMessageInQuarkCommands: String {
         switch self {
         case .cannotConstructUrl: return "cannot construct url"
         case .cannotDecodeResponseBody: return "cannot decode response body"
         case .cannotFindAccountDetailsInResponseBody: return "cannot find account details in response body"
-        case .actualError(let error): return "actual error: \(error.messageForTheUser)"
+        case .actualError(let error): return "actual error: \(error.localizedDescription)"
         }
     }
 }
 
 extension QuarkCommands {
     @available(*, renamed: "create(account:currentlyUsedHostUrl:callCompletionBlockOn:)")
+    @available(*, deprecated, renamed: "userCreate", message: "`QuarkCommands` has been updated to `Quark`.")
     public static func create(account: AccountAvailableForCreation,
                               currentlyUsedHostUrl host: String,
                               callCompletionBlockOn: DispatchQueue = .main,
                               completion: @escaping (Result<CreatedAccountDetails, CreateAccountError>) -> Void) {
-        
+
         var urlString: String
         switch account.type {
         case .free:
@@ -63,15 +66,15 @@ extension QuarkCommands {
         case .external:
             urlString = "\(host)/internal/quark/user:create?-e=true&-em=\(account.username.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")&-p=\(account.password)"
         }
-        
+
         if account.type.isNotPaid {
-            
+
             if let recoveryEmail = account.recoveryEmail { urlString.append("&-r=\(recoveryEmail)") }
-            
+
             if let statusValue = account.statusValue { urlString.append("&-s=\(statusValue)") }
-            
+
             if let auth = account.auth { urlString.append("&-a=\(auth.rawValue)") }
-            
+
             switch account.address {
             case .noAddress:
                 break
@@ -83,13 +86,13 @@ extension QuarkCommands {
                 urlString.append("&--create-address=null")
                 urlString.append("&-k=\(type.rawValue)")
             }
-            
+
             if let mailboxPassword = account.mailboxPassword { urlString.append("&-m=\(mailboxPassword)") }
-            
+
         }
-        
+
         guard let url = URL(string: urlString) else { completion(.failure(.cannotConstructUrl)); return }
-        
+
         let completion: (Result<CreatedAccountDetails, CreateAccountError>) -> Void = { result in
             callCompletionBlockOn.async { completion(result) }
         }
@@ -99,29 +102,30 @@ extension QuarkCommands {
                 completion(.failure(.actualError(error)))
                 return
             }
-            
+
             guard account.type.isNotPaid else {
                 completion(.success(CreatedAccountDetails(details: "", id: "", account: account)))
                 return
             }
-            
+
             let detailsRegex = "\\s?ID.*:[\\s\\S]*</span>"
             guard let detailsRange = input.range(of: detailsRegex, options: .regularExpression) else {
                 completion(.failure(.cannotFindAccountDetailsInResponseBody)); return
             }
             let detailsString = input[detailsRange].dropLast(7)
-            
+
             guard let idRange = detailsString.range(of: "ID:\\s.*", options: .regularExpression) else {
                 completion(.failure(.cannotFindAccountDetailsInResponseBody)); return
             }
             let idString = detailsString[idRange].dropFirst(4)
-            
+
             let created = CreatedAccountDetails(details: String(detailsString), id: String(idString), account: account)
             completion(.success(created))
         }.resume()
     }
 
-    @available(iOS 13.0, macOS 10.15, *)
+    @available(macOS 10.15, *)
+    @available(*, deprecated, renamed: "userCreate", message: "`QuarkCommands` has been updated to `Quark`.")
     public static func create(account: AccountAvailableForCreation,
                               currentlyUsedHostUrl host: String,
                               callCompletionBlockOn: DispatchQueue = .main) async -> Result<CreatedAccountDetails, CreateAccountError> {
@@ -147,6 +151,7 @@ public func createOrgUser(host: String, username: String, password: String, crea
                currentlyUsedHostUrl: host)
 }
 
+@available(*, deprecated, renamed: "userCreate", message: "`QuarkCommands` has been updated to `Quark`.")
 private func createUser(accountType: AccountAvailableForCreation,
                         currentlyUsedHostUrl: String) -> (username: String, password: String) {
     let semaphore = DispatchSemaphore(value: 0)
@@ -166,6 +171,7 @@ private func createUser(accountType: AccountAvailableForCreation,
     return result
 }
 
+@available(*, deprecated, renamed: "userCreate", message: "`QuarkCommands` has been updated to `Quark`.")
 public func createUser(accountType: AccountAvailableForCreation,
                        currentlyUsedHostUrl: String) -> (id: String, username: String, password: String) {
     let semaphore = DispatchSemaphore(value: 0)

@@ -18,6 +18,7 @@
 import Foundation
 
 struct FileDraftUploadableDraft: Equatable {
+    let uploadID: UUID
     let hash: String
     let clearName: String
     let armoredName: Armored
@@ -30,6 +31,7 @@ struct FileDraftUploadableDraft: Equatable {
     let parent: NodeIdentifier
     let parentNodeHashKey: String
     let mimeType: String
+    let clientUID: String
     let file: File
 }
 
@@ -49,14 +51,11 @@ class DefaultFileDraftCreator: FileDraftCreator {
 
     func create(_ draft: FileDraft, completion: @escaping Completion) {
         guard !isCancelled else { return }
-        
-        ConsoleLogger.shared?.log("STAGE: 2 Create File ✍️☁️🥚 started", osLogType: FileUploader.self)
 
         do {
             let nameResolvingDraft = try draft.getNameResolvingFileDraft()
             uploadDraft(nameResolvingDraft, completion: completion)
         } catch {
-            ConsoleLogger.shared?.log("STAGE: 2 Create File ✍️☁️🍳 finished ❌", osLogType: FileUploader.self)
             completion(.failure(error))
         }
     }
@@ -75,7 +74,8 @@ class DefaultFileDraftCreator: FileDraftCreator {
             signatureAddress: draft.nameSignatureAddress,
             contentKeyPacket: draft.contentKeyPacket,
             contentKeyPacketSignature: draft.contentKeyPacketSignature,
-            mimeType: draft.mimeType
+            mimeType: draft.mimeType,
+            clientUID: draft.clientUID
         )
 
          cloudFileCreator.createNewFileDraft(uploadableFileDraft) { [weak self] result in
@@ -87,16 +87,14 @@ class DefaultFileDraftCreator: FileDraftCreator {
                      let nameHash = uploadableFileDraft.nameHash
                      let armoredName = uploadableFileDraft.armoredName
                      try self.finalize(draft.file, uploaded: uploadedFileDraft, nameHash: nameHash, armoredName: armoredName)
-                     ConsoleLogger.shared?.log("STAGE: 2.1 Create File ✍️☁️🐣 finished ✅", osLogType: FileUploader.self)
+                     Log.info("STAGE: 2.1 Create File ✍️☁️🐣 finished ✅. UUID: \(draft.uploadID), FileID: \(uploadedFileDraft.fileID), RevisionID: \(uploadedFileDraft.revisionID)", domain: .uploader)
                      completion(.success(draft.file))
 
                  } catch {
-                     ConsoleLogger.shared?.log("STAGE: 2.1 Create File ✍️☁️🍳 finished ❌", osLogType: FileUploader.self)
                      completion(.failure(error))
                  }
 
              case .failure(let error):
-                 ConsoleLogger.shared?.log("STAGE: 2.1 Create File ✍️☁️🍳 finished ❌", osLogType: FileUploader.self)
                  completion(.failure(error))
              }
          }
@@ -109,7 +107,9 @@ class DefaultFileDraftCreator: FileDraftCreator {
      func finalize(_ file: File, uploaded: RemoteUploadedNewFile, nameHash: String, armoredName: Armored) throws {
          guard let moc = file.moc else { throw File.noMOC() }
 
-         try moc.performAndWait {
+         try moc.performAndWait { [weak self] in
+             guard let self, !self.isCancelled else { return }
+             
              file.id = uploaded.fileID
              file.activeRevisionDraft?.id = uploaded.revisionID
 

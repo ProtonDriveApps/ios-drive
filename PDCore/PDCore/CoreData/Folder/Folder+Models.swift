@@ -21,14 +21,14 @@ import Foundation
 
 /// DTO that represents a Folder and gives the minimum data required for creating new File within said Folder.
 public struct EncryptingFolder {
-    let id: String
-    let shareID: String
-    let hashKey: HashKey
-    let nodeKey: ArmoredKey
+    public let id: String
+    public let shareID: String
+    public let hashKey: HashKey
+    public let nodeKey: ArmoredKey
 }
 
 extension Folder {
-    func encrypting() throws -> EncryptingFolder {
+    public func encrypting() throws -> EncryptingFolder {
         let nodeHashKey = try decryptNodeHashKey()
 
         return EncryptingFolder(

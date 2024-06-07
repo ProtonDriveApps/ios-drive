@@ -19,10 +19,13 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+import Foundation
 import StoreKit
-import ProtonCore_Log
-import ProtonCore_Networking
-import ProtonCore_Services
+import ProtonCoreLog
+import ProtonCoreNetworking
+import ProtonCoreServices
+import ProtonCoreObservability
+import ProtonCoreFeatureFlags
 
 /*
 
@@ -36,19 +39,21 @@ import ProtonCore_Services
 final class TokenHandler {
 
     unowned let dependencies: ProcessDependencies
+    let areSubscriptionsEnabled: Bool
 
-    init(dependencies: ProcessDependencies) {
+    init(dependencies: ProcessDependencies, featureFlagsRepository: FeatureFlagsRepositoryProtocol = FeatureFlagsRepository.shared) {
         self.dependencies = dependencies
+        self.areSubscriptionsEnabled = featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)
     }
 
     let queue = DispatchQueue(label: "TokenHandler async queue", qos: .userInitiated)
-    
+
     func getToken(transaction: SKPaymentTransaction,
                   plan: PlanToBeProcessed,
                   completion: @escaping ProcessCompletionCallback,
                   finishCompletion: @escaping (ProcessCompletionResult) -> Void,
                   tokenCompletion: @escaping (PaymentToken) throws -> Void) throws {
-        
+
         // Create token
         guard let token = dependencies.tokenStorage.get() else {
             return try requestToken(transaction: transaction, plan: plan, completion: completion, finishCompletion: finishCompletion, tokenCompletion: tokenCompletion)
@@ -57,7 +62,7 @@ final class TokenHandler {
         do {
             PMLog.debug("Making TokenRequestStatus")
             // Step 3. Wait until the token is ready for consumption (status `chargeable`)
-            let tokenStatusApi = dependencies.paymentsApiProtocol.tokenStatusRequest(api: dependencies.apiService, token: token)
+            let tokenStatusApi = dependencies.paymentsApiProtocol.paymentTokenStatusRequest(api: dependencies.apiService, token: token)
             let tokenStatusRes = try tokenStatusApi.awaitResponse(responseObject: TokenStatusResponse())
             let status = tokenStatusRes.paymentTokenStatus?.status ?? .failed
             switch status {
@@ -101,13 +106,42 @@ final class TokenHandler {
             // Step 1. Obtain the StoreKit receipt that hopefully confirms the IAP purchase (we don't check this locally)
             let receipt = try dependencies.getReceipt()
             PMLog.debug("StoreKit: No proton token found")
-            
+
             // Step 2. Exchange the receipt for a token that's worth product's Proton price amount of money
-            let tokenApi = dependencies.paymentsApiProtocol.tokenRequest(
-                api: dependencies.apiService, amount: plan.amount, receipt: receipt
-            )
+            let tokenApi: BaseApiRequest<TokenResponse>
+            if areSubscriptionsEnabled {
+                // Step 2. Exchange the receipt for a token
+                guard let transactionIdentifier = transaction.transactionIdentifier else {
+                    throw StoreKitManagerErrors.transactionFailedByUnknownReason
+                }
+                guard let bundleIdentifier = Bundle.main.bundleIdentifier else {
+                    assertionFailure("You shouldn't be running this outside an application bundle")
+                    throw StoreKitManagerErrors.notAllowed
+                }
+
+                tokenApi = dependencies.paymentsApiProtocol.paymentTokenRequest(
+                    api: dependencies.apiService,
+                    amount: plan.amount,
+                    currencyCode: plan.currencyCode,
+                    receipt: receipt,
+                    transactionId: transactionIdentifier,
+                    bundleId: bundleIdentifier,
+                    productId: transaction.payment.productIdentifier
+                )
+            } else {
+                // Step 2. Exchange the receipt for a token that's worth product's Proton price amount of money
+                tokenApi = dependencies.paymentsApiProtocol.paymentTokenOldRequest(
+                    api: dependencies.apiService, amount: plan.amount, receipt: receipt
+                )
+            }
             PMLog.debug("Making TokenRequest")
             let tokenRes = try tokenApi.awaitResponse(responseObject: TokenResponse())
+            if let tokenError = tokenRes.error {
+                ObservabilityEnv.report(.paymentCreatePaymentTokenTotal(error: tokenError, isDynamic: areSubscriptionsEnabled))
+            } else {
+                ObservabilityEnv.report(.paymentCreatePaymentTokenTotal(status: .http2xx, isDynamic: areSubscriptionsEnabled))
+            }
+
             guard let token = tokenRes.paymentToken else { throw StoreKitManagerErrors.transactionFailedByUnknownReason }
             dependencies.tokenStorage.add(token)
             try getToken(transaction: transaction, plan: plan, completion: completion, finishCompletion: finishCompletion, tokenCompletion: tokenCompletion) // Exception would've been thrown on the first call

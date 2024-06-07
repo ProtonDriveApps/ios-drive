@@ -19,28 +19,23 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
-#if canImport(ProtonCore_Authentication)
-import ProtonCore_Authentication
+#if canImport(ProtonCoreAuthentication)
+import ProtonCoreAuthentication
 #else
 import PMAuthentication
 #endif
-#if canImport(ProtonCore_Networking)
-import ProtonCore_Networking
+#if canImport(ProtonCoreNetworking)
+import ProtonCoreNetworking
 #else
 import PMCommon
 #endif
-#if canImport(ProtonCore_Doh)
-import ProtonCore_Doh
+#if canImport(ProtonCoreDoh)
+import ProtonCoreDoh
 #endif
-#if canImport(ProtonCore_Services)
-import ProtonCore_Services
+#if canImport(ProtonCoreServices)
+import ProtonCoreServices
 #endif
-#if canImport(ProtonCore_CoreTranslation)
-import ProtonCore_CoreTranslation
-#else
-import PMCoreTranslation
-#endif
-import ProtonCore_Utilities
+import ProtonCoreUtilities
 import WebKit
 
 public enum NotificationType: String, Codable {
@@ -57,28 +52,28 @@ public enum AccountDeletionRetryCheckResult: Equatable {
 }
 
 public protocol AccountDeletionViewModelInterface {
-    
+
     var getURLRequest: URLRequest { get }
-    
+
     func setup(webViewConfiguration: WKWebViewConfiguration)
-    
+
     func shouldRetryFailedLoading(host: String, error: Error, shouldReloadWebView: @escaping (AccountDeletionRetryCheckResult) -> Void)
-    
+
     func interpretMessage(_ message: WKScriptMessage,
                           loadedPresentation: @escaping () -> Void,
                           notificationPresentation: @escaping (NotificationType, String) -> Void,
                           successPresentation: @escaping () -> Void,
                           closeWebView: @escaping (@escaping () -> Void) -> Void)
-    
+
     func deleteAccountWasClosed()
-    
+
     func deleteAccountDidErrorOut(message: String)
-    
+
     func deleteAccountFailedBecauseApiMightBeBlocked(message: String, originalError: Error)
 }
 
 final class AccountDeletionViewModel: AccountDeletionViewModelInterface {
-    
+
     enum AccountDeletionMessageType: String, Codable {
         case loaded = "LOADED"
         case success = "SUCCESS"
@@ -86,45 +81,45 @@ final class AccountDeletionViewModel: AccountDeletionViewModelInterface {
         case close = "CLOSE"
         case notification = "NOTIFICATION"
     }
-    
+
     struct AccountDeletionMessagePayload: Codable {
         // error message payload
         let message: String?
-        
+
         // notification message payload
         let type: NotificationType?
         let text: String?
     }
-    
+
     struct AccountDeletionMessage: Codable {
         let type: AccountDeletionMessageType
         let payload: AccountDeletionMessagePayload?
     }
-    
+
     var getURLRequest: URLRequest {
         let host = doh.getAccountHost()
         let url = URL(string: "\(host)/lite?action=delete-account&language=\(preferredLanguage)#selector=\(forkSelector)")!
         return URLRequest(url: url)
     }
-    
+
     var jsonDecoder = JSONDecoder()
-    
+
     private let forkSelector: String
     private let apiService: APIService
     private let doh: DoHInterface
     private let performBeforeClosingAccountDeletionScreen: (@escaping () -> Void) -> Void
     private let completion: (Result<AccountDeletionSuccess, AccountDeletionError>) -> Void
     private let preferredLanguage: String
-    
+
     enum AccountDeletionState {
         case notDeletedYet
         case alreadyDeleted
         case finishedWithoutDeletion
     }
-    
+
     private var state: AccountDeletionState = .notDeletedYet
     private let callCompletionBlockUsing: CompletionBlockExecutor
-    
+
     init(forkSelector: String,
          apiService: APIService,
          doh: DoHInterface,
@@ -140,11 +135,11 @@ final class AccountDeletionViewModel: AccountDeletionViewModelInterface {
         self.callCompletionBlockUsing = callCompletionBlockUsing
         self.completion = completion
     }
-    
+
     func setup(webViewConfiguration: WKWebViewConfiguration) {
         let requestInterceptor = AlternativeRoutingRequestInterceptor(
             headersGetter: doh.getAccountHeaders,
-            cookiesSynchronization: doh.synchronizeCookies(with:requestHeaders:),
+            cookiesSynchronization: doh.synchronizeCookies(with:requestHeaders:completion:),
             cookiesStorage: doh.currentlyUsedCookiesStorage
         ) { challenge, completionHandler in
             handleAuthenticationChallenge(
@@ -156,7 +151,7 @@ final class AccountDeletionViewModel: AccountDeletionViewModelInterface {
         }
         requestInterceptor.setup(webViewConfiguration: webViewConfiguration)
     }
-    
+
     func interpretMessage(_ message: WKScriptMessage,
                           loadedPresentation: @escaping () -> Void,
                           notificationPresentation: @escaping(NotificationType, String) -> Void,
@@ -193,7 +188,7 @@ final class AccountDeletionViewModel: AccountDeletionViewModelInterface {
             }
         case .error:
             state = .finishedWithoutDeletion
-            let errorMessage = message.payload?.message ?? CoreString._ad_delete_network_error
+            let errorMessage = message.payload?.message ?? ADTranslation.delete_network_error.l10n
             let completion = completion
             callCompletionBlockUsing.execute {
                 closeWebView {
@@ -209,34 +204,34 @@ final class AccountDeletionViewModel: AccountDeletionViewModelInterface {
             }
         }
     }
-    
+
     func deleteAccountDidErrorOut(message: String) {
         let completion = completion
         callCompletionBlockUsing.execute {
             completion(.failure(.deletionFailure(message: message)))
         }
     }
-    
+
     func deleteAccountFailedBecauseApiMightBeBlocked(message: String, originalError: Error) {
         let completion = completion
         callCompletionBlockUsing.execute {
             completion(.failure(.apiMightBeBlocked(message: message, originalError: originalError)))
         }
     }
-    
+
     func deleteAccountWasClosed() {
         let completion = completion
         callCompletionBlockUsing.execute {
             completion(.failure(.closedByUser))
         }
     }
-    
+
     func shouldRetryFailedLoading(host: String, error: Error, shouldReloadWebView: @escaping (AccountDeletionRetryCheckResult) -> Void) {
         doh.handleErrorResolvingProxyDomainIfNeeded(host: host, requestHeaders: doh.getAccountHeaders(), sessionId: apiService.sessionUID, error: error,
                                                     callCompletionBlockUsing: callCompletionBlockUsing) { [weak self] shouldRetry in
             guard shouldRetry == false else { shouldReloadWebView(.retry); return }
             guard self?.doh.errorIndicatesDoHSolvableProblem(error: error) == true else { shouldReloadWebView(.dontRetry); return }
-            shouldReloadWebView(.apiMightBeBlocked(message: CoreString._net_api_might_be_blocked_message))
+            shouldReloadWebView(.apiMightBeBlocked(message: ADTranslation.api_might_be_blocked_message.l10n))
         }
     }
 }

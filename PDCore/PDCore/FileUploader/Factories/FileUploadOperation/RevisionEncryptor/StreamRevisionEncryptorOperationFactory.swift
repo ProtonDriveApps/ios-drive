@@ -30,9 +30,12 @@ final class StreamRevisionEncryptorOperationFactory: DiscreteRevisionEncryptorOp
          That does not seem to depend on characteristics of requested thumbnail, only on inner structure of exact PDF file.
          
          So in FileProvider extensions we do not support thumbnail provider for PDFs for now.
+
+         Edit: For large image files the memory limit is also exceeded.
+         So now we only support video thumbnails.
         */
 
-        CGImageThumbnailProvider(next: VideoThumbnailProvider())
+        VideoThumbnailProvider()
     }
 
 }

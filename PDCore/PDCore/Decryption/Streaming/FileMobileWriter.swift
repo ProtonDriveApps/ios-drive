@@ -16,9 +16,9 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import GoLibs
+import ProtonCoreCryptoGoInterface
 
-class FileMobileWriter: NSObject, CryptoWriterProtocol {
+class FileMobileWriter: NSObject, ProtonCoreCryptoGoInterface.CryptoWriterProtocol {
     var file: FileHandle
     
     init(file: FileHandle) {
@@ -30,7 +30,7 @@ class FileMobileWriter: NSObject, CryptoWriterProtocol {
             n?.pointee = 0
             return
         }
-        self.file.write(b!)
+        try self.file.write(contentsOf: b!)
         n?.pointee = b!.count
     }
 }

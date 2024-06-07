@@ -18,16 +18,13 @@
 import FileProvider
 import PDCore
 import Combine
-import os.log
 
-public final class TrashEnumerator: NSObject, NSFileProviderEnumerator, LogObject {
-    public static var osLog: OSLog = OSLog(subsystem: "ProtonDriveFileProvider", category: "TrashEnumerator")
-    
-    private var _model: TrashModel! // backing property
-    internal private(set) var model: TrashModel! {
+public final class TrashEnumerator: NSObject, NSFileProviderEnumerator {
+    private var _model: TrashModelLegacy! // backing property
+    internal private(set) var model: TrashModelLegacy! {
         get {
             if _model == nil {
-                _model = TrashModel(tower: tower)
+                _model = TrashModelLegacy(tower: tower)
             }
             return _model
         }
@@ -37,9 +34,13 @@ public final class TrashEnumerator: NSObject, NSFileProviderEnumerator, LogObjec
     }
     private weak var tower: Tower!
     private var cancellables: [AnyCancellable] = []
-    
-    public init(tower: Tower) {
+
+    var changeObserver: FileProviderChangeObserver?
+    var shouldReenumerateItems: Bool = false
+
+    public init(tower: Tower, changeObserver: FileProviderChangeObserver? = nil) {
         self.tower = tower
+        self.changeObserver = changeObserver
     }
     
     public func invalidate() {
@@ -50,27 +51,7 @@ public final class TrashEnumerator: NSObject, NSFileProviderEnumerator, LogObjec
     // MARK: Enumeration
     
     public func enumerateItems(for observer: NSFileProviderEnumerationObserver, startingAt page: NSFileProviderPage) {
-        ConsoleLogger.shared?.log("Enumerating items for Trash", osLogType: Self.self)
-        
-        Future { promise in
-            self.model.fetchTrash { promise($0) }
-        }.flatMap { _ in
-            self.model.trashItems
-                .first() // trashItems is a publisher which that never finishes, but here we are interested only in 1 subject from it
-                .setFailureType(to: Error.self) // needed for iOS 13
-        }.sink { completion in
-            switch completion {
-            case .finished:
-                ConsoleLogger.shared?.log("Finished enumerating items for Trash", osLogType: Self.self)
-                observer.finishEnumerating(upTo: nil)
-            case .failure(let error):
-                ConsoleLogger.shared?.log(error, osLogType: Self.self)
-                observer.finishEnumeratingWithError(error)
-            }
-        } receiveValue: { value in
-            ConsoleLogger.shared?.log("Enumerated \(value.count) items for Trash", osLogType: Self.self)
-            observer.didEnumerate(value.map(NodeItem.init))
-        }.store(in: &cancellables)
+        observer.finishEnumerating(upTo: nil)
     }
     
     // MARK: Changes
@@ -80,7 +61,7 @@ public final class TrashEnumerator: NSObject, NSFileProviderEnumerator, LogObjec
     }
     
     public func enumerateChanges(for observer: NSFileProviderChangeObserver, from syncAnchor: NSFileProviderSyncAnchor) {
-        self.enumerateChanges(observer, syncAnchor)
+        observer.finishEnumeratingChanges(upTo: syncAnchor, moreComing: false)
     }
 }
 

@@ -16,193 +16,302 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import os.log
 import CoreData
 import PDClient
 import PMEventsManager
-import ProtonCore_Authentication
-import ProtonCore_Services
-import ProtonCore_Keymaker
-import ProtonCore_Networking
-import ProtonCore_DataModel
+import ProtonCoreAuthentication
+import ProtonCoreServices
+import ProtonCoreKeymaker
+import ProtonCoreNetworking
+import ProtonCoreDataModel
+import ProtonCoreFeatureFlags
 
-typealias ResponseError = ProtonCore_Networking.ResponseError
+typealias ResponseError = ProtonCoreNetworking.ResponseError
 
-public class Tower: NSObject, LogObject {
+public class Tower: NSObject {
     typealias CoreEventLoopManager = EventPeriodicScheduler<GeneralEventsLoopWithProcessor, DriveEventsLoop>
-    public static var osLog: OSLog = OSLog(subsystem: "PDCore", category: "Tower")
 
     public let fileUploader: FileUploader
     public let fileImporter: FileImporter
     public let revisionImporter: RevisionImporter
+    public let uploadVerifierFactory: UploadVerifierFactory
     public let downloader: Downloader!
     public let uiSlot: UISlot!
     public let cloudSlot: CloudSlot!
     public let fileSystemSlot: FileSystemSlot!
     public let sessionVault: SessionVault
+    public let sessionCommunicator: SessionRelatedCommunicatorBetweenMainAppAndExtensions
     public let localSettings: LocalSettings
     public let paymentsStorage: PaymentsSecureStorage
-    public let offlineSaver: OfflineSaver!
+    public let offlineSaver: OfflineSaver?
+
+    public var photoUploader: FileUploader?
 
     public let api: PDClient.APIService
     public let storage: StorageManager
+    public let syncStorage: SyncStorageManager?
     public let client: PDClient.Client
+    public let addressManager: AddressManager
     internal let sharingManager: SharingManager
     internal let thumbnailLoader: CancellableThumbnailLoader
-    internal let generalSettings: GeneralSettings
+    public let generalSettings: GeneralSettings
+    public let featureFlags: FeatureFlagsRepository
     
     // internal for Tower+Events.swift
     internal let eventsConveyor: EventsConveyor
     internal let coreEventManager: CoreEventLoopManager
     internal let eventObservers: [EventsListener]
     internal let eventProcessingMode: DriveEventsLoopMode
+    #if HAS_QA_FEATURES
+    public static let shouldFetchEventsStorageKey = "shouldFetchEvents"
+    @SettingsStorage("shouldFetchEvents") public var shouldFetchEvents: Bool? {
+        didSet {
+            guard oldValue != shouldFetchEvents, let shouldFetchEvents else { return }
+            if shouldFetchEvents {
+                runEventsSystem()
+            } else {
+                pauseEventsSystem()
+            }
+        }
+    }
+    #endif
     
-    private let addressManager: AddressManager
     private let networking: PMAPIService
     private let authenticator: Authenticator
-    
+
+    // Clean up
+    public var cleanUpController: CleanUpEventController {
+        cleanUpStartController
+    }
+    private let cleanUpStartController: CleanUpStartController
+
     public init(storage: StorageManager,
+                syncStorage: SyncStorageManager? = nil,
                 eventStorage: EventStorageManager,
                 appGroup: SettingsStorageSuite,
                 mainKeyProvider: Keymaker,
                 sessionVault: SessionVault,
+                sessionCommunicator: SessionRelatedCommunicatorBetweenMainAppAndExtensions,
                 authenticator: Authenticator,
                 clientConfig: PDClient.APIService.Configuration,
                 network: PMAPIService,
                 eventObservers: [EventsListener],
                 eventProcessingMode: DriveEventsLoopMode,
-                networkSpy: DriveAPIService? = nil)
-    {
+                networkSpy: DriveAPIService? = nil,
+                uploadVerifierFactory: UploadVerifierFactory,
+                localSettings: LocalSettings
+    ) {
         self.storage = storage
+        self.syncStorage = syncStorage
         self.uiSlot = UISlot(storage: storage)
         
-        let localSettings  = LocalSettings(suite: appGroup)
         self.localSettings = localSettings
         self.generalSettings = GeneralSettings(mainKeyProvider: mainKeyProvider, network: network, localSettings: localSettings)
         self.sessionVault = sessionVault
-        self.api = APIService(configuration: clientConfig)
+        self.sessionCommunicator = sessionCommunicator
+        self.api = APIServiceFactory().makeService(configuration: clientConfig)
         
         self.networking = network
         self.addressManager = AddressManager(authenticator: authenticator, sessionVault: sessionVault)
         self.authenticator = authenticator
         
         let client = Client(credentialProvider: self.sessionVault, service: api, networking: networkSpy ?? network)
-        client.errorMonitor = ErrorMonitor(ConsoleLogger.shared?.logDeserializationErrors)
+        client.errorMonitor = ErrorMonitor(Log.deserializationErrors)
         self.client = client
 
-        let cloudSlot = CloudSlot(client: client, storage: storage, signersKitFactory: sessionVault)
+        let cloudSlot = CloudSlot(client: client, storage: storage, sessionVault: sessionVault)
         self.cloudSlot = cloudSlot
 
         let endpointFactory = DriveEndpointFactory(service: api, credentialProvider: sessionVault)
         let downloader = Downloader(cloudSlot: cloudSlot, endpointFactory: endpointFactory)
         self.downloader = downloader
         
-        self.offlineSaver = OfflineSaver(clientConfig: clientConfig, storage: storage, downloader: downloader)
         self.sharingManager = SharingManager(cloudSlot: cloudSlot, sessionVault: sessionVault)
+        
+        self.featureFlags = FeatureFlagsRepositoryFactory().makeRepository(
+           configuration: clientConfig,
+           networking: network,
+           store: localSettings
+       )
 
         // Thumbnails
-        self.thumbnailLoader = ThumbnailLoaderFactory().makeFileThumbnailLoader(storage: storage, cloudSlot: cloudSlot)
+        self.thumbnailLoader = ThumbnailLoaderFactory().makeFileThumbnailLoader(storage: storage, cloudSlot: cloudSlot, client: client)
 
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).last!
-        self.fileSystemSlot = FileSystemSlot(baseURL: documents, storage: self.storage)
-        
+        self.fileSystemSlot = FileSystemSlot(baseURL: documents, storage: self.storage, syncStorage: self.syncStorage)
+
         // Events
         let paymentsStorage = PaymentsSecureStorage(mainKeyProvider: mainKeyProvider)
         self.paymentsStorage = paymentsStorage
         
-        self.eventsConveyor = EventsConveyor(storage: eventStorage)
+        self.eventsConveyor = EventsConveyor(storage: eventStorage, suite: appGroup)
         self.eventObservers = eventObservers
         self.eventProcessingMode = eventProcessingMode
         self.coreEventManager = Self.makeCoreEventsSystem(appGroup: appGroup, sessionVault: sessionVault, generalSettings: generalSettings, paymentsSecureStorage: paymentsStorage, network: network)
-        
-        // Files
-        self.fileImporter = CoreDataFileImporter(moc: cloudSlot.moc, signersKitFactory: sessionVault)
-        self.revisionImporter = CoreDataRevisionImporter(signersKitFactory: sessionVault)
 
-        let fileUploadFactory: FileUploadOperationsProviderFactory
+        self.uploadVerifierFactory = uploadVerifierFactory
+
+        // Files
+        self.fileImporter = CoreDataFileImporter(moc: cloudSlot.moc, signersKitFactory: sessionVault, uploadClientUIDProvider: sessionVault)
+        self.revisionImporter = CoreDataRevisionImporter(signersKitFactory: sessionVault, uploadClientUIDProvider: sessionVault)
+
         #if os(macOS)
-        fileUploadFactory = DiscreteFileUploadOperationsProviderFactory(storage: storage, cloudSlot: cloudSlot, sessionVault: sessionVault, apiService: api)
+        self.fileUploader = FileUploader(
+            fileUploadFactory: DiscreteFileUploadOperationsProviderFactory(storage: storage, cloudSlot: cloudSlot, sessionVault: sessionVault, verifierFactory: uploadVerifierFactory, apiService: api, client: client).make(),
+            filecleaner: cloudSlot,
+            moc: storage.backgroundContext
+        )
+        self.offlineSaver = nil
         #else
         if Constants.runningInExtension {
-            fileUploadFactory = StreamFileUploadOperationsProviderFactory(storage: storage, cloudSlot: cloudSlot, sessionVault: sessionVault, apiService: api)
+            self.fileUploader = FileUploader(
+                fileUploadFactory: StreamFileUploadOperationsProviderFactory(storage: storage, cloudSlot: cloudSlot, sessionVault: sessionVault, verifierFactory: uploadVerifierFactory, apiService: api, client: client).make(),
+                filecleaner: cloudSlot,
+                moc: storage.backgroundContext
+            )
+            self.offlineSaver = nil
         } else {
-            fileUploadFactory = iOSFileUploadOperationsProviderFactory(storage: storage, cloudSlot: cloudSlot, sessionVault: sessionVault, apiService: api)
+            self.fileUploader = MyFilesFileUploader(
+                fileUploadFactory: iOSFileUploadOperationsProviderFactory(storage: storage, cloudSlot: cloudSlot, sessionVault: sessionVault, verifierFactory: uploadVerifierFactory, apiService: api, client: client).make(),
+                filecleaner: cloudSlot,
+                moc: storage.backgroundContext
+            )
+            self.offlineSaver = OfflineSaver(clientConfig: clientConfig, storage: storage, downloader: downloader)
         }
         #endif
 
-        self.fileUploader = FileUploader(
-            fileUploadFactory: fileUploadFactory.make(),
-            storage: storage,
-            sessionVault: sessionVault,
-            moc: storage.backgroundContext
-        )
+        cleanUpStartController = CleanUpController()
 
         super.init()
         
         NotificationCenter.default.addObserver(self, selector: #selector(reloadCache), name: .nukeCache, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(reloadCacheExcludingEvents), name: .nukeCacheExcludingEvents, object: nil)
+    }
+
+    public func bootstrap() async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            onFirstBoot(continuation.resume(with:))
+        }
     }
     
-    private func destroyCache() {
-        discardEventsPolling()
-        
+    public func bootstrapIfNeeded() async throws {
+        guard rootFolderAvailable() == false else { return }
+        return try await bootstrap()
+    }
+    
+    public func cleanUpEventsAndMetadata(cleanupStrategy: CacheCleanupStrategy) async {
+        if cleanupStrategy.shouldCleanEvents {
+            discardEventsPolling()
+        }
+        if cleanupStrategy.shouldCleanMetadata {
+            await storage.clearUp()
+        }
+    }
+
+    @MainActor
+    public func signOut(cacheCleanupStrategy: CacheCleanupStrategy) async {
+        if let userId = sessionVault.userInfo?.ID {
+            ProtonCoreFeatureFlags.FeatureFlagsRepository.shared.resetFlags(for: userId)
+            ProtonCoreFeatureFlags.FeatureFlagsRepository.shared.clearUserId()
+        }
+        await destroyCache(strategy: cacheCleanupStrategy)
+        featureFlags.stop() // stop when logged out
+        await removeSessionInBE() // Before sessionVault clean to have the credential
+        sessionVault.signOut()
+        sessionCommunicator.clearStateOnSignOut()
+    }
+
+    @MainActor
+    private func destroyCache(strategy cacheCleanupStrategy: CacheCleanupStrategy) async {
+        photoUploader?.didSignOut = true
+        photoUploader?.cancelAllOperations()
+        fileUploader.didSignOut = true
+        fileUploader.cancelAllOperations()
+
+        if cacheCleanupStrategy.shouldCleanEvents {
+            discardEventsPolling()
+        }
+
+        /// The clean up follows a certain order. Right now any subscriber of `cleanUpController` will execute their work before any other cleanup (storage, vault, etc).
+        /// There might be more coordination needed in the future, think about how to indicate which domain of resources should react to a notification.
+        /// Tips: (parametrizing `start` function / multiple functions - one per domain / multiple cleanup controllers - one per domain)...
+        cleanUpStartController.start()
+
         downloader.cancelAll()
         thumbnailLoader.cancelAll()
-        fileUploader.cancelAll()
-        offlineSaver.cleanUp()
+        offlineSaver?.cleanUp()
         fileSystemSlot.clear()
         localSettings.cleanUp()
         generalSettings.cleanUp()
 
-        storage.clearUp()
+        if cacheCleanupStrategy.shouldCleanMetadata {
+            await storage.clearUp()
+        }
+        await syncStorage?.clearUp()
 
         PDFileManager.destroyPermanents()
         PDFileManager.destroyCaches()
+        PDFileManager.clearLogsDirectory()
 
+        UserDefaults.standard.dictionaryRepresentation().forEach { key, _ in
+            UserDefaults.standard.removeObject(forKey: key)
+        }
         URLCache.shared.removeAllCachedResponses()
-    }
-    
-    /// Clears local cache without clearing the user session
-    @objc private func reloadCache() {
-        destroyCache()
-        NotificationCenter.default.post(name: .restartApplication, object: nil)
+
+        try? PDFileManager.bootstrapLogDirectory()
     }
 
-    public func signOut() {
-        destroyCache()
-        logout() // Before sessionVault clean to have the credential
-        sessionVault.signOut()
-    }
-
-    private func logout() {
-        ConsoleLogger.shared?.log("Attempting logout", osLogType: Tower.self)
-        guard let coreCredential = sessionVault.credential else { return }
+    private func removeSessionInBE() async {
+        Log.info("Attempting logout", domain: .networking)
+        guard let coreCredential = sessionVault.sessionCredential else { return }
         let credential = Credential(coreCredential)
 
-        authenticator.closeSession(credential) { result in
-            switch result {
-            case .success:
-                ConsoleLogger.shared?.log("Logout successful", osLogType: Tower.self)
-            case .failure:
-                ConsoleLogger.shared?.log("Logout failed", osLogType: Tower.self)
+        await withCheckedContinuation { continuation in
+            authenticator.closeSession(credential) { result in
+                switch result {
+                case .success:
+                    Log.info("Logout successful", domain: .networking)
+                    continuation.resume(returning: Void())
+                case .failure(let error):
+                    Log.error(error, domain: .networking)
+                    continuation.resume(returning: Void())
+                }
             }
         }
     }
-    
+
+    /// Clears local cache without clearing the user session
+    @objc private func reloadCache() {
+        Task {
+            Log.info("Tower - nukeCache", domain: .application)
+            await destroyCache(strategy: .cleanEverything)
+            NotificationCenter.default.post(name: .restartApplication, object: nil)
+        }
+    }
+
+    @objc private func reloadCacheExcludingEvents() {
+        Task {
+            Log.info("Tower - nukeCacheExcludingEvent", domain: .application)
+            await destroyCache(strategy: .cleanMetadataDBButDoNotCleanEvents)
+            NotificationCenter.default.post(name: .restartApplication, object: nil)
+        }
+    }
+
     // things we need to do once
-    public func onFirstBoot(_ completion: @escaping (Result<Void, Error>) -> Void) {
+    public func onFirstBoot(isPhotosEnabled: Bool = false, _ completion: @escaping (Result<Void, Error>) -> Void) {
         if let addresses = sessionVault.addresses, sessionVault.userInfo != nil {
-            firstBoot(with: addresses, completion)
+            firstBoot(isPhotosEnabled: isPhotosEnabled, with: addresses, completion)
         } else {
             self.addressManager.fetchAddresses { [weak self] in
                 guard case Result.success(let addresses) = $0 else {
                     return completion( $0.flatMap { _ in .success(Void()) })
                 }
-                self?.firstBoot(with: addresses, completion)
+                self?.firstBoot(isPhotosEnabled: isPhotosEnabled, with: addresses, completion)
             }
         }
     }
 
-    private func firstBoot(with addresses: [Address], _ completion: @escaping (Result<Void, Error>) -> Void) {
+    private func firstBoot(isPhotosEnabled: Bool, with addresses: [Address], _ completion: @escaping (Result<Void, Error>) -> Void) {
         let activeAddresses = addresses.filter({ !$0.keys.isEmpty })
         guard let primaryAddress = activeAddresses.first else {
             return completion(.failure(AddressManager.Errors.noPrimaryAddress))
@@ -212,8 +321,9 @@ public class Tower: NSObject, LogObject {
             return completion(.failure(SignersKit.Errors.noAddressWithRequestedSignature))
         }
         
+        featureFlags.start { _ in } // initial fetching during login, error is ignored, we will use cache or defaults
         self.generalSettings.fetchUserSettings() // opportunistic, no need to abort the boot if this call fails
-
+        
         let withMainShare: (Result<Share, Error>) -> Void = { sharesResult in
             switch sharesResult {
             case let .failure(error):
@@ -222,15 +332,15 @@ public class Tower: NSObject, LogObject {
                 completion(.success(Void()))
             }
         }
-
-        self.cloudSlot.scanRoots(onFoundMainShare: withMainShare, onMainShareNotFound: {
+        
+        self.cloudSlot.scanRoots(isPhotosEnabled: isPhotosEnabled, onFoundMainShare: withMainShare, onMainShareNotFound: {
             // if there are no main shares - try to create a Volume, but only once
             self.cloudSlot.createVolume(signersKit: signersKit) { createVolumeResult in
                 switch createVolumeResult {
                 case .failure(let error):
                     withMainShare(.failure(error))
                 case .success:
-                    self.cloudSlot?.scanRoots(onFoundMainShare: withMainShare, onMainShareNotFound: {
+                    self.cloudSlot?.scanRoots(isPhotosEnabled: isPhotosEnabled, onFoundMainShare: withMainShare, onMainShareNotFound: {
                         completion(.failure(CloudSlot.Errors.noSharesAvailable))
                     })
                 }
@@ -243,22 +353,30 @@ public class Tower: NSObject, LogObject {
         // clean old events from EventsConveyor storage
         try? self.eventsConveyor.persistentQueue.periodicalCleanup()
         
-        offlineSaver.start()
+        featureFlags.start { _ in } // start with event system, error is ignored, we will use cache or defaults
+        offlineSaver?.start()
         
         intializeEventsSystem()
         if runEventsProcessor {
             runEventsSystem()
         }
 
-        if let uid = self.sessionVault.credential?.UID {
+        if let uid = self.sessionVault.sessionCredential?.UID {
             self.networking.setSessionUID(uid: uid)
         }
     }
     
     // stop recurrent work without cleanup
     @objc public func stop() {
+        featureFlags.stop()  // pause with event system
         pauseEventsSystem()
-        offlineSaver.cleanUp()
+        offlineSaver?.cleanUp()
+    }
+    
+    public func refreshUserInfoAndAddresses() async throws {
+        _ = try await withCheckedThrowingContinuation { continuation in
+            self.addressManager.fetchAddresses(continuation.resume(with:))
+        }
     }
     
     @available(*, deprecated, message: "Only used in tests")

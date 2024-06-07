@@ -26,4 +26,5 @@ protocol RevisionEncryptor {
 
 enum RevisionEncryptorError: String, LocalizedError {
     case noSignatureEmailInRevision = "The revision does not have a creator set."
+    case noSignatureEmailInFile = "The file does not have a creator set."
 }

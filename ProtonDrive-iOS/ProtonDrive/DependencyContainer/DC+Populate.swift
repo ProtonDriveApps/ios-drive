@@ -18,9 +18,9 @@
 import UIKit
 import PDCore
 import Combine
-import ProtonCore_HumanVerification
-import ProtonCore_Keymaker
-import ProtonCore_Services
+import ProtonCoreHumanVerification
+import ProtonCoreKeymaker
+import ProtonCoreServices
 import UserNotifications
 
 final class AuthenticatedDependencyContainer {
@@ -38,22 +38,37 @@ final class AuthenticatedDependencyContainer {
     let photosContainer: PhotosContainer
     #endif
 
-    init(tower: Tower, keymaker: Keymaker, networkService: PMAPIService, localSettings: LocalSettings, windowScene: UIWindowScene) {
+    init(tower: Tower, keymaker: Keymaker, networkService: PMAPIService, localSettings: LocalSettings, windowScene: UIWindowScene, settingsSuite: SettingsStorageSuite) {
         self.tower = tower
         self.keymaker = keymaker
         self.networkService = networkService
         self.localSettings = localSettings
         self.windowScene = windowScene
 
-        let uploadOperationInteractor = UploadOperationInteractor(interactor: tower.fileUploader)
-        var operationInteractors: [OperationInteractor] = [uploadOperationInteractor]
-
+        let myFilesUploadOperationInteractor = MyFilesUploadOperationInteractor(storage: tower.storage, interactor: tower.fileUploader)
         pickersContainer = PickersContainer()
-        operationInteractors.append(pickersContainer.photoPickerInteractor)
+
+        var operationInteractors: [OperationInteractor] = [
+            myFilesUploadOperationInteractor,
+            pickersContainer.photoPickerInteractor
+        ]
+
+        let extensionStateController = ConcreteBackgroundTaskStateController()
+        var photosInteractor: CommandInteractor?
+        
+        #if OPTIMIZED_PHOTO_UPLOADS
+        let photoSkippableCache = ConcretePhotosSkippableCache(storage: UserDefaultsPhotosSkippableStorage())
+        #else
+        let photoSkippableCache = BlankPhotosSkippableCache()
+        #endif
 
         #if HAS_PHOTOS
-        photosContainer = PhotosContainer(tower: tower)
-        operationInteractors.append(photosContainer.operationInteractor)
+        let dependencies = PhotosContainer.Dependencies(tower: tower, windowScene: windowScene, keymaker: keymaker, networkService: networkService, settingsSuite: settingsSuite, extensionStateController: extensionStateController, photoSkippableCache: photoSkippableCache)
+        photosContainer = PhotosContainer(dependencies: dependencies)
+        photosInteractor = PhotosInterruptedUploadsInteractor(uploadingFiles: photosContainer.uploadingPhotosRepository.getPhotos, uploader: photosContainer.uploader)
+
+        let photosUploadOperationInteractor = PhotosUploadOperationInteractor(uploadingFiles: photosContainer.uploadingPhotosRepository.getPhotos, interactor: photosContainer.uploader)
+        operationInteractors.append(photosUploadOperationInteractor)
         #endif
 
         let applicationRunningResource = ApplicationRunningStateResourceImpl()
@@ -65,11 +80,13 @@ final class AuthenticatedDependencyContainer {
         )
         let backgroundOperationController = ExtensionBackgroundOperationController(
             processingController: processingController,
+            extensionStateController: extensionStateController,
             operationInteractor: uploadOperationInteractor,
             taskResource: ExtensionBackgroundTaskResourceImpl()
         )
         #else
         let backgroundOperationController = ExtensionBackgroundOperationController(
+            extensionStateController: extensionStateController,
             operationInteractor: operationsInteractor,
             taskResource: ExtensionBackgroundTaskResourceImpl()
         )
@@ -79,11 +96,19 @@ final class AuthenticatedDependencyContainer {
             applicationStateResource: applicationRunningResource,
             backgroundOperationController: backgroundOperationController
         )
+
+        #if HAS_PHOTOS
+        let quotaUpdatesContainer = QuotaUpdatesContainer(tower: tower, photoUploader: photosContainer.uploader)
+        #else
+        let quotaUpdatesContainer = QuotaUpdatesContainer(tower: tower)
+        #endif
         
         // Child containers
         childContainers = [
-            LocalNotificationsContainer(tower: tower, windowScene: windowScene),
-            ForegroundTransitionContainer(tower: tower, pickerResource: pickersContainer.photoPickerResource)
+            LocalNotificationsContainer(),
+            MyFilesNotificationsPermissionsContainer(tower: tower, windowScene: windowScene),
+            ForegroundTransitionContainer(tower: tower, pickerResource: pickersContainer.photoPickerResource, photosInteractor: photosInteractor),
+            quotaUpdatesContainer,
         ]
     }
 
@@ -132,7 +157,11 @@ extension Tower: DrivePopulator {
     }
 
     func populate(onCompletion: @escaping (Result<Void, Error>) -> Void) {
-        self.onFirstBoot(onCompletion)
+        #if HAS_PHOTOS
+        self.onFirstBoot(isPhotosEnabled: true, onCompletion)
+        #else
+        self.onFirstBoot(isPhotosEnabled: false, onCompletion)
+        #endif
     }
 }
 
@@ -147,10 +176,17 @@ extension Tower: EventsSystemStarter {
 }
 
 protocol SignOutManager {
-    func signOut()
+    func signOut() async
 }
 
-extension Tower: SignOutManager { }
+extension Tower: SignOutManager {
+    func signOut() async {
+        await signOut(cacheCleanupStrategy: .cleanEverything)
+
+        // notify cross-process observers
+        DarwinNotificationCenter.shared.postNotification(.DidLogout)
+    }
+}
 
 protocol LockManager {
     func onLock()

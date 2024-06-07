@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		31CDDF252A9DFC6D00FB8285 /* libPDUploadVerifier.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 31CDDF242A9DFC6D00FB8285 /* libPDUploadVerifier.a */; };
+		6604B9592B32F1D500A2ADB7 /* Progress+OneTimeCancellation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6604B9582B32F1D500A2ADB7 /* Progress+OneTimeCancellation.swift */; };
+		6604B95A2B32F1D500A2ADB7 /* Progress+OneTimeCancellation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6604B9582B32F1D500A2ADB7 /* Progress+OneTimeCancellation.swift */; };
 		7619F5F129E54FD30065E510 /* String+Filename.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7619F5F029E54FD30065E510 /* String+Filename.swift */; };
 		7619F5F229E54FD30065E510 /* String+Filename.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7619F5F029E54FD30065E510 /* String+Filename.swift */; };
 		7619F60829E927D80065E510 /* ResolutionAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7619F60729E927D80065E510 /* ResolutionAction.swift */; };
@@ -18,12 +21,20 @@
 		762C2CF429B703AA00416E31 /* Tower+FileProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762C2CF329B703AA00416E31 /* Tower+FileProvider.swift */; };
 		762C2CF529B703AA00416E31 /* Tower+FileProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762C2CF329B703AA00416E31 /* Tower+FileProvider.swift */; };
 		7653638D29BB10920028D75B /* ItemActionsOutlet+ConflictDetection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7653638C29BB10920028D75B /* ItemActionsOutlet+ConflictDetection.swift */; };
-		7653639429BEB7EA0028D75B /* Tower+Conflict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7653639329BEB7EA0028D75B /* Tower+Conflict.swift */; };
-		7653639529BEB7EA0028D75B /* Tower+Conflict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7653639329BEB7EA0028D75B /* Tower+Conflict.swift */; };
 		765363BA29C1CF460028D75B /* ConflictRepresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 765363B929C1CF460028D75B /* ConflictRepresentation.swift */; };
 		765363BB29C1CF460028D75B /* ConflictRepresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 765363B929C1CF460028D75B /* ConflictRepresentation.swift */; };
+		7664EBEE2A99B79D00B2FCCC /* SyncChangeObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7664EBEA2A99B79D00B2FCCC /* SyncChangeObserver.swift */; };
+		7664EBF52A9DBC1300B2FCCC /* SyncChangeObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7664EBEA2A99B79D00B2FCCC /* SyncChangeObserver.swift */; };
 		766A076529D4199F001C0DB7 /* String+ConflictNodeName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 766A076429D4199F001C0DB7 /* String+ConflictNodeName.swift */; };
 		766A076629D4199F001C0DB7 /* String+ConflictNodeName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 766A076429D4199F001C0DB7 /* String+ConflictNodeName.swift */; };
+		766D47E62A38B96200CB8FD8 /* NSFileProviderItem+ConflictName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 766D47E52A38B96200CB8FD8 /* NSFileProviderItem+ConflictName.swift */; };
+		766D47E72A38B96200CB8FD8 /* NSFileProviderItem+ConflictName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 766D47E52A38B96200CB8FD8 /* NSFileProviderItem+ConflictName.swift */; };
+		766E81412AA21C3C006CF814 /* UserDefaults+Key.swift in Sources */ = {isa = PBXBuildFile; fileRef = 766E81402AA21C3C006CF814 /* UserDefaults+Key.swift */; };
+		766E81422AA21C3C006CF814 /* UserDefaults+Key.swift in Sources */ = {isa = PBXBuildFile; fileRef = 766E81402AA21C3C006CF814 /* UserDefaults+Key.swift */; };
+		769446082AA0ED4D00D73D9F /* SyncedTimeUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 769446072AA0ED4D00D73D9F /* SyncedTimeUpdater.swift */; };
+		769446092AA0ED4D00D73D9F /* SyncedTimeUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 769446072AA0ED4D00D73D9F /* SyncedTimeUpdater.swift */; };
+		76A070AA2AC6BB570002879C /* NSFileProvider+Identifiable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76A070A92AC6BB570002879C /* NSFileProvider+Identifiable.swift */; };
+		76A070AB2AC6BB570002879C /* NSFileProvider+Identifiable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76A070A92AC6BB570002879C /* NSFileProvider+Identifiable.swift */; };
 		87D7B15FECAABFEA7FC40578 /* Pods_PDFileProviderMac.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8C83D4B1BCDA4C5ECADFBE8F /* Pods_PDFileProviderMac.framework */; };
 		A60E6E6CA8EBDD32EE0C0AD3 /* Pods_PDFileProviderStatic.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 01F0423A62C38EDF235A7A2A /* Pods_PDFileProviderStatic.framework */; };
 		AB13F8252A16108600FBC0D2 /* ContentVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB13F8242A16108600FBC0D2 /* ContentVersion.swift */; };
@@ -52,8 +63,7 @@
 		ABC2260B260CAB1700749583 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = ABC22609260CAB1700749583 /* Main.storyboard */; };
 		ABC22610260CAB1800749583 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = ABC2260E260CAB1800749583 /* LaunchScreen.storyboard */; };
 		ABCD8DDC26948DA700562CBB /* LogObfuscation.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCD8DDA26948DA700562CBB /* LogObfuscation.swift */; };
-		ABE2787029916E86008EC1B3 /* libPDCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = ABE2786F29916E86008EC1B3 /* libPDCore.a */; };
-		ABE2787129916F1E008EC1B3 /* libPDFileProvider.a in Frameworks */ = {isa = PBXBuildFile; fileRef = ABE2786629916E39008EC1B3 /* libPDFileProvider.a */; };
+		ABE2787129916F1E008EC1B3 /* libPDFileProvider.a in Frameworks */ = {isa = PBXBuildFile; fileRef = ABE2786629916E39008EC1B3 /* libPDFileProvider.a */; platformFilter = ios; };
 		ABE2787229916F67008EC1B3 /* Errors.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB7EA1E325D29B5F00F00F06 /* Errors.swift */; };
 		ABE2787329916F67008EC1B3 /* FileProviderEventsListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB8AA3802603946800AF3B86 /* FileProviderEventsListener.swift */; };
 		ABE2787429916F6C008EC1B3 /* NodeItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABD1909125A30FF7005D3E29 /* NodeItem.swift */; };
@@ -79,8 +89,11 @@
 		ABF2708F29E426C700D530F0 /* ItemActionsOutlet+Async.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABF2708D29E426C700D530F0 /* ItemActionsOutlet+Async.swift */; };
 		D40A5FDD2A3B13A9002BA232 /* ItemVersionHasher.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40A5FDC2A3B13A9002BA232 /* ItemVersionHasher.swift */; };
 		D40A5FDE2A3B13A9002BA232 /* ItemVersionHasher.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40A5FDC2A3B13A9002BA232 /* ItemVersionHasher.swift */; };
+		D47957F42B026B5100F7F191 /* NSFileProviderPage+extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47957F32B026B5100F7F191 /* NSFileProviderPage+extension.swift */; };
+		D47957F52B026B5100F7F191 /* NSFileProviderPage+extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47957F32B026B5100F7F191 /* NSFileProviderPage+extension.swift */; };
 		D4B2823B29FAC6CD0064E097 /* MetadataVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4B2823A29FAC6CD0064E097 /* MetadataVersion.swift */; };
 		D4B2823C29FAC6CD0064E097 /* MetadataVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4B2823A29FAC6CD0064E097 /* MetadataVersion.swift */; };
+		D4BE45162AE1479E001B8E30 /* PDFileProvider.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB75A78325D15467000681AF /* PDFileProvider.framework */; };
 		D4CDADC02A01506C00234722 /* ItemActionsOutlet+ConflictResolution.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4CDADBF2A01506C00234722 /* ItemActionsOutlet+ConflictResolution.swift */; };
 		D4CDADC12A01506C00234722 /* ItemActionsOutlet+ConflictResolution.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4CDADBF2A01506C00234722 /* ItemActionsOutlet+ConflictResolution.swift */; };
 /* End PBXBuildFile section */
@@ -99,6 +112,20 @@
 			proxyType = 1;
 			remoteGlobalIDString = ABE2786529916E39008EC1B3;
 			remoteInfo = PDFileProviderStatic;
+		};
+		D408D3E92AE15A0F0015913D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AB71531824274ED900543720 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D408D3D72AE1597F0015913D;
+			remoteInfo = PDFileProviderMacTestsHost;
+		};
+		D4BE45172AE1479E001B8E30 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AB71531824274ED900543720 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AB75A78225D15467000681AF;
+			remoteInfo = PDFileProviderMac;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -120,20 +147,27 @@
 		059423BD2D1EA2EBE9A938CD /* Pods-ProtonDriveFileProvider.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ProtonDriveFileProvider.debug.xcconfig"; path = "Target Support Files/Pods-ProtonDriveFileProvider/Pods-ProtonDriveFileProvider.debug.xcconfig"; sourceTree = "<group>"; };
 		1F5B19AA1E1EEA5ADF21B898 /* Pods_ProtonDriveApp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_ProtonDriveApp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		2567288BDA8D5624CF5269B6 /* Pods-PDFileProviderTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderTests.debug.xcconfig"; path = "Target Support Files/Pods-PDFileProviderTests/Pods-PDFileProviderTests.debug.xcconfig"; sourceTree = "<group>"; };
+		31CDDF242A9DFC6D00FB8285 /* libPDUploadVerifier.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libPDUploadVerifier.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		34227D3CA411436D401DA449 /* Pods-ProtonDriveFileProvider.release-external.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ProtonDriveFileProvider.release-external.xcconfig"; path = "Target Support Files/Pods-ProtonDriveFileProvider/Pods-ProtonDriveFileProvider.release-external.xcconfig"; sourceTree = "<group>"; };
 		3EF4F2E9644DB5AA2CC95226 /* Pods-PDFileProviderMac.release-external.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderMac.release-external.xcconfig"; path = "Target Support Files/Pods-PDFileProviderMac/Pods-PDFileProviderMac.release-external.xcconfig"; sourceTree = "<group>"; };
 		407A2E694C1D5B42C727F73B /* Pods-ProtonDrive.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ProtonDrive.debug.xcconfig"; path = "Target Support Files/Pods-ProtonDrive/Pods-ProtonDrive.debug.xcconfig"; sourceTree = "<group>"; };
 		58FD780C9EA3565FB54BE356 /* Pods-PDFileProviderTests.release-qa.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderTests.release-qa.xcconfig"; path = "Target Support Files/Pods-PDFileProviderTests/Pods-PDFileProviderTests.release-qa.xcconfig"; sourceTree = "<group>"; };
 		62E57EB2540196BA92C18CCD /* Pods-PDFileProviderStatic.release-external.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderStatic.release-external.xcconfig"; path = "Target Support Files/Pods-PDFileProviderStatic/Pods-PDFileProviderStatic.release-external.xcconfig"; sourceTree = "<group>"; };
+		6604B9582B32F1D500A2ADB7 /* Progress+OneTimeCancellation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Progress+OneTimeCancellation.swift"; sourceTree = "<group>"; };
 		7619F5F029E54FD30065E510 /* String+Filename.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Filename.swift"; sourceTree = "<group>"; };
 		7619F60729E927D80065E510 /* ResolutionAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResolutionAction.swift; sourceTree = "<group>"; };
 		7619F60A29EE68BE0065E510 /* OptionSet+RemoveElement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "OptionSet+RemoveElement.swift"; sourceTree = "<group>"; };
 		762C2CCC29B2172B00416E31 /* Conflicting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Conflicting.swift; sourceTree = "<group>"; };
 		762C2CF329B703AA00416E31 /* Tower+FileProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Tower+FileProvider.swift"; sourceTree = "<group>"; };
 		7653638C29BB10920028D75B /* ItemActionsOutlet+ConflictDetection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ItemActionsOutlet+ConflictDetection.swift"; sourceTree = "<group>"; };
-		7653639329BEB7EA0028D75B /* Tower+Conflict.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Tower+Conflict.swift"; sourceTree = "<group>"; };
 		765363B929C1CF460028D75B /* ConflictRepresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConflictRepresentation.swift; sourceTree = "<group>"; };
+		7664EBEA2A99B79D00B2FCCC /* SyncChangeObserver.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SyncChangeObserver.swift; sourceTree = "<group>"; };
 		766A076429D4199F001C0DB7 /* String+ConflictNodeName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+ConflictNodeName.swift"; sourceTree = "<group>"; };
+		766D47E52A38B96200CB8FD8 /* NSFileProviderItem+ConflictName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSFileProviderItem+ConflictName.swift"; sourceTree = "<group>"; };
+		766E81402AA21C3C006CF814 /* UserDefaults+Key.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserDefaults+Key.swift"; sourceTree = "<group>"; };
+		769446072AA0ED4D00D73D9F /* SyncedTimeUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncedTimeUpdater.swift; sourceTree = "<group>"; };
+		76A070A92AC6BB570002879C /* NSFileProvider+Identifiable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSFileProvider+Identifiable.swift"; sourceTree = "<group>"; };
+		8BB8C66B13BBAADFE056CB92 /* Pods-PDFileProviderMacTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderMacTests.debug.xcconfig"; path = "Target Support Files/Pods-PDFileProviderMacTests/Pods-PDFileProviderMacTests.debug.xcconfig"; sourceTree = "<group>"; };
 		8C83D4B1BCDA4C5ECADFBE8F /* Pods_PDFileProviderMac.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PDFileProviderMac.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		9AFA25662E9BD49902ADD93C /* Pods-PDFileProviderStatic.release-store.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderStatic.release-store.xcconfig"; path = "Target Support Files/Pods-PDFileProviderStatic/Pods-PDFileProviderStatic.release-store.xcconfig"; sourceTree = "<group>"; };
 		A5E56D9369C52CDDB6A6BDC4 /* Pods-PDFileProviderMac.release-store.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderMac.release-store.xcconfig"; path = "Target Support Files/Pods-PDFileProviderMac/Pods-PDFileProviderMac.release-store.xcconfig"; sourceTree = "<group>"; };
@@ -184,9 +218,13 @@
 		C655B8ACADAF31B56CA723A8 /* Pods-ProtonDrive.release-external.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ProtonDrive.release-external.xcconfig"; path = "Target Support Files/Pods-ProtonDrive/Pods-ProtonDrive.release-external.xcconfig"; sourceTree = "<group>"; };
 		CCC5EE3293577BFAE14CAF51 /* Pods-PDFileProviderTests.release-external.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderTests.release-external.xcconfig"; path = "Target Support Files/Pods-PDFileProviderTests/Pods-PDFileProviderTests.release-external.xcconfig"; sourceTree = "<group>"; };
 		D40A5FDC2A3B13A9002BA232 /* ItemVersionHasher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemVersionHasher.swift; sourceTree = "<group>"; };
+		D47957F32B026B5100F7F191 /* NSFileProviderPage+extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSFileProviderPage+extension.swift"; sourceTree = "<group>"; };
 		D4B2823A29FAC6CD0064E097 /* MetadataVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataVersion.swift; sourceTree = "<group>"; };
 		D4CDADBF2A01506C00234722 /* ItemActionsOutlet+ConflictResolution.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ItemActionsOutlet+ConflictResolution.swift"; sourceTree = "<group>"; };
 		D84E1434C5AB23103284C6DD /* Pods-PDFileProviderStatic.release-qa.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderStatic.release-qa.xcconfig"; path = "Target Support Files/Pods-PDFileProviderStatic/Pods-PDFileProviderStatic.release-qa.xcconfig"; sourceTree = "<group>"; };
+		DAD986B6E2DF6A41163BC479 /* Pods-PDFileProviderMacTests.release-external.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderMacTests.release-external.xcconfig"; path = "Target Support Files/Pods-PDFileProviderMacTests/Pods-PDFileProviderMacTests.release-external.xcconfig"; sourceTree = "<group>"; };
+		E7846659ADF9F4865B3E235C /* Pods-PDFileProviderMacTests.release-qa.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderMacTests.release-qa.xcconfig"; path = "Target Support Files/Pods-PDFileProviderMacTests/Pods-PDFileProviderMacTests.release-qa.xcconfig"; sourceTree = "<group>"; };
+		F3C9EECACFB141FE083B3D2B /* Pods-PDFileProviderMacTests.release-store.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDFileProviderMacTests.release-store.xcconfig"; path = "Target Support Files/Pods-PDFileProviderMacTests/Pods-PDFileProviderMacTests.release-store.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -194,7 +232,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ABE2787029916E86008EC1B3 /* libPDCore.a in Frameworks */,
+				31CDDF252A9DFC6D00FB8285 /* libPDUploadVerifier.a in Frameworks */,
 				A60E6E6CA8EBDD32EE0C0AD3 /* Pods_PDFileProviderStatic.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -208,16 +246,27 @@
 				762C2CCC29B2172B00416E31 /* Conflicting.swift */,
 				765363B929C1CF460028D75B /* ConflictRepresentation.swift */,
 				762C2CF329B703AA00416E31 /* Tower+FileProvider.swift */,
-				7653639329BEB7EA0028D75B /* Tower+Conflict.swift */,
 				766A076429D4199F001C0DB7 /* String+ConflictNodeName.swift */,
 				7619F60729E927D80065E510 /* ResolutionAction.swift */,
+				766D47E52A38B96200CB8FD8 /* NSFileProviderItem+ConflictName.swift */,
 			);
 			path = Conflicts;
+			sourceTree = "<group>";
+		};
+		7664EBE62A99B79D00B2FCCC /* Syncing */ = {
+			isa = PBXGroup;
+			children = (
+				7664EBEA2A99B79D00B2FCCC /* SyncChangeObserver.swift */,
+				769446072AA0ED4D00D73D9F /* SyncedTimeUpdater.swift */,
+				766E81402AA21C3C006CF814 /* UserDefaults+Key.swift */,
+			);
+			path = Syncing;
 			sourceTree = "<group>";
 		};
 		AB48E8D12428BB590016E4E2 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				31CDDF242A9DFC6D00FB8285 /* libPDUploadVerifier.a */,
 				ABE2788F2991775F008EC1B3 /* PDCoreResources.bundle */,
 				ABE2786F29916E86008EC1B3 /* libPDCore.a */,
 				ABC22494260C7BB700749583 /* PDCore.framework */,
@@ -245,6 +294,7 @@
 			children = (
 				AB59FBA9261DA5070072C601 /* NSFileProviderItem+Extension.swift */,
 				AB33B91C26243765007ED298 /* NSFileProviderItemIdentifier+Extension.swift */,
+				76A070A92AC6BB570002879C /* NSFileProvider+Identifiable.swift */,
 				AB6990C925D6B84600229058 /* NSFileProviderSyncAnchor+Extension.swift */,
 				AB52A27E25DFE73200E3A7D1 /* NodeIdentifier+NSFileProviderItemIdentifier.swift */,
 				ABC22544260C7E5200749583 /* NSFileProviderItemIdentifier+iOS.swift */,
@@ -252,6 +302,7 @@
 				ABCD8DDA26948DA700562CBB /* LogObfuscation.swift */,
 				7619F5F029E54FD30065E510 /* String+Filename.swift */,
 				7619F60A29EE68BE0065E510 /* OptionSet+RemoveElement.swift */,
+				6604B9582B32F1D500A2ADB7 /* Progress+OneTimeCancellation.swift */,
 			);
 			path = Extensions;
 			sourceTree = "<group>";
@@ -298,6 +349,7 @@
 				AB7EA23025D2D09500F00F06 /* ItemProvider */,
 				AB86B16725CD975300D9AD61 /* Enumerators */,
 				762C2CCB29B2170F00416E31 /* Conflicts */,
+				7664EBE62A99B79D00B2FCCC /* Syncing */,
 				AB75A78625D15467000681AF /* Info.plist */,
 			);
 			path = PDFileProvider;
@@ -325,6 +377,7 @@
 				AB8AA36A2603873100AF3B86 /* EnumeratorWithChanges.swift */,
 				AB8AA36E26038A6E00AF3B86 /* EnumeratorWithItemsFromDB.swift */,
 				AB8AA37426038C3100AF3B86 /* EnumeratorWithItemsFromAPI.swift */,
+				D47957F32B026B5100F7F191 /* NSFileProviderPage+extension.swift */,
 			);
 			path = Enumerators;
 			sourceTree = "<group>";
@@ -348,9 +401,48 @@
 				62E57EB2540196BA92C18CCD /* Pods-PDFileProviderStatic.release-external.xcconfig */,
 				9AFA25662E9BD49902ADD93C /* Pods-PDFileProviderStatic.release-store.xcconfig */,
 				D84E1434C5AB23103284C6DD /* Pods-PDFileProviderStatic.release-qa.xcconfig */,
+				8BB8C66B13BBAADFE056CB92 /* Pods-PDFileProviderMacTests.debug.xcconfig */,
+				DAD986B6E2DF6A41163BC479 /* Pods-PDFileProviderMacTests.release-external.xcconfig */,
+				F3C9EECACFB141FE083B3D2B /* Pods-PDFileProviderMacTests.release-store.xcconfig */,
+				E7846659ADF9F4865B3E235C /* Pods-PDFileProviderMacTests.release-qa.xcconfig */,
 			);
 			name = Pods;
 			path = ../Pods;
+			sourceTree = "<group>";
+		};
+		D408D3C92AE1561A0015913D /* ScenarioSimulators */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = ScenarioSimulators;
+			sourceTree = "<group>";
+		};
+		D408D3EC2AE160490015913D /* Mocked */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Mocked;
+			sourceTree = "<group>";
+		};
+		D408D4312AE1647D0015913D /* ConflictResolutionTests */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = ConflictResolutionTests;
+			sourceTree = "<group>";
+		};
+		D408D4382AE1647D0015913D /* ConflictSystemTests */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = ConflictSystemTests;
+			sourceTree = "<group>";
+		};
+		D408D43D2AE1647D0015913D /* ConflictIdentificationTests */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = ConflictIdentificationTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -381,7 +473,7 @@
 		AB71531824274ED900543720 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastSwiftUpdateCheck = 1420;
+				LastSwiftUpdateCheck = 1430;
 				LastUpgradeCheck = 1130;
 				ORGANIZATIONNAME = ProtonMail;
 				TargetAttributes = {
@@ -397,6 +489,13 @@
 					};
 					ABE2786529916E39008EC1B3 = {
 						CreatedOnToolsVersion = 14.2;
+					};
+					D408D3D72AE1597F0015913D = {
+						CreatedOnToolsVersion = 14.3;
+					};
+					D4BE45112AE1479E001B8E30 = {
+						CreatedOnToolsVersion = 14.3;
+						TestTargetID = D408D3D72AE1597F0015913D;
 					};
 				};
 			};
@@ -467,13 +566,16 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7664EBF52A9DBC1300B2FCCC /* SyncChangeObserver.swift in Sources */,
 				ABE2788329916F77008EC1B3 /* TrashEnumerator.swift in Sources */,
 				7619F60C29EE68BE0065E510 /* OptionSet+RemoveElement.swift in Sources */,
 				ABE2788429916F77008EC1B3 /* RootEnumerator.swift in Sources */,
+				766D47E72A38B96200CB8FD8 /* NSFileProviderItem+ConflictName.swift in Sources */,
 				ABE2787229916F67008EC1B3 /* Errors.swift in Sources */,
 				765363BB29C1CF460028D75B /* ConflictRepresentation.swift in Sources */,
 				ABE2787329916F67008EC1B3 /* FileProviderEventsListener.swift in Sources */,
 				ABE2788229916F77008EC1B3 /* WorkingSetEnumerator.swift in Sources */,
+				D47957F52B026B5100F7F191 /* NSFileProviderPage+extension.swift in Sources */,
 				D4CDADC12A01506C00234722 /* ItemActionsOutlet+ConflictResolution.swift in Sources */,
 				ABE2787529916F6C008EC1B3 /* ItemTemplate.swift in Sources */,
 				ABE2787C29916F6F008EC1B3 /* OptionSetContainer.swift in Sources */,
@@ -481,11 +583,11 @@
 				ABE2787F29916F77008EC1B3 /* EnumeratorWithItemsFromAPI.swift in Sources */,
 				ABE2788129916F77008EC1B3 /* FolderEnumerator.swift in Sources */,
 				D40A5FDE2A3B13A9002BA232 /* ItemVersionHasher.swift in Sources */,
-				7653639529BEB7EA0028D75B /* Tower+Conflict.swift in Sources */,
 				7619F5F229E54FD30065E510 /* String+Filename.swift in Sources */,
 				ABE2787629916F6F008EC1B3 /* NSFileProviderItemIdentifier+Extension.swift in Sources */,
 				AB13F8262A16108600FBC0D2 /* ContentVersion.swift in Sources */,
 				ABE2788529916F77008EC1B3 /* EnumeratorWithChanges.swift in Sources */,
+				766E81422AA21C3C006CF814 /* UserDefaults+Key.swift in Sources */,
 				ABE2787A29916F6F008EC1B3 /* NSFileProviderItem+Extension.swift in Sources */,
 				762C2CF529B703AA00416E31 /* Tower+FileProvider.swift in Sources */,
 				ABE2787429916F6C008EC1B3 /* NodeItem.swift in Sources */,
@@ -497,9 +599,12 @@
 				ABE2787D29916F73008EC1B3 /* ItemProvider.swift in Sources */,
 				ABE2787929916F6F008EC1B3 /* LogObfuscation.swift in Sources */,
 				7619F60929E927D80065E510 /* ResolutionAction.swift in Sources */,
+				76A070AB2AC6BB570002879C /* NSFileProvider+Identifiable.swift in Sources */,
 				ABE2787B29916F6F008EC1B3 /* NSFileProviderSyncAnchor+Extension.swift in Sources */,
+				769446092AA0ED4D00D73D9F /* SyncedTimeUpdater.swift in Sources */,
 				ABE2787E29916F73008EC1B3 /* ItemActionsOutlet.swift in Sources */,
 				ABE2787729916F6F008EC1B3 /* NodeIdentifier+NSFileProviderItemIdentifier.swift in Sources */,
+				6604B95A2B32F1D500A2ADB7 /* Progress+OneTimeCancellation.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -568,7 +673,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -642,7 +747,7 @@
 					"@executable_path/../../../../Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protondrive.ProtonDrive.PDFileProvider;
@@ -709,25 +814,27 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_FILE = PDFileProviderTests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.PDFileProviderTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PDFileProviderTestsHost.app/PDFileProviderTestsHost";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PDFileProviderTestsHost.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PDFileProviderTestsHost";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = "Release-Store";
@@ -793,7 +900,10 @@
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.PDFileProviderTestsHost;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -826,7 +936,7 @@
 					"@executable_path/../../../../Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protondrive.ProtonDrive.PDFileProvider;
 				PRODUCT_MODULE_NAME = PDFileProvider;
 				PRODUCT_NAME = PDFileProvider;
@@ -902,7 +1012,7 @@
 					"@executable_path/../../../../Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protondrive.ProtonDrive.PDFileProvider;
@@ -937,7 +1047,10 @@
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.PDFileProviderTestsHost;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1004,7 +1117,10 @@
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.PDFileProviderTestsHost;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -1074,7 +1190,10 @@
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.PDFileProviderTestsHost;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -1091,20 +1210,22 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 2SB5Z68H26;
 				INFOPLIST_FILE = PDFileProviderTests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.PDFileProviderTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PDFileProviderTestsHost.app/PDFileProviderTestsHost";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PDFileProviderTestsHost.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PDFileProviderTestsHost";
 			};
 			name = Debug;
 		};
@@ -1157,24 +1278,26 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_FILE = PDFileProviderTests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.PDFileProviderTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PDFileProviderTestsHost.app/PDFileProviderTestsHost";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PDFileProviderTestsHost.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PDFileProviderTestsHost";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = "Release-External";
@@ -1228,24 +1351,26 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_FILE = PDFileProviderTests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.PDFileProviderTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PDFileProviderTestsHost.app/PDFileProviderTestsHost";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PDFileProviderTestsHost.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PDFileProviderTestsHost";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = "Release-QA";
@@ -1315,7 +1440,7 @@
 					"@executable_path/../../../../Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protondrive.ProtonDrive.PDFileProvider;
@@ -1396,6 +1521,490 @@
 				VALIDATE_PRODUCT = YES;
 			};
 			name = "Release-Store";
+		};
+		D408D3E52AE159810015913D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CODE_SIGN_ENTITLEMENTS = PDFileProviderMacTestsHost/PDFileProviderMacTestsHost.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"PDFileProviderMacTestsHost/Preview Content\"";
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = 2SB5Z68H26;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2023 ProtonMail. All rights reserved.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.PDFileProviderMacTestsHost;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "ProtonDrive PDFileProvider Mac Tests Host (macOS)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		D408D3E62AE159810015913D /* Release-External */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_ENTITLEMENTS = PDFileProviderMacTestsHost/PDFileProviderMacTestsHost.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_ASSET_PATHS = "\"PDFileProviderMacTestsHost/Preview Content\"";
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = 2SB5Z68H26;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2023 ProtonMail. All rights reserved.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.PDFileProviderMacTestsHost;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "ProtonDrive PDFileProvider Mac Tests Host (macOS)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = "Release-External";
+		};
+		D408D3E72AE159810015913D /* Release-Store */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_ENTITLEMENTS = PDFileProviderMacTestsHost/PDFileProviderMacTestsHost.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_ASSET_PATHS = "\"PDFileProviderMacTestsHost/Preview Content\"";
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = 2SB5Z68H26;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2023 ProtonMail. All rights reserved.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.PDFileProviderMacTestsHost;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "ProtonDrive PDFileProvider Mac Tests Host (macOS)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = "Release-Store";
+		};
+		D408D3E82AE159810015913D /* Release-QA */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_ENTITLEMENTS = PDFileProviderMacTestsHost/PDFileProviderMacTestsHost.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_ASSET_PATHS = "\"PDFileProviderMacTestsHost/Preview Content\"";
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = 2SB5Z68H26;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2023 ProtonMail. All rights reserved.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.PDFileProviderMacTestsHost;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "ProtonDrive PDFileProvider Mac Tests Host (macOS)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = "Release-QA";
+		};
+		D4BE451A2AE1479E001B8E30 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8BB8C66B13BBAADFE056CB92 /* Pods-PDFileProviderMacTests.debug.xcconfig */;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2SB5Z68H26;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.PDFileProviderMacTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PDFileProviderMacTestsHost.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PDFileProviderMacTestsHost";
+			};
+			name = Debug;
+		};
+		D4BE451B2AE1479E001B8E30 /* Release-External */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = DAD986B6E2DF6A41163BC479 /* Pods-PDFileProviderMacTests.release-external.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 2SB5Z68H26;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.PDFileProviderMacTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PDFileProviderMacTestsHost.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PDFileProviderMacTestsHost";
+			};
+			name = "Release-External";
+		};
+		D4BE451C2AE1479E001B8E30 /* Release-Store */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = F3C9EECACFB141FE083B3D2B /* Pods-PDFileProviderMacTests.release-store.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 2SB5Z68H26;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.PDFileProviderMacTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PDFileProviderMacTestsHost.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PDFileProviderMacTestsHost";
+			};
+			name = "Release-Store";
+		};
+		D4BE451D2AE1479E001B8E30 /* Release-QA */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E7846659ADF9F4865B3E235C /* Pods-PDFileProviderMacTests.release-qa.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 2SB5Z68H26;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.PDFileProviderMacTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PDFileProviderMacTestsHost.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PDFileProviderMacTestsHost";
+			};
+			name = "Release-QA";
 		};
 /* End XCBuildConfiguration section */
 

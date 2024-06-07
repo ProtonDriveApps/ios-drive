@@ -20,16 +20,17 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Log
-import ProtonCore_Networking
-import ProtonCore_Services
+import ProtonCoreLog
+import ProtonCoreNetworking
+import ProtonCoreServices
 
+/// Get information about current organization
 public final class OrganizationsRequest: BaseApiRequest<OrganizationsResponse> {
-    
+
     override public init(api: APIService) {
         super.init(api: api)
     }
-    
+
     override public var path: String { "/core/v4/organizations" }
 }
 

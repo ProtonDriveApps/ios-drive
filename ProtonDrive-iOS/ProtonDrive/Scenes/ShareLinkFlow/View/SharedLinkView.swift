@@ -17,7 +17,7 @@
 
 import SwiftUI
 import PDUIComponents
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 struct SharedLinkView<EditingView: View>: View {
     @ObservedObject private var vm: SharedLinkViewModel
@@ -34,6 +34,18 @@ struct SharedLinkView<EditingView: View>: View {
     }
 
     var body: some View {
+        if #available(iOS 17.0, *) {
+            content
+                .scrollDismissesKeyboard(.interactively)
+        } else {
+            content
+                .onTapGesture {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+        }
+    }
+
+    private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 firstSection(vm.state.detailSection)
@@ -59,9 +71,6 @@ struct SharedLinkView<EditingView: View>: View {
             }
         }
         .edgesIgnoringSafeArea(.all)
-        .onTapGesture {
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        }
         .onReceive(vm.$isScreenClosed) { output in
             guard output else { return }
             root.closeCurrentSheet.send()

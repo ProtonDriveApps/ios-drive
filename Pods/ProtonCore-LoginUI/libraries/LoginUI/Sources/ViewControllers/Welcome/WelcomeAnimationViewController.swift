@@ -19,9 +19,11 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import ProtonCore_UIFoundations
-import ProtonCore_DataModel
+import ProtonCoreUIFoundations
+import ProtonCoreDataModel
 import Lottie
 
 public final class WelcomeAnimationViewController: UIViewController {
@@ -36,11 +38,11 @@ public final class WelcomeAnimationViewController: UIViewController {
     required init?(coder: NSCoder) {
         fatalError("not designed to be created from IB")
     }
-    
+
     private func setupUI(variant: WelcomeScreenVariant, finishHandler: (() -> Void)?) {
         navigationItem.setHidesBackButton(true, animated: false)
         view.backgroundColor = ColorProvider.BackgroundNorm
-        
+
         let animationView = createAnimationView(variant: variant, finishHandler: finishHandler)
         view.addSubview(animationView)
         animationView.translatesAutoresizingMaskIntoConstraints = false
@@ -51,17 +53,16 @@ public final class WelcomeAnimationViewController: UIViewController {
             view.trailingAnchor.constraint(equalTo: animationView.trailingAnchor)
         ])
     }
-    
-    private func createAnimationView(variant: WelcomeScreenVariant, finishHandler: (() -> Void)?) -> AnimationView {
-        let animationView = AnimationView()
-        animationView.animation = Animation.named(welcomeAnimationFile(variant: variant),
-                                                  bundle: LoginAndSignup.bundle)
+
+    private func createAnimationView(variant: WelcomeScreenVariant, finishHandler: (() -> Void)?) -> LottieAnimationView {
+        let animationView = LottieAnimationView()
+        animationView.animation = .named(welcomeAnimationFile(variant: variant), bundle: LoginAndSignup.bundle)
         animationView.loopMode = .playOnce
         animationView.backgroundBehavior = .pauseAndRestore
         animationView.play { _ in finishHandler?() }
         return animationView
     }
-    
+
     private func welcomeAnimationFile(variant: WelcomeScreenVariant) -> String {
         switch variant {
         case .mail, .custom: return "welcome_animation_mail"
@@ -73,3 +74,5 @@ public final class WelcomeAnimationViewController: UIViewController {
         }
     }
 }
+
+#endif

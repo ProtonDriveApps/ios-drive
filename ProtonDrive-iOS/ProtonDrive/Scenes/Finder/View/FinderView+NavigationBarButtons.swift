@@ -17,7 +17,7 @@
 
 import SwiftUI
 import PDCore
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import PDUIComponents
 
 extension FinderView {
@@ -76,7 +76,7 @@ extension FinderView {
             .accessibility(identifier: "ContextMenuView.Button.Three_Dots_Horizontal")
 
         case let .apply(title, disabledInCurrentContext):
-            TextButton(title: title)
+            TextNavigationBarButton(title: title)
             { [weak vm, weak root] in
                 vm?.applyAction {
                     root?.closeCurrentSheet.send()
@@ -91,8 +91,8 @@ extension FinderView {
             }
 
         case .cancel:
-            TextButton(title: "Cancel") { [weak vm] in
-                (vm as? HasMultipleSelection)?.cancelSelection()
+            TextNavigationBarButton(title: "Cancel", weight: .bold) { [weak vm] in
+                (vm as? (any HasMultipleSelection))?.cancelSelection()
             }
             .fixedSize()
 

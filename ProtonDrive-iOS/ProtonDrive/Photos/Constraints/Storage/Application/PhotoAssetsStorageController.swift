@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import PDCore
 
 final class PhotoAssetsStorageController: PhotoBackupConstraintController {
     private let backupController: PhotosBackupController
@@ -36,14 +37,17 @@ final class PhotoAssetsStorageController: PhotoBackupConstraintController {
 
     private func subscribeToUpdates() {
         backupController.isAvailable
+            .map { $0 == .available }
+            .removeDuplicates()
             .sink { [weak self] isAvailable in
                 self?.handleBackup(isAvailable)
             }
             .store(in: &cancellables)
 
         interactor.constraint
-            .sink { [weak self] constraint in
-                self?.constraintSubject.send(constraint)
+            .sink { [weak self] isConstrained in
+                Log.debug("PhotoAssetsStorageController isConstrained: \(isConstrained)", domain: .photosProcessing)
+                self?.constraintSubject.send(isConstrained)
             }
             .store(in: &cancellables)
     }

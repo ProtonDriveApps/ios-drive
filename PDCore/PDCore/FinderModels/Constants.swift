@@ -24,18 +24,26 @@ public enum RefreshMode {  // request all pages with children when opening the F
 public enum Constants {
     public static let runningInExtension = Bundle.main.bundlePath.hasSuffix(".appex")
     static let developerGroup = "2SB5Z68H26."
-    static let appGroup = "group.ch.protonmail.protondrive"
+    public static let appGroup = "group.ch.protonmail.protondrive"
     public static let humanVerificationSupportURL = URL(string: "https://protonmail.ch")!
     
+    public static var clientVersion: String? = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+
     // MARK: - Pagination - depends on BE capabilities
     public static let childrenRefreshStrategy: RefreshMode = .events
     
     public static let pageSizeForRefreshes: Int = 150      // number of node children per page when opening the Folder screen
 
     // MARK: - FileUpload
+    #if os(macOS)
+    public static let maxCountOfConcurrentFileUploaderOperations = 16 // Highlevel limit of parallel file uploads
+    #else
+    public static let maxCountOfConcurrentFileUploaderOperations = 5 // Highlevel limit of parallel file uploads
+    #endif
+    public static let maxChildrenInFolder = 32_000 // a bit under BE's 2^15 - 1 limit
     // Encryption
     public static let maxBlockSize: Int = 4 * 1024 * 1024   // block size convenient for cloud (storage restrictions)
-    public static let maxBlockChunkSize: Int = 96 * 1024   // chunk size during block encryption/decryption, convenient for client (memory restrictions)
+    public static let maxBlockChunkSize: Int = 64 * 1024   // chunk size during block encryption/decryption, convenient for client (memory restrictions)
     public static let thumbnailMaxWeight: Int = 60 * 1024
     public static let photoThumbnailMaxWeight: Int = 1024 * 1024
     public static let defaultThumbnailMaxSize = CGSize(width: 512, height: 512)
@@ -43,9 +51,18 @@ public enum Constants {
 
     // Revision Upload
     public static let blocksPaginationPageSize = 50 // Maximum number of URLs requested per uploading a revision
+    #if os(macOS)
+    public static let maxConcurrentPageOperations = 50 // Maximum number of pages processed for uploading a revision, per revision
+    public static let discreteMaxConcurrentContentUploadOperations = 50 // Maximum number of content operations (blocks + thumbnail) processed at the same time per page
+    #else
     public static let maxConcurrentPageOperations = 1 // Maximum number of pages processed for uploading a revision, per revision
+    public static let discreteMaxConcurrentContentUploadOperations = 15 // Maximum number of content operations (blocks + thumbnail) processed at the same time per page
+    #endif
     public static let streamMaxConcurrentContentUploadOperations = 1 // Maximum number of content operations (blocks + thumbnail) processed at the same time per page in a streamed fashion
-    public static let discreteMaxConcurrentContentUploadOpeartions = 15 // Maximum number of content operations (blocks + thumbnail) processed at the same time per page
+
+    // MARK: Photos upload
+    public static let discreteMaxConcurrentContentUploadOperationsPhotos = 1 // Maximum number of content operations (blocks + thumbnail) processed at the same time per page
+    public static let processingPhotoUploadsBatchSize = 10 // Max number of photos added to the uploader queue at once
 
     // MARK: - ShareURL
     public static let maxAccesses = 0

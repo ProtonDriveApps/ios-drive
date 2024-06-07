@@ -16,14 +16,18 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDUIComponents
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import SwiftUI
 
 struct NotificationsPermissionsView: View {
     let viewModel: NotificationsPermissionsViewModel
     
     var body: some View {
-        NavigatingView(title: "", leading: closeButton, trailing: EmptyView()) {
+        if viewModel.data.isNavigationVisible {
+            NavigatingView(title: "", leading: closeButton, trailing: EmptyView()) {
+                content
+            }
+        } else {
             content
         }
     }
@@ -42,7 +46,7 @@ struct NotificationsPermissionsView: View {
         .padding(24)
         .background(ColorProvider.BackgroundNorm)
     }
-    
+
     private var image: some View {
         Image("notifications_permissions")
             .resizable()
@@ -50,30 +54,30 @@ struct NotificationsPermissionsView: View {
             .frame(maxWidth: 140)
             .accessibilityIdentifier("NotificationsPermissions.Illustration")
     }
-    
+
     private var texts: some View {
         VStack(spacing: 4) {
-            Text("Turn on notifications")
+            Text(viewModel.data.title)
                 .font(.title2)
                 .fontWeight(.bold)
                 .foregroundColor(ColorProvider.TextNorm)
-            Text("We’ll notify you if there are any interruptions to your uploads or downloads.")
+            Text(viewModel.data.description)
                 .font(.headline)
                 .fontWeight(.regular)
                 .foregroundColor(ColorProvider.TextWeak)
         }
     }
-    
+
     private var buttons: some View {
         VStack(spacing: 0) {
             BlueRectButton(
-                title: "Allow notifications",
+                title: viewModel.data.enableButton,
                 cornerRadius: .huge,
                 action: viewModel.enable
             )
             .accessibilityIdentifier("NotificationsPermissions.Button.Allow")
             LinkButton(
-                title: "Not now",
+                title: viewModel.data.closeButton,
                 action: viewModel.close
             )
             .accessibilityIdentifier("NotificationsPermissions.Button.NotNow")

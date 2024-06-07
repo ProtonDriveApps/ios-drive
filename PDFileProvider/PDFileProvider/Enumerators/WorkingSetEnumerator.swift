@@ -17,10 +17,8 @@
 
 import FileProvider
 import PDCore
-import os.log
 
-public final class WorkingSetEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWithItemsFromDB, LogObject {
-    public static var osLog: OSLog = OSLog(subsystem: "ProtonDriveFileProvider", category: "WorkingSetEnumerator")
+public final class WorkingSetEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWithItemsFromDB {
 
     private weak var tower: Tower!
     
@@ -29,15 +27,27 @@ public final class WorkingSetEnumerator: NSObject, NSFileProviderEnumerator, Enu
         get {
             // swiftlint:disable force_try
             try! reinitializeModelIfNeeded()
+            // swiftlint:enable force_try
             return _model
         }
         set {
             _model = newValue
         }
     }
+    
+    private let pageSize: Int
 
-    public init(tower: Tower) throws {
+    var shouldReenumerateItems: Bool
+    var changeObserver: FileProviderChangeObserver?
+
+    public init(tower: Tower,
+                pageSize: Int = 5_000,
+                changeObserver: FileProviderChangeObserver? = nil,
+                shouldReenumerateItems: Bool = false) {
         self.tower = tower
+        self.pageSize = pageSize
+        self.changeObserver = changeObserver
+        self.shouldReenumerateItems = shouldReenumerateItems
     }
 
     public func invalidate() {
@@ -52,15 +62,20 @@ public final class WorkingSetEnumerator: NSObject, NSFileProviderEnumerator, Enu
     // MARK: Enumeration
 
     public func enumerateItems(for observer: NSFileProviderEnumerationObserver, startingAt page: NSFileProviderPage) {
+        let observers = [observer, changeObserver].compactMap { $0 }
+        changeObserver?.incrementSyncCounter()
+        
         do {
             try self.reinitializeModelIfNeeded()
         } catch {
             observer.finishEnumeratingWithError(Errors.mapToFileProviderError(Errors.failedToCreateModel)!)
-            ConsoleLogger.shared?.log("Failed to enumerate items due to model failing to be created", osLogType: Self.self)
+            Log.error("Failed to enumerate items due to model failing to be created", domain: .fileProvider)
+            // if we cannot create a model, there's no point in accessing the model for enumeration later
+            return
         }
-        ConsoleLogger.shared?.log("Enumerating items for Working Set", osLogType: Self.self)
+        Log.info("Enumerating items for Working Set", domain: .fileProvider)
         self.model.loadFromCache()
-        self.fetchAllChildrenFromDB(observer)
+        self.fetchPageFromDB(page.int, pageSize: pageSize, observers: observers)
     }
 
     // MARK: Changes
@@ -70,7 +85,8 @@ public final class WorkingSetEnumerator: NSObject, NSFileProviderEnumerator, Enu
     }
 
     public func enumerateChanges(for observer: NSFileProviderChangeObserver, from syncAnchor: NSFileProviderSyncAnchor) {
-        self.enumerateChanges(observer, syncAnchor)
+        let observers = [observer, changeObserver].compactMap { $0 }
+        self.enumerateChanges(observers, syncAnchor)
     }
 }
 

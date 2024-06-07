@@ -10,13 +10,6 @@
 #    include <mach/mach.h>
 #    include <pthread.h>
 
-/**
- * SentryCrashMemory.h uses the restrict keyword, which is valid in C99 but
- * invalid in C++; we can use __restrict as an alternative.
- * */
-#    define restrict __restrict
-#    include "SentryCrashMemory.h"
-
 namespace sentry {
 namespace profiling {
 
@@ -44,9 +37,8 @@ namespace profiling {
     std::unique_ptr<ThreadHandle>
     ThreadHandle::current() noexcept
     {
-        const auto port = mach_thread_self();
-        SENTRY_PROF_LOG_KERN_RETURN(mach_port_deallocate(mach_task_self(), port));
-        return std::make_unique<ThreadHandle>(port);
+        const auto thread = pthread_mach_thread_np(pthread_self());
+        return std::make_unique<ThreadHandle>(thread);
     }
 
     std::vector<std::unique_ptr<ThreadHandle>>
@@ -122,27 +114,6 @@ namespace profiling {
             return std::string(name);
         }
         return {};
-    }
-
-    std::uint64_t
-    ThreadHandle::dispatchQueueAddress() const noexcept
-    {
-        if (handle_ == THREAD_NULL) {
-            return {};
-        }
-        integer_t infoBuffer[THREAD_IDENTIFIER_INFO_COUNT] = { 0 };
-        thread_info_t info = infoBuffer;
-        mach_msg_type_number_t count = THREAD_IDENTIFIER_INFO_COUNT;
-        const auto idInfo = reinterpret_cast<thread_identifier_info_t>(info);
-        if (thread_info(handle_, THREAD_IDENTIFIER_INFO, info, &count) == KERN_SUCCESS
-            && sentrycrashmem_isMemoryReadable(idInfo, sizeof(*idInfo))) {
-            const auto queuePtr = reinterpret_cast<dispatch_queue_t *>(idInfo->dispatch_qaddr);
-            if (queuePtr != nullptr && sentrycrashmem_isMemoryReadable(queuePtr, sizeof(*queuePtr))
-                && idInfo->thread_handle != 0 && *queuePtr != nullptr) {
-                return idInfo->dispatch_qaddr;
-            }
-        }
-        return 0;
     }
 
     int

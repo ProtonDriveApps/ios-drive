@@ -30,9 +30,13 @@ extension UserInfo: NSCoding {
         static let hideRemoteImages = "hideRemoteImages"
         static let imageProxy = "imageProxy"
         static let maxSpace = "maxSpace"
+        static let maxBaseSpace = "maxBaseSpace"
+        static let maxDriveSpace = "maxDriveSpace"
         static let notificationEmail = "notificationEmail"
         static let signature = "signature"
         static let usedSpace = "usedSpace"
+        static let usedBaseSpace = "usedBaseSpace"
+        static let usedDriveSpace = "usedDriveSpace"
         static let userStatus = "userStatus"
         static let userAddress = "userAddresses"
 
@@ -58,6 +62,7 @@ extension UserInfo: NSCoding {
 
         static let credit = "credit"
         static let currency = "currency"
+        static let createTime = "createTime"
         static let subscribed = "subscribed"
 
         static let pwdMode = "passwordMode"
@@ -86,9 +91,13 @@ extension UserInfo: NSCoding {
             hideRemoteImages: aDecoder.decodeIntegerIfPresent(forKey: CoderKey.hideRemoteImages),
             imageProxy: aDecoder.decodeIntegerIfPresent(forKey: CoderKey.imageProxy),
             maxSpace: aDecoder.decodeInt64(forKey: CoderKey.maxSpace),
+            maxBaseSpace: aDecoder.decodeInt64IfPresent(forKey: CoderKey.maxBaseSpace),
+            maxDriveSpace: aDecoder.decodeInt64IfPresent(forKey: CoderKey.maxDriveSpace),
             notificationEmail: aDecoder.string(forKey: CoderKey.notificationEmail),
             signature: aDecoder.string(forKey: CoderKey.signature),
             usedSpace: aDecoder.decodeInt64(forKey: CoderKey.usedSpace),
+            usedBaseSpace: aDecoder.decodeInt64IfPresent(forKey: CoderKey.usedBaseSpace),
+            usedDriveSpace: aDecoder.decodeInt64IfPresent(forKey: CoderKey.usedDriveSpace),
             userAddresses: aDecoder.decodeObject(forKey: CoderKey.userAddress) as? [Address],
 
             autoSC: aDecoder.decodeInteger(forKey: CoderKey.autoSaveContact),
@@ -112,6 +121,7 @@ extension UserInfo: NSCoding {
 
             credit: aDecoder.decodeInteger(forKey: CoderKey.credit),
             currency: aDecoder.string(forKey: CoderKey.currency),
+            createTime: aDecoder.decodeInt64IfPresent(forKey: CoderKey.createTime),
 
             pwdMode: aDecoder.decodeInteger(forKey: CoderKey.pwdMode),
             twoFA: aDecoder.decodeInteger(forKey: CoderKey.twoFA),
@@ -132,8 +142,12 @@ extension UserInfo: NSCoding {
 
     public func encode(with aCoder: NSCoder) {
         aCoder.encode(maxSpace, forKey: CoderKey.maxSpace)
+        aCoder.encode(maxBaseSpace, forKey: CoderKey.maxBaseSpace)
+        aCoder.encode(maxDriveSpace, forKey: CoderKey.maxDriveSpace)
         aCoder.encode(notificationEmail, forKey: CoderKey.notificationEmail)
         aCoder.encode(usedSpace, forKey: CoderKey.usedSpace)
+        aCoder.encode(usedBaseSpace, forKey: CoderKey.usedBaseSpace)
+        aCoder.encode(usedDriveSpace, forKey: CoderKey.usedDriveSpace)
         aCoder.encode(userAddresses, forKey: CoderKey.userAddress)
 
         aCoder.encode(language, forKey: CoderKey.language)
@@ -184,11 +198,20 @@ extension UserInfo: NSCoding {
 
 extension UserInfo {
     public func archive() -> Data {
+        // This can be replaced with `NSKeyedArchiver.archivedData(withRootObject: self, requiringSecureCoding: false)` to suppress this warning.
+        // But new `NSKeyedArchiver.archivedData` method throws. And `archive() -> Data` method doesn't have any mechanism how to return error.
+        // For now keep the warning in favor of refactoring this method.
         return NSKeyedArchiver.archivedData(withRootObject: self)
     }
 
     public static func unarchive(_ data: Data?) -> UserInfo? {
         guard let data = data else { return nil }
+        // Unarchive method that suppress this warning doesn't work when using old archive method (see above). Solution for this is to switch to
+        // Codable.
+        NSKeyedUnarchiver.setClass(UserInfo.classForKeyedUnarchiver(), forClassName: "ProtonCore_DataModel.UserInfo")
+        NSKeyedUnarchiver.setClass(UserInfo.classForKeyedUnarchiver(), forClassName: "ProtonCoreDataModel.UserInfo")
+        NSKeyedUnarchiver.setClass(ToolbarActions.classForKeyedUnarchiver(), forClassName: "ProtonCore_DataModel.ToolbarActions")
+        NSKeyedUnarchiver.setClass(ReferralProgram.classForKeyedUnarchiver(), forClassName: "ProtonCore_DataModel.ReferralProgram")
         return NSKeyedUnarchiver.unarchiveObject(with: data) as? UserInfo
     }
 }

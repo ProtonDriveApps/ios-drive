@@ -52,8 +52,7 @@ extension Thumbnail {
                 throw Error.blockDataNotDownloaded
             }
 
-            if let thumbnailHashBase64 = revision.thumbnailHash,
-               let thumbnailHash = Data(base64Encoded: thumbnailHashBase64),
+            if let thumbnailHash = sha256,
                thumbnailHash != Decryptor.hashSha256(thumbnailDataPacket) {
                 throw Error.tamperedThumbnail
             }
@@ -71,13 +70,13 @@ extension Thumbnail {
                 return thumbnail
 
             case .unverified(let thumbnail, let error):
-                ConsoleLogger.shared?.log(SignatureError(error, "Thumbnail Passphrase"))
+                Log.error(SignatureError(error, "Thumbnail Passphrase", description: "RevisionID: \(revision.id) \nLinkID: \(revision.file.id) \nShareID: \(revision.file.shareID)"), domain: .encryption)
                 self.clearData = thumbnail
                 return thumbnail
             }
 
         } catch {
-            ConsoleLogger.shared?.log(DecryptionError(error, "Thumbnail"))
+            Log.error(DecryptionError(error, "Thumbnail", description: "RevisionID: \(revision.id) \nLinkID: \(revision.file.id) \nShareID: \(revision.file.shareID)"), domain: .encryption)
             throw error
         }
     }

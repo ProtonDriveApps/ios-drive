@@ -16,9 +16,9 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 public final class InMemoryCachingEncryptingPhotosRootRepository: PhotosRootFolderRepository {
-
-    private var cachedRoot: Folder?
     private let datasource: PhotosRootFolderDatasource
+
+    @ThreadSafe private var cachedRoot: Folder?
 
     public init(datasource: PhotosRootFolderDatasource) {
         self.datasource = datasource

@@ -15,16 +15,18 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import SwiftUI
 
 struct PhotosStateView<ViewModel: PhotosStateViewModelProtocol, TitleView: View>: View {
     @ObservedObject private var viewModel: ViewModel
     private let title: ([PhotosStateTitle]) -> TitleView
+    private let additionalView: () -> AnyView?
 
-    init(viewModel: ViewModel, title: @escaping ([PhotosStateTitle]) -> TitleView) {
+    init(viewModel: ViewModel, title: @escaping ([PhotosStateTitle]) -> TitleView, additionalView: @escaping () -> AnyView?) {
         self.viewModel = viewModel
         self.title = title
+        self.additionalView = additionalView
     }
 
     var body: some View {
@@ -42,18 +44,36 @@ struct PhotosStateView<ViewModel: PhotosStateViewModelProtocol, TitleView: View>
                 HStack(spacing: 8) {
                     title(data.titles)
                     Spacer()
-                    data.rightText.map(makeRightText)
+                    if let button = data.button {
+                        makeButton({ viewModel.didTapButton(button: button) }, with: button.title)
+                    } else {
+                        data.rightText.map(makeRightText)
+                    }
                 }
                 data.progress.map(makeProgress)
+                    .animation(.default, value: viewModel.viewData)
+                additionalView()
             }
-            .animation(.default, value: viewModel.viewData)
             .padding(.vertical, 6)
             .padding(.horizontal, 12)
         }
         .frame(minHeight: 46)
         .fixedSize(horizontal: false, vertical: true)
         .cornerRadius(.huge)
-        .padding(16)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 10)
+    }
+    
+    private func makeButton(_ action: @escaping () -> Void, with title: String) -> some View {
+        Button(action: action,
+           label: {
+            Text(title)
+                .foregroundColor(ColorProvider.TextAccent)
+                .font(.body.bold())
+                .frame(minWidth: 54, minHeight: 48)
+        })
+        .accessibility(identifier: "PhotosStateView.Retry_button")
+        .buttonStyle(PlainButtonStyle())
     }
 
     private func makeRightText(with text: String) -> some View {
@@ -72,5 +92,8 @@ struct PhotosStateView<ViewModel: PhotosStateViewModelProtocol, TitleView: View>
                 }
                 .cornerRadius(.medium)
         }
+        .accessibilityHidden(false)
+        .accessibilityIdentifier("PhotosGallery.State.progressBar")
+        .accessibilityValue("\(Int(progress * 100)) percent")
     }
 }

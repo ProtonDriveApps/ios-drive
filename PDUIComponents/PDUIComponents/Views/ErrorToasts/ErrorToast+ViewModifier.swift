@@ -17,11 +17,11 @@
 
 import SwiftUI
 import Combine
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 public struct ErrorToastModifier: ViewModifier {
-    public typealias Stream = PassthroughSubject<Error?, Completion>
-    
+    public typealias Stream = PassthroughSubject<Error?, Never>
+
     public enum Location {
         case top, bottom, bottomWithOffset(CGFloat)
         
@@ -38,10 +38,6 @@ public struct ErrorToastModifier: ViewModifier {
             case .bottomWithOffset(let offset): return .init(top: 0.0, leading: 0.0, bottom: keyboardOverflow + offset, trailing: 0.0)
             }
         }
-    }
-    
-    public enum Completion: Error {
-        case complete, successMessage(String), changeColor(Color)
     }
     
     var location: Location
@@ -77,17 +73,8 @@ public struct ErrorToastModifier: ViewModifier {
                 }
             }
             .animation(.linear(duration: 0.2))
-            .onReceive(self.source.replaceError(with: Completion.complete)) { message in
-                switch message {
-                case .some(Completion.changeColor(let newColor)):
-                    self.backgroundColor = newColor
-                case .some(Completion.successMessage(let subject)):
-                    self.errorMessage = subject
-                case .some(Completion.complete):
-                    break
-                default:
-                    self.errorMessage = message?.localizedDescription
-                }
+            .onReceive(self.source) { message in
+                self.errorMessage = message?.localizedDescription
             }
             .onReceive(Publishers.keyboardRect) { keyboard in
                 self.keyboardOverflow = keyboard.height
@@ -124,9 +111,10 @@ extension View {
         return ModifiedContent(content: self, modifier: ErrorToastModifier(location: location, foregroundColor: foregroundColor, backgroundColor: backgroundColor, label: label().any(), source: errors))
     }
     
-    public func errorToast(location: ErrorToastModifier.Location = .top,
-                    errors: ErrorToastModifier.Stream) -> some View
-    {
+    public func errorToast(
+        location: ErrorToastModifier.Location = .top,
+        errors: ErrorToastModifier.Stream
+    ) -> some View {
         self.errorToast(location: location, errors: errors) {
             Button(action: {
                 errors.send(nil)
@@ -146,14 +134,30 @@ extension View {
             .buttonStyle(PlainButtonStyle())
         }
     }
-}
-
-extension ErrorToastModifier.Stream {
-    func sendSuccess(_ subject: String) {
-        let color: Color = Color.NotificationSuccess
-        self.send(ErrorToastModifier.Completion.changeColor(color))
-        self.send(ErrorToastModifier.Completion.successMessage(subject))
-        self.send(completion: .failure(.complete)) // yay we've failed successfully 🌌🧠
+    
+    public func retryError(
+        action: @escaping () -> Void,
+        errors: ErrorToastModifier.Stream
+    ) -> some View {
+        self.errorToast(location: .bottom, errors: errors) {
+            Button(action: {
+                action()
+                errors.send(nil)
+            }, label: {
+                Text("Retry")
+                    .foregroundColor(.white)
+                    .background(
+                        Rectangle()
+                            .foregroundColor(.white.opacity(0.2))
+                            .frame(width: 52, height: 36)
+                            .cornerRadius(2)
+                    )
+                    .frame(width: 54, height: 48)
+                    .padding(.horizontal)
+            })
+            .accessibility(identifier: "ErrorToastModifier.errorToast.Error_button")
+            .buttonStyle(PlainButtonStyle())
+        }
     }
 }
 

@@ -17,7 +17,7 @@
 
 import SwiftUI
 import Combine
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 public struct RectangleToast<Content: View>: View {
     public enum Orientation { case vertical, horizontal }
@@ -28,12 +28,13 @@ public struct RectangleToast<Content: View>: View {
     var button: Content
     var orientation: Orientation
 
-    public init(message: String,
-                orientation: Orientation = .horizontal,
-                foregroundColor: Color = .white,
-                backgroundColor: Color,
-         @ViewBuilder button: () -> Content)
-    {
+    public init(
+        message: String,
+        orientation: Orientation = .horizontal,
+        foregroundColor: Color = .white,
+        backgroundColor: Color,
+        @ViewBuilder button: () -> Content
+    ) {
         self.message = message
         self.orientation = orientation
         self.foregroundColor = foregroundColor

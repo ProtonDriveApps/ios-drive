@@ -26,12 +26,13 @@ public final class LocalPhotosRootFolderDatasource: PhotosRootFolderDatasource {
     }
 
     public func getRoot() throws -> Folder {
-        guard !observer.cache.isEmpty else {
+        let cache = observer.cache
+        guard !cache.isEmpty else {
             throw LocalPhotosRootDataSourceError.noLocalPhotoShare
         }
 
-        guard let share = observer.cache.first,
-              [share] == observer.cache else {
+        guard let share = cache.first,
+              [share] == cache else {
             throw LocalPhotosRootDataSourceError.moreThanOnePhotoShare
         }
 

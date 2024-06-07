@@ -20,16 +20,16 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Log
-import ProtonCore_Networking
-import ProtonCore_Services
+import ProtonCoreLog
+import ProtonCoreNetworking
+import ProtonCoreServices
 
 public final class CountriesCountRequest: BaseApiRequest<CountriesCountResponse> {
 
     override public init(api: APIService) {
         super.init(api: api)
     }
-    
+
     override public var path: String { "/vpn/countries/count" }
 
     override public var isAuth: Bool { false }

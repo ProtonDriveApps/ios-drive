@@ -20,11 +20,12 @@ import Foundation
 class DownloadBinaryOperation: SynchronousOperation {
     let url: URL?
     var session: URLSession?
-    var task: URLSessionDownloadTask?
+    // Task is held by the session, by making it weak the data involved in networking is released sooner.
+    weak var task: URLSessionDownloadTask?
 
     init(url: URL?) {
         self.url = url
-        self.session = URLSession(configuration: .ephemeral)
+        self.session = URLSession(configuration: .forDownloading)
         super.init()
     }
 

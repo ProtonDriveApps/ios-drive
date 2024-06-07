@@ -21,7 +21,11 @@ public extension Notification.Name {
     static var nukeCache: Notification.Name {
         Notification.Name("ch.protondrive.PDCore.nukeCache")
     }
-    
+
+    static var nukeCacheExcludingEvents: Notification.Name {
+        Notification.Name("ch.protondrive.PDCore.nukeCacheExcludingEvents")
+    }
+
     static var restartApplication: Notification.Name {
         Notification.Name("ch.protondrive.PDCore.restartApplication")
     }

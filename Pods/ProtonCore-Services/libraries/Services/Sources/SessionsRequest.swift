@@ -20,8 +20,8 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Networking
-import ProtonCore_Doh
+import ProtonCoreNetworking
+import ProtonCoreDoh
 
 public final class SessionsRequestResponse: Response, Codable {
     public let accessToken: String
@@ -36,7 +36,7 @@ public final class SessionsRequest: Request {
     public let method: HTTPMethod = .post
     public let isAuth = false
     public let challenge: ChallengeProperties?
-    
+
     public var challengeProperties: ChallengeProperties? {
         return challenge
     }

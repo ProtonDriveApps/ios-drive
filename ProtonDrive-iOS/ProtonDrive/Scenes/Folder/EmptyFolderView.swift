@@ -17,7 +17,7 @@
 
 import SwiftUI
 import PDCore
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import PDUIComponents
 
 struct EmptyFolderView<Header: View, Footer: View>: View {
@@ -66,6 +66,8 @@ struct EmptyFolderView<Header: View, Footer: View>: View {
             return "empty-trash"
         case .genericError:
             return "error-generic"
+        case .cloudError:
+            return "cloud-error"
         }
     }
     
@@ -82,6 +84,8 @@ struct EmptyFolderView<Header: View, Footer: View>: View {
             return 118
         case .genericError:
             return 114
+        case .cloudError:
+            return 132
         }
     }
 }
@@ -111,6 +115,7 @@ struct EmptyViewConfiguration {
         case offlineFiles
         case emptyTrash
         case genericError
+        case cloudError
     }
     
     let image: ImageType

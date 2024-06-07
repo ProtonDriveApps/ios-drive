@@ -17,13 +17,34 @@
 
 import Foundation
 
-struct NewShareShort: Codable {
-    var ID: String
+public struct NewShareShort: Codable {
+    public let ID: String
+
+    public init(ID: String) {
+        self.ID = ID
+    }
 }
 
 public struct NewShareParameters: Codable {
-    public init(type: Int, addressID: String, name: String, rootLinkID: String, shareKey: String, sharePassphrase: String, sharePassphraseSignature: String, passphraseKeyPacket: String, nameKeyPacket: String) {
-        self.Type = type
+    let AddressID: String
+    let Name: String
+    let RootLinkID: String
+    let ShareKey: String
+    let SharePassphrase: String
+    let SharePassphraseSignature: String
+    let PassphraseKeyPacket: String
+    let NameKeyPacket: String
+
+    public init(
+        addressID: String,
+        name: String,
+        rootLinkID: String,
+        shareKey: String,
+        sharePassphrase: String,
+        sharePassphraseSignature: String,
+        passphraseKeyPacket: String,
+        nameKeyPacket: String
+    ) {
         self.AddressID = addressID
         self.Name = name
         self.RootLinkID = rootLinkID
@@ -33,16 +54,6 @@ public struct NewShareParameters: Codable {
         self.PassphraseKeyPacket = passphraseKeyPacket
         self.NameKeyPacket = nameKeyPacket
     }
-    
-    var `Type`: Int
-    var AddressID: String
-    var Name: String
-    var RootLinkID: String
-    var ShareKey: String
-    var SharePassphrase: String
-    var SharePassphraseSignature: String
-    var PassphraseKeyPacket: String
-    var NameKeyPacket: String
 }
 
 struct NewShareEndpoint: Endpoint {

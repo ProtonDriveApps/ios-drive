@@ -23,8 +23,9 @@ protocol PhotosBackupCompleteController {
 
 final class LocalPhotosBackupCompleteController: PhotosBackupCompleteController {
     private let progressController: PhotosBackupProgressController
+    private let failuresController: PhotosBackupFailuresController
+    private let retryTriggerController: PhotoLibraryLoadRetryTriggerController
     private let timerFactory: TimerFactory
-    private var previousProgress: PhotosBackupProgress?
     private let subject = CurrentValueSubject<Bool, Never>(false)
     private var cancellables = Set<AnyCancellable>()
     private var timer: AnyCancellable?
@@ -33,35 +34,56 @@ final class LocalPhotosBackupCompleteController: PhotosBackupCompleteController 
         subject.eraseToAnyPublisher()
     }
 
-    init(progressController: PhotosBackupProgressController, timerFactory: TimerFactory) {
+    init(progressController: PhotosBackupProgressController, failuresController: PhotosBackupFailuresController, retryTriggerController: PhotoLibraryLoadRetryTriggerController, timerFactory: TimerFactory) {
         self.progressController = progressController
+        self.failuresController = failuresController
+        self.retryTriggerController = retryTriggerController
         self.timerFactory = timerFactory
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
         progressController.progress
-            .sink { [weak self] progress in
-                self?.handleUpdate(progress)
+            .dropFirst()
+            .combineLatest(failuresController.count)
+            .sink { [weak self] progress, failures in
+                self?.handleUpdate(progress, failures: failures)
+            }
+            .store(in: &cancellables)
+
+        retryTriggerController.updatePublisher
+            .sink { [weak self] in
+                self?.resetState()
             }
             .store(in: &cancellables)
     }
 
-    private func handleUpdate(_ progress: PhotosBackupProgress?) {
-        if progress == nil && previousProgress != nil {
-            markComplete()
+    private func handleUpdate(_ progress: PhotosBackupProgress?, failures: Int) {
+        if progress?.isCompleted ?? false {
+            if failures > 0 {
+                markCompleteWithFailures()
+            } else {
+                markComplete()
+            }
         } else {
-            subject.send(false)
-            timer?.cancel()
+            resetState()
         }
-        previousProgress = progress
+    }
+
+    private func resetState() {
+        subject.send(false)
+        timer?.cancel()
+    }
+    
+    private func markCompleteWithFailures() {
+        subject.send(true)
     }
 
     private func markComplete() {
         subject.send(true)
         timer = timerFactory.makeTimer(interval: 3)
             .sink { [weak self] in
-                self?.subject.send(false)
+                self?.resetState()
             }
     }
 }

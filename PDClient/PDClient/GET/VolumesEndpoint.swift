@@ -21,6 +21,11 @@ public struct VolumesEndpoint: Endpoint {
     public struct Response: Codable {
         public let code: Int
         public let volumes: [Volume]
+        
+        public init(code: Int, volumes: [Volume]) {
+            self.code = code
+            self.volumes = volumes
+        }
     }
     
     public let request: URLRequest

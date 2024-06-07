@@ -1,18 +1,22 @@
-#import "SentryAppStartMeasurement.h"
-#import "SentryAppStateManager.h"
-#import "SentryLog.h"
-#import "SentrySysctl.h"
-#import <Foundation/Foundation.h>
-#import <PrivateSentrySDKOnly.h>
 #import <SentryAppStartTracker.h>
-#import <SentryAppState.h>
-#import <SentryCurrentDateProvider.h>
-#import <SentryDispatchQueueWrapper.h>
-#import <SentryInternalNotificationNames.h>
-#import <SentryLog.h>
-#import <SentrySDK+Private.h>
 
 #if SENTRY_HAS_UIKIT
+
+#    import "SentryAppStartMeasurement.h"
+#    import "SentryAppStateManager.h"
+#    import "SentryDefines.h"
+#    import "SentryFramesTracker.h"
+#    import "SentryLog.h"
+#    import "SentrySysctl.h"
+#    import <Foundation/Foundation.h>
+#    import <PrivateSentrySDKOnly.h>
+#    import <SentryAppState.h>
+#    import <SentryDependencyContainer.h>
+#    import <SentryDispatchQueueWrapper.h>
+#    import <SentryInternalNotificationNames.h>
+#    import <SentryLog.h>
+#    import <SentrySDK+Private.h>
+#    import <SentrySwift.h>
 #    import <UIKit/UIKit.h>
 
 static NSDate *runtimeInit = nil;
@@ -25,16 +29,16 @@ static BOOL isActivePrewarm = NO;
 static const NSTimeInterval SENTRY_APP_START_MAX_DURATION = 180.0;
 
 @interface
-SentryAppStartTracker ()
+SentryAppStartTracker () <SentryFramesTrackerListener>
 
-@property (nonatomic, strong) id<SentryCurrentDateProvider> currentDate;
 @property (nonatomic, strong) SentryAppState *previousAppState;
 @property (nonatomic, strong) SentryDispatchQueueWrapper *dispatchQueue;
 @property (nonatomic, strong) SentryAppStateManager *appStateManager;
-@property (nonatomic, strong) SentrySysctl *sysctl;
+@property (nonatomic, strong) SentryFramesTracker *framesTracker;
 @property (nonatomic, assign) BOOL wasInBackground;
 @property (nonatomic, strong) NSDate *didFinishLaunchingTimestamp;
-@property (nonatomic, assign) BOOL enablePreWarmedAppStartTracking;
+@property (nonatomic, assign) BOOL enablePreWarmedAppStartTracing;
+@property (nonatomic, assign) BOOL enablePerformanceV2;
 
 @end
 
@@ -52,21 +56,27 @@ SentryAppStartTracker ()
         [[NSProcessInfo processInfo].environment[@"ActivePrewarm"] isEqualToString:@"1"];
 }
 
-- (instancetype)initWithCurrentDateProvider:(id<SentryCurrentDateProvider>)currentDateProvider
-                       dispatchQueueWrapper:(SentryDispatchQueueWrapper *)dispatchQueueWrapper
-                            appStateManager:(SentryAppStateManager *)appStateManager
-                                     sysctl:(SentrySysctl *)sysctl
-            enablePreWarmedAppStartTracking:(BOOL)enablePreWarmedAppStartTracking
+- (instancetype)initWithDispatchQueueWrapper:(SentryDispatchQueueWrapper *)dispatchQueueWrapper
+                             appStateManager:(SentryAppStateManager *)appStateManager
+                               framesTracker:(SentryFramesTracker *)framesTracker
+              enablePreWarmedAppStartTracing:(BOOL)enablePreWarmedAppStartTracing
+                         enablePerformanceV2:(BOOL)enablePerformanceV2
 {
     if (self = [super init]) {
-        self.currentDate = currentDateProvider;
         self.dispatchQueue = dispatchQueueWrapper;
         self.appStateManager = appStateManager;
-        self.sysctl = sysctl;
+        _enablePerformanceV2 = enablePerformanceV2;
+        if (_enablePerformanceV2) {
+            self.framesTracker = framesTracker;
+            [framesTracker addListener:self];
+        }
+
         self.previousAppState = [self.appStateManager loadPreviousAppState];
         self.wasInBackground = NO;
-        self.didFinishLaunchingTimestamp = [currentDateProvider date];
-        self.enablePreWarmedAppStartTracking = enablePreWarmedAppStartTracking;
+        self.didFinishLaunchingTimestamp =
+            [SentryDependencyContainer.sharedInstance.dateProvider date];
+        self.enablePreWarmedAppStartTracing = enablePreWarmedAppStartTracing;
+        self.isRunning = NO;
     }
     return self;
 }
@@ -81,9 +91,9 @@ SentryAppStartTracker ()
     } else {
         return NO;
     }
-#    else
+#    else // !TARGET_OS_IOS
     return NO;
-#    endif
+#    endif // TARGET_OS_IOS
 }
 
 - (void)start
@@ -92,7 +102,7 @@ SentryAppStartTracker ()
     // or we just don't receive it. In this case the didFinishLaunchingTimestamp would be nil. As
     // the SDK should be initialized in application:didFinishLaunchingWithOptions: or in the init of
     // @main of a SwiftUI  we set the timestamp here.
-    self.didFinishLaunchingTimestamp = [self.currentDate date];
+    self.didFinishLaunchingTimestamp = [SentryDependencyContainer.sharedInstance.dateProvider date];
 
     [NSNotificationCenter.defaultCenter addObserver:self
                                            selector:@selector(didFinishLaunching)
@@ -110,15 +120,18 @@ SentryAppStartTracker ()
                                              object:nil];
 
     if (PrivateSentrySDKOnly.appStartMeasurementHybridSDKMode) {
-        [self buildAppStartMeasurement];
+        [self
+            buildAppStartMeasurement:[SentryDependencyContainer.sharedInstance.dateProvider date]];
     }
 
 #    if SENTRY_HAS_UIKIT
     [self.appStateManager start];
-#    endif
+#    endif // SENTRY_HAS_UIKIT
+
+    self.isRunning = YES;
 }
 
-- (void)buildAppStartMeasurement
+- (void)buildAppStartMeasurement:(NSDate *)appStartEnd
 {
     void (^block)(void) = ^(void) {
         [self stop];
@@ -127,11 +140,11 @@ SentryAppStartTracker ()
         if ([self isActivePrewarmAvailable] && isActivePrewarm) {
             SENTRY_LOG_INFO(@"The app was prewarmed.");
 
-            if (self.enablePreWarmedAppStartTracking) {
+            if (self.enablePreWarmedAppStartTracing) {
                 isPreWarmed = YES;
             } else {
                 SENTRY_LOG_INFO(
-                    @"EnablePreWarmedAppStartTracking disabled. Not measuring app start.");
+                    @"EnablePreWarmedAppStartTracing disabled. Not measuring app start.");
                 return;
             }
         }
@@ -167,14 +180,14 @@ SentryAppStartTracker ()
         // https://eisel.me/startup
         NSTimeInterval appStartDuration = 0.0;
         NSDate *appStartTimestamp;
+        SentrySysctl *sysctl = SentryDependencyContainer.sharedInstance.sysctlWrapper;
         if (isPreWarmed) {
-            appStartDuration = [[self.currentDate date]
-                timeIntervalSinceDate:self.sysctl.moduleInitializationTimestamp];
-            appStartTimestamp = self.sysctl.moduleInitializationTimestamp;
-        } else {
             appStartDuration =
-                [[self.currentDate date] timeIntervalSinceDate:self.sysctl.processStartTimestamp];
-            appStartTimestamp = self.sysctl.processStartTimestamp;
+                [appStartEnd timeIntervalSinceDate:sysctl.moduleInitializationTimestamp];
+            appStartTimestamp = sysctl.moduleInitializationTimestamp;
+        } else {
+            appStartDuration = [appStartEnd timeIntervalSinceDate:sysctl.processStartTimestamp];
+            appStartTimestamp = sysctl.processStartTimestamp;
         }
 
         // Safety check to not report app starts that are completely off.
@@ -196,20 +209,22 @@ SentryAppStartTracker ()
             appStartDuration = 0;
         }
 
-        SentryAppStartMeasurement *appStartMeasurement = [[SentryAppStartMeasurement alloc]
-                             initWithType:appStartType
-                              isPreWarmed:isPreWarmed
-                        appStartTimestamp:appStartTimestamp
-                                 duration:appStartDuration
-                     runtimeInitTimestamp:runtimeInit
-            moduleInitializationTimestamp:self.sysctl.moduleInitializationTimestamp
-              didFinishLaunchingTimestamp:self.didFinishLaunchingTimestamp];
+        SentryAppStartMeasurement *appStartMeasurement =
+            [[SentryAppStartMeasurement alloc] initWithType:appStartType
+                                                isPreWarmed:isPreWarmed
+                                          appStartTimestamp:appStartTimestamp
+                                 runtimeInitSystemTimestamp:sysctl.runtimeInitSystemTimestamp
+                                                   duration:appStartDuration
+                                       runtimeInitTimestamp:runtimeInit
+                              moduleInitializationTimestamp:sysctl.moduleInitializationTimestamp
+                                          sdkStartTimestamp:SentrySDK.startTimestamp
+                                didFinishLaunchingTimestamp:self.didFinishLaunchingTimestamp];
 
         SentrySDK.appStartMeasurement = appStartMeasurement;
     };
 
-    // With only running this once we know that the process is a new one when the following
-    // code is executed.
+// With only running this once we know that the process is a new one when the following
+// code is executed.
 // We need to make sure the block runs on each test instead of only once
 #    if TEST
     block();
@@ -220,11 +235,24 @@ SentryAppStartTracker ()
 }
 
 /**
- * This is when the first frame is drawn.
+ * This is when the window becomes visible, which is not when the first frame of the app is drawn.
+ * When this is posted, the app screen is usually white. The correct time when the first frame is
+ * drawn is called in framesTrackerHasNewFrame only when `enablePerformanceV2` is enabled.
  */
 - (void)didBecomeVisible
 {
-    [self buildAppStartMeasurement];
+    if (!_enablePerformanceV2) {
+        [self
+            buildAppStartMeasurement:[SentryDependencyContainer.sharedInstance.dateProvider date]];
+    }
+}
+
+/**
+ * This is when the first frame is drawn.
+ */
+- (void)framesTrackerHasNewFrame:(NSDate *)newFrameDate
+{
+    [self buildAppStartMeasurement:newFrameDate];
 }
 
 - (SentryAppStartType)getStartType
@@ -262,7 +290,7 @@ SentryAppStartTracker ()
 
 - (void)didFinishLaunching
 {
-    self.didFinishLaunchingTimestamp = [self.currentDate date];
+    self.didFinishLaunchingTimestamp = [SentryDependencyContainer.sharedInstance.dateProvider date];
 }
 
 - (void)didEnterBackground
@@ -285,6 +313,12 @@ SentryAppStartTracker ()
     [NSNotificationCenter.defaultCenter removeObserver:self
                                                   name:UIApplicationDidEnterBackgroundNotification
                                                 object:nil];
+
+    [self.framesTracker removeListener:self];
+
+#    if TEST
+    self.isRunning = NO;
+#    endif
 }
 
 - (void)dealloc
@@ -305,4 +339,4 @@ SentryAppStartTracker ()
 
 @end
 
-#endif
+#endif // SENTRY_HAS_UIKIT

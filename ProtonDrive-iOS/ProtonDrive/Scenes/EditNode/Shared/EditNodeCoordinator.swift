@@ -18,7 +18,7 @@
 import UIKit
 import SwiftUI
 import PDCore
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 final class EditNodeCoordinator: SwiftUICoordinator {
     typealias Context = (tower: Tower, parent: Folder, intention: Intention)

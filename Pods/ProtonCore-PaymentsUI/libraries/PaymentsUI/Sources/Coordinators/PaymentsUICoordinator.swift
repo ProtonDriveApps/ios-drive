@@ -1,6 +1,6 @@
 //
 //  PaymentsUICoordinator.swift
-//  ProtonCore_PaymentsUI - Created on 01/06/2021.
+//  ProtonCorePaymentsUI - Created on 01/06/2021.
 //
 //  Copyright (c) 2022 Proton Technologies AG
 //
@@ -19,92 +19,177 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import enum ProtonCore_DataModel.ClientApp
-import ProtonCore_Payments
-import ProtonCore_Networking
-import ProtonCore_UIFoundations
-import ProtonCore_CoreTranslation
-import ProtonCore_Observability
+import enum ProtonCoreDataModel.ClientApp
+import ProtonCorePayments
+import ProtonCoreNetworking
+import ProtonCoreUIFoundations
+import ProtonCoreObservability
+import ProtonCoreFoundations
+import ProtonCoreUtilities
+import ProtonCoreFeatureFlags
+import ProtonCoreLog
 
 final class PaymentsUICoordinator {
-    
+
     private var viewController: UIViewController?
     private var presentationType: PaymentsUIPresentationType = .modal
     private var mode: PaymentsUIMode = .signup
     private var completionHandler: ((PaymentsUIResultReason) -> Void)?
-    private var viewModel: PaymentsUIViewModel?
+    var viewModel: PaymentsUIViewModel?
     private var onDohTroubleshooting: () -> Void
-    
-    private let planService: ServicePlanDataServiceProtocol
+
+    private let planService: Either<ServicePlanDataServiceProtocol, PlansDataSourceProtocol>
     private let storeKitManager: StoreKitManagerProtocol
     private let purchaseManager: PurchaseManagerProtocol
     private let shownPlanNames: ListOfShownPlanNames
-    private let customPlansDescription: CustomPlansDescription
+    private let customization: PaymentsUICustomizationOptions
     private let alertManager: PaymentsUIAlertManager
     private let clientApp: ClientApp
     private let storyboardName: String
-    
+    private let featureFlagsRepository: FeatureFlagsRepositoryProtocol
     private var unfinishedPurchasePlan: InAppPurchasePlan? {
         didSet {
             guard let unfinishedPurchasePlan = unfinishedPurchasePlan else { return }
             viewModel?.unfinishedPurchasePlan = unfinishedPurchasePlan
         }
     }
-    
+
     var paymentsUIViewController: PaymentsUIViewController? {
         didSet { alertManager.viewController = paymentsUIViewController }
     }
-    
-    init(planService: ServicePlanDataServiceProtocol,
+
+    init(planService: Either<ServicePlanDataServiceProtocol, PlansDataSourceProtocol>,
          storeKitManager: StoreKitManagerProtocol,
          purchaseManager: PurchaseManagerProtocol,
          clientApp: ClientApp,
          shownPlanNames: ListOfShownPlanNames,
-         customPlansDescription: CustomPlansDescription,
+         customization: PaymentsUICustomizationOptions,
          alertManager: PaymentsUIAlertManager,
-         onDohTroubleshooting: @escaping () -> Void) {
+         onDohTroubleshooting: @escaping () -> Void,
+         featureFlagsRepository: FeatureFlagsRepositoryProtocol = FeatureFlagsRepository.shared) {
         self.planService = planService
         self.storeKitManager = storeKitManager
         self.purchaseManager = purchaseManager
         self.shownPlanNames = shownPlanNames
         self.alertManager = alertManager
         self.clientApp = clientApp
-        self.customPlansDescription = customPlansDescription
+        self.customization = customization
         self.storyboardName = "PaymentsUI"
         self.onDohTroubleshooting = onDohTroubleshooting
+        self.featureFlagsRepository = featureFlagsRepository
     }
-    
+
     func start(viewController: UIViewController?, completionHandler: @escaping ((PaymentsUIResultReason) -> Void)) {
         self.viewController = viewController
         self.mode = .signup
         self.completionHandler = completionHandler
-        showPaymentsUI(servicePlan: planService, backendFetch: false)
+        if featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan) {
+            Task {
+                try await showPaymentsUI(servicePlan: planService)
+            }
+        } else {
+            showPaymentsUI(servicePlan: planService, backendFetch: false)
+        }
     }
-    
+
     func start(presentationType: PaymentsUIPresentationType, mode: PaymentsUIMode, backendFetch: Bool, completionHandler: @escaping ((PaymentsUIResultReason) -> Void)) {
         self.presentationType = presentationType
         self.mode = mode
         self.completionHandler = completionHandler
-        showPaymentsUI(servicePlan: planService, backendFetch: backendFetch)
+        if featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan) {
+            Task {
+                try await showPaymentsUI(servicePlan: planService)
+            }
+        } else {
+            showPaymentsUI(servicePlan: planService, backendFetch: backendFetch)
+        }
     }
-    
+
     // MARK: Private methods
-    
-    private func showPaymentsUI(servicePlan: ServicePlanDataServiceProtocol, backendFetch: Bool) {
-        
-        let paymentsUIViewController = UIStoryboard.instantiate(PaymentsUIViewController.self, storyboardName: storyboardName)
+
+    private func showPaymentsUI(servicePlan: Either<ServicePlanDataServiceProtocol, PlansDataSourceProtocol>) async throws {
+        let paymentsUIViewController = await MainActor.run {
+            let paymentsUIViewController = UIStoryboard.instantiate(
+                PaymentsUIViewController.self, storyboardName: storyboardName, inAppTheme: customization.inAppTheme
+            )
+            paymentsUIViewController.delegate = self
+            paymentsUIViewController.onDohTroubleshooting = { [weak self] in
+                self?.onDohTroubleshooting()
+            }
+            return paymentsUIViewController
+        }
+
+        viewModel = PaymentsUIViewModel(
+            mode: mode,
+            storeKitManager: storeKitManager,
+            planService: planService,
+            shownPlanNames: shownPlanNames,
+            clientApp: clientApp,
+            customPlansDescription: customization.customPlansDescription,
+            planRefreshHandler: { [weak self] updatedPlan in
+                Task { [weak self] in
+                    await MainActor.run { [weak self] in
+                        self?.paymentsUIViewController?.reloadData()
+                        if updatedPlan != nil {
+                            self?.paymentsUIViewController?.showPurchaseSuccessBanner()
+                        }
+                    }
+                }
+            },
+            extendSubscriptionHandler: { [weak self] in
+                Task { [weak self] in
+                    await MainActor.run { [weak self] in
+                        self?.paymentsUIViewController?.extendSubscriptionSelection()
+                    }
+                }
+            }
+        )
+
+        await MainActor.run {
+            self.paymentsUIViewController = paymentsUIViewController
+            paymentsUIViewController.viewModel = viewModel
+            paymentsUIViewController.mode = mode
+
+            if mode != .signup {
+                showPlanViewController(paymentsViewController: paymentsUIViewController)
+            }
+        }
+
+        do {
+            try await viewModel?.fetchPlans()
+            unfinishedPurchasePlan = purchaseManager.unfinishedPurchasePlan
+            await MainActor.run {
+                if mode == .signup {
+                    showPlanViewController(paymentsViewController: paymentsUIViewController)
+                } else {
+                    paymentsUIViewController.reloadData()
+                }
+            }
+        } catch let error {
+            await MainActor.run {
+                showError(error: error)
+            }
+        }
+    }
+
+    private func showPaymentsUI(servicePlan: Either<ServicePlanDataServiceProtocol, PlansDataSourceProtocol>, backendFetch: Bool) {
+        let paymentsUIViewController = UIStoryboard.instantiate(
+            PaymentsUIViewController.self, storyboardName: storyboardName, inAppTheme: customization.inAppTheme
+        )
         paymentsUIViewController.delegate = self
         paymentsUIViewController.onDohTroubleshooting = { [weak self] in
             self?.onDohTroubleshooting()
         }
-        
+
         viewModel = PaymentsUIViewModel(mode: mode,
                                         storeKitManager: storeKitManager,
-                                        servicePlan: servicePlan,
+                                        planService: planService,
                                         shownPlanNames: shownPlanNames,
                                         clientApp: clientApp,
-                                        customPlansDescription: customPlansDescription) { [weak self] updatedPlan in
+                                        customPlansDescription: customization.customPlansDescription) { [weak self] updatedPlan in
             DispatchQueue.main.async { [weak self] in
                 self?.paymentsUIViewController?.reloadData()
                 if updatedPlan != nil {
@@ -117,12 +202,12 @@ final class PaymentsUICoordinator {
             }
         }
         self.paymentsUIViewController = paymentsUIViewController
-        paymentsUIViewController.model = viewModel
+        paymentsUIViewController.viewModel = viewModel
         paymentsUIViewController.mode = mode
         if mode != .signup {
             showPlanViewController(paymentsViewController: paymentsUIViewController)
         }
-        
+
         viewModel?.fetchPlans(backendFetch: backendFetch) { [weak self] result in
             guard let self = self else { return }
             switch result {
@@ -140,7 +225,7 @@ final class PaymentsUICoordinator {
             }
         }
     }
-    
+
     private func showPlanViewController(paymentsViewController: PaymentsUIViewController) {
         if mode == .signup {
             viewController?.navigationController?.pushViewController(paymentsViewController, animated: true)
@@ -152,7 +237,7 @@ final class PaymentsUICoordinator {
             switch presentationType {
             case .modal:
                 var topViewController: UIViewController?
-                let keyWindow = UIApplication.getInstance()?.windows.filter { $0.isKeyWindow }.first
+                let keyWindow = UIApplication.firstKeyWindow
                 if var top = keyWindow?.rootViewController {
                     while let presentedViewController = top.presentedViewController {
                         top = presentedViewController
@@ -161,6 +246,7 @@ final class PaymentsUICoordinator {
                 }
                 paymentsViewController.modalPresentation = true
                 let navigationController = LoginNavigationViewController(rootViewController: paymentsViewController)
+                navigationController.overrideUserInterfaceStyle = customization.inAppTheme().userInterfaceStyle
                 navigationController.modalPresentationStyle = .pageSheet
                 topViewController?.present(navigationController, animated: true)
                 completionHandler?(.open(vc: paymentsViewController, opened: true))
@@ -170,7 +256,7 @@ final class PaymentsUICoordinator {
             }
         }
     }
-    
+
     private func showError(error: Error) {
         if let error = error as? StoreKitManagerErrors {
             self.showError(message: error.userFacingMessageInPayments, error: error)
@@ -183,28 +269,28 @@ final class PaymentsUICoordinator {
         }
         finishCallback(reason: .purchaseError(error: error))
     }
-    
-    private func showError(message: String, error: Error) {
+
+    private func showError(message: String, error: Error, action: ActionCallback = nil) {
         guard localErrorMessages else { return }
-        alertManager.showError(message: message, error: error)
+        alertManager.showError(message: message, error: error, action: action)
     }
-    
+
     private var localErrorMessages: Bool {
         return mode != .signup
     }
-    
+
     private func finishCallback(reason: PaymentsUIResultReason) {
         completionHandler?(reason)
     }
-    
+
     private func showProcessingTransactionAlert(isError: Bool = false) {
         guard unfinishedPurchasePlan != nil else { return }
-        
-        let title = isError ? CoreString._pu_plan_unfinished_error_title : CoreString._warning
-        let message = isError ? CoreString._pu_plan_unfinished_error_desc : CoreString._pu_plan_unfinished_desc
+
+        let title = isError ? PUITranslations.plan_unfinished_error_title.l10n : PUITranslations._payments_warning.l10n
+        let message = isError ? PUITranslations.plan_unfinished_error_desc.l10n : PUITranslations.plan_unfinished_desc.l10n
         let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        let retryAction = UIAlertAction(title: isError ? CoreString._pu_plan_unfinished_error_retry_button : CoreString._retry, style: .default, handler: { _ in
-            
+        let retryAction = UIAlertAction(title: isError ? PUITranslations.plan_unfinished_error_retry_button.l10n : PSTranslation._core_retry.l10n, style: .default, handler: { _ in
+
             // unregister from being notified on the transactions — we're finishing immediately
             guard let unfinishedPurchasePlan = self.unfinishedPurchasePlan else { return }
             self.storeKitManager.stopBeingNotifiedWhenTransactionsWaitingForTheSignupAppear()
@@ -212,7 +298,7 @@ final class PaymentsUICoordinator {
         })
         retryAction.accessibilityLabel = "DialogRetryButton"
         alertController.addAction(retryAction)
-        let cancelAction = UIAlertAction(title: CoreString._hv_cancel_button, style: .default) { _ in
+        let cancelAction = UIAlertAction(title: PUITranslations._core_cancel_button.l10n, style: .default) { _ in
             // close Payments UI
             self.completionHandler?(.close)
         }
@@ -220,11 +306,33 @@ final class PaymentsUICoordinator {
         alertController.addAction(cancelAction)
         paymentsUIViewController?.present(alertController, animated: true, completion: nil)
     }
+
+    private func refreshPlans() async {
+        do {
+            try await viewModel?.fetchPlans()
+            Task { @MainActor in
+                paymentsUIViewController?.reloadData()
+            }
+        } catch {
+            PMLog.info("Failed to fetch plans when PaymentsUIViewController will appear: \(error)")
+        }
+    }
 }
 
 // MARK: PaymentsUIViewControllerDelegate
 
 extension PaymentsUICoordinator: PaymentsUIViewControllerDelegate {
+    func viewControllerWillAppear(isFirstAppearance: Bool) {
+        // Plan data should not be refreshed on first appear because at that time data are freshly loaded. Here must be covered situations when
+        // app goes from background for example.
+        guard !isFirstAppearance else { return }
+        if featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan) {
+            Task {
+                await refreshPlans()
+            }
+        }
+    }
+
     func userDidCloseViewController() {
         if presentationType == .modal, mode != .signup {
             paymentsUIViewController?.dismiss(animated: true, completion: nil)
@@ -233,65 +341,110 @@ extension PaymentsUICoordinator: PaymentsUIViewControllerDelegate {
         }
         completionHandler?(.close)
     }
-    
+
     func userDidDismissViewController() {
         completionHandler?(.close)
     }
-    
+
+    func userDidSelectPlan(plan: AvailablePlansPresentation, completionHandler: @escaping () -> Void) {
+        
+        guard let inAppPlan = plan.availablePlan else {
+            completionHandler()
+            return
+        }
+        userDidSelectPlan(plan: inAppPlan, addCredits: false, completionHandler: completionHandler)
+    }
+
     func userDidSelectPlan(plan: PlanPresentation, addCredits: Bool, completionHandler: @escaping () -> Void) {
+        userDidSelectPlan(plan: plan.accountPlan, addCredits: false, completionHandler: completionHandler)
+    }
+
+    private func userDidSelectPlan(plan: InAppPurchasePlan, addCredits: Bool, completionHandler: @escaping () -> Void) {
         // unregister from being notified on the transactions — you will get notified via `buyPlan` completion block
         storeKitManager.stopBeingNotifiedWhenTransactionsWaitingForTheSignupAppear()
-        purchaseManager.buyPlan(plan: plan.accountPlan, addCredits: addCredits) { [weak self] callback in
-            completionHandler()
+        purchaseManager.buyPlan(plan: plan, addCredits: addCredits) { [weak self] purchaseResult in
+            if case .renewalNotification = purchaseResult {} else {
+                completionHandler()
+            }
             guard let self = self else { return }
-            switch callback {
-            case .planPurchaseProcessingInProgress(let processingPlan):
-                self.unfinishedPurchasePlan = processingPlan
-                self.finishCallback(reason: .planPurchaseProcessingInProgress(accountPlan: processingPlan))
-            case .purchasedPlan(let plan):
+            switch purchaseResult {
+            case .planPurchaseProcessingInProgress(let inProgressPlan):
+                ObservabilityEnv.report(.paymentLaunchBillingTotal(status: .planPurchaseProcessingInProgress, isDynamic: self.featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)))
+                self.unfinishedPurchasePlan = inProgressPlan
+                self.finishCallback(reason: .planPurchaseProcessingInProgress(accountPlan: inProgressPlan))
+                ObservabilityEnv.report(.paymentPurchaseTotal(status: .planPurchaseProcessingInProgress, isDynamic: self.featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)))
+                ObservabilityEnv.report(.planSelectionCheckoutTotal(status: .processingInProgress, plan: self.getPlanNameForObservabilityPurposes(plan: plan), isDynamic: self.featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)))
+            case .purchasedPlan(let purchasedPlan):
+                ObservabilityEnv.report(.paymentLaunchBillingTotal(status: .success, isDynamic: self.featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)))
                 self.unfinishedPurchasePlan = self.purchaseManager.unfinishedPurchasePlan
-                self.finishCallback(reason: .purchasedPlan(accountPlan: plan))
-                ObservabilityEnv.report(.planSelectionCheckoutTotal(status: .successful, plan: self.getPlanName(plan: plan)))
+                self.finishCallback(reason: .purchasedPlan(accountPlan: purchasedPlan))
+                ObservabilityEnv.report(.paymentPurchaseTotal(status: .success, isDynamic: self.featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)))
+                ObservabilityEnv.report(.planSelectionCheckoutTotal(status: .successful, plan: self.getPlanNameForObservabilityPurposes(plan: plan), isDynamic: self.featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)))
             case .toppedUpCredits:
+                ObservabilityEnv.report(.paymentLaunchBillingTotal(status: .success, isDynamic: self.featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)))
                 self.unfinishedPurchasePlan = self.purchaseManager.unfinishedPurchasePlan
                 self.finishCallback(reason: .toppedUpCredits)
-                ObservabilityEnv.report(.planSelectionCheckoutTotal(status: .successful, plan: self.getPlanName(plan: plan.accountPlan)))
+                ObservabilityEnv.report(.paymentPurchaseTotal(status: .success, isDynamic: self.featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)))
+                ObservabilityEnv.report(.planSelectionCheckoutTotal(status: .successful,
+                                                                    plan: self.getPlanNameForObservabilityPurposes(plan: plan),
+                                                                    isDynamic: self.featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)))
             case .purchaseError(let error, let processingPlan):
-                if let processingPlan = processingPlan {
-                    self.unfinishedPurchasePlan = processingPlan
-                }
-                ObservabilityEnv.report(.planSelectionCheckoutTotal(status: .failed, plan: self.getPlanName(plan: plan.accountPlan)))
+                ObservabilityEnv.report(.paymentLaunchBillingTotal(status: .purchaseError, isDynamic: self.featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)))
+                self.unfinishedPurchasePlan = processingPlan
+                ObservabilityEnv.report(.paymentPurchaseTotal(status: .purchaseError, isDynamic: self.featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)))
+                ObservabilityEnv.report(.planSelectionCheckoutTotal(status: .failed,
+                                                                    plan: self.getPlanNameForObservabilityPurposes(plan: plan),
+                                                                    isDynamic: self.featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)))
                 self.showError(error: error)
             case let .apiMightBeBlocked(message, originalError, processingPlan):
-                if let processingPlan = processingPlan {
-                    self.unfinishedPurchasePlan = processingPlan
-                }
+                ObservabilityEnv.report(.paymentLaunchBillingTotal(status: .apiBlocked, isDynamic: self.featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)))
                 self.unfinishedPurchasePlan = processingPlan
-                ObservabilityEnv.report(.planSelectionCheckoutTotal(status: .failed, plan: self.getPlanName(plan: plan.accountPlan)))
+                ObservabilityEnv.report(.paymentPurchaseTotal(status: .apiBlocked, isDynamic: self.featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)))
+                ObservabilityEnv.report(.planSelectionCheckoutTotal(status: .apiMightBeBlocked,
+                                                                    plan: self.getPlanNameForObservabilityPurposes(plan: plan),
+                                                                    isDynamic: self.featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)))
                 // TODO: should we handle it ourselves? or let the client do it?
                 self.finishCallback(reason: .apiMightBeBlocked(message: message, originalError: originalError))
             case .purchaseCancelled:
+                ObservabilityEnv.report(.paymentLaunchBillingTotal(status: .canceled, isDynamic: self.featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)))
+                ObservabilityEnv.report(.paymentPurchaseTotal(status: .canceled, isDynamic: self.featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)))
+                ObservabilityEnv.report(.planSelectionCheckoutTotal(status: .canceled,
+                                                                    plan: self.getPlanNameForObservabilityPurposes(plan: plan),
+                                                                    isDynamic: self.featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)))
+            case .renewalNotification:
                 break
             }
         }
     }
-    
-    func getPlanName(plan: InAppPurchasePlan) -> PlanName {
-        if plan.isFreePlan { return .free }
-        if plan.isPlusPlan { return .plus }
-        if plan.isUnlimitedPlan { return .unlimited }
-        return .free
+
+    func getPlanNameForObservabilityPurposes(plan: InAppPurchasePlan) -> PlanName {
+        if plan.protonName == InAppPurchasePlan.freePlanName || plan.protonName.contains("free") {
+            return .free
+        } else {
+            return .paid
+        }
     }
-    
+
     func planPurchaseError() {
         if mode == .signup {
             self.showProcessingTransactionAlert(isError: true)
         }
     }
+
+    func purchaseBecameUnavailable() {
+        self.showError(message: PUITranslations.iap_temporarily_unavailable.l10n,
+                       error: PlansDataSourceError.purchaseBecameUnavailable) {
+            self.userDidCloseViewController()
+        }
+    }
 }
 
 private extension UIStoryboard {
-    static func instantiate<T: UIViewController>(_ controllerType: T.Type, storyboardName: String) -> T {
-        instantiate(storyboardName: storyboardName, controllerType: controllerType)
+    static func instantiate<T: UIViewController>(
+        _ controllerType: T.Type, storyboardName: String, inAppTheme: () -> InAppTheme
+    ) -> T {
+        instantiate(storyboardName: storyboardName, controllerType: controllerType, inAppTheme: inAppTheme)
     }
 }
+
+#endif

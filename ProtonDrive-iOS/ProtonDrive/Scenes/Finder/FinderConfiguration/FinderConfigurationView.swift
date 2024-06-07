@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import PDCore
 
 struct FinderConfigurationView: View {
@@ -66,12 +66,13 @@ struct FinderConfigurationView: View {
                             .frame(width: 16, height: 16)
                             .foregroundColor(hasSorting ? ColorProvider.IconHint : ColorProvider.BackgroundNorm)
                             .rotationEffect(Angle(degrees: sorting.isAscending ? 180 : 0))
+                            .accessibilityLabel(sorting.isAscending ? "ascending" : "descending")
                         Spacer()
                     }
                     .font(.footnote)
+                    .accessibilityIdentifier("Menu.SortingSelection")
                 }
                 .disabled(!hasSorting)
-                .accessibility(identifier: "Menu.SortingSelection")
 
                 Button(action: { changeLayout?() }, label: {
                     layout.nextImage

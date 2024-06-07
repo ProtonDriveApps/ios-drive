@@ -32,4 +32,23 @@ public class Revision: NSManagedObject {
         super.init(entity: entity, insertInto: context)
         self._state.configure(with: self)
     }
+
+    override public func prepareForDeletion() {
+        super.prepareForDeletion()
+        clearUnencryptedContents()
+    }
+}
+
+public extension Revision {
+    func removeOldBlocks(in moc: NSManagedObjectContext) {
+        let oldBlocks = blocks
+        blocks = Set([])
+        oldBlocks.forEach(moc.delete)
+    }
+
+    func removeOldThumbnails(in moc: NSManagedObjectContext) {
+        let oldThumbnails = thumbnails
+        thumbnails = Set([])
+        oldThumbnails.forEach(moc.delete)
+    }
 }

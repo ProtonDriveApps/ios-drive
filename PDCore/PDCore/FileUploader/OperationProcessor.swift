@@ -40,12 +40,28 @@ public class OperationProcessor<O: IdentifiableOperation> {
         processingQueue.addOperations(op.dependencies, waitUntilFinished: false)
     }
 
-    public final func cancelOperation(with id: UUID) {
+    public final func cancelOperation(id: UUID) {
+        Log.info("\(type(of: self)) cancelOperation id: \(id)", domain: .uploader)
         getProcessingOperation(with: id)?.cancel()
     }
 
-    public final func cancellAllOperations() {
+    public func cancelAllOperations() {
+        Log.info("\(type(of: self)) cancelAllOperations", domain: .uploader)
         processingQueue.cancelAllOperations()
+    }
+
+    public func suspendAllOperations() {
+        if processingQueue.isSuspended == false {
+            Log.info("\(type(of: self)) suspendAllOperations on uploading queue", domain: .uploader)
+            processingQueue.isSuspended = true
+        }
+    }
+
+    public func resumeAllOperations() {
+        if processingQueue.isSuspended == true {
+            Log.info("\(type(of: self)) resumeAllOperations on processing queue", domain: .uploader)
+            processingQueue.isSuspended = false
+        }
     }
 
     public final func getProcessingOperation(with id: UUID) -> O? {
@@ -60,6 +76,15 @@ public class OperationProcessor<O: IdentifiableOperation> {
     }
 
     public final var isProcessingOperations: Bool {
-        scheduledOperations.count != .zero
+        !scheduledOperations.dictionaryRepresentation()
+            .filter { !$0.value.isCancelled && !$0.value.isFinished }
+            .isEmpty
+    }
+
+    public func getExecutableOperationsCount() -> Int {
+        // Returns count of main operations
+        return getAllScheduledOperations()
+            .filter { !$0.isCancelled && !$0.isFinished }
+            .count
     }
 }

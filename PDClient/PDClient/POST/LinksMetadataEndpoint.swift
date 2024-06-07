@@ -17,6 +17,8 @@
 
 import Foundation
 
+/// List Shares
+/// - POST: /drive/shares/{enc_shareID}/links/fetch_metadata
 public struct LinksMetadataEndpoint: Endpoint {
     public let request: URLRequest
     public typealias Response = LinksResponse

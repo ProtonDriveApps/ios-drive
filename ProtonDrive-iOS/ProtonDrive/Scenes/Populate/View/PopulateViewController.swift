@@ -18,10 +18,16 @@
 import UIKit
 import Combine
 import PDCore
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
+import PDUIComponents
+import SwiftUI
 
 final class PopulateViewController: UIViewController {
     private var cancellable: Cancellable?
+
+    private lazy var spinner = ViewHosting {
+        SpinnerTextView(text: "Getting things ready...")
+    }
 
     var viewModel: PopulateViewModel!
     var onPopulated: ((NodeIdentifier) -> Void)?
@@ -29,6 +35,8 @@ final class PopulateViewController: UIViewController {
     override public func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = ColorProvider.BackgroundNorm
+        view.addSubview(spinner)
+        spinner.fillSuperview()
 
         cancellable = viewModel.populatedPublisher
             .sink { [weak self] state in
@@ -44,10 +52,6 @@ final class PopulateViewController: UIViewController {
         #if DEBUG
         modifyOnboardingFlowInTests()
         #endif
-    }
-    
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
     }
 }
 

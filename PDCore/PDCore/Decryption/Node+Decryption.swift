@@ -19,7 +19,7 @@ import Foundation
 
 extension Node {
     
-    internal func getDirectParentPack() throws -> (parentPassphrase: String, parentKey: String) {
+    func getDirectParentPack() throws -> (parentPassphrase: String, parentKey: String) {
         guard let parentPassphrase = try (self.parentLink?.decryptPassphrase() ?? getMainDirectSharePassphrase()),
               let parentKey = self.parentLink?.nodeKey ?? self.primaryDirectShare?.key else {
                   throw Decryptor.Errors.noParentPacket
@@ -37,21 +37,13 @@ extension Node {
     }
 
     /// first time will be calculated and later cached in a transient CoreData property
-    internal func decryptPassphrase() throws -> String {
+    public func decryptPassphrase() throws -> String {
         do {
             if let cached = self.clearPassphrase {
                 return cached
             }
 
-            let addressKeys = try getAddressPublicKeysOfNodeCreatorWithFallbackToShareCreator()
-            let parentNodeKey = try getDirectParentSecret()
-
-            let decrypted = try Decryptor.decryptAndVerifyNodePassphrase(
-                nodePassphrase,
-                armoredSignature: nodePassphraseSignature,
-                verificationKeys: addressKeys,
-                decryptionKeys: [parentNodeKey]
-            )
+            let decrypted = try decryptNodePassphrase()
 
             switch decrypted {
             case .verified(let passphrase):
@@ -59,15 +51,29 @@ extension Node {
                 return passphrase
 
             case .unverified(let passphrase, let error):
-                ConsoleLogger.shared?.log(SignatureError(error, "Node"))
+                Log.error(SignatureError(error, "Node", description: "LinkID: \(id) \nShareID: \(shareID)"), domain: .encryption)
                 self.clearPassphrase = passphrase
                 return passphrase
             }
 
         } catch {
-            ConsoleLogger.shared?.log(DecryptionError(error, "Node"))
+            Log.error(DecryptionError(error, "Node", description: "LinkID: \(id) \nShareID: \(shareID)"), domain: .encryption)
             throw error
         }
+    }
+
+    internal func decryptNodePassphrase() throws -> VerifiedText {
+        let addressKeys = try getAddressPublicKeysOfNodeCreatorWithFallbackToShareCreator()
+        let parentNodeKey = try getDirectParentSecret()
+
+        let decrypted = try Decryptor.decryptAndVerifyNodePassphrase(
+            nodePassphrase,
+            armoredSignature: nodePassphraseSignature,
+            verificationKeys: addressKeys,
+            decryptionKeys: [parentNodeKey]
+        )
+
+        return decrypted
     }
 
     internal func keyPacket(_ cyphertext: String, newKey: String) throws -> String {
@@ -80,7 +86,7 @@ extension Node {
 extension Node {
     
     private func getAddressPublicKeysOfNodeCreatorWithFallbackToShareCreator() throws -> [PublicKey] {
-        if let publicKeys = try? getAddressPublicKeys(email: signatureEmail) {
+        if let signatureEmail = signatureEmail, let publicKeys = try? getAddressPublicKeys(email: signatureEmail) {
             return publicKeys
         }
         
@@ -92,10 +98,7 @@ extension Node {
     }
 
     internal func getAddressPublicKeys(email: String) throws -> [PublicKey] {
-        guard case let publicKeys = SessionVault.current.getPublicKeys(for: email), !publicKeys.isEmpty else {
-            throw SessionVault.Errors.noRequiredAddressKey
-        }
-        return publicKeys
+        SessionVault.current.getPublicKeys(for: email)
     }
     
 }

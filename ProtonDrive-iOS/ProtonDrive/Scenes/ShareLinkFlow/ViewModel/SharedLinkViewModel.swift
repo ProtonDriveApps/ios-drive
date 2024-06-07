@@ -33,7 +33,7 @@ class SharedLinkViewModel: ObservableObject {
     init(
         model: ShareLinkModel,
         sharedLinkSubject: CurrentValueSubject<SharedLink, Never>,
-        onCopyToClipboard:  @escaping (String?) -> Void
+        onCopyToClipboard: @escaping (String?) -> Void
     ) {
         self.link = model.linkModel
         self.sharedLinkSubject = sharedLinkSubject

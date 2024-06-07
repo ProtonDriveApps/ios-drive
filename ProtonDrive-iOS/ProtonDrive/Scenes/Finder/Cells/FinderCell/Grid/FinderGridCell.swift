@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import PDUIComponents
 import Combine
 
@@ -38,16 +38,19 @@ struct FinderGridCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
     private let presentedModal: Binding<FinderCoordinator.Destination?>
     private let presentedSheet: Binding<FinderCoordinator.Destination?>
     private let menuItem: Binding<FinderMenu?>
+    private let index: Int
 
     init(
         vm: ViewModel,
         presentedModal: Binding<FinderCoordinator.Destination?>,
         presentedSheet: Binding<FinderCoordinator.Destination?>,
         menuItem: Binding<FinderMenu?>,
+        index: Int,
         onTap: @escaping () -> Void,
         onLongPress: @escaping () -> Void
     ) {
         self.vm = vm
+        self.index = index
         self.presentedModal = presentedModal
         self.presentedSheet = presentedSheet
         self.menuItem = menuItem
@@ -69,6 +72,7 @@ struct FinderGridCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
                         Image(uiImage: thumbnail)
                             .resizable()
                             .scaledToFill()
+                            .allowsHitTesting(false)
                     }
                 )
                 .frame(width: gridSize - 1, height: gridSize - 1)
@@ -84,7 +88,9 @@ struct FinderGridCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
                     .frame(width: gridSize)
                     .padding(.bottom, 4)
                     .accessibility(identifier: "FinderGridCell.Text.\(vm.name)")
+                    .accessibilityLabel("\(vm.name)_\(index)")
             }
+            .contentShape(Rectangle())
             .onTapGesture(perform: onTap)
             .onLongPressGesture(perform: onLongPress)
 
@@ -206,8 +212,13 @@ extension NodeCellButton {
 
 private struct ContextMenuGridModifier: ViewModifier {
     func body(content: Content) -> some View {
-        content
-            .padding(.vertical)
-            .padding(.horizontal, 20)
+        HStack {
+            Spacer()
+            content
+            Spacer()
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 20)
+        .contentShape(Rectangle()) // Together with vertical padding above makes the tappable area bigger
     }
 }

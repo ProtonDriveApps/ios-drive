@@ -20,11 +20,13 @@ import CoreData
 import PDClient
 
 @objc(ShareURL)
-public class ShareURL: NSManagedObject, HasTransientValues {
+public class ShareURL: NSManagedObject {
     public typealias Permissions = ShareURLMeta.Permissions
     public typealias Flags = ShareURLMeta.Flags
 
+    #if os(iOS)
     var _observation: Any?
+    #endif
     
     // public enums, wrapped
     @ManagedEnum(raw: #keyPath(permissionsRaw)) public var permissions: Permissions!
@@ -47,15 +49,25 @@ public class ShareURL: NSManagedObject, HasTransientValues {
 
     override public func awakeFromFetch() {
         super.awakeFromFetch()
+        #if os(iOS)
         self._observation = self.subscribeToContexts()
+        #endif
     }
 
     override public func willTurnIntoFault() {
         super.willTurnIntoFault()
+        #if os(iOS)
         NotificationCenter.default.removeObserver(_observation as Any)
+        #endif
     }
 
     deinit {
+        #if os(iOS)
         NotificationCenter.default.removeObserver(_observation as Any)
+        #endif
     }
 }
+
+#if os(iOS)
+extension ShareURL: HasTransientValues {}
+#endif

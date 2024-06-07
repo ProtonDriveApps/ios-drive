@@ -32,6 +32,7 @@ extension CloudSlot {
     typealias NodeObj = PDCore.Node
     typealias FolderObj = PDCore.Folder
     typealias FileObj = PDCore.File
+    typealias PhotoObj = PDCore.Photo
     typealias BlockObj = PDCore.Block
     
     typealias ShareURLMeta = PDClient.ShareURLMeta
@@ -48,28 +49,33 @@ extension CloudSlot {
         // switch to MOC's thread
         moc.performAndWait {
             // get all affected IDs
-            var affectedIds = (shares: Set<ShareMeta.ShareID>(),
-                               files: Set<LinkMeta.LinkID>(),
-                               folders: Set<LinkMeta.LinkID>(),
-                               volumes: Set<VolumeMeta.VolumeID>())
+            var affectedIds = (
+                shares: Set<ShareMeta.ShareID>(),
+                files: Set<LinkMeta.LinkID>(),
+                folders: Set<LinkMeta.LinkID>(),
+                photos: Set<LinkMeta.LinkID>(),
+                volumes: Set<VolumeMeta.VolumeID>()
+            )
             
             shares.forEach {
                 affectedIds.shares.insert($0.shareID)
                 affectedIds.volumes.insert($0.volumeID)
                 affectedIds.files.insert($0.linkID)
+                affectedIds.photos.insert($0.linkID)
                 affectedIds.folders.insert($0.linkID)
             }
             
             // create minimal objects for them
             let uniqueShares: [ShareObj] = self.storage.unique(with: affectedIds.shares, in: moc)
             let uniqueFiles: [FileObj] = self.storage.existing(with: affectedIds.files, in: moc)
+            let uniquePhotos: [PhotoObj] = self.storage.existing(with: affectedIds.photos, allowSubclasses: true, in: moc)
             let uniqueFolders: [FolderObj] = self.storage.existing(with: affectedIds.folders, in: moc)
             let uniqueVolumes: [VolumeObj] = self.storage.unique(with: affectedIds.volumes, in: moc)
             
             // set up share and relationships
             result = shares.compactMap { shareMeta in
-                // root may be either folder or file
-                let node = uniqueFolders.first { $0.id == shareMeta.linkID } ?? uniqueFiles.first { $0.id == shareMeta.linkID }
+                // root may be either folder or file or photo
+                let node = uniqueFolders.first { $0.id == shareMeta.linkID } ?? uniqueFiles.first { $0.id == shareMeta.linkID } ?? uniquePhotos.first { $0.id == shareMeta.linkID }
                 let volume = uniqueVolumes.first { $0.id == shareMeta.volumeID }
                 let share = uniqueShares.first { $0.id == shareMeta.shareID }
                 
@@ -167,14 +173,24 @@ extension CloudSlot {
                     let photo = link.fileProperties?.activeRevision?.photo
                     let isPhoto = photo != nil
                     if isPhoto {
-                        affectedIds.photos.insert(link.linkID)
-                        affectedIds.photos.formUnion([photo?.mainPhotoLinkID].compactMap { $0 })
+                        // TODO: needs new API where children are nested inside parent.
+                        // For now it's enough to save parent photos (those with nil mainPhotoLinkId). For children we don't have enough data.
+//                        affectedIds.photos.insert(link.linkID)
+//                        affectedIds.photos.formUnion([photo?.mainPhotoLinkID].compactMap { $0 })
+                        if photo?.mainPhotoLinkID == nil {
+                            affectedIds.photos.insert(link.linkID)
+                        }
                     } else {
                         affectedIds.files.insert(link.linkID)
                     }
                     guard let revision = link.fileProperties?.activeRevision else { return }
                     if isPhoto {
-                        affectedIds.photoRevisions.insert(revision.ID)
+                        // TODO: needs new API where children are nested inside parent.
+                        // For now it's enough to save parent photos (those with nil mainPhotoLinkId). For children we don't have enough data.
+//                        affectedIds.photoRevisions.insert(revision.ID)
+                        if photo?.mainPhotoLinkID == nil {
+                            affectedIds.photoRevisions.insert(revision.ID)
+                        }
                     } else {
                         affectedIds.revisions.insert(revision.ID)
                     }
@@ -210,22 +226,22 @@ extension CloudSlot {
                     localRevision.fulfill(link: link, revision: revisionResponse)
 
                     if revisionResponse.hasThumbnail, let thumbnails = revisionResponse.thumbnails {
-                        addThumbnails(thumbnails, url: revisionResponse.thumbnailDownloadUrl, revision: localRevision, in: moc)
+                        addThumbnails(thumbnails, revision: localRevision, in: moc)
                     }
                     if let mainPhotoId = link.fileProperties?.activeRevision?.photo?.mainPhotoLinkID,
                        let mainPhoto = uniquePhotos.first(where: { $0.id == mainPhotoId }) {
                            photo.parent = mainPhoto
                     }
                 } else if let fileObj = nodeObj as? FileObj,
-                    let revision = link.fileProperties?.activeRevision,
-                    let activeRevision = uniqueRevisions.first(where: { $0.id == revision.ID })
+                    let revisionResponse = link.fileProperties?.activeRevision,
+                    let localRevision = uniqueRevisions.first(where: { $0.id == revisionResponse.ID })
                 {
-                    fileObj.addToRevisions(activeRevision)
-                    fileObj.activeRevision = activeRevision
-                    activeRevision.fulfill(from: revision)
+                    fileObj.addToRevisions(localRevision)
+                    fileObj.activeRevision = localRevision
+                    localRevision.fulfill(from: revisionResponse)
 
-                    if revision.hasThumbnail {
-                        addThumbnail(url: revision.thumbnailDownloadUrl, revision: activeRevision, in: moc)
+                    if revisionResponse.hasThumbnail, let thumbnails = revisionResponse.thumbnails {
+                        addThumbnails(thumbnails, revision: localRevision, in: moc)
                     }
                 }
                 nodeObj?.setValue(parentLinkObj, forKey: #keyPath(NodeObj.parentLink))
@@ -246,33 +262,40 @@ extension CloudSlot {
         return result
     }
 
-    // Just restored the previous approach for when it's not a photo. File with one thumbnail.
-    private func addThumbnail(url: URL?, revision: Revision, in moc: NSManagedObjectContext) {
-        if revision.thumbnails.first == nil {
-            let downloadThumbnail = Thumbnail.make(downloadURL: url, revision: revision, type: .default, in: moc)
-            revision.addToThumbnails(downloadThumbnail)
-            return
-        }
+    private func addThumbnails(_ thumbnails: [PDClient.Thumbnail], revision: Revision, in moc: NSManagedObjectContext) {
+        thumbnails.forEach { thumbnail in
+            let thumbnailID = thumbnail.thumbnailID
+            let thumbnailType: ThumbnailType = thumbnail.type == 1 ? .default : .photos
 
-        if let thumbnail = revision.thumbnails.first,
-           let oldThumbnailURL = revision.thumbnails.first?.downloadURL,
-           oldThumbnailURL != url?.absoluteString {
-            thumbnail.downloadURL = url?.absoluteString
-            return
+            let localThumbnail = getLocalThumbnail(id: thumbnailID, type: thumbnailType, hash: thumbnail.hash, revision: revision, moc: moc)
+            localThumbnail.id = thumbnailID
+            localThumbnail.type = thumbnailType
+            localThumbnail.sha256 = Data(base64Encoded: thumbnail.hash)
         }
     }
 
-    /// This method  will probably never be used because of the BE will favor the approach of sending back just id's and we should fetch Thumbnail metadata independently, on demand.
-    private func addThumbnails(_ thumbnails: [PDClient.Thumbnail], url: URL?, revision: Revision, in moc: NSManagedObjectContext) {
-        thumbnails.forEach { model in
-            let type: ThumbnailType = model.type == 2 ? .photos : .default
-            let localRevision = revision.thumbnails.first(where: { $0.type == type })
-            if localRevision == nil {
-                let downloadThumbnail = Thumbnail.make(downloadURL: url, revision: revision, type: type, in: moc)
-                revision.addToThumbnails(downloadThumbnail)
-            } else if localRevision?.downloadURL != url?.absoluteString {
-                localRevision?.downloadURL = url?.absoluteString
+    private func getLocalThumbnail(id: String, type: ThumbnailType, hash: String, revision: Revision, moc: NSManagedObjectContext) -> Thumbnail {
+        let localThumbnailByID = revision.thumbnails.first(where: { $0.id == id })
+        let localThumbnailByType = revision.thumbnails.first(where: { $0.type == type })
+
+        if let localThumbnail = localThumbnailByID ?? localThumbnailByType {
+            return localThumbnail
+        } else {
+            return Thumbnail.make(id: id, downloadURL: nil, revision: revision, type: type, hash: hash, in: moc)
+        }
+    }
+
+    private func updateThumbnails(with urls: [ThumbnailURL], in moc: NSManagedObjectContext) {
+        let ids = Set(urls.map(\.id))
+        let thumbnails: [Thumbnail] = self.storage.existing(with: ids, in: moc)
+        for thumbnail in thumbnails {
+            guard let info = urls.first(where: { $0.id == thumbnail.id }) else {
+                continue
             }
+            guard thumbnail.downloadURL != info.url.absoluteString else {
+                continue
+            }
+            thumbnail.downloadURL = info.url.absoluteString
         }
     }
     
@@ -412,8 +435,8 @@ extension CloudSlot {
 extension CloudSlot {
     typealias Outcome = (Result<Void, Error>) -> Void
     
-    func trash(shareID: Client.ShareID, parentLinkID: Client.LinkID, linkIDs: [Client.LinkID], completion: @escaping Outcome)  {
-        client.trashNodes(shareID: shareID, parentLinkID: parentLinkID, linkIDs: linkIDs, completion: completion)
+    func trash(shareID: Client.ShareID, parentLinkID: Client.LinkID, linkIDs: [Client.LinkID], breadcrumbs: Breadcrumbs, completion: @escaping Outcome)  {
+        client.trashNodes(shareID: shareID, parentLinkID: parentLinkID, linkIDs: linkIDs, breadcrumbs: breadcrumbs.collect(), completion: completion)
     }
 
     func delete(shareID: Client.ShareID, linkIDs: [Client.LinkID], completion: @escaping Outcome) {
@@ -427,12 +450,38 @@ extension CloudSlot {
     func restore(shareID: Client.ShareID, linkIDs: [Client.LinkID], completion: @escaping (Result<[PartialFailure], Error>) -> Void)  {
         client.retoreTrashNode(shareID: shareID, linkIDs: linkIDs, completion: completion)
     }
+    
 }
 
-extension CloudSlot: LocalLinksUpdateRepository {
-    public func update(links: [PDClient.Link], shareId: String) throws {
-        update(links, of: shareId, in: moc)
+extension CloudSlot {
+    
+    func delete(shareID: Client.ShareID, linkIDs: [Client.LinkID]) async throws {
+        try await client.deletePermanently(shareID: shareID, linkIDs: linkIDs)
+    }
+    
+    func emptyTrash(shareID: Client.ShareID) async throws {
+        try await client.emptyTrash(shareID: shareID)
+    }
+    
+    func restore(shareID: Client.ShareID, linkIDs: [Client.LinkID]) async throws -> [PartialFailure] {
+        try await client.retoreTrashNode(shareID: shareID, linkIDs: linkIDs)
+    }
+    
+}
+
+extension CloudSlot {
+    public func update(links: [PDClient.Link], shareId: String, managedObjectContext: NSManagedObjectContext) throws {
+        try managedObjectContext.performAndWait {
+            update(links, of: shareId, in: managedObjectContext)
+            try managedObjectContext.saveOrRollback()
+        }
+    }
+}
+
+extension CloudSlot: ThumbnailsUpdateRepository {
+    public func update(thumbnails: [ThumbnailURL]) throws {
         try moc.performAndWait {
+            updateThumbnails(with: thumbnails, in: moc)
             try moc.saveOrRollback()
         }
     }

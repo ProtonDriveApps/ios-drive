@@ -39,12 +39,12 @@ extension PhotoRevision {
                 return  exif
 
             case .unverified(let exif, let error):
-                ConsoleLogger.shared?.log(SignatureError(error, "EXIF"))
+                Log.error(SignatureError(error, "EXIF", description: "RevisionID: \(id) \nLinkID: \(file.id) \nShareID: \(file.shareID)"), domain: .encryption)
                 self.transientClearExif = exif
                 return exif
             }
         } catch {
-            ConsoleLogger.shared?.log(DecryptionError(error, "EXIF"))
+            Log.error(DecryptionError(error, "EXIF", description: "RevisionID: \(id) \nLinkID: \(file.id) \nShareID: \(file.shareID)"), domain: .encryption)
             return Data()
         }
     }

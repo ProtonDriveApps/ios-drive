@@ -20,8 +20,8 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 //
 
-import ProtonCore_Networking
-import ProtonCore_CoreTranslation
+import Foundation
+import ProtonCoreNetworking
 
 public let APIServiceErrorDomain = NSError.protonMailErrorDomain("APIService")
 
@@ -69,16 +69,19 @@ public class APIErrorCode {
     public static let badApiVersion = 5005
     public static let appVersionTooOldForExternalAccounts = 5098
     public static let appVersionNotSupportedForExternalAccounts = 5099
+    public static let switchToSSOError = 8100
+    public static let switchToSRPError = 8101
     public static let humanVerificationRequired = 9001
     public static let deviceVerificationRequired = 9002
+    public static let lockedScopeRequired = 9101
     public static let invalidVerificationCode = 12087
     public static let tooManyVerificationCodes = 12214
     public static let tooManyFailedVerificationAttempts = 85131
     public static let humanVerificationAddressAlreadyTaken = 2001
     public static let tls = 3500
-    
+
     public static let humanVerificationEditEmail = 9100 // internal error
-    
+
     public static let potentiallyBlocked = 111_222_333 // internal error
 }
 
@@ -86,15 +89,25 @@ public extension ResponseError {
     var isApiIsBlockedError: Bool {
         return bestShotAtReasonableErrorCode == APIErrorCode.potentiallyBlocked
     }
-    
+
     var isAppVersionTooOldForExternalAccountsError: Bool {
         guard let responseCode = responseCode else { return false }
         return responseCode == APIErrorCode.appVersionTooOldForExternalAccounts
     }
-    
+
     var isAppVersionNotSupportedForExternalAccountsError: Bool {
         guard let responseCode = responseCode else { return false }
         return responseCode == APIErrorCode.appVersionNotSupportedForExternalAccounts
+    }
+
+    var isSwitchToSSOError: Bool {
+        guard let responseCode = responseCode else { return false }
+        return responseCode == APIErrorCode.switchToSSOError
+    }
+
+    var isSwitchToSRPError: Bool {
+        guard let responseCode = responseCode else { return false }
+        return responseCode == APIErrorCode.switchToSRPError
     }
 }
 
@@ -103,9 +116,13 @@ public extension AuthErrors {
         if responseError.isApiIsBlockedError {
             return .apiMightBeBlocked(message: responseError.localizedDescription, originalError: responseError)
         } else if responseError.isAppVersionTooOldForExternalAccountsError {
-            return .externalAccountsNotSupported(message: responseError.localizedDescription, title: CoreString._ls_external_accounts_update_required_popup_title, originalError: responseError)
+            return .externalAccountsNotSupported(message: responseError.localizedDescription, title: SRTranslations._core_external_accounts_update_required_popup_title.l10n, originalError: responseError)
         } else if responseError.isAppVersionNotSupportedForExternalAccountsError {
-            return .externalAccountsNotSupported(message: responseError.localizedDescription, title: CoreString._ls_external_accounts_address_required_popup_title, originalError: responseError)
+            return .externalAccountsNotSupported(message: responseError.localizedDescription, title: SRTranslations._core_external_accounts_address_required_popup_title.l10n, originalError: responseError)
+        } else if responseError.isSwitchToSSOError {
+            return .switchToSSOError
+        } else if responseError.isSwitchToSRPError {
+            return .switchToSRPError
         } else {
             return .networkingError(responseError)
         }
@@ -114,12 +131,18 @@ public extension AuthErrors {
 // This need move to a common framwork
 public extension NSError {
     class func protonMailError(_ code: Int, localizedDescription: String, underlyingError: NSError? = nil, localizedFailureReason: String? = nil, localizedRecoverySuggestion: String? = nil) -> NSError {
-        return NSError(domain: protonMailErrorDomain(), code: code, userInfo: [
-            NSLocalizedDescriptionKey: localizedDescription,
-            NSLocalizedFailureReasonErrorKey: localizedFailureReason,
-            NSLocalizedRecoverySuggestionErrorKey: localizedRecoverySuggestion,
-            NSUnderlyingErrorKey: underlyingError,
-        ])
+        var userInfo: [String: Any] = [NSLocalizedDescriptionKey: localizedDescription]
+        if let localizedFailureReason {
+            userInfo[NSLocalizedFailureReasonErrorKey] = localizedFailureReason
+        }
+        if let localizedRecoverySuggestion {
+            userInfo[NSLocalizedRecoverySuggestionErrorKey] = localizedRecoverySuggestion
+        }
+        if let underlyingError {
+            userInfo[NSUnderlyingErrorKey] = underlyingError
+        }
+
+        return NSError(domain: protonMailErrorDomain(), code: code, userInfo: userInfo)
     }
 
     class func protonMailErrorDomain(_ subdomain: String? = nil) -> String {
@@ -154,7 +177,7 @@ public extension NSError {
         }
         return isInternetIssue
     }
-    
+
     class func apiServiceError(code: Int, localizedDescription: String, localizedFailureReason: String?, localizedRecoverySuggestion: String? = nil) -> NSError {
         return NSError(
             domain: "APIService",

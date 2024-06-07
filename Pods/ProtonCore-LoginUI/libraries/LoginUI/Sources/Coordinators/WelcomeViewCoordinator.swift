@@ -19,9 +19,11 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import ProtonCore_UIFoundations
-import ProtonCore_DataModel
+import ProtonCoreUIFoundations
+import ProtonCoreDataModel
 import Lottie
 
 public protocol WelcomeViewCoordinatorDelegate: AnyObject {
@@ -36,22 +38,22 @@ public final class WelcomeViewCoordinator {
     private let username: String?
     private let signupAvailable: Bool
     public weak var delegate: WelcomeViewCoordinatorDelegate?
-    
+
     var navigationViewController: LoginNavigationViewController?
     var animationViewController: WelcomeAnimationViewController?
     var welcomeViewController: WelcomeViewController?
-    
+
     public init(rootViewController: UIViewController, variant: WelcomeScreenVariant, username: String?, signupAvailable: Bool) {
         self.rootViewController = rootViewController
         self.variant = variant
         self.username = username
         self.signupAvailable = signupAvailable
     }
-    
+
     public func start() {
         showAnimationViewController()
     }
-    
+
     private func showAnimationViewController() {
         let animationViewController = WelcomeAnimationViewController(variant: variant) { [weak self] in
             guard let self = self else { return }
@@ -77,19 +79,19 @@ public final class WelcomeViewCoordinator {
 }
 
 extension WelcomeViewCoordinator: WelcomeViewControllerDelegate {
-        
+
     public func userWantsToLogIn(username: String?) {
         dismiss { [weak self] in
             self?.delegate?.userWantsToLogIn(username: username)
         }
     }
-        
+
     public func userWantsToSignUp() {
         dismiss { [weak self] in
             self?.delegate?.userWantsToSignUp()
         }
     }
-        
+
     private func dismiss(completion: @escaping () -> Void) {
         welcomeViewController?.dismiss(animated: false) { [weak self] in
             self?.animationViewController?.dismiss(animated: false) {
@@ -98,3 +100,5 @@ extension WelcomeViewCoordinator: WelcomeViewControllerDelegate {
         }
     }
 }
+
+#endif

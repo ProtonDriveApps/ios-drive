@@ -21,6 +21,7 @@ protocol PhotoLibraryLoadProgressRepository {
     func add(_ count: Int)
     func discard(_ count: Int)
     func finish(_ count: Int)
+    func reset()
 }
 
 protocol PhotoLibraryLoadProgressActionRepository {
@@ -31,24 +32,5 @@ enum PhotoLibraryLoadAction: Equatable {
     case added(Int)
     case discarded(Int)
     case finished(Int)
-}
-
-final class LocalPhotoLibraryLoadProgressActionRepository: PhotoLibraryLoadProgressActionRepository, PhotoLibraryLoadProgressRepository {
-    private let actionSubject = PassthroughSubject<PhotoLibraryLoadAction, Never>()
-
-    var action: AnyPublisher<PhotoLibraryLoadAction, Never> {
-        actionSubject.eraseToAnyPublisher()
-    }
-
-    func add(_ count: Int) {
-        actionSubject.send(.added(count))
-    }
-
-    func discard(_ count: Int) {
-        actionSubject.send(.discarded(count))
-    }
-
-    func finish(_ count: Int) {
-        actionSubject.send(.finished(count))
-    }
+    case reset
 }

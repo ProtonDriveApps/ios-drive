@@ -17,8 +17,8 @@
 
 import SwiftUI
 import PDUIComponents
-import ProtonCore_UIFoundations
-import ProtonCore_CoreTranslation
+import ProtonCoreUIFoundations
+import ProtonCoreAccountDeletion
 
 struct DeleteAccountView: View {
 
@@ -49,7 +49,7 @@ struct DeleteAccountView: View {
     }
 
     var deleteButton: some View {
-        Button(CoreString._ad_delete_account_button, action: action)
+        Button(ADTranslation.delete_account_button.l10n, action: action)
             .foregroundColor(Color.NotificationError)
             .contentShape(Rectangle())
             .disabled(vm.isLoading)

@@ -16,37 +16,45 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import PDCore
 
-protocol PhotosBackupProgressController {
+protocol PhotosBackupProgressController: WorkingNotifier {
     var progress: AnyPublisher<PhotosBackupProgress?, Never> { get }
 }
 
 final class LocalPhotosBackupProgressController: PhotosBackupProgressController {
     private let libraryLoadController: PhotosLoadProgressController
     private let uploadsController: PhotosLoadProgressController
+    private let loadController: PhotoLibraryLoadController
+    private let debounceResource: DebounceResource
     private let subject = CurrentValueSubject<PhotosBackupProgress?, Never>(nil)
     private var cancellables = Set<AnyCancellable>()
+
+    struct ProgressNotification: Equatable {
+        let progress: PhotosBackupProgress
+        let isInitialLoad: Bool
+    }
 
     var progress: AnyPublisher<PhotosBackupProgress?, Never> {
         subject.eraseToAnyPublisher()
     }
 
-    init(libraryLoadController: PhotosLoadProgressController, uploadsController: PhotosLoadProgressController) {
+    init(libraryLoadController: PhotosLoadProgressController, uploadsController: PhotosLoadProgressController, loadController: PhotoLibraryLoadController, debounceResource: DebounceResource) {
         self.libraryLoadController = libraryLoadController
         self.uploadsController = uploadsController
+        self.loadController = loadController
+        self.debounceResource = debounceResource
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
-        Publishers.CombineLatest(libraryLoadController.progress, uploadsController.progress)
-            .map { loadProgress, uploadProgress in
-                PhotosBackupProgress(
+        Publishers.CombineLatest3(libraryLoadController.progress, uploadsController.progress, loadController.isLoading)
+            .map { loadProgress, uploadProgress, isInitialLoad in
+                let progress = PhotosBackupProgress(
                     total: loadProgress.total + uploadProgress.total,
                     inProgress: loadProgress.inProgress + uploadProgress.inProgress
                 )
-            }
-            .map { progress in
-                progress.isCompleted ? nil : progress
+                return ProgressNotification(progress: progress, isInitialLoad: isInitialLoad)
             }
             .removeDuplicates()
             .sink { [weak self] progress in
@@ -55,11 +63,31 @@ final class LocalPhotosBackupProgressController: PhotosBackupProgressController 
             .store(in: &cancellables)
     }
 
-    private func handleUpdate(_ progress: PhotosBackupProgress?) {
-        if progress == nil {
+    private func handleUpdate(_ notification: ProgressNotification) {
+        if notification.progress.isCompleted {
             libraryLoadController.resetTotal()
             uploadsController.resetTotal()
         }
-        subject.send(progress)
+
+        // In case of initial load we don't want to debounce to make the first progress appear asap and correct.
+        // After initial load the progresses will be received async and to avoid jumps we debounce them.
+        if notification.isInitialLoad {
+            subject.send(notification.progress)
+        } else {
+            debounceResource.debounce(interval: 0.1) { [weak self] in
+                self?.subject.send(notification.progress)
+            }
+        }
+    }
+}
+
+extension PhotosBackupProgressController {
+    var isWorkingPublisher: AnyPublisher<Bool, Never> {
+        progress
+            .map { progress in
+                guard let progress else { return false }
+                return !progress.isCompleted
+            }
+            .eraseToAnyPublisher()
     }
 }

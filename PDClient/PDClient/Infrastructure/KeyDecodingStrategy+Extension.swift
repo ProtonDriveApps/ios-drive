@@ -25,6 +25,10 @@ public extension JSONDecoder {
 }
 
 extension JSONDecoder.KeyDecodingStrategy {
+    public static var driveImplementationOfDecapitaliseFirstLetter: JSONDecoder.KeyDecodingStrategy {
+        decapitaliseFirstLetter
+    }
+    
     /// Lowercases first character if the key does not start with acronym or adds underscore if first character is a digit.
     /// Example: UserID → userID, SPRSession → SRPSessoin, 2fa → _2fa
     public static var decapitaliseFirstLetter: JSONDecoder.KeyDecodingStrategy {

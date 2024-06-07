@@ -29,6 +29,12 @@ protocol PhotoPreviewDetailViewModelProtocol: ObservableObject {
 enum PhotoPreviewDetailState: Equatable {
     case loading(text: String, thumbnail: Data?)
     case preview(PhotoFullPreview)
+    case error(title: String, text: String)
+}
+
+struct PhotoPreviewDetailError {
+    let message: String
+    let button: String
 }
 
 final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
@@ -37,18 +43,20 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
     private let previewController: PhotosPreviewController
     private let detailController: PhotoPreviewDetailController
     private let fullPreviewController: PhotoFullPreviewController
+    private let shareController: PhotoPreviewDetailShareController
     private let id: PhotoId
     private let coordinator: PhotoPreviewDetailCoordinator
     private var cancellables = Set<AnyCancellable>()
 
     @Published var state: PhotoPreviewDetailState?
 
-    init(thumbnailController: ThumbnailController, modeController: PhotosPreviewModeController, previewController: PhotosPreviewController, detailController: PhotoPreviewDetailController, fullPreviewController: PhotoFullPreviewController, id: PhotoId, coordinator: PhotoPreviewDetailCoordinator) {
+    init(thumbnailController: ThumbnailController, modeController: PhotosPreviewModeController, previewController: PhotosPreviewController, detailController: PhotoPreviewDetailController, fullPreviewController: PhotoFullPreviewController, shareController: PhotoPreviewDetailShareController, id: PhotoId, coordinator: PhotoPreviewDetailCoordinator) {
         self.thumbnailController = thumbnailController
         self.modeController = modeController
         self.previewController = previewController
         self.detailController = detailController
         self.fullPreviewController = fullPreviewController
+        self.shareController = shareController
         self.id = id
         self.coordinator = coordinator
         subscribeToUpdates()
@@ -56,12 +64,12 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
 
     deinit {
         fullPreviewController.clear()
+        thumbnailController.cancel()
     }
 
     func viewDidLoad() {
-        if thumbnailController.getImage() == nil {
-            thumbnailController.load()
-        }
+        fullPreviewController.load()
+        thumbnailController.load()
         reloadData()
     }
 
@@ -75,20 +83,26 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
     }
 
     func share() {
-        if let fullPreview = fullPreviewController.getPreview() {
-            coordinator.openShare(with: fullPreview)
-        }
+        shareController.openShare()
     }
 
     private func subscribeToUpdates() {
+        thumbnailController.bootstrap()
         thumbnailController.updatePublisher
             .sink { [weak self] _ in
                 self?.reloadData()
             }
             .store(in: &cancellables)
+
         fullPreviewController.updatePublisher
             .sink { [weak self] preview in
                 self?.reloadData()
+            }
+            .store(in: &cancellables)
+
+        fullPreviewController.errorPublisher
+            .sink { [weak self] _ in
+                self?.state = .error(title: "Could not load this photo", text: "There was an error loading this photo")
             }
             .store(in: &cancellables)
     }

@@ -17,13 +17,13 @@
 
 import SwiftUI
 import PDCore
-import ProtonCore_Keymaker
+import ProtonCoreKeymaker
 import PDUIComponents
 
 // MARK: - Keymaker
 @available(*, deprecated, message: "Refactor this out: used only in this file")
 extension EnvironmentValues {
-    var keymaker: Keymaker {
+    var keymaker: DriveKeymaker {
         get { self[KeymakerKey.self] }
         set { self[KeymakerKey.self] = newValue }
     }
@@ -31,7 +31,7 @@ extension EnvironmentValues {
 
 @available(*, deprecated, message: "Refactor this out: used only in this file")
 private struct KeymakerKey: EnvironmentKey {
-    static var defaultValue = Keymaker(autolocker: Environment(\.autolocker).wrappedValue, keychain: DriveKeychain())
+    static var defaultValue = DriveKeymaker(autolocker: Environment(\.autolocker).wrappedValue, keychain: DriveKeychain.shared)
 }
 
 // MARK: - AutoLocker
@@ -44,7 +44,7 @@ extension EnvironmentValues {
 }
 @available(*, deprecated, message: "Refactor this out: used only in this file")
 private struct KeymakerAutolockerKey: EnvironmentKey {
-    static var defaultValue = Autolocker(lockTimeProvider: DriveKeychain())
+    static var defaultValue = Autolocker(lockTimeProvider: DriveKeychain.shared)
 }
 
 // MARK: - StorageKey
@@ -89,5 +89,8 @@ extension EnvironmentValues {
 
 @available(*, deprecated, message: "Refactor this out: used only in this file")
 private struct InitialServicesKey: EnvironmentKey {
-    static var defaultValue = InitialServices(clientConfig: Constants.clientApiConfig, keymaker: Environment(\.keymaker).wrappedValue)
+    static var defaultValue = InitialServices(userDefault: Constants.appGroup.userDefaults,
+                                              clientConfig: Constants.clientApiConfig,
+                                              keymaker: Environment(\.keymaker).wrappedValue,
+                                              sessionRelatedCommunicatorFactory: SessionRelatedCommunicatorForMainApp.init)
 }

@@ -21,6 +21,7 @@ import PDCore
 
 protocol PhotosGalleryViewModelProtocol: ObservableObject {
     var content: PhotosGalleryViewContent { get }
+    var error: PassthroughSubject<Error?, Never> { get }
 }
 
 enum PhotosGalleryViewContent {
@@ -32,12 +33,16 @@ enum PhotosGalleryViewContent {
 final class PhotosGalleryViewModel: PhotosGalleryViewModelProtocol {
     private let galleryController: PhotosGalleryController
     private let settingsController: PhotoBackupSettingsController
+    private let errorController: ErrorController
+    private var cancellables = Set<AnyCancellable>()
 
     @Published var content: PhotosGalleryViewContent = .empty
+    let error = PassthroughSubject<Error?, Never>()
 
-    init(galleryController: PhotosGalleryController, settingsController: PhotoBackupSettingsController) {
+    init(galleryController: PhotosGalleryController, settingsController: PhotoBackupSettingsController, errorController: ErrorController) {
         self.galleryController = galleryController
         self.settingsController = settingsController
+        self.errorController = errorController
         subscribeToUpdates()
     }
 
@@ -55,5 +60,13 @@ final class PhotosGalleryViewModel: PhotosGalleryViewModelProtocol {
         }
         .removeDuplicates()
         .assign(to: &$content)
+
+        #if HAS_QA_FEATURES
+        errorController.errorPublisher
+            .sink { [weak self] error in
+                self?.error.send(error)
+            }
+            .store(in: &cancellables)
+        #endif
     }
 }

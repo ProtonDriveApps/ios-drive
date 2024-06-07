@@ -21,7 +21,7 @@
 
 import Foundation
 
-public final class AuthCredential: NSObject, NSCoding {
+public final class AuthCredential: NSObject, NSCoding, Codable {
 
     struct Key {
         static let keychainStore = "keychainStoreKeyProtectedWithMainKey"
@@ -68,12 +68,12 @@ public final class AuthCredential: NSObject, NSCoding {
         RefreshToken: \(refreshToken)
         SessionID: \(sessionID)
         UserName: \(userName)
-        UserUD: \(userID)
+        UserID: \(userID)
         """
     }
 
     public var isForUnauthenticatedSession: Bool { userID.isEmpty }
-    
+
     public init(sessionID: String,
                 accessToken: String,
                 refreshToken: String,
@@ -89,7 +89,7 @@ public final class AuthCredential: NSObject, NSCoding {
         self.privateKey = privateKey
         self.passwordKeySalt = passwordKeySalt
     }
-    
+
     @available(*, deprecated, message: "Please use the init method without expiration")
     public init(sessionID: String,
                 accessToken: String,
@@ -107,7 +107,7 @@ public final class AuthCredential: NSObject, NSCoding {
         self.privateKey = privateKey
         self.passwordKeySalt = passwordKeySalt
     }
-    
+
     public init(copying other: AuthCredential) {
         self.sessionID = other.sessionID
         self.accessToken = other.accessToken
@@ -158,7 +158,7 @@ public final class AuthCredential: NSObject, NSCoding {
         self.accessToken = accessToken
         self.refreshToken = refreshToken
     }
-    
+
     @available(*, deprecated, message: "Please use the update method without expiration")
     public func udpate(sessionID: String,
                        accessToken: String,
@@ -213,13 +213,20 @@ public final class AuthCredential: NSObject, NSCoding {
         NSKeyedUnarchiver.setClass(AuthCredential.classForKeyedUnarchiver(), forClassName: "ShareDev.AuthCredential")
         NSKeyedUnarchiver.setClass(AuthCredential.classForKeyedUnarchiver(), forClassName: "PushService.AuthCredential")
         NSKeyedUnarchiver.setClass(AuthCredential.classForKeyedUnarchiver(), forClassName: "PushServiceDev.AuthCredential")
+        NSKeyedUnarchiver.setClass(AuthCredential.classForKeyedUnarchiver(), forClassName: "ProtonCore_Networking.AuthCredential")
+        NSKeyedUnarchiver.setClass(AuthCredential.classForKeyedUnarchiver(), forClassName: "ProtonCoreNetworking.AuthCredential")
 
+        // Unarchive method that suppress this warning doesn't work when using old archive method (see below). Solution for this is to switch to
+        // Codable.
         return NSKeyedUnarchiver.unarchiveObject(with: data) as? AuthCredential
     }
 
     // MARK: - Class methods
 
     public func archive() -> Data {
+        // This can be replaced with `NSKeyedArchiver.archivedData(withRootObject: self, requiringSecureCoding: false)` to suppress this warning.
+        // But new `NSKeyedArchiver.archivedData` method throws. And `archive() -> Data` method doesn't have any mechanism how to return error.
+        // For now keep the warning in favor of refactoring this method.
         return NSKeyedArchiver.archivedData(withRootObject: self)
     }
 
@@ -244,8 +251,9 @@ extension AuthCredential {
                   userID: credential.userID,
                   privateKey: nil,
                   passwordKeySalt: nil)
+        update(password: credential.mailboxPassword)
     }
-    
+
     public func updatedKeepingKeyAndPasswordDataIntact(credential: Credential) -> AuthCredential {
         self.sessionID = credential.UID
         self.accessToken = credential.accessToken
@@ -273,11 +281,25 @@ public struct Credential: Equatable {
     @available(*, deprecated, renamed: "scopes")
     public var scope: Scopes { scopes }
     public var scopes: Scopes
-    
+
+    // This is either User Password (1-Password mode) or Mailbox Password (2-Password mode)
+    public var mailboxPassword: String = ""
+
     public var hasFullScope: Bool { scopes.contains("full") }
 
     public var isForUnauthenticatedSession: Bool { userID.isEmpty }
 
+    public init(UID: String, accessToken: String, refreshToken: String, userName: String, userID: String, scopes: Scopes, mailboxPassword: String) {
+        self.UID = UID
+        self.accessToken = accessToken
+        self.refreshToken = refreshToken
+        self.userName = userName
+        self.userID = userID
+        self.scopes = scopes
+        self.mailboxPassword = mailboxPassword
+    }
+
+    @available(*, deprecated, message: "Please use the init method with mailboxPassword")
     public init(UID: String, accessToken: String, refreshToken: String, userName: String, userID: String, scopes: Scopes) {
         self.UID = UID
         self.accessToken = accessToken
@@ -286,7 +308,7 @@ public struct Credential: Equatable {
         self.userID = userID
         self.scopes = scopes
     }
-    
+
     @available(*, deprecated, message: "Please use the init method without expiration and with scopes")
     public init(UID: String, accessToken: String, refreshToken: String, expiration: Date, userName: String, userID: String, scope: Scopes) {
         self.UID = UID
@@ -305,7 +327,7 @@ public struct Credential: Equatable {
         self.userID = userID
         self.scopes = res.scopes
     }
-    
+
     @available(*, deprecated, message: "Please update scopes property directly")
     public mutating func updateScope(_ newScope: BackendScope) {
         self.scopes = newScope.components(separatedBy: " ")
@@ -339,18 +361,20 @@ extension Credential {
                   refreshToken: authCredential.refreshToken,
                   userName: authCredential.userName,
                   userID: authCredential.userID,
-                  scopes: [])
+                  scopes: [],
+                  mailboxPassword: authCredential.mailboxpassword)
     }
-    
+
     public init(_ authCredential: AuthCredential, scopes: Scopes) {
         self.init(UID: authCredential.sessionID,
                   accessToken: authCredential.accessToken,
                   refreshToken: authCredential.refreshToken,
                   userName: authCredential.userName,
                   userID: authCredential.userID,
-                  scopes: scopes)
+                  scopes: scopes,
+                  mailboxPassword: authCredential.mailboxpassword)
     }
-    
+
     @available(*, deprecated, message: "Please use the init method with scopes")
     public init(_ authCredential: AuthCredential, scope: Scopes) {
         self.init(UID: authCredential.sessionID,
@@ -363,9 +387,9 @@ extension Credential {
 }
 
 public struct VerifyMethod: Equatable {
-    
+
     public var method: String
-    
+
     public init(string: String) {
         self.method = string
     }
@@ -380,11 +404,11 @@ extension VerifyMethod {
         case email
         case payment
     }
-    
+
     public init(predefinedMethod: PredefinedMethod) {
         self.method = predefinedMethod.rawValue
     }
-    
+
     public init?(predefinedString: String) {
         switch predefinedString {
         case PredefinedMethod.captcha.rawValue, PredefinedMethod.sms.rawValue,
@@ -393,7 +417,7 @@ extension VerifyMethod {
         default: return nil
         }
     }
-    
+
     public var predefinedMethod: PredefinedMethod? {
         switch method {
         case PredefinedMethod.captcha.rawValue: return .captcha
@@ -429,7 +453,7 @@ public struct HumanVerifyParameters {
     public var methods: [VerifyMethod] = []
     public var startToken: String?
     public var title: String?
-    
+
     public init(methods: [VerifyMethod] = [], startToken: String? = nil, title: String? = nil) {
         self.methods = methods
         self.startToken = startToken
@@ -456,7 +480,7 @@ public enum ChallengeType: Int {
     case WASM = 1
     case Argon2 = 2
     case ECDLP = 3
-    
+
     public init?(rawValue: Int) {
         switch rawValue {
         case 1:
@@ -510,7 +534,10 @@ public enum AuthErrors: Error {
     case parsingError(Error)
     case notImplementedYet(String)
     case wrongPassword
-    
+    case switchToSSOError
+    case switchToSRPError
+    case insufficientFIDO2Details
+
     // case serverError(NSError) <- This case was removed. Use networkingError instead. If you're logic depends on previously available NSError, use .underlyingError property.
     // In case you wonder why I'm writing a comment and not use @available(*, unavailable): it's because at the time of writing,
     // this bug is still open: https://bugs.swift.org/browse/SR-4079 and it renders availability mark for enum cases useless.
@@ -518,7 +545,7 @@ public enum AuthErrors: Error {
     public var underlyingError: NSError {
         switch self {
         case .emptyAuthResponse, .emptyAuthInfoResponse, .emptyServerSrpAuth, .wrongPassword,
-             .emptyClientSrpAuth, .emptyUserInfoResponse, .wrongServerProof, .notImplementedYet:
+                .emptyClientSrpAuth, .emptyUserInfoResponse, .wrongServerProof, .notImplementedYet, .switchToSSOError, .switchToSRPError, .insufficientFIDO2Details:
             return self as NSError
         case .addressKeySetupError(let error), .parsingError(let error):
             return error as NSError
@@ -530,7 +557,7 @@ public enum AuthErrors: Error {
     public var codeInNetworking: Int {
         switch self {
         case .emptyAuthResponse, .emptyAuthInfoResponse, .emptyServerSrpAuth, .wrongPassword,
-             .emptyClientSrpAuth, .emptyUserInfoResponse, .wrongServerProof, .notImplementedYet:
+                .emptyClientSrpAuth, .emptyUserInfoResponse, .wrongServerProof, .notImplementedYet, .switchToSSOError, .switchToSRPError, .insufficientFIDO2Details:
             return (self as NSError).code
         case .addressKeySetupError(let error), .parsingError(let error):
             return (error as NSError).code
@@ -541,7 +568,7 @@ public enum AuthErrors: Error {
 
     public var localizedDescription: String {
         switch self {
-        case .emptyAuthResponse, .emptyAuthInfoResponse, .emptyServerSrpAuth, .emptyClientSrpAuth, .emptyUserInfoResponse, .wrongServerProof, .wrongPassword:
+        case .emptyAuthResponse, .emptyAuthInfoResponse, .emptyServerSrpAuth, .emptyClientSrpAuth, .emptyUserInfoResponse, .wrongServerProof, .wrongPassword, .switchToSSOError, .switchToSRPError, .insufficientFIDO2Details:
             return (self as NSError).localizedDescription
         case .addressKeySetupError(let error), .parsingError(let error):
             return error.localizedDescription
@@ -551,7 +578,7 @@ public enum AuthErrors: Error {
             return message
         }
     }
-    
+
     public var isInvalidAccessToken: Bool {
         if case .networkingError(let responseError) = self, responseError.httpCode == 401 {
             return true
@@ -563,7 +590,7 @@ public enum AuthErrors: Error {
 extension AuthErrors: LocalizedError {
     public var errorDescription: String? {
         switch self {
-        case .emptyAuthResponse, .emptyAuthInfoResponse, .emptyServerSrpAuth, .emptyClientSrpAuth, .emptyUserInfoResponse, .wrongServerProof, .wrongPassword:
+        case .emptyAuthResponse, .emptyAuthInfoResponse, .emptyServerSrpAuth, .emptyClientSrpAuth, .emptyUserInfoResponse, .wrongServerProof, .wrongPassword, .switchToSSOError, .switchToSRPError, .insufficientFIDO2Details:
             return "Authentication error"
         case .addressKeySetupError(let error), .parsingError(let error):
             return error.localizedDescription

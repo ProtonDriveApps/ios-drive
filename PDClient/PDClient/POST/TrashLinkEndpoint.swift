@@ -17,38 +17,53 @@
 
 import Foundation
 
-struct TrashLinkEndpoint: Endpoint {
-    public struct Response: Codable {
-        var code: Int
+public struct TrashLinksParameters {
+    let shareId: Share.ShareID
+    let parentLinkId: Link.LinkID
+    let linkIds: [Link.LinkID]
+
+    public init(shareId: Share.ShareID, parentLinkId: Link.LinkID, linkIds: [Link.LinkID]) {
+        self.shareId = shareId
+        self.parentLinkId = parentLinkId
+        self.linkIds = linkIds
+    }
+}
+
+public struct TrashLinksResponse: Codable {
+    public struct Item: Codable {
+        public let linkID: String
+        public let response: Response
     }
 
-    struct Parameters {
-        let shareID: Share.ShareID
-        let parentLinkID: Link.LinkID
-        let body: Body
+    public struct Response: Codable {
+        public let code: Int
+        public let error: String?
+    }
 
-        init(shareID: Share.ShareID, parentLinkID: Link.LinkID, linkIDs: [Link.LinkID]) {
-            self.shareID = shareID
-            self.parentLinkID = parentLinkID
-            body = Body(linkIDs: linkIDs)
-        }
+    public let code: Int
+    public let responses: [Item]
+}
 
-        struct Body: Encodable {
-            let linkIDs: [Link.LinkID]
+/// Trash Children
+/// /shares/{enc_shareID}/folders/{enc_linkID}/trash_multiple
+struct TrashLinkEndpoint: Endpoint {
+    typealias Response = TrashLinksResponse
 
-            private enum CodingKeys: String, CodingKey {
-                case linkIDs = "LinkIDs"
-            }
+    struct Body: Encodable {
+        let linkIDs: [Link.LinkID]
+
+        private enum CodingKeys: String, CodingKey {
+            case linkIDs = "LinkIDs"
         }
     }
 
     var request: URLRequest
 
-    init(parameters: Parameters, service: APIService, credential: ClientCredential) {
+    init(parameters: TrashLinksParameters, service: APIService, credential: ClientCredential, breadcrumbs: Breadcrumbs) throws {
         var url = service.url(of: "/shares")
-        url.appendPathComponent(parameters.shareID)
+        url.appendPathComponent(parameters.shareId)
         url.appendPathComponent("/folders")
-        url.appendPathComponent(parameters.parentLinkID)
+        url.appendPathComponent(parameters.parentLinkId)
         url.appendPathComponent("/trash_multiple")
 
         var request = URLRequest(url: url)
@@ -58,7 +73,16 @@ struct TrashLinkEndpoint: Endpoint {
         headers.merge(service.authHeaders(credential), uniquingKeysWith: { $1 })
         headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
 
-        let body = try? JSONEncoder().encode(parameters.body)
+        let validLinkIDs = parameters.linkIds.filter { UUID(uuidString: $0) == nil }
+        guard !validLinkIDs.isEmpty else {
+            // if there are no valid linkIDs at all, there's no need to make the trash request at all
+            let invalidLinkIDs = parameters.linkIds.compactMap { UUID(uuidString: $0) }
+            let message = "Tried to trash a folder with invalid linkID(s) \(invalidLinkIDs) [folderID \(parameters.parentLinkId), shareID \(parameters.shareId)], breadcrumbs: \(breadcrumbs.collect().reduceIntoErrorMessage())"
+            assertionFailure(message)
+            throw InvalidLinkIdError(detailedMessage: message)
+        }
+        
+        let body = try? JSONEncoder().encode(Body(linkIDs: validLinkIDs))
         assert(body != nil, "Failed body encoding")
 
         request.httpBody = body

@@ -48,7 +48,7 @@ extension TabBarViewModel: DeeplinkableScene {
         return activity
     }
     
-    static public func restore(from userInfo: [AnyHashable : Any]?) -> RestorationInfo? {
+    public static func restore(from userInfo: [AnyHashable: Any]?) -> RestorationInfo? {
         guard let raw = userInfo?[Self.ActiveTabKey] as? NavigationBarButtonViewModel.RawValue,
               let tab = NavigationBarButtonViewModel(rawValue: raw) else
         {

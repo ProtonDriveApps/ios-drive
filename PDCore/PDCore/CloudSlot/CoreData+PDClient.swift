@@ -34,6 +34,7 @@ public extension Share {
         self.key = meta.key
         self.passphrase = meta.passphrase
         self.passphraseSignature = meta.passphraseSignature
+        self.type = ShareType(rawValue: Int16(meta.type.rawValue)) ?? .undefined
     }
     func fulfill(from meta: PDClient.ShareShort) {
         self.flags = meta.flags
@@ -64,6 +65,7 @@ public extension Node {
 public extension File {
     func fulfill(from meta: PDClient.Link) {
         super.fulfillBase(from: meta)
+        self.activeRevision?.xAttributes = meta.XAttr
         self.contentKeyPacket = meta.fileProperties?.contentKeyPacket
         self.contentKeyPacketSignature = meta.fileProperties?.contentKeyPacketSignature
     }
@@ -110,7 +112,11 @@ public extension Revision {
         self.size = meta.size
         self.state = meta.state
         self.xAttributes = meta.XAttr
-        self.thumbnailHash = meta.thumbnailHash
+        if !(self is PhotoRevision),
+           let hash = meta.thumbnailHash {
+            // Old way of getting a thumbnail hash. Should be removed once we switch to new thumbnails listing in My Files.
+            thumbnails.first?.sha256 = Data(base64Encoded: hash)
+        }
     }
 }
 

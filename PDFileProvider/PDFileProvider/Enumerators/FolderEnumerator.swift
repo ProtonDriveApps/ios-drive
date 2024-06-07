@@ -18,20 +18,21 @@
 import FileProvider
 import Combine
 import PDCore
-import os.log
 
-public class FolderEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWithItemsFromAPI, EnumeratorWithItemsFromDB, LogObject {
-    
-    public static var osLog: OSLog = OSLog(subsystem: "ProtonDriveFileProvider", category: "FolderEnumerator")
-    
+public class FolderEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWithItemsFromAPI, EnumeratorWithItemsFromDB {
     private weak var tower: Tower!
+    private let pageSize: Int
     private let nodeID: NodeIdentifier
+    
+    var shouldReenumerateItems: Bool
+    var changeObserver: FileProviderChangeObserver?
     
     private var _model: FolderModel! // backing property
     internal private(set) var model: FolderModel! {
         get {
             // swiftlint:disable force_try
             try! reinitializeModelIfNeeded()
+            // swiftlint:enable force_try
             return _model
         }
         set {
@@ -41,10 +42,16 @@ public class FolderEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWit
     
     internal var fetchFromAPICancellable: AnyCancellable?
     
-    public init(tower: Tower, nodeID: NodeIdentifier) throws {
+    public init(tower: Tower,
+                pageSize: Int = 5_000,
+                changeObserver: FileProviderChangeObserver? = nil,
+                nodeID: NodeIdentifier,
+                shouldReenumerateItems: Bool = false) {
         self.tower = tower
+        self.pageSize = pageSize
         self.nodeID = nodeID
-        super.init()
+        self.changeObserver = changeObserver
+        self.shouldReenumerateItems = shouldReenumerateItems
     }
     
     public func invalidate() {
@@ -60,20 +67,29 @@ public class FolderEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWit
     // MARK: Enumeration
     
     public func enumerateItems(for observer: NSFileProviderEnumerationObserver, startingAt page: NSFileProviderPage) {
+        let observers = [observer, changeObserver].compactMap { $0 }
+        changeObserver?.incrementSyncCounter()
+
         do {
             try self.reinitializeModelIfNeeded()
         } catch {
-            observer.finishEnumeratingWithError(Errors.mapToFileProviderError(Errors.failedToCreateModel)!)
-            ConsoleLogger.shared?.log("Failed to enumerate items due to model failing to be created", osLogType: Self.self)
+            observers.forEach { $0.finishEnumeratingWithError(Errors.mapToFileProviderError(Errors.failedToCreateModel)!) }
+            Log.error("Failed to enumerate items due to model failing to be created", domain: .fileProvider)
             return
         }
-        ConsoleLogger.shared?.log("Enumerating items for \(~self.model.node)", osLogType: Self.self)
+        Log.info("Enumerating items for \(~self.model.node)", domain: .fileProvider)
         
         self.model.loadFromCache()
-        if !self.model.node.isChildrenListFullyFetched {
-            self.fetchAllPagesFromAPI(observer)
+        guard let moc = model.node.moc else {
+            observers.forEach { $0.finishEnumeratingWithError(Errors.mapToFileProviderError(Errors.failedToCreateModel)!) }
+            return
+        }
+
+        let intPage = page.int
+        if moc.performAndWait({ !self.model.node.isChildrenListFullyFetched }) {
+            self.fetchPageFromAPI(intPage, observers: observers)
         } else {
-            self.fetchAllChildrenFromDB(observer)
+            self.fetchPageFromDB(intPage, pageSize: pageSize, observers: observers)
         }
     }
 
@@ -84,7 +100,8 @@ public class FolderEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWit
     }
     
     public func enumerateChanges(for observer: NSFileProviderChangeObserver, from syncAnchor: NSFileProviderSyncAnchor) {
-        self.enumerateChanges(observer, syncAnchor)
+        let observers = [observer, changeObserver].compactMap { $0 }
+        self.enumerateChanges(observers, syncAnchor)
     }
 }
 

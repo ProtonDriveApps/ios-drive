@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDCore
 
 protocol MonthFormatter {
     func formatMonth(from date: Date) -> String
@@ -33,7 +34,7 @@ final class LocalizedMonthFormatter: MonthFormatter {
     }
 
     func formatMonth(from date: Date) -> String {
-        let currentMonth = monthResource.getMonth(from: dateResource.getCurrentDate())
+        let currentMonth = monthResource.getMonth(from: dateResource.getDate())
         let month = monthResource.getMonth(from: date)
         if currentMonth == month {
             return "This month"

@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import UIKit
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 extension UIToolbar {
     public static func setupApparance() {

@@ -1,10 +1,10 @@
 #import "SentryAutoBreadcrumbTrackingIntegration.h"
 #import "SentryBreadcrumbTracker.h"
-#import "SentryDefaultCurrentDateProvider.h"
 #import "SentryDependencyContainer.h"
 #import "SentryFileManager.h"
 #import "SentryLog.h"
 #import "SentryOptions.h"
+#import "SentrySDK.h"
 #import "SentrySystemEventBreadcrumbs.h"
 
 NS_ASSUME_NONNULL_BEGIN
@@ -13,27 +13,31 @@ NS_ASSUME_NONNULL_BEGIN
 SentryAutoBreadcrumbTrackingIntegration ()
 
 @property (nonatomic, strong) SentryBreadcrumbTracker *breadcrumbTracker;
+
+#if TARGET_OS_IOS && SENTRY_HAS_UIKIT
 @property (nonatomic, strong) SentrySystemEventBreadcrumbs *systemEventBreadcrumbs;
+#endif // TARGET_OS_IOS && SENTRY_HAS_UIKIT
 
 @end
 
 @implementation SentryAutoBreadcrumbTrackingIntegration
 
-- (BOOL)installWithOptions:(nonnull SentryOptions *)options
+- (BOOL)installWithOptions:(SentryOptions *)options
 {
     if (![super installWithOptions:options]) {
         return NO;
     }
 
     [self installWithOptions:options
-             breadcrumbTracker:[[SentryBreadcrumbTracker alloc]
-                                   initWithSwizzleWrapper:[SentryDependencyContainer sharedInstance]
-                                                              .swizzleWrapper]
-        systemEventBreadcrumbs:[[SentrySystemEventBreadcrumbs alloc]
-                                      initWithFileManager:[SentryDependencyContainer sharedInstance]
-                                                              .fileManager
-                                   andCurrentDateProvider:[SentryDefaultCurrentDateProvider
-                                                              sharedInstance]]];
+             breadcrumbTracker:[[SentryBreadcrumbTracker alloc] init]
+#if TARGET_OS_IOS && SENTRY_HAS_UIKIT
+        systemEventBreadcrumbs:
+            [[SentrySystemEventBreadcrumbs alloc]
+                         initWithFileManager:[SentryDependencyContainer sharedInstance].fileManager
+                andNotificationCenterWrapper:[SentryDependencyContainer sharedInstance]
+                                                 .notificationCenterWrapper]
+#endif // TARGET_OS_IOS && SENTRY_HAS_UIKIT
+    ];
 
     return YES;
 }
@@ -48,17 +52,23 @@ SentryAutoBreadcrumbTrackingIntegration ()
  */
 - (void)installWithOptions:(nonnull SentryOptions *)options
          breadcrumbTracker:(SentryBreadcrumbTracker *)breadcrumbTracker
+#if TARGET_OS_IOS && SENTRY_HAS_UIKIT
     systemEventBreadcrumbs:(SentrySystemEventBreadcrumbs *)systemEventBreadcrumbs
+#endif // TARGET_OS_IOS && SENTRY_HAS_UIKIT
 {
     self.breadcrumbTracker = breadcrumbTracker;
-    [self.breadcrumbTracker start];
+    [self.breadcrumbTracker startWithDelegate:self];
 
+#if SENTRY_HAS_UIKIT
     if (options.enableSwizzling) {
         [self.breadcrumbTracker startSwizzle];
     }
+#endif // SENTRY_HAS_UIKIT
 
+#if TARGET_OS_IOS && SENTRY_HAS_UIKIT
     self.systemEventBreadcrumbs = systemEventBreadcrumbs;
-    [self.systemEventBreadcrumbs start];
+    [self.systemEventBreadcrumbs startWithDelegate:self];
+#endif // TARGET_OS_IOS && SENTRY_HAS_UIKIT
 }
 
 - (void)uninstall
@@ -66,9 +76,16 @@ SentryAutoBreadcrumbTrackingIntegration ()
     if (nil != self.breadcrumbTracker) {
         [self.breadcrumbTracker stop];
     }
+#if TARGET_OS_IOS && SENTRY_HAS_UIKIT
     if (nil != self.systemEventBreadcrumbs) {
         [self.systemEventBreadcrumbs stop];
     }
+#endif // TARGET_OS_IOS && SENTRY_HAS_UIKIT
+}
+
+- (void)addBreadcrumb:(SentryBreadcrumb *)crumb
+{
+    [SentrySDK addBreadcrumb:crumb];
 }
 
 @end

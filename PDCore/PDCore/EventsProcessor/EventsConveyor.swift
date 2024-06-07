@@ -20,16 +20,52 @@ import CoreData
 import PDClient
 
 /// Accepts unordered events from different sources and returns in a chronological order
-final class EventsConveyor: NSObject {
-    typealias HistoryRow = (event: GenericEvent, share: String)
+class EventsConveyor: NSObject {
     typealias EventPack = (event: GenericEvent, share: String, objectID: NSManagedObjectID)
+    
+    @SettingsStorage("EventsConveyor.latestEventFetchTime") var latestEventFetchTime: Date?
+    @SettingsStorage("EventsConveyor.latestFetchedEventID") var latestFetchedEventID: EventID?
+    @SettingsStorage("EventsConveyor.referenceDate") var referenceDate: Date?
+    @SettingsStorage("EventsConveyor.referenceID") var referenceID: EventID?
+    
+    // Only needed for migration to shared AppGroud UserDefaults
+    @FastStorage("lastEventFetchTime-Cloud") private var legacyLastEventFetchTime: Date?
+    @FastStorage("lastKnownEventID-Cloud") private var legacyLastScannedEventID: EventID?
+    @FastStorage("referenceDate-Cloud") private var legacyReferenceDate: Date?
     
     internal let persistentQueue: EventStorageManager
     private lazy var controller = self.persistentQueue.queue()
     private var entriesToProcess = [EventStorageManager.Entry]()
     
-    init(storage: EventStorageManager) {
+    init(storage: EventStorageManager, suite: SettingsStorageSuite) {
         self.persistentQueue = storage
+        
+        self._latestEventFetchTime.configure(with: suite)
+        self._latestFetchedEventID.configure(with: suite)
+        self._referenceDate.configure(with: suite)
+        self._referenceID.configure(with: suite)
+        
+        super.init()
+        
+        migrationFromCloudSlot()
+    }
+    
+    // These values were previously stored in app's UserDefaults and accessors were implemented in `CloudSlot`
+    // This method moved legacy values from app's UserDefaults to the app group's UserDefaults
+    private func migrationFromCloudSlot() {
+        if legacyLastEventFetchTime != nil, latestEventFetchTime == nil {
+            latestEventFetchTime = legacyLastEventFetchTime
+            legacyLastEventFetchTime = nil
+        }
+        if legacyLastScannedEventID != nil, latestFetchedEventID == nil {
+            latestFetchedEventID = legacyLastScannedEventID
+            referenceID = legacyLastScannedEventID
+            legacyLastScannedEventID = nil
+        }
+        if legacyReferenceDate != nil, referenceDate == nil {
+            referenceDate = legacyReferenceDate
+            legacyReferenceDate = nil
+        }
     }
     
     func prepareForProcessing() {
@@ -97,24 +133,25 @@ final class EventsConveyor: NSObject {
         }
         return event
     }
+    
+    func hasUnprocessedEvents() -> Bool {
+        do {
+            return try self.persistentQueue.unprocessedEventCount() > 0
+        } catch {
+            return false
+        }
+    }
 }
 
 extension EventsConveyor {
     enum Errors: Error {
         case lostEventsDuringConversion
     }
-    
-    func lastProcessedEvent() -> GenericEvent? {
-        lastEvent(onlyProcessed: true)
-    }
 
-    func lastReceivedEvent() -> GenericEvent? {
-        lastEvent(onlyProcessed: false)
-    }
-
-    private func lastEvent(onlyProcessed: Bool) -> GenericEvent? {
+    /// Latest event that's been both used to update the metadata DB and enumerated
+    func lastFullyHandledEvent() -> GenericEvent? {
         do {
-            guard let entry = try self.persistentQueue.lastEvent(onlyProcessed: onlyProcessed),
+            guard let entry = try self.persistentQueue.lastFullyHandledEvent(),
                   let pack = makeEventPack(from: entry) else
             {
                 return nil
@@ -126,12 +163,38 @@ extension EventsConveyor {
         }
     }
     
-    func history(since anchor: EventID?) throws -> [HistoryRow] {
-        let persistedEvents = try self.persistentQueue.events(since: anchor)
-        let events = persistedEvents.compactMap(self.makeEventPack).map { ($0.event, $0.share) }
+    func lastEventAwaitingEnumeration() -> GenericEvent? {
+        lastEvent(awaitingEnumerationOnly: true)
+    }
+
+    func lastReceivedEvent() -> GenericEvent? {
+        lastEvent(awaitingEnumerationOnly: false)
+    }
+
+    private func lastEvent(awaitingEnumerationOnly: Bool) -> GenericEvent? {
+        do {
+            guard let entry = try self.persistentQueue.lastEvent(awaitingEnumerationOnly: awaitingEnumerationOnly),
+                  let pack = makeEventPack(from: entry) else
+            {
+                return nil
+            }
+            return pack.event
+        } catch let error {
+            assert(false, error.localizedDescription)
+            return nil
+        }
+    }
+    
+    func history(since anchor: EventID?) throws -> [EventPack] {
+        let persistedEvents = try self.persistentQueue.eventsAwaitingEnumeration(since: anchor)
+        let events = persistedEvents.compactMap(self.makeEventPack)
         guard events.count == persistedEvents.count else {
             throw Errors.lostEventsDuringConversion
         }
         return events
+    }
+    
+    func setEnumerated(_ objectIDs: [NSManagedObjectID]) {
+        self.persistentQueue.setEnumerated(objectIDs)
     }
 }

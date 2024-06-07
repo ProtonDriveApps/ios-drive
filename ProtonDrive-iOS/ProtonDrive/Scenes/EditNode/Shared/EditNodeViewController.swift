@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import PDUIComponents
 
 final class EditNodeViewController: UIViewController {
@@ -53,13 +53,17 @@ final class EditNodeViewController: UIViewController {
         }
 
         viewModel.onSuccess = { [weak self] in
-            self?.hideSpinner()
-            self?.dismissViewController()
+            DispatchQueue.main.async {
+                self?.hideSpinner()
+                self?.dismissViewController()
+            }
         }
-
+        
         viewModel.onError = { [weak self] error in
-            self?.hideSpinner()
-            self?.showError(error)
+            DispatchQueue.main.async {
+                self?.hideSpinner()
+                self?.showError(error)
+            }
         }
     }
 
@@ -80,7 +84,13 @@ final class EditNodeViewController: UIViewController {
     }
 
     private func showError(_ error: Error) {
-        let banner = PMBanner(message: error.messageForTheUser, style: PMBannerNewStyle.error)
+        // Longer duration for UI test to prevent test failed due to banner dismiss too early
+        let duration: TimeInterval = Constants.isUITest ? 90 : 4
+        let banner = PMBanner(
+            message: error.localizedDescription,
+            style: PMBannerNewStyle.error,
+            dismissDuration: duration
+        )
         banner.accessibilityIdentifier = "EditNodeViewController.showError.errorToast"
         banner.show(at: .bottom, on: self)
     }

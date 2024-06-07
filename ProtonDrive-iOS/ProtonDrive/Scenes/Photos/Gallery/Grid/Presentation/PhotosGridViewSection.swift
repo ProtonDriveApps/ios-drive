@@ -15,21 +15,28 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Foundation
+
 struct PhotosGridViewSection: Identifiable {
     var id: String {
         title
     }
 
     let title: String
+    let isFirst: Bool
     let items: [PhotoGridViewItem]
 }
 
-struct PhotoGridViewItem: Identifiable {
+struct PhotoGridViewItem: Identifiable, Hashable {
     var id: String {
         photoId
     }
 
     let photoId: String
     let shareId: String
-    let duration: String?
+    let isShared: Bool
+    let isVideo: Bool
+    let captureTime: Date
+    let isDownloading: Bool
+    let isAvailableOffline: Bool
 }

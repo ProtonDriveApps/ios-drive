@@ -15,7 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-struct NameHashPair: Equatable {
+public struct NameHashPair: Equatable {
     let name: String
     let hash: String
+
+    public init(name: String, hash: String) {
+        self.name = name
+        self.hash = hash
+    }
 }

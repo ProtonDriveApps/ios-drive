@@ -19,10 +19,10 @@ import PDCore
 import UIKit
 import SwiftUI
 import PDUIComponents
-import ProtonCore_Settings
-import ProtonCore_Services
-import ProtonCore_HumanVerification
-import ProtonCore_Payments
+import PMSettings
+import ProtonCoreServices
+import ProtonCoreHumanVerification
+import ProtonCorePayments
 import PMSideMenu
 
 extension AuthenticatedDependencyContainer {
@@ -48,7 +48,16 @@ extension AuthenticatedDependencyContainer {
 
     private func makeSideMenuViewController() -> SideMenuViewController {
         let menuModel = MenuModel(sessionVault: tower.sessionVault)
-        let menuViewModel = MenuViewModel(model: menuModel, offlineSaver: tower.offlineSaver)
+        
+        guard let offlineSaver = tower.offlineSaver else {
+            fatalError("offlineSaver must be non-nil in the iOS app")
+        }
+        #if HAS_BETA_FEATURES
+        let logLoader = FileLogContent()
+        #else
+        let logLoader: LogContentLoader? = nil
+        #endif
+        let menuViewModel = MenuViewModel(model: menuModel, offlineSaver: offlineSaver, logLoader: logLoader)
         return SideMenuViewController(menuViewModel: menuViewModel)
     }
 
@@ -72,19 +81,12 @@ extension AuthenticatedDependencyContainer {
     private func makeMyFilesViewControllerFactory(root: NodeIdentifier) -> UIViewController {
         let myFilesViewController = makeFilesViewControllerFactory(root: root)
         factory.configureFilesTab(in: myFilesViewController)
-        
+
         let sharedViewController = makeSharedViewController(root: root)
         factory.configureSharedTab(in: sharedViewController)
 
-        var viewControllers = [myFilesViewController, sharedViewController]
-
-        #if HAS_PHOTOS
-            let photosViewController = photosContainer.makeRootViewController()
-            factory.configurePhotosTab(in: photosViewController)
-            viewControllers.insert(photosViewController, at: 1)
-        #endif
-
-        return factory.makeTabBarController(children: viewControllers)
+        let viewControllers = [myFilesViewController, sharedViewController]
+        return factory.makeTabBarController(container: self, children: viewControllers)
     }
 
     private func makeFilesViewControllerFactory(root: NodeIdentifier) -> UIViewController {
@@ -95,7 +97,7 @@ extension AuthenticatedDependencyContainer {
     }
     
     private func makeSharedViewController(root: NodeIdentifier) -> UIViewController {
-        let rootSharedView = RootSharedView(deeplink: nil, tower: tower, shareID: root.shareID)
+        let rootSharedView = RootSharedView(deeplink: nil, tower: tower)
         let rootView = RootView(vm: RootViewModel(), activeArea: { rootSharedView })
         return UIHostingController(rootView: rootView)
     }
@@ -114,29 +116,22 @@ extension AuthenticatedDependencyContainer {
     }
 
     private func makePlansViewController() -> UIViewController {
-        let payments = Payments(
-            inAppPurchaseIdentifiers: Constants.drivePlanIDs,
-            apiService: networkService,
-            localStorage: tower.paymentsStorage,
-            reportBugAlertHandler: nil
-        )
-        let viewController = SubscriptionViewController(
-            isUnlocked: !keymaker.isLocked(),
-            isSignedIn: tower.sessionVault.isSignedIn(),
-            userId: tower.sessionVault.clientCredential()?.userID,
-            activeUsername: tower.sessionVault.getAccountInfo()?.displayName,
-            payments: payments
-        )
-        let navigationController = UINavigationController(rootViewController: viewController)
-        return navigationController
+        let dependencies = SubscriptionsContainer.Dependencies(tower: tower, keymaker: keymaker, networkService: networkService)
+        let container = SubscriptionsContainer(dependencies: dependencies)
+        let viewController = container.makeRootViewController()
+        return MenuNavigationViewController(rootViewController: viewController)
     }
 
+    @MainActor
     private func makeSettingsViewController() -> UIViewController {
+        var photos: PhotosSettingsContainer?
         #if HAS_PHOTOS
-            let photosContainer = photosContainer.settingsContainer
+            if tower.featureFlags.isEnabled(flag: .photosEnabled) {
+                photos = photosContainer.settingsContainer
+            }
         #else
-            let photosContainer: PhotosSettingsContainer? = nil
+            photos = nil
         #endif
-        return SettingsAssembler.assemble(apiService: networkService, tower: tower, keymaker: keymaker, photosContainer: photosContainer)
+        return SettingsAssembler.assemble(apiService: networkService, tower: tower, keymaker: keymaker, photosContainer: photos)
     }
 }

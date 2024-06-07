@@ -19,26 +19,26 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
-// swiftlint:disable identifier_name todo function_parameter_count
+// swiftlint:disable identifier_name todo
 
 import Foundation
-import ProtonCore_Doh
-import ProtonCore_Log
-import ProtonCore_Foundations
-import ProtonCore_Utilities
-import ProtonCore_Networking
+import ProtonCoreDoh
+import ProtonCoreLog
+import ProtonCoreFoundations
+import ProtonCoreUtilities
+import ProtonCoreNetworking
 
 extension Bundle {
     /// Returns the app version in a nice to read format
     var appVersion: String {
         return "\(majorVersion) (\(buildVersion))"
     }
-    
+
     /// Returns the build version of the app.
     var buildVersion: String {
         return infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
     }
-    
+
     /// Returns the major version of the app.
     public var majorVersion: String {
         return infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
@@ -46,22 +46,22 @@ extension Bundle {
 }
 
 public protocol APIServerConfig {
-    
+
     // host name    xxx.xxxxxxx.com
     var host: String { get }
-    
+
     // http https ws wss etc ...
     var `protocol`: String { get }
-    
+
     // prefixed path after host example:  /api
     var path: String { get }
-    
+
     // full host with protocol, without path
     var hostUrl: String { get }
 }
 
 extension APIServerConfig {
-    
+
     public var hostUrl: String {
         return self.protocol + "://" + self.host
     }
@@ -71,35 +71,37 @@ extension APIServerConfig {
 public typealias CompletionBlock = (_ task: URLSessionDataTask?, _ response: [String: Any]?, _ error: NSError?) -> Void
 
 public protocol API {
-    
+
     // TODO: consider switching to a proper error, if it's even resonable without a major rewrite
     typealias APIError = NSError
     typealias DecodableCompletion<T> = (_ task: URLSessionDataTask?, _ result: Result<T, APIError>) -> Void where T: APIDecodableResponse
     // TODO: modernize the download as well?
     typealias DownloadCompletion = (URLResponse?, URL?, NSError?) -> Void
-    
+
     func request(method: HTTPMethod,
                  path: String,
                  parameters: Any?,
                  headers: [String: Any]?,
                  authenticated: Bool,
-                 autoRetry: Bool,
+                 authRetry: Bool,
                  customAuthCredential: AuthCredential?,
                  nonDefaultTimeout: TimeInterval?,
                  retryPolicy: ProtonRetryPolicy.RetryMode,
+                 onDataTaskCreated: @escaping (URLSessionDataTask) -> Void,
                  jsonCompletion: @escaping JSONCompletion)
-    
+
     func request<T>(method: HTTPMethod,
                     path: String,
                     parameters: Any?,
                     headers: [String: Any]?,
                     authenticated: Bool,
-                    autoRetry: Bool,
+                    authRetry: Bool,
                     customAuthCredential: AuthCredential?,
                     nonDefaultTimeout: TimeInterval?,
                     retryPolicy: ProtonRetryPolicy.RetryMode,
+                    onDataTaskCreated: @escaping (URLSessionDataTask) -> Void,
                     decodableCompletion: @escaping DecodableCompletion<T>) where T: APIDecodableResponse
-    
+
     func download(byUrl url: String,
                   destinationDirectoryURL: URL,
                   headers: [String: Any]?,
@@ -109,7 +111,7 @@ public protocol API {
                   retryPolicy: ProtonRetryPolicy.RetryMode,
                   downloadTask: ((URLSessionDownloadTask) -> Void)?,
                   downloadCompletion: @escaping DownloadCompletion)
-    
+
     func upload(byPath path: String,
                 parameters: [String: String],
                 keyPackets: Data,
@@ -122,7 +124,7 @@ public protocol API {
                 retryPolicy: ProtonRetryPolicy.RetryMode,
                 uploadProgress: ProgressCompletion?,
                 jsonCompletion: @escaping JSONCompletion)
-    
+
     func upload<T>(byPath path: String,
                    parameters: [String: String],
                    keyPackets: Data,
@@ -135,7 +137,7 @@ public protocol API {
                    retryPolicy: ProtonRetryPolicy.RetryMode,
                    uploadProgress: ProgressCompletion?,
                    decodableCompletion: @escaping DecodableCompletion<T>) where T: APIDecodableResponse
-    
+
     func upload(byPath path: String,
                 parameters: Any?,
                 files: [String: URL],
@@ -146,7 +148,7 @@ public protocol API {
                 retryPolicy: ProtonRetryPolicy.RetryMode,
                 uploadProgress: ProgressCompletion?,
                 jsonCompletion: @escaping JSONCompletion)
-    
+
     func upload<T>(byPath path: String,
                    parameters: Any?,
                    files: [String: URL],
@@ -157,7 +159,7 @@ public protocol API {
                    retryPolicy: ProtonRetryPolicy.RetryMode,
                    uploadProgress: ProgressCompletion?,
                    decodableCompletion: @escaping DecodableCompletion<T>) where T: APIDecodableResponse
-    
+
     func uploadFromFile(byPath path: String,
                         parameters: [String: String],
                         keyPackets: Data,
@@ -170,7 +172,7 @@ public protocol API {
                         retryPolicy: ProtonRetryPolicy.RetryMode,
                         uploadProgress: ProgressCompletion?,
                         jsonCompletion: @escaping JSONCompletion)
-    
+
     func uploadFromFile<T>(byPath path: String,
                            parameters: [String: String],
                            keyPackets: Data,
@@ -185,20 +187,69 @@ public protocol API {
                            decodableCompletion: @escaping DecodableCompletion<T>) where T: APIDecodableResponse
 }
 
+// Variants without `onDataTaskCreated: @escaping (URLSessionDataTask) -> Void` parameter
 public extension API {
-    
+    func request(method: HTTPMethod,
+                 path: String,
+                 parameters: Any?,
+                 headers: [String: Any]?,
+                 authenticated: Bool,
+                 authRetry: Bool,
+                 customAuthCredential: AuthCredential?,
+                 nonDefaultTimeout: TimeInterval?,
+                 retryPolicy: ProtonRetryPolicy.RetryMode,
+                 jsonCompletion: @escaping JSONCompletion) {
+        self.request(method: method,
+                     path: path,
+                     parameters: parameters,
+                     headers: headers,
+                     authenticated: authenticated,
+                     authRetry: authRetry,
+                     customAuthCredential: customAuthCredential,
+                     nonDefaultTimeout: nonDefaultTimeout,
+                     retryPolicy: retryPolicy,
+                     onDataTaskCreated: { _ in },
+                     jsonCompletion: jsonCompletion)
+    }
+
+    func request<T>(method: HTTPMethod,
+                    path: String,
+                    parameters: Any?,
+                    headers: [String: Any]?,
+                    authenticated: Bool,
+                    authRetry: Bool,
+                    customAuthCredential: AuthCredential?,
+                    nonDefaultTimeout: TimeInterval?,
+                    retryPolicy: ProtonRetryPolicy.RetryMode,
+                    decodableCompletion: @escaping DecodableCompletion<T>) where T: APIDecodableResponse {
+        self.request(method: method,
+                     path: path,
+                     parameters: parameters,
+                     headers: headers,
+                     authenticated: authenticated,
+                     authRetry: authRetry,
+                     customAuthCredential: customAuthCredential,
+                     nonDefaultTimeout: nonDefaultTimeout,
+                     retryPolicy: retryPolicy,
+                     onDataTaskCreated: { _ in },
+                     decodableCompletion: decodableCompletion)
+    }
+}
+
+public extension API {
+
     @available(*, deprecated, message: "Please use the variant returning either DecodableResponseCompletion or JSONResponseCompletion")
     func request(method: HTTPMethod,
                  path: String,
                  parameters: Any?,
                  headers: [String: Any]?,
                  authenticated: Bool,
-                 autoRetry: Bool,
+                 authRetry: Bool,
                  customAuthCredential: AuthCredential?,
                  nonDefaultTimeout: TimeInterval?,
                  retryPolicy: ProtonRetryPolicy.RetryMode = .userInitiated,
                  completion: CompletionBlock?) {
-        request(method: method, path: path, parameters: parameters, headers: headers, authenticated: authenticated, autoRetry: autoRetry,
+        request(method: method, path: path, parameters: parameters, headers: headers, authenticated: authenticated, authRetry: authRetry,
                 customAuthCredential: customAuthCredential, nonDefaultTimeout: nonDefaultTimeout, retryPolicy: retryPolicy) { task, result in
             switch result {
             case .success(let dict): completion?(task, dict, nil)
@@ -206,22 +257,22 @@ public extension API {
             }
         }
     }
-    
+
     @available(*, deprecated, message: "Please use the variant returning either DecodableResponseCompletion or JSONResponseCompletion")
     func request(method: HTTPMethod,
                  path: String,
                  parameters: Any?,
                  headers: [String: Any]?,
                  authenticated: Bool,
-                 autoRetry: Bool,
+                 authRetry: Bool,
                  customAuthCredential: AuthCredential?,
                  retryPolicy: ProtonRetryPolicy.RetryMode = .userInitiated,
                  completion: CompletionBlock?) {
         self.request(method: method, path: path, parameters: parameters, headers: headers,
-                     authenticated: authenticated, autoRetry: autoRetry, customAuthCredential: customAuthCredential,
+                     authenticated: authenticated, authRetry: authRetry, customAuthCredential: customAuthCredential,
                      nonDefaultTimeout: nil, retryPolicy: retryPolicy, completion: completion)
     }
-    
+
     @available(*, deprecated, message: "Please use the variant returning either DecodableResponseCompletion or JSONResponseCompletion")
     func upload(byPath path: String,
                 parameters: Any?,
@@ -245,19 +296,19 @@ public extension API {
 }
 
 public protocol APIServiceDelegate: AnyObject {
-    
+
     var appVersion: String { get }
-    
+
     var userAgent: String? { get }
-    
+
     var locale: String { get }
-    
+
     var additionalHeaders: [String: String]? { get }
-    
+
     func onUpdate(serverTime: Int64)
-    
+
     func isReachable() -> Bool
-    
+
     func onDohTroubleshot()
 }
 
@@ -323,18 +374,37 @@ public protocol AuthDelegate: AnyObject {
 public typealias AuthRefreshComplete = (_ auth: Credential?, _ hasError: AuthErrors?) -> Void
 
 public enum SessionAcquiringResult {
-    case sessionFetchedAndAvailable
-    case sessionAlreadyPresent
+    case sessionFetchedAndAvailable(AuthCredential)
+    case sessionAlreadyPresent(AuthCredential)
     case sessionUnavailableAndNotFetched
+}
+
+public enum AuthCredentialFetchingResult: Equatable {
+    case found(credentials: AuthCredential)
+    case notFound
+    case wrongConfigurationNoDelegate
+
+    public var toNSError: NSError? {
+        switch self {
+        case .found: return nil
+        case .notFound: return AuthCredentialFetchingResult.emptyTokenError
+        case .wrongConfigurationNoDelegate: return AuthCredentialFetchingResult.noAuthDelegateError
+        }
+    }
+
+    static var noAuthDelegateError: NSError { .protonMailError(0, localizedDescription: "AuthDelegate is required") }
+
+    static var emptyTokenError: NSError { .protonMailError(0, localizedDescription: "Empty token") }
 }
 
 public protocol APIService: API, RequestPerforming {
 
     // session and credentials management
     var sessionUID: String { get }
+    func getSession() -> Session?
     func setSessionUID(uid: String)
     func acquireSessionIfNeeded(completion: @escaping (Result<SessionAcquiringResult, APIError>) -> Void)
-
+    func fetchAuthCredentials(completion: @escaping (AuthCredentialFetchingResult) -> Void)
     // delegates
     var authDelegate: AuthDelegate? { get set }
     var serviceDelegate: APIServiceDelegate? { get set }
@@ -352,9 +422,10 @@ public protocol APIService: API, RequestPerforming {
 typealias RequestComplete = (_ task: URLSessionDataTask?, _ response: Response) -> Void
 
 public extension APIService {
-    
+
     func perform(request route: Request,
                  callCompletionBlockUsing executor: CompletionBlockExecutor = .asyncMainExecutor,
+                 onDataTaskCreated: @escaping (URLSessionDataTask) -> Void = { _ in },
                  jsonDictionaryCompletion: @escaping (_ task: URLSessionDataTask?, _ result: Result<JSONDictionary, ResponseError>) -> Void) {
         // TODO: add executor to request so it can be passed to DoH
         request(method: route.method,
@@ -362,10 +433,11 @@ public extension APIService {
                 parameters: route.calculatedParameters,
                 headers: route.header,
                 authenticated: route.isAuth,
-                autoRetry: route.autoRetry,
+                authRetry: route.authRetry,
                 customAuthCredential: route.authCredential,
                 nonDefaultTimeout: route.nonDefaultTimeout,
-                retryPolicy: route.retryPolicy) { (task, result: Result<JSONDictionary, APIError>) in
+                retryPolicy: route.retryPolicy,
+                onDataTaskCreated: onDataTaskCreated) { (task, result: Result<JSONDictionary, APIError>) in
             executor.execute {
                 let httpCode = task.flatMap(\.response).flatMap { $0 as? HTTPURLResponse }.map(\.statusCode)
                 switch result {
@@ -394,12 +466,15 @@ public extension APIService {
     /// Asynchronous variant of `perform(request:callCompletionBlockUsing:jsonDictionaryCompletion)`.
     ///  - Return a tuple of type `(URLSessionDataTask?, JSONDictionary)` if success.
     ///  - Throw an error of type `ResponseError` if failure.
-    @available(iOS 13.0, macOS 10.15, *)
+    @available(macOS 10.15, *)
     func perform(request route: Request,
+                 onDataTaskCreated: @escaping (URLSessionDataTask) -> Void = { _ in },
                  callCompletionBlockUsing executor: CompletionBlockExecutor = .asyncMainExecutor)
     async throws -> (URLSessionDataTask?, JSONDictionary) {
         try await withCheckedThrowingContinuation { continuation in
-            perform(request: route, callCompletionBlockUsing: executor) { task, result in
+            perform(request: route,
+                    callCompletionBlockUsing: executor,
+                    onDataTaskCreated: onDataTaskCreated) { task, result in
                 switch result {
                 case .success(let jsonDictionary):
                     continuation.resume(returning: (task, jsonDictionary))
@@ -413,16 +488,18 @@ public extension APIService {
     func perform<R>(request route: Request,
                     response: R,
                     callCompletionBlockUsing executor: CompletionBlockExecutor = .asyncMainExecutor,
+                    onDataTaskCreated: @escaping (URLSessionDataTask) -> Void = { _ in },
                     responseCompletion: @escaping (_ task: URLSessionDataTask?, _ response: R) -> Void) where R: ResponseType {
         request(method: route.method,
                 path: route.path,
                 parameters: route.calculatedParameters,
                 headers: route.header,
                 authenticated: route.isAuth,
-                autoRetry: route.autoRetry,
+                authRetry: route.authRetry,
                 customAuthCredential: route.authCredential,
                 nonDefaultTimeout: route.nonDefaultTimeout,
-                retryPolicy: route.retryPolicy) { (task, result: Result<JSONDictionary, APIError>) in
+                retryPolicy: route.retryPolicy,
+                onDataTaskCreated: onDataTaskCreated) { (task, result: Result<JSONDictionary, APIError>) in
             executor.execute {
                 let httpCode = task.flatMap(\.response).flatMap { $0 as? HTTPURLResponse }.map(\.statusCode)
                 switch result {
@@ -459,15 +536,17 @@ public extension APIService {
 
     /// Asynchronous variant of `perform(request:response:callCompletionBlockUsing:responseCompletion)`.
     /// - Return a tuple of type `(URLSessionDataTask?, some ResponseType)`
-    @available(iOS 13.0, macOS 10.15, *)
+    @available(macOS 10.15, *)
     func perform<R>(request route: Request,
                     response: R,
-                    callCompletionBlockUsing executor: CompletionBlockExecutor = .asyncMainExecutor)
+                    callCompletionBlockUsing executor: CompletionBlockExecutor = .asyncMainExecutor,
+                    onDataTaskCreated: @escaping (URLSessionDataTask) -> Void = { _ in })
     async -> (URLSessionDataTask?, R) where R: ResponseType {
         await withCheckedContinuation { continuation in
             perform(request: route,
                     response: response,
-                    callCompletionBlockUsing: executor) { task, result in
+                    callCompletionBlockUsing: executor,
+                    onDataTaskCreated: onDataTaskCreated) { task, result in
                 continuation.resume(returning: (task, result))
             }
         }
@@ -475,6 +554,7 @@ public extension APIService {
 
     func perform<T>(request route: Request,
                     callCompletionBlockUsing executor: CompletionBlockExecutor = .asyncMainExecutor,
+                    onDataTaskCreated: @escaping (URLSessionDataTask) -> Void = { _ in },
                     decodableCompletion: @escaping (_ task: URLSessionDataTask?, _ result: Result<T, ResponseError>) -> Void)
     where T: APIDecodableResponse {
         request(method: route.method,
@@ -482,10 +562,11 @@ public extension APIService {
                 parameters: route.calculatedParameters,
                 headers: route.header,
                 authenticated: route.isAuth,
-                autoRetry: route.autoRetry,
+                authRetry: route.authRetry,
                 customAuthCredential: route.authCredential,
                 nonDefaultTimeout: route.nonDefaultTimeout,
-                retryPolicy: route.retryPolicy) { (task: URLSessionDataTask?, result: Result<T, APIError>) in
+                retryPolicy: route.retryPolicy,
+                onDataTaskCreated: onDataTaskCreated) { (task: URLSessionDataTask?, result: Result<T, APIError>) in
             executor.execute {
                 let httpCode = task.flatMap(\.response).flatMap { $0 as? HTTPURLResponse }.map(\.statusCode)
                 switch result {
@@ -508,13 +589,15 @@ public extension APIService {
     /// Asynchronous variant of `perform(request:callCompletionBlockUsing:decodableCompletion)`.
     /// - Return a tuple of type `(URLSessionDataTask?, APIDecodableResponse)` if success.
     /// - Throw an error of type `ResponseError` if failure.
-    @available(iOS 13.0, macOS 10.15, *)
+    @available(macOS 10.15, *)
     func perform<R>(request route: Request,
-                    callCompletionBlockUsing executor: CompletionBlockExecutor = .asyncMainExecutor)
+                    callCompletionBlockUsing executor: CompletionBlockExecutor = .asyncMainExecutor,
+                    onDataTaskCreated: @escaping (URLSessionDataTask) -> Void = { _ in })
     async throws -> (URLSessionDataTask?, R) where R: APIDecodableResponse {
         try await withCheckedThrowingContinuation { continuation in
             perform(request: route,
                     callCompletionBlockUsing: executor,
+                    onDataTaskCreated: onDataTaskCreated,
                     decodableCompletion: { (task: URLSessionDataTask?, result: Result<R, ResponseError>) in
                 switch result {
                 case .success(let object):
@@ -534,7 +617,7 @@ public extension APIService {
                        callCompletionBlockUsing executor: CompletionBlockExecutor = .asyncMainExecutor,
                        uploadProgress: ProgressCompletion?,
                        jsonDictionaryCompletion complete: @escaping (_ task: URLSessionDataTask?, _ result: Result<JSONDictionary, ResponseError>) -> Void) {
-        
+
         upload(byPath: route.path,
                parameters: route.calculatedParameters,
                files: files,
@@ -544,7 +627,7 @@ public extension APIService {
                nonDefaultTimeout: route.nonDefaultTimeout,
                retryPolicy: route.retryPolicy,
                uploadProgress: uploadProgress) { (task: URLSessionDataTask?, result: Result<JSONDictionary, APIService.APIError>) in
-            
+
             executor.execute {
                 let httpCode = task.flatMap(\.response).flatMap { $0 as? HTTPURLResponse }.map(\.statusCode)
                 switch result {
@@ -552,7 +635,7 @@ public extension APIService {
                     if let code = response.code, let errorMessage = response.errorMessage {
                         let responseError = ResponseError(httpCode: httpCode, responseCode: code, userFacingMessage: errorMessage, underlyingError: nil)
                         complete(task, .failure(responseError))
-                    
+
                     } else {
                         complete(task, .success(response))
                     }
@@ -565,13 +648,13 @@ public extension APIService {
             }
         }
     }
-    
+
     func performUpload<T>(request route: Request,
                           files: [String: URL],
                           callCompletionBlockUsing executor: CompletionBlockExecutor = .asyncMainExecutor,
                           uploadProgress: ProgressCompletion?,
                           decodableCompletion complete: @escaping (_ task: URLSessionDataTask?, _ result: Result<T, ResponseError>) -> Void) where T: APIDecodableResponse {
-        
+
         upload(byPath: route.path,
                parameters: route.calculatedParameters,
                files: files,
@@ -595,18 +678,18 @@ public extension APIService {
             }
         }
     }
-    
+
 }
 
 // MARK: - Deprecated APIs
 
 public extension APIService {
-    
+
     @available(*, deprecated, message: "Use perform method")
     func exec<T>(route: Request, response: T = T()) -> T? where T: Response {
         exec(route: route, responseObject: response)
     }
-    
+
     @available(*, deprecated, message: "Use perform method")
     func exec<T>(route: Request, responseObject: T) -> T? where T: Response {
         var ret_res: T?
@@ -629,32 +712,32 @@ public extension APIService {
                      parameters: route.calculatedParameters,
                      headers: route.header,
                      authenticated: route.isAuth,
-                     autoRetry: route.autoRetry,
+                     authRetry: route.authRetry,
                      customAuthCredential: route.authCredential,
                      nonDefaultTimeout: route.nonDefaultTimeout,
                      retryPolicy: route.retryPolicy,
                      jsonCompletion: completionWrapper)
-        
+
         // wait operations
         _ = sema.wait(timeout: DispatchTime.distantFuture)
         if let e = ret_error {
-            PMLog.debug(e.localizedDescription)
+            PMLog.error(e.localizedDescription, sendToExternal: true)
         }
         return ret_res
     }
-    
+
     @available(*, deprecated, message: "Use perform method")
     func exec<T>(route: Request,
                  response: T = T(),
                  complete: @escaping  (_ task: URLSessionDataTask?, _ response: T) -> Void) where T: Response {
         exec(route: route, responseObject: response, complete: complete)
     }
-    
+
     @available(*, deprecated, message: "Use perform method")
     func exec<T>(route: Request,
                  responseObject: T,
                  complete: @escaping  (_ task: URLSessionDataTask?, _ response: T) -> Void) where T: Response {
-        
+
         // 1 make a request , 2 wait for the respons async 3. valid response 4. parse data into response 5. some data need save into database.
         let completionWrapper: JSONCompletion = { task, result in
             switch T.parseNetworkCallResults(responseObject: responseObject, originalResponse: task?.response, responseDict: result.value, error: result.error) {
@@ -672,18 +755,18 @@ public extension APIService {
                 }
             }
         }
-        
+
         self.request(method: route.method, path: route.path,
                      parameters: route.calculatedParameters,
                      headers: route.header,
                      authenticated: route.isAuth,
-                     autoRetry: route.autoRetry,
+                     authRetry: route.authRetry,
                      customAuthCredential: route.authCredential,
                      nonDefaultTimeout: route.nonDefaultTimeout,
                      retryPolicy: route.retryPolicy,
                      jsonCompletion: completionWrapper)
     }
-    
+
     @available(*, deprecated, message: "Use perform method")
     func exec<T>(route: Request,
                  response: T = T(),
@@ -696,7 +779,7 @@ public extension APIService {
             complete: complete
         )
     }
-    
+
     @available(*, deprecated, message: "Use perform method")
     func exec<T>(route: Request,
                  responseObject: T,
@@ -709,13 +792,13 @@ public extension APIService {
             complete: complete
         )
     }
-    
+
     @available(*, deprecated, message: "Use perform method")
     func exec<T>(route: Request,
                  responseObject: T,
                  callCompletionBlockUsing executor: CompletionBlockExecutor = .asyncMainExecutor,
                  complete: @escaping (_ response: T) -> Void) where T: Response {
-        
+
         // 1 make a request , 2 wait for the respons async 3. valid response 4. parse data into response 5. some data need save into database.
         let completionWrapper: JSONCompletion = { task, result in
             executor.execute {
@@ -733,28 +816,28 @@ public extension APIService {
                         // This leads to wrong or missing erro info. Hence I restore the original error
                         response.error = originalError
                     }
-                    
+
                     complete(response)
                 case (let response, nil):
                     complete(response)
                 }
             }
         }
-        
+
         self.request(method: route.method, path: route.path,
                      parameters: route.calculatedParameters,
                      headers: route.header,
                      authenticated: route.isAuth,
-                     autoRetry: route.autoRetry,
+                     authRetry: route.authRetry,
                      customAuthCredential: route.authCredential,
                      nonDefaultTimeout: route.nonDefaultTimeout,
                      retryPolicy: route.retryPolicy,
                      jsonCompletion: completionWrapper)
     }
-    
+
     @available(*, deprecated, message: "Use perform method")
     func exec<T>(route: Request, complete: @escaping (_ task: URLSessionDataTask?, _ result: Result<T, ResponseError>) -> Void) where T: Decodable {
-        
+
         // 1 make a request , 2 wait for the respons async 3. valid response 4. parse data into response 5. some data need save into database.
         let completionWrapper: JSONCompletion = { task, result in
             do {
@@ -806,32 +889,32 @@ public extension APIService {
                 }
             }
         }
-        
+
         self.request(method: route.method,
                      path: route.path,
                      parameters: route.calculatedParameters,
                      headers: route.header,
                      authenticated: route.isAuth,
-                     autoRetry: route.autoRetry,
+                     authRetry: route.authRetry,
                      customAuthCredential: route.authCredential,
                      nonDefaultTimeout: route.nonDefaultTimeout,
                      retryPolicy: route.retryPolicy,
                      jsonCompletion: completionWrapper)
     }
-    
+
     @available(*, deprecated, message: "Use perform method")
     func exec<T>(route: Request, complete: @escaping (_ result: Result<T, ResponseError>) -> Void) where T: Decodable {
         exec(route: route) { (_: URLSessionDataTask?, result: Result<T, ResponseError>) in
             complete(result)
         }
     }
-    
+
     @available(*, deprecated, message: "Use performUpload")
     func upload<T>(route: Request,
                    files: [String: URL],
                    uploadProgress: ProgressCompletion?,
                    complete: @escaping (_ task: URLSessionDataTask?, _ result: Result<T, ResponseError>) -> Void) where T: Decodable {
-        
+
         // 1 make a request , 2 wait for the respons async 3. valid response 4. parse data into response 5. some data need save into database.
         let completionWrapper: CompletionBlock = { task, res, error in
             do {
@@ -883,7 +966,7 @@ public extension APIService {
                 }
             }
         }
-        
+
         self.upload(byPath: route.path,
                     parameters: route.calculatedParameters,
                     files: files, headers: route.header,
@@ -894,7 +977,7 @@ public extension APIService {
                     uploadProgress: uploadProgress,
                     completion: completionWrapper)
     }
-    
+
     @available(*, deprecated, message: "Use performUpload")
     func upload<T>(route: Request,
                    files: [String: URL],
@@ -907,20 +990,27 @@ public extension APIService {
 }
 
 extension APIService {
-    public func performRequest(request: Request, parameters: Any?, headers: [String: Any]?, jsonCompletion: JSONCompletion?) {
+    public func performRequest(request: Request,
+                               parameters: Any?,
+                               headers: [String: Any]?,
+                               onDataTaskCreated: @escaping (URLSessionDataTask) -> Void = { _ in },
+                               jsonCompletion: JSONCompletion?) {
         self.request(
             method: request.method,
             path: request.path,
             parameters: parameters,
             headers: headers,
             authenticated: request.isAuth,
-            autoRetry: request.autoRetry,
+            authRetry: request.authRetry,
             customAuthCredential: request.authCredential,
             nonDefaultTimeout: request.nonDefaultTimeout,
             retryPolicy: request.retryPolicy,
+            onDataTaskCreated: onDataTaskCreated,
             jsonCompletion: { task, result in
                 jsonCompletion?(task, result)
             }
         )
     }
 }
+
+// swiftlint:enable identifier_name todo

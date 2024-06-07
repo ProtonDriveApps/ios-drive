@@ -18,26 +18,62 @@
 import FileProvider
 import PDCore
 
-protocol EnumeratorWithItemsFromDB: LogObject {
+protocol EnumeratorWithItemsFromDB {
     associatedtype Model: NodesListing
     var model: Model! { get }
     func reinitializeModelIfNeeded() throws
 }
 
 extension EnumeratorWithItemsFromDB {
-    func fetchAllChildrenFromDB(_ observer: NSFileProviderEnumerationObserver) {
+    
+    func fetchPageFromDB(_ page: Int, pageSize: Int, observers: [NSFileProviderEnumerationObserver]) {
         let allChildren = self.model.childrenObserver.fetchedObjects
-        ConsoleLogger.shared?.log("Fetched \(allChildren.count) nodes from DB", osLogType: Self.self)
+        Log.info("Fetched \(allChildren.count) nodes from DB", domain: .fileProvider)
         
-        guard let moc = allChildren.first?.managedObjectContext else {
-            observer.finishEnumerating(upTo: nil)
+        let childrenGroups = allChildren.splitInGroups(of: pageSize)
+        guard childrenGroups.count > page else {
+            observers.forEach { $0.finishEnumerating(upTo: nil) }
             return
         }
-        
+        var children = childrenGroups[page]
+
+        guard let moc = allChildren.first?.managedObjectContext else {
+            observers.forEach { $0.finishEnumerating(upTo: nil) }
+            return
+        }
+
         moc.perform {
-            let items = allChildren.map { NodeItem(node: $0) }
-            observer.didEnumerate(items)
-            observer.finishEnumerating(upTo: nil)
+            
+            #if os(macOS)
+            // exclude drafts from enumeration
+            let originalChildrenCount = children.count
+            children = children.filter {
+                guard let file = $0 as? File else { return true }
+                return !file.isDraft()
+            }
+            let draftsCount = originalChildrenCount - children.count
+            #else
+            let draftsCount = 0
+            #endif
+            
+            let items = children.compactMap {
+                do {
+                    return try NodeItem(node: $0)
+                } catch {
+                    self.model.reportDecryptionError(for: $0, underlyingError: error)
+                    return nil
+                }
+            }
+            observers.forEach { $0.didEnumerate(items) }
+
+            guard (items.count + draftsCount) == pageSize else {
+                observers.forEach { $0.finishEnumerating(upTo: nil) }
+                return
+            }
+
+            let nextPage = page + 1
+            let providerPage = NSFileProviderPage(nextPage)
+            observers.forEach { $0.finishEnumerating(upTo: providerPage) }
         }
     }
 }

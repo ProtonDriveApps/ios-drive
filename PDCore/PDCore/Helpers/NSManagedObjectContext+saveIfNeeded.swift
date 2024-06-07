@@ -17,12 +17,43 @@
 
 import CoreData
 
+struct InvalidMetadataRelationshipError: LocalizedError {
+    let linkID: String
+    let shareID: String
+
+    var errorDescription: String? {
+        """
+        InvalidMetadataRelationshipError 🛠️
+        linkID: \(linkID)
+        shareID: \(shareID)
+        """
+    }
+}
+
 public extension NSManagedObjectContext {
 
     /// Only performs a save if there are changes to commit.
     /// - Returns: `true` if a save was needed. Otherwise, `false`.
     func saveIfNeeded() throws {
         guard hasChanges else { return }
+        try saveWithParentLinkCheck()
+    }
+    
+    func saveWithParentLinkCheck() throws {
+        try registeredObjects
+            .forEach { object in
+                if let node = object as? Node,
+                    node.parentLink == nil,
+                    !node.nodeHash.isEmpty,
+                    node.isInserted || node.isUpdated {
+                    // We may log this error two times, this first time is to give us indication as soon as possible about the issue
+                    // everytime it happens. The next error is not always logged, so loging in this is a more conservative approach.
+                    Log.error(InvalidMetadataRelationshipError(linkID: node.id, shareID: node.shareID), domain: .storage)
+
+                    // This error will keep being sent to and will be handled as part of usual flow that already exists.
+                    throw DriveError("Item with a node hash (so not root) but without a parent link, this should not happen!")
+                }
+            }
         try save()
     }
 
@@ -31,7 +62,7 @@ public extension NSManagedObjectContext {
     func saveOrRollback() throws {
         do {
             guard hasChanges else { return }
-            try save()
+            try saveWithParentLinkCheck()
         } catch {
             rollback()
             throw error
@@ -44,6 +75,8 @@ public extension NSManagedObjectContext {
     func childContext(ofType type: NSManagedObjectContextConcurrencyType = .privateQueueConcurrencyType) -> NSManagedObjectContext {
         let child = NSManagedObjectContext(concurrencyType: type)
         child.parent = self
+        child.automaticallyMergesChangesFromParent = true
+        child.mergePolicy = NSMergePolicy.mergeByPropertyObjectTrump
         return child
     }
 

@@ -17,35 +17,50 @@
 
 import FileProvider
 
+#if os(iOS)
 public extension PostLoginServices {
-    func addNewFileProvider(domain: NSFileProviderDomain) {
-        DispatchQueue.main.async {
-            guard NSFileProviderManager(for: domain) != nil else {
-                fatalError("Failed to create a manager")
-            }
-            
-            // TODO: try NSFileProviderManager.reconnect if old local copy exists
-            //       then first thing will be to ask NSFileProviderManager for changes since last logout
-            ConsoleLogger.shared?.log("Adding domain \(domain.displayName)", osLogType: PostLoginServices.self)
-            NSFileProviderManager.add(domain) { error in
-                guard error == nil else {
-                    ConsoleLogger.shared?.log(error!, osLogType: PostLoginServices.self)
-                    return
+
+    static func removeFileProvider() async throws {
+        do {
+            let domains = try await NSFileProviderManager.domains()
+
+            var finalError: PostLoginServices.Errors?
+            await domains.forEach { domain in
+                Log.debug("Removing domain \(domain.displayName)", domain: .fileProvider)
+
+                do {
+                    try await NSFileProviderManager.remove(domain)
+
+                    Log.info("Removed domain", domain: .fileProvider)
+                } catch {
+                    let domainError = PostLoginServices.Errors.removeDomainFailed(error)
+                    let errorMessage: String = domainError.errorDescription ?? ""
+                    Log.error(errorMessage, domain: .fileProvider)
+                    finalError = domainError
                 }
-                ConsoleLogger.shared?.log("Added domain \(domain.displayName)", osLogType: PostLoginServices.self)
             }
+
+            if let finalError {
+                throw finalError
+            }
+        } catch {
+            let domainError = PostLoginServices.Errors.getDomainsFailed(error)
+            Log.error(domainError.errorDescription ?? "", domain: .fileProvider)
+            throw domainError
         }
     }
-    
-    func removeFileProvider() {
-        ConsoleLogger.shared?.log("Removing all domains", osLogType: PostLoginServices.self)
-        // TODO: ask user if they want to wipe local copy
-        NSFileProviderManager.removeAllDomains { error in
-            guard error == nil else {
-                ConsoleLogger.shared?.log(error!, osLogType: PostLoginServices.self)
-                return
-            }
-            ConsoleLogger.shared?.log("Removed all domains", osLogType: PostLoginServices.self)
-        }
+}
+#endif
+
+extension PostLoginServices {
+
+    public enum Errors: Error {
+        case addDomainFailed(_ error: Error)
+        case getDomainsFailed(_ error: Error)
+        case disconnectDomainFailed(_ error: Error)
+        case removeDomainFailed(_ error: Error)
+        case reconnectDomainFailed
+        case identifyDomainFailed(_ error: Error)
+        case postMigrationStepFailed(_ error: Error?)
     }
 }

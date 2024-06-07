@@ -39,8 +39,17 @@ public struct UploaderError: Error {
     }
 }
 
+public struct URLContent {
+    public let url: URL
+    public let size: Int
+
+    public init(_ url: URL, _ size: Int) {
+        self.url = url
+        self.size = size
+    }
+}
+
 extension UploadsListing {
-    typealias UploadError = UploaderErrors
     public func childrenUploading() -> AnyPublisher<([File], [FileUploader.OperationID: FileUploader.CurrentProgress]), Error> {
         childrenUploadingObserver.objectWillChange
             .setFailureType(to: Error.self)
@@ -60,24 +69,22 @@ extension UploadsListing {
     }
     
     public func pauseUpload(file: File) {
-        tower.fileUploader.pause(file: file)
+        guard let uploadID = file.uploadID else { return }
+        tower.fileUploader.pauseFileUpload(id: uploadID)
     }
     
     public func cancelUpload(file: File) {
-        tower.fileUploader.remove(file: file) { [weak self, id = file.fileIdentifier] error in
-            guard let self = self else { return }
-
-            self.tower.deleteNodesInFolder(nodes: [id.fileID], folder: id.parentID, shareID: id.shareID, completion: { _ in })
-        }
+        tower.fileUploader.deleteUploadingFile(file)
     }
     
-    public func uploadFile(_ copy: URL, to folder: Folder) {
-        guard let newFile = try? tower.fileImporter.importFile(from: copy, to: folder) else {
+    public func uploadFile(_ content: URLContent, to folder: Folder) throws {
+        guard let newFile = try? tower.fileImporter.importFile(from: content.url, to: folder),
+              content.size == content.url.fileSize else {
             assert(false, "Failed to create File")
-            return
+            throw URLConsistencyError.urlSizeMismatch
         }
-        tower.fileUploader.upload(newFile, completion: { _ in })
 
+        tower.fileUploader.upload(newFile, completion: { _ in })
     }
 
     public func restartUpload(node: File) {

@@ -58,6 +58,10 @@ public class ItemTemplate: NSObject, NSFileProviderItem {
 
         self.itemVersion = item.itemVersion
     }
+
+    public convenience init(itemIdentifier: NSFileProviderItemIdentifier) {
+        self.init(itemIdentifier: itemIdentifier, parentId: NSFileProviderItemIdentifier(rawValue: ""), filename: "", type: "")
+    }
     
     public var itemIdentifier: NSFileProviderItemIdentifier
     public var parentItemIdentifier: NSFileProviderItemIdentifier

@@ -44,18 +44,9 @@ final class RevisionEncryptionOperation: AsynchronousOperation, UploadOperation 
         guard !isCancelled else { return }
 
         record()
+        NotificationCenter.default.post(name: .operationStart, object: draft.uri)
+        Log.info("STAGE: 1 🏞📦 Encrypt revision started. UUID: \(id.uuidString)", domain: .uploader)
 
-        ConsoleLogger.shared?.log("STAGE: 2 🏞📦 Encrypt revision started", osLogType: FileUploader.self)
-
-        // TODO: Empty files should have their own RevisionEncryptor subclass
-        guard !draft.isEmpty else {
-            ConsoleLogger.shared?.log("STAGE: 2 🏞📦 Encrypt revision finished ✅", osLogType: FileUploader.self)
-            state = .finished
-            progress.complete()
-            return
-        }
-
-        ConsoleLogger.shared?.log("STAGE: 2 🏞📦 Encrypt revision started", osLogType: FileUploader.self)
         do {
             let revisionDraft = try draft.getCreatedRevisionDraft()
             revisionEncryptor.encrypt(revisionDraft) { [weak self] result in
@@ -63,25 +54,33 @@ final class RevisionEncryptionOperation: AsynchronousOperation, UploadOperation 
 
                 switch result {
                 case .success:
-                    ConsoleLogger.shared?.log("STAGE: 2 🏞📦 Encrypt revision finished ✅", osLogType: FileUploader.self)
+                    Log.info("STAGE: 1 🏞📦 Encrypt revision finished ✅. UUID: \(self.id.uuidString)", domain: .uploader)
+                    NotificationCenter.default.post(name: .operationEnd, object: draft.uri)
                     self.progress.complete()
                     self.state = .finished
 
                 case .failure(let error):
-                    ConsoleLogger.shared?.log("STAGE: 2 🏞📦 Encrypt revision finished ❌", osLogType: FileUploader.self)
+                    Log.info("STAGE: 1 🏞📦 Encrypt revision finished ❌. UUID: \(self.id.uuidString)", domain: .uploader)
+                    NotificationCenter.default.post(name: .operationEnd, object: draft.uri)
                     self.onError(error)
                 }
             }
         } catch {
-            ConsoleLogger.shared?.log("STAGE: 2 🏞📦 Encrypt revision finished ❌", osLogType: FileUploader.self)
+            Log.info("STAGE: 1 🏞📦 Encrypt revision finished ❌. UUID: \(id.uuidString)", domain: .uploader)
+            NotificationCenter.default.post(name: .operationEnd, object: draft.uri)
             onError(error)
         }
     }
 
     override func cancel() {
-        ConsoleLogger.shared?.log("🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
+        Log.info("STAGE: 1 🙅‍♂️ CANCEL \(type(of: self)). UUID: \(id.uuidString)", domain: .uploader)
+        NotificationCenter.default.post(name: .operationEnd, object: draft.uri)
         revisionEncryptor.cancel()
         super.cancel()
+    }
+
+    deinit {
+        Log.info("STAGE: 1 ☠️🚨 \(type(of: self)). UUID: \(id.uuidString)", domain: .uploader)
     }
 
     var recordingName: String { "encryptingRevision" }

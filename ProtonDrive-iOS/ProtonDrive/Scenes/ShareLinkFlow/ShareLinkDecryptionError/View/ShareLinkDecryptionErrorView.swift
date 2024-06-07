@@ -18,7 +18,7 @@
 import SwiftUI
 import Combine
 import PDUIComponents
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 struct ShareLinkDecryptionErrorView: View {
     @ObservedObject var vm: ShareLinkDecryptionErrorViewModel

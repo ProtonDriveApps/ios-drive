@@ -19,11 +19,13 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(macOS)
+
 import AppKit
-import ProtonCore_APIClient
-import ProtonCore_Networking
-import ProtonCore_Services
-import enum ProtonCore_DataModel.ClientApp
+import ProtonCoreAPIClient
+import ProtonCoreNetworking
+import ProtonCoreServices
+import enum ProtonCoreDataModel.ClientApp
 
 public class HumanCheckHelper: HumanVerifyDelegate {
     private let rootViewController: NSViewController?
@@ -34,7 +36,7 @@ public class HumanCheckHelper: HumanVerifyDelegate {
     private var verificationCompletion: ((HumanVerifyFinishReason) -> Void)?
     private var humanCheckCoordinator: HumanCheckCoordinator?
     private let clientApp: ClientApp
-    
+
     public init(apiService: APIService,
                 supportURL: URL? = nil,
                 viewController: NSViewController? = nil,
@@ -72,7 +74,7 @@ public class HumanCheckHelper: HumanVerifyDelegate {
         responseDelegateForLoginAndSignup?.onHumanVerifyStart()
         verificationCompletion = completion
     }
-    
+
     private func prepareCoordinator(parameters: HumanVerifyParameters) {
         humanCheckCoordinator = HumanCheckCoordinator(rootViewController: rootViewController, apiService: apiService, parameters: parameters, clientApp: clientApp)
         humanCheckCoordinator?.delegate = self
@@ -100,9 +102,11 @@ extension HumanCheckHelper: HumanCheckMenuCoordinatorDelegate {
         verificationCompletion?(.close)
         self.responseDelegateForLoginAndSignup?.onHumanVerifyEnd(result: .cancel)
     }
-    
+
     func closeWithError(code: Int, description: String) {
         verificationCompletion?(.closeWithError(code: code, description: description))
         self.responseDelegateForLoginAndSignup?.onHumanVerifyEnd(result: .cancel)
     }
 }
+
+#endif

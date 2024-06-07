@@ -20,25 +20,22 @@ import CoreData
 
 final class PhotosExtendedAttributesRevisionEncryptor: ExtendedAttributesRevisionEncryptor {
     
-    override func getXAttrs(_ draft: CreatedRevisionDraft) throws -> Data {
-        guard let revision = draft.revision as? PhotoRevision else {
+    override func getXAttrs(_ draft: CreatedRevisionDraft) throws -> ExtendedAttributes {
+        guard let outOfContextRevision = draft.revision as? PhotoRevision else {
             throw draft.revision.invalidState("The item is not a Photo")
         }
         
         let commonAttributes = commonAttributes(draft)
-        return try moc.performAndWait {
-            let revision = revision.in(moc: moc)
-            let photo = revision.photo
-            let tempMetadata = TemporalMetadata(base64String: photo.tempBase64Metadata)
-
-            return try ExtendedAttributes(
-                common: commonAttributes,
-                location: tempMetadata?.location,
-                camera: tempMetadata?.camera,
-                media: tempMetadata?.media,
-                iOSPhotos: tempMetadata?.iOSPhotos
-            ).encoded()
-        }
+        let revision = outOfContextRevision.in(moc: moc)
+        let photo = revision.photo
+        let tempMetadata = TemporalMetadata(base64String: photo.tempBase64Metadata)
+        
+        return ExtendedAttributes(
+            common: commonAttributes,
+            location: tempMetadata?.location,
+            camera: tempMetadata?.camera,
+            media: tempMetadata?.media,
+            iOSPhotos: tempMetadata?.iOSPhotos
+        )
     }
-    
 }

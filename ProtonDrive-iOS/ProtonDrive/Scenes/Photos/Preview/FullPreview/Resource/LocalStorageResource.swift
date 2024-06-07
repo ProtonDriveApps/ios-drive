@@ -23,6 +23,6 @@ protocol LocalStorageResource {
 
 final class LocalFileStorageResource: LocalStorageResource {
     func delete(at url: URL) throws {
-        try FileManager.default.removeItem(at: url)
+        try FileManager.default.removeItemIncludingUniqueDirectory(at: url)
     }
 }

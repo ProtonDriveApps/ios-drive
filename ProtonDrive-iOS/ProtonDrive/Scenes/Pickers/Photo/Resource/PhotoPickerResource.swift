@@ -20,8 +20,6 @@ import Foundation
 import os.log
 import PDCore
 
-typealias URLResult = Result<URL, Error>
-
 protocol PhotoPickerLoadResource {
     var resultsPublisher: AnyPublisher<[URLResult], Never> { get }
     func set(itemProviders: [NSItemProvider])

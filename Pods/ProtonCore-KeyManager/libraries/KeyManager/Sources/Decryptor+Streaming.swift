@@ -20,15 +20,14 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import GoLibs
-import ProtonCore_DataModel
-import ProtonCore_Utilities
+import ProtonCoreCryptoGoInterface
+import ProtonCoreDataModel
+import ProtonCoreUtilities
 
 extension Decryptor {
-    
+
     // Marin: Adding this method defeats the point of giving the session key and key rings directly. Which were used to avoid decrypting and building the objects for each block
-    
-    // swiftlint:disable function_parameter_count
+
     @available(*, deprecated, renamed: "Decryptor.decryptStream(encryptedFile:decryptedFile:decryptionKeys:keyPacket:verificationKeys:signature:chunckSize:removeClearTextFileIfAlreadyExists:)")
     public static func decryptStream(_ cyphertextUrl: URL,
                                      _ cleartextUrl: URL,
@@ -46,7 +45,7 @@ extension Decryptor {
                           chunckSize: chunckSize,
                           removeClearTextFileIfAlreadyExists: true)
     }
-    
+
     public static func decryptStream(encryptedFile cyphertextUrl: URL,
                                      decryptedFile cleartextUrl: URL,
                                      decryptionKeys: [DecryptionKey],
@@ -55,7 +54,6 @@ extension Decryptor {
                                      signature: String,
                                      chunckSize: Int,
                                      removeClearTextFileIfAlreadyExists: Bool = false) throws
-    // swiftlint:enable function_parameter_count
     {
         // prepare files
         if FileManager.default.fileExists(atPath: cleartextUrl.path) {
@@ -66,25 +64,25 @@ extension Decryptor {
             }
         }
         FileManager.default.createFile(atPath: cleartextUrl.path, contents: Data(), attributes: nil)
-        
+
         let readFileHandle = try FileHandle(forReadingFrom: cyphertextUrl)
         defer { readFileHandle.closeFile() }
         let writeFileHandle = try FileHandle(forWritingTo: cleartextUrl)
         defer { writeFileHandle.closeFile() }
         // cryptography
-        
+
         let decryptionKeyRing = try buildPrivateKeyRing(with: decryptionKeys)
         defer { decryptionKeyRing.clearPrivateParams() }
         let sessionKey = try decryptionKeyRing.decryptSessionKey(keyPacket)
-        
+
         try Decryptor.decryptBinaryStream(sessionKey, nil, readFileHandle, writeFileHandle, chunckSize)
-        
+
         let verifyFileHandle = try FileHandle(forReadingFrom: cleartextUrl)
         defer { verifyFileHandle.closeFile() }
         guard let verificationKeyRing = try buildPublicKeyRing(armoredKeys: verificationKeys) else {
             throw Errors.couldNotCreateKeyRing
         }
-        
+
         try Decryptor.verifyStream(verificationKeyRing, decryptionKeyRing, verifyFileHandle, signature)
     }
 }
@@ -96,34 +94,34 @@ extension Decryptor {
                                      _ plaintextFile: FileHandle,
                                      _ encSignatureArmored: String) throws
     {
-        let plaintextReader = HelperMobile2GoReader(FileMobileReader(file: plaintextFile))
-        
-        let encSignature = CryptoPGPMessage(fromArmored: encSignatureArmored)
-        
+        let plaintextReader = CryptoGo.HelperMobile2GoReader(FileMobileReader(file: plaintextFile))
+
+        let encSignature = CryptoGo.CryptoPGPMessage(fromArmored: encSignatureArmored)
+
         try verifyKeyRing.verifyDetachedEncryptedStream(
             plaintextReader,
             encryptedSignature: encSignature,
             decryptionKeyRing: decryptKeyRing,
-            verifyTime: CryptoGetUnixTime()
+            verifyTime: CryptoGo.CryptoGetUnixTime()
         )
     }
-    
+
     private static func decryptBinaryStream(_ sessionKey: CryptoSessionKey,
                                             _ verifyKeyRing: CryptoKeyRing?,
                                             _ ciphertextFile: FileHandle,
                                             _ blockFile: FileHandle,
                                             _ bufferSize: Int) throws
     {
-        
-        let ciphertextReader = HelperMobile2GoReader(FileMobileReader(file: ciphertextFile))
-        
+
+        let ciphertextReader = CryptoGo.HelperMobile2GoReader(FileMobileReader(file: ciphertextFile))
+
         let plaintextMessageReader = try sessionKey.decryptStream(
             ciphertextReader,
             verifyKeyRing: verifyKeyRing,
-            verifyTime: CryptoGetUnixTime()
+            verifyTime: CryptoGo.CryptoGetUnixTime()
         )
-        
-        let reader = HelperGo2IOSReader(plaintextMessageReader)!
+
+        let reader = CryptoGo.HelperGo2IOSReader(plaintextMessageReader)!
         var isEOF: Bool = false
         while !isEOF {
             try autoreleasepool {
@@ -132,7 +130,7 @@ extension Decryptor {
                 isEOF = result.isEOF
             }
         }
-        
+
         if verifyKeyRing != nil {
             try plaintextMessageReader.verifySignature()
         }

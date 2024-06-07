@@ -10,6 +10,35 @@
 	<array>
 		<dict>
 			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Enable local notification on photos background  upload</string>
+			<key>Key</key>
+			<string>UPLOADED_PHOTO_NOTIFICATION</string>
+			<key>DefaultValue</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>ON (2 days) / OFF (as soon as possible)
+Changes will be applied after you kill and relaunch the app.</string>
+			<key>Title</key>
+			<string></string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Default photos reminder delay</string>
+			<key>Key</key>
+			<string>DEFAULT_PHOTOS_REMINDER_DELAY</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 			<key>Title</key>
 			<string>Force Upgrade Link</string>

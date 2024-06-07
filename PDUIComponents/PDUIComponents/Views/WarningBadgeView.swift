@@ -16,15 +16,36 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
+
+public enum WarningBadgeSeverance: Equatable {
+    case info
+    case warning
+    case error
+}
 
 public struct WarningBadgeView: View {
-    public init() {}
+    private let severance: WarningBadgeSeverance
+
+    public init(severance: WarningBadgeSeverance = .error) {
+        self.severance = severance
+    }
     
     public var body: some View {
         IconProvider.exclamationCircleFilled
             .resizable()
             .aspectRatio(contentMode: .fit)
-            .foregroundColor(Color.NotificationError)
+            .foregroundColor(color)
+    }
+
+    private var color: Color {
+        switch severance {
+        case .info:
+            return Color.IconWeak
+        case .warning:
+            return Color.NotificationWarning
+        case .error:
+            return Color.NotificationError
+        }
     }
 }

@@ -27,4 +27,4 @@ protocol PhotosListLoadResultInteractor {
     func execute(with input: PhotosListLoadId)
 }
 
-final class AsyncPhotosListLoadResultInteractor: AsynchronousFacade<PhotosListLoadInteractor, PhotosListLoadId, PhotosList>, PhotosListLoadResultInteractor {}
+final class AsyncPhotosListLoadResultInteractor: ThrowingAsynchronousFacade<PhotosListLoadInteractor, PhotosListLoadId, PhotosList>, PhotosListLoadResultInteractor {}

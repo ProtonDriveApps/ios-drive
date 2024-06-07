@@ -22,11 +22,20 @@ public struct PhotosListResponse: Codable, Equatable {
 
     public struct Photo: Codable, Equatable {
         public let linkID: String
+        public let captureTime: Int
+        public let relatedPhotos: [RelatedPhoto]
 //        public let nameHash: String // TODO: next MR, BE not ready
 
-        public init(linkID: String) {
+        public init(linkID: String, captureTime: Int, relatedPhotos: [RelatedPhoto] = []) {
             self.linkID = linkID
+            self.captureTime = captureTime
+            self.relatedPhotos = relatedPhotos
         }
+    }
+
+    public struct RelatedPhoto: Codable, Equatable {
+        public let linkID: String
+        public let captureTime: Int
     }
 
     public init(photos: [Photo]) {

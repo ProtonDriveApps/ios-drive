@@ -16,12 +16,12 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import ProtonCore_DataModel
+import ProtonCoreDataModel
 
 public struct AddressUpdate: Codable {
     public let ID: String
     public let action: Action
-    public let address: Address? // from ProtonCore_DataModel
+    public let address: Address? // from ProtonCoreDataModel
     
     public init(ID: String, action: Action, address: Address?) {
         self.ID = ID

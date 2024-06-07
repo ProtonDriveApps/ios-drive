@@ -16,11 +16,10 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import os.log
 import Combine
 import PDClient
 
-public class Downloader: NSObject, ProgressTrackerProvider, LogObject {
+public class Downloader: NSObject, ProgressTrackerProvider {
     public typealias Enumeration = (Node) -> Void
     private static let downloadFail: NSNotification.Name = .init("ch.protondrive.PDCore.downloadFail")
     
@@ -28,6 +27,8 @@ public class Downloader: NSObject, ProgressTrackerProvider, LogObject {
         case temporary, offlineAvailable, oblivion
     }
     
+    private var cancellables = Set<AnyCancellable>()
+
     public enum Errors: Error, LocalizedError {
         case unknownTypeOfShare
         case whileDownloading(File, Error)
@@ -37,9 +38,8 @@ public class Downloader: NSObject, ProgressTrackerProvider, LogObject {
         }
     }
     
-    public static var osLog = OSLog.init(subsystem: "ch.protondrive.PDCore", category: "Downloader")
-    private var cloudSlot: CloudSlot
-    private let endpointFactory: EndpointFactory
+    var cloudSlot: CloudSlot
+    let endpointFactory: EndpointFactory
     internal lazy var queue: OperationQueue = {
         let queue = OperationQueue()
         queue.maxConcurrentOperationCount = 3
@@ -51,7 +51,7 @@ public class Downloader: NSObject, ProgressTrackerProvider, LogObject {
         self.endpointFactory = endpointFactory
     }
     
-    func cancelAll() {
+    public func cancelAll() {
         self.queue.cancelAllOperations()
     }
     
@@ -80,7 +80,7 @@ public class Downloader: NSObject, ProgressTrackerProvider, LogObject {
         let loggingCompletion: (Result<File, Error>) -> Void = { result in
             completion(
                 result.mapError { error in
-                    ConsoleLogger.shared?.log(DriveError(error, "Downloader"))
+                    Log.error(DriveError(error), domain: .downloader)
                     return error
                 }
             )
@@ -97,7 +97,7 @@ public class Downloader: NSObject, ProgressTrackerProvider, LogObject {
         scheduleDownload(cypherdataFor: file) { result in
             completion(
                 result.mapError { error in
-                    ConsoleLogger.shared?.log(DriveError(error, "Downloader"))
+                    Log.error(DriveError(error), domain: .downloader)
                     return error
                 }
             )
@@ -110,7 +110,7 @@ public class Downloader: NSObject, ProgressTrackerProvider, LogObject {
         scheduleDownload(cypherdataFor: file) { result in
             completion(
                 result.mapError { error in
-                    ConsoleLogger.shared?.log(DriveError(error, "Downloader"))
+                    Log.error(DriveError(error), domain: .downloader)
                     return error
                 }
             )
@@ -133,7 +133,7 @@ public class Downloader: NSObject, ProgressTrackerProvider, LogObject {
         self.queue.addOperation(operation)
         return operation
     }
-    
+
     @discardableResult
     private func downloadTree(of folder: Folder,
                               enumeration: @escaping Enumeration,
@@ -153,21 +153,54 @@ public class Downloader: NSObject, ProgressTrackerProvider, LogObject {
                              enumeration: @escaping Enumeration,
                              completion: @escaping (Result<Folder, Error>) -> Void) -> Operation
     {
-        let downloadTree = ScanChildrenOperation(node: folder,
+        let scanChildren = ScanChildrenOperation(node: folder,
                                                  cloudSlot: self.cloudSlot,
                                                  enumeration: enumeration,
                                                  endpointFactory: endpointFactory,
                                                  completion: completion)
-        self.queue.addOperation(downloadTree)
-        return downloadTree
+        self.queue.addOperation(scanChildren)
+        return scanChildren
     }
+    
+    @discardableResult
+    public func scanTrees(treesRootFolders folders: [Folder],
+                          enumeration: @escaping Enumeration,
+                          completion: @escaping (Result<[Node], Error>) -> Void) -> OperationWithProgress {
+        let scanTree = ScanTreesOperation(folders: folders,
+                                          cloudSlot: self.cloudSlot,
+                                          enumeration: enumeration,
+                                          endpointFactory: endpointFactory,
+                                          completion: completion)
+        self.queue.addOperation(scanTree)
+        return scanTree
+    }
+
+    public func scanTrees(treesRootFolders folders: [Folder],
+                          enumeration: @escaping Enumeration) async throws -> [Node] {
+        try await withCheckedThrowingContinuation { continuation in
+            let scanTree = ScanTreesOperation(folders: folders,
+                                              cloudSlot: self.cloudSlot,
+                                              enumeration: enumeration,
+                                              endpointFactory: endpointFactory,
+                                              completion: { result in
+                switch result {
+                case .success(let nodes):
+                    continuation.resume(returning: nodes)
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            })
+            self.queue.addOperation(scanTree)
+        }
+    }
+
 }
 
 extension Downloader {
     public func downloadProcessesAndErrors() -> AnyPublisher<[ProgressTracker], Error> {
-        self.progressPublisher()
-        .setFailureType(to: Error.self)
-        .merge(with: NotificationCenter.default.throwIfFailure(with: Self.downloadFail))
-        .eraseToAnyPublisher()
+        self.progressPublisher(direction: .downstream)
+            .setFailureType(to: Error.self)
+            .merge(with: NotificationCenter.default.throwIfFailure(with: Self.downloadFail))
+            .eraseToAnyPublisher()
     }
 }

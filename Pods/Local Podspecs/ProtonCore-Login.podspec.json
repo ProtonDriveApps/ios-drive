@@ -1,6 +1,7 @@
 {
   "name": "ProtonCore-Login",
-  "version": "6.1.0",
+  "module_name": "ProtonCoreLogin",
+  "version": "25.0.0",
   "summary": "shared frameworks",
   "description": "ios shared frameworks for all client apps",
   "homepage": "https://github.com/ProtonMail",
@@ -16,11 +17,11 @@
   },
   "source": {
     "git": null,
-    "tag": "6.1.0"
+    "tag": "25.0.0"
   },
   "platforms": {
     "ios": "14.0",
-    "osx": "10.13"
+    "osx": "11.0"
   },
   "swift_versions": [
     "5.6"
@@ -33,52 +34,79 @@
 
     ],
     "ProtonCore-Log": [
-      "6.1.0"
-    ],
-    "ProtonCore-OpenPGP": [
-      "6.1.0"
+      "25.0.0"
     ],
     "ProtonCore-Foundations": [
-      "6.1.0"
-    ],
-    "ProtonCore-CoreTranslation": [
-      "6.1.0"
+      "25.0.0"
     ],
     "ProtonCore-DataModel": [
-      "6.1.0"
+      "25.0.0"
     ],
     "ProtonCore-Observability": [
-      "6.1.0"
+      "25.0.0"
+    ],
+    "ProtonCore-Crypto": [
+      "25.0.0"
+    ],
+    "ProtonCore-CryptoGoInterface": [
+      "25.0.0"
+    ],
+    "ProtonCore-FeatureFlags": [
+      "25.0.0"
+    ],
+    "ProtonCore-Authentication": [
+      "25.0.0"
+    ],
+    "ProtonCore-Authentication-KeyGeneration": [
+      "25.0.0"
+    ]
+  },
+  "source_files": [
+    "libraries/Login/Sources/*.swift",
+    "libraries/Login/Sources/**/*.swift"
+  ],
+  "resource_bundles": {
+    "Resources-Login": [
+      "libraries/Login/Tests/UnitTests/Mocks/Responses/**/*.json"
+    ],
+    "Translations-Login": [
+      "libraries/Login/Sources/Resources/Translations/*"
     ]
   },
   "default_subspecs": [
-    "ErrorWarningEmittingDefaultSubspec"
+
   ],
   "testspecs": [
     {
       "name": "UnitTests-Crypto-Go",
       "test_type": "unit",
       "dependencies": {
-        "ProtonCore-GoLibs/Crypto-Go": [
-          "6.1.0"
+        "ProtonCore-Crypto": [
+          "25.0.0"
         ],
-        "ProtonCore-Authentication/Crypto-Go": [
-          "6.1.0"
+        "ProtonCore-CryptoGoInterface": [
+          "25.0.0"
         ],
-        "ProtonCore-Authentication-KeyGeneration/Crypto-Go": [
-          "6.1.0"
+        "ProtonCore-CryptoGoImplementation/Crypto-Go": [
+          "25.0.0"
+        ],
+        "ProtonCore-Authentication": [
+          "25.0.0"
+        ],
+        "ProtonCore-Authentication-KeyGeneration": [
+          "25.0.0"
         ],
         "ProtonCore-ObfuscatedConstants": [
-          "6.1.0"
+          "25.0.0"
         ],
         "ProtonCore-TestingToolkit/TestData": [
-          "6.1.0"
+          "25.0.0"
         ],
-        "ProtonCore-TestingToolkit/UnitTests/Authentication-KeyGeneration/Crypto-Go": [
-          "6.1.0"
+        "ProtonCore-TestingToolkit/UnitTests/Authentication-KeyGeneration": [
+          "25.0.0"
         ],
-        "ProtonCore-TestingToolkit/UnitTests/Login/Crypto-Go": [
-          "6.1.0"
+        "ProtonCore-TestingToolkit/UnitTests/Login": [
+          "25.0.0"
         ],
         "OHHTTPStubs/Swift": [
 
@@ -97,26 +125,32 @@
       "name": "UnitTests-Crypto-patched-Go",
       "test_type": "unit",
       "dependencies": {
-        "ProtonCore-GoLibs/Crypto-patched-Go": [
-          "6.1.0"
+        "ProtonCore-Crypto": [
+          "25.0.0"
         ],
-        "ProtonCore-Authentication/Crypto-patched-Go": [
-          "6.1.0"
+        "ProtonCore-CryptoGoInterface": [
+          "25.0.0"
         ],
-        "ProtonCore-Authentication-KeyGeneration/Crypto-patched-Go": [
-          "6.1.0"
+        "ProtonCore-CryptoGoImplementation/Crypto-patched-Go": [
+          "25.0.0"
+        ],
+        "ProtonCore-Authentication": [
+          "25.0.0"
+        ],
+        "ProtonCore-Authentication-KeyGeneration": [
+          "25.0.0"
         ],
         "ProtonCore-ObfuscatedConstants": [
-          "6.1.0"
+          "25.0.0"
         ],
         "ProtonCore-TestingToolkit/TestData": [
-          "6.1.0"
+          "25.0.0"
         ],
-        "ProtonCore-TestingToolkit/UnitTests/Authentication-KeyGeneration/Crypto-patched-Go": [
-          "6.1.0"
+        "ProtonCore-TestingToolkit/UnitTests/Authentication-KeyGeneration": [
+          "25.0.0"
         ],
-        "ProtonCore-TestingToolkit/UnitTests/Login/Crypto-patched-Go": [
-          "6.1.0"
+        "ProtonCore-TestingToolkit/UnitTests/Login": [
+          "25.0.0"
         ],
         "OHHTTPStubs/Swift": [
 
@@ -135,26 +169,32 @@
       "name": "UnitTests-Crypto+VPN-patched-Go",
       "test_type": "unit",
       "dependencies": {
-        "ProtonCore-GoLibs/Crypto+VPN-patched-Go": [
-          "6.1.0"
+        "ProtonCore-Crypto": [
+          "25.0.0"
         ],
-        "ProtonCore-Authentication/Crypto+VPN-patched-Go": [
-          "6.1.0"
+        "ProtonCore-CryptoGoInterface": [
+          "25.0.0"
         ],
-        "ProtonCore-Authentication-KeyGeneration/Crypto+VPN-patched-Go": [
-          "6.1.0"
+        "ProtonCore-CryptoGoImplementation/Crypto+VPN-patched-Go": [
+          "25.0.0"
+        ],
+        "ProtonCore-Authentication": [
+          "25.0.0"
+        ],
+        "ProtonCore-Authentication-KeyGeneration": [
+          "25.0.0"
         ],
         "ProtonCore-ObfuscatedConstants": [
-          "6.1.0"
+          "25.0.0"
         ],
         "ProtonCore-TestingToolkit/TestData": [
-          "6.1.0"
+          "25.0.0"
         ],
-        "ProtonCore-TestingToolkit/UnitTests/Authentication-KeyGeneration/Crypto+VPN-patched-Go": [
-          "6.1.0"
+        "ProtonCore-TestingToolkit/UnitTests/Authentication-KeyGeneration": [
+          "25.0.0"
         ],
-        "ProtonCore-TestingToolkit/UnitTests/Login/Crypto+VPN-patched-Go": [
-          "6.1.0"
+        "ProtonCore-TestingToolkit/UnitTests/Login": [
+          "25.0.0"
         ],
         "OHHTTPStubs/Swift": [
 
@@ -173,26 +213,32 @@
       "name": "UnitTests-Crypto+Search-Go",
       "test_type": "unit",
       "dependencies": {
-        "ProtonCore-GoLibs/Crypto+Search-Go": [
-          "6.1.0"
+        "ProtonCore-Crypto": [
+          "25.0.0"
         ],
-        "ProtonCore-Authentication/Crypto+Search-Go": [
-          "6.1.0"
+        "ProtonCore-CryptoGoInterface": [
+          "25.0.0"
         ],
-        "ProtonCore-Authentication-KeyGeneration/Crypto+Search-Go": [
-          "6.1.0"
+        "ProtonCore-CryptoGoImplementation/Crypto+Search-Go": [
+          "25.0.0"
+        ],
+        "ProtonCore-Authentication": [
+          "25.0.0"
+        ],
+        "ProtonCore-Authentication-KeyGeneration": [
+          "25.0.0"
         ],
         "ProtonCore-ObfuscatedConstants": [
-          "6.1.0"
+          "25.0.0"
         ],
         "ProtonCore-TestingToolkit/TestData": [
-          "6.1.0"
+          "25.0.0"
         ],
-        "ProtonCore-TestingToolkit/UnitTests/Authentication-KeyGeneration/Crypto+Search-Go": [
-          "6.1.0"
+        "ProtonCore-TestingToolkit/UnitTests/Authentication-KeyGeneration": [
+          "25.0.0"
         ],
-        "ProtonCore-TestingToolkit/UnitTests/Login/Crypto+Search-Go": [
-          "6.1.0"
+        "ProtonCore-TestingToolkit/UnitTests/Login": [
+          "25.0.0"
         ],
         "OHHTTPStubs/Swift": [
 
@@ -211,17 +257,20 @@
       "name": "IntegrationTests-Crypto-Go",
       "test_type": "unit",
       "dependencies": {
-        "ProtonCore-GoLibs/Crypto-Go": [
-          "6.1.0"
+        "ProtonCore-Crypto": [
+          "25.0.0"
+        ],
+        "ProtonCore-CryptoGoInterface": [
+          "25.0.0"
+        ],
+        "ProtonCore-CryptoGoImplementation/Crypto-Go": [
+          "25.0.0"
         ],
         "ProtonCore-QuarkCommands": [
-          "6.1.0"
+          "25.0.0"
         ],
         "ProtonCore-TestingToolkit/UnitTests/Core": [
-          "6.1.0"
-        ],
-        "ProtonCore-TestingToolkit/UnitTests/FeatureSwitch": [
-          "6.1.0"
+          "25.0.0"
         ],
         "TrustKit": [
 
@@ -239,17 +288,20 @@
       "name": "IntegrationTests-Crypto-patched-Go",
       "test_type": "unit",
       "dependencies": {
-        "ProtonCore-GoLibs/Crypto-patched-Go": [
-          "6.1.0"
+        "ProtonCore-Crypto": [
+          "25.0.0"
+        ],
+        "ProtonCore-CryptoGoInterface": [
+          "25.0.0"
+        ],
+        "ProtonCore-CryptoGoImplementation/Crypto-patched-Go": [
+          "25.0.0"
         ],
         "ProtonCore-QuarkCommands": [
-          "6.1.0"
+          "25.0.0"
         ],
         "ProtonCore-TestingToolkit/UnitTests/Core": [
-          "6.1.0"
-        ],
-        "ProtonCore-TestingToolkit/UnitTests/FeatureSwitch": [
-          "6.1.0"
+          "25.0.0"
         ],
         "TrustKit": [
 
@@ -267,17 +319,20 @@
       "name": "IntegrationTests-Crypto+VPN-patched-Go",
       "test_type": "unit",
       "dependencies": {
-        "ProtonCore-GoLibs/Crypto+VPN-patched-Go": [
-          "6.1.0"
+        "ProtonCore-Crypto": [
+          "25.0.0"
+        ],
+        "ProtonCore-CryptoGoInterface": [
+          "25.0.0"
+        ],
+        "ProtonCore-CryptoGoImplementation/Crypto+VPN-patched-Go": [
+          "25.0.0"
         ],
         "ProtonCore-QuarkCommands": [
-          "6.1.0"
+          "25.0.0"
         ],
         "ProtonCore-TestingToolkit/UnitTests/Core": [
-          "6.1.0"
-        ],
-        "ProtonCore-TestingToolkit/UnitTests/FeatureSwitch": [
-          "6.1.0"
+          "25.0.0"
         ],
         "TrustKit": [
 
@@ -295,17 +350,20 @@
       "name": "IntegrationTests-Crypto+Search-Go",
       "test_type": "unit",
       "dependencies": {
-        "ProtonCore-GoLibs/Crypto+Search-Go": [
-          "6.1.0"
+        "ProtonCore-Crypto": [
+          "25.0.0"
+        ],
+        "ProtonCore-CryptoGoInterface": [
+          "25.0.0"
+        ],
+        "ProtonCore-CryptoGoImplementation/Crypto+Search-Go": [
+          "25.0.0"
         ],
         "ProtonCore-QuarkCommands": [
-          "6.1.0"
+          "25.0.0"
         ],
         "ProtonCore-TestingToolkit/UnitTests/Core": [
-          "6.1.0"
-        ],
-        "ProtonCore-TestingToolkit/UnitTests/FeatureSwitch": [
-          "6.1.0"
+          "25.0.0"
         ],
         "TrustKit": [
 
@@ -318,104 +376,6 @@
       "info_plist": {
         "DYNAMIC_DOMAIN": "$(DYNAMIC_DOMAIN)"
       }
-    }
-  ],
-  "subspecs": [
-    {
-      "name": "Crypto-Go",
-      "dependencies": {
-        "ProtonCore-GoLibs/Crypto-Go": [
-          "6.1.0"
-        ],
-        "ProtonCore-Authentication/Crypto-Go": [
-          "6.1.0"
-        ],
-        "ProtonCore-Authentication-KeyGeneration/Crypto-Go": [
-          "6.1.0"
-        ]
-      },
-      "source_files": [
-        "libraries/Login/Sources/*.swift",
-        "libraries/Login/Sources/**/*.swift"
-      ],
-      "resource_bundles": {
-        "Resources-Login": [
-          "libraries/Login/Tests/UnitTests/Mocks/Responses/**/*.json"
-        ]
-      }
-    },
-    {
-      "name": "Crypto-patched-Go",
-      "dependencies": {
-        "ProtonCore-GoLibs/Crypto-patched-Go": [
-          "6.1.0"
-        ],
-        "ProtonCore-Authentication/Crypto-patched-Go": [
-          "6.1.0"
-        ],
-        "ProtonCore-Authentication-KeyGeneration/Crypto-patched-Go": [
-          "6.1.0"
-        ]
-      },
-      "source_files": [
-        "libraries/Login/Sources/*.swift",
-        "libraries/Login/Sources/**/*.swift"
-      ],
-      "resource_bundles": {
-        "Resources-Login": [
-          "libraries/Login/Tests/UnitTests/Mocks/Responses/**/*.json"
-        ]
-      }
-    },
-    {
-      "name": "Crypto+VPN-patched-Go",
-      "dependencies": {
-        "ProtonCore-GoLibs/Crypto+VPN-patched-Go": [
-          "6.1.0"
-        ],
-        "ProtonCore-Authentication/Crypto+VPN-patched-Go": [
-          "6.1.0"
-        ],
-        "ProtonCore-Authentication-KeyGeneration/Crypto+VPN-patched-Go": [
-          "6.1.0"
-        ]
-      },
-      "source_files": [
-        "libraries/Login/Sources/*.swift",
-        "libraries/Login/Sources/**/*.swift"
-      ],
-      "resource_bundles": {
-        "Resources-Login": [
-          "libraries/Login/Tests/UnitTests/Mocks/Responses/**/*.json"
-        ]
-      }
-    },
-    {
-      "name": "Crypto+Search-Go",
-      "dependencies": {
-        "ProtonCore-GoLibs/Crypto+Search-Go": [
-          "6.1.0"
-        ],
-        "ProtonCore-Authentication/Crypto+Search-Go": [
-          "6.1.0"
-        ],
-        "ProtonCore-Authentication-KeyGeneration/Crypto+Search-Go": [
-          "6.1.0"
-        ]
-      },
-      "source_files": [
-        "libraries/Login/Sources/*.swift",
-        "libraries/Login/Sources/**/*.swift"
-      ],
-      "resource_bundles": {
-        "Resources-Login": [
-          "libraries/Login/Tests/UnitTests/Mocks/Responses/**/*.json"
-        ]
-      }
-    },
-    {
-      "name": "ErrorWarningEmittingDefaultSubspec",
-      "source_files": "libraries/ErrorWarningEmittingDefaultSubspec/ErrorWarningEmittingDefaultSubspec.swift"
     }
   ],
   "swift_version": "5.6"

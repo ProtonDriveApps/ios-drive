@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import ProtonCore_CoreTranslation
+import ProtonCoreLoginUI
 
 public enum DriveCoreAlert: Equatable {
     case logout
@@ -45,7 +45,7 @@ public enum DriveCoreAlert: Equatable {
     public var message: String {
         switch self {
         case .logout:
-            return CoreString._ls_info_session_expired
+            return LUITranslation.info_session_expired.l10n
         case .trustKitFailure:
             return "TLS certificate validation failed. Your connection may be monitored and the app is temporarily blocked for your safety.\n\nswitch  networks immediately"
         case .trustKitHardFailure:
@@ -53,7 +53,7 @@ public enum DriveCoreAlert: Equatable {
         case .humanVerification:
             fatalError("Should be handled by ProtonCore")
         case .forceUpgrade:
-            return "You are using outdated version of the app which is no longer supported by our server. Please, install update for the app from the AppStore"
+            return "You are using an outdated version of the app which is no longer supported by our servers. Please update the app."
         case .userGoneDelinquent:
             return "Your Proton account is currently on hold. To continue using your account, please pay any overdue invoices"
         }

@@ -40,26 +40,30 @@ final class RevisionDraftCreatorOperation: AsynchronousOperation, UploadOperatio
     override func main() {
         guard !isCancelled else { return }
 
-        ConsoleLogger.shared?.log("STAGE: 1 Create revision 🐣📦🏞 started", osLogType: FileUploader.self)
+        Log.info("STAGE: 1 Create revision 🐣📦🏞 started. UUID: \(self.id.uuidString)", domain: .uploader)
         creator.create(draft) { [weak self] result in
             guard let self = self, !self.isCancelled else { return }
 
             switch result {
             case .success:
-                ConsoleLogger.shared?.log("STAGE: 1 Create revision 🐣📦🏞 finished ✅", osLogType: FileUploader.self)
+                Log.info("STAGE: 1 Create revision 🐣📦🏞 finished ✅. UUID: \(self.id.uuidString)", domain: .uploader)
                 self.progress.complete()
                 self.state = .finished
 
             case .failure(let error):
-                ConsoleLogger.shared?.log("STAGE: 1 Create revision 🐣📦🏞 finished ❌", osLogType: FileUploader.self)
+                Log.info("STAGE: 1 Create revision 🐣📦🏞 finished ❌. UUID: \(self.id.uuidString)", domain: .uploader)
                 self.onError(error)
             }
         }
     }
 
     override func cancel() {
-        ConsoleLogger.shared?.log("🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
+        Log.info("STAGE: 1 🙅‍♂️ CANCEL \(type(of: self)). UUID: \(id.uuidString)", domain: .uploader)
         creator.cancel()
         super.cancel()
+    }
+
+    deinit {
+        Log.info("STAGE: 1 ☠️🚨 \(type(of: self)). UUID: \(id.uuidString)", domain: .uploader)
     }
 }

@@ -16,15 +16,21 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
-import ProtonCore_Login
+import ProtonCoreLogin
+import ProtonCoreNetworking
 
 public final class AuthenticateViewModel {
 
     private let sessionStore: SessionStore
+    private let sessionCommunicator: SessionRelatedCommunicatorBetweenMainAppAndExtensions
     private let coordinator: AuthenticateCoordinator
+    private var hasAuthenticatonCompleted = false
 
-    init(sessionStore: SessionStore, coordinator: AuthenticateCoordinator) {
+    init(sessionStore: SessionStore,
+         sessionCommunicator: SessionRelatedCommunicatorBetweenMainAppAndExtensions,
+         coordinator: AuthenticateCoordinator) {
         self.sessionStore = sessionStore
+        self.sessionCommunicator = sessionCommunicator
         self.coordinator = coordinator
     }
 
@@ -32,19 +38,33 @@ public final class AuthenticateViewModel {
         "The convenience of cloud storage and the security of encryption technology. Finally a cloud storage solution you can trust."
     }
 
-    func save(_ userData: UserData) {
+    func save(_ userData: UserData, _ errorBlock: @escaping (Error) -> Void) {
         #if DEBUG
             dump("Credential 🔑: \n \(userData.credential)")
         #endif
 
-        sessionStore.storeCredential(CoreCredential(authCredential: userData.credential, scopes: userData.scopes))
-        sessionStore.storeUser(userData.user)
-        sessionStore.storeSalts(userData.salts)
-        sessionStore.storeAddresses(userData.addresses)
-        sessionStore.storePassphrases(userData.passphrases)
+        let parentSessionCredential = Credential(userData.credential, scopes: userData.scopes)
+        sessionCommunicator
+            .fetchNewChildSession(parentSessionCredential: parentSessionCredential) { [weak self] result in
+                guard let self else { return }
+                switch result {
+                case .success:
+                    self.sessionStore.storeCredential(CoreCredential(parentSessionCredential))
+                    self.sessionStore.storeUser(userData.user)
+                    self.sessionStore.storeAddresses(userData.addresses)
+                    self.sessionStore.storePassphrases(userData.passphrases)
+                    self.completeAuthentication()
+                    self.sessionCommunicator.onChildSessionReady()
+                case .failure(let error):
+                    errorBlock(error)
+                }
+            }
     }
     
     func completeAuthentication() {
-        coordinator.onAuthenticated()
+        if hasAuthenticatonCompleted == true {
+            coordinator.onAuthenticated()
+        }
+        hasAuthenticatonCompleted = true
     }
 }

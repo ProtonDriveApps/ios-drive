@@ -23,6 +23,7 @@ class ScanNodeOperation: SynchronousOperation {
     
     private var nodeID: NodeIdentifier
     private weak var cloudSlot: CloudSlot?
+    private let shouldIncludeDeletedItems: Bool
     private var completion: Completion?
     
     private var lastFetchedPage: Int = 0
@@ -30,10 +31,12 @@ class ScanNodeOperation: SynchronousOperation {
     
     init(_ nodeID: NodeIdentifier,
          cloudSlot: CloudSlot,
+         shouldIncludeDeletedItems: Bool = false,
          completionHandler: @escaping Completion)
     {
         self.nodeID = nodeID
         self.cloudSlot = cloudSlot
+        self.shouldIncludeDeletedItems = shouldIncludeDeletedItems
         self.completion = completionHandler
         
         super.init()
@@ -42,8 +45,8 @@ class ScanNodeOperation: SynchronousOperation {
     override func cancel() {
         self.completion = nil
         super.cancel()
-        
-        ConsoleLogger.shared?.log("Scan children operation cancelled for node \(self.nodeID.nodeID)", osLogType: OfflineSaver.self)
+
+        Log.info("Scan children operation cancelled for node \(self.nodeID.nodeID)", domain: .downloader)
     }
     
     override func start() {
@@ -54,13 +57,15 @@ class ScanNodeOperation: SynchronousOperation {
             guard let self = self, !self.isCancelled else { return }
             switch nodeResult {
             case let .failure(error):
-                ConsoleLogger.shared?.log(error, osLogType: OfflineSaver.self)
+                Log.error(error, domain: .networking)
                 self.completion?(.failure(error))
                 self.state = .finished
                 
             case let .success(node as Folder):
-                ConsoleLogger.shared?.log("Start fetching pages for node \(self.nodeID.nodeID)", osLogType: OfflineSaver.self)
-                self.fetchChildrenFromAPI(node)
+                Log.info("Start fetching pages for node \(self.nodeID.nodeID)", domain: .networking)
+                self.fetchChildrenFromAPI(
+                    node, shouldIncludeDeletedItems: self.shouldIncludeDeletedItems
+                )
                 
             default: assert(false, "Should not scan File nodes in this operation")
             }
@@ -69,28 +74,31 @@ class ScanNodeOperation: SynchronousOperation {
     
     // Similar functionality is also implemented in iOS app's NodesFetching model
     // usage of this technique is discouraged because recursive fetching is a heavy operation
-    private func fetchChildrenFromAPI(_ node: Folder) {
+    private func fetchChildrenFromAPI(_ node: Folder, shouldIncludeDeletedItems: Bool) {
         guard !self.isCancelled else { return }
-        let params: [FolderChildrenEndpointParameters] = [
+        var params: [FolderChildrenEndpointParameters] = [
             .page(self.lastFetchedPage),
             .pageSize(self.pageSize)
         ]
+        if shouldIncludeDeletedItems {
+            params.append(.showAll)
+        }
         
         self.cloudSlot?.scanChildren(of: self.nodeID, parameters: params) { [weak self] resultChildren in
             guard let self = self, !self.isCancelled else { return }
             
             switch resultChildren {
             case let .failure(error):
-                ConsoleLogger.shared?.log(error, osLogType: OfflineSaver.self)
+                Log.error("ScanChildren error: \(error)", domain: .networking)
                 self.completion?(.failure(error))
                 self.state = .finished
                 
             case let .success(nodes) where nodes.count < self.pageSize:
                 // this is last page
-                ConsoleLogger.shared?.log("Fetched page #\(self.lastFetchedPage) last (\(nodes.count) nodes) children for node \(self.nodeID.nodeID)", osLogType: OfflineSaver.self)
+                Log.info("Fetched page #\(self.lastFetchedPage) last (\(nodes.count) nodes) children for node \(self.nodeID.nodeID)", domain: .networking)
                 node.managedObjectContext?.performAndWait {
                     node.isChildrenListFullyFetched = true
-                    try? node.managedObjectContext?.save()
+                    try? node.managedObjectContext?.saveWithParentLinkCheck()
                 }
                 
                 // return not `nodes` that we got for last page, but children from all pages
@@ -99,9 +107,11 @@ class ScanNodeOperation: SynchronousOperation {
                 
             case .success:
                 // this is not last page and need to request next one
-                ConsoleLogger.shared?.log("Fetched page #\(self.lastFetchedPage) full (\(self.pageSize) nodes) for node \(self.nodeID.nodeID)", osLogType: OfflineSaver.self)
+                Log.info("Fetched page #\(self.lastFetchedPage) full (\(self.pageSize) nodes) for node \(self.nodeID.nodeID)", domain: .networking)
                 self.lastFetchedPage += 1
-                return self.fetchChildrenFromAPI(node)
+                return self.fetchChildrenFromAPI(
+                    node, shouldIncludeDeletedItems: self.shouldIncludeDeletedItems
+                )
             }
         }
     }

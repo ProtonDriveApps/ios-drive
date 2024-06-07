@@ -69,5 +69,5 @@ class URLSessionContentUploader: NSObject, ContentUploader, URLSessionTaskDelega
             }.store(in: &cancellables)
     }
 
-    struct InvalidRepresentationError: Error {}
+    struct InvalidRepresentationError: LocalizedError {}
 }

@@ -18,12 +18,11 @@
 import Combine
 import PDCore
 
-typealias PhotosListIds = [PhotoListId]
-typealias PhotosMetadataLoadResult = Result<PhotosListIds, Error>
+typealias PhotosMetadataLoadResult = Result<PhotosLoadResponse, Error>
 
 protocol PhotosMetadataLoadResultInteractor {
     var result: AnyPublisher<PhotosMetadataLoadResult, Never> { get }
     func execute(with input: PhotosList)
 }
 
-final class AsyncPhotosMetadataLoadResultInteractor: AsynchronousFacade<PhotosMetadataLoadInteractor, PhotosList, PhotosListIds>, PhotosMetadataLoadResultInteractor {}
+final class AsyncPhotosMetadataLoadResultInteractor: ThrowingAsynchronousFacade<PhotosMetadataLoadInteractor, PhotosList, PhotosLoadResponse>, PhotosMetadataLoadResultInteractor {}

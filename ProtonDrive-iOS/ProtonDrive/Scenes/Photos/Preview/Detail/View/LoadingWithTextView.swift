@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import UIKit
 
 final class LoadingWithTextView: UIView {
@@ -29,9 +29,9 @@ final class LoadingWithTextView: UIView {
     }
 
     private func setupLayout(with text: String) {
-        let label = UILabel(text, font: .preferredFont(forTextStyle: .body), textColor: ColorProvider.TextInverted)
+        let label = UILabel(text, font: .preferredFont(forTextStyle: .body), textColor: ColorProvider.FloatyText)
         let activity = UIActivityIndicatorView(style: .medium)
-        activity.color = ColorProvider.TextInverted
+        activity.color = ColorProvider.FloatyText
         activity.startAnimating()
         let stackView = UIStackView(arrangedSubviews: [activity, label])
         stackView.axis = .horizontal

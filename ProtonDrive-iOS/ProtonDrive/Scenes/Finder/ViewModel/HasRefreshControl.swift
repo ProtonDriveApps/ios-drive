@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import UIKit
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import PDUIComponents
 import PDCore
 import SwiftUI
@@ -42,7 +42,7 @@ extension HasRefreshControl where Self: FinderViewModel {
     }
     
     var refreshControlSubtitle: NSAttributedString {
-        let lastEvent = self.model.tower.cloudSlot?.lastEventFetchTime ?? .distantPast
+        let lastEvent = self.model.tower.eventSystemLatestFetchTime ?? .distantPast
         let lastForceFetch = self.lastUpdated
         let date = lastEvent.compare(lastForceFetch) == .orderedAscending ? lastForceFetch : lastEvent
         let string = NSAttributedString(string: "Last updated: " + self.newLastUpdatedFormatter().string(from: date),
@@ -55,6 +55,11 @@ extension HasRefreshControl where Self: FinderViewModel {
 extension TrashViewModel: HasRefreshControl { }
 extension HasRefreshControl where Self: TrashViewModel {
     var refreshControlSubtitle: NSAttributedString { .init(string: "") }
+    func refreshControlAction() {
+        Task {
+            await fetchAllPages()
+        }
+    }
 }
 
 struct PullToRefresh: View {

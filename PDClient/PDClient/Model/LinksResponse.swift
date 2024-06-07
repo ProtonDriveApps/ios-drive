@@ -20,9 +20,11 @@ import Foundation
 public struct LinksResponse: Codable {
     public var code: Int
     public let links: [Link]
+    public let parents: [Link]
 
-    public init(code: Int, links: [Link]) {
+    public init(code: Int, links: [Link], parents: [Link]) {
         self.code = code
         self.links = links
+        self.parents = parents
     }
 }

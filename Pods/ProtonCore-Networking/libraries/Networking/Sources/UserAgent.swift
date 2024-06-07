@@ -20,19 +20,22 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 public final class UserAgent {
     public static let `default`: UserAgent = UserAgent()
-    
+
     #if DEBUG_CORE_INTERNALS
     public var initCount: Int = 0
     public var accessCount: Int = 0
     #endif
-    
+
     private let cacheQueue = DispatchQueue(label: "ch.proton.core.networking.useragent")
     private var cachedUS: String?
     private init () { }
-    
+
     // eg. Darwin/16.3.0
     internal func DarwinVersion() -> String {
         var sysinfo = utsname()
@@ -49,7 +52,7 @@ public final class UserAgent {
         let version = dictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
         return "CFNetwork/\(version)"
     }
-    
+
     // eg. iOS/10_1
     private func deviceVersion() -> String {
 #if canImport(UIKit)
@@ -76,16 +79,18 @@ public final class UserAgent {
     private func appNameAndVersion() -> String {
         let dictionary = Bundle.main.infoDictionary!
         let version = dictionary["CFBundleShortVersionString"] as? String ?? "Unknown"
-        let name = dictionary["CFBundleName"] as? String ?? "Unknown"
+        var name = dictionary["CFBundleName"] as? String ?? "Unknown"
+        // matches the name format to other clients. change `Proton XXXX` to `ProtonXXX`
+        name = name.replacingOccurrences(of: " ", with: "")
         return "\(name)/\(version)"
     }
-    
+
     /// Return the User agent string. the format requested by data team
     /// - Returns: UA string
     private func UAString() -> String {
         return "\(appNameAndVersion()) (\(deviceVersion()); \(deviceName()))"
     }
-    
+
     public var ua: String? {
         cacheQueue.sync {
             if cachedUS == nil {
@@ -94,7 +99,7 @@ public final class UserAgent {
                 #endif
                 cachedUS = self.UAString()
             }
-            
+
             #if DEBUG_CORE_INTERNALS
             accessCount += 1
             #endif

@@ -24,9 +24,11 @@ public protocol RevisionImporter {
 
 public class CoreDataRevisionImporter: RevisionImporter {
     private let signersKitFactory: SignersKitFactoryProtocol
+    private let uploadClientUIDProvider: UploadClientUIDProvider
 
-    public init(signersKitFactory: SignersKitFactoryProtocol) {
+    public init(signersKitFactory: SignersKitFactoryProtocol, uploadClientUIDProvider: UploadClientUIDProvider) {
         self.signersKitFactory = signersKitFactory
+        self.uploadClientUIDProvider = uploadClientUIDProvider
     }
 
     public func importNewRevision(from url: URL, into file: File) throws -> File {
@@ -39,10 +41,11 @@ public class CoreDataRevisionImporter: RevisionImporter {
             guard coreDataFile.isUploaded() else { throw File.InvalidState(message: "The file should be already uploaded") }
 
             let uploadID = UUID()
+            let fileSize = try url.getFileSize()
             // Create new Revision
             coreDataFile.uploadID = uploadID
-            coreDataFile.clientUID = uploadID.uuidString
-            let coreDataRevision = Revision.`import`(id: uploadID.uuidString, url: url, creatorEmail: signersKit.address.email, moc: moc)
+            coreDataFile.clientUID = uploadClientUIDProvider.getUploadClientUID()
+            let coreDataRevision = Revision.`import`(id: uploadID.uuidString, url: url, size: fileSize, creatorEmail: signersKit.address.email, moc: moc)
 
             // Relationships
             coreDataRevision.file = coreDataFile // This adds the current coreDataRevision to File's revisions

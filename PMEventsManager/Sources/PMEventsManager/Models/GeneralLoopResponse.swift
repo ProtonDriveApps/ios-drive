@@ -16,8 +16,8 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import ProtonCore_DataModel
-import ProtonCore_Payments
+import ProtonCoreDataModel
+import ProtonCorePayments
 
 public struct GeneralLoopResponse: Codable {
     public let code: Int
@@ -25,10 +25,10 @@ public struct GeneralLoopResponse: Codable {
     public let refresh: Int
     public let more: Int
     
-    public let user: User?                  // from ProtonCore_DataModel
+    public let user: User?                  // from ProtonCoreDataModel
     public let subscription: Subscription? 
     public let userSettings: UserSettings?
-    public let organization: Organization?  // from ProtonCore_Payments
+    public let organization: Organization?  // from ProtonCorePayments
     public let usedSpace: Double?
     
     public let addresses: [AddressUpdate]?

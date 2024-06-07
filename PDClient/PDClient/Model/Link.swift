@@ -48,6 +48,42 @@ public struct Link: Codable {
     public let XAttr: String?
     public let fileProperties: FileProperties?
     public let folderProperties: FolderProperties?
+    
+    public init(linkID: LinkID, parentLinkID: LinkID?, type: LinkType, name: String,
+                nameSignatureEmail: String?, hash: String, state: NodeState, expirationTime: TimeInterval?,
+                size: Int, MIMEType: String, attributes: AttriburesMask, permissions: PermissionMask,
+                nodeKey: String, nodePassphrase: String, nodePassphraseSignature: String,
+                signatureEmail: String, createTime: TimeInterval, modifyTime: TimeInterval,
+                trashed: TimeInterval?, shared: Int, shareIDs: [Share.ShareID], nbUrls: Int, activeUrls: Int,
+                urlsExpired: Int, XAttr: String?, fileProperties: FileProperties?, folderProperties: FolderProperties?) {
+        self.linkID = linkID
+        self.parentLinkID = parentLinkID
+        self.type = type
+        self.name = name
+        self.nameSignatureEmail = nameSignatureEmail
+        self.hash = hash
+        self.state = state
+        self.expirationTime = expirationTime
+        self.size = size
+        self.MIMEType = MIMEType
+        self.attributes = attributes
+        self.permissions = permissions
+        self.nodeKey = nodeKey
+        self.nodePassphrase = nodePassphrase
+        self.nodePassphraseSignature = nodePassphraseSignature
+        self.signatureEmail = signatureEmail
+        self.createTime = createTime
+        self.modifyTime = modifyTime
+        self.trashed = trashed
+        self.shared = shared
+        self.shareIDs = shareIDs
+        self.nbUrls = nbUrls
+        self.activeUrls = activeUrls
+        self.urlsExpired = urlsExpired
+        self.XAttr = XAttr
+        self.fileProperties = fileProperties
+        self.folderProperties = folderProperties
+    }
 }
 
 public extension Link {
@@ -90,6 +126,7 @@ public enum LinkType: Int, Codable {
 }
 
 public enum NodeState: Int, Codable {
+    case draft = 0
     case active = 1
     case deleted = 2
     case deleting = 3
@@ -99,6 +136,7 @@ public enum NodeState: Int, Codable {
     
     public init?(rawValue: Int) {
         switch rawValue {
+        case Self.draft.rawValue: self = .draft
         case Self.active.rawValue: self = .active
         case Self.deleted.rawValue: self = .deleted
         case Self.deleting.rawValue: self = .deleting

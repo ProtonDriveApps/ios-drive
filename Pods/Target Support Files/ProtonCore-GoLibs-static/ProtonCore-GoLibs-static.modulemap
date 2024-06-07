@@ -1,4 +1,4 @@
-framework module ProtonCore_Crypto {
+framework module ProtonCoreGoLibs {
   umbrella header "ProtonCore-GoLibs-static-umbrella.h"
 
   export *

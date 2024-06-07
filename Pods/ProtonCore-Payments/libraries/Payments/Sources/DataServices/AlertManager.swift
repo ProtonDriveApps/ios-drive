@@ -19,8 +19,8 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
-import ProtonCore_CoreTranslation
-import ProtonCore_Foundations
+import Foundation
+import ProtonCoreFoundations
 
 public enum AlertActionStyle {
     case `default`
@@ -44,15 +44,11 @@ struct PaymentsAlertManager {
 
     var alertManager: AlertManagerProtocol
 
-    init (alertManager: AlertManagerProtocol) {
-        self.alertManager = alertManager
-    }
-
     func retryAlert(confirmAction: ActionCallback, cancelAction: ActionCallback) {
-        alertManager.title = CoreString._error_apply_payment_on_registration_title
-        alertManager.message = CoreString._error_apply_payment_on_registration_message
-        alertManager.confirmButtonTitle = CoreString._retry
-        alertManager.cancelButtonTitle = CoreString._error_apply_payment_on_registration_support
+        alertManager.title = PSTranslation.error_apply_payment_on_registration_title.l10n
+        alertManager.message = PSTranslation.error_apply_payment_on_registration_message.l10n
+        alertManager.confirmButtonTitle = PSTranslation._core_retry.l10n
+        alertManager.cancelButtonTitle = PSTranslation._error_apply_payment_on_registration_support.l10n
         alertManager.confirmButtonStyle = .destructive
         alertManager.cancelButtonStyle = .cancel
         alertManager.showAlert(confirmAction: confirmAction, cancelAction: cancelAction)
@@ -62,7 +58,7 @@ struct PaymentsAlertManager {
         alertManager.title = nil
         alertManager.message = message
         alertManager.confirmButtonTitle = confirmButtonTitle
-        alertManager.cancelButtonTitle = CoreString._no_dont_bypass_validation
+        alertManager.cancelButtonTitle = PSTranslation.no_dont_bypass_validation.l10n
         alertManager.confirmButtonStyle = .destructive
         alertManager.cancelButtonStyle = .cancel
         alertManager.showAlert(confirmAction: confirmAction, cancelAction: nil)
@@ -71,18 +67,18 @@ struct PaymentsAlertManager {
     func errorAlert(message: String) {
         alertManager.title = nil
         alertManager.message = message
-        alertManager.confirmButtonTitle = CoreString._general_ok_action
+        alertManager.confirmButtonTitle = PSTranslation._core_general_ok_action.l10n
         alertManager.cancelButtonTitle = nil
         alertManager.confirmButtonStyle = .cancel
         alertManager.cancelButtonStyle = .default
         alertManager.showAlert(confirmAction: nil, cancelAction: nil)
     }
-    
+
     func creditsAppliedAlert(confirmAction: ActionCallback, cancelAction: ActionCallback) {
         alertManager.title = nil
-        alertManager.message = CoreString._popup_credits_applied_message
-        alertManager.confirmButtonTitle = CoreString._popup_credits_applied_confirmation
-        alertManager.cancelButtonTitle = CoreString._popup_credits_applied_cancellation
+        alertManager.message = PSTranslation.popup_credits_applied_message.l10n
+        alertManager.confirmButtonTitle = PSTranslation.popup_credits_applied_confirmation.l10n
+        alertManager.cancelButtonTitle = PSTranslation.popup_credits_applied_cancellation.l10n
         alertManager.confirmButtonStyle = .default
         alertManager.cancelButtonStyle = .cancel
         alertManager.showAlert(confirmAction: confirmAction, cancelAction: cancelAction)
@@ -132,21 +128,16 @@ final class AlertManager: AlertManagerProtocol {
         }
     }
 
-    @available(iOS 13.0, *)
     private var windowScene: UIWindowScene? {
-        return UIApplication.getInstance()?.connectedScenes.first { $0.activationState == .foregroundActive && $0 is UIWindowScene } as? UIWindowScene
+        UIApplication.getInstance()?.connectedScenes.first { $0.activationState == .foregroundActive && $0 is UIWindowScene } as? UIWindowScene
     }
 
     private var alertWindow: UIWindow?
 
     private func createAlertWindow() -> UIWindow? {
         let alertWindow: UIWindow
-        if #available(iOS 13.0, *) {
-            if let windowScene = windowScene {
-                alertWindow = UIWindow(windowScene: windowScene)
-            } else {
-                alertWindow = UIWindow(frame: UIScreen.main.bounds)
-            }
+        if let windowScene = windowScene {
+            alertWindow = UIWindow(windowScene: windowScene)
         } else {
             alertWindow = UIWindow(frame: UIScreen.main.bounds)
         }

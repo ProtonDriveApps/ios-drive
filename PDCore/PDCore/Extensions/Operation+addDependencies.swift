@@ -23,4 +23,8 @@ extension Operation {
         ops.forEach(addDependency)
     }
 
+    func addDependencyIfPossible(_ op: Operation?) {
+        guard let operation = op else { return }
+        addDependency(operation)
+    }
 }

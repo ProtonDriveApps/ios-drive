@@ -20,12 +20,12 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Log
+import ProtonCoreLog
 
 struct Quad9: DoHProviderInternal {
-    
+
     let supported: [DNSRecordType] = [.a, .txt]
-    
+
     let networkingEngine: DoHNetworkingEngine
 
     init(networkingEngine: DoHNetworkingEngine) {

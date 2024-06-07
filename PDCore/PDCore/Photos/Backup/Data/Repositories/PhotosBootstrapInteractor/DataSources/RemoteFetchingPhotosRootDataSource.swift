@@ -29,7 +29,7 @@ public final class RemoteFetchingPhotosRootDataSource: PhotosShareDataSource {
     }
 
     public func getPhotoShare() async throws -> Share {
-        let moc = storage.backgroundContext
+        let moc = storage.newBackgroundContext()
 
         guard let volume = storage.volumes(moc: moc).first else {
             throw Volume.InvalidState(message: "No volume found while trying to create photos share.")

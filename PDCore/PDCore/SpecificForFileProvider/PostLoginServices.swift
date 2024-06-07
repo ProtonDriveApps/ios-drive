@@ -17,44 +17,58 @@
 
 import Foundation
 import PDClient
-import ProtonCore_Keymaker
-import os.log
+import ProtonCoreKeymaker
+import ProtonCoreLogin
+import ProtonCoreNetworking
 import Combine
 
 @available(iOSApplicationExtension 15.0, *)
-@available(macOS 12.0, *)
-public class PostLoginServices: LogObject {
-    public static var osLog: OSLog = OSLog(subsystem: "PDCore", category: "PostLoginServices")
-    public typealias AdditionalSetupBlock = () -> Void
+@available(macOS 13.0, *)
+public class PostLoginServices {
+    public typealias AdditionalSetupBlock = () async throws -> Void
     
     public let tower: Tower
     private let initialServices: InitialServices
-    private let storage: StorageManager
-    private var observations: Set<AnyCancellable> = []
+    private var storage: StorageManager { tower.storage }
+    private var syncStorage: SyncStorageManager? { tower.syncStorage }
     private let activityObserver: ((NSUserActivity) -> Void)
+
+    var observations: Set<AnyCancellable> = []
     
     public init(initialServices: InitialServices,
                 appGroup: SettingsStorageSuite,
                 storage: StorageManager? = nil,
+                syncStorage: SyncStorageManager? = nil,
                 eventObservers: [EventsListener] = [],
                 eventProcessingMode: DriveEventsLoopMode,
+                uploadVerifierFactory: UploadVerifierFactory,
                 activityObserver: @escaping ((NSUserActivity) -> Void))
     {
         self.initialServices = initialServices
-        self.storage = storage ?? StorageManager(suite: appGroup, sessionVault: initialServices.sessionVault)
         self.activityObserver = activityObserver
         
-        self.tower = Tower(storage: self.storage,
+        let towerStorage = storage ?? StorageManager(suite: appGroup, sessionVault: initialServices.sessionVault)
+        #if os(macOS)
+        let towerSyncStorage: SyncStorageManager = syncStorage ?? SyncStorageManager(suite: appGroup)
+        #else
+        let towerSyncStorage: SyncStorageManager? = nil
+        #endif
+
+        self.tower = Tower(storage: towerStorage,
+                           syncStorage: towerSyncStorage,
                            eventStorage: EventStorageManager(suiteUrl: appGroup.directoryUrl),
                            appGroup: appGroup,
                            mainKeyProvider: initialServices.keymaker,
                            sessionVault: initialServices.sessionVault,
+                           sessionCommunicator: initialServices.sessionRelatedCommunicator,
                            authenticator: initialServices.authenticator,
                            clientConfig: initialServices.clientConfig,
                            network: initialServices.networkService,
                            eventObservers: eventObservers,
-                           eventProcessingMode: eventProcessingMode)
-        
+                           eventProcessingMode: eventProcessingMode,
+                           uploadVerifierFactory: uploadVerifierFactory,
+                           localSettings: initialServices.localSettings)
+
         self.initialServices.networkClient.publisher(for: \.currentActivity)
             .dropFirst() // ignore the current value
             .compactMap { $0 }
@@ -62,47 +76,81 @@ public class PostLoginServices: LogObject {
             .store(in: &observations)
     }
     
-    public func onSignIn(additionalSetup: @escaping AdditionalSetupBlock) {
-        tower.onFirstBoot { [weak self] result in
-            guard let self = self else { return }
-            
-            switch result {
-            case .success:
-                additionalSetup()
-            case .failure:
-                self.signOut()
-            }
-        }
-    }
-    
     public func resetMOCs() {
         self.storage.mainContext.reset()
         self.storage.backgroundContext.reset()
     }
     
-    public func signOut() {
+    #if os(macOS)
+    public func signOutAsync(domainConnectionManager: DomainConnectionManagerProtocol) async {
+        // disconnect FileProvider extensions
+        try? await domainConnectionManager.tearDownDomain()
         // close Tower properly, close session on BE and remove credentials from session vault
-        tower.signOut()
+        await tower.signOut(cacheCleanupStrategy: domainConnectionManager.cacheCleanupStrategy)
+        // intentionally, we don't clear the main key
         
-        // disconnet FileProvider extensions
-        removeFileProvider()
-        
+        // remove session from networking object when signing out
+        initialServices.networkService.sessionUID = ""
+    }
+    
+    #elseif os(iOS)
+    public func signOut() {
+        Task {
+            await signOutAsync(notify: true)
+        }
+    }
+    
+    // exposed for tests
+    public func signOutAsync(notify: Bool) async {
+        // close Tower properly, close session on BE and remove credentials from session vault
+        await tower.signOut(cacheCleanupStrategy: .cleanEverything)
+        // disconnect FileProvider extensions
+        try? await signOutFileProvider()
         // destroy mainKey in Keychain
         initialServices.keymaker.wipeMainKey()
-
+        
+        cleanAPIServiceSessionAndNotifyIfNeeded(notify)
+    }
+    
+    private func signOutFileProvider() async throws {
+        try? await PostLoginServices.removeFileProvider()
+    }
+    
+    private func cleanAPIServiceSessionAndNotifyIfNeeded(_ notify: Bool) {
         // remove session from networking object when signing out
         initialServices.networkService.sessionUID = ""
         
-        // notify cross-process observers
-        DarwinNotificationCenter.shared.postNotification(.DidLogout)
+        if notify {
+            // notify cross-process observers
+            DarwinNotificationCenter.shared.postNotification(.DidLogout)
+        }
     }
+    #endif
     
     public func onLaunchAfterSignIn() {
         tower.start(runEventsProcessor: false)
     }
-    
+
     private func currentActivityChanged(_ activity: NSUserActivity) {
-        ConsoleLogger.shared?.fireWarning(event: "\(activity.activityType)")
+        Log.info("event: \(activity.activityType)", domain: .events)
         self.activityObserver(activity)
+    }
+}
+
+extension PostLoginServices.Errors: LocalizedError {
+
+    public var errorDescription: String? {
+        switch self {
+        case let .addDomainFailed(error):
+            return "Adding new domain failed with error: \(error.localizedDescription), code \((error as NSError).code)"
+        case let .getDomainsFailed(error): return "Getting file provider extension's domains failed with error: \(error.localizedDescription), code \((error as NSError).code)"
+        case let .disconnectDomainFailed(error): return "Disconnecting domain failed with error: \(error.localizedDescription), code \((error as NSError).code)"
+        case let .removeDomainFailed(error): return "Removing domain failed with error: \(error.localizedDescription), code \((error as NSError).code)"
+        case .reconnectDomainFailed: return "Reconnecting domain failed"
+        case .identifyDomainFailed(let error):
+            return "Identifying domain failed with error: \(error.localizedDescription)"
+        case let .postMigrationStepFailed(error?): return "Post-migration step (cleanup) failed with error: \(error.localizedDescription), code \((error as NSError).code)"
+        case .postMigrationStepFailed: return "Post-migration step (cleanup) failed without error"
+        }
     }
 }

@@ -33,6 +33,10 @@ public extension Progress {
         get { UnitOfWork(totalUnitCount) }
         set { totalUnitCount = Int64(newValue) }
     }
+    
+    var pendingUnitsOfWork: UnitOfWork {
+        UnitOfWork(totalUnitCount - completedUnitCount)
+    }
 
     func increaseTotalUnitsOfWork(by newUnitsOfWork: Int) {
         let initial = totalUnitsOfWork

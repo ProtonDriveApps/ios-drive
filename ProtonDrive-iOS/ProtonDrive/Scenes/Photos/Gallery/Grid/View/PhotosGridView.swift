@@ -16,15 +16,18 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
+import PDUIComponents
 
-struct PhotosGridView<ViewModel: PhotosGridViewModelProtocol, ItemView: View>: View {
+struct PhotosGridView<ViewModel: PhotosGridViewModelProtocol, ActionView: View, ItemView: View>: View {
     @ObservedObject private var viewModel: ViewModel
-    private let item: (PhotoGridViewItem) -> ItemView
+    private let actionView: ActionView
+    private let item: (PhotoGridViewItem, String) -> ItemView
     private let spacing: CGFloat = 1.5
 
-    init(viewModel: ViewModel, item: @escaping (PhotoGridViewItem) -> ItemView) {
+    init(viewModel: ViewModel, actionView: ActionView, item: @escaping (PhotoGridViewItem, String) -> ItemView) {
         self.viewModel = viewModel
+        self.actionView = actionView
         self.item = item
     }
 
@@ -36,9 +39,18 @@ struct PhotosGridView<ViewModel: PhotosGridViewModelProtocol, ItemView: View>: V
                     ForEach(viewModel.sections) {
                         view(from: $0, height: height)
                     }
-                    bottomView
                 }
+                Spacer(minLength: 32)
+                LazyVGrid(columns: [.init()]) {
+                    bottomView
+                        .modifier(StretchModifier(containerFrame: geometry.frame(in: .global)))
+                }
+                .padding(.bottom, ActionBarSize.height)
             }
+        }
+        .errorToast(location: .bottom, errors: viewModel.error)
+        .overlay {
+            actionView
         }
     }
 
@@ -48,8 +60,8 @@ struct PhotosGridView<ViewModel: PhotosGridViewModelProtocol, ItemView: View>: V
 
     private func view(from section: PhotosGridViewSection, height: CGFloat) -> some View {
         Section(content: {
-            ForEach(section.items) {
-                item($0)
+            ForEach(Array(section.items.enumerated()), id: \.element.id) {
+                item($0.element, "\(section.title)_\($0.offset)")
                     .frame(height: height)
             }
         }, header: {
@@ -57,14 +69,23 @@ struct PhotosGridView<ViewModel: PhotosGridViewModelProtocol, ItemView: View>: V
                 .font(.body)
                 .fontWeight(.bold)
                 .foregroundColor(ColorProvider.TextWeak)
-                .padding(EdgeInsets(top: 24, leading: 16, bottom: 8, trailing: 16))
+                .padding(EdgeInsets(top: section.isFirst ? 14 : 24, leading: 16, bottom: 8, trailing: 16))
         })
     }
 
     private var bottomView: some View {
-        ColorProvider.BackgroundNorm
-            .frame(maxWidth: .infinity)
-            .frame(height: 1)
-            .onAppear(perform: viewModel.didShowLastItem)
+        HStack(alignment: .center, spacing: 6) {
+            Spacer()
+            IconProvider.lockCheckFilled
+                .resizable()
+                .frame(width: 14, height: 14)
+                .foregroundColor(ColorProvider.IconWeak)
+            Text(viewModel.footer)
+                .font(.caption)
+                .foregroundColor(ColorProvider.TextWeak)
+            Spacer()
+        }
+        .padding(.bottom, 16)
+        .onAppear(perform: viewModel.didShowLastItem)
     }
 }

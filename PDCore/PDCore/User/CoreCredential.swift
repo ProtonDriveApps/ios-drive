@@ -17,11 +17,11 @@
 
 import Foundation
 import PDClient
-import ProtonCore_Authentication
-import ProtonCore_Networking
+import ProtonCoreAuthentication
+import ProtonCoreNetworking
 
-public struct CoreCredential: Codable {
-    typealias Scope = [String]
+public struct CoreCredential: Codable, Equatable {
+    public typealias Scope = [String]
     
     enum CodingKeys: String, CodingKey {
         case UID
@@ -31,6 +31,7 @@ public struct CoreCredential: Codable {
         case userName
         case userID
         case scope
+        case mailboxPassword
     }
     
     var UID: String
@@ -39,13 +40,18 @@ public struct CoreCredential: Codable {
     var expiration: Date
     var userName: String
     var userID: String
-    var scope: Scope
-    
+    public var scope: Scope
+
+    public var mailboxPassword: String = ""
+
     var worksForDrive: Bool {
         scope.contains("drive")
     }
+
+    // it maps the Credential.isForUnauthenticatedSession property
+    var isForUnauthenticatedSession: Bool { userID.isEmpty }
     
-    public init(UID: String, accessToken: String, refreshToken: String, expiration: Date, userName: String, userID: String, scope: ClientCredential.Scope) {
+    public init(UID: String, accessToken: String, refreshToken: String, expiration: Date, userName: String, userID: String, scope: ClientCredential.Scope, mailboxPassword: String) {
         self.UID = UID
         self.accessToken = accessToken
         self.refreshToken = refreshToken
@@ -53,6 +59,7 @@ public struct CoreCredential: Codable {
         self.userName = userName
         self.userID = userID
         self.scope = scope
+        self.mailboxPassword = mailboxPassword
     }
     
     public init(from decoder: Decoder) throws {
@@ -64,6 +71,7 @@ public struct CoreCredential: Codable {
         self.userName = (try? values.decode(String.self, forKey: .userName)) ?? ""
         self.userID = (try? values.decode(String.self, forKey: .userID)) ?? ""
         self.scope = try values.decode(Scope.self, forKey: .scope)
+        self.mailboxPassword = (try? values.decode(String.self, forKey: .mailboxPassword)) ?? ""
     }
 
     public init(authCredential: AuthCredential, scopes: [String]) {
@@ -74,7 +82,8 @@ public struct CoreCredential: Codable {
             expiration: authCredential.expiration,
             userName: authCredential.userName,
             userID: authCredential.userID,
-            scope: scopes
+            scope: scopes,
+            mailboxPassword: authCredential.mailboxpassword
         )
     }
 }
@@ -112,17 +121,22 @@ extension PDCore.CoreCredential {
         self.userName = networkingCredential.userName
         self.userID = networkingCredential.userID
         self.scope = networkingCredential.scope
+        self.mailboxPassword = networkingCredential.mailboxPassword
+    }
+
+    public func toAuthCredential() -> AuthCredential {
+        return .init(Credential.init(self))
     }
 }
 
 extension Credential {
-    init(_ coreCredential: PDCore.CoreCredential) {
+    public init(_ coreCredential: PDCore.CoreCredential) {
         self.init(UID: coreCredential.UID,
                   accessToken: coreCredential.accessToken,
                   refreshToken: coreCredential.refreshToken,
-                  expiration: coreCredential.expiration,
                   userName: coreCredential.userName,
                   userID: coreCredential.userID,
-                  scope: coreCredential.scope)
+                  scopes: coreCredential.scope,
+                  mailboxPassword: coreCredential.mailboxPassword)
     }
 }

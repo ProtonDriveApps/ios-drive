@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import ProtonCore_Keymaker
+import ProtonCoreKeymaker
 
 public final class DriveKeychain: Keychain {
     public init() {
@@ -24,6 +24,20 @@ public final class DriveKeychain: Keychain {
     }
     
     public static let keychainGroup = Constants.developerGroup + Constants.appGroup
+    
+    // we use the single instance of DriveKeychain because
+    // the access to the keychain is serialized by the dispatch queue on the instance level for the thread-safety,
+    // so if we want to take advantage of that thread-safety serialization, we need to use the single instance
+    public private(set) static var shared = DriveKeychain()
+    
+    // only for testing
+    @discardableResult
+    static internal func recreateSharedInstance() -> (DriveKeychain, DriveKeychain) {
+        let old = shared
+        let new = DriveKeychain()
+        shared = new
+        return (old, new)
+    }
 }
 
 extension DriveKeychain: SettingsProvider {

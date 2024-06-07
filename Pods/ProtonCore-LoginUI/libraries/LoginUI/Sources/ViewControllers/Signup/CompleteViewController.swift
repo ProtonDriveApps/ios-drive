@@ -19,11 +19,12 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import ProtonCore_CoreTranslation
-import ProtonCore_Foundations
-import ProtonCore_UIFoundations
-import ProtonCore_Login
+import ProtonCoreFoundations
+import ProtonCoreUIFoundations
+import ProtonCoreLogin
 import Lottie
 
 protocol CompleteViewControllerDelegate: AnyObject {
@@ -44,15 +45,15 @@ class CompleteViewController: UIViewController, AccessibleView {
     var verifyToken: String?
     var tokenType: String?
     private let margin: CGFloat = 8
-    
+
     override var preferredStatusBarStyle: UIStatusBarStyle { darkModeAwarePreferredStatusBarStyle() }
 
     // MARK: Outlets
 
-    @IBOutlet weak var animationView: AnimationView!
+    @IBOutlet weak var animationView: LottieAnimationView!
     @IBOutlet weak var completeTitleLabel: UILabel! {
         didSet {
-            completeTitleLabel.text = CoreString._su_complete_view_title
+            completeTitleLabel.text = LUITranslation.complete_view_title.l10n
             completeTitleLabel.textColor = ColorProvider.TextNorm
             completeTitleLabel.font = .adjustedFont(forTextStyle: .title2, weight: .bold)
             completeTitleLabel.adjustsFontForContentSizeCategory = true
@@ -61,7 +62,7 @@ class CompleteViewController: UIViewController, AccessibleView {
     }
     @IBOutlet weak var completeDescriptionLabel: UILabel! {
         didSet {
-            completeDescriptionLabel.text = CoreString._su_complete_view_desc
+            completeDescriptionLabel.text = LUITranslation.complete_view_desc.l10n
             completeDescriptionLabel.textColor = ColorProvider.TextWeak
             completeDescriptionLabel.font = .adjustedFont(forTextStyle: .subheadline)
             completeDescriptionLabel.adjustsFontForContentSizeCategory = true
@@ -74,12 +75,16 @@ class CompleteViewController: UIViewController, AccessibleView {
         }
     }
     @IBOutlet weak var tableWidthConstraint: NSLayoutConstraint!
-    
+
     // MARK: View controller life cycle
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        viewModel.progressCompletion = { self.progressTableView.reloadData() }
+        viewModel.progressCompletion = { [weak self] in
+            DispatchQueue.main.async {
+                self?.progressTableView.reloadData()
+            }
+        }
         setupUI()
         if signupAccountType == .internal {
             createAccount()
@@ -90,12 +95,11 @@ class CompleteViewController: UIViewController, AccessibleView {
     }
 
     // MARK: Private methods
-    
+
     private func setupUI() {
         view.backgroundColor = ColorProvider.BackgroundNorm
         navigationItem.setHidesBackButton(true, animated: false)
-        animationView.animation = Animation.named("sign-up-create-account",
-                                                  bundle: LoginAndSignup.bundle)
+        animationView.animation = .named("sign-up-create-account", bundle: LoginAndSignup.bundle)
         animationView.loopMode = .loop
         animationView.backgroundBehavior = .pauseAndRestore
         animationView.play()
@@ -103,7 +107,7 @@ class CompleteViewController: UIViewController, AccessibleView {
         tableWidthConstraint.constant = view.bounds.size.width - (margin * 2)
         viewModel?.initProgressWidth()
     }
-    
+
     private func createAccount() {
         guard let userName = name, let password = password else {
             assertionFailure("Create internal account input data missing")
@@ -123,7 +127,7 @@ class CompleteViewController: UIViewController, AccessibleView {
     }
 
     private func createExternalAccount() {
-        guard let email = name, let password = password, let verifyToken = verifyToken, let tokenType = tokenType else {
+        guard let email = name, let password = password else {
             assertionFailure("Create external account input data missing")
             return
         }
@@ -145,7 +149,7 @@ extension CompleteViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return viewModel.displayProgress.count
     }
-    
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: SummaryProgressCell.reuseIdentifier, for: indexPath)
         if let cell = cell as? SummaryProgressCell {
@@ -160,3 +164,5 @@ extension CompleteViewController: UITableViewDataSource {
         return cell
     }
 }
+
+#endif

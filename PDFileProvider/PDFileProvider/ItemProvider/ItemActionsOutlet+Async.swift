@@ -18,11 +18,11 @@
 import FileProvider
 import Foundation
 import PDCore
-import os.log
 
 // swiftlint:disable function_parameter_count
 extension ItemActionsOutlet {
 
+    @discardableResult
     public func deleteItem(tower: Tower,
                            identifier: NSFileProviderItemIdentifier,
                            baseVersion version: NSFileProviderItemVersion?,
@@ -32,20 +32,28 @@ extension ItemActionsOutlet {
     {
         let version = version ?? NSFileProviderItemVersion()
 
-        Task {
+        let task = Task { [weak self] in
             do {
-                try await deleteItem(tower: tower, identifier: identifier, baseVersion: version, options: options, request: request)
-                ConsoleLogger.shared?.log("Successfully deleted item", osLogType: Self.self)
+                guard !Task.isCancelled else { return }
+                try await self?.deleteItem(tower: tower, identifier: identifier, baseVersion: version, options: options, request: request)
+                Log.info("Successfully deleted item", domain: .fileProvider)
+                guard !Task.isCancelled else { return }
                 completionHandler(nil)
             } catch {
-                ConsoleLogger.shared?.log(error, osLogType: Self.self)
+                guard !Task.isCancelled else { return }
+                Log.error("Delete item error: \(error.localizedDescription)", domain: .fileProvider)
                 completionHandler(error)
             }
         }
         
-        return Progress()
+        return Progress {
+            Log.info("Delete item cancelled", domain: .fileProvider)
+            task.cancel()
+            completionHandler(CocoaError(.userCancelled))
+        }
     }
     
+    @discardableResult
     public func modifyItem(tower: Tower,
                            item: NSFileProviderItem,
                            baseVersion version: NSFileProviderItemVersion?,
@@ -53,24 +61,36 @@ extension ItemActionsOutlet {
                            contents newContents: URL?,
                            options: NSFileProviderModifyItemOptions? = nil,
                            request: NSFileProviderRequest? = nil,
+                           changeObserver: SyncChangeObserver? = nil,
                            completionHandler: @escaping Completion) -> Progress
     {
         let version = version ?? NSFileProviderItemVersion()
 
-        Task {
+        let task = Task { [weak self] in
             do {
-                let (item, fields, needUpload) = try await modifyItem(tower: tower, item: item, baseVersion: version, changedFields: changedFields, contents: newContents, options: options, request: request)
-                ConsoleLogger.shared?.log("Successfully modified item", osLogType: Self.self)
+                guard !Task.isCancelled else { return }
+                guard let (item, fields, needUpload) = try await self?.modifyItem(
+                    tower: tower, item: item, baseVersion: version, changedFields: changedFields,
+                    contents: newContents, options: options, request: request, changeObserver: changeObserver
+                ) else { return }
+                Log.info("Successfully modified item", domain: .fileProvider)
+                guard !Task.isCancelled else { return }
                 completionHandler(item, fields, needUpload, nil)
             } catch {
-                ConsoleLogger.shared?.log(error, osLogType: Self.self)
+                Log.error("Modify item error: \(error.localizedDescription)", domain: .fileProvider)
+                guard !Task.isCancelled else { return }
                 completionHandler(nil, [], false, error)
             }
         }
         
-        return Progress()
+        return Progress {
+            Log.info("Modify item cancelled", domain: .fileProvider)
+            task.cancel()
+            completionHandler(nil, [], false, CocoaError(.userCancelled))
+        }
     }
     
+    @discardableResult
     public func createItem(tower: Tower,
                            basedOn itemTemplate: NSFileProviderItem,
                            fields: NSFileProviderItemFields = [],
@@ -79,18 +99,27 @@ extension ItemActionsOutlet {
                            request: NSFileProviderRequest? = nil,
                            completionHandler: @escaping (NSFileProviderItem?, NSFileProviderItemFields, Bool, Error?) -> Void) -> Progress
     {
-        Task {
+        let task = Task { [weak self] in
             do {
-                let (item, fields, needUpload) = try await createItem(tower: tower, basedOn: itemTemplate, fields: fields, contents: url, options: options, request: request)
-                ConsoleLogger.shared?.log("Successfully created item", osLogType: Self.self)
+                guard !Task.isCancelled else { return }
+                guard let (item, fields, needUpload) = try await self?.createItem(
+                    tower: tower, basedOn: itemTemplate, fields: fields, contents: url, options: options, request: request
+                ) else { return }
+                Log.info("Successfully created item", domain: .fileProvider)
+                guard !Task.isCancelled else { return }
                 completionHandler(item, fields, needUpload, nil)
             } catch {
-                ConsoleLogger.shared?.log(error, osLogType: Self.self)
+                Log.error("Create item error: \(error.localizedDescription)", domain: .fileProvider)
+                guard !Task.isCancelled else { return }
                 completionHandler(nil, [], false, error)
             }
         }
         
-        return Progress()
+        return Progress {
+            Log.info("Create item cancelled", domain: .fileProvider)
+            task.cancel()
+            completionHandler(nil, [], false, CocoaError(.userCancelled))
+        }
     }
 
 }

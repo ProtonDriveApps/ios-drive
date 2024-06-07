@@ -19,25 +19,33 @@ import Combine
 
 protocol PhotosStateTitlesViewModelProtocol: ObservableObject {
     var item: PhotosStateTitle? { get }
-    func didAppear()
-    func didDisappear()
 }
 
 final class PhotosStateTitlesViewModel: PhotosStateTitlesViewModelProtocol {
     private let timerFactory: TimerFactory
-    private let items: [PhotosStateTitle]
+    private var items: [PhotosStateTitle] = []
     private var cancellable: AnyCancellable?
 
     @Published var item: PhotosStateTitle?
 
-    init(timerFactory: TimerFactory, items: [PhotosStateTitle]) {
+    init(timerFactory: TimerFactory) {
         self.timerFactory = timerFactory
-        self.items = items
-        item = items.first
     }
 
-    func didAppear() {
+    func set(_ items: [PhotosStateTitle]) {
+        guard self.items != items else {
+            return
+        }
+
+        self.items = items
+        item = items.first
+
         guard items.count > 1 else {
+            cancellable?.cancel()
+            return
+        }
+
+        guard cancellable == nil else {
             return
         }
 
@@ -47,7 +55,7 @@ final class PhotosStateTitlesViewModel: PhotosStateTitlesViewModelProtocol {
             }
     }
 
-    func didDisappear() {
+    deinit {
         cancellable?.cancel()
     }
 

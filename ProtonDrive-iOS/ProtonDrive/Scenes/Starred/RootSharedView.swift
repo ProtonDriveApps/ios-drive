@@ -20,17 +20,15 @@ import PDCore
 import PDUIComponents
 
 struct RootSharedView: View {
-    var shareID: String
     var coordinator: FinderCoordinator
     
-    init(deeplink: Deeplink?, tower: Tower, shareID: String) {
-        self.shareID = shareID
+    init(deeplink: Deeplink?, tower: Tower) {
         self.coordinator = FinderCoordinator(tower: tower, deeplink: deeplink)
     }
     
     var body: some View {
         RootDeeplinkableView(navigationTracker: coordinator) {
-            coordinator.start(.shared(shareID: shareID))
+            coordinator.start(.shared)
         }
     }
 }

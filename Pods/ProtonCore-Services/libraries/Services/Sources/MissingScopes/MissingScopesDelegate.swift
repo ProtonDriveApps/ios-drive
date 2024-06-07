@@ -20,16 +20,20 @@
 //  along with ProtonCore. If not, see https://www.gnu.org/licenses/.
 //
 
-import ProtonCore_Networking
+import Foundation
+import ProtonCoreNetworking
 
 public protocol MissingScopesDelegate: AnyObject {
-    func getAuthInfo(username: String, completion: @escaping (Result<AuthInfoResponse, AuthErrors>) -> Void)
-    func onMissingScopesHandling(authInfo: AuthInfoResponse, username: String, responseHandlerData: PMResponseHandlerData, completion: @escaping (MissingScopesFinishReason) -> Void)
+    func onMissingScopesHandling(
+        username: String,
+        responseHandlerData: PMResponseHandlerData,
+        completion: @escaping (MissingScopesFinishReason) -> Void
+    )
     func showAlert(title: String, message: String?)
 }
 
 public enum MissingScopesFinishReason {
-    case verified(SRPClientInfo)
+    case unlocked
     case closed
     case closedWithError(code: Int, description: String)
 }

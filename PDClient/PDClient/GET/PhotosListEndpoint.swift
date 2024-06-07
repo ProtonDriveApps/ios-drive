@@ -24,7 +24,7 @@ public struct PhotosListEndpoint: Endpoint {
     public init(service: APIService, credential: ClientCredential, parameters: PhotosListRequestParameters) {
         var items = [URLQueryItem(name: "PageSize", value: "\(parameters.pageSize)")  ]
         if let lastId = parameters.lastId {
-            let item = URLQueryItem(name: "PreviousPageLastPhotoID", value: lastId)
+            let item = URLQueryItem(name: "PreviousPageLastLinkID", value: lastId)
             items.append(item)
         }
 

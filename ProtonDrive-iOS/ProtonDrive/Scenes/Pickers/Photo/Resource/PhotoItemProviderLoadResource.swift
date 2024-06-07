@@ -57,17 +57,16 @@ final class PhotoItemProviderLoadResource: ItemProviderLoadResource, LogObject {
     private func map(result: (URL?, Error?)) -> URLResult {
         switch result {
         case let (url?, nil):
-            do {
-                let copyURL = PDFileManager.prepareUrlForFile(named: url.lastPathComponent)
-                try FileManager.default.moveItem(at: url, to: copyURL)
-                return .success(copyURL)
-            } catch {
+            guard let size = url.fileSize else {
+                let error = URLConsistencyError.noURLSize
+                Log.error(error, domain: .photoPicker)
                 return .failure(error)
             }
+            return .success(URLContent(url, size))
         case let (nil, error?):
             let nsError = error as NSError
             let text = "Couldn't load image from picker. Code: \(nsError.code), domain: \(nsError.domain)"
-            ConsoleLogger.shared?.log(text, osLogType: Self.self)
+            Log.error(text, domain: .photoPicker)
             return .failure(error)
         default:
             return .failure(Errors.invalidState)
@@ -85,7 +84,9 @@ final class PhotoItemProviderLoadResource: ItemProviderLoadResource, LogObject {
             }
 
             let copyURL = PDFileManager.prepareUrlForFile(named: resource.originalFilename)
-            PHAssetResourceManager.default().writeData(for: resource, toFile: copyURL, options: nil) { error in
+            let options = PHAssetResourceRequestOptions()
+            options.isNetworkAccessAllowed = true
+            PHAssetResourceManager.default().writeData(for: resource, toFile: copyURL, options: options) { error in
                 if let error = error {
                     completion((nil, error))
                 } else {
@@ -104,8 +105,25 @@ final class PhotoItemProviderLoadResource: ItemProviderLoadResource, LogObject {
     }
     
     private func loadFileRepresentation(with itemProvider: NSItemProvider, typeIdentifier: String, completion: @escaping URLErrorCompletion) {
-        itemProvider.loadFileRepresentation(forTypeIdentifier: typeIdentifier) { url, error in
-            completion((url, error))
+        // Trying loadInPlace version doesn't work for some reason. Documentation doesn't say anything about exceptions.
+        // The log we get is:
+        // [UI] loadInPlaceFileRepresentationForTypeIdentifier: is not supported. Use loadFileRepresentationForTypeIdentifier: instead.
+        itemProvider.loadFileRepresentation(forTypeIdentifier: typeIdentifier) { [weak self] url, error in
+            if let url = url {
+                self?.copyToLocalStorage(url: url, completion: completion)
+            } else {
+                completion((nil, error))
+            }
+        }
+    }
+
+    private func copyToLocalStorage(url: URL, completion: @escaping URLErrorCompletion) {
+        do {
+            let copyURL = PDFileManager.prepareUrlForFile(named: url.lastPathComponent)
+            try FileManager.default.moveItem(at: url, to: copyURL)
+            completion((copyURL, nil))
+        } catch {
+            completion((nil, error))
         }
     }
     

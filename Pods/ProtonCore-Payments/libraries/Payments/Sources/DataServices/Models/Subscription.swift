@@ -60,18 +60,21 @@ public struct Subscription: Codable { // this doesn't represent backend response
 }
 
 extension Subscription {
-    
+
     public func computedPresentationDetails(shownPlanNames: ListOfShownPlanNames) -> Plan {
         // remove all other plans not defined in the shownPlanNames
         let planDetails = planDetails?.filter { elem in shownPlanNames.contains { elem.name == $0 } }
         guard let planDetails = planDetails else { return .empty }
-        let subscriptionPlan = Plan.combineDetailsDroppingPricing(planDetails)
+        let subscriptionPlan = Plan.combineDetails(planDetails, droppingPrice: true)
         guard let organization = organization else { return subscriptionPlan }
         return Plan(name: subscriptionPlan.name,
-                    iD: subscriptionPlan.iD,
+                    ID: subscriptionPlan.ID,
                     maxAddresses: max(subscriptionPlan.maxAddresses, organization.maxAddresses),
                     maxMembers: max(subscriptionPlan.maxMembers, organization.maxMembers),
-                    pricing: nil,
+                    pricing: subscriptionPlan.pricing,
+                    defaultPricing: subscriptionPlan.defaultPricing,
+                    vendors: subscriptionPlan.vendors,
+                    offer: subscriptionPlan.offer,
                     maxDomains: max(subscriptionPlan.maxDomains, organization.maxDomains),
                     maxSpace: max(subscriptionPlan.maxSpace, organization.maxSpace),
                     maxRewardsSpace: subscriptionPlan.maxRewardsSpace,
@@ -101,7 +104,7 @@ extension Subscription {
     public var endDate: Date? {
         return end
     }
-    
+
     public var price: String? {
         guard let amount = amount, let currency = currency else { return nil }
         let value = Double(amount) / 100.0

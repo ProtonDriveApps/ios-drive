@@ -34,13 +34,15 @@ extension Share {
 }
 
 public class FileSystemSlot {
-    internal init(baseURL: URL, storage: StorageManager) {
+    internal init(baseURL: URL, storage: StorageManager, syncStorage: SyncStorageManager?) {
         self.baseURL = baseURL
         self.storage = storage
+        self.syncStorage = syncStorage
     }
     
     public let baseURL: URL
-    internal let storage: StorageManager
+    public let storage: StorageManager
+    public let syncStorage: SyncStorageManager?
     private var moc: NSManagedObjectContext {
         self.storage.backgroundContext
     }
@@ -56,8 +58,8 @@ public class FileSystemSlot {
     
     // MARK: - SUBSCRIBE TO DB CHANGES
     
-    public func getNode(_ identifier: NodeIdentifier) -> Node? {
-        self.storage.fetchNode(id: identifier, moc: self.moc)
+    public func getNode(_ identifier: NodeIdentifier, moc: NSManagedObjectContext? = nil) -> Node? {
+        self.storage.fetchNode(id: identifier, moc: moc ?? self.moc)
     }
     
     public func getDraft(_ localID: String, shareID: String) -> File? {

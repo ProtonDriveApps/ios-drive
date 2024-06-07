@@ -21,18 +21,24 @@ final class BlockUploaderOperation: AsynchronousOperation, OperationWithProgress
 
     let progress: Progress
 
-    private let blockIndex: Int
+    private let id: UUID
+    private let token: String
+    private let index: Int
     private let contentUploader: ContentUploader
     private let onError: OnUploadError
 
     init(
+        id: UUID,
+        index: Int,
+        token: String,
         progressTracker: Progress,
-        blockIndex: Int,
         contentUploader: ContentUploader,
         onError: @escaping OnUploadError
     ) {
+        self.id = id
+        self.token = token
         self.progress = progressTracker
-        self.blockIndex = blockIndex
+        self.index = index
         self.contentUploader = contentUploader
         self.onError = onError
         super.init()
@@ -40,30 +46,32 @@ final class BlockUploaderOperation: AsynchronousOperation, OperationWithProgress
 
     override func main() {
         guard !isCancelled else { return }
-        ConsoleLogger.shared?.log("STAGE: 3.2 Block \(blockIndex) upload 📦☁️ started", osLogType: FileUploader.self)
+        Log.info("STAGE: 3.2 Block \(index) upload 📦☁️ started. UUID: \(id.uuidString) Token: \(token)", domain: .uploader)
 
-        contentUploader.upload() { [weak self] result in
+        contentUploader.upload { [weak self] result in
             guard let self = self, !self.isCancelled else { return }
 
             switch result {
             case .success:
-                ConsoleLogger.shared?.log("STAGE: 3.2 Block \(self.blockIndex) upload 📦☁️ finished ✅", osLogType: FileUploader.self)
+                Log.info("STAGE: 3.2 Block \(self.index) upload 📦☁️ finished ✅. UUID: \(self.id.uuidString) Token: \(self.token)", domain: .uploader)
                 self.progress.complete()
                 self.state = .finished
 
-            case .failure(let error) where error is UploadNonCompleted:
-                ConsoleLogger.shared?.log("STAGE: 3.2 Block \(self.blockIndex) upload 📦☁️ not finished ⚠️", osLogType: FileUploader.self)
+            case .failure(let error as ResponseError) where error.isRetryable:
+                Log.info("STAGE: 3.2 Block \(self.index) upload 📦☁️ not finished ⚠️. UUID: \(self.id.uuidString) Token: \(self.token)", domain: .uploader)
+                Log.error("UUID: \(self.id.uuidString) ERROR: \(error)", domain: .uploader)
+                Log.error(error, domain: .uploader)
                 self.state = .finished
 
             case .failure(let error):
-                ConsoleLogger.shared?.log("STAGE: 3.2 Block \(self.blockIndex) upload 📦☁️ finished ❌", osLogType: FileUploader.self)
+                Log.info("STAGE: 3.2 Block \(self.index) upload 📦☁️ finished ❌. UUID: \(self.id.uuidString) Token: \(self.token)", domain: .uploader)
+                Log.error("UUID: \(self.id.uuidString) ERROR: \(error)", domain: .uploader)
                 self.onError(error)
             }
         }
     }
 
     override func cancel() {
-        ConsoleLogger.shared?.log("🙅‍♂️🙅‍♂️🙅‍♂️ CANCEL \(type(of: self)), block: \(blockIndex)", osLogType: FileUploader.self)
         contentUploader.cancel()
         super.cancel()
     }

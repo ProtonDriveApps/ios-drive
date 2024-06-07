@@ -47,6 +47,9 @@ public extension File {
     /// Temporary identifier chosen by the client, should exist while the file has a pending upload operation. This property
     /// is defined by the BE.
     @NSManaged var clientUID: String?
+    
+    /// Temporary property that tells us if the file is being uploaded or not
+    @NSManaged var isUploading: Bool
 }
 
 // MARK: Generated accessors for revisions

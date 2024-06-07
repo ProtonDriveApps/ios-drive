@@ -18,18 +18,11 @@
 import Foundation
 import CoreData
 
-extension Revision {
-    func removeOldBlocks(in moc: NSManagedObjectContext) {
-        let oldBlocks = blocks
-        blocks = Set([])
-        oldBlocks.forEach(moc.delete)
-    }
-
-    func removeOldThumbnails(in moc: NSManagedObjectContext) {
-        let oldThumbnails = thumbnails
-        thumbnails = Set([])
-        oldThumbnails.forEach(moc.delete)
-    }
+public protocol ManagedStorage {
+    func unique<Entity: NSManagedObject>(with ids: Set<String>, uniqueBy keyPath: String, allowSubclasses: Bool, in moc: NSManagedObjectContext) -> [Entity]
+    func new<Entity: NSManagedObject>(with id: String, by keyPath: String, in moc: NSManagedObjectContext) -> Entity
+    func existing<Entity: NSManagedObject>(with ids: Set<String>, by keyPath: String, allowSubclasses: Bool, in moc: NSManagedObjectContext) -> [Entity]
+    func exists(with id: String, by keyPath: String, entityName: String, in moc: NSManagedObjectContext) -> Bool
 }
 
 extension StorageManager {
@@ -45,12 +38,12 @@ extension StorageManager {
 
 // MARK: - Generic NSManagedObject methods
 
-extension StorageManager {
+extension ManagedStorage {
     /// Returns list of objects with named ids, finds present ones and creates new ones for missing ids
-    internal func unique<Entity: NSManagedObject>(with ids: Set<String>,
-                                                  uniqueBy keyPath: String = "id",
-                                                  allowSubclasses: Bool = false,
-                                                  in moc: NSManagedObjectContext) -> [Entity]
+    public func unique<Entity: NSManagedObject>(with ids: Set<String>,
+                                                uniqueBy keyPath: String = "id",
+                                                allowSubclasses: Bool = false,
+                                                in moc: NSManagedObjectContext) -> [Entity]
     {
         let existing: [Entity] = self.existing(with: ids, by: keyPath, allowSubclasses: allowSubclasses, in: moc)
         var presentObjects: [Entity] = existing
@@ -74,10 +67,10 @@ extension StorageManager {
         return new as! Entity
     }
     
-    internal func existing<Entity: NSManagedObject>(with ids: Set<String>,
-                                                    by keyPath: String = "id",
-                                                    allowSubclasses: Bool = false,
-                                                    in moc: NSManagedObjectContext) -> [Entity]
+    public func existing<Entity: NSManagedObject>(with ids: Set<String>,
+                                                  by keyPath: String = "id",
+                                                  allowSubclasses: Bool = false,
+                                                  in moc: NSManagedObjectContext) -> [Entity]
     {
         let fetchRequest = NSFetchRequest<Entity>()
         fetchRequest.entity = Entity.entity()
@@ -91,11 +84,12 @@ extension StorageManager {
         return (try? moc.fetch(fetchRequest) ) ?? []
     }
     
-    internal func exists(with id: String,
-                         by keyPath: String = "id",
-                         in moc: NSManagedObjectContext) -> Bool
+    public func exists(with id: String,
+                       by keyPath: String = "id",
+                       entityName: String = "Node",
+                       in moc: NSManagedObjectContext) -> Bool
     {
-        let fetchRequest = NSFetchRequest<NSNumber>(entityName: "Node")
+        let fetchRequest = NSFetchRequest<NSNumber>(entityName: entityName)
         fetchRequest.predicate = NSPredicate(format: "(%K IN %@)", keyPath, [id])
         fetchRequest.includesSubentities = true
         fetchRequest.resultType = .countResultType

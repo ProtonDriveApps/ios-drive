@@ -5,18 +5,16 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface
-UIViewController (Sentry)
+@interface SentryViewController : NSObject
 
 /**
  * An array of view controllers that are descendants, meaning children, grandchildren, ... , of the
  * current view controller.
  */
-@property (nonatomic, readonly, strong)
-    NSArray<UIViewController *> *sentry_descendantViewControllers;
++ (NSArray<UIViewController *> *)descendantsOfViewController:(UIViewController *)viewController;
 
 @end
 
 NS_ASSUME_NONNULL_END
 
-#endif
+#endif // SENTRY_HAS_UIKIT

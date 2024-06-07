@@ -45,12 +45,20 @@ public class EventPeriodicScheduler<GeneralEventsLoop: EventsLoop, SpecialEvents
     
     public func start() {
         queue.isSuspended = false
-        
-        let timer = Timer(timeInterval: refillPeriod, target: self, selector: #selector(refillQueueIfNeeded), userInfo: nil, repeats: true)
+
+        let timer = Timer(timeInterval: refillPeriod, repeats: true) { [weak self] _ in
+            self?.refillQueueIfNeeded()
+        }
+        self.timer?.invalidate()
         self.timer = timer
-        
+
         RunLoop.main.add(timer, forMode: .common)
         timer.fire()
+    }
+
+    deinit {
+        timer?.invalidate()
+        timer = nil
     }
     
     @objc private func refillQueueIfNeeded() {

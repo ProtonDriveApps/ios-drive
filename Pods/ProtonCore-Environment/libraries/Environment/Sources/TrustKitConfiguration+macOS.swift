@@ -19,8 +19,10 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(macOS)
+
 import Foundation
-import ProtonCore_Doh
+import ProtonCoreDoh
 import TrustKit
 
 extension TrustKitWrapper {
@@ -28,3 +30,5 @@ extension TrustKitWrapper {
         [kTSKIgnorePinningForUserDefinedTrustAnchors: ignoreMacUserDefinedTrustAnchors]
     }
 }
+
+#endif

@@ -19,9 +19,11 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import ProtonCore_Foundations
-import enum ProtonCore_Utilities.Either
+import ProtonCoreFoundations
+import enum ProtonCoreUtilities.Either
 
 public final class PMActionSheetHeaderView: UIView, AccessibleView {
     private var leftItem: PMActionSheetButtonComponent?
@@ -414,3 +416,5 @@ extension PMActionSheetHeaderView {
         rightItemHandler?()
     }
 }
+
+#endif

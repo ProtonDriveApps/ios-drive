@@ -53,7 +53,11 @@ public class PMLog {
     public static var logsDirectory = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first
 
     private static let maxLogLines = 2000
+    private static let numberOfOldestLinesToTrimInOneGo = 500
     private static let queue = DispatchQueue(label: "ch.proton.core.log")
+
+    public static var externalLog: ExternalLogProtocol?
+    public static var isExternalLogEnabled: (() -> Bool)?
 
     public static var logFile: URL? {
         let file = logsDirectory?.appendingPathComponent("logs.txt", isDirectory: false)
@@ -78,20 +82,27 @@ public class PMLog {
 
     // MARK: - Actions
 
-    public static func debug(_ message: String, file: String = #file, function: String = #function, line: Int = #line, column: Int = #column) {
-        log(message, level: .debug, file: file, function: function, line: line, column: column)
+    public static func debug(_ message: String, file: String = #file, function: String = #function, line: Int = #line, column: Int = #column, sendToExternal: Bool = false) {
+        log(message, level: .debug, file: file, function: function, line: line, column: column, sendToExternal: sendToExternal)
     }
 
-    public static func info(_ message: String, file: String = #file, function: String = #function, line: Int = #line, column: Int = #column) {
-        log(message, level: .info, file: file, function: function, line: line, column: column)
+    public static func info(_ message: String, file: String = #file, function: String = #function, line: Int = #line, column: Int = #column, sendToExternal: Bool = false) {
+        log(message, level: .info, file: file, function: function, line: line, column: column, sendToExternal: sendToExternal)
     }
 
-    public static func error(_ message: String, file: String = #file, function: String = #function, line: Int = #line, column: Int = #column) {
-        log(message, level: .error, file: file, function: function, line: line, column: column)
+    public static func error(_ message: String, file: String = #file, function: String = #function, line: Int = #line, column: Int = #column, sendToExternal: Bool = false) {
+        log(message, level: .error, file: file, function: function, line: line, column: column, sendToExternal: sendToExternal)
     }
 
-    public static func error(_ error: Error, file: String = #file, function: String = #function, line: Int = #line, column: Int = #column) {
+    public static func error(_ error: Error, file: String = #file, function: String = #function, line: Int = #line, column: Int = #column, sendToExternal: Bool = false) {
         self.error(error.localizedDescription, file: file, function: function, line: line, column: column)
+    }
+
+    public static func signpost(_ message: String, category: String = "default", level: LogLevel = .info, type: SentryBreadcrumbType = .empty, data: [String: Any]? = nil, sendToExternal: Bool = false) {
+        printToConsole("SIGNPOST: \(category) \(level) \(type): \(message) \(data ?? [:])")
+        if sendToExternal {
+            sendExternalSignpost(level: level, message: message, category: category, type: type, data: data)
+        }
     }
 
     public static func printToConsole(_ text: String) {
@@ -100,12 +111,21 @@ public class PMLog {
         #endif
     }
 
+    public static func setEnvironment(environment: String, isExternalLogEnabled: (@Sendable () -> Bool)? = nil) {
+        externalLog = SentryCoreManager(environment: environment)
+        self.isExternalLogEnabled = isExternalLogEnabled
+    }
+
     // MARK: - Internal
 
-    private static func log(_ message: String, level: LogLevel, file: String = #file, function: String = #function, line: Int = #line, column: Int = #column) {
+    private static func log(_ message: String, level: LogLevel, file: String = #file, function: String = #function, line: Int = #line, column: Int = #column, sendToExternal: Bool) {
         let log = "\(Date()) : \(level.description) : \((file as NSString).lastPathComponent) : \(function) : \(line) : \(column) - \(message)"
         printToConsole(log)
         callback?(message, level)
+        if sendToExternal {
+            let externalLogMessage = "\(message) - \((file as NSString).lastPathComponent) : \(function) : Line: \(line) : Col: \(column)"
+            sendExternalLog(level: level, log: externalLogMessage)
+        }
 
         guard let logUrl = logFile else { return }
         queue.sync {
@@ -118,22 +138,23 @@ public class PMLog {
         do {
             let logContents = try String(contentsOf: url, encoding: .utf8)
             let lines = logContents.components(separatedBy: .newlines)
+
             if lines.count > maxLogLines {
-                let prunedLines = Array(lines.dropFirst(lines.count - maxLogLines))
-                let replacementText = prunedLines.joined(separator: "\n")
-                try replacementText.data(using: .utf8)?.write(to: url)
+                let linesAfterPruning = lines.dropFirst(numberOfOldestLinesToTrimInOneGo)
+                let replacementText = linesAfterPruning.joined(separator: "\n")
+                try Data(replacementText.utf8).write(to: url)
             }
-        } catch let error {
+        } catch {
             printToConsole(error.localizedDescription)
         }
     }
-    
+
     private static func storeLogs(log: String, url: URL) {
         let dataToLog = Data("\(log)\n".utf8)
         do {
             let fileHandle = try FileHandle(forWritingTo: url)
 
-            if #available(iOS 13.4, macOS 10.15.4, *) {
+            if #available(macOS 10.15.4, *) {
                 try fileHandle.seekToEnd()
                 try fileHandle.write(contentsOf: dataToLog)
                 try fileHandle.close()
@@ -150,4 +171,52 @@ public class PMLog {
             }
         }
     }
+
+    private static func sendExternalLog(level: LogLevel, log: String) {
+        guard !isRunningTests else { return }
+        if let isExternalLogEnabled, !isExternalLogEnabled() {
+            // App disabled external logging
+            return
+        }
+        guard let externalLog else {
+            assertionFailure("ProtonCore logger not initialized. Please use PMLog.setEnvironment(...) in the ProtonCore initialization.")
+            return
+        }
+        switch level {
+        case .error, .fatal:
+            externalLog.capture(errorMessage: log, level: level)
+        default:
+            break
+        }
+    }
+
+    private static func sendExternalSignpost(
+        level: LogLevel,
+        message: String,
+        category: String,
+        type: SentryBreadcrumbType,
+        data: [String: Any]?
+    ) {
+        guard !isRunningTests else { return }
+        if let isExternalLogEnabled, !isExternalLogEnabled() {
+            // App disabled external logging
+            return
+        }
+        guard let externalLog else {
+            assertionFailure("ProtonCore logger not initialized. Please use PMLog.setEnvironment(...) in the ProtonCore initialization.")
+            return
+        }
+
+        externalLog.breadcrumb(
+            message: message,
+            category: category,
+            level: level,
+            type: type,
+            data: data
+        )
+    }
+
+    private static let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
 }
+
+// swiftlint:enable no_print

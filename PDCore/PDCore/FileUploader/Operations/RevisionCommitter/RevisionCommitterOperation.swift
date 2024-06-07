@@ -42,30 +42,37 @@ final class RevisionCommitterOperation: AsynchronousOperation, UploadOperation {
         guard !isCancelled else { return }
 
         record()
-
-        ConsoleLogger.shared?.log("STAGE: 4. Revision committer 📑🔐 started", osLogType: FileUploader.self)
+        NotificationCenter.default.post(name: .operationStart, object: draft.uri)
+        Log.info("STAGE: 4 Revision committer 📑🔐 started. UUID: \(self.id.uuidString)", domain: .uploader)
 
         commiter.commit(draft) { [weak self] result in
             guard let self = self, !self.isCancelled else { return }
 
             switch result {
             case .success:
-                ConsoleLogger.shared?.log("STAGE: 4. Revision committer 📑🔐 finished ✅", osLogType: FileUploader.self)
+                Log.info("STAGE: 4 Revision committer 📑🔐 finished ✅. UUID: \(self.id.uuidString)", domain: .uploader)
+                NotificationCenter.default.post(name: .operationEnd, object: draft.uri)
                 self.progress.complete()
                 self.state = .finished
 
             case .failure(let error):
-                ConsoleLogger.shared?.log("STAGE: 4. Revision committer 📑🔐 finished ❌", osLogType: FileUploader.self)
+                Log.info("STAGE: 4 Revision committer 📑🔐 finished ❌. UUID: \(self.id.uuidString)", domain: .uploader)
+                NotificationCenter.default.post(name: .operationEnd, object: draft.uri)
                 self.onError(error)
             }
         }
     }
 
     override func cancel() {
-        ConsoleLogger.shared?.log("🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
+        Log.info("STAGE: 4 🙅‍♂️ CANCEL \(type(of: self)). UUID: \(id.uuidString)", domain: .uploader)
+        NotificationCenter.default.post(name: .operationEnd, object: draft.uri)
         commiter.cancel()
         super.cancel()
     }
 
     var recordingName: String { "commitingRevision" }
+
+    deinit {
+        Log.info("STAGE: 4 ☠️🚨 \(type(of: self)). UUID: \(id.uuidString)", domain: .uploader)
+    }
 }

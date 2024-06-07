@@ -1,15 +1,36 @@
 #import "SentrySDK.h"
 #import "PrivateSentrySDKOnly.h"
 #import "SentryAppStartMeasurement.h"
+#import "SentryAppStateManager.h"
+#import "SentryBinaryImageCache.h"
 #import "SentryBreadcrumb.h"
 #import "SentryClient+Private.h"
 #import "SentryCrash.h"
+#import "SentryCrashWrapper.h"
 #import "SentryDependencyContainer.h"
+#import "SentryDispatchQueueWrapper.h"
+#import "SentryFileManager.h"
 #import "SentryHub+Private.h"
+#import "SentryInternalDefines.h"
 #import "SentryLog.h"
 #import "SentryMeta.h"
 #import "SentryOptions+Private.h"
+#import "SentryProfilingConditionals.h"
+#import "SentrySamplingContext.h"
 #import "SentryScope.h"
+#import "SentrySerialization.h"
+#import "SentrySwift.h"
+#import "SentryThreadWrapper.h"
+#import "SentryTransactionContext.h"
+
+#if SENTRY_HAS_UIKIT
+#    import "SentryUIDeviceWrapper.h"
+#    import "SentryUIViewControllerPerformanceTracker.h"
+#endif // SENTRY_HAS_UIKIT
+
+#if SENTRY_TARGET_PROFILING_SUPPORTED
+#    import "SentryLaunchProfiling.h"
+#endif // SENTRY_TARGET_PROFILING_SUPPORTED
 
 @interface
 SentrySDK ()
@@ -25,6 +46,8 @@ static SentryHub *_Nullable currentHub;
 static BOOL crashedLastRunCalled;
 static SentryAppStartMeasurement *sentrySDKappStartMeasurement;
 static NSObject *sentrySDKappStartMeasurementLock;
+static BOOL _detectedStartUpCrash;
+static SentryOptions *_Nullable startOption;
 
 /**
  * @brief We need to keep track of the number of times @c +[startWith...] is called, because our OOM
@@ -35,12 +58,14 @@ static NSObject *sentrySDKappStartMeasurementLock;
  * reenable the integrations.
  */
 static NSUInteger startInvocations;
+static NSDate *_Nullable startTimestamp = nil;
 
 + (void)initialize
 {
     if (self == [SentrySDK class]) {
         sentrySDKappStartMeasurementLock = [[NSObject alloc] init];
         startInvocations = 0;
+        _detectedStartUpCrash = NO;
     }
 }
 
@@ -57,7 +82,7 @@ static NSUInteger startInvocations;
 + (nullable SentryOptions *)options
 {
     @synchronized(self) {
-        return [[currentHub getClient] options];
+        return startOption;
     }
 }
 
@@ -66,6 +91,13 @@ static NSUInteger startInvocations;
 {
     @synchronized(self) {
         currentHub = hub;
+    }
+}
+/** Internal, only needed for testing. */
++ (void)setStartOptions:(nullable SentryOptions *)options
+{
+    @synchronized(self) {
+        startOption = options;
     }
 }
 
@@ -77,6 +109,11 @@ static NSUInteger startInvocations;
 + (BOOL)isEnabled
 {
     return currentHub != nil && [currentHub getClient] != nil;
+}
+
++ (SentryMetricsAPI *)metrics
+{
+    return currentHub.metrics;
 }
 
 + (BOOL)crashedLastRunCalled
@@ -128,41 +165,88 @@ static NSUInteger startInvocations;
     startInvocations = value;
 }
 
-+ (void)startWithOptions:(NSDictionary<NSString *, id> *)optionsDict
+/**
+ * Not public, only for internal use.
+ */
++ (nullable NSDate *)startTimestamp
 {
-    NSError *error = nil;
-    SentryOptions *options = [[SentryOptions alloc] initWithDict:optionsDict
-                                                didFailWithError:&error];
-    if (nil != error) {
-        SENTRY_LOG_ERROR(@"Error while initializing the SDK");
-        SENTRY_LOG_ERROR(@"%@", error);
-    } else {
-        [SentrySDK startWithOptionsObject:options];
-    }
+    return startTimestamp;
 }
 
-+ (void)startWithOptionsObject:(SentryOptions *)options
+/**
+ * Only needed for testing.
+ */
++ (void)setStartTimestamp:(NSDate *)value
 {
-    startInvocations++;
+    startTimestamp = value;
+}
 
++ (void)startWithOptions:(SentryOptions *)options
+{
+    startOption = options;
     [SentryLog configure:options.debug diagnosticLevel:options.diagnosticLevel];
+
+    // We accept the tradeoff that the SDK might not be fully initialized directly after
+    // initializing it on a background thread because scheduling the init synchronously on the main
+    // thread could lead to deadlocks.
+    SENTRY_LOG_DEBUG(@"Starting SDK...");
+
+#if defined(DEBUG) || defined(TEST) || defined(TESTCI)
+    SENTRY_LOG_DEBUG(@"Configured options: %@", options.debugDescription);
+#endif // defined(DEBUG) || defined(TEST) || defined(TESTCI)
+
+    startInvocations++;
+    startTimestamp = [SentryDependencyContainer.sharedInstance.dateProvider date];
 
     SentryClient *newClient = [[SentryClient alloc] initWithOptions:options];
     [newClient.fileManager moveAppStateToPreviousAppState];
     [newClient.fileManager moveBreadcrumbsToPreviousBreadcrumbs];
 
+    SentryScope *scope
+        = options.initialScope([[SentryScope alloc] initWithMaxBreadcrumbs:options.maxBreadcrumbs]);
     // The Hub needs to be initialized with a client so that closing a session
     // can happen.
-    [SentrySDK setCurrentHub:[[SentryHub alloc] initWithClient:newClient andScope:nil]];
+    SentryHub *hub = [[SentryHub alloc] initWithClient:newClient andScope:scope];
+    [SentrySDK setCurrentHub:hub];
     SENTRY_LOG_DEBUG(@"SDK initialized! Version: %@", SentryMeta.versionString);
-    [SentrySDK installIntegrations];
+
+    SENTRY_LOG_DEBUG(@"Dispatching init work required to run on main thread.");
+    [SentryThreadWrapper onMainThread:^{
+        SENTRY_LOG_DEBUG(@"SDK main thread init started...");
+
+        [SentryCrashWrapper.sharedInstance startBinaryImageCache];
+        [SentryDependencyContainer.sharedInstance.binaryImageCache start];
+
+        [SentrySDK installIntegrations];
+#if TARGET_OS_IOS && SENTRY_HAS_UIKIT
+        [SentryDependencyContainer.sharedInstance.uiDeviceWrapper start];
+#endif // TARGET_OS_IOS && SENTRY_HAS_UIKIT
+
+#if SENTRY_TARGET_PROFILING_SUPPORTED
+        BOOL shouldstopAndTransmitLaunchProfile = YES;
+#    if SENTRY_HAS_UIKIT
+        if (SentryUIViewControllerPerformanceTracker.shared.enableWaitForFullDisplay) {
+            shouldstopAndTransmitLaunchProfile = NO;
+        }
+#    endif // SENTRY_HAS_UIKIT
+
+        [SentryDependencyContainer.sharedInstance.dispatchQueueWrapper dispatchAsyncWithBlock:^{
+            if (shouldstopAndTransmitLaunchProfile) {
+                SENTRY_LOG_DEBUG(@"Stopping launch profile in SentrySDK.start because there will "
+                                 @"be no automatic trace to attach it to.");
+                stopAndTransmitLaunchProfile(hub);
+            }
+            configureLaunchProfiling(options);
+        }];
+#endif // SENTRY_TARGET_PROFILING_SUPPORTED
+    }];
 }
 
 + (void)startWithConfigureOptions:(void (^)(SentryOptions *options))configureOptions
 {
     SentryOptions *options = [[SentryOptions alloc] init];
     configureOptions(options);
-    [SentrySDK startWithOptionsObject:options];
+    [SentrySDK startWithOptions:options];
 }
 
 + (void)captureCrashEvent:(SentryEvent *)event
@@ -194,37 +278,14 @@ static NSUInteger startInvocations;
 
 + (id<SentrySpan>)startTransactionWithName:(NSString *)name operation:(NSString *)operation
 {
-    return [self startTransactionWithName:name
-                               nameSource:kSentryTransactionNameSourceCustom
-                                operation:operation];
-}
-
-+ (id<SentrySpan>)startTransactionWithName:(NSString *)name
-                                nameSource:(SentryTransactionNameSource)source
-                                 operation:(NSString *)operation
-{
-    return [SentrySDK.currentHub startTransactionWithName:name
-                                               nameSource:source
-                                                operation:operation];
+    return [SentrySDK.currentHub startTransactionWithName:name operation:operation];
 }
 
 + (id<SentrySpan>)startTransactionWithName:(NSString *)name
                                  operation:(NSString *)operation
                                bindToScope:(BOOL)bindToScope
 {
-    return [self startTransactionWithName:name
-                               nameSource:kSentryTransactionNameSourceCustom
-                                operation:operation
-                              bindToScope:bindToScope];
-}
-
-+ (id<SentrySpan>)startTransactionWithName:(NSString *)name
-                                nameSource:(SentryTransactionNameSource)source
-                                 operation:(NSString *)operation
-                               bindToScope:(BOOL)bindToScope
-{
     return [SentrySDK.currentHub startTransactionWithName:name
-                                               nameSource:source
                                                 operation:operation
                                               bindToScope:bindToScope];
 }
@@ -349,7 +410,17 @@ static NSUInteger startInvocations;
 
 + (BOOL)crashedLastRun
 {
-    return SentryCrash.sharedInstance.crashedLastLaunch;
+    return SentryDependencyContainer.sharedInstance.crashReporter.crashedLastLaunch;
+}
+
++ (BOOL)detectedStartUpCrash
+{
+    return _detectedStartUpCrash;
+}
+
++ (void)setDetectedStartUpCrash:(BOOL)value
+{
+    _detectedStartUpCrash = value;
 }
 
 + (void)startSession
@@ -363,7 +434,7 @@ static NSUInteger startInvocations;
 }
 
 /**
- * Install integrations and keeps ref in `SentryHub.integrations`
+ * Install integrations and keeps ref in @c SentryHub.integrations
  */
 + (void)installIntegrations
 {
@@ -395,6 +466,11 @@ static NSUInteger startInvocations;
     }
 }
 
++ (void)reportFullyDisplayed
+{
+    [SentrySDK.currentHub reportFullyDisplayed];
+}
+
 + (void)flush:(NSTimeInterval)timeout
 {
     [SentrySDK.currentHub flush:timeout];
@@ -405,26 +481,34 @@ static NSUInteger startInvocations;
  */
 + (void)close
 {
-    // pop the hub and unset
-    SentryHub *hub = SentrySDK.currentHub;
+    SENTRY_LOG_DEBUG(@"Starting to close SDK.");
 
-    // uninstall all the integrations
-    for (NSObject<SentryIntegrationProtocol> *integration in hub.installedIntegrations) {
-        if ([integration respondsToSelector:@selector(uninstall)]) {
-            [integration uninstall];
-        }
-    }
+    startTimestamp = nil;
+
+    SentryHub *hub = SentrySDK.currentHub;
     [hub removeAllIntegrations];
 
-    // close the client
-    SentryClient *client = [hub getClient];
-    client.options.enabled = NO;
+    SENTRY_LOG_DEBUG(@"Uninstalled all integrations.");
+
+#if SENTRY_HAS_UIKIT
+    // force the AppStateManager to unsubscribe, see
+    // https://github.com/getsentry/sentry-cocoa/issues/2455
+    [[SentryDependencyContainer sharedInstance].appStateManager stopWithForce:YES];
+#endif
+
+    [hub close];
     [hub bindClient:nil];
 
     [SentrySDK setCurrentHub:nil];
 
-    [SentryDependencyContainer reset];
+    [SentryCrashWrapper.sharedInstance stopBinaryImageCache];
+    [SentryDependencyContainer.sharedInstance.binaryImageCache stop];
 
+#if TARGET_OS_IOS && SENTRY_HAS_UIKIT
+    [SentryDependencyContainer.sharedInstance.uiDeviceWrapper stop];
+#endif // TARGET_OS_IOS && SENTRY_HAS_UIKIT
+
+    [SentryDependencyContainer reset];
     SENTRY_LOG_DEBUG(@"SDK closed!");
 }
 

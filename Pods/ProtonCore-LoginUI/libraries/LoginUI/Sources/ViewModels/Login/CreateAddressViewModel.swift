@@ -19,10 +19,12 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import Foundation
-import ProtonCore_DataModel
-import ProtonCore_Log
-import ProtonCore_Login
+import ProtonCoreDataModel
+import ProtonCoreLog
+import ProtonCoreLogin
 
 final class CreateAddressViewModel {
 
@@ -34,7 +36,7 @@ final class CreateAddressViewModel {
         case createAddressError(CreateAddressError)
         case loginError(LoginError)
         case createAddressKeysError(CreateAddressKeysError)
-        
+
         var originalError: Error {
             switch self {
             case .availabilityError(let availabilityError): return availabilityError
@@ -45,24 +47,24 @@ final class CreateAddressViewModel {
             }
         }
     }
-    
+
     let isLoading = Observable<Bool>(false)
     let error = Publisher<(String, Int, PossibleErrors)>()
     let finished = Publisher<LoginData>()
     var externalEmail: String { data.email }
     let defaultUsername: String?
     var signUpDomain: String { login.currentlyChosenSignUpDomain }
-    
+
     var currentlyChosenSignUpDomain: String {
         get { login.currentlyChosenSignUpDomain }
         set { login.currentlyChosenSignUpDomain = newValue }
     }
     var allSignUpDomains: [String] { login.allSignUpDomains }
-    
+
     private let data: CreateAddressData
     private var login: Login
     private(set) var user: User
-    
+
     init(data: CreateAddressData, login: Login, defaultUsername: String?) {
         self.data = data
         self.login = login
@@ -71,11 +73,11 @@ final class CreateAddressViewModel {
     }
 
     // MARK: - Actions
-    
+
     func validate(username: String) -> Result<(), UsernameValidationError> {
         !username.isEmpty ? .success : .failure(.emptyUsername)
     }
-    
+
     func finish(username: String) {
         isLoading.value = true
         checkAvailability(username: username) { [weak self] in
@@ -84,7 +86,7 @@ final class CreateAddressViewModel {
     }
 
     // MARK: - Private interface
-    
+
     private func checkAvailability(username: String, success: @escaping () -> Void) {
         login.checkAvailabilityForInternalAccount(username: username) { [weak self] result in
             switch result {
@@ -92,7 +94,7 @@ final class CreateAddressViewModel {
                 success()
             case let .failure(error):
                 self?.isLoading.value = false
-                self?.error.publish((error.userFacingMessageInLogin, error.codeInLogin, .availabilityError(error)))
+                self?.error.publish((error.localizedDescription, error.codeInLogin, .availabilityError(error)))
             }
         }
     }
@@ -142,14 +144,14 @@ final class CreateAddressViewModel {
             }
         }
     }
-    
+
     private func finishFlow() {
         PMLog.debug("Finishing the flow")
         login.finishLoginFlow(mailboxPassword: data.mailboxPassword, passwordMode: data.passwordMode) { [weak self] result in
             switch result {
             case let .success(status):
                 switch status {
-                case .ask2FA, .askSecondPassword, .chooseInternalUsernameAndCreateInternalAddress:
+                case .askAny2FA, .askSecondPassword, .chooseInternalUsernameAndCreateInternalAddress, .ssoChallenge, .askFIDO2, .askTOTP:
                     self?.isLoading.value = false
                 case let .finished(data):
                     self?.finished.publish(data)
@@ -161,3 +163,5 @@ final class CreateAddressViewModel {
         }
     }
 }
+
+#endif

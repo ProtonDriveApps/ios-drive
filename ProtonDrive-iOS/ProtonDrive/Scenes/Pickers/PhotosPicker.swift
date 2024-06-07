@@ -22,7 +22,7 @@ import os.log
 import PhotosUI
 import PDCore
 import PDUIComponents
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 struct PhotoPicker: UIViewControllerRepresentable {
     typealias URLErrorCompletion = (URL?, Error?) -> Void
@@ -62,7 +62,7 @@ struct PhotoPicker: UIViewControllerRepresentable {
         root.closeCurrentSheet.send()
     }
 
-    func picker(didFinishPicking items: [Result<URL, Error>]) {
+    func picker(didFinishPicking items: [URLResult]) {
         delegate?.picker(didFinishPicking: items)
         close()
     }

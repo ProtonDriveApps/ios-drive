@@ -97,24 +97,32 @@ EOM
   esac
 }
 if [[ "$CONFIGURATION" == "Debug" ]]; then
-  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-CoreTranslation-static/Resources-CoreTranslation.bundle"
-  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-FeatureSwitch-static/Resources-FeatureSwitch.bundle"
   install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Login-static/Resources-Login.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Login-static/Translations-Login.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Networking-static/Translations-Networking.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Services-static/Translations-Services.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/Sentry-static/Sentry.bundle"
 fi
 if [[ "$CONFIGURATION" == "Release-External" ]]; then
-  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-CoreTranslation-static/Resources-CoreTranslation.bundle"
-  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-FeatureSwitch-static/Resources-FeatureSwitch.bundle"
   install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Login-static/Resources-Login.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Login-static/Translations-Login.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Networking-static/Translations-Networking.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Services-static/Translations-Services.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/Sentry-static/Sentry.bundle"
 fi
 if [[ "$CONFIGURATION" == "Release-Store" ]]; then
-  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-CoreTranslation-static/Resources-CoreTranslation.bundle"
-  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-FeatureSwitch-static/Resources-FeatureSwitch.bundle"
   install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Login-static/Resources-Login.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Login-static/Translations-Login.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Networking-static/Translations-Networking.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Services-static/Translations-Services.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/Sentry-static/Sentry.bundle"
 fi
 if [[ "$CONFIGURATION" == "Release-QA" ]]; then
-  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-CoreTranslation-static/Resources-CoreTranslation.bundle"
-  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-FeatureSwitch-static/Resources-FeatureSwitch.bundle"
   install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Login-static/Resources-Login.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Login-static/Translations-Login.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Networking-static/Translations-Networking.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Services-static/Translations-Services.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/Sentry-static/Sentry.bundle"
 fi
 
 mkdir -p "${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"

@@ -25,33 +25,71 @@ final class PhotosThumbnailRevisionEncryptor: ThumbnailRevisionEncryptor {
         guard !isCancelled, !isExecuting else { return }
         isExecuting = true
 
-        ConsoleLogger.shared?.log("STAGE: 1.1 🏞 Encrypt thumbnail started", osLogType: FileUploader.self)
-        moc.perform {
-            do {
-                let revision = draft.revision.in(moc: self.moc)
-                guard let photoRevision = revision as? PhotoRevision else {
-                    throw revision.invalidState("Should be a PhotoRevision.")
-                }
-                let smallThumbnail = try self.makeCoreDataThumbnail(ofSize: Constants.defaultThumbnailMaxSize, maxWeight: Constants.thumbnailMaxWeight, draft)
-                smallThumbnail.type = .default
-                photoRevision.addToThumbnails(smallThumbnail)
+        Log.info("STAGE: 1.1 🏞 Encrypt thumbnail started. UUID: \(draft.uploadID)", domain: .uploader)
+        do {
+            try encryptThrowing(draft)
+            Log.info("STAGE: 1.1 🏞 Encrypt thumbnail finished ✅. UUID: \(draft.uploadID)", domain: .uploader)
+            self.progress.complete()
+            completion(.success)
+        } catch ThumbnailGenerationError.cancelled {
+            return
+        } catch {
+            Log.info("STAGE: 1.1 🏞 Encrypt thumbnail finished ❌. UUID: \(draft.uploadID)", domain: .uploader)
+            completion(.failure(error))
+        }
+    }
 
-                let bigThumbnail = try self.makeCoreDataThumbnail(ofSize: Constants.photoThumbnailMaxSize, maxWeight: Constants.photoThumbnailMaxWeight, draft)
-                bigThumbnail.type = .photos
-                photoRevision.addToThumbnails(bigThumbnail)
+    override func encryptThrowing(_ draft: CreatedRevisionDraft) throws {
+        let encryptionMetadata = try moc.performAndWait { [weak self] in
+            guard let self, !self.isCancelled else { throw ThumbnailGenerationError.cancelled }
+            let revision = draft.revision.in(moc: moc)
+            return try getEncryptionMetadata(for: revision.file)
+        }
 
+        let encryptedThumbnails = try encryptThumbnails(draft, encryptionMetadata)
+
+        guard !isCancelled else { throw ThumbnailGenerationError.cancelled }
+
+        try moc.performAndWait { [weak self] in
+            guard let self, !self.isCancelled else { throw ThumbnailGenerationError.cancelled }
+
+            let revision = draft.revision.in(moc: moc)
+            revision.removeOldThumbnails(in: moc)
+
+            let thumbnails = Set(encryptedThumbnails.map { self.makeThumbnail(from: $0.data, type: $0.type) })
+            revision.addToThumbnails(thumbnails)
+
+            if isCancelled {
+                self.moc.rollback()
+            } else {
                 try self.moc.saveOrRollback()
-
-                ConsoleLogger.shared?.log("STAGE: 1.1 🏞 Encrypt thumbnail finished ✅", osLogType: FileUploader.self)
-
-                self.progress.complete()
-                completion(.success)
-
-            } catch {
-                ConsoleLogger.shared?.log("STAGE: 1.1 🏞 Encrypt thumbnail finished ❌", osLogType: FileUploader.self)
-                completion(.failure(error))
             }
         }
     }
 
+    private func encryptThumbnails(_ draft: CreatedRevisionDraft, _ encryptionMetadata: EncryptionMetadata) throws -> [(data: EncryptedThumbnailData, type: ThumbnailType)] {
+        let smallThumbnailData = try makeEncryptedThumbnailData(
+            ofSize: Constants.defaultThumbnailMaxSize,
+            maxWeight: Constants.thumbnailMaxWeight,
+            encryptionMetadata: encryptionMetadata,
+            localURL: draft.localURL
+        )
+
+        Log.info("STAGE: 1.1 🏞🏁 Encrypted thumbnail 1. UUID: \(draft.uploadID)", domain: .uploader)
+
+        guard draft.mimetype.isImage else { return [(smallThumbnailData, .default)] }
+
+        guard !isCancelled else { throw ThumbnailGenerationError.cancelled }
+
+        let bigThumbnailData = try makeEncryptedThumbnailData(
+            ofSize: Constants.photoThumbnailMaxSize,
+            maxWeight: Constants.photoThumbnailMaxWeight,
+            encryptionMetadata: encryptionMetadata,
+            localURL: draft.localURL
+        )
+
+        Log.info("STAGE: 1.1 🏞🏁 Encrypted thumbnail 2. UUID: \(draft.uploadID)", domain: .uploader)
+
+        return [(smallThumbnailData, .default), (bigThumbnailData, .photos)]
+    }
 }

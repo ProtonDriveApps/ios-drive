@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 struct ActionBarButtonView: View {
     var vm: ActionBarButtonViewModel
@@ -59,7 +59,6 @@ struct ActionBarButtonView: View {
             .resizable()
             .frame(width: 20, height: 20, alignment: .top)
             .foregroundColor(ColorProvider.IconNorm)
-            .cornerRadius(.circled)
             .background(
                 actionBarIndicator
                     .opacity(vm.isAutoHighlighted ? 1.0 : 0.0)

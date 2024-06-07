@@ -32,17 +32,54 @@ extension Revision {
     @NSManaged public var file: File
     @NSManaged public var blocks: Set<Block>
     @NSManaged public var thumbnails: Set<Thumbnail>
-    @NSManaged public var thumbnailHash: String?
     @NSManaged public var xAttributes: String?
 }
-
+extension PhotoRevision {
+    /// URL of the clear text resource before it's encrypted.
+    override public var normalizedUploadableResourceURL: URL? {
+        get {
+            guard let url = self.uploadableResourceURL,
+                  let path = PDFileManager.getLastTwoPathComponents(from: url) else {
+                return nil
+            }
+            return PDFileManager.cleartextPhotosCacheDirectory.appendingPathComponent(path)
+        } set {
+            if let newValue = newValue,
+               let path = PDFileManager.getLastTwoPathComponents(from: newValue) {
+                uploadableResourceURL = PDFileManager.cleartextPhotosCacheDirectory.appendingPathComponent(path)
+            } else {
+                uploadableResourceURL = nil
+            }
+        }
+    }
+}
 // MARK: - Custom Upload properties
 extension Revision {
     /// State of the Revision when it's being created and uploaded
     @NSManaged var uploadState: UploadState
 
+    /// Temporary property for the size of the clear text URL
+    @NSManaged var uploadSize: Int
+
     /// URL of the clear text resource before it's encrypted.
     @NSManaged var uploadableResourceURL: URL?
+
+    @objc public var normalizedUploadableResourceURL: URL? {
+        get {
+            guard let url = self.uploadableResourceURL,
+                  let path = PDFileManager.getLastTwoPathComponents(from: url) else {
+                return nil
+            }
+            return PDFileManager.cleartextCacheDirectory.appendingPathComponent(path)
+        } set {
+            if let newValue = newValue,
+               let path = PDFileManager.getLastTwoPathComponents(from: newValue) {
+                uploadableResourceURL = PDFileManager.cleartextCacheDirectory.appendingPathComponent(path)
+            } else {
+                uploadableResourceURL = nil
+            }
+        }
+    }
 
     /// Date in which the last request for uploading blocks has been performed
     @NSManaged var requestedUpload: Date?
@@ -106,4 +143,9 @@ public extension Revision {
     var identifier: RevisionIdentifier {
         RevisionIdentifier(share: file.shareID, file: file.id, revision: id)
     }
+}
+
+// MARK: Transient properties
+public extension Revision {
+    @NSManaged internal var clearXAttributes: ExtendedAttributes?
 }

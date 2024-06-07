@@ -17,7 +17,7 @@
 
 import PDCore
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import PDUIComponents
 
 enum TrashSectionItem: SectionItemDisplayable {

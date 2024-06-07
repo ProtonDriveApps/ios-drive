@@ -21,38 +21,99 @@ public struct PhotoAsset: Equatable {
 
     public let url: URL
     public let filename: String
-    public let contentHash: String
+    public let mimeType: MimeType
     public let exif: Exif
-    public let metadata: Metadata
+    public let metadata: PhotoAssetMetadata
 
-    public init(url: URL, filename: String, contentHash: String, exif: PhotoAsset.Exif, metadata: PhotoAsset.Metadata) {
+    public init(url: URL, filename: String, mimeType: MimeType, exif: PhotoAsset.Exif, metadata: PhotoAssetMetadata) {
         self.url = url
         self.filename = filename
-        self.contentHash = contentHash
+        self.mimeType = mimeType
         self.exif = exif
         self.metadata = metadata
     }
 
     public typealias Exif = Data
+}
 
-    public struct Metadata: Equatable {
-
-        public let cloudIdentifier: String
-        public let creationDate: Date?
-        public let modifiedDate: Date?
+public struct PhotoAssetMetadata: Equatable {
+    public struct Media: Equatable {
         public let width: Int
         public let height: Int
         public let duration: Double?
 
-        public init(cloudIdentifier: String, creationDate: Date? = nil, modifiedDate: Date? = nil, width: Int, height: Int, duration: Double?) {
-            self.cloudIdentifier = cloudIdentifier
-            self.creationDate = creationDate
-            self.modifiedDate = modifiedDate
+        public init(width: Int, height: Int, duration: Double?) {
             self.width = width
             self.height = height
             self.duration = duration
         }
-
     }
 
+    public struct Location: Equatable {
+        public let latitude: Double
+        public let longitude: Double
+
+        public init(latitude: Double, longitude: Double) {
+            self.latitude = latitude
+            self.longitude = longitude
+        }
+    }
+
+    public struct Camera: Equatable {
+        public let captureTime: Date?
+        public let device: String?
+        public let modificationTime: Date?
+        public let orientation: Int?
+        public let subjectCoordinates: SubjectCoordinates?
+
+        public init(
+            captureTime: Date?,
+            device: String?,
+            modificationTime: Date? = nil,
+            orientation: Int?,
+            subjectCoordinates: SubjectCoordinates?
+        ) {
+            self.captureTime = captureTime
+            self.device = device
+            self.modificationTime = modificationTime
+            self.orientation = orientation
+            self.subjectCoordinates = subjectCoordinates
+        }
+    }
+
+    public struct SubjectCoordinates: Equatable {
+        public let top: Int
+        public let left: Int
+        public let bottom: Int
+        public let right: Int
+
+        public init(top: Int, left: Int, bottom: Int, right: Int) {
+            self.top = top
+            self.left = left
+            self.bottom = bottom
+            self.right = right
+        }
+    }
+
+    public struct iOSPhotos: Equatable, Hashable {
+        public let identifier: String
+        public let modificationTime: Date?
+
+        public init(identifier: String, modificationTime: Date?) {
+            self.identifier = identifier
+            self.modificationTime = modificationTime
+        }
+    }
+
+    public let media: Media
+    public let camera: Camera
+    public let location: Location?
+    public let iOSPhotos: iOSPhotos
+
+    public init(media: Media, camera: Camera, location: Location?, iOSPhotos: iOSPhotos) {
+        self.media = media
+        self.camera = camera
+        self.location = location
+        self.iOSPhotos = iOSPhotos
+    }
 }

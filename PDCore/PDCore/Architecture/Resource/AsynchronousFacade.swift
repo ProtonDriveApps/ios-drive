@@ -17,12 +17,12 @@
 
 import Combine
 
-/// Non-blocking facade used for invoking on main queue and returning result on main again.
-open class AsynchronousFacade<I: Interactor, Input, Output> where Input == I.Input, I.Output == Output {
+/// Non-blocking facade used for invoking on background queue and returning result on main again.
+open class AsynchronousFacade<I: AsynchronousInteractor, Input, Output> where Input == I.Input, I.Output == Output {
     private let interactor: I
-    private let subject = PassthroughSubject<Result<Output, Error>, Never>()
+    private let subject = PassthroughSubject<Output, Never>()
 
-    public var result: AnyPublisher<Result<Output, Error>, Never> {
+    public var result: AnyPublisher<Output, Never> {
         subject.eraseToAnyPublisher()
     }
 
@@ -31,18 +31,14 @@ open class AsynchronousFacade<I: Interactor, Input, Output> where Input == I.Inp
     }
 
     public func execute(with input: Input) {
-        Task {
-            do {
-                let output = try await interactor.execute(with: input)
-                await finish(with: .success(output))
-            } catch {
-                await finish(with: .failure(error))
-            }
+        Task(priority: .low) {
+            let output = await interactor.execute(with: input)
+            await finish(with: output)
         }
     }
 
     @MainActor
-    private func finish(with result: Result<Output, Error>) {
+    private func finish(with result: Output) {
         subject.send(result)
     }
 }

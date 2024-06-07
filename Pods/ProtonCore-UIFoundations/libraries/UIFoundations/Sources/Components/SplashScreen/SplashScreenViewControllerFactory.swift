@@ -19,6 +19,10 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
+import UIKit
+
 public enum SplashScreenIBVariant: Int, CaseIterable {
     case mail = 1
     case calendar = 2
@@ -28,9 +32,10 @@ public enum SplashScreenIBVariant: Int, CaseIterable {
 }
 
 public enum SplashScreenViewControllerFactory {
-    
+
     public static func instantiate(for variant: SplashScreenIBVariant,
-                                   bundle: Bundle = .main) -> UIViewController {
+                                   bundle: Bundle = .main,
+                                   inAppTheme: () -> InAppTheme) -> UIViewController {
         let storyboardName: String
         switch variant {
         case .mail:
@@ -49,7 +54,9 @@ public enum SplashScreenViewControllerFactory {
             assertionFailure("Cannot instantiate launch screen view controller")
             return UIViewController(nibName: nil, bundle: nil)
         }
+        splash.overrideUserInterfaceStyle = inAppTheme().userInterfaceStyle
         return splash
     }
-    
 }
+
+#endif

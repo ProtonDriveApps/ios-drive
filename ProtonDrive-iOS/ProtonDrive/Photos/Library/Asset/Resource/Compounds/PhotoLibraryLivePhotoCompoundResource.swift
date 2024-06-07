@@ -23,64 +23,16 @@ enum PhotoLibraryLivePhotoFilesResourceError: Error {
 }
 
 final class PhotoLibraryLivePhotoCompoundResource: PhotoLibraryCompoundResource {
-    struct LivePhotoAssetResourcePair {
-        let photo: PHAssetResource
-        let photoFilename: String
-        let video: PHAssetResource
-        let videoFilename: String
-    }
+    private let liveCompoundResource: PhotoLibraryLivePairCompoundResource
 
-    private let assetResource: PhotoLibraryAssetResource
-    private let nameResource: PhotoLibraryNameResource
-
-    init(assetResource: PhotoLibraryAssetResource, nameResource: PhotoLibraryNameResource) {
-        self.assetResource = assetResource
-        self.nameResource = nameResource
+    init(liveCompoundResource: PhotoLibraryLivePairCompoundResource) {
+        self.liveCompoundResource = liveCompoundResource
     }
 
     func execute(with identifier: PhotoIdentifier, asset: PHAsset) async throws -> [PhotoAssetCompound] {
-        let resources = PHAssetResource.assetResources(for: asset)
-        let originalPair = try getOriginalPair(from: resources)
-        let originalCompound = try await loadLivePair(with: identifier, resources: originalPair, isOriginal: true)
-        if let modifiedPair = try? getModifiedPair(from: resources) {
-            let modifiedCompound = try await loadLivePair(with: identifier, resources: modifiedPair, isOriginal: false)
-            return [originalCompound, modifiedCompound]
-        } else {
-            return [originalCompound]
-        }
-    }
-
-    private func getOriginalPair(from resources: [PHAssetResource]) throws -> LivePhotoAssetResourcePair {
-        guard let photoResource = resources.first(where: { $0.isOriginalImage() }) else {
-            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources
-        }
-
-        guard let videoResource = resources.first(where: { $0.isOriginalPairedVideo() }) else {
-            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources
-        }
-
-        return LivePhotoAssetResourcePair(photo: photoResource, photoFilename: photoResource.originalFilename, video: videoResource, videoFilename: videoResource.originalFilename)
-    }
-
-    private func getModifiedPair(from resources: [PHAssetResource]) throws -> LivePhotoAssetResourcePair {
-        guard let photoResource = resources.first(where: { $0.isAdjustedImage() }) else {
-            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources
-        }
-
-        guard let videoResource = resources.first(where: { $0.isAdjustedPairedVideo() }) else {
-            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources
-        }
-
-        let photoFilename = try nameResource.getPhotoFilename(from: resources)
-        let videoFilename = try nameResource.getPairedVideoFilename(from: resources)
-        return LivePhotoAssetResourcePair(photo: photoResource, photoFilename: photoFilename, video: videoResource, videoFilename: videoFilename)
-    }
-
-    private func loadLivePair(with identifier: PhotoIdentifier, resources: LivePhotoAssetResourcePair, isOriginal: Bool) async throws -> PhotoAssetCompound {
-        let photoData = PhotoAssetData(identifier: identifier, resource: resources.photo, filename: resources.photoFilename, isOriginal: isOriginal)
-        let videoData = PhotoAssetData(identifier: identifier, resource: resources.video, filename: resources.videoFilename, isOriginal: isOriginal)
-        let photoAsset = try await assetResource.executePhoto(with: photoData)
-        let videoAsset = try await assetResource.executeVideo(with: videoData)
-        return PhotoAssetCompound(primary: photoAsset, secondary: [videoAsset])
+        return [
+            try await liveCompoundResource.getOriginal(with: identifier, asset: asset),
+            try? await liveCompoundResource.getModified(with: identifier, asset: asset)
+        ].compactMap { $0 }
     }
 }

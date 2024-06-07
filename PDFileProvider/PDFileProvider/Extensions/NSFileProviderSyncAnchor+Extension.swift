@@ -24,10 +24,10 @@ extension NSFileProviderSyncAnchor {
         let shareID: String
         let referenceDate: Date
         
-        init(eventID: String, shareID: String, referenceDate: Date) {
+        init(eventID: String, shareID: String, eventSystemRerefenceDate: Date) {
             self.eventID = eventID
             self.shareID = shareID
-            self.referenceDate = referenceDate
+            self.referenceDate = eventSystemRerefenceDate
         }
         
         fileprivate init(rawValue: Data) throws {
@@ -38,10 +38,11 @@ extension NSFileProviderSyncAnchor {
         fileprivate var rawValue: Data {
             // swiftlint:disable force_try
             try! PropertyListEncoder().encode(self)
+            // swiftlint:enable force_try
         }
     }
     
-    init?(anchor: UnderlyingAnchor) {
+    init(anchor: UnderlyingAnchor) {
         self.init(anchor.rawValue)
     }
     

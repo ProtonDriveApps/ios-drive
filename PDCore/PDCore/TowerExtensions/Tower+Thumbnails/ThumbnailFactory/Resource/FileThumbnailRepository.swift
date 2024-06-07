@@ -17,7 +17,7 @@
 
 import Foundation
 
-final class FileThumbnailRepository: ThumbnailRepository {
+final class FileNodeThumbnailRepository: NodeThumbnailRepository {
     private let store: StorageManager
 
     init(store: StorageManager) {

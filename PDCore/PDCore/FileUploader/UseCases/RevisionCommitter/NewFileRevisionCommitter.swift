@@ -20,18 +20,21 @@ import CoreData
 
 class NewFileRevisionCommitter: RevisionCommitter {
     
-    let cloudRevisionCommiter: CloudRevisionCommiter
+    let cloudRevisionCommitter: CloudRevisionCommitter
+    let uploadedRevisionChecker: UploadedRevisionChecker
     let signersKitFactory: SignersKitFactoryProtocol
     let moc: NSManagedObjectContext
 
     var isCancelled = false
 
     init(
-        cloudRevisionCommiter: CloudRevisionCommiter,
+        cloudRevisionCommitter: CloudRevisionCommitter,
+        uploadedRevisionChecker: UploadedRevisionChecker,
         signersKitFactory: SignersKitFactoryProtocol,
         moc: NSManagedObjectContext
     ) {
-        self.cloudRevisionCommiter = cloudRevisionCommiter
+        self.cloudRevisionCommitter = cloudRevisionCommitter
+        self.uploadedRevisionChecker = uploadedRevisionChecker
         self.signersKitFactory = signersKitFactory
         self.moc = moc
     }
@@ -40,22 +43,27 @@ class NewFileRevisionCommitter: RevisionCommitter {
         guard !isCancelled else { return }
 
         do {
-            let commitableRevision = try getCommitableRevision(from: draft.file)
+            try draft.assertIsCommitingRevision(in: moc)
+            let revisionAndDigest = try getCommitableRevision(from: draft.file)
+            let commitableRevision = revisionAndDigest.commitableRevision
 
-            cloudRevisionCommiter.commit(commitableRevision) { [weak self] result in
+            cloudRevisionCommitter.commit(commitableRevision) { [weak self] result in
                 guard let self = self, !self.isCancelled else { return }
 
                 switch result {
                 case .success:
                     self.finalizeRevision(in: draft.file, commitableRevision: commitableRevision, completion: completion)
 
+                case .failure(let error as ResponseError) where CommitPolicy.revisionAlreadyCommittedErrors.contains(error.responseCode):
+                    self.checkFileIsUploadedCorrectly(draft, localSHA1: revisionAndDigest.sha1, identifier: revisionAndDigest.identifier, commitableRevision: commitableRevision, completion: completion)
+
                 case .failure(let error as ResponseError) where CommitPolicy.invalidRevision.contains(error.responseCode):
                     self.rollbackUploadedStatus(in: draft.file)
                     completion(.failure(error))
-                    
+
                 case .failure(let error as ResponseError) where CommitPolicy.quotaExceeded.contains(error.responseCode):
-                    self.setCloudImpedimentState(in: draft.file)
-                    completion(.failure(error))
+                    draft.file.changeUploadingState(to: .cloudImpediment)
+                    completion(.failure(FileUploaderError.insuficientSpace))
 
                 case .failure(let error):
                     completion(.failure(error))
@@ -67,8 +75,53 @@ class NewFileRevisionCommitter: RevisionCommitter {
         }
     }
 
-    func getCommitableRevision(from file: File) throws -> CommitableRevision {
+    func checkFileIsUploadedCorrectly(_ draft: FileDraft, localSHA1: String?, identifier: RevisionIdentifier, commitableRevision: CommitableRevision, completion: @escaping Completion ) {
+        uploadedRevisionChecker.checkUploadedRevision(identifier) { [weak self] result in
+            guard let self, !self.isCancelled else { return }
+
+            switch result {
+            case .success(let xAttributesRemote):
+                self.moc.performAndWait { [weak self] in
+                    guard let self, !self.isCancelled else { return }
+                    do {
+                        // We use the keys of the local revision for faster results
+                        let file = draft.file
+                        let filePassphrase = try file.decryptPassphrase()
+                        let nodeDecryptionKey = DecryptionKey(privateKey: file.nodeKey, passphrase: filePassphrase)
+                        let addressKeys = try file.activeRevisionDraft?.getAddressPublicKeysOfRevisionCreator() ?? []
+
+                        let decryptedRemote = try Decryptor.decryptAndVerifyXAttributes(
+                            xAttributesRemote,
+                            decryptionKey: nodeDecryptionKey,
+                            verificationKeys: addressKeys
+                        ).decrypted()
+                        let xAttrRemote = try JSONDecoder().decode(ExtendedAttributes.self, from: decryptedRemote)
+
+                        let remoteSHA1 = xAttrRemote.common?.digests?.sha1
+
+                        if remoteSHA1 == localSHA1 {
+                            self.finalizeRevision(in: draft.file, commitableRevision: commitableRevision, completion: completion)
+                        } else {
+                            completion(.failure(UploadedRevisionCheckerError.xAttrsDoNotMatch))
+                        }
+                    } catch {
+                        completion(.failure(error))
+                    }
+                }
+
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func getCommitableRevision(from file: File) throws -> RevisionAndDigest {
         return try moc.performAndWait {
+            // The file could have just been uploaded and it's state updated by the events system.
+            guard file.state != .active else {
+                throw AlreadyCommittedFileError()
+            }
+
             guard let revision = file.activeRevisionDraft else {
                 throw file.invalidState("File should have an active revision draft.")
             }
@@ -98,9 +151,29 @@ class NewFileRevisionCommitter: RevisionCommitter {
                 addressPassphrase: addressPassphrase
             )
 
+            let expectedBlockSizes = revision.uploadSize.split(divisor: Constants.maxBlockSize)
+            let expectedBlockCount = expectedBlockSizes.count
+
+            // A safeguard to ensure the number of blocks used to generate the manifest
+            // match the number of expected blocks when initially provided the file URL
+            guard expectedBlockCount == uploadedBlocks.count else {
+                throw UploadedRevisionCheckerError.blockUploadCountIncorrect
+            }
+
+            // A safeguard to ensure that the size of each block matches the expected block
+            // sizes based on the initial file URL
+            for (block, expectedSize) in zip(uploadedBlocks, expectedBlockSizes) {
+                guard block.clearSize != .zero else {
+                    throw UploadedRevisionCheckerError.blockUploadEmpty
+                }
+                guard block.clearSize == expectedSize else {
+                    throw UploadedRevisionCheckerError.blockUploadSizeIncorrect
+                }
+            }
+
             let photo = try getPhotoIfNeeded(revision: revision)
 
-            return CommitableRevision(
+            let commitableRevision = CommitableRevision(
                 shareID: revision.file.shareID,
                 fileID: revision.file.id,
                 revisionID: revision.id,
@@ -110,6 +183,10 @@ class NewFileRevisionCommitter: RevisionCommitter {
                 xAttributes: revision.xAttributes,
                 photo: photo
             )
+            let identifier = RevisionIdentifier(share: commitableRevision.shareID, file: commitableRevision.fileID, revision: commitableRevision.revisionID)
+            let sha1 = try? revision.decryptedExtendedAttributes().common?.digests?.sha1
+
+            return RevisionAndDigest(commitableRevision: commitableRevision, identifier: identifier, sha1: sha1)
         }
     }
 
@@ -118,7 +195,9 @@ class NewFileRevisionCommitter: RevisionCommitter {
     }
 
     func finalizeRevision(in file: File, commitableRevision: CommitableRevision, completion: @escaping Completion) {
-        moc.performAndWait {
+        moc.performAndWait { [weak self] in
+            guard let self, !self.isCancelled else { return }
+            
             guard let revision = file.activeRevisionDraft else {
                 return completion(.failure(file.invalidState("File should have an active revision draft.")))
             }
@@ -136,6 +215,8 @@ class NewFileRevisionCommitter: RevisionCommitter {
             file.activeRevisionDraft = nil
             file.clientUID = nil
 
+            notifyParentIfNeeded(file: file)
+            
             do {
                 try moc.saveOrRollback()
                 // Perform immediately after saving 🚨, to ensure that there are no changes to the object’s relationships.
@@ -148,16 +229,14 @@ class NewFileRevisionCommitter: RevisionCommitter {
         }
     }
 
+    /// Template method that allow the notification to the parent if there are changes, not relevant for regular files
+    func notifyParentIfNeeded(file _: File) { }
+
     func rollbackUploadedStatus(in file: File) {
-        moc.performAndWait {
+        moc.performAndWait { [weak self] in
+            guard let self, !self.isCancelled else { return }
+            
             file.activeRevisionDraft?.unsetUploadedState()
-            try? moc.saveOrRollback()
-        }
-    }
-    
-    func setCloudImpedimentState(in file: File) {
-        moc.performAndWait {
-            file.state = .cloudImpediment
             try? moc.saveOrRollback()
         }
     }
@@ -167,11 +246,18 @@ class NewFileRevisionCommitter: RevisionCommitter {
     }
 }
 
+struct RevisionAndDigest {
+    let commitableRevision: CommitableRevision
+    let identifier: RevisionIdentifier
+    let sha1: String?
+}
+
 // MARK: - DTOs
 struct UploadedBlock {
     let index: Int
     let token: String
     let sha256: Data
+    let clearSize: Int
 }
 
 struct UploadedThumbnail {
@@ -184,7 +270,7 @@ extension UploadBlock {
               let token = uploadToken else {
             return nil
         }
-        return UploadedBlock(index: index, token: token, sha256: sha256)
+        return UploadedBlock(index: index, token: token, sha256: sha256, clearSize: clearSize)
     }
 }
 

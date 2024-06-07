@@ -24,12 +24,13 @@ public class LocalPhotosRootDataSource: PhotosShareDataSource {
     }
 
     public func getPhotoShare() async throws -> Share {
-        guard !observer.cache.isEmpty else {
+        let shares = observer.cache
+        guard !shares.isEmpty else {
             throw LocalPhotoDataSourceError.noLocalPhotoShare
         }
 
-        guard let share = observer.cache.first,
-              [share] == observer.cache else {
+        guard let share = shares.first,
+              [share] == shares else {
             throw LocalPhotoDataSourceError.moreThanOnePhotosShare
         }
 

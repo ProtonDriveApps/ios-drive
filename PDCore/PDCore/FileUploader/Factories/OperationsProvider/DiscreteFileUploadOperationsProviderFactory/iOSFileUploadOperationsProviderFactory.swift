@@ -21,15 +21,15 @@ final class iOSFileUploadOperationsProviderFactory: DiscreteFileUploadOperations
         let revisionEncryptor = DiscreteRevisionEncryptorOperationFactory(signersKitFactory: sessionVault, moc: moc)
         let fileDraftCreator = NameResolvingFileDraftCreatorOperationFactory(hashChecker: cloudSlot, fileDraftCreator: cloudSlot, sessionVault: sessionVault, moc: moc)
         let revisionDraftCreator = RevisionDraftCreatorOperationFactory(cloudRevisionCreator: cloudSlot, moc: moc)
-        let revisionUploader = DiscreteRevisionUploaderOperationFactory(api: apiService, cloudContentCreator: cloudSlot, credentialProvider: sessionVault, signersKitFactory: sessionVault, moc: moc)
-        let revisionCommitter = RevisionCommitterOperationFactory(cloudRevisionCommitter: cloudSlot, signersKitFactory: sessionVault, moc: moc)
+        let revisionUploader = DiscreteRevisionUploaderOperationFactory(storage: storage, client: client, api: apiService, cloudContentCreator: cloudSlot, credentialProvider: sessionVault, signersKitFactory: sessionVault, verifierFactory: verifierFactory, moc: moc)
+        let revisionCommitter = RevisionCommitterOperationFactory(cloudRevisionCommitter: cloudSlot, uploadedRevisionChecker: cloudSlot, signersKitFactory: sessionVault, moc: moc)
 
-        return DefaultFileUploadOperationsProvider(
+        return MyFilesFileUploadOperationsProvider(
             revisionEncryptorOperationFactory: revisionEncryptor,
             fileDraftCreatorOperationFactory: fileDraftCreator,
             revisionCreatorOperationFactory: revisionDraftCreator,
             revisionUploaderOperationFactory: revisionUploader,
-            revisionSealerOperationFactory: revisionCommitter
+            revisionCommitterOperationFactory: revisionCommitter
         )
     }
 

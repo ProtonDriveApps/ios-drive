@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
+import PDCore
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     private var container = DriveDependencyContainer()
@@ -24,6 +25,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     private lazy var blurringView = UIVisualEffectView.blurred
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+        Log.info("scene willConnectTo session", domain: .application)
         guard let windowScene = scene as? UIWindowScene else { return }
         container.windowScene = windowScene
 
@@ -32,12 +34,26 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         self.window = window
     }
 
+    func sceneDidDisconnect(_ scene: UIScene) {
+        Log.info("sceneDidDisconnect", domain: .application)
+    }
+
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        Log.info("sceneDidBecomeActive", domain: .application)
+    }
+
+    func sceneWillResignActive(_ scene: UIScene) {
+        Log.info("sceneWillResignActive", domain: .application)
+    }
+
     func sceneWillEnterForeground(_ scene: UIScene) {
+        Log.info("sceneWillEnterForeground", domain: .application)
         NotificationCenter.default.post(.checkAuthentication)
         obfuscateAppView(false)
     }
 
     func sceneDidEnterBackground(_ scene: UIScene) {
+        Log.info("sceneDidEnterBackground", domain: .application)
         obfuscateAppView(true)
 
         if UIApplication.shared.isAppOnBackground {
@@ -45,8 +61,41 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
     }
 
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        Log.info("scene openURLContexts", domain: .application)
+    }
+
+    func stateRestorationActivity(for scene: UIScene) -> NSUserActivity? {
+        Log.info("stateRestorationActivity for scene", domain: .application)
+        return nil
+    }
+
+    func scene(_ scene: UIScene, restoreInteractionStateWith stateRestorationActivity: NSUserActivity) {
+        Log.info("scene restoreInteractionStateWith stateRestorationActivity", domain: .application)
+    }
+
+    func scene(_ scene: UIScene, willContinueUserActivityWithType userActivityType: String) {
+        Log.info("scene willContinueUserActivityWithType userActivityType", domain: .application)
+    }
+
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        Log.info("scene continue userActivity", domain: .application)
+    }
+
+    func scene(_ scene: UIScene, didFailToContinueUserActivityWithType userActivityType: String, error: Error) {
+        Log.info("scene didFailToContinueUserActivityWithType userActivityType", domain: .application)
+    }
+
+    func scene(_ scene: UIScene, didUpdate userActivity: NSUserActivity) {
+        Log.info("scene didUpdate userActivity", domain: .application)
+    }
+
     private func obfuscateAppView(_ show: Bool) {
-        show ? window?.addSubview(blurringView) : blurringView.removeFromSuperview()
+        if show {
+            window?.addSubview(blurringView)
+        } else {
+            blurringView.removeFromSuperview()
+        }
     }
 }
 

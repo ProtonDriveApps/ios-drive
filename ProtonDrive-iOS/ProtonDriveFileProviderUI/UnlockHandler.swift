@@ -17,17 +17,14 @@
 
 import Foundation
 import PDCore
-import ProtonCore_Keymaker
-import ProtonCore_Settings
-import os.log
+import ProtonCoreKeymaker
+import PMSettings
 
 protocol UnlockHandlerDelegate: AnyObject {
     func sealMainKey()
 }
 
-final class UnlockHandler: LogObject, Unlocker {
-    static let osLog: OSLog = OSLog(subsystem: "Keymaker", category: "LockScreen")
-
+final class UnlockHandler: Unlocker {
     weak var delegate: UnlockHandlerDelegate?
     let keymaker: Keymaker
 
@@ -46,10 +43,7 @@ final class UnlockHandler: LogObject, Unlocker {
 
     func bioUnlock(completion: @escaping UnlockResult) {
         keymaker.bioUnlock { [weak self] isSuccess in
-            #if DEBUG
-            let message = isSuccess ? "Unlock with BIO ✅." : "Tried to unlock with BIO ❌."
-            ConsoleLogger.shared?.log(message, osLogType: Self.self)
-            #endif
+            Log.debug(isSuccess ? "Unlock with BIO ✅." : "Tried to unlock with BIO ❌.", domain: .application)
             self?.delegate?.sealMainKey()
             completion(isSuccess)
         }
@@ -57,10 +51,7 @@ final class UnlockHandler: LogObject, Unlocker {
 
     func pinUnlock(pin: String, completion: @escaping UnlockResult) {
         keymaker.pinUnlock(pin: pin) { [weak self] isSuccess in
-            #if DEBUG
-            let message = isSuccess ? "Unlock with PIN ✅." : "Tried to unlock with BIO ❌."
-            ConsoleLogger.shared?.log(message, osLogType: Self.self)
-            #endif
+            Log.debug(isSuccess ? "Unlock with PIN ✅." : "Tried to unlock with BIO ❌.", domain: .application)
             self?.delegate?.sealMainKey()
             completion(isSuccess)
         }

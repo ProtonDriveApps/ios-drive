@@ -20,6 +20,7 @@ import Foundation
 // MARK: - Request
 extension Endpoint {
     internal var prettyDescription: String {
+        #if DEBUG
         """
         \(requestHeader)
         \(line)
@@ -27,6 +28,12 @@ extension Endpoint {
         \(prettyBody)
         \(footer)
         """
+        #else
+        """
+        \(requestHeader)
+        \(prettyURL)
+        """
+        #endif
     }
 
     private var prettyURL: String {
@@ -41,6 +48,7 @@ extension Endpoint {
 // MARK: - Response
 extension Endpoint {
     internal func prettyResponse(_ response: Data) -> String {
+        #if DEBUG
         """
         \(responseHeader)
         \(line)
@@ -48,6 +56,12 @@ extension Endpoint {
         "|-RESPONSE:\n" + \(prettifyJSON(response))"
         \(footer)
         """
+        #else
+        """
+        \(responseHeader)
+        \(printableUrl)
+        """
+        #endif
     }
 
     internal func networkingError(_ error: Error) -> String {

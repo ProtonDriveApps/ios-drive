@@ -16,34 +16,51 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import PDCore
+
+enum PhotosBackupAvailability: Equatable {
+    case available
+    case locked
+    case unavailable
+}
 
 protocol PhotosBackupController {
-    var isAvailable: AnyPublisher<Bool, Never> { get }
+    var isAvailable: AnyPublisher<PhotosBackupAvailability, Never> { get }
 }
 
 final class DrivePhotosBackupController: PhotosBackupController {
     private let authorizationController: PhotoLibraryAuthorizationController
     private let settingsController: PhotoBackupSettingsController
     private let bootstrapController: PhotosBootstrapController
+    private let lockController: PhotoBackupConstraintController
     private var cancellables = Set<AnyCancellable>()
-    private let isAvailableSubject = CurrentValueSubject<Bool, Never>(false)
+    private let isAvailableSubject = CurrentValueSubject<PhotosBackupAvailability, Never>(.unavailable)
 
-    var isAvailable: AnyPublisher<Bool, Never> {
+    var isAvailable: AnyPublisher<PhotosBackupAvailability, Never> {
         isAvailableSubject.eraseToAnyPublisher()
     }
 
-    init(authorizationController: PhotoLibraryAuthorizationController, settingsController: PhotoBackupSettingsController, bootstrapController: PhotosBootstrapController) {
+    init(authorizationController: PhotoLibraryAuthorizationController, settingsController: PhotoBackupSettingsController, bootstrapController: PhotosBootstrapController, lockController: PhotoBackupConstraintController) {
         self.authorizationController = authorizationController
         self.settingsController = settingsController
         self.bootstrapController = bootstrapController
+        self.lockController = lockController
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
-        Publishers.CombineLatest3(authorizationController.permissions, settingsController.isEnabled, bootstrapController.isReady)
-            .map { $0 == .full && $1 && $2 }
-            .sink { [weak self] isAvailable in
-                self?.isAvailableSubject.send(isAvailable)
+        Publishers.CombineLatest4(authorizationController.permissions, settingsController.isEnabled, bootstrapController.isReady, lockController.constraint)
+            .map { permissions, isSettingsEnabled, isBootstraped, isLocked -> PhotosBackupAvailability in
+                if permissions == .full && isSettingsEnabled && isBootstraped {
+                    return isLocked ? PhotosBackupAvailability.locked : PhotosBackupAvailability.available
+                } else {
+                    return PhotosBackupAvailability.unavailable
+                }
+            }
+            .removeDuplicates()
+            .sink { [weak self] availability in
+                Log.info("Photos backup availability: \(availability)", domain: .photosProcessing)
+                self?.isAvailableSubject.send(availability)
             }
             .store(in: &cancellables)
     }

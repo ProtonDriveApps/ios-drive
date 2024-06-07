@@ -16,8 +16,8 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import ProtonCore_Keymaker
-import ProtonCore_Payments
+import ProtonCoreKeymaker
+import ProtonCorePayments
 
 public final class PaymentsSecureStorage: Keychain {
     

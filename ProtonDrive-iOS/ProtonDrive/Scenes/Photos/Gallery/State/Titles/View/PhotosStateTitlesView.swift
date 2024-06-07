@@ -15,12 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import SwiftUI
 
 struct PhotosStateTitlesView<ViewModel: PhotosStateTitlesViewModelProtocol>: View {
     @ObservedObject private var viewModel: ViewModel
-    @State private var rotationAngle = 0.0
+    @State private var isAnimating = false
 
     init(viewModel: ViewModel) {
         self.viewModel = viewModel
@@ -33,13 +33,18 @@ struct PhotosStateTitlesView<ViewModel: PhotosStateTitlesViewModelProtocol>: Vie
     private func makeContent(with item: PhotosStateTitle) -> some View {
         HStack(spacing: 8) {
             makeIcon(with: item.icon)
+                .accessibilityIdentifier("PhotosStateTitlesView.icon")
             Text(item.title)
                 .foregroundColor(ColorProvider.TextNorm)
                 .font(.body)
         }
-        .animation(.default, value: viewModel.item)
-        .onAppear(perform: viewModel.didAppear)
-        .onDisappear(perform: viewModel.didDisappear)
+        .animation(isAnimating ? .default : nil, value: viewModel.item)
+        .onAppear {
+            isAnimating = true
+        }
+        .onDisappear {
+            isAnimating = false
+        }
     }
 
     @ViewBuilder
@@ -50,13 +55,15 @@ struct PhotosStateTitlesView<ViewModel: PhotosStateTitlesViewModelProtocol>: Vie
                 .renderingMode(.template)
                 .foregroundColor(ColorProvider.NotificationSuccess)
         case .progress:
-            IconProvider.arrowsRotate
-                .renderingMode(.template)
-                .foregroundColor(ColorProvider.IconAccent)
+            RotatingArrowsView()
         case .complete:
             IconProvider.checkmarkCircle
                 .renderingMode(.template)
                 .foregroundColor(ColorProvider.NotificationSuccess)
+        case .completeWithFailures:
+            IconProvider.exclamationCircle
+                .renderingMode(.template)
+                .foregroundColor(ColorProvider.NotificationWarning)
         case .failure:
             IconProvider.exclamationCircle
                 .renderingMode(.template)
@@ -65,6 +72,30 @@ struct PhotosStateTitlesView<ViewModel: PhotosStateTitlesViewModelProtocol>: Vie
             Image("ic-cloud-slash")
                 .renderingMode(.template)
                 .foregroundColor(ColorProvider.IconWeak)
+        case .noConnection:
+            Image("ic-no-connection")
+                .renderingMode(.template)
+                .foregroundColor(ColorProvider.NotificationError)
         }
+    }
+}
+
+private struct RotatingArrowsView: View {
+    @State private var isRotating = false
+
+    var body: some View {
+        IconProvider.arrowsRotate
+            .renderingMode(.template)
+            .foregroundColor(ColorProvider.IconAccent)
+            .rotationEffect(Angle(degrees: isRotating ? 360 : 0))
+            .animation(isRotating ? Animation.linear(duration: 2).repeatForever(autoreverses: false) : Animation.default, value: isRotating)
+            .onAppear {
+                withAnimation {
+                    isRotating = true
+                }
+            }
+            .onDisappear {
+                isRotating = false
+            }
     }
 }

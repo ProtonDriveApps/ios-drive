@@ -22,23 +22,31 @@ public final class StartViewModel {
     private var cancellables = Set<AnyCancellable>()
 
     public let isSignedInPublisher: AnyPublisher<Bool, Never>
+    public let showLoggingOutPublisher: AnyPublisher<Void, Never>
     public let restartAppPublisher: AnyPublisher<Void, Never>
 
     public init(
         isSignedIn: @escaping () -> Bool,
         restartAppPublisher: AnyPublisher<Void, Never>,
+        isLoggingOutInPublisher: AnyPublisher<Void, Never>,
         checkAuthenticationPublisher: AnyPublisher<Void, Never>
     ) {
         let subject = CurrentValueSubject<Bool, Never>(isSignedIn())
         isSignedInPublisher = subject
             .removeDuplicates()
             .eraseToAnyPublisher()
-        
-        self.restartAppPublisher = restartAppPublisher
-
         checkAuthenticationPublisher
             .sink { _ in subject.send(isSignedIn()) }
             .store(in: &cancellables)
+
+        let showLoggingOutSubject = PassthroughSubject<Void, Never>()
+        showLoggingOutPublisher = showLoggingOutSubject
+            .eraseToAnyPublisher()
+        isLoggingOutInPublisher
+            .sink { _ in showLoggingOutSubject.send(Void()) }
+            .store(in: &cancellables)
+
+        self.restartAppPublisher = restartAppPublisher
     }
 
 }

@@ -21,8 +21,8 @@
 
 import Foundation
 import StoreKit
-import ProtonCore_DataModel
-import ProtonCore_Services
+import ProtonCoreDataModel
+import ProtonCoreServices
 
 public protocol PaymentTokenStorage {
     func add(_ token: PaymentToken)
@@ -45,8 +45,12 @@ public enum PaymentSucceeded: Equatable {
     case withPurchaseAlreadyProcessed
     case withoutExchangingToken(token: PaymentToken)
     case resolvingIAPToSubscription
+    @available(*, deprecated, message: "Please stop using `resolvingIAPToCredits`. We no longer credit accounts")
     case resolvingIAPToCredits
+    @available(*, deprecated, message: "Please stop using `resolvingIAPToCreditsCausedByError`. We no longer credit accounts")
     case resolvingIAPToCreditsCausedByError
+    /// Case for repeated payments of an existing subscription
+    case autoRenewal
 }
 
 public protocol StoreKitManagerProtocol: NSObjectProtocol {
@@ -64,6 +68,7 @@ public protocol StoreKitManagerProtocol: NSObjectProtocol {
                          deferredCompletion: FinishCallback?)
     func retryProcessingAllPendingTransactions(finishHandler: FinishCallback?)
     func updateAvailableProductsList(completion: @escaping (Error?) -> Void)
+    /// Has transactions pending to process which are not .failed
     func hasUnfinishedPurchase() -> Bool
     func hasIAPInProgress() -> Bool
     func readReceipt() throws -> String
@@ -92,15 +97,15 @@ public extension StoreKitManagerProtocol {
                         errorCompletion: errorCompletion,
                         deferredCompletion: nil)
     }
-    
+
     @available(*, deprecated, renamed: "retryProcessingAllPendingTransactions")
     func continueRegistrationPurchase(finishHandler: FinishCallback?) {
         retryProcessingAllPendingTransactions(finishHandler: finishHandler)
     }
-    
+
     @available(*, deprecated, message: "Please use SuccessCallback")
     typealias OldDeprecatedSuccessCallback = (PaymentToken?) -> Void
-    
+
     @available(*, deprecated, message: "Switch to variant using the SuccessCallback")
     func purchaseProduct(plan: InAppPurchasePlan,
                          amountDue: Int,
@@ -111,7 +116,7 @@ public extension StoreKitManagerProtocol {
             switch result {
             case .withoutExchangingToken(let token):
                 successCompletion(token)
-            case .cancelled, .withoutIAP, .withoutObtainingToken, .withPurchaseAlreadyProcessed, .resolvingIAPToSubscription, .resolvingIAPToCredits, .resolvingIAPToCreditsCausedByError:
+            case .cancelled, .withoutIAP, .withoutObtainingToken, .withPurchaseAlreadyProcessed, .resolvingIAPToSubscription, .resolvingIAPToCredits, .resolvingIAPToCreditsCausedByError, .autoRenewal:
                 successCompletion(nil)
             }
         }, errorCompletion: errorCompletion, deferredCompletion: deferredCompletion)
@@ -131,10 +136,12 @@ protocol PaymentQueueProtocol {
     func add(_ observer: SKPaymentTransactionObserver)
     func remove(_ observer: SKPaymentTransactionObserver)
     var transactions: [SKPaymentTransaction] { get }
+    var transactionObservers: [SKPaymentTransactionObserver] { get }
 }
 
 enum ProcessingType {
     case existingUserNewSubscription
+    @available(*, deprecated, message: "Adding credits is no longer supported on mobile. Please enable Auto-renewable Subscriptions")
     case existingUserAddCredits
     case registration
 }
@@ -149,8 +156,11 @@ public enum ProcessCompletionResult {
 
 struct PlanToBeProcessed {
     let protonIdentifier: String
+    let planName: String
     let amount: Int
-    let amountDue: Int
+    let currencyCode: String
+    let amountDue: Int // v4
+    let cycle: Int
 }
 
 protocol ProcessProtocol: AnyObject {
@@ -174,7 +184,7 @@ protocol ProcessDependencies: AnyObject {
     var tokenStorage: PaymentTokenStorage { get }
     var paymentsApiProtocol: PaymentsApiProtocol { get }
     var alertManager: PaymentsAlertManager { get }
-    var updateSubscription: (Subscription) -> Void { get }
+    var updateSubscription: (Subscription) throws -> Void { get }
     func updateCurrentSubscription(success: @escaping () -> Void, failure: @escaping (Error) -> Void)
     var finishTransaction: (SKPaymentTransaction, (() -> Void)?) -> Void { get }
     var apiService: APIService { get }
@@ -189,4 +199,21 @@ protocol ProcessDependencies: AnyObject {
 
 extension SKPaymentQueue: PaymentQueueProtocol {
 
+}
+
+extension InAppPurchasePlan {
+    // only needed for backwards compatibility to purchase 0 cost plans
+    func processablePlan() throws -> PlanToBeProcessed {
+        guard let storeKitProductId = self.storeKitProductId,
+              let period = self.period,
+              let cycle: Int = Int(period) else {
+            throw StoreKitManagerErrors.invalidPurchase
+        }
+        return .init(protonIdentifier: storeKitProductId,
+                     planName: self.protonName,
+                     amount: 0,
+                     currencyCode: "USD",
+                     amountDue: 0,
+                     cycle: cycle)
+    }
 }

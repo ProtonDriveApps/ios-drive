@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="19529" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
+    <dependencies>
+        <deployment identifier="macosx"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="19529"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <objects>
+        <customObject id="-2" userLabel="File's Owner"/>
+        <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
+        <customObject id="-3" userLabel="Application" customClass="NSObject"/>
+        <customView translatesAutoresizingMaskIntoConstraints="NO" id="c22-O7-iKe" customClass="HVHelpCell" customModule="ProtonCoreHumanVerification">
+            <rect key="frame" x="0.0" y="0.0" width="288" height="97"/>
+            <subviews>
+                <imageView horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="hI2-P6-YcR">
+                    <rect key="frame" x="0.0" y="45" width="36" height="36"/>
+                    <constraints>
+                        <constraint firstAttribute="height" constant="36" id="6Cs-Sy-Nz0"/>
+                        <constraint firstAttribute="width" constant="36" id="MZo-bK-0rU"/>
+                    </constraints>
+                    <imageCell key="cell" refusesFirstResponder="YES" alignment="left" imageScaling="proportionallyDown" id="46f-pm-O0x"/>
+                </imageView>
+                <imageView horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="nvb-1G-rNQ">
+                    <rect key="frame" x="252" y="45" width="36" height="36"/>
+                    <constraints>
+                        <constraint firstAttribute="height" constant="36" id="VmP-GD-0zM"/>
+                        <constraint firstAttribute="width" constant="36" id="pwY-nv-9Jk"/>
+                    </constraints>
+                    <imageCell key="cell" refusesFirstResponder="YES" alignment="left" imageScaling="proportionallyDown" id="cf9-9j-nza"/>
+                </imageView>
+                <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" setsMaxLayoutWidthAtFirstLayout="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Q1p-u9-TWm">
+                    <rect key="frame" x="50" y="65" width="188" height="16"/>
+                    <textFieldCell key="cell" title="Label" id="XJC-Pa-xbl">
+                        <font key="font" metaFont="system"/>
+                        <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                        <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                    </textFieldCell>
+                </textField>
+                <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" setsMaxLayoutWidthAtFirstLayout="YES" translatesAutoresizingMaskIntoConstraints="NO" id="kV4-Ak-Y1y">
+                    <rect key="frame" x="50" y="41" width="188" height="16"/>
+                    <textFieldCell key="cell" title="Label" id="pqQ-RD-HHG">
+                        <font key="font" metaFont="system"/>
+                        <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                        <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                    </textFieldCell>
+                </textField>
+            </subviews>
+            <constraints>
+                <constraint firstItem="kV4-Ak-Y1y" firstAttribute="leading" secondItem="Q1p-u9-TWm" secondAttribute="leading" id="7n7-Bl-XV6"/>
+                <constraint firstItem="hI2-P6-YcR" firstAttribute="leading" secondItem="c22-O7-iKe" secondAttribute="leading" id="9q3-bV-LhV"/>
+                <constraint firstItem="kV4-Ak-Y1y" firstAttribute="bottom" relation="lessThanOrEqual" secondItem="c22-O7-iKe" secondAttribute="bottom" id="Cb3-XN-eeD"/>
+                <constraint firstItem="hI2-P6-YcR" firstAttribute="top" secondItem="c22-O7-iKe" secondAttribute="top" constant="16" id="LjY-gR-daW"/>
+                <constraint firstItem="nvb-1G-rNQ" firstAttribute="trailing" secondItem="c22-O7-iKe" secondAttribute="trailing" id="bNJ-Er-8pm"/>
+                <constraint firstItem="kV4-Ak-Y1y" firstAttribute="trailing" secondItem="Q1p-u9-TWm" secondAttribute="trailing" id="dXH-Wv-Ecd"/>
+                <constraint firstItem="kV4-Ak-Y1y" firstAttribute="top" secondItem="Q1p-u9-TWm" secondAttribute="bottom" constant="8" id="jyi-b1-ROq"/>
+                <constraint firstItem="Q1p-u9-TWm" firstAttribute="top" secondItem="hI2-P6-YcR" secondAttribute="top" id="loj-Is-TTC"/>
+                <constraint firstItem="nvb-1G-rNQ" firstAttribute="bottom" relation="lessThanOrEqual" secondItem="c22-O7-iKe" secondAttribute="bottom" id="mGZ-ss-Vpf"/>
+                <constraint firstItem="Q1p-u9-TWm" firstAttribute="leading" secondItem="hI2-P6-YcR" secondAttribute="trailing" constant="16" id="nhy-v5-aGI"/>
+                <constraint firstItem="nvb-1G-rNQ" firstAttribute="leading" secondItem="Q1p-u9-TWm" secondAttribute="trailing" constant="16" id="pE4-dC-OvT"/>
+                <constraint firstItem="hI2-P6-YcR" firstAttribute="bottom" relation="lessThanOrEqual" secondItem="c22-O7-iKe" secondAttribute="bottom" id="qZq-SD-azJ"/>
+                <constraint firstItem="nvb-1G-rNQ" firstAttribute="top" secondItem="hI2-P6-YcR" secondAttribute="top" id="xAD-0o-ve2"/>
+            </constraints>
+            <connections>
+                <outlet property="arrow" destination="nvb-1G-rNQ" id="Wfo-Ss-y1g"/>
+                <outlet property="icon" destination="hI2-P6-YcR" id="oGn-fO-Uhk"/>
+                <outlet property="subtitle" destination="kV4-Ak-Y1y" id="BiM-8R-TzM"/>
+                <outlet property="title" destination="Q1p-u9-TWm" id="Uu9-Qk-6uO"/>
+            </connections>
+            <point key="canvasLocation" x="43" y="34.5"/>
+        </customView>
+    </objects>
+</document>

@@ -16,23 +16,32 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import Foundation
 import PDCore
 
-protocol PhotosPagingLoadController: AnyObject {
+protocol PhotosPagingLoadController: AnyObject, ErrorController {
     func loadNext()
+    func loadNextIfNeeded(captureTime: Date)
 }
 
 final class RemotePhotosPagingLoadController: PhotosPagingLoadController {
-    private let backupController: PhotosBackupUploadAvailableController
+    private let bootstrapController: PhotosBootstrapController
     private let interactor: PhotosFullLoadInteractor
     private var cancellables = Set<AnyCancellable>()
     private var currentId: PhotosListLoadId?
     private var lastId: PhotosListLoadId?
+    private var lastCaptureTime: Date?
+    private var errorSubject = PassthroughSubject<Error, Never>()
 
-    init(backupController: PhotosBackupUploadAvailableController, interactor: PhotosFullLoadInteractor) {
+    var errorPublisher: AnyPublisher<Error, Never> {
+        errorSubject.eraseToAnyPublisher()
+    }
+
+    init(bootstrapController: PhotosBootstrapController, interactor: PhotosFullLoadInteractor) {
+        self.bootstrapController = bootstrapController
         self.interactor = interactor
-        self.backupController = backupController
         subscribeToUpdates()
+        bootstrapController.bootstrap()
     }
 
     private func subscribeToUpdates() {
@@ -42,25 +51,35 @@ final class RemotePhotosPagingLoadController: PhotosPagingLoadController {
             }
             .store(in: &cancellables)
 
-        backupController.isAvailable
-            .filter { [weak self] isAvailable in
-                self?.currentId == nil && isAvailable
-            }
-            .sink { [weak self] _ in
-                self?.loadNext()
+        bootstrapController.isReady
+            .sink { [weak self] isReady in
+                if isReady {
+                    self?.loadNext()
+                }
             }
             .store(in: &cancellables)
     }
 
     private func handle(_ result: PhotoIdsResult) {
         switch result {
-        case let .success(ids):
-            if let id = ids.last {
-                lastId = PhotosListLoadId(photoId: id)
-            }
+        case let .success(response):
+            handleSuccess(response)
         case let .failure(error):
-            // TODO: next MR handle errors
-            break
+            currentId = nil
+            errorSubject.send(error)
+            Log.error(error, domain: .photosProcessing)
+        }
+    }
+
+    private func handleSuccess(_ response: PhotosLoadResponse) {
+        guard let lastItem = response.lastItem else { return }
+
+        lastId = PhotosListLoadId(photoId: lastItem.id)
+        lastCaptureTime = lastItem.captureTime
+        if !lastItem.isLastLocally {
+            // If there're more items locally than fetched items, we want to fetch next pages so the user has all adjacent photos in their grid.
+            Log.info("PhotosPagingLoadController.handleSuccess, more items needed to fetch.", domain: .photosProcessing)
+            loadNext()
         }
     }
 
@@ -71,7 +90,18 @@ final class RemotePhotosPagingLoadController: PhotosPagingLoadController {
             return
         }
 
+        Log.info("PhotosPagingLoadController.loadNext, id: \(id.photoId ?? "empty")", domain: .photosProcessing)
         interactor.execute(with: id)
         currentId = id
+    }
+
+    func loadNextIfNeeded(captureTime: Date) {
+        // Scrolling past the last fetched photo (photos are ordered by capture time descending)
+        guard let lastCaptureTime else { return }
+
+        if captureTime <= lastCaptureTime {
+            Log.info("PhotosPagingLoadController.loadNextIfNeeded, compared dates: \(captureTime), \(lastCaptureTime)", domain: .photosProcessing)
+            loadNext()
+        }
     }
 }

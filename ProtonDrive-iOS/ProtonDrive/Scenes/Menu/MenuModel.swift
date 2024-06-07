@@ -65,5 +65,5 @@ extension UserInfo {
 }
 
 extension AccountInfo {
-    static var blank: AccountInfo = .init(email: "", displayName: "")
+    static var blank: AccountInfo = .init(userIdentifier: "", email: "", displayName: "", accountRecovery: nil)
 }

@@ -16,12 +16,20 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 public extension Color {
     static var NotificationError: Color {
         #if canImport(UIKit)
         ColorProvider.NotificationError
+        #else
+        ColorProvider.SignalDanger
+        #endif
+    }
+
+    static var NotificationWarning: Color {
+        #if canImport(UIKit)
+        ColorProvider.NotificationWarning
         #else
         ColorProvider.SignalDanger
         #endif
@@ -58,7 +66,6 @@ public extension Color {
         ColorProvider.SignalSuccess
         #endif
     }
-
 
     static var BlenderNorm: Color {
         #if canImport(UIKit)

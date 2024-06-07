@@ -23,6 +23,8 @@ public enum DriveNotification {
     case signOut
     case toggleSideMenu
     case didDismissAlert
+    case retryPhotoUpload
+    case isLoggingOut
 
     public var name: Notification.Name {
         switch self {
@@ -36,6 +38,10 @@ public enum DriveNotification {
             return Notification.Name("DriveCoordinator.ToggleSideMenuNotification")
         case .didDismissAlert:
             return Notification.Name("DriveCoordinator.didDismissAlert")
+        case .retryPhotoUpload:
+            return Notification.Name("DriveNotification.retryPhotoUpload")
+        case .isLoggingOut:
+            return Notification.Name("DriveNotification.isLoggingOut")
         }
     }
 

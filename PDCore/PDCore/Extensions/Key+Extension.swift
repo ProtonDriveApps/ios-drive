@@ -15,11 +15,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import ProtonCore_DataModel
+import ProtonCoreDataModel
 
 extension Key {
-    /// This method redirects to method with similar signature in `ProtonCore_KeyManager` and should be used in files that import both `ProtonCore_Crypto` and `ProtonCore_KeyManager`, both of which contain extension of `Key` containting this method - compiler gets confused.
-    /// This file does not import these frameworks which allows compiler to see only one implementation fetched via `ProtonCore_DataModel` dependency.
+    /// This method redirects to method with similar signature in `ProtonCoreKeyManager` and should be used in files that import both `ProtonCoreCrypto` and `ProtonCoreKeyManager`, both of which contain extension of `Key` containting this method - compiler gets confused.
+    /// This file does not import these frameworks which allows compiler to see only one implementation fetched via `ProtonCoreDataModel` dependency.
     func _passphrase(userKeys: [Key], mailboxPassphrase: String) throws -> String {
         try passphrase(userKeys: userKeys, mailboxPassphrase: mailboxPassphrase)
     }

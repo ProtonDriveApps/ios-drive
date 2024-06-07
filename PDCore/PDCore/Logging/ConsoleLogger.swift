@@ -19,18 +19,18 @@ import Foundation
 import UserNotifications
 import os.log
 
-public protocol Logger {
+public protocol PDLogger {
     func log(_ error: Error, osLogType: LogObject.Type)
     func log(_ event: String, osLogType: LogObject.Type)
 }
 
-public extension Logger {
+public extension PDLogger {
     func log(_ error: Error, osLogType: LogObject.Type) { }
     func log(_ event: String, osLogType: LogObject.Type) { }
 }
 
 /*Use
- let logger: Logger? = ConsoleLogger.shared
+ let logger: PDLogger? = ConsoleLogger.shared
  let url = URL(string: "http://some/url.com")!
  logger?.log("Hello World! - Went to URL: \(url)", osLogType: LogSubsystem.self)
 
@@ -38,7 +38,7 @@ public extension Logger {
 
  final class Uploader {
     let dependency1: Dependency1
-    let logger: Logger?
+    let logger: PDLogger?
 
     init(dependency1: Dependency1, logger: Logger? = ConsoleLogger.shared) {
         ...
@@ -52,69 +52,15 @@ public extension Logger {
     }
  }
  */
-public final class ConsoleLogger: Logger {
+
+@available(*, deprecated, message: "Use Log instead.")
+public final class ConsoleLogger: PDLogger {
     public static let shared = ConsoleLogger()
-    
-    @discardableResult
-    public static func reportMemory() -> Float {
-        var taskInfo = task_vm_info_data_t()
-        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info>.size) / 4
-        let result: kern_return_t = withUnsafeMutablePointer(to: &taskInfo) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
-                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
-            }
-        }
-        let usedMb = Float(taskInfo.phys_footprint) / 1048576.0
-        let totalMb = Float(ProcessInfo.processInfo.physicalMemory) / 1048576.0
-        result != KERN_SUCCESS ? print("Memory used: ? of \(totalMb)") : print("Memory used: \(usedMb) of \(totalMb)")
-        
-        return usedMb
-    }
-    
-    private static var lastReportedMemoryUse: Float = reportMemory()
-    public static func reportMemoryDiff(token: String, file: String = #file, line: Int = #line) {
-        let file = URL(fileURLWithPath: file).lastPathComponent
-        print("[\(token) | \(file):\(line)]\tMemory allocated: \(reportMemory() - lastReportedMemoryUse)")
-        lastReportedMemoryUse = ConsoleLogger.reportMemory()
-    }
 
     private init?() { }
 
-    private func log(_ message: String, level: OSLogType, osLog: OSLog) {
-        #if DEBUG
-        os_log("%{public}@", log: osLog, type: level, message)
-        #endif
-    }
-
-    public func log(_ error: Error, osLogType: LogObject.Type) {
-        #if DEBUG
-        // development builds should not send reports to Sentry
-        ConsoleLogger.shared?.log(String(describing: error), level: .error, osLog: osLogType.osLog)
-        #else
-        SentryClient.shared.recordError(error as NSError)
-        #endif
-    }
-    
-    public func logDeserializationErrors(_ error: NSError) {
-        guard error is DecodingError || error.underlyingErrors.contains(where: { $0 is DecodingError }) else { return }
-        
-        #if DEBUG
-        assertionFailure("🧨 Failed to deserialize response: \(error)")
-        #else
-        SentryClient.shared.recordError(error)
-        #endif
-    }
-
-    public func log<T>(_ error: T) where T: Error, T: Loggable {
-        log(error, osLogType: T.self)
-    }
-
-    public func log(_ event: String, osLogType: LogObject.Type) {
-        ConsoleLogger.shared?.log(event, level: .default, osLog: osLogType.osLog)
-    }
-
     public func fireWarning(error: Error) {
-        #if DEBUG
+        #if HAS_QA_FEATURES
         let content = UNMutableNotificationContent()
         content.title = "❌ \((error as NSError).code): \((error as NSError).domain)"
         content.subtitle = (error as NSError).localizedFailureReason ?? ""
@@ -128,7 +74,7 @@ public final class ConsoleLogger: Logger {
     }
 
     public func fireWarning(event: String) {
-        #if DEBUG
+        #if HAS_QA_FEATURES
         let content = UNMutableNotificationContent()
         content.title = "⚠️ Notification event"
         content.body = event
@@ -141,8 +87,8 @@ public final class ConsoleLogger: Logger {
     }
 
     public func logAndNotify(title: String, message: String, osLogType: LogObject.Type) {
-        #if DEBUG
-        log(title + " " + message, osLogType: osLogType)
+        #if HAS_QA_FEATURES
+        os_log("%{public}@", log: osLogType.osLog, type: .default, title + " " + message)
         #endif
 
         #if SUPPORTS_BACKGROUND_UPLOADS
@@ -161,51 +107,74 @@ public final class ConsoleLogger: Logger {
 struct SignatureError: LocalizedError, Loggable {
     static var osLog: OSLog = OSLog(subsystem: "ch.protondrive", category: "Signature Verification Error")
     let error: Error
+    let description: String
     var context: Context
     let method: StaticString
 
-    init(_ error: Error, _ context: Context, method: StaticString = #function) {
+    init(_ error: Error, _ context: Context, description: String? = nil, method: StaticString = #function) {
         self.error = error
         self.context = context
         self.method = method
+        self.description = (description == nil) ? "" : "\n\(description!)"
     }
 
     var errorDescription: String? {
-        "\(context) - \(method) - Signature Error ⚠️ \n" + error.messageForTheUser
+        "\(context) - \(method) - Signature Error ⚠️" + "\n\(error.localizedDescription)" + description
     }
 }
 
 struct DecryptionError: LocalizedError, Loggable {
     static var osLog: OSLog = OSLog(subsystem: "ch.protondrive", category: "Decryption Error")
     let error: Error
+    let description: String
     let context: Context
     let method: StaticString
 
-    init(_ error: Error, _ context: Context, method: StaticString = #function)  {
+    init(_ error: Error, _ context: Context, description: String? = nil, method: StaticString = #function)  {
         self.error = error
         self.context = context
         self.method = method
+        self.description = (description == nil) ? "" : "\n\(description!)"
     }
 
     var errorDescription: String? {
-        "\(context) - \(method) - Decryption Error ❌ \n" + error.messageForTheUser
+        "\(context) - \(method) - Decryption Error ❌" + "\n\(error.localizedDescription)" + description
     }
 }
 
-public struct DriveError: LocalizedError, Loggable {
-    public static var osLog: OSLog = OSLog(subsystem: "ch.protondrive", category: "Generic Drive Error")
-    public let error: Error
-    public let context: String
-    public let method: String
+public struct DriveError: LocalizedError, CustomDebugStringConvertible {
+    public let message: String
+    public let file: String
+    public let line: String
 
-    public init(_ error: Error, _ context: Context, method: String = #function) {
-        self.error = error
-        self.context = context
-        self.method = method
+    public init(_ message: String, file: String = #filePath, line: Int = #line) {
+        self.message = message
+        self.file = (file as NSString).lastPathComponent
+        self.line = String(line)
+    }
+
+    public init(_ error: Error, file: String = #filePath, line: Int = #line) {
+        self.init(error.localizedDescription, file: file, line: line)
+    }
+
+    public init(withDomainAndCode error: Error, message: String? = nil, file: String = #filePath, line: Int = #line) {
+        let error = error as NSError
+        let message = "\(error.domain) \(error.code), message: \(message ?? "empty")"
+        self.init(message, file: file, line: line)
     }
 
     public var errorDescription: String? {
-        "\(context) - \(method) - Generic Drive Error \n" + error.messageForTheUser
+        #if HAS_QA_FEATURES
+            return debugDescription
+        #elseif HAS_BETA_FEATURES
+            return debugDescription
+        #else
+            return message
+        #endif
+    }
+
+    public var debugDescription: String {
+        message + "\(file) - \(line)"
     }
 }
 
@@ -214,5 +183,18 @@ struct DriveSignatureError: Error {
 
     init(_ method: String = #function) {
         self.method = method
+    }
+}
+
+/// Providing similar functionality as `DriveError` while keeping the original `domain` and `code`
+/// `message` should not contain sensitive data.
+public class DomainCodeError: NSError {
+    public init(error: NSError, message: String? = nil, file: String = #filePath, line: Int = #line) {
+        let message = "\(error.domain) \(error.code), message: \(message ?? "empty")"
+        super.init(domain: error.domain, code: error.code, userInfo: [NSLocalizedDescriptionKey: message])
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
     }
 }

@@ -21,38 +21,19 @@ import Photos
 
 protocol PhotoLibraryFileContentResource {
     func copyFile(with resource: PHAssetResource) async throws -> URL
-    func createHash(with resource: PHAssetResource) async throws -> Data
     func getVideoDuration(at url: URL) -> Double
 }
 
 final class LocalPhotoLibraryFileContentResource: PhotoLibraryFileContentResource {
-    private let digestBuilderFactory: () -> DigestBuilder // Needs to be a factory because every hash operation needs unique builder
-
-    init(digestBuilderFactory: @escaping () -> DigestBuilder) {
-        self.digestBuilderFactory = digestBuilderFactory
-    }
-
     func copyFile(with resource: PHAssetResource) async throws -> URL {
-        let url = PDFileManager.prepareUrlForPhotoFile(named: resource.originalFilename)
-        let options = makeOptions()
-        try await PHAssetResourceManager.default().writeData(for: resource, toFile: url, options: options)
-        return url
-    }
-
-    func createHash(with resource: PHAssetResource) async throws -> Data {
-        let builder = digestBuilderFactory()
-        let options = makeOptions()
-        return try await withCheckedThrowingContinuation { continuation in
-            PHAssetResourceManager.default().requestData(for: resource, options: options) { data in
-                builder.add(data)
-            } completionHandler: { error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else {
-                    let hash = builder.getResult()
-                    continuation.resume(returning: hash)
-                }
-            }
+        do {
+            let filename = try resource.getNormalizedFilename()
+            let url = PDFileManager.prepareUrlForPhotoFile(named: filename)
+            let options = makeOptions()
+            try await PHAssetResourceManager.default().writeData(for: resource, toFile: url, options: options)
+            return url
+        } catch let error as NSError {
+            throw DomainCodeError(error: error)
         }
     }
 

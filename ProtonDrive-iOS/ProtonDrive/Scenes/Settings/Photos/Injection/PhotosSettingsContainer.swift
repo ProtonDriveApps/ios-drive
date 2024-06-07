@@ -15,7 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import ProtonCore_Settings
+import PDCore
+import PMSettings
 import UIKit
 
 final class PhotosSettingsContainer {
@@ -23,6 +24,7 @@ final class PhotosSettingsContainer {
         let settingsController: PhotoBackupSettingsController
         let authorizationController: PhotoLibraryAuthorizationController
         let bootstrapController: PhotosBootstrapController
+        let tower: Tower
     }
     private let dependencies: Dependencies
 
@@ -32,6 +34,6 @@ final class PhotosSettingsContainer {
 
     func makeSettingsCell() -> PMCellSuplier {
         let factory = PhotosSettingsFactory()
-        return factory.makeSettingsCell(settingsController: dependencies.settingsController, authorizationController: dependencies.authorizationController, bootstrapController: dependencies.bootstrapController)
+        return factory.makeSettingsCell(settingsController: dependencies.settingsController, authorizationController: dependencies.authorizationController, bootstrapController: dependencies.bootstrapController, tower: dependencies.tower)
     }
 }

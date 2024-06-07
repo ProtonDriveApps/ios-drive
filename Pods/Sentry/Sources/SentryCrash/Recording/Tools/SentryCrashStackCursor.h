@@ -1,3 +1,4 @@
+// Adapted from: https://github.com/kstenerud/KSCrash
 //
 //  SentryCrashStackCursor.h
 //
@@ -25,15 +26,13 @@
 #ifndef SentryCrashStackCursor_h
 #define SentryCrashStackCursor_h
 
+#include "SentryCrashMachineContext.h"
+#include <stdbool.h>
+#include <sys/types.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "SentryCrashMachineContext.h"
-#include "SentryHook.h"
-
-#include <stdbool.h>
-#include <sys/types.h>
 
 #define SentryCrashSC_CONTEXT_SIZE 100
 
@@ -72,9 +71,6 @@ typedef struct SentryCrashStackCursor {
 
         /** If true, cursor has given up walking the stack. */
         bool hasGivenUp;
-
-        /** The current async caller we are chaining to. */
-        sentrycrash_async_backtrace_t *current_async_caller;
     } state;
 
     /** Reset the cursor back to the beginning. */
@@ -86,9 +82,6 @@ typedef struct SentryCrashStackCursor {
     /** Attempt to symbolicate the current address, filling in the fields in
      * stackEntry. */
     bool (*symbolicate)(struct SentryCrashStackCursor *);
-
-    /** Pointer to an optional async stacktrace. */
-    sentrycrash_async_backtrace_t *async_caller;
 
     /** Internal context-specific information. */
     void *context[SentryCrashSC_CONTEXT_SIZE];
@@ -114,15 +107,6 @@ void sentrycrashsc_initCursor(SentryCrashStackCursor *cursor,
  * @param cursor The cursor to reset.
  */
 void sentrycrashsc_resetCursor(SentryCrashStackCursor *cursor);
-
-/** Chain the optional `async_caller` to the current `cursor`.
- * In case of a valid `async_caller`, this will yield a special marker frame.
- */
-bool sentrycrashsc_tryAsyncChain(
-    SentryCrashStackCursor *cursor, sentrycrash_async_backtrace_t *async_caller);
-
-/** Advance the cursor to the next stack entry in a chained async stacktrace. */
-bool sentrycrashsc_advanceAsyncCursor(SentryCrashStackCursor *cursor);
 
 #ifdef __cplusplus
 }

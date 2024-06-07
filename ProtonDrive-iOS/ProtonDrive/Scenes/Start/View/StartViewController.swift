@@ -16,19 +16,30 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import SwiftUI
+import PDUIComponents
 
 public final class StartViewController: UIViewController {
     private var cancellables: Set<AnyCancellable> = []
 
+    let launchView = UILaunchView()
+
+    private lazy var spinner: UIView = ViewHosting {
+        SpinnerTextView(text: "Signing out...")
+    }
+
+    private let loggingOutLabel = UILabel()
+
     public var viewModel: StartViewModel!
+    public var onLoggingOut: (() -> Void)?
     public var onAuthenticated: (() -> Void)?
     public var onNonAuthenticated: (() -> Void)?
 
     override public func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = ColorProvider.BackgroundNorm
+        setupLoggingOutUI()
 
         viewModel.isSignedInPublisher
             .receive(on: DispatchQueue.main)
@@ -44,7 +55,13 @@ public final class StartViewController: UIViewController {
             }
             .store(in: &cancellables)
 
-        let launchView = UILaunchView()
+        viewModel.showLoggingOutPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.performLoggingOut()
+            }
+            .store(in: &cancellables)
+
         view.addSubview(launchView)
         launchView.fillSuperview()
     }
@@ -55,5 +72,26 @@ public final class StartViewController: UIViewController {
 
     private func performNonAuthenticated() {
         onNonAuthenticated?()
+    }
+
+    private func performLoggingOut() {
+        onLoggingOut?()
+        showLoggingOutUI()
+    }
+
+    private func setupLoggingOutUI() {
+        view.addSubview(spinner)
+        spinner.centerInSuperview()
+        spinner.isHidden = true
+    }
+
+    private func showLoggingOutUI() {
+        launchView.isHidden = true
+        spinner.isHidden = false
+    }
+
+    private func hideLoggingOutUI() {
+        launchView.isHidden = false
+        spinner.isHidden = true
     }
 }

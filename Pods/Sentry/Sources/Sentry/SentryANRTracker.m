@@ -1,72 +1,102 @@
 #import "SentryANRTracker.h"
 #import "SentryCrashWrapper.h"
+#import "SentryDependencyContainer.h"
 #import "SentryDispatchQueueWrapper.h"
 #import "SentryLog.h"
+#import "SentrySwift.h"
 #import "SentryThreadWrapper.h"
+#import <stdatomic.h>
 
 NS_ASSUME_NONNULL_BEGIN
+
+typedef NS_ENUM(NSInteger, SentryANRTrackerState) {
+    kSentryANRTrackerNotRunning = 1,
+    kSentryANRTrackerRunning,
+    kSentryANRTrackerStarting,
+    kSentryANRTrackerStopping
+};
 
 @interface
 SentryANRTracker ()
 
-@property (nonatomic, strong) id<SentryCurrentDateProvider> currentDate;
 @property (nonatomic, strong) SentryCrashWrapper *crashWrapper;
 @property (nonatomic, strong) SentryDispatchQueueWrapper *dispatchQueueWrapper;
 @property (nonatomic, strong) SentryThreadWrapper *threadWrapper;
-@property (nonatomic, strong) NSMutableSet<id<SentryANRTrackerDelegate>> *listeners;
+@property (nonatomic, strong) NSHashTable<id<SentryANRTrackerDelegate>> *listeners;
 @property (nonatomic, assign) NSTimeInterval timeoutInterval;
-
-@property (weak, nonatomic) NSThread *thread;
 
 @end
 
 @implementation SentryANRTracker {
     NSObject *threadLock;
-    BOOL running;
+    SentryANRTrackerState state;
 }
 
 - (instancetype)initWithTimeoutInterval:(NSTimeInterval)timeoutInterval
-                    currentDateProvider:(id<SentryCurrentDateProvider>)currentDateProvider
                            crashWrapper:(SentryCrashWrapper *)crashWrapper
                    dispatchQueueWrapper:(SentryDispatchQueueWrapper *)dispatchQueueWrapper
                           threadWrapper:(SentryThreadWrapper *)threadWrapper
 {
     if (self = [super init]) {
         self.timeoutInterval = timeoutInterval;
-        self.currentDate = currentDateProvider;
         self.crashWrapper = crashWrapper;
         self.dispatchQueueWrapper = dispatchQueueWrapper;
         self.threadWrapper = threadWrapper;
-        self.listeners = [NSMutableSet new];
+        self.listeners = [NSHashTable weakObjectsHashTable];
         threadLock = [[NSObject alloc] init];
-        running = NO;
+        state = kSentryANRTrackerNotRunning;
     }
     return self;
 }
 
 - (void)detectANRs
 {
-    NSThread.currentThread.name = @"io.sentry.app-hang-tracker";
-    self.thread = NSThread.currentThread;
+    NSUUID *threadID = [NSUUID UUID];
 
-    __block NSInteger ticksSinceUiUpdate = 0;
+    @synchronized(threadLock) {
+        [self.threadWrapper threadStarted:threadID];
+
+        if (state != kSentryANRTrackerStarting) {
+            [self.threadWrapper threadFinished:threadID];
+            return;
+        }
+
+        NSThread.currentThread.name = @"io.sentry.app-hang-tracker";
+        state = kSentryANRTrackerRunning;
+    }
+
+    __block atomic_int ticksSinceUiUpdate = 0;
     __block BOOL reported = NO;
 
     NSInteger reportThreshold = 5;
     NSTimeInterval sleepInterval = self.timeoutInterval / reportThreshold;
 
-    while (![self.thread isCancelled]) {
-        NSDate *blockDeadline =
-            [[self.currentDate date] dateByAddingTimeInterval:self.timeoutInterval];
+    SentryCurrentDateProvider *dateProvider = SentryDependencyContainer.sharedInstance.dateProvider;
 
-        ticksSinceUiUpdate++;
+    // Canceling the thread can take up to sleepInterval.
+    while (YES) {
+        @synchronized(threadLock) {
+            if (state != kSentryANRTrackerRunning) {
+                break;
+            }
+        }
+
+        NSDate *blockDeadline = [[dateProvider date] dateByAddingTimeInterval:self.timeoutInterval];
+
+        atomic_fetch_add_explicit(&ticksSinceUiUpdate, 1, memory_order_relaxed);
 
         [self.dispatchQueueWrapper dispatchAsyncOnMainQueue:^{
-            ticksSinceUiUpdate = 0;
+            atomic_store_explicit(&ticksSinceUiUpdate, 0, memory_order_relaxed);
 
             if (reported) {
                 SENTRY_LOG_WARN(@"ANR stopped.");
-                [self ANRStopped];
+
+                // The ANR stopped, don't block the main thread with calling ANRStopped listeners.
+                // While the ANR code reports an ANR and collects the stack trace, the ANR might
+                // stop simultaneously. In that case, the ANRs stack trace would contain the
+                // following code running on the main thread. To avoid this, we offload work to a
+                // background thread.
+                [self.dispatchQueueWrapper dispatchAsyncWithBlock:^{ [self ANRStopped]; }];
             }
 
             reported = NO;
@@ -78,7 +108,7 @@ SentryANRTracker ()
         // an ANR. If the app gets suspended this thread could sleep and wake up again. To avoid
         // false positives, we don't report ANRs if the delta is too big.
         NSTimeInterval deltaFromNowToBlockDeadline =
-            [[self.currentDate date] timeIntervalSinceDate:blockDeadline];
+            [[dateProvider date] timeIntervalSinceDate:blockDeadline];
 
         if (deltaFromNowToBlockDeadline >= self.timeoutInterval) {
             SENTRY_LOG_DEBUG(
@@ -86,7 +116,8 @@ SentryANRTracker ()
             continue;
         }
 
-        if (ticksSinceUiUpdate >= reportThreshold && !reported) {
+        if (atomic_load_explicit(&ticksSinceUiUpdate, memory_order_relaxed) >= reportThreshold
+            && !reported) {
             reported = YES;
 
             if (![self.crashWrapper isApplicationInForeground]) {
@@ -97,6 +128,11 @@ SentryANRTracker ()
             SENTRY_LOG_WARN(@"ANR detected.");
             [self ANRDetected];
         }
+    }
+
+    @synchronized(threadLock) {
+        state = kSentryANRTrackerNotRunning;
+        [self.threadWrapper threadFinished:threadID];
     }
 }
 
@@ -129,10 +165,13 @@ SentryANRTracker ()
     @synchronized(self.listeners) {
         [self.listeners addObject:listener];
 
-        if (self.listeners.count > 0 && !running) {
-            @synchronized(threadLock) {
-                if (!running) {
-                    [self start];
+        @synchronized(threadLock) {
+            if (self.listeners.count > 0 && state == kSentryANRTrackerNotRunning) {
+                if (state == kSentryANRTrackerNotRunning) {
+                    state = kSentryANRTrackerStarting;
+                    [NSThread detachNewThreadSelector:@selector(detectANRs)
+                                             toTarget:self
+                                           withObject:nil];
                 }
             }
         }
@@ -158,20 +197,11 @@ SentryANRTracker ()
     }
 }
 
-- (void)start
-{
-    @synchronized(threadLock) {
-        [NSThread detachNewThreadSelector:@selector(detectANRs) toTarget:self withObject:nil];
-        running = YES;
-    }
-}
-
 - (void)stop
 {
     @synchronized(threadLock) {
         SENTRY_LOG_INFO(@"Stopping ANR detection");
-        [self.thread cancel];
-        running = NO;
+        state = kSentryANRTrackerStopping;
     }
 }
 

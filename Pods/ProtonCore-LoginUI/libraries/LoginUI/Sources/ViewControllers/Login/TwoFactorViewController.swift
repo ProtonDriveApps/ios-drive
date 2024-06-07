@@ -18,15 +18,17 @@
 //
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
+
+#if os(iOS)
+
 import Foundation
 import UIKit
-import ProtonCore_CoreTranslation
-import ProtonCore_Foundations
-import ProtonCore_Login
-import ProtonCore_UIFoundations
+import ProtonCoreFoundations
+import ProtonCoreLogin
+import ProtonCoreUIFoundations
 
 protocol TwoFactorViewControllerDelegate: NavigationDelegate, LoginStepsDelegate {
-    func twoFactorViewControllerDidFinish(endLoading: @escaping () -> Void, data: LoginData)
+    func twoFactorViewControllerDidFinish(data: LoginData, endLoading: @escaping () -> Void)
     func twoFactorViewControllerDidFail(error: LoginError)
 }
 
@@ -39,6 +41,8 @@ final class TwoFactorViewController: UIViewController, AccessibleView, Focusable
     @IBOutlet private weak var authenticateButton: ProtonButton!
     @IBOutlet private weak var recoveryCodeButton: ProtonButton!
     @IBOutlet private weak var scrollView: UIScrollView!
+    private var usernameTextField: UITextField?
+    private var passwordTextField: UITextField?
 
     // MARK: - Properties
 
@@ -49,7 +53,7 @@ final class TwoFactorViewController: UIViewController, AccessibleView, Focusable
 
     var focusNoMore: Bool = false
     private let navigationBarAdjuster = NavigationBarAdjustingScrollViewDelegate()
-    
+
     override var preferredStatusBarStyle: UIStatusBarStyle { darkModeAwarePreferredStatusBarStyle() }
 
     // MARK: - Setup
@@ -63,8 +67,18 @@ final class TwoFactorViewController: UIViewController, AccessibleView, Focusable
         setupNotifications()
 
         setUpBackArrow(action: #selector(TwoFactorViewController.goBack(_:)))
-
+        setUpAccountForAutoRemember()
         generateAccessibilityIdentifiers()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        // No document support, my assumption after testing
+        // One of condition to trigger KeyChain auto remember prompt is userName field or password field focus at least once
+        // To trigger the prompt, focus on password
+        passwordTextField?.becomeFirstResponder()
+        // resign it so user won't see keyboard on the next screen 
+        _ = passwordTextField?.resignFirstResponder()
     }
 
     override func viewDidLayoutSubviews() {
@@ -76,10 +90,44 @@ final class TwoFactorViewController: UIViewController, AccessibleView, Focusable
     private func setupUI() {
         view.backgroundColor = ColorProvider.BackgroundNorm
         recoveryCodeButton.setMode(mode: .text)
+        codeTextField.textContentType = .oneTimeCode
 
-        titleView.text = CoreString._ls_login_2fa_screen_title
+        titleView.text = LUITranslation.login_2fa_screen_title.l10n
         titleView.textColor = ColorProvider.TextNorm
-        authenticateButton.setTitle(CoreString._ls_login_2fa_action_button_title, for: .normal)
+        authenticateButton.setTitle(LUITranslation.login_2fa_action_button_title.l10n, for: .normal)
+    }
+
+    // Set up username and password textField to enable keyChain auto remember password
+    // TextFields seems like need to existing from viewDidLoad
+    // If create textFields in `finished.bind`, the auto remember password prompt won't show
+    private func setUpAccountForAutoRemember() {
+        let usernameTextField = UITextField(frame: .zero)
+        usernameTextField.textContentType = .username
+        self.usernameTextField = usernameTextField
+
+        let passwordTextField = UITextField(frame: .zero)
+        passwordTextField.isSecureTextEntry = true
+        passwordTextField.textContentType = .password
+        self.passwordTextField = passwordTextField
+
+        let views = [usernameTextField, passwordTextField]
+        for sub in views {
+            view.addSubview(sub)
+            sub.translatesAutoresizingMaskIntoConstraints = false
+            sub.alpha = 0.01
+            sub.tag = 99
+            NSLayoutConstraint.activate([
+                sub.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                sub.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: 10),
+                sub.heightAnchor.constraint(equalToConstant: 1),
+                sub.widthAnchor.constraint(equalToConstant: 1)
+            ])
+        }
+    }
+
+    private func fillInAccount() {
+        usernameTextField?.text = viewModel.username
+        passwordTextField?.text = viewModel.password
     }
 
     private func setupDelegates() {
@@ -89,7 +137,7 @@ final class TwoFactorViewController: UIViewController, AccessibleView, Focusable
     private func setupBinding() {
         viewModel.mode.bind { [weak self] mode in
             self?.codeTextField.set(mode: mode)
-            self?.recoveryCodeButton.setTitle(mode == TwoFactorViewModel.Mode.twoFactorCode ? CoreString._ls_login_2fa_recovery_button_title : CoreString._ls_login_2fa_2fa_button_title, for: .normal)
+            self?.recoveryCodeButton.setTitle(mode == TwoFactorViewModel.Mode.twoFactorCode ? LUITranslation.login_2fa_recovery_button_title.l10n : LUITranslation.login_2fa_2fa_button_title.l10n, for: .normal)
         }
         viewModel.error.bind { [weak self] error in
             guard let self = self else { return }
@@ -107,9 +155,12 @@ final class TwoFactorViewController: UIViewController, AccessibleView, Focusable
             self?.authenticateButton.isSelected = isLoading
         }
         viewModel.finished.bind { [weak self] result in
+            self?.fillInAccount()
             switch result {
             case let .done(data):
-                self?.delegate?.twoFactorViewControllerDidFinish(endLoading: { [weak self] in self?.viewModel.isLoading.value = false }, data: data)
+                self?.delegate?.twoFactorViewControllerDidFinish(data: data) { [weak self] in
+                    self?.viewModel.isLoading.value = false
+                }
             case .mailboxPasswordNeeded:
                 self?.delegate?.mailboxPasswordNeeded()
             case let .createAddressNeeded(data, defaultUsername):
@@ -117,7 +168,7 @@ final class TwoFactorViewController: UIViewController, AccessibleView, Focusable
             }
         }
     }
-    
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         if focusNoMore {
@@ -192,10 +243,12 @@ extension TwoFactorViewController: LoginErrorCapable {
     func onFirstPasswordChangeNeeded() {
         delegate?.firstPasswordChangeNeeded()
     }
-    
+
     func onLearnMoreAboutExternalAccountsNotSupported() {
         delegate?.learnMoreAboutExternalAccountsNotSupported()
     }
 
     var bannerPosition: PMBannerPosition { .top }
 }
+
+#endif

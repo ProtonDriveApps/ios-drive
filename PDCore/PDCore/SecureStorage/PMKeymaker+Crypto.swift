@@ -15,11 +15,17 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import ProtonCore_Keymaker
+import ProtonCoreKeymaker
 
 public protocol MainKeyProvider: AnyObject {
+    @available(*, deprecated, message: "Please migrate to the throwing variant: mainKeyOrError")
     var mainKey: MainKey? { get }
-
+    
+    @available(*, deprecated, message: "Please migrate to the throwing variant: wipeMainKeyOrError")
     func wipeMainKey()
+    
+    var mainKeyOrError: MainKey? { get throws }
+
+    func wipeMainKeyOrError() throws
 }
 extension Keymaker: MainKeyProvider {}

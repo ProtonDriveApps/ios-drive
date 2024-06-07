@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import PDCore
 
 final class PhotoBackupNetworkController: PhotoBackupConstraintController {
     private let backupController: PhotosBackupController
@@ -37,17 +38,26 @@ final class PhotoBackupNetworkController: PhotoBackupConstraintController {
 
     private func subscribeToUpdates() {
         backupController.isAvailable
+            .map { $0 == .available }
             .sink { [weak self] isAvailable in
                 self?.handleBackup(isAvailable)
             }
             .store(in: &cancellables)
         
         Publishers.CombineLatest(settingsController.isNetworkConstrained, interactor.state)
-            .map { isConstrained, state in
-                isConstrained && state == .other
+            .map { isConstrained, state -> Bool in
+                Log.debug("PhotoBackupNetworkController network state: \(state)", domain: .photosProcessing)
+                switch state {
+                case .unreachable:
+                    return true
+                case let .reachable(interface):
+                    return isConstrained && interface == .cellular
+                }
             }
-            .sink { [weak self] isAvailable in
-                self?.constraintSubject.send(isAvailable)
+            .removeDuplicates()
+            .sink { [weak self] isConstrained in
+                Log.debug("PhotoBackupNetworkController isConstrained: \(isConstrained)", domain: .photosProcessing)
+                self?.constraintSubject.send(isConstrained)
             }
             .store(in: &cancellables)
     }

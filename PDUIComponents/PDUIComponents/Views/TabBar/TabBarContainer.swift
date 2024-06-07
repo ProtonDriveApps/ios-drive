@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 public struct TabBarContainer: View {
     public init(vm: TabBarViewModel, tabItems: [TabItem]) {
@@ -93,7 +93,7 @@ private struct UITabBarControllerWrapper<Content>: UIViewControllerRepresentable
         // but neglect transparency at the same time
         if #available(iOS 15.0, *) {
             tabBar.backgroundImage = UIImage.fromColor(.clear)
-            tabBar.shadowImage =  UIImage.fromColor(ColorProvider.SeparatorNorm)
+            tabBar.shadowImage = UIImage.fromColor(ColorProvider.SeparatorNorm)
         }
         
         tabBar.isTranslucent = true

@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
+import PDCore
 
 struct ShareSheet: UIViewControllerRepresentable {
     typealias Callback = (_ activityType: UIActivity.ActivityType?, _ completed: Bool, _ returnedItems: [Any]?, _ error: Error?) -> Void
@@ -31,7 +32,10 @@ struct ShareSheet: UIViewControllerRepresentable {
             applicationActivities: applicationActivities
         )
         controller.excludedActivityTypes = excludedActivityTypes
-        controller.completionWithItemsHandler = callback
+        controller.completionWithItemsHandler = { activityType, completed, returnedItems, error in
+            self.callback?(activityType, completed, returnedItems, error)
+            try? FileManager.default.removeItem(at: PDFileManager.logsExportDirectory)
+        }
 
         return controller
     }

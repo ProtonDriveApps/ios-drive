@@ -19,41 +19,40 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
-import GoLibs
-import ProtonCore_Crypto
-import OpenPGP
+import ProtonCoreCrypto
+import ProtonCoreCryptoGoInterface
 import Foundation
-import ProtonCore_Authentication
-import ProtonCore_DataModel
-import ProtonCore_Utilities
+import ProtonCoreAuthentication
+import ProtonCoreDataModel
+import ProtonCoreUtilities
 
 @available(*, deprecated, renamed: "AccountKeySetupV2", message: "keep this until AccountKeySetupV2 is fully tested")
 final class AccountKeySetupV1 {
-    
+
     struct AddressKeyV1 {
-        
+
         ///
         let armoredKey: ArmoredKey
-        
+
         ///
         let addressId: String
     }
 
     struct GeneratedAccountKeyV1 {
-        
+
         let addressKeys: [AddressKeyV1]
         let passwordSalt: Data
         let password: Passphrase
     }
 
     func generateAccountKey(addresses: [Address], password: String) throws -> GeneratedAccountKeyV1 {
-        
+
         /// generate key salt 128 bits
-        let newPasswordSalt: Data = PMNOpenPgp.randomBits(PasswordSaltSize.accountKey.int32Bits)
-        
+        let newPasswordSalt: Data = try PasswordHash.random(bits: PasswordSaltSize.accountKey.int32Bits)
+
         /// generate key hashed password.
         let newPassphrase = PasswordHash.passphrase(password, salt: newPasswordSalt)
-        
+
         let addressKeys = try addresses.filter { $0.type != .externalAddress }.map { address -> AddressKeyV1 in
             let armoredKey = try Generator.generateECCKey(email: address.email, passphase: newPassphrase)
             return AddressKeyV1(armoredKey: armoredKey, addressId: address.addressID)
@@ -69,7 +68,7 @@ final class AccountKeySetupV1 {
 
         // for the login password needs to set 80 bits
         // accept the size in bytes for some reason so alwas divide by 8
-        let newSaltForKey: Data = PMNOpenPgp.randomBits(PasswordSaltSize.login.int32Bits)
+        let newSaltForKey: Data = try PasswordHash.random(bits: PasswordSaltSize.login.int32Bits)
 
         // generate new verifier
         guard let authForKey = try SrpAuthForVerifier(password, modulus, newSaltForKey) else {
@@ -78,7 +77,7 @@ final class AccountKeySetupV1 {
 
         let verifierForKey = try authForKey.generateVerifier(2048)
 
-        let passwordAuth = PasswordAuth(modulusID: modulusId, salt: newSaltForKey.encodeBase64(), verifer: verifierForKey.encodeBase64())
+        let passwordAuth = PasswordAuth(modulusID: modulusId, salt: newSaltForKey.encodeBase64(), verifier: verifierForKey.encodeBase64())
 
         /*
          let address: [String: Any] = [
@@ -90,16 +89,16 @@ final class AccountKeySetupV1 {
 
         let addressData = try key.addressKeys.map { addressKey -> [String: Any] in
             // lagcy logic and will be deprecated. we will not migrate it
-            guard let cryptoKey = CryptoNewKeyFromArmored(addressKey.armoredKey.value, &error) else {
+            guard let cryptoKey = CryptoGo.CryptoNewKeyFromArmored(addressKey.armoredKey.value, &error) else {
                 throw KeySetupError.keyReadFailed
             }
             let unlockedKey = try cryptoKey.unlock(key.password.data)
-            guard let keyRing = CryptoKeyRing(unlockedKey) else {
+            guard let keyRing = CryptoGo.CryptoKeyRing(unlockedKey) else {
                 throw KeySetupError.keyRingGenerationFailed
             }
 
             let fingerprint = cryptoKey.getFingerprint()
-            
+
             let keylist: [[String: Any]] = [[
                 "Fingerprint": fingerprint,
                 "Primary": 1,
@@ -107,7 +106,7 @@ final class AccountKeySetupV1 {
             ]]
 
             let jsonKeylist = keylist.json()
-            let message = CryptoNewPlainMessageFromString(jsonKeylist)
+            let message = CryptoGo.CryptoNewPlainMessageFromString(jsonKeylist)
             let signature = try keyRing.signDetached(message)
             let signed = signature.getArmored(&error)
             let signedKeyList: [String: Any] = [
@@ -127,10 +126,10 @@ final class AccountKeySetupV1 {
         guard let firstaddressKey = key.addressKeys.first else {
             throw KeySetupError.keyGenerationFailed
         }
-        
+
         return AuthService.SetupKeysEndpoint(addresses: addressData,
                                              privateKey: firstaddressKey.armoredKey,
                                              keySalt: key.passwordSalt.encodeBase64(),
                                              passwordAuth: passwordAuth)
-    }    
+    }
 }

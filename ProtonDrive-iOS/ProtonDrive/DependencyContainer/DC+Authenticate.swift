@@ -16,10 +16,10 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
-import ProtonCore_Challenge
-import ProtonCore_LoginUI
-import ProtonCore_Services
-import ProtonCore_Environment
+import ProtonCoreChallenge
+import ProtonCoreLoginUI
+import ProtonCoreServices
+import ProtonCoreEnvironment
 
 extension DriveDependencyContainer {
     func makeAuthenticateViewController() -> AuthenticateViewController {
@@ -29,7 +29,9 @@ extension DriveDependencyContainer {
     }
 
     private func makeAuthenticatorViewModel() -> AuthenticateViewModel {
-        AuthenticateViewModel(sessionStore: sessionVault, coordinator: AuthenticateCoordinator())
+        AuthenticateViewModel(sessionStore: sessionVault,
+                              sessionCommunicator: sessionCommunicator,
+                              coordinator: AuthenticateCoordinator())
     }
 
     private func makeAuthenticator() -> DriveLoginAndSignupAuthenticator {

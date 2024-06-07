@@ -23,12 +23,12 @@ public final class StartCoordinator {
         viewController.navigationController
     }
 
-    private let authenticatedViewControllerFactory: () -> UIViewController
+    private let authenticatedViewControllerFactory: () async -> UIViewController
     private let nonAuthenticatedViewControllerFactory: () -> UIViewController
 
     public init(
         viewController: StartViewController,
-        authenticatedViewControllerFactory: @escaping () -> UIViewController,
+        authenticatedViewControllerFactory: @escaping () async -> UIViewController,
         nonAuthenticatedViewControllerFactory: @escaping () -> UIViewController
     ) {
         self.viewController = viewController
@@ -37,7 +37,20 @@ public final class StartCoordinator {
     }
 
     func onAuthenticated() {
-        push(authenticatedViewControllerFactory(), onto: viewController)
+        Task {
+            let vc = await authenticatedViewControllerFactory()
+            await show(vc)
+        }
+
+    }
+
+    @MainActor
+    private func show(_ vc: UIViewController) {
+        push(vc, onto: viewController)
+    }
+
+    func onLoggingOut() {
+        navigationController?.setViewControllers([viewController], animated: false)
     }
 
     func onNonAuthenticated() {

@@ -20,7 +20,8 @@
 //  along with ProtonCore. If not, see https://www.gnu.org/licenses/.
 //
 
-import ProtonCore_Networking
+import Foundation
+import ProtonCoreNetworking
 
 public protocol HumanVerifyDelegate: AnyObject {
 
@@ -36,7 +37,7 @@ public protocol HumanVerifyDelegate: AnyObject {
 
 public enum HumanVerifyFinishReason {
     public typealias HumanVerifyHeader = [String: Any]
-    
+
     case verification(header: HumanVerifyHeader, verificationCodeBlock: SendVerificationCodeBlock?)
     case close
     case closeWithError(code: Int, description: String)

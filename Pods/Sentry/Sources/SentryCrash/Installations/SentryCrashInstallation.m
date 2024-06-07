@@ -1,3 +1,4 @@
+// Adapted from: https://github.com/kstenerud/KSCrash
 //
 //  SentryCrashInstallation.m
 //
@@ -25,28 +26,18 @@
 //
 
 #import "SentryCrashInstallation.h"
-#import "NSError+SentrySimpleConstructor.h"
 #import "SentryCrash.h"
 #import "SentryCrashCString.h"
 #import "SentryCrashInstallation+Private.h"
 #import "SentryCrashJSONCodecObjC.h"
 #import "SentryCrashLogger.h"
+#import "SentryCrashNSErrorUtil.h"
 #import "SentryCrashReportFilterBasic.h"
+#import "SentryDependencyContainer.h"
 #import <objc/runtime.h>
 
 /** Max number of properties that can be defined for writing to the report */
 #define kMaxProperties 500
-
-typedef struct {
-    const char *key;
-    const char *value;
-} ReportField;
-
-typedef struct {
-    SentryCrashReportWriteCallback userCrashCallback;
-    int reportFieldsCount;
-    ReportField *reportFields[0];
-} CrashHandlerData;
 
 static CrashHandlerData *g_crashHandlerData;
 
@@ -185,7 +176,7 @@ SentryCrashInstallation ()
 
 - (void)dealloc
 {
-    SentryCrash *handler = [SentryCrash sharedInstance];
+    SentryCrash *handler = SentryDependencyContainer.sharedInstance.crashReporter;
     @synchronized(handler) {
         if (g_crashHandlerData == self.crashHandlerData) {
             g_crashHandlerData = NULL;
@@ -199,29 +190,9 @@ SentryCrashInstallation ()
     return (CrashHandlerData *)self.crashHandlerDataBacking.mutableBytes;
 }
 
-- (SentryCrashInstReportField *)reportFieldForProperty:(NSString *)propertyName
+- (CrashHandlerData *)g_crashHandlerData
 {
-    SentryCrashInstReportField *field = [self.fields objectForKey:propertyName];
-    if (field == nil) {
-        field = [SentryCrashInstReportField fieldWithIndex:self.nextFieldIndex];
-        self.nextFieldIndex++;
-        self.crashHandlerData->reportFieldsCount = self.nextFieldIndex;
-        self.crashHandlerData->reportFields[field.index] = field.field;
-        [self.fields setObject:field forKey:propertyName];
-    }
-    return field;
-}
-
-- (void)reportFieldForProperty:(NSString *)propertyName setKey:(id)key
-{
-    SentryCrashInstReportField *field = [self reportFieldForProperty:propertyName];
-    field.key = key;
-}
-
-- (void)reportFieldForProperty:(NSString *)propertyName setValue:(id)value
-{
-    SentryCrashInstReportField *field = [self reportFieldForProperty:propertyName];
-    field.value = value;
+    return g_crashHandlerData;
 }
 
 - (NSError *)validateProperties
@@ -245,10 +216,8 @@ SentryCrashInstallation ()
         }
     }
     if ([errors length] > 0) {
-        return [NSError
-            sentryErrorWithDomain:[[self class] description]
-                             code:0
-                      description:@"Installation properties failed validation: %@", errors];
+        return sentryErrorWithDomain([[self class] description], 0,
+            @"Installation properties failed validation: %@", errors);
     }
     return nil;
 }
@@ -288,13 +257,26 @@ SentryCrashInstallation ()
     }
 }
 
-- (void)install
+- (void)install:(NSString *)customCacheDirectory
 {
-    SentryCrash *handler = [SentryCrash sharedInstance];
+    SentryCrash *handler = SentryDependencyContainer.sharedInstance.crashReporter;
     @synchronized(handler) {
+        handler.basePath = customCacheDirectory;
         g_crashHandlerData = self.crashHandlerData;
         handler.onCrash = crashCallback;
         [handler install];
+    }
+}
+
+- (void)uninstall
+{
+    SentryCrash *handler = SentryDependencyContainer.sharedInstance.crashReporter;
+    @synchronized(handler) {
+        if (g_crashHandlerData == self.crashHandlerData) {
+            g_crashHandlerData = NULL;
+            handler.onCrash = NULL;
+        }
+        [handler uninstall];
     }
 }
 
@@ -311,16 +293,15 @@ SentryCrashInstallation ()
     id<SentryCrashReportFilter> sink = [self sink];
     if (sink == nil) {
         onCompletion(nil, NO,
-            [NSError sentryErrorWithDomain:[[self class] description]
-                                      code:0
-                               description:@"Sink was nil (subclasses must implement "
-                                           @"method \"sink\")"]);
+            sentryErrorWithDomain([[self class] description], 0,
+                @"Sink was nil (subclasses must implement "
+                @"method \"sink\")"));
         return;
     }
 
     sink = [SentryCrashReportFilterPipeline filterWithFilters:self.prependedFilters, sink, nil];
 
-    SentryCrash *handler = [SentryCrash sharedInstance];
+    SentryCrash *handler = SentryDependencyContainer.sharedInstance.crashReporter;
     handler.sink = sink;
     [handler sendAllReportsWithCompletion:onCompletion];
 }

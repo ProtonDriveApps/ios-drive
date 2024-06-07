@@ -19,12 +19,14 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import Foundation
-import ProtonCore_Login
-import ProtonCore_DataModel
-import ProtonCore_Networking
-import ProtonCore_Payments
-import ProtonCore_PaymentsUI
+import ProtonCoreLogin
+import ProtonCoreDataModel
+import ProtonCoreNetworking
+import ProtonCorePayments
+import ProtonCorePaymentsUI
 
 @available(*, deprecated, message: "SignupMode is deprecated")
 public enum SignupMode: Equatable {
@@ -42,7 +44,7 @@ public enum SignupInitialMode {
 public enum LoginFeatureAvailability<Parameters> {
     case notAvailable
     case available(parameters: Parameters)
-    
+
     var isAvailable: Bool {
         if case .available = self { return true }
         return false
@@ -56,7 +58,7 @@ public struct SignupParameters {
     let separateDomainsButton: Bool
     let passwordRestrictions: SignupPasswordRestrictions
     let summaryScreenVariant: SummaryScreenVariant
-    
+
     public init(separateDomainsButton: Bool,
                 passwordRestrictions: SignupPasswordRestrictions,
                 summaryScreenVariant: SummaryScreenVariant) {
@@ -66,6 +68,7 @@ public struct SignupParameters {
     }
 }
 
+@available(*, deprecated, message: "SignupPasswordRestrictions is deprecated. Use PasswordRestrictions in ProtonCore-Utilities")
 public struct SignupPasswordRestrictions: OptionSet {
     public let rawValue: Int
     public init(rawValue: Int) { self.rawValue = rawValue }
@@ -90,12 +93,12 @@ public struct SignupPasswordRestrictions: OptionSet {
 public typealias PaymentsAvailability = LoginFeatureAvailability<PaymentsParameters>
 
 public struct PaymentsParameters {
-    
+
     let listOfIAPIdentifiers: ListOfIAPIdentifiers
     let listOfShownPlanNames: ListOfShownPlanNames
     let customPlansDescription: CustomPlansDescription
     var reportBugAlertHandler: BugAlertHandler
-    
+
     public init(listOfIAPIdentifiers: ListOfIAPIdentifiers,
                 listOfShownPlanNames: ListOfShownPlanNames,
                 customPlansDescription: CustomPlansDescription = [:],
@@ -106,3 +109,5 @@ public struct PaymentsParameters {
         self.reportBugAlertHandler = reportBugAlertHandler
     }
 }
+
+#endif

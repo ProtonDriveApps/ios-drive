@@ -47,13 +47,15 @@ public struct UpdateRevisionParameters: Codable {
 
     public struct Photo: Codable {
         public let CaptureTime: Int
-        public let MainPhotoID: String?
+        public let MainPhotoLinkID: String?
         public let Exif: String?
+        public let ContentHash: String
 
-        public init(captureTime: Int, mainPhotoID: String?, exif: String?) {
+        public init(captureTime: Int, mainPhotoLinkID: String?, exif: String?, contentHash: String) {
             self.CaptureTime = captureTime
-            self.MainPhotoID = mainPhotoID
+            self.MainPhotoLinkID = mainPhotoLinkID
             self.Exif = exif
+            self.ContentHash = contentHash
         }
     }
 }

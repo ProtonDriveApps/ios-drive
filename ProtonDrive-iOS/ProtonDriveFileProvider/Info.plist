@@ -26,6 +26,12 @@
 	<string>Debug</string>
 	<key>DEFAULT_API_HOST</key>
 	<string>$(DEFAULT_API_HOST)</string>
+	<key>DEFAULT_PHOTOS_REMINDER_DELAY</key>
+	<true/>
+	<key>DYNAMIC_DOMAIN</key>
+	<string>$(DYNAMIC_DOMAIN)</string>
+	<key>IS_UI_TEST</key>
+	<string>$(IS_UI_TEST)</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

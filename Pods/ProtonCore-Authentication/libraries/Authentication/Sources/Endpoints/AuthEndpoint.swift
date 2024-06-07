@@ -20,18 +20,14 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_APIClient
-import ProtonCore_DataModel
-import ProtonCore_FeatureSwitch
-import ProtonCore_Networking
-import ProtonCore_Services
-
-extension Feature {
-    public static var externalSignupHeader = Feature.init(name: "externalSignupHeader", isEnable: false, flags: [.availableCoreInternal])
-}
+import ProtonCoreAPIClient
+import ProtonCoreDataModel
+import ProtonCoreNetworking
+import ProtonCoreServices
+import ProtonCoreUtilities
 
 extension AuthService {
-    
+
     struct AuthRouteResponse: APIDecodableResponse, CredentialConvertible, Encodable {
         var accessToken: String
         var tokenType: String
@@ -40,60 +36,69 @@ extension AuthService {
         var UID: String
         var userID: String
         var eventID: String
-        var serverProof: String
+        var serverProof: String?
         var passwordMode: PasswordMode
-        
-        var _2FA: TwoFA
+
+        var _2FA: AuthInfoResponse.TwoFA
     }
-    
+
     struct AuthEndpoint: Request {
-        let username: String
-        let ephemeral: Data
-        let proof: Data
-        let session: String
-        let challenge: ChallengeProperties?
-        
-        init(username: String,
-             ephemeral: Data,
-             proof: Data,
-             session: String,
-             challenge: ChallengeProperties?) {
-            self.username = username
-            self.ephemeral = ephemeral
-            self.proof = proof
-            self.session = session
-            self.challenge = challenge
+        struct AuthEndpointData {
+            let username: String
+            let ephemeral: Data
+            let proof: Data
+            let srpSession: String
+            let challenge: ChallengeProperties?
         }
-        
+
+        struct SSOEndpointData {
+            let ssoResponseToken: String
+        }
+
+        let data: Either<AuthEndpointData, SSOEndpointData>
+
+        init(data: Either<AuthEndpointData, SSOEndpointData>) {
+            self.data = data
+        }
+
         var path: String {
             "/auth/v4"
         }
-        
+
         var method: HTTPMethod {
             .post
         }
-        
+
         var header: [String: Any] {
-            guard FeatureFactory.shared.isEnabled(.externalSignupHeader) else {
-                return [:]
-            }
             return ["X-Accept-ExtAcc": true]
         }
-        
+
         var challengeProperties: ChallengeProperties? {
-            challenge
+            if case let .left(authEndpointData) = data {
+                return authEndpointData.challenge
+            }
+
+            return nil
         }
-        
+
         var parameters: [String: Any]? {
-            let dict: [String: Any] = [
-                "Username": username,
-                "ClientEphemeral": ephemeral.base64EncodedString(),
-                "ClientProof": proof.base64EncodedString(),
-                "SRPSession": session
-            ]
-            return dict
+            switch data {
+            case .left(let authEndpointData):
+                return [
+                    "Username": authEndpointData.username,
+                    "ClientEphemeral": authEndpointData.ephemeral.base64EncodedString(),
+                    "ClientProof": authEndpointData.proof.base64EncodedString(),
+                    "SRPSession": authEndpointData.srpSession
+                ]
+            case .right(let ssoEndpointData):
+                return [
+                    "SSOResponseToken": ssoEndpointData.ssoResponseToken
+                ]
+            }
         }
-        
+
+        var authCredential: AuthCredential?
+
         var isAuth: Bool {
             false
         }

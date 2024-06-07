@@ -20,7 +20,7 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import GoLibs
+import ProtonCoreCryptoGoInterface
 import CommonCrypto
 
 extension Encryptor.HashableString {
@@ -28,7 +28,7 @@ extension Encryptor.HashableString {
         let stringData = Data(self.utf8) as Encryptor.HashableData
         let keyData = Data(key.utf8)
         var digest = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
-        
+
         keyData.withUnsafeBytes { keyPointer in
             stringData.withUnsafeBytes { strPointer in
                 CCHmac(CCHmacAlgorithm(kCCHmacAlgSHA256),
@@ -47,11 +47,11 @@ extension Encryptor.HashableString {
 extension Encryptor.HashableData {
     func hashSha256() -> Data {
         var digest = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
-        
+
         _ = self.withUnsafeBytes {
             CC_SHA256($0.baseAddress, UInt32(self.count), &digest)
         }
-        
+
         return Data(digest)
     }
 }

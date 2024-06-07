@@ -19,11 +19,12 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import Foundation
 import UIKit
-import ProtonCore_UIFoundations
-import ProtonCore_Login
-import ProtonCore_FeatureSwitch
+import ProtonCoreUIFoundations
+import ProtonCoreLogin
 
 protocol CreateAddressCoordinatorDelegate: AnyObject {
     func userDidGoBack()
@@ -39,7 +40,7 @@ final class CreateAddressCoordinator {
     private let externalLinks: ExternalLinks
 
     private let data: CreateAddressData
-    private let customErrorPresenter: LoginErrorPresenter?
+    private let customization: LoginCustomizationOptions
     private let defaultUsername: String?
 
     weak var delegate: CreateAddressCoordinatorDelegate?
@@ -47,12 +48,12 @@ final class CreateAddressCoordinator {
     init(container: Container,
          navigationController: LoginNavigationViewController,
          data: CreateAddressData,
-         customErrorPresenter: LoginErrorPresenter?,
-         defaultUsername: String?) {
+         defaultUsername: String?,
+         customization: LoginCustomizationOptions) {
         self.container = container
         self.navigationController = navigationController
         self.data = data
-        self.customErrorPresenter = customErrorPresenter
+        self.customization = customization
         self.defaultUsername = defaultUsername
         externalLinks = container.makeExternalLinks()
     }
@@ -64,14 +65,16 @@ final class CreateAddressCoordinator {
     // MARK: - Actions
 
     private func showCreateAddress() {
-        let createAddressViewController = UIStoryboard.instantiate(CreateAddressViewController.self)
+        let createAddressViewController = UIStoryboard.instantiateInLogin(
+            CreateAddressViewController.self, inAppTheme: customization.inAppTheme
+        )
         createAddressViewController.viewModel = container.makeCreateAddressViewModel(data: data, defaultUsername: defaultUsername)
-        createAddressViewController.customErrorPresenter = customErrorPresenter
+        createAddressViewController.customErrorPresenter = customization.customErrorPresenter
         createAddressViewController.delegate = self
         createAddressViewController.onDohTroubleshooting = { [weak self] in
             guard let self = self else { return }
             self.container.executeDohTroubleshootMethodFromApiDelegate()
-            
+
             self.container.troubleShootingHelper.showTroubleShooting(over: self.navigationController)
         }
         navigationController.pushViewController(createAddressViewController, animated: true)
@@ -94,8 +97,4 @@ extension CreateAddressCoordinator: CreateAddressViewControllerDelegate {
     }
 }
 
-private extension UIStoryboard {
-    static func instantiate<T: UIViewController>(_ controllerType: T.Type) -> T {
-        self.instantiate(storyboardName: "PMLogin", controllerType: controllerType)
-    }
-}
+#endif

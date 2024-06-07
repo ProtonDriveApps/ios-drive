@@ -16,8 +16,8 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import ProtonCore_Networking
-import ProtonCore_Services
+import ProtonCoreNetworking
+import ProtonCoreServices
 import PMEventsManager
 
 public typealias UserSettings = PMEventsManager.UserSettings
@@ -30,9 +30,13 @@ public final class GeneralSettings {
     init(mainKeyProvider: MainKeyProvider, network: PMAPIService, localSettings: LocalSettings) {
         self.network = network
         self.localSettings = localSettings
-        self._userSettings.configure(with: mainKeyProvider, logger: SessionVault.self)
+        self._userSettings.configure(with: mainKeyProvider)
     }
-    
+
+    public var currentUserSettings: UserSettings? {
+        userSettings
+    }
+
     func fetchUserSettings() {
         let route = UserSettingsAPIRoutes.Router.getGeneralSettings
         network.exec(route: route) { (task: URLSessionDataTask?, result: Result<GetGeneralSettingsResponse, ResponseError>) in
@@ -53,7 +57,7 @@ public final class GeneralSettings {
     }
 
     func cleanUp() {
-        _userSettings.wipeValue()
+        try? _userSettings.wipeValue()
     }
 
 }

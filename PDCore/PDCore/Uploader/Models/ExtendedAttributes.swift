@@ -17,7 +17,7 @@
 
 import Foundation
 
-public struct ExtendedAttributes: Codable {
+public class ExtendedAttributes: NSObject, Codable {
     public let common: Common?
     public let location: Location?
     public let camera: Camera?
@@ -76,7 +76,7 @@ public struct ExtendedAttributes: Codable {
         public let captureTime: String?
         public let device: String?
         public let orientation: Int?
-        public let subjectCoordinates: [String: [Int]]?
+        public let subjectCoordinates: SubjectCoordinates?
 
         enum CodingKeys: String, CodingKey {
             case captureTime = "CaptureTime"
@@ -85,13 +85,27 @@ public struct ExtendedAttributes: Codable {
             case subjectCoordinates = "SubjectCoordinates"
         }
     }
+
+    public struct SubjectCoordinates: Codable {
+        public let top: Int
+        public let left: Int
+        public let bottom: Int
+        public let right: Int
+
+        enum CodingKeys: String, CodingKey {
+            case top = "Top"
+            case left = "Left"
+            case bottom = "Bottom"
+            case right = "Right"
+        }
+    }
     
     public struct Media: Codable {
         public let width: Int?
         public let height: Int?
         public let duration: Double?
 
-        enum CodfingKeys: String, CodingKey {
+        enum CodingKeys: String, CodingKey {
             case width = "Width"
             case height = "Height"
             case duration = "Duration"
@@ -100,11 +114,11 @@ public struct ExtendedAttributes: Codable {
     
     public struct iOSPhotos: Codable {
         public let iCloudID: String?
-        public let modificationDate: String?
+        public let modificationTime: String?
         
         enum CodingKeys: String, CodingKey {
             case iCloudID = "ICloudID"
-            case modificationDate = "ModificationDate"
+            case modificationTime = "ModificationTime"
         }
     }
 

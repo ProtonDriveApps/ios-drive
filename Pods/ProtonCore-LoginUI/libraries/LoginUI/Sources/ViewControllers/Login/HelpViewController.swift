@@ -19,10 +19,11 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import ProtonCore_CoreTranslation
-import ProtonCore_Foundations
-import ProtonCore_UIFoundations
+import ProtonCoreFoundations
+import ProtonCoreUIFoundations
 
 protocol HelpViewControllerDelegate: AnyObject {
     func userDidDismissHelpViewController()
@@ -41,7 +42,7 @@ final class HelpViewController: UIViewController, AccessibleView {
 
     weak var delegate: HelpViewControllerDelegate?
     var viewModel: HelpViewModel!
-    
+
     override var preferredStatusBarStyle: UIStatusBarStyle { darkModeAwarePreferredStatusBarStyle() }
 
     // MARK: - Setup
@@ -60,7 +61,7 @@ final class HelpViewController: UIViewController, AccessibleView {
         titleLabel.textColor = ColorProvider.TextNorm
         closeButton.setImage(IconProvider.cross, for: .normal)
         closeButton.tintColor = ColorProvider.IconNorm
-        titleLabel.text = CoreString._ls_help_screen_title
+        titleLabel.text = LUITranslation.help_screen_title.l10n
         titleLabel.font = .adjustedFont(forTextStyle: .title2, weight: .bold)
         titleLabel.adjustsFontForContentSizeCategory = true
     }
@@ -85,7 +86,7 @@ final class HelpViewController: UIViewController, AccessibleView {
 // MARK: - Table view delegates
 
 extension HelpViewController: UITableViewDataSource {
-    
+
     func numberOfSections(in tableView: UITableView) -> Int {
         viewModel.helpSections.count
     }
@@ -93,9 +94,9 @@ extension HelpViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         viewModel.helpSections[section].count
     }
-    
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        
+
         let helpItem = viewModel.helpSections[indexPath.section][indexPath.row]
         switch helpItem {
         case .staticText(let text):
@@ -119,3 +120,5 @@ extension HelpViewController: UITableViewDelegate {
         delegate?.userDidRequestHelp(item: helpItem)
     }
 }
+
+#endif

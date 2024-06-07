@@ -18,76 +18,112 @@
 import Foundation
 import Combine
 import PDCore
-import ProtonCore_Networking
+import ProtonCoreNetworking
 import PDUIComponents
 
-final class TrashViewModel: ObservableObject, HasMultipleSelection {
-    struct NodeID {
-        let id: String
-        let type: NodeType
+final class TrashViewModel: ObservableObject, FinderViewModel, SortingViewModel, HasMultipleSelection {
+    typealias Identifier = NodeIdentifier
+    @Published var layout: Layout
+    var cancellables = Set<AnyCancellable>()
+
+    // MARK: FinderViewModel
+    let model: TrashModel
+    var childrenCancellable: AnyCancellable?
+    @Published var transientChildren: [NodeWrapper] = []
+    @Published var permanentChildren: [NodeWrapper] = []  {
+        didSet { selection.updateSelectable(Set(permanentChildren.map(\.node.identifier))) }
+    }
+    var isVisible: Bool = true
+    let genericErrors = ErrorRegulator()
+    @Published var isUpdating = false
+    
+    var nodeName: String {
+        listState == .selecting ? "\(selection.selected.count) selected" : "Trash"
+    }
+    
+    var leadingNavBarItems: [NavigationBarButton] {
+        listState == .selecting ? [.apply(title: selection.selectAllText, disabled: permanentChildren.isEmpty)] : [.menu]
     }
 
-    var trashModel: TrashModelProtocol
-    let selection: MultipleSelectionModel
+    var trailingNavBarItems: [NavigationBarButton] {
+        listState == .selecting ? [.cancel] : [.action]
+    }
+    
+    let lastUpdated: Date = .distantFuture // not relevant
+    let supportsSortingSwitch: Bool = true
+    var permanentChildrenSectionTitle: String { self.sorting.title }
+    
+    let supportsLayoutSwitch = true
+    
+    func refreshOnAppear() {
+        model.loadFromCache()
+        fetchAllPages()
+    }
+
+    func didScrollToBottom() { }
+    
+    // MARK: SortingViewModel
+    @Published var sorting: SortPreference
+    
+    func onSortingChanged() {
+        /* nothing, as this screen does not support per-page fetching */
+    }
+    // MARK: HasMultipleSelection
+    lazy var selection = MultipleSelectionModel(selectable: Set<NodeIdentifier>())
+    @Published var listState: ListState = .active
 
     @Published var loading = false
-    @Published var isUpdating = false
-    @Published var listState: ListState = .active
-    @Published private(set) var trashedNodes: [Node] = []
-    @Published private var nodeIDs = [NodeID]()
 
-    let genericErrors = ErrorRegulator()
     private var deleteRequest: AnyCancellable?
-    private var cancellables = Set<AnyCancellable>()
 
-    init(model: TrashModelProtocol, selection: MultipleSelectionModel) {
-        self.trashModel = model
-        self.selection = selection
-        model.trashItems
-            .sink(receiveValue: { [weak self] trashed in
-                guard let self = self else { return }
-                self.trashedNodes = trashed
-                self.selection.updateSelectable(Set(trashed.map(\.id)))
-                self.nodeIDs = trashed.map { NodeID(id: $0.id, type: $0 is Folder ? .folder : .file) }
-            })
+    init(model: TrashModel) {
+        defer { self.model.loadFromCache() }
+        self.model = model
+        self.sorting = model.sorting
+        
+        self.layout = Layout(preference: model.layout)
+        
+        self.subscribeToSort()
+        self.subscribeToChildren()
+        self.selection.unselectOnEmpty(for: self)
+        self.subscribeToLayoutChanges()
+
+    }
+    
+    func subscribeToSort() {
+        self.model.sortingPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] sort in
+                guard let self = self, self.sorting != sort else { return }
+                self.sorting = sort
+                if self.isVisible {
+                    self.onSortingChanged()
+                }
+            }
             .store(in: &cancellables)
     }
+    
+    func subscribeToChildren() {
+        self.childrenCancellable?.cancel()
+        self.childrenCancellable = self.model.childrenTrash()
+            .filter { [weak self] _ in
+                self?.isVisible == true
+            }
+            .sink { [weak self] trash in
+                guard let self = self, self.isVisible else { return }
+                self.permanentChildren = trash.map(NodeWrapper.init)
+            }
+    }
+    
+    func subscribeToLayoutChanges() { }
+    func changeLayout() { }
 
-    // Settable properties required by FinderViewModel
-    var childrenCancellable: AnyCancellable?
-    var transientChildren: [NodeWrapper] = []
-    var permanentChildren: [NodeWrapper] = []
-    var isVisible: Bool = true
-}
-
-extension TrashViewModel {
     var isSelecting: Bool {
         listState == .selecting
     }
 
     var activelySelecting: Bool {
         isSelecting && !selection.selected.isEmpty
-    }
-
-    var pageTitle: String {
-        listState == .selecting ? "\(selection.selected.count) selected" : "Trash"
-    }
-
-    var leadingNavBarItems: [NavigationBarButton] {
-        listState == .selecting ? [.apply(title: selection.selectAllText, disabled: trashedNodes.isEmpty)] : [.menu]
-    }
-
-    var trailingNavBarItems: [NavigationBarButton] {
-        listState == .selecting ? [.cancel] : [.action]
-    }
-
-    func onAppear() {
-        // TODO: DRVIOS-1278 - here we can use `trashModel.didFetchAllTrash` to fetch all pages only once and get updates from event system
-        fetchTrash()
-    }
-
-    func onRefresh() {
-        fetchTrash()
     }
 
     func selectAll() {
@@ -100,9 +136,9 @@ extension TrashViewModel {
         selection.clearSelected()
     }
 
-    func restore(nodes: [String], completion: @escaping () -> Void) {
+    func restore(nodes: [NodeIdentifier], completion: @escaping () -> Void) {
         loading = true
-        trashModel.restoreFromTrash(nodes: nodes)
+        model.restoreFromTrash(nodes: nodes)
             .receive(on: DispatchQueue.main)
             .sink(
                 receiveCompletion: { [weak self] result in
@@ -120,9 +156,9 @@ extension TrashViewModel {
             .store(in: &cancellables)
     }
 
-    func delete(nodes: [String], completion: @escaping () -> Void) {
+    func delete(nodes: [NodeIdentifier], completion: @escaping () -> Void) {
         loading = true
-        trashModel.delete(nodes: nodes)
+        model.delete(nodes: nodes)
             .receive(on: DispatchQueue.main)
             .sink(receiveCompletion: { [weak self] result in
                 self?.loading = false
@@ -137,9 +173,9 @@ extension TrashViewModel {
             .store(in: &cancellables)
     }
 
-    func emptyTrash(nodes: [String], completion: @escaping () -> Void) {
+    func emptyTrash(nodes: [NodeIdentifier], completion: @escaping () -> Void) {
         loading = true
-        trashModel.emptyTrash(nodes: nodes)
+        model.emptyTrash(nodes: nodes)
             .receive(on: DispatchQueue.main)
             .sink(
                 receiveCompletion: { [weak self] result in
@@ -157,10 +193,10 @@ extension TrashViewModel {
 
     func findNodesType(isAll: Bool) -> NodeType? {
         let ids = isAll ? selection.selectable : selection.selected
-        let selectedIds = nodeIDs.filter { nodeId in
-            ids.contains(nodeId.id)
+        let selectedIds = permanentChildren.filter { nodeId in
+            ids.contains(nodeId.node.identifier)
         }
-        let selectedTypes = Set(selectedIds.map { $0.type })
+        let selectedTypes = Set(selectedIds.map { ($0.node is Folder) ? NodeType.folder : .file })
         if selectedTypes.isSuperset(of: [.file, .folder]) {
             return .mix
         } else if selectedTypes.count == 1 {
@@ -169,60 +205,53 @@ extension TrashViewModel {
             return nil
         }
     }
-
-    func refreshControlAction() {
-        fetchTrash()
-    }
 }
 
 extension TrashViewModel {
-    private func fetchTrash() {
+    func fetchAllPages() {
         guard !isUpdating else { return }
         isUpdating = true
 
-        trashModel.fetchTrash(at: 0) { [weak self] result in
-            guard let self = self else { return }
-            DispatchQueue.main.async {
-                switch result {
-                case .success:
+        Task {
+            do {
+                try await model.fetchTrash()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     self.isUpdating = false
-
-                case .failure(let error):
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                        let error: Error = (error as? ResponseError)?.underlyingError ?? error
-                        self.genericErrors.send(error)
-                        self.isUpdating = false
-                    }
+                }
+            } catch {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                    let error: Error = (error as? ResponseError)?.underlyingError ?? error
+                    self.genericErrors.send(error)
+                    self.isUpdating = false
                 }
             }
         }
     }
+
+    func actionBarItems() -> [ActionBarButtonViewModel] {
+        [.restoreMultiple, .deleteMultiple]
+    }
 }
 
-class FakeTrashModel: FinderModel, NodesListing, ThumbnailLoader {
-    var folder: Folder?
-    func loadFromCache() {}
-    var tower: Tower!
-    var childrenObserver: FetchedObjectsObserver<Node>  { fatalError() }
-    var sorting: SortPreference { fatalError() }
-    func loadThumbnail(with file: Identifier) { }
-    func cancelThumbnailLoading(_ id: ThumbnailLoader.Identifier) { }
-}
-
-extension TrashViewModel: FinderViewModel {
-    var model: FakeTrashModel { fatalError() }
-    var sorting: SortPreference { .modifiedAscending }
-    var supportsSortingSwitch: Bool { false }
-    var permanentChildrenSectionTitle: String { "" }
-    func subscribeToSort() {}
-    var layout: Layout { .list }
-    var supportsLayoutSwitch: Bool { false }
-    func changeLayout() {}
-    var nodeName: String { "" }
-    var lastUpdated: Date { Date() }
-    func refreshOnAppear() { }
-    func didScrollToBottom() { }
+extension TrashViewModel {
     func selected(file: File) { }
     func childViewModel(for node: Node) -> NodeCellConfiguration { fatalError() }
     func applyAction(completion: @escaping ApplyActionCompletion) { }
+}
+
+extension TrashViewModel: CancellableStoring { }
+extension TrashViewModel: LayoutChangingViewModel { }
+
+extension TrashModel: LayoutChanging {
+    public var layout: LayoutPreference {
+        .list
+    }
+
+    public var layoutPublisher: AnyPublisher<LayoutPreference, Never> {
+        tower.layoutPublisher
+    }
+
+    public func changeLayoutPreference(to newLayout: LayoutPreference) {
+        tower.changeLayoutPreference(to: newLayout)
+    }
 }

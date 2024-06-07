@@ -21,6 +21,7 @@ import Foundation
 struct NewBlockUrlCleartext: NewBlockCleartext {
     var index: Int
     var cleardata: URL
+    var size: Int? { cleardata.fileSize }
 }
 
 /// Temporary holder for block cyphertext values
@@ -35,6 +36,7 @@ struct NewBlockUrlCyphertext: NewBlockCyphertext {
 struct NewBlockDataCleartext: NewBlockCleartext {
     var index: Int
     var cleardata: Data
+    var size: Int { cleardata.count }
 }
 
 /// Temporary holder for block cyphertext values

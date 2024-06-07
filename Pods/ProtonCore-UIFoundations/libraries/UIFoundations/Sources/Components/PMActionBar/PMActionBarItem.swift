@@ -19,6 +19,8 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
 
 public enum PMActionBarItemType {
@@ -188,7 +190,7 @@ public struct PMActionBarItem {
         self.type = .separator
         self.userInfo = ["width": width, "verticalPadding": verticalPadding]
     }
-    
+
     /// Set should spin as true, there'd be an activity indicator spinning shen selecting the button.
     /// But it won't work on those already selected.
     public func setShouldSpin(pressedBackgroundColor: UIColor = ColorProvider.FloatyPressed) -> Self {
@@ -198,10 +200,12 @@ public struct PMActionBarItem {
         }
         item.shouldSpin = true
         item.pressedBackgroundColor = pressedBackgroundColor
-        
-        item.activityIndicator = .init(style: .white)
+
+        item.activityIndicator = .init(style: .medium)
         item.activityIndicator?.hidesWhenStopped = true
         item.activityIndicator?.isHidden = true
         return item
     }
 }
+
+#endif

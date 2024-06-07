@@ -16,45 +16,19 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
-import os.log
+import Foundation
 
-public protocol TrashModelProtocol: FinderModel {
-    var trashItems: AnyPublisher<[Node], Never> { get }
-    var didFetchAllTrash: Bool { get set }
-    
-    func fetchTrash(at page: Int, completion: @escaping (Result<Int, Error>) -> Void)
-    func delete(nodes: [String]) -> AnyPublisher<Void, Error>
-    func emptyTrash(nodes: [String]) -> AnyPublisher<Void, Error>
-    func restoreFromTrash(nodes: [String]) -> AnyPublisher<Void, Error>
-}
-
-public final class TrashModel {
-    public var logger: Logger?
+public final class TrashModelLegacy {
     private(set) unowned var tower: Tower
     public let shareID: String
-    private let childrenObserver: FetchedObjectsObserver<Node>
-    private var fetchFromAPICancellable: AnyCancellable?
 
     public init(tower: Tower) {
         self.tower = tower
         self.shareID = tower.rootFolderIdentifier()!.shareID
-        let children = tower.uiSlot!.subscribeToTrash()
-        let observer = FetchedObjectsObserver(children)
-        childrenObserver = observer
-        childrenObserver.start()
-        trashItems = childrenObserver.objectWillChange
-            .map { [weak observer] in
-                let trash = observer?.fetchedObjects ?? []
-                let sortedTrash = SortPreference.default.sort(trash)
-                return sortedTrash
-            }
-            .eraseToAnyPublisher()
     }
-
-    public let trashItems: AnyPublisher<[Node], Never>
 }
 
-extension TrashModel: TrashModelProtocol {
+extension TrashModelLegacy {
     // FinderModel
     public func loadFromCache() {}
     public var folder: Folder?  { nil }
@@ -65,17 +39,18 @@ extension TrashModel: TrashModelProtocol {
         set { tower.didFetchAllTrash = newValue }
     }
 
-    public func fetchTrash(at page: Int = 0, completion: @escaping (Result<Int, Error>) -> Void) {
+    public func fetchTrash(at page: Int = 0, completion: @escaping (Result<([Node], Bool), Error>) -> Void) {
         let pageSize = 50
         tower.getTrash(shareID: shareID, page: page, pageSize: pageSize) { [weak self] result in
             guard let self = self else { return }
             switch result {
             case .success(let nodes):
-                self.logger?.log("Fetched Trash – Page: \(page), Items: \(nodes)", osLogType: TrashLogger.self)
-                if nodes < pageSize {
+                Log.info("Fetched Trash – Page: \(page), Items: \(nodes)", domain: .networking)
+                if nodes.count < pageSize {
                     self.didFetchAllTrash = true
-                    completion(.success(nodes))
+                    completion(.success((nodes, false)))
                 } else {
+                    completion(.success((nodes, true)))
                     self.fetchTrash(at: page + 1, completion: completion)
                 }
             case .failure(let error):
@@ -87,7 +62,7 @@ extension TrashModel: TrashModelProtocol {
     public func delete(nodes: [String]) -> AnyPublisher<Void, Error> {
         Future<Void, Error> { [weak self] promise in
             guard let self = self else { return }
-            self.logger?.log("Delete - Nodes, osLogType", osLogType: TrashLogger.self)
+            Log.info("Delete - Nodes", domain: .networking)
             self.tower.delete(nodes: nodes, shareID: self.shareID) {
                 promise($0)
             }
@@ -98,7 +73,7 @@ extension TrashModel: TrashModelProtocol {
     public func emptyTrash(nodes: [String]) -> AnyPublisher<Void, Error> {
         Future<Void, Error> { [weak self] promise in
             guard let self = self else { return }
-            self.logger?.log("Empty Trash - Share with id: \(self.shareID)", osLogType: TrashLogger.self)
+            Log.info("Empty Trash - Share with id: \(self.shareID)", domain: .networking)
             self.tower.emptyTrash(nodes: nodes, shareID: self.shareID) {
                 promise($0)
             }
@@ -109,7 +84,7 @@ extension TrashModel: TrashModelProtocol {
     public func restoreFromTrash(nodes: [String]) -> AnyPublisher<Void, Error> {
         Future<Void, Error> { [weak self] promise in
             guard let self = self else { return }
-            self.logger?.log("Restore from Trash - Share with id: \(self.shareID)", osLogType: TrashLogger.self)
+            Log.info("Restore from Trash - Share with id: \(self.shareID)", domain: .networking)
             self.tower.restoreFromTrash(shareID: self.shareID, nodes: nodes) {
                 promise($0)
             }
@@ -118,7 +93,7 @@ extension TrashModel: TrashModelProtocol {
     }
 }
 
-extension TrashModel: ThumbnailLoader {
+extension TrashModelLegacy: ThumbnailLoader {
     public func loadThumbnail(with id: Identifier) {
         return tower.loadThumbnail(with: id)
     }
@@ -128,6 +103,124 @@ extension TrashModel: ThumbnailLoader {
     }
 }
 
-struct TrashLogger: LogObject {
-    static var osLog: OSLog = OSLog(subsystem: "ch.protondrive", category: "Trash")
+// MARK: - New trash APIs
+public protocol TrashListing: AnyObject {
+    var tower: Tower! { get }
+    var childrenObserver: FetchedObjectsObserver<Node> { get }
+    var sorting: SortPreference { get }
+}
+
+extension TrashListing {
+    public func childrenTrash() -> AnyPublisher<([Node]), Never> {
+        self.childrenObserver.objectWillChange
+        .map {
+            let trash = self.childrenObserver.fetchedObjects
+            return self.sorting.sort(trash)
+        }
+        .eraseToAnyPublisher()
+    }
+    
+    public func switchSorting(_ sort: SortPreference) {
+        self.tower.localSettings.nodesSortPreference = sort
+    }
+    
+    public func loadChildrenFromCacheTrash() {
+        self.childrenObserver.start()
+    }
+}
+
+public final class TrashModel: FinderModel, TrashListing, NodesListing, ThumbnailLoader  {
+    
+    public let shareID: String
+    private let volumeID: String
+    
+    @Published public private(set) var sorting: SortPreference
+
+    public init(tower: Tower) {
+        self.tower = tower
+        self.volumeID = tower.uiSlot.getVolume()!.id // A volume must always exist
+        self.shareID = tower.rootFolderIdentifier()!.shareID
+        
+        let children = tower.uiSlot!.subscribeToTrash()
+        self.childrenObserver = FetchedObjectsObserver(children)
+        
+        self.sorting = self.tower.localSettings.nodesSortPreference
+        
+        self.sortingObserver = self.tower.localSettings.publisher(for: \.nodesSortPreference)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] sort in
+                guard let self = self else { return }
+                self.sorting = sort
+                let children = tower.uiSlot!.subscribeToTrash()
+                self.childrenObserver.inject(fetchedResultsController: children)
+            }
+    }
+    
+    // MARK: FinderModel
+    public var folder: Folder?
+    public func loadFromCache() {
+        self.loadChildrenFromCacheTrash()
+    }
+    
+    // MARK: NodesSorting
+    public var tower: Tower!
+    private var sortingObserver: AnyCancellable!
+    public var sortingPublisher: Published<SortPreference>.Publisher {
+        self.$sorting
+    }
+    public let childrenObserver: FetchedObjectsObserver<Node>
+    
+    // unused by ViewModel, but can be used to prevent fetching of all nodes every time screen is opened
+    public var didFetchAllTrash: Bool {
+        get { tower.didFetchAllTrash }
+        set { tower.didFetchAllTrash = newValue }
+    }
+    
+    public func fetchTrash() async throws {
+        try await tower.cloudSlot.scanAllTrashed(volumeID: volumeID)
+        self.didFetchAllTrash = true
+    }
+
+    public func delete(nodes: [NodeIdentifier]) -> AnyPublisher<Void, Error> {
+        Future<Void, Error> { [weak self] promise in
+            guard let self = self else { return }
+            Log.info("Delete - Nodes", domain: .networking)
+            self.tower.delete(nodes) {
+                promise($0)
+            }
+        }
+        .eraseToAnyPublisher()
+    }
+
+    public func emptyTrash(nodes: [NodeIdentifier]) -> AnyPublisher<Void, Error> {
+        Future<Void, Error> { [weak self] promise in
+            guard let self = self else { return }
+            Log.info("Empty Trash", domain: .networking)
+            self.tower.emptyTrash(nodes) {
+                promise($0)
+            }
+        }
+        .eraseToAnyPublisher()
+    }
+
+    public func restoreFromTrash(nodes: [NodeIdentifier]) -> AnyPublisher<Void, Error> {
+        Future<Void, Error> { [weak self] promise in
+            guard let self = self else { return }
+            Log.info("Restore from Trash", domain: .networking)
+            self.tower.restore(nodes) {
+                promise($0)
+            }
+        }
+        .eraseToAnyPublisher()
+    }
+}
+
+extension TrashModel {
+    public func loadThumbnail(with id: Identifier) {
+        return tower.loadThumbnail(with: id)
+    }
+
+    public func cancelThumbnailLoading(_ id: Identifier) {
+        tower.cancelThumbnailLoading(id)
+    }
 }

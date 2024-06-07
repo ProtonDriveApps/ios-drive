@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDUIComponents
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import SwiftUI
 
 struct PhotosRootView<
@@ -25,24 +25,31 @@ struct PhotosRootView<
     PermissionsView: View,
     GalleryView: View
 >: View {
+    @EnvironmentObject var root: RootViewModel
     @ObservedObject private var viewModel: ViewModel
     private let onboarding: () -> OnboardingView
     private let permissions: () -> PermissionsView
-    private let gallery: () -> GalleryView
+    private let galleryView: GalleryView
 
-    init(viewModel: ViewModel, onboarding: @escaping () -> OnboardingView, permissions: @escaping () -> PermissionsView, gallery: @escaping () -> GalleryView) {
+    init(viewModel: ViewModel, onboarding: @escaping () -> OnboardingView, permissions: @escaping () -> PermissionsView, galleryView: GalleryView) {
         self.viewModel = viewModel
         self.onboarding = onboarding
         self.permissions = permissions
-        self.gallery = gallery
+        self.galleryView = galleryView
     }
 
     var body: some View {
-        ZStack {
+        NavigatingView(
+            title: viewModel.navigation.title,
+            leading: button(with: viewModel.navigation.leftItem).any(),
+            trailing: viewModel.navigation.rightItem.map(button)?.any()
+        ) {
             content
-                .flatNavigationBar(viewModel.title, leading: menuButton, trailing: EmptyView())
         }
         .background(ColorProvider.BackgroundNorm.edgesIgnoringSafeArea(.all))
+        .onReceive(root.closeCurrentSheet) { _ in
+            viewModel.close()
+        }
     }
 
     @ViewBuilder
@@ -53,11 +60,27 @@ struct PhotosRootView<
         case .permissions:
             permissions()
         case .gallery:
-            gallery()
+            galleryView
         }
     }
 
-    private var menuButton: some View {
-        MenuButton(action: viewModel.openMenu)
+    @ViewBuilder
+    private func button(with item: PhotosRootNavigation.Item) -> any View {
+        switch item {
+        case .menu:
+            MenuButton {
+                viewModel.handle(item: item)
+            }
+        case let .cancel(title):
+            TextNavigationBarButton(title: title, weight: .bold) {
+                viewModel.handle(item: item)
+            }
+            .accessibility(identifier: "PhotosRootView.NavigationBarButton.Cancel")
+        case let .selection(title):
+            TextNavigationBarButton(title: title) {
+                viewModel.handle(item: item)
+            }
+            .accessibility(identifier: "PhotosRootView.NavigationBarButton.Selection")
+        }
     }
 }

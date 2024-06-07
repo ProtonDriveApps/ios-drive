@@ -20,17 +20,106 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_APIClient
-import ProtonCore_Authentication
-import ProtonCore_Authentication_KeyGeneration
-import ProtonCore_CoreTranslation
-import ProtonCore_DataModel
-import ProtonCore_Log
-import ProtonCore_Networking
+import ProtonCoreAPIClient
+import ProtonCoreAuthentication
+import ProtonCoreAuthenticationKeyGeneration
+import ProtonCoreDataModel
+import ProtonCoreLog
+import ProtonCoreNetworking
+import ProtonCoreServices
+import ProtonCoreObservability
 
-extension LoginService {
+extension LoginService: Login {
+
+    public func processResponseToken(idpEmail: String, responseToken: SSOResponseToken, completion: @escaping (Result<LoginStatus, LoginError>) -> Void) {
+        if responseToken.uid != apiService.sessionUID,
+           responseToken.uid.caseInsensitiveCompare("notimplementedyet") != .orderedSame {
+            assertionFailure("response token UID is not equal to apiService UID and it should.")
+        }
+        authenticateWithSSO(idpEmail: idpEmail, responseToken: responseToken, completion: completion)
+    }
+
+    public func getSSORequest(challenge ssoChallengeResponse: SSOChallengeResponse) async -> (request: URLRequest?, error: String?) {
+        let accessToken: (token: String?, error: String?) = await withCheckedContinuation { continuation in
+            apiService.fetchAuthCredentials { result in
+                switch result {
+                case .found(let credentials):
+                    continuation.resume(returning: (credentials.accessToken, nil))
+                case .notFound:
+                    continuation.resume(returning: (nil, AuthCredentialFetchingResult.notFound.toNSError?.localizedDescription))
+                case .wrongConfigurationNoDelegate:
+                    continuation.resume(returning: (nil, AuthCredentialFetchingResult.wrongConfigurationNoDelegate.toNSError?.localizedDescription))
+                }
+            }
+        }
+
+        if let error = accessToken.error, accessToken.token == nil {
+            return (nil, error)
+        }
+
+        let host = apiService.dohInterface.getCurrentlyUsedHostUrl()
+        let accountHost = apiService.dohInterface.getAccountHost()
+        let sessionUID = apiService.sessionUID
+
+        var urlComponents = URLComponents(string: "\(host)/auth/sso/\(ssoChallengeResponse.ssoChallengeToken)")!
+
+        #if os(macOS)
+        if let callbackScheme = self.ssoCallbackScheme,
+            let accountHostUrl = URL(string: accountHost),
+            let accountHostScheme = accountHostUrl.scheme {
+
+            let modifiedAccountHost = accountHost.replacingOccurrences(of: accountHostScheme, with: callbackScheme)
+            let finalRedirectBaseURLQueryParameter = URLQueryItem(name: "FinalRedirectBaseUrl",
+                                                                 value: "\(modifiedAccountHost)")
+
+            urlComponents.queryItems = [finalRedirectBaseURLQueryParameter]
+        }
+        #endif
+
+        let url = urlComponents.url!
+        var request = URLRequest(url: url)
+        request.setValue(sessionUID, forHTTPHeaderField: "x-pm-uid")
+        request.setValue(accessToken.token, forHTTPHeaderField: "Authorization")
+
+        return (request, nil)
+    }
+
+    public func isProtonPage(url: URL?) -> Bool {
+        guard let url else { return false }
+        let hosts = [
+            apiService.dohInterface.getAccountHost(),
+            apiService.dohInterface.getCurrentlyUsedHostUrl(),
+            apiService.dohInterface.getHumanVerificationV3Host(),
+            apiService.dohInterface.getCaptchaHostUrl()
+        ]
+        return hosts.contains(where: url.absoluteString.contains)
+    }
+
+    private func authenticateWithSSO(idpEmail: String, responseToken: SSOResponseToken, completion: @escaping (Result<LoginStatus, LoginError>) -> Void) {
+        withAuthDelegateAvailable(completion) { authManager in
+            manager.authenticate(idpEmail: idpEmail, responseToken: responseToken) { result in
+                switch result {
+                case let .success(status):
+                    switch status {
+                    case let .newCredential(credential, passwordMode):
+                        self.handleValidCredentials(credential: credential, passwordMode: passwordMode, mailboxPassword: nil, isSSO: true, completion: completion)
+                    case .updatedCredential, .ssoChallenge, .askTOTP, .askFIDO2, .askAny2FA:
+                        completion(.failure(.invalidState))
+                    }
+
+                case let .failure(error):
+                    PMLog.error("Login failed with \(error)", sendToExternal: true)
+                    completion(.failure(error.asLoginError()))
+                }
+            }
+        }
+    }
 
     public func login(username: String, password: String, challenge: [String: Any]?, completion: @escaping (Result<LoginStatus, LoginError>) -> Void) {
+        login(username: username, password: password, intent: nil, challenge: challenge, completion: completion)
+    }
+
+    public func login(username: String, password: String, intent: Intent?, challenge: [String: Any]?, completion: @escaping (Result<LoginStatus, LoginError>) -> Void) {
         withAuthDelegateAvailable(completion) { authManager in
             self.username = username
             self.mailboxPassword = password
@@ -40,26 +129,38 @@ extension LoginService {
             }
             PMLog.debug("Logging in with username and password")
 
-            manager.authenticate(username: username, password: password, challenge: data, srpAuth: nil) { result in
+            manager.authenticate(username: username, password: password, challenge: data, intent: intent, srpAuth: nil) { result in
                 switch result {
                 case let .success(status):
                     switch status {
-                    case let .ask2FA(context):
-                        self.context = context
-                        PMLog.debug("Login successful but needs 2FA code")
-                        completion(.success(.ask2FA))
+                    case let .askTOTP(totpContext):
+                        self.totpContext = totpContext
+                        PMLog.debug("Login successful but needs TOTP code")
+                        completion(.success(.askTOTP))
+                    case let .askFIDO2(fido2Context):
+                        self.fido2Context = fido2Context
+                        PMLog.debug("Login successful but needs FIDO2 validation")
+                        completion(.success(.askFIDO2(fido2Context)))
+                    case let .askAny2FA(totpContext, fido2Context):
+                        self.fido2Context = fido2Context
+                        self.totpContext = totpContext
+                        PMLog.debug("Login successful but needs 2FA validation")
+                        completion(.success(.askAny2FA(fido2Context)))
                     case let .newCredential(credential, passwordMode):
-                        self.context = (credential: credential, passwordMode: passwordMode)
                         self.handleValidCredentials(credential: credential, passwordMode: passwordMode, mailboxPassword: password, completion: completion)
                     case .updatedCredential(let credential):
                         authManager.onSessionObtaining(credential: credential)
                         self.apiService.setSessionUID(uid: credential.UID)
-                        PMLog.debug("No idea how to handle updatedCredential")
+                        PMLog.error("No idea how to handle updatedCredential", sendToExternal: true)
                         completion(.failure(.invalidState))
+                    case .ssoChallenge(let ssoChallengeResponse):
+                        completion(.success(.ssoChallenge(ssoChallengeResponse)))
                     }
-
                 case let .failure(error):
-                    PMLog.debug("Login failed with \(error)")
+                    PMLog.error("Login failed with \(error)", sendToExternal: true)
+                    if case let .networkingError(error) = error, error.isSwitchToSRPError {
+                        ObservabilityEnv.report(.ssoObtainChallengeToken(status: .ssoDomainNotFound))
+                    }
                     completion(.failure(error.asLoginError()))
                 }
             }
@@ -69,7 +170,7 @@ extension LoginService {
     public func provide2FACode(_ code: String, completion: @escaping (Result<LoginStatus, LoginError>) -> Void) {
         withAuthDelegateAvailable(completion) { authManager in
             PMLog.debug("Confirming 2FA code")
-            guard let context = self.context else {
+            guard let context = self.totpContext else {
                 completion(.failure(.invalidState))
                 return
             }
@@ -85,23 +186,69 @@ extension LoginService {
                     switch status {
                     case let .newCredential(credential, passwordMode):
                         PMLog.debug("2FA code accepted, updating the credentials context and moving further")
-                        self.context = (credential: credential, passwordMode: passwordMode)
+                        self.totpContext = TOTPContext(credential: credential, passwordMode: passwordMode)
                         self.handleValidCredentials(credential: credential, passwordMode: passwordMode, mailboxPassword: mailboxPassword, completion: completion)
 
-                    case .ask2FA:
-                        PMLog.debug("Asking afaing for 2FA code should never happen")
+                    case .askTOTP, .askAny2FA, .askFIDO2:
+                        PMLog.error("Asking again for 2FA should never happen", sendToExternal: true)
                         completion(.failure(.invalidState))
 
                     case .updatedCredential(let credential):
                         authManager.onSessionObtaining(credential: credential)
                         self.apiService.setSessionUID(uid: credential.UID)
-                        PMLog.debug("No idea how to handle updatedCredential")
+                        PMLog.error("No idea how to handle updatedCredential", sendToExternal: true)
+                        completion(.failure(.invalidState))
+                    case .ssoChallenge:
+                        PMLog.error("Obtaining SSO challenge should never happen", sendToExternal: true)
                         completion(.failure(.invalidState))
                     }
                 case let .failure(error):
-                    PMLog.debug("Confirming 2FA code failed with \(error)")
+                    PMLog.error("Confirming 2FA code failed with \(error)", sendToExternal: true)
                     let loginError = error.asLoginError(in2FAContext: true)
                     completion(.failure(loginError))
+                }
+            }
+        }
+    }
+
+    public func provideFido2Signature(_ signature: Fido2Signature, completion: @escaping (Result<LoginStatus, LoginError>) -> Void) {
+        if #available(iOS 15.0, macOS 12.0, *) {
+            withAuthDelegateAvailable(completion) { authManager in
+
+                PMLog.debug("Sending FIDO2 challenge")
+                guard let mailboxPassword = mailboxPassword,
+                      let fido2Context else {
+                    completion(.failure(.invalidState))
+                    return
+                }
+
+                manager.sendFIDO2Signature(signature, context: fido2Context) { result in
+                    switch result {
+                    case let .success(status):
+                        switch status {
+                        case let .newCredential(credential, passwordMode):
+                            PMLog.debug("2FA code accepted, updating the credentials context and moving further")
+                            self.totpContext = TOTPContext(credential: credential, passwordMode: passwordMode)
+                            self.handleValidCredentials(credential: credential, passwordMode: passwordMode, mailboxPassword: mailboxPassword, completion: completion)
+
+                        case .askTOTP, .askAny2FA, .askFIDO2:
+                            PMLog.error("Asking again for 2FA should never happen", sendToExternal: true)
+                            completion(.failure(.invalidState))
+
+                        case .updatedCredential(let credential):
+                            authManager.onSessionObtaining(credential: credential)
+                            self.apiService.setSessionUID(uid: credential.UID)
+                            PMLog.error("No idea how to handle updatedCredential", sendToExternal: true)
+                            completion(.failure(.invalidState))
+                        case .ssoChallenge:
+                            PMLog.error("Obtaining SSO challenge should never happen", sendToExternal: true)
+                            completion(.failure(.invalidState))
+                        }
+                    case let .failure(error):
+                        PMLog.error("Confirming 2FA code failed with \(error)", sendToExternal: true)
+                        let loginError = error.asLoginError(in2FAContext: true)
+                        completion(.failure(loginError))
+                    }
                 }
             }
         }
@@ -115,7 +262,7 @@ extension LoginService {
                     user: user, mailboxPassword: mailboxPassword, passwordMode: passwordMode, completion: completion
                 )
             case .failure(let error):
-                PMLog.debug("Fetching user info with \(error)")
+                PMLog.error("Fetching user info with \(error)", sendToExternal: true)
                 completion(.failure(error.asLoginError()))
             }
         }
@@ -129,7 +276,7 @@ extension LoginService {
             case .success:
                 completion(.success)
             case let .failure(error):
-                PMLog.debug("Logout failed with \(error)")
+                PMLog.error("Logout failed with \(error)", sendToExternal: true)
                 completion(.failure(error))
             }
         }
@@ -142,15 +289,15 @@ extension LoginService {
             completion(result.mapError { $0.asAvailabilityError() })
         }
     }
-    
+
     public func checkAvailabilityForInternalAccount(username: String, completion: @escaping (Result<(), AvailabilityError>) -> Void) {
         PMLog.debug(#function)
-        
+
         manager.checkAvailableUsernameWithinDomain(username, domain: currentlyChosenSignUpDomain) { result in
             completion(result.mapError { $0.asAvailabilityError() })
         }
     }
-    
+
     public func checkAvailabilityForExternalAccount(email: String, completion: @escaping (Result<(), AvailabilityError>) -> Void) {
         PMLog.debug(#function)
 
@@ -195,7 +342,7 @@ extension LoginService {
             return
         }
         guard let mailboxPassword = mailboxPassword else {
-            PMLog.error("Cannot create account key because no mailbox password")
+            PMLog.error("Cannot create account key because no mailbox password", sendToExternal: true)
             completion(.failure(.invalidState))
             return
         }
@@ -208,7 +355,7 @@ extension LoginService {
                 case .success(let addresses):
                     self?.createAccountKeysIfNeeded(user: user, addresses: addresses, mailboxPassword: mailboxPassword, completion: completion)
                 case .failure(let error):
-                    PMLog.debug("Login failed with \(error)")
+                    PMLog.error("Login failed with \(error)", sendToExternal: true)
                     completion(.failure(error.asLoginError()))
                 }
             }
@@ -220,13 +367,13 @@ extension LoginService {
             completion(.success(user))
             return
         }
-        
+
         PMLog.debug("Creating account keys")
         let manager = self.manager
         manager.setupAccountKeys(addresses: addresses, password: mailboxPassword) { result in
             switch result {
             case let .failure(error):
-                PMLog.error("Cannot create account keys for user")
+                PMLog.error("Cannot create account keys for user", sendToExternal: true)
                 completion(.failure(error.asLoginError()))
             case .success:
                 manager.getUserInfo { result in
@@ -287,8 +434,8 @@ extension LoginService {
         }
 
         guard let primaryKey = user.keys.first(where: { $0.primary == 1 }) else {
-            PMLog.error("Cannot create address for user without primary key")
-            completion(.failure(.generic(message: CoreString._ls_error_generic,
+            PMLog.error("Cannot create address for user without primary key", sendToExternal: true)
+            completion(.failure(.generic(message: LSTranslation._loginservice_error_generic.l10n,
                                          code: 0,
                                          originalError: LoginError.invalidState)))
             return
@@ -300,8 +447,8 @@ extension LoginService {
                 completion(.failure(error.asCreateAddressKeysError()))
             case let .success(salts):
                 guard let keySalt = salts.first(where: { $0.ID == primaryKey.keyID })?.keySalt, let salt = Data(base64Encoded: keySalt) else {
-                    PMLog.error("Missing salt for primary key")
-                    completion(.failure(.generic(message: CoreString._ls_error_generic,
+                    PMLog.error("Missing salt for primary key", sendToExternal: true)
+                    completion(.failure(.generic(message: LSTranslation._loginservice_error_generic.l10n,
                                                  code: 0,
                                                  originalError: LoginError.invalidState)))
                     return
@@ -319,23 +466,23 @@ extension LoginService {
             }
         }
     }
-    
-    public func checkUsernameFromEmail(email: String, result: @escaping (Result<(String?), AvailabilityError>) -> Void) {
+
+    public func availableUsernameForExternalAccountEmail(email: String, completion: @escaping (String?) -> Void) {
         guard let username = email.components(separatedBy: "@").first else {
-            result(.success(nil))
+            completion(nil)
             return
         }
-        checkAvailabilityForInternalAccount(username: username) { res in
-            switch res {
+        checkAvailabilityForInternalAccount(username: username) { result in
+            switch result {
             case .success:
-                result(.success(username))
-            case .failure(let error):
-                switch error {
-                case .notAvailable:
-                    result(.success(nil))
-                default:
-                    result(.failure(error))
-                }
+                completion(username)
+            case .failure:
+                // we ignore the error and just return nil by design
+                // reason being — this method is used for checking if the username
+                // we want to propose to the user converting from external to internal account
+                // is available. if we cannot confirm it, we don't want to block the user.
+                // we just won't propose them the username, but we will let them choose their own one
+                completion(nil)
             }
         }
     }

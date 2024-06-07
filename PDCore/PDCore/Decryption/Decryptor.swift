@@ -16,17 +16,18 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import GoLibs
-import ProtonCore_KeyManager
-import ProtonCore_Authentication
-import ProtonCore_DataModel
+import ProtonCoreCrypto
+import ProtonCoreCryptoGoInterface
+import ProtonCoreKeyManager
+import ProtonCoreAuthentication
+import ProtonCoreDataModel
 import CommonCrypto
 
-/// ProtonCore_KeyManager framework provides a number of static methods - high-level API to work with Crypto.xcframework
+/// ProtonCoreKeyManager framework provides a number of static methods - high-level API to work with Crypto.xcframework
 /// This class gives us space to override that functional
 class Decryptor {
     
-    typealias CoreDecryptor = ProtonCore_KeyManager.Decryptor
+    typealias CoreDecryptor = ProtonCoreKeyManager.Decryptor
     typealias Errors = CoreDecryptor.Errors
     
     /*
@@ -80,6 +81,15 @@ extension Decryptor {
         try decryptAndVerifyAttachedTextMessage(nodeHashKey, decryptionKeys: decryptionKeys, verificationKeys: verificationKeys)
     }
 
+    static func decryptContentKeyPacket(
+        _ keyPacket: Data,
+        decryptionKey: DecryptionKey
+    ) throws -> Data {
+        let decryptionKeyRing = try buildPrivateKeyRing(decryptionKeys: [decryptionKey])
+        defer { decryptionKeyRing.clearPrivateParams() }
+        return try unwrap { try decryptionKeyRing.decryptSessionKey(keyPacket).key }
+    }
+
     static func decryptAndVerifyContentKeyPacket(
         _ keyPacket: Data,
         decryptionKey: DecryptionKey,
@@ -96,19 +106,19 @@ extension Decryptor {
             return .unverified(sessionKey, DriveSignatureError())
         }
 
-        let signature = CryptoPGPSignature(fromArmored: armoredSignature)
+        let signature = CryptoGo.CryptoPGPSignature(fromArmored: armoredSignature)
 
         do {
             // First attempt to verify the signature with the SessionKey (new schema)
-            let plainMessage = CryptoPlainMessage(sessionKey)
-            try verificationKeyRing.verifyDetached(plainMessage, signature: signature, verifyTime: CryptoGetUnixTime())
+            let plainMessage = CryptoGo.CryptoPlainMessage(sessionKey)
+            try verificationKeyRing.verifyDetached(plainMessage, signature: signature, verifyTime: CryptoGo.CryptoGetUnixTime())
             return .verified(sessionKey)
         } catch { }
 
         do {
             // On failure attempt to verify the signature with the KeyPacket (old iOS generated files)
-            let plainMessage = CryptoPlainMessage(keyPacket)
-            try verificationKeyRing.verifyDetached(plainMessage, signature: signature, verifyTime: CryptoGetUnixTime())
+            let plainMessage = CryptoGo.CryptoPlainMessage(keyPacket)
+            try verificationKeyRing.verifyDetached(plainMessage, signature: signature, verifyTime: CryptoGo.CryptoGetUnixTime())
             return .verified(sessionKey)
         } catch {
             return .unverified(sessionKey, error)
@@ -128,7 +138,7 @@ extension Decryptor {
         _ nodeKey: DecryptionKey
     ) throws -> ArmoredSignature {
         let plainMessage = try decryptMessage(encryptedSignature, [nodeKey])
-        let armoredSignature = try executeAndUnwrap { CryptoPGPSignature(plainMessage.getBinary())?.getArmored(&$0) }
+        let armoredSignature = try executeAndUnwrap { CryptoGo.CryptoPGPSignature(plainMessage.getBinary())?.getArmored(&$0) }
         return armoredSignature
     }
 
@@ -146,7 +156,7 @@ extension Decryptor {
         _ signature: ArmoredSignature,
         verificationKeys: [ArmoredKey]
     ) throws {
-        let plainMessage = try unwrap { CryptoPlainMessage(manifestSignature) }
+        let plainMessage = try unwrap { CryptoGo.CryptoPlainMessage(manifestSignature) }
         try verifyDetached(plainMessage, signature, verificationKeys)
     }
 
@@ -199,16 +209,19 @@ extension Decryptor {
         decryptionKeys: [DecryptionKey],
         verificationKeys: [ArmoredKey]
     ) throws -> VerifiedText {
+        defer {
+            Crypto.freeGolangMem()
+        }
         let explicitMessage = try decryptAndVerifyAttachedMessage(message, decryptionKeys: decryptionKeys, verificationKeys: verificationKeys)
 
-        guard let message = explicitMessage.message?.getString() else {
+        guard let message = explicitMessage.messageGoCrypto?.getString() else {
             throw Errors.emptyResult
         }
 
-        if explicitMessage.signatureVerificationError == nil {
+        if explicitMessage.signatureVerificationErrorGoCrypto == nil {
             return .verified(message)
         } else {
-            return .unverified(message, VerificationError(message: explicitMessage.signatureVerificationError?.message))
+            return .unverified(message, VerificationError(message: explicitMessage.signatureVerificationErrorGoCrypto?.message))
         }
     }
 
@@ -217,16 +230,19 @@ extension Decryptor {
         decryptionKeys: [DecryptionKey],
         verificationKeys: [ArmoredKey]
     ) throws -> VerifiedBinary {
+        defer {
+            Crypto.freeGolangMem()
+        }
         let explicitMessage = try decryptAndVerifyAttachedMessage(message, decryptionKeys: decryptionKeys, verificationKeys: verificationKeys)
 
-        guard let message = explicitMessage.message?.getBinary() else {
+        guard let message = explicitMessage.messageGoCrypto?.getBinary() else {
             throw Errors.emptyResult
         }
 
-        if explicitMessage.signatureVerificationError == nil {
+        if explicitMessage.signatureVerificationErrorGoCrypto == nil {
             return .verified(message)
         } else {
-            return .unverified(message, VerificationError(message: explicitMessage.signatureVerificationError?.message))
+            return .unverified(message, VerificationError(message: explicitMessage.signatureVerificationErrorGoCrypto?.message))
         }
     }
 
@@ -236,6 +252,9 @@ extension Decryptor {
         _ decryptionKeys: [DecryptionKey],
         _ verificationKeys: [ArmoredKey]
     ) throws -> VerifiedText {
+        defer {
+            Crypto.freeGolangMem()
+        }
         let plainMessage = try decryptMessage(message, decryptionKeys)
 
         do {
@@ -272,11 +291,11 @@ extension Decryptor {
         let decryptionKeyRing = try buildPrivateKeyRing(decryptionKeys: decryptionKeys)
         defer { decryptionKeyRing.clearPrivateParams() }
 
-        let pgpMessage = CryptoPGPMessage(fromArmored: message)
+        let pgpMessage = CryptoGo.CryptoPGPMessage(fromArmored: message)
         let verificationKeyRing = try buildPublicKeyRing(armoredKeys: verificationKeys)
 
         let explicitMessage = try executeAndUnwrap {
-            HelperDecryptExplicitVerify(pgpMessage, decryptionKeyRing, verificationKeyRing, CryptoGetUnixTime(), &$0)
+            CryptoGo.HelperDecryptExplicitVerify(pgpMessage, decryptionKeyRing, verificationKeyRing, CryptoGo.CryptoGetUnixTime(), &$0)
         }
 
         return explicitMessage
@@ -291,17 +310,17 @@ extension Decryptor {
         let verificationKeyRing = try buildPublicKeyRing(armoredKeys: verificationKeys)
 
         let explicitMessage = try executeAndUnwrap {
-            HelperDecryptSessionKeyExplicitVerify(dataPacket, cryptoSessionKey, verificationKeyRing, CryptoGetUnixTime(), &$0)
+            CryptoGo.HelperDecryptSessionKeyExplicitVerify(dataPacket, cryptoSessionKey, verificationKeyRing, CryptoGo.CryptoGetUnixTime(), &$0)
         }
 
-        guard let message = explicitMessage.message?.getBinary() else {
+        guard let message = explicitMessage.messageGoCrypto?.getBinary() else {
             throw Errors.emptyResult
         }
 
-        if explicitMessage.signatureVerificationError == nil {
+        if explicitMessage.signatureVerificationErrorGoCrypto == nil {
             return .verified(message)
         } else {
-            return .unverified(message, VerificationError(message: explicitMessage.signatureVerificationError?.message))
+            return .unverified(message, VerificationError(message: explicitMessage.signatureVerificationErrorGoCrypto?.message))
         }
     }
 
@@ -330,7 +349,7 @@ extension Decryptor {
         let decryptionKeyRing = try CoreDecryptor.buildPrivateKeyRing(with: decryptionKeys)
         defer { decryptionKeyRing.clearPrivateParams() }
 
-        let pgpMsg = CryptoPGPMessage(fromArmored: armoredMessage)
+        let pgpMsg = CryptoGo.CryptoPGPMessage(fromArmored: armoredMessage)
         let plainMsg = try decryptionKeyRing.decrypt(pgpMsg, verifyKey: nil, verifyTime: 0)
         return plainMsg
     }
@@ -341,8 +360,8 @@ extension Decryptor {
         _ verificationKeys: [ArmoredKey]
     ) throws {
         let verificationKeyRing = try unwrap { try CoreDecryptor.buildPublicKeyRing(armoredKeys: verificationKeys) }
-        let pgpSignature = CryptoPGPSignature(fromArmored: signature)
-        try verificationKeyRing.verifyDetached(message, signature: pgpSignature, verifyTime: CryptoGetUnixTime())
+        let pgpSignature = CryptoGo.CryptoPGPSignature(fromArmored: signature)
+        try verificationKeyRing.verifyDetached(message, signature: pgpSignature, verifyTime: CryptoGo.CryptoGetUnixTime())
     }
 
     static func hashSha256(_ data: Data) -> Data {
@@ -369,13 +388,13 @@ extension Decryptor {
     }
 
     private static func makeCryptoSessionKey(_ contentSessionKey: Data) throws -> CryptoSessionKey {
-        try unwrap { CryptoNewSessionKeyFromToken(contentSessionKey, ConstantsAES256) }
+        try unwrap { CryptoGo.CryptoNewSessionKeyFromToken(contentSessionKey, CryptoGo.ConstantsAES256) }
     }
 }
 
 extension Decryptor {
     static func decryptSessionKey(_ message: ArmoredMessage, decryptionKeys: [DecryptionKey]) throws -> Data {
-        let keyPacket = try unwrap { CryptoPGPSplitMessage(fromArmored: message)?.keyPacket }
+        let keyPacket = try unwrap { CryptoGo.CryptoPGPSplitMessage(fromArmored: message)?.keyPacket }
         return try decryptSessionKey(keyPacket, decryptionKeys: decryptionKeys)
     }
 
@@ -398,8 +417,8 @@ extension Decryptor {
     }
 
     static func srpForPassword(_ password: String, modulus: String) throws -> SRP {
-        let salt = try execute { SrpRandomBits(80, &$0) }.forceUnwrap()
-        let auth = try executeAndUnwrap { SrpNewAuthForVerifier(password.data(using: .utf8), modulus, salt, &$0) }
+        let salt = try execute { CryptoGo.SrpRandomBits(80, &$0) }.forceUnwrap()
+        let auth = try executeAndUnwrap { CryptoGo.SrpNewAuthForVerifier(password.data(using: .utf8), modulus, salt, &$0) }
         let verifier = try auth.generateVerifier(2048)
 
         return SRP(verifier: verifier, salt: salt)
@@ -419,8 +438,8 @@ extension Decryptor {
          |___________ 29 ____________|
          */
 
-        let salt = try execute { SrpRandomBits(128, &$0) }.forceUnwrap()
-        let bcryptedPassword = try executeAndUnwrap { SrpMailboxPassword(password.data(using: .utf8), salt, &$0) }
+        let salt = try execute { CryptoGo.SrpRandomBits(128, &$0) }.forceUnwrap()
+        let bcryptedPassword = try executeAndUnwrap { CryptoGo.SrpMailboxPassword(password.data(using: .utf8), salt, &$0) }
 
         var hash = try unwrap { String(data: bcryptedPassword, encoding: .utf8) }
         // Remove bcrypt prefix and salt (first 29 characters)
@@ -432,8 +451,40 @@ extension Decryptor {
     static func encryptSessionKey(_ sessionKey: Data, with password: String) throws -> KeyPacket {
         let cryptoSessionKey = try makeCryptoSessionKey(sessionKey)
         let keyPacket = try executeAndUnwrap {
-            CryptoEncryptSessionKeyWithPassword(cryptoSessionKey, password.data(using: .utf8), &$0)
+            CryptoGo.CryptoEncryptSessionKeyWithPassword(cryptoSessionKey, password.data(using: .utf8), &$0)
         }
         return keyPacket
+    }
+}
+
+extension Decryptor: DecryptionResource {
+
+    func decryptKeyPacket(_ keyPacket: Data, decryptionKey: DecryptionKey) throws -> Data {
+        try Decryptor.decryptContentKeyPacket(keyPacket, decryptionKey: decryptionKey)
+    }
+
+    func decryptInStream(url: URL, sessionKey: Data) throws {
+        let readFileHandle = try FileHandle(forReadingFrom: url)
+        defer { try? readFileHandle.close() }
+        let cryptoSesionKey = try Decryptor.makeCryptoSessionKey(sessionKey)
+        return try decryptInStream(
+            sessionKey: cryptoSesionKey,
+            ciphertextFile: readFileHandle,
+            bufferSize: Constants.maxBlockChunkSize
+        )
+    }
+
+    private func decryptInStream(sessionKey: CryptoSessionKey, ciphertextFile: FileHandle, bufferSize: Int) throws {
+        let ciphertextReader = CryptoGo.HelperMobile2GoReader(FileMobileReader(file: ciphertextFile))
+
+        let plaintextMessageReader = try sessionKey.decryptStream(ciphertextReader, verifyKeyRing: nil, verifyTime: CryptoGo.CryptoGetUnixTime())
+        let reader = CryptoGo.HelperGo2IOSReader(plaintextMessageReader)!
+        var isEOF: Bool = false
+        while !isEOF {
+            try autoreleasepool {
+                let result = try reader.read(bufferSize)
+                isEOF = result.isEOF
+            }
+        }
     }
 }

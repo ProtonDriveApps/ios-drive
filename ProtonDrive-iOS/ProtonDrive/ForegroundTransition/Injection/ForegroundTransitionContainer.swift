@@ -20,8 +20,8 @@ import PDCore
 final class ForegroundTransitionContainer {
     private let controller: ForegroundTransitionController
     
-    init(tower: Tower, pickerResource: PickerResource) {
+    init(tower: Tower, pickerResource: PickerResource, photosInteractor: CommandInteractor?) {
         let factory = ForegroundTransitionFactory()
-        controller = factory.makeController(tower: tower, pickerResource: pickerResource)
+        controller = factory.makeController(tower: tower, pickerResource: pickerResource, photosInteractor: photosInteractor)
     }
 }

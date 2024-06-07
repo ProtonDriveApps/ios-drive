@@ -21,6 +21,7 @@ import PDCore
 import PDUIComponents
 
 final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, HasMultipleSelection {
+    typealias Identifier = NodeIdentifier
 
     @Published var layout: Layout
     var cancellables = Set<AnyCancellable>()
@@ -32,7 +33,7 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
     var childrenCancellable: AnyCancellable?
     @Published var transientChildren: [NodeWrapper] = []
     @Published var permanentChildren: [NodeWrapper] = [] {
-        didSet { selection.updateSelectable(Set(permanentChildren.map(\.id))) }
+        didSet { selection.updateSelectable(Set(permanentChildren.map(\.node.identifier))) }
     }
     @Published var isVisible: Bool = true
     let genericErrors = ErrorRegulator()
@@ -72,7 +73,7 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
     @Published var downloadProgresses: [ProgressTracker] = []
     
     // MARK: HasMultipleSelection
-    lazy var selection = MultipleSelectionModel(selectable: Set<String>())
+    lazy var selection = MultipleSelectionModel(selectable: Set<NodeIdentifier>())
     @Published var listState: ListState = .active
     
     // MARK: others
@@ -86,6 +87,10 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
         self.subscribeToChildrenDownloading()
         self.selection.unselectOnEmpty(for: self)
         self.subscribeToLayoutChanges()
+    }
+
+    func actionBarItems() -> [ActionBarButtonViewModel] {
+        [.trashMultiple, .offlineAvailableMultiple]
     }
 }
 

@@ -16,11 +16,24 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import Foundation
 
 protocol PhotosSettingsViewModelProtocol: ObservableObject {
     var title: String { get }
+    var imageTitle: String { get }
+    var videoTitle: String { get }
     var isEnabled: Bool { get }
+    var isNotOlderThanEnabled: Bool { get }
+    var notOlderThanTitle: String { get }
+    var notOlderThan: Date { get }
+    var diagnosticsTitle: String { get }
     func setEnabled(_ isEnabled: Bool)
+    var isVideoEnabled: Bool { get }
+    func setVideoEnabled(_ isEnabled: Bool)
+    var isImageEnabled: Bool { get }
+    func setImageEnabled(_ isEnabled: Bool)
+    func setIsNotOlderThanEnabled(_ isEnabled: Bool)
+    func setNotOlderThan(_ date: Date)
 }
 
 final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
@@ -28,17 +41,36 @@ final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
     private let startController: PhotosBackupStartController
 
     let title = "Photos backup"
+    let imageTitle = "Backup Images"
+    let videoTitle = "Backup Videos"
+    let notOlderThanTitle = "Items since"
+    let diagnosticsTitle = "Open diagnostics"
     @Published var isEnabled = false
+    @Published var isImageEnabled = false
+    @Published var isVideoEnabled = false
+    @Published var notOlderThan = Date.distantPast
 
     init(settingsController: PhotoBackupSettingsController, startController: PhotosBackupStartController) {
         self.settingsController = settingsController
         self.startController = startController
         subscribeToUpdates()
     }
+    
+    var isNotOlderThanEnabled: Bool {
+        notOlderThan != .distantPast
+    }
 
     private func subscribeToUpdates() {
         settingsController.isEnabled
             .assign(to: &$isEnabled)
+        settingsController.supportedMediaTypes
+            .map { $0.contains(.image) }
+            .assign(to: &$isImageEnabled)
+        settingsController.supportedMediaTypes
+            .compactMap { $0.contains(.video) }
+            .assign(to: &$isVideoEnabled)
+        settingsController.notOlderThan
+            .assign(to: &$notOlderThan)
     }
 
     func setEnabled(_ isEnabled: Bool) {
@@ -47,5 +79,21 @@ final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
         } else {
             settingsController.setEnabled(isEnabled)
         }
+    }
+    
+    func setImageEnabled(_ isEnabled: Bool) {
+        settingsController.setImageEnabled(isEnabled)
+    }
+    
+    func setVideoEnabled(_ isEnabled: Bool) {
+        settingsController.setVideoEnabled(isEnabled)
+    }
+    
+    func setIsNotOlderThanEnabled(_ isEnabled: Bool) {
+        settingsController.setNotOlderThan(isEnabled ? .now : .distantPast)
+    }
+    
+    func setNotOlderThan(_ date: Date) {
+        settingsController.setNotOlderThan(date)
     }
 }

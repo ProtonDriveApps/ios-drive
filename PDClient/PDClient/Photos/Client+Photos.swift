@@ -25,17 +25,17 @@ extension Client: PhotoShareListing {
     public func getPhotosRoot() async throws -> PhotosRoot {
         let response = try await listPhotoShares()
         async let share = try bootstrapPhotosShare(shareID: response.shareID)
-        async let root = try bootstrapPhotosRoot(shareID: response.shareID, nodeID: response.linkID)
+        async let root = try bootstrapPhotosRoot(shareID: response.shareID, nodeID: response.linkID, breadcrumbs: .startCollecting())
 
         return try await PhotosRoot(link: root, share: share)
     }
 
-    private func listPhotoShares() async throws -> ListSharesEndpoint.Response.Share {
+    public func listPhotoShares() async throws -> ListSharesEndpoint.Response.Share {
         let parameters = ListSharesEndpoint.Parameters(shareType: .photos, showAll: .default)
         let endpoint = ListSharesEndpoint(parameters: parameters, service: service, credential: try credential())
-        let reponse = try await request(endpoint)
+        let response = try await request(endpoint)
 
-        guard let shareDevice = reponse.shares.first else {
+        guard let shareDevice = response.shares.first(where: { $0.state == .active && $0.locked != true }) else {
             throw NSError(domain: "No Photos Share found", code: 0)
         }
 
@@ -47,8 +47,9 @@ extension Client: PhotoShareListing {
         return try await request(endpoint)
     }
 
-    func bootstrapPhotosRoot(shareID: ShareID, nodeID: FolderID) async throws -> Link {
-        let endpoint = LinkEndpoint(shareID: shareID, linkID: nodeID, service: self.service, credential: try credential())
+    func bootstrapPhotosRoot(shareID: ShareID, nodeID: FolderID, breadcrumbs: Breadcrumbs) async throws -> Link {
+        let endpoint = try LinkEndpoint(shareID: shareID, linkID: nodeID, service: self.service, credential: try credential(),
+                                        breadcrumbs: breadcrumbs.collect())
         let response = try await request(endpoint)
         return response.link
     }
@@ -81,7 +82,7 @@ extension Client: PhotoShareCreator {
         )
 
         let endpoint = try CreatePhotosShareEndpoint(parameters: parameters, service: service, credential: try credential())
-        return try await request(endpoint)
+        return try await request(endpoint, completionExecutor: .asyncExecutor(dispatchQueue: backgroundQueue))
     }
 }
 
@@ -102,11 +103,13 @@ extension Client: PhotoShareDeleting {
 extension Client: PhotosListing {
     public func getPhotosList(with parameters: PhotosListRequestParameters) async throws -> PhotosListResponse {
         let endpoint = PhotosListEndpoint(service: service, credential: try credential(), parameters: parameters)
-        return try await request(endpoint)
+        return try await request(endpoint, completionExecutor: .asyncExecutor(dispatchQueue: backgroundQueue))
     }
+}
 
-    public func getLinksMetadata(with parameters: LinksMetadataParameters) async throws -> LinksResponse {
-        let endpoint = LinksMetadataEndpoint(service: service, credential: try credential(), parameters: parameters)
-        return try await request(endpoint)
+extension Client: PhotosDuplicatesRepository {
+    public func getPhotosDuplicates(with parameters: FindDuplicatesParameters) async throws -> FindDuplicatesResponse {
+        let endpoint = FindDuplicatesEndpoint(parameters: parameters, service: service, credential: try credential())
+        return try await request(endpoint, completionExecutor: .asyncExecutor(dispatchQueue: backgroundQueue))
     }
 }

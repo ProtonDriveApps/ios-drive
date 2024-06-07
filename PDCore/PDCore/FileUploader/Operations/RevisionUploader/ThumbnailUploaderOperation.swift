@@ -19,41 +19,58 @@ import Foundation
 
 final class ThumbnailUploaderOperation: AsynchronousOperation {
 
-    private let progressTracker: Progress
+    private let id: UUID
+    private let index: Int
+    private let token: String
+    private let progress: Progress
     private let contentUploader: ContentUploader
+    private let onError: OnUploadError
 
     init(
-        progressTracker: Progress,
-        contentUploader: ContentUploader
+        id: UUID,
+        index: Int,
+        token: String,
+        progress: Progress,
+        contentUploader: ContentUploader,
+        onError: @escaping OnUploadError
     ) {
-        self.progressTracker = progressTracker
+        self.id = id
+        self.index = index
+        self.token = token
+        self.progress = progress
         self.contentUploader = contentUploader
+        self.onError = onError
         super.init()
     }
 
     override func main() {
         guard !isCancelled else { return }
 
-        ConsoleLogger.shared?.log("STAGE: 3.1 Thumbnail upload 🏞☁️ started", osLogType: FileUploader.self)
+        Log.info("STAGE: 3.1 Thumbnail \(index) upload 🏞☁️ started. UUID: \(id.uuidString) Token: \(token)", domain: .uploader)
 
-        contentUploader.upload() { [weak self] result in
+        contentUploader.upload { [weak self] result in
             guard let self = self, !self.isCancelled else { return }
 
             switch result {
             case .success:
-                ConsoleLogger.shared?.log("STAGE: 3.1 Thumbnail upload 🏞☁️ finished ✅", osLogType: FileUploader.self)
+                Log.info("STAGE: 3.1 Thumbnail \(self.index) upload 🏞☁️ finished ✅. UUID: \(self.id.uuidString) Token: \(self.token)", domain: .uploader)
+                self.progress.complete()
+                self.state = .finished
 
-            case .failure:
-                ConsoleLogger.shared?.log("STAGE: 3.1 Thumbnail upload 🏞☁️ finished ❌", osLogType: FileUploader.self)
+            case .failure(let error as ResponseError) where error.isRetryable:
+                Log.info("STAGE: 3.1 Thumbnail \(self.index) upload 🏞☁️ not finished ⚠️. UUID: \(self.id.uuidString) Token: \(self.token)", domain: .uploader)
+                Log.error("UUID: \(self.id.uuidString) ERROR: \(error)", domain: .uploader)
+                self.state = .finished
+
+            case .failure(let error):
+                Log.info("STAGE: 3.1 Thumbnail \(self.index) upload 🏞☁️ finished ❌. UUID: \(self.id.uuidString) Token: \(self.token)", domain: .uploader)
+                Log.error("UUID: \(self.id.uuidString) ERROR: \(error)", domain: .uploader)
+                self.onError(error)
             }
-
-            self.progressTracker.complete()
-            self.state = .finished
         }
     }
 
     override func cancel() {
-        ConsoleLogger.shared?.log("🙅‍♂️🙅‍♂️🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
         contentUploader.cancel()
         super.cancel()
     }

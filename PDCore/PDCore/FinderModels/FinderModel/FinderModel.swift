@@ -15,13 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import os.log
-
 public protocol FinderModel: AnyObject {
     func loadFromCache()
     var folder: Folder? { get }
-}
-
-struct FinderLogger: LogObject {
-    static var osLog: OSLog = OSLog(subsystem: "ch.protondrive", category: "Finder")
 }

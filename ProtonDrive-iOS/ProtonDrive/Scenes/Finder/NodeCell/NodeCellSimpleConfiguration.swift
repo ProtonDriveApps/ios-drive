@@ -39,7 +39,7 @@ class NodeCellSimpleConfiguration: ObservableObject, NodeCellConfiguration {
     let progressCompleted: Double = 0
     var progressDirection: ProgressTracker.Direction?
     let selectionModel: CellSelectionModel? = nil
-    let id: String
+    let id: NodeIdentifier
 
     let thumbnailViewModel: ThumbnailImageViewModel?
     let nodeRowActionMenuViewModel: NodeRowActionMenuViewModel? = nil
@@ -58,7 +58,7 @@ class NodeCellSimpleConfiguration: ObservableObject, NodeCellConfiguration {
         self.lastModified = node.modifiedDate
         self.size = node.size
         self.isDisabled = disabled
-        self.id = node.id
+        self.id = node.identifier
 
         self.thumbnailViewModel = ThumbnailImageViewModel(node: node, loader: loader)
     }

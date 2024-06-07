@@ -16,7 +16,10 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDCore
+
+typealias URLResult = Result<URLContent, Error>
 
 protocol PickerDelegate: AnyObject {
-    func picker(didFinishPicking items: [Result<URL, Error>])
+    func picker(didFinishPicking items: [URLResult])
 }

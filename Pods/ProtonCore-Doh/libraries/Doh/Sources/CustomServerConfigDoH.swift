@@ -27,14 +27,18 @@ public final class CustomServerConfigDoH: DoH, ServerConfig {
     public let defaultHost: String
     public let apiHost: String
     public let defaultPath: String
-    
+    public let proxyToken: String?
+    public let apnEnvironment: APNEnvironment
+
     public init(signupDomain: String,
                 captchaHost: String,
                 humanVerificationV3Host: String,
                 accountHost: String,
                 defaultHost: String,
                 apiHost: String,
-                defaultPath: String) {
+                defaultPath: String,
+                proxyToken: String? = nil,
+                apnEnvironment: APNEnvironment) {
         self.signupDomain = signupDomain
         self.captchaHost = captchaHost
         self.humanVerificationV3Host = humanVerificationV3Host
@@ -42,18 +46,22 @@ public final class CustomServerConfigDoH: DoH, ServerConfig {
         self.defaultHost = defaultHost
         self.apiHost = apiHost
         self.defaultPath = defaultPath
+        self.proxyToken = proxyToken
+        self.apnEnvironment = apnEnvironment
         super.init()
     }
-    
+
     static var `default`: CustomServerConfigDoH!
-    // swiftlint:disable function_parameter_count
+
     public static func build(signupDomain: String,
                              captchaHost: String,
                              humanVerificationV3Host: String,
                              accountHost: String,
                              defaultHost: String,
                              apiHost: String,
-                             defaultPath: String) -> CustomServerConfigDoH {
+                             defaultPath: String,
+                             proxyToken: String? = nil,
+                             apnEnvironment: APNEnvironment) -> CustomServerConfigDoH {
         if CustomServerConfigDoH.default != nil && CustomServerConfigDoH.default.signupDomain == signupDomain {
             return CustomServerConfigDoH.default
         }
@@ -62,6 +70,9 @@ public final class CustomServerConfigDoH: DoH, ServerConfig {
                                           humanVerificationV3Host: humanVerificationV3Host,
                                           accountHost: accountHost,
                                           defaultHost: defaultHost,
-                                          apiHost: apiHost, defaultPath: defaultPath)
+                                          apiHost: apiHost,
+                                          defaultPath: defaultPath,
+                                          proxyToken: proxyToken,
+                                          apnEnvironment: apnEnvironment)
     }
 }

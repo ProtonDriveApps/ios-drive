@@ -44,6 +44,29 @@ public struct Share: Codable {
     public var linkID: Link.LinkID
     public var creator, addressID: String
     public var key, passphrase, passphraseSignature: String
+    public let type: ´Type´
+
+    public enum ´Type´: Int, Codable {
+        case main = 1
+        case standard = 2
+        case device = 3
+        case photos = 4
+    }
+    
+    public init(flags: Flags, shareID: ShareID, volumeID: Volume.VolumeID, linkID: Link.LinkID,
+                creator: String, addressID: String, key: String, 
+                passphrase: String, passphraseSignature: String, type: ´Type´) {
+        self.flags = flags
+        self.shareID = shareID
+        self.volumeID = volumeID
+        self.linkID = linkID
+        self.creator = creator
+        self.addressID = addressID
+        self.key = key
+        self.passphrase = passphrase
+        self.passphraseSignature = passphraseSignature
+        self.type = type
+    }
 }
 
 public extension ShareShort {

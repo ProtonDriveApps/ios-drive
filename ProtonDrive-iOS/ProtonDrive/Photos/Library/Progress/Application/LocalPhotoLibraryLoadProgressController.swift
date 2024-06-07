@@ -18,7 +18,11 @@
 import Combine
 import PDCore
 
-final class LocalPhotoLibraryLoadProgressController: PhotosLoadProgressController {
+protocol PhotoLibraryLoadProgressController {
+    func handle(_ action: PhotoLibraryLoadAction)
+}
+
+final class LocalPhotoLibraryLoadProgressController: PhotosLoadProgressController, PhotoLibraryLoadProgressController {
     private let interactor: PhotoLibraryLoadProgressActionRepository
     private let subject = CurrentValueSubject<PhotosBackupProgress, Never>(PhotosBackupProgress(total: 0, inProgress: 0))
     private var cancellables = Set<AnyCancellable>()
@@ -49,7 +53,7 @@ final class LocalPhotoLibraryLoadProgressController: PhotosLoadProgressControlle
             .store(in: &cancellables)
     }
 
-    private func handle(_ action: PhotoLibraryLoadAction) {
+    func handle(_ action: PhotoLibraryLoadAction) {
         switch action {
         case let .added(count):
             totalCount += count
@@ -59,8 +63,12 @@ final class LocalPhotoLibraryLoadProgressController: PhotosLoadProgressControlle
             inProgressCount -= count
         case let .finished(count):
             inProgressCount -= count
+        case .reset:
+            inProgressCount = 0
+            totalCount = 0
         }
         let progress = PhotosBackupProgress(total: max(totalCount, 0), inProgress: max(inProgressCount, 0))
+        Log.info("Photos processing progress: \(progress)", domain: .photosProcessing)
         subject.send(progress)
     }
 }

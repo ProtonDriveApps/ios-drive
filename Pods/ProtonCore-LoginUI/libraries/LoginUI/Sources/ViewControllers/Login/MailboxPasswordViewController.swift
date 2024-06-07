@@ -19,12 +19,13 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import Foundation
 import UIKit
-import ProtonCore_CoreTranslation
-import ProtonCore_Foundations
-import ProtonCore_Login
-import ProtonCore_UIFoundations
+import ProtonCoreFoundations
+import ProtonCoreLogin
+import ProtonCoreUIFoundations
 
 protocol MailboxPasswordViewControllerInStandaloneFlowDelegate: AnyObject {
     func userDidRequestPasswordReset()
@@ -53,7 +54,7 @@ final class MailboxPasswordViewController: UIViewController, AccessibleView, Foc
     var viewModel: MailboxPasswordViewModel!
     var customErrorPresenter: LoginErrorPresenter?
     var onDohTroubleshooting: () -> Void = {}
-    
+
     override var preferredStatusBarStyle: UIStatusBarStyle { darkModeAwarePreferredStatusBarStyle() }
 
     var focusNoMore: Bool = false
@@ -81,16 +82,16 @@ final class MailboxPasswordViewController: UIViewController, AccessibleView, Foc
 
     private func setupUI() {
         view.backgroundColor = ColorProvider.BackgroundNorm
-        titleLabel.text = CoreString._ls_login_mailbox_screen_title
+        titleLabel.text = LUITranslation.login_mailbox_screen_title.l10n
         titleLabel.textColor = ColorProvider.TextNorm
-        mailboxPasswordTextField.title = CoreString._ls_login_mailbox_field_title
+        mailboxPasswordTextField.title = LUITranslation.login_mailbox_field_title.l10n
         mailboxPasswordTextField.isPassword = true
         mailboxPasswordTextField.textContentType = .password
 
         forgetButton.setMode(mode: .text)
 
-        unlockButton.setTitle(CoreString._ls_login_mailbox_button_title, for: .normal)
-        forgetButton.setTitle(CoreString._ls_login_mailbox_forgot_password, for: .normal)
+        unlockButton.setTitle(LUITranslation.login_mailbox_button_title.l10n, for: .normal)
+        forgetButton.setTitle(LUITranslation.login_mailbox_forgot_password.l10n, for: .normal)
 
         if !isStandaloneComponent {
             setUpBackArrow(action: #selector(MailboxPasswordViewController.goBack(_:)))
@@ -138,11 +139,6 @@ final class MailboxPasswordViewController: UIViewController, AccessibleView, Foc
         super.viewDidLayoutSubviews()
         navigationBarAdjuster.setUp(for: scrollView, shouldAdjustNavigationBar: !isStandaloneComponent, parent: parent)
         scrollView.adjust(forKeyboardVisibilityNotification: nil)
-    }
-
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        focusOnce(view: mailboxPasswordTextField)
     }
 
     // MARK: - Keyboard
@@ -193,7 +189,7 @@ final class MailboxPasswordViewController: UIViewController, AccessibleView, Foc
 // MARK: - Additional errors handling
 
 extension MailboxPasswordViewController: LoginErrorCapable {
-    
+
     func onFirstPasswordChangeNeeded() {
         delegate?.firstPasswordChangeNeeded()
     }
@@ -201,7 +197,7 @@ extension MailboxPasswordViewController: LoginErrorCapable {
     func onUserAccountSetupNeeded() {
         delegate?.userAccountSetupNeeded()
     }
-    
+
     func onLearnMoreAboutExternalAccountsNotSupported() {
         delegate?.learnMoreAboutExternalAccountsNotSupported()
     }
@@ -223,3 +219,5 @@ extension MailboxPasswordViewController: PMTextFieldDelegate {
         return true
     }
 }
+
+#endif

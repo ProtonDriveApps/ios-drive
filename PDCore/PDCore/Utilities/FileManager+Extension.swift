@@ -29,11 +29,11 @@ extension FileManager {
 extension FileManager {
     func split(file: URL, maxBlockSize: Int, chunkSize: Int) throws -> [URL] {
         let reader = try FileHandle(forReadingFrom: file)
-        defer { reader.closeFile() }
+        defer { try? reader.close() }
         var writer: FileHandle!
         var blockSizedFiles: [URL] = []
         
-        var data = reader.readData(ofLength: chunkSize)
+        var data = try reader.read(upToCount: chunkSize) ?? Data()
         while !data.isEmpty {
             let blockUrl = file.appendingPathExtension("\(blockSizedFiles.count)")
             if FileManager.default.fileExists(atPath: blockUrl.path) {
@@ -42,13 +42,14 @@ extension FileManager {
             FileManager.default.createFile(atPath: blockUrl.path, contents: Data(), attributes: nil)
             writer = try FileHandle(forWritingTo: blockUrl)
             
-            while writer.offsetInFile < maxBlockSize - chunkSize, !data.isEmpty {
-                autoreleasepool {
-                    writer.write(data)
-                    data = reader.readData(ofLength: chunkSize)
+            defer { try? writer.close() }
+            
+            while try writer.offset() <= maxBlockSize - chunkSize, !data.isEmpty {
+                try autoreleasepool {
+                    try writer.write(contentsOf: data)
+                    data = try reader.read(upToCount: chunkSize) ?? Data()
                 }
             }
-            writer.closeFile()
             blockSizedFiles.append(blockUrl)
         }
 
@@ -62,21 +63,41 @@ extension FileManager {
         FileManager.default.createFile(atPath: destination.path, contents: nil, attributes: nil)
         
         let writer = try FileHandle(forWritingTo: destination)
+        defer { try? writer.close() }
+        
         try files.forEach { blockUrl in
             try autoreleasepool {
                 let reader = try FileHandle(forReadingFrom: blockUrl)
-                var data = reader.readData(ofLength: chunkSize)
+                defer { try? reader.close() }
+                var data = try reader.read(upToCount: chunkSize) ?? Data()
                 while !data.isEmpty {
-                    autoreleasepool {
-                        writer.write(data)
-                        data = reader.readData(ofLength: chunkSize)
+                    try autoreleasepool {
+                        try writer.write(contentsOf: data)
+                        data = try reader.read(upToCount: chunkSize) ?? Data()
                     }
                 }
-                reader.closeFile()
             }
         }
-        
-        writer.closeFile()
         try files.forEach(FileManager.default.removeItem)
+    }
+
+    public func removeItemIncludingUniqueDirectory(at url: URL) throws {
+        let directory = url.deletingLastPathComponent()
+        let directoryName = directory.lastPathComponent
+
+        // Check if the parent directory exists
+        if !FileManager.default.fileExists(atPath: directory.path) {
+            return
+        }
+
+        if FileManager.default.fileExists(atPath: url.path) {
+            try FileManager.default.removeItem(at: url)
+
+            if UUID(uuidString: directoryName) != nil, try FileManager.default.contentsOfDirectory(atPath: directory.path).isEmpty {
+                try? FileManager.default.removeItem(at: directory)
+            }
+        } else if UUID(uuidString: directoryName) != nil, try FileManager.default.contentsOfDirectory(atPath: directory.path).isEmpty {
+            try? FileManager.default.removeItem(at: directory)
+        }
     }
 }

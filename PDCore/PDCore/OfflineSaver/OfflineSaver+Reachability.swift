@@ -29,14 +29,14 @@ extension OfflineSaver {
             self.reachability = reachability
         } catch let error {
             assert(false, error.localizedDescription)
-            ConsoleLogger.shared?.log(error, osLogType: OfflineSaver.self)
+            Log.error(error, domain: .networking)
         }
     }
     
     func onReachable(_ reachability: Reachability) {
         switch reachability.connection {
         case .cellular, .wifi:
-            ConsoleLogger.shared?.log("Became reachable via \(reachability.connection.description)", osLogType: OfflineSaver.self)
+            Log.info("Became reachable via \(reachability.connection.description)", domain: .networking)
             
             self.requestProgressBlockUpdate()
             self.storage?.backgroundContext.perform {
@@ -50,7 +50,7 @@ extension OfflineSaver {
     func onUnreachable(_ reachability: Reachability) {
         switch reachability.connection {
         case .unavailable, .none:
-            ConsoleLogger.shared?.log("Lost reachability", osLogType: OfflineSaver.self)
+            Log.info("Lost reachability", domain: .networking)
             
             // check if something is not downloaded properly - and artificially add tiny fraction so progress will be claimed started
             self.storage?.backgroundContext.perform {

@@ -20,6 +20,7 @@ import Foundation
 
 protocol PhotosGalleryController: AnyObject {
     var sections: AnyPublisher<[PhotosSection], Never> { get }
+    func getIds() -> Set<PhotoId>
 }
 
 final class LocalPhotosGalleryController: PhotosGalleryController {
@@ -38,5 +39,9 @@ final class LocalPhotosGalleryController: PhotosGalleryController {
                 self?.subject.send(section)
             }
             .store(in: &cancellables)
+    }
+
+    func getIds() -> Set<PhotoId> {
+        Set(subject.value.flatMap(\.photos).map(\.id))
     }
 }

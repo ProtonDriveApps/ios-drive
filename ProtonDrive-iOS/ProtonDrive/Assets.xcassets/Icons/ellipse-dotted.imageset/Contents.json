@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "ellipse-dotted.svg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

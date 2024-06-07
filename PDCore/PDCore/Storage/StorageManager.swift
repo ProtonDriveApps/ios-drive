@@ -20,7 +20,7 @@ import CoreData
 
 // MARK: - Persistent Container Management
 
-public class StorageManager: NSObject {
+public class StorageManager: NSObject, ManagedStorage {
     private static var managedObjectModel: NSManagedObjectModel = {
         // static linking
         if let resources = Bundle.main.resourceURL?.appendingPathComponent("PDCoreResources").appendingPathExtension("bundle"),
@@ -42,16 +42,20 @@ public class StorageManager: NSObject {
 
     internal static func defaultPersistentContainer(suiteUrl: URL?) -> NSPersistentContainer {
         let databaseName = "Metadata"
-        var container = NSPersistentContainer(name: databaseName, managedObjectModel: self.managedObjectModel)
+        var container = NSPersistentContainer(name: databaseName, managedObjectModel: managedObjectModel)
         
         let storeDirectoryUrl = suiteUrl ?? NSPersistentContainer.defaultDirectoryURL()
         let storeFileUrl = storeDirectoryUrl.appendingPathComponent(databaseName + ".sqlite")
+        
+        MigrationDetector().checkIfRequiresPostMigrationCleanup(storeAt: storeFileUrl, for: managedObjectModel)
         
         let storeDescription = NSPersistentStoreDescription(url: storeFileUrl)
         storeDescription.shouldMigrateStoreAutomatically = true // Lightweight migration is enabled. Standard migrations from previous versions are to be handled below.
         storeDescription.shouldAddStoreAsynchronously = false
         container.persistentStoreDescriptions = [storeDescription]
         
+        // Completion handler is @escaping, but we do not feel that because it is executed synchronously by some reason
+        // Possibility of race condition (ノಠ益ಠ)ノ彡┻━┻
         var loadError: Error?
         container.loadPersistentStores { (description, error) in
             loadError = error
@@ -179,20 +183,31 @@ public class StorageManager: NSObject {
     
     public func prepareForTermination() {
         self.mainContext.performAndWait {
-            try? self.mainContext.save()
+            try? self.mainContext.saveWithParentLinkCheck()
         }
         
         // remove everything per entity
         self.backgroundContext.performAndWait {
-            try? self.backgroundContext.save()
+            try? self.backgroundContext.saveWithParentLinkCheck()
         }
     }
     
     public lazy var mainContext: NSManagedObjectContext = {
+        #if os(macOS)
+        if Constants.runningInExtension {
+            return newBackgroundContext()
+        } else {
+            let context = self.persistentContainer.viewContext
+            context.automaticallyMergesChangesFromParent = true
+            context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
+            return context
+        }
+        #else
         let context = self.persistentContainer.viewContext
         context.automaticallyMergesChangesFromParent = true
         context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
         return context
+        #endif
     }()
     
     public lazy var backgroundContext: NSManagedObjectContext = {
@@ -200,6 +215,10 @@ public class StorageManager: NSObject {
         context.automaticallyMergesChangesFromParent = true
         context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
         return context
+    }()
+
+    public lazy var photosBackgroundContext: NSManagedObjectContext = {
+        newBackgroundContext()
     }()
     
     public func newBackgroundContext() -> NSManagedObjectContext {
@@ -215,39 +234,35 @@ public class StorageManager: NSObject {
         context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
         return context
     }()
-    
-    lazy var photoUploadContext: NSManagedObjectContext = {
-        let context = self.persistentContainer.newBackgroundContext()
-        context.automaticallyMergesChangesFromParent = true
-        context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
-        return context
-    }()
 
     func privateChildContext(of parent: NSManagedObjectContext) -> NSManagedObjectContext {
         let child = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
         child.parent = parent
+        child.automaticallyMergesChangesFromParent = true
+        child.mergePolicy = NSMergePolicy.mergeByPropertyObjectTrump
         return child
     }
     
-    func clearUp() {
+    func clearUp() async {
         finishedFetchingTrash = nil
         finishedFetchingShareURLs = nil
 
         userDefaults.removeObject(forKey: UserDefaults.NotificationPropertyKeys.metadataDBUpdateKey.rawValue)
-        
-        self.mainContext.performAndWait {
+        userDefaults.removeObject(forKey: UserDefaults.NotificationPropertyKeys.syncErrorDBUpdateKey.rawValue)
+
+        await self.mainContext.perform {
             self.mainContext.reset()
         }
 
         // remove everything per entity
-        self.backgroundContext.performAndWait {
+        await self.backgroundContext.perform {
             self.backgroundContext.reset()
             
-            [Node.self, Block.self, Revision.self, Volume.self, Share.self, Thumbnail.self, ShareURL.self, Photo.self, Device.self, PhotoRevision.self].forEach { entity in
+            [Node.self, Block.self, Revision.self, Volume.self, Share.self, Thumbnail.self, ShareURL.self, Photo.self, Device.self, PhotoRevision.self, ThumbnailBlob.self].forEach { entity in
                 let request = NSBatchDeleteRequest(fetchRequest: NSFetchRequest<NSFetchRequestResult>(entityName: String(describing: entity)))
                 request.resultType = .resultTypeObjectIDs
                 do {
-                    _ = try self.persistentContainer.persistentStoreCoordinator.execute(request, with: backgroundContext)
+                    _ = try self.persistentContainer.persistentStoreCoordinator.execute(request, with: self.backgroundContext)
                 } catch {
                     assert(false, "Could not perform batch deletion after logout")
                 }

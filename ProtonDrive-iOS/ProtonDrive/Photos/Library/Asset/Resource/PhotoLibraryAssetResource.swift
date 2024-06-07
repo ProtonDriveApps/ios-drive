@@ -20,8 +20,10 @@ import Photos
 
 struct PhotoAssetData {
     let identifier: PhotoIdentifier
+    let asset: PHAsset
     let resource: PHAssetResource
-    let filename: String
+    let originalFilename: String
+    let fileExtension: String
     let isOriginal: Bool
 }
 
@@ -54,24 +56,56 @@ final class LocalPhotoLibraryAssetResource: PhotoLibraryAssetResource {
 
     private func execute(with data: PhotoAssetData, url: URL, duration: Double?) async throws -> PhotoAsset {
         let exif = try await getExif(from: data.resource, url: url)
-        let hash = try await contentResource.createHash(with: data.resource)
+        let cameraInfo = exifResource.getCameraInfo(at: url)
         let factoryData = PhotoAssetFactoryData(
             identifier: data.identifier,
             url: url,
-            hash: hash,
-            filename: data.filename,
+            mimeType: getMimeType(from: data),
+            originalFilename: data.originalFilename,
+            filenameExtension: data.fileExtension,
+            width: data.asset.pixelWidth,
+            height: data.asset.pixelHeight,
             exif: exif,
             isOriginal: data.isOriginal,
-            duration: duration
+            duration: duration,
+            camera: makeCameraInfo(data: data, camera: cameraInfo),
+            location: exifResource.getLocation(at: url)
         )
         return try assetFactory.makeAsset(from: factoryData)
     }
 
+    private func getMimeType(from data: PhotoAssetData) -> MimeType {
+        guard let type = MimeType(uti: data.resource.uniformTypeIdentifier) else {
+            return MimeType(value: "application/octet-stream")
+        }
+        return type
+    }
+
     private func getExif(from resource: PHAssetResource, url: URL) async throws -> PhotoAsset.Exif {
         if resource.isImage() {
-            return try exifResource.getPhotoExif(at: url)
+            return exifResource.getPhotoExif(at: url)
         } else {
-            return try await exifResource.getVideoExif(at: url)
+            return await exifResource.getVideoExif(at: url)
         }
+    }
+
+    private func makeCameraInfo(data: PhotoAssetData, camera: PhotoAssetMetadata.Camera) -> PhotoAssetMetadata.Camera {
+        let earliestDate = Date(timeIntervalSince1970: 0)
+        let defaultDate = Date(timeIntervalSince1970: -3061152000)
+        // When EXIF creation date is empty, `data.asset.creationDate` is `Jan 1, 1904`, time stamp `-3061152000`
+        var captureTime = camera.captureTime ?? data.asset.creationDate ?? camera.modificationTime ?? earliestDate
+        // BE doesn't allow the default date, update captureTime when we get default date 
+        if captureTime == defaultDate {
+            captureTime = camera.modificationTime ?? earliestDate
+        }
+        captureTime = captureTime > earliestDate ? captureTime : earliestDate
+
+        return PhotoAssetMetadata.Camera(
+            captureTime: captureTime,
+            device: camera.device,
+            modificationTime: camera.modificationTime,
+            orientation: camera.orientation,
+            subjectCoordinates: camera.subjectCoordinates
+        )
     }
 }

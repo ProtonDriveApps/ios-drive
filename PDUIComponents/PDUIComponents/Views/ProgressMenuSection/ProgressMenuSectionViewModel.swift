@@ -17,7 +17,7 @@
 
 import UIKit
 import Combine
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 public class ProgressMenuSectionViewModelGeneric<ProgressProviderType>: ObservableObject where ProgressProviderType: NSObject, ProgressProviderType: ProgressFractionCompletedProvider {
    

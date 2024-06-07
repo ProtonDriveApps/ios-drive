@@ -22,8 +22,12 @@ public extension FileUploader {
 
     typealias OperationID = UUID
     typealias CurrentProgress = Progress
+    
+    var queue: OperationQueue {
+        processingQueue
+    }
 
-    func errorPublisher<Hashable, T>() -> AnyPublisher<[Hashable: T], Error> {
+    private func errorStreamToErrorPublisher<Hashable, T>() -> AnyPublisher<[Hashable: T], Error> {
         errorStream
             .setFailureType(to: Error.self)
             .tryMap { throw $0 }
@@ -36,7 +40,7 @@ public extension FileUploader {
             .publisher(for: \.operations)
             .compactMap { operations in
                 operations
-                    .compactMap { $0 as? MainFileUploaderOperation }
+                    .compactMap { $0 as? FileUploaderOperation }
                     .reduce(into: [OperationID: CurrentProgress]()) { partialResult, op in
                         partialResult[op.id] = op.progress
                     }
@@ -44,7 +48,7 @@ public extension FileUploader {
             .removeDuplicates()
             .setFailureType(to: Error.self)
             .eraseToAnyPublisher()
-            .merge(with: errorPublisher())
+            .merge(with: errorStreamToErrorPublisher())
             .eraseToAnyPublisher()
     }
 

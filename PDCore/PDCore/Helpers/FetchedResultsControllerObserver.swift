@@ -27,13 +27,17 @@ public final class FetchedResultsControllerObserver<ResultType: NSFetchRequestRe
         $cache.eraseToAnyPublisher()
     }
 
-    private var fetchedResultsController: NSFetchedResultsController<ResultType>
+    public var fetchedResultsController: NSFetchedResultsController<ResultType>
 
     public init(controller: NSFetchedResultsController<ResultType>) {
         fetchedResultsController = controller
         super.init()
         fetchedResultsController.delegate = self
 
+        start()
+    }
+
+    public func start() {
         do {
             try fetchedResultsController.performFetch()
             cache = fetchedResultsController.fetchedObjects ?? []

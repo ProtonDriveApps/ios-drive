@@ -23,10 +23,25 @@ enum PhotosRootState {
     case gallery
 }
 
+struct PhotosRootNavigation {
+    let title: String
+    let leftItem: Item
+    let rightItem: Item?
+
+    static let `default` = PhotosRootNavigation(title: "Photos", leftItem: .menu, rightItem: nil)
+
+    enum Item: Equatable {
+        case menu
+        case selection(String)
+        case cancel(String)
+    }
+}
+
 protocol PhotosRootViewModelProtocol: ObservableObject {
     var state: PhotosRootState { get }
-    var title: String { get }
-    func openMenu()
+    var navigation: PhotosRootNavigation { get }
+    func handle(item: PhotosRootNavigation.Item)
+    func close()
 }
 
 final class PhotosRootViewModel: PhotosRootViewModelProtocol {
@@ -34,16 +49,18 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
     private let settingsController: PhotoBackupSettingsController
     private let authorizationController: PhotoLibraryAuthorizationController
     private let galleryController: PhotosGalleryController
+    private let selectionController: PhotosSelectionController
     private var cancellables = Set<AnyCancellable>()
 
     @Published var state: PhotosRootState = .onboarding
-    let title = "Photos"
+    @Published var navigation: PhotosRootNavigation = .default
 
-    init(coordinator: PhotosRootCoordinator, settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController, galleryController: PhotosGalleryController) {
+    init(coordinator: PhotosRootCoordinator, settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController, galleryController: PhotosGalleryController, selectionController: PhotosSelectionController) {
         self.coordinator = coordinator
         self.settingsController = settingsController
         self.authorizationController = authorizationController
         self.galleryController = galleryController
+        self.selectionController = selectionController
         subscribeToUpdates()
     }
 
@@ -58,6 +75,12 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
         }
         .removeDuplicates()
         .assign(to: &$state)
+
+        Publishers.CombineLatest(selectionController.updatePublisher, galleryController.sections.removeDuplicates())
+            .sink { [weak self] _ in
+                self?.handleSelectionUpdate()
+            }
+            .store(in: &cancellables)
     }
 
     private func map(permissions: PhotoLibraryPermissions, isBackupEnabled: Bool, hasPhotos: Bool) -> PhotosRootState {
@@ -70,7 +93,42 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
         }
     }
 
-    func openMenu() {
-        coordinator.openMenu()
+    func handle(item: PhotosRootNavigation.Item) {
+        switch item {
+        case .menu:
+            coordinator.openMenu()
+        case .cancel:
+            selectionController.cancel()
+        case .selection:
+            if isFullSelection() {
+                selectionController.deselectAll()
+            } else {
+                selectionController.select(ids: galleryController.getIds())
+            }
+        }
+    }
+
+    func close() {
+        coordinator.close()
+    }
+
+    private func isFullSelection() -> Bool {
+        let selectedIds = selectionController.getIds()
+        let allIds = galleryController.getIds()
+        return selectedIds.isSuperset(of: allIds)
+    }
+
+    private func handleSelectionUpdate() {
+        if selectionController.isSelecting() {
+            let selectedIds = selectionController.getIds()
+            let selectedAllTitle = isFullSelection() ? "Deselect all" : "Select all"
+            navigation = PhotosRootNavigation(
+                title: "\(selectedIds.count) selected",
+                leftItem: .selection(selectedAllTitle),
+                rightItem: .cancel("Cancel")
+            )
+        } else {
+            navigation = .default
+        }
     }
 }

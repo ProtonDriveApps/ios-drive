@@ -19,11 +19,14 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import ProtonCore_APIClient
-import ProtonCore_Networking
-import ProtonCore_Services
-import enum ProtonCore_DataModel.ClientApp
+import ProtonCoreAPIClient
+import ProtonCoreNetworking
+import ProtonCoreServices
+import enum ProtonCoreDataModel.ClientApp
+import ProtonCoreUIFoundations
 
 public class HumanCheckHelper: HumanVerifyDelegate {
     private let rootViewController: UIViewController?
@@ -33,26 +36,29 @@ public class HumanCheckHelper: HumanVerifyDelegate {
     private var verificationCompletion: ((HumanVerifyFinishReason) -> Void)?
     var humanCheckCoordinator: HumanCheckCoordinator?
     private let clientApp: ClientApp
+    private let inAppTheme: () -> InAppTheme
 
     // These delegates are registered and used only in login and signup
     // If set outside the LoginUI module, they will be overwritten there
     public weak var responseDelegateForLoginAndSignup: HumanVerifyResponseDelegate?
     public weak var paymentDelegateForLoginAndSignup: HumanVerifyPaymentDelegate?
-    
+
     public init(apiService: APIService,
                 supportURL: URL? = nil,
                 viewController: UIViewController? = nil,
                 nonModalUrls: [URL]? = nil,
+                inAppTheme: @escaping () -> InAppTheme,
                 clientApp: ClientApp) {
         self.apiService = apiService
         self.supportURL = supportURL ?? HVCommon.defaultSupportURL(clientApp: clientApp)
         self.rootViewController = viewController
         self.nonModalUrls = nonModalUrls
+        self.inAppTheme = inAppTheme
         self.clientApp = clientApp
     }
-    
+
     public func onHumanVerify(parameters: HumanVerifyParameters, currentURL: URL?, completion: (@escaping (HumanVerifyFinishReason) -> Void)) {
-        
+
         // check if payment token exists
         if let paymentToken = paymentDelegateForLoginAndSignup?.paymentToken {
             let client = TestApiClient(api: self.apiService)
@@ -73,29 +79,29 @@ public class HumanCheckHelper: HumanVerifyDelegate {
             startMenuCoordinator(parameters: parameters, currentURL: currentURL, completion: completion)
         }
     }
-    
+
     public func getSupportURL() -> URL {
         return supportURL
     }
-    
+
     private func startMenuCoordinator(parameters: HumanVerifyParameters, currentURL: URL?, completion: (@escaping (HumanVerifyFinishReason) -> Void)) {
         prepareV3Coordinator(parameters: parameters, currentURL: currentURL)
         responseDelegateForLoginAndSignup?.onHumanVerifyStart()
         verificationCompletion = completion
     }
-    
+
     private func prepareV3Coordinator(parameters: HumanVerifyParameters, currentURL: URL?) {
         var isModalPresentation = true
         if nonModalUrls?.first(where: { $0 == currentURL }) != nil {
             isModalPresentation = false
         }
         DispatchQueue.main.async {
-            self.humanCheckCoordinator = HumanCheckCoordinator(rootViewController: self.rootViewController, isModalPresentation: isModalPresentation, apiService: self.apiService, parameters: parameters, clientApp: self.clientApp)
+            self.humanCheckCoordinator = HumanCheckCoordinator(rootViewController: self.rootViewController, isModalPresentation: isModalPresentation, apiService: self.apiService, parameters: parameters, inAppTheme: self.inAppTheme, clientApp: self.clientApp)
             self.humanCheckCoordinator?.delegate = self
             self.humanCheckCoordinator?.start()
         }
     }
-    
+
     @discardableResult
     public static func removeHumanVerification(from navigationController: UINavigationController?) -> Bool {
         guard var viewControllers = navigationController?.viewControllers else { return false }
@@ -124,14 +130,16 @@ extension HumanCheckHelper: HumanCheckMenuCoordinatorDelegate {
             }
         }))
     }
-    
+
     func close() {
         verificationCompletion?(.close)
         self.responseDelegateForLoginAndSignup?.onHumanVerifyEnd(result: .cancel)
     }
-    
+
     func closeWithError(code: Int, description: String) {
         verificationCompletion?(.closeWithError(code: code, description: description))
         self.responseDelegateForLoginAndSignup?.onHumanVerifyEnd(result: .cancel)
     }
 }
+
+#endif

@@ -19,16 +19,16 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import ProtonCore_CoreTranslation
-import ProtonCore_Login
-import ProtonCore_Networking
-import ProtonCore_UIFoundations
-import ProtonCore_Payments
-import ProtonCore_PaymentsUI
-import ProtonCore_HumanVerification
-import ProtonCore_Foundations
-import ProtonCore_FeatureSwitch
+import ProtonCoreLogin
+import ProtonCoreNetworking
+import ProtonCoreUIFoundations
+import ProtonCorePayments
+import ProtonCorePaymentsUI
+import ProtonCoreHumanVerification
+import ProtonCoreFoundations
 
 enum FlowStartKind {
     case over(UIViewController, UIModalTransitionStyle)
@@ -49,67 +49,68 @@ protocol SignupAccountTypeManagerProtocol {
 
 final class SignupAccountTypeManager: SignupAccountTypeManagerProtocol {
     var accountType: SignupAccountType = .internal
-    
+
     func setSignupAccountType(type: SignupAccountType) {
         accountType = type
     }
 }
 
 final class SignupCoordinator {
-    
+
     weak var delegate: SignupCoordinatorDelegate?
-    
+
     private let container: Container
     private let minimumAccountType: AccountType
     private let isCloseButton: Bool
     private let signupAvailability: SignupAvailability
     private var signupParameters: SignupParameters?
-    private var navigationController: LoginNavigationViewController?
+    private var navigationController: LoginNavigationViewController? {
+        didSet {
+            navigationController?.overrideUserInterfaceStyle = customization.inAppTheme().userInterfaceStyle
+        }
+    }
     private var signupViewController: SignupViewController?
     private var recoveryViewController: RecoveryViewController?
     private var countryPickerViewController: CountryPickerViewController?
-    private var countryPicker = PMCountryPicker(searchBarPlaceholderText: CoreString._hv_sms_search_placeholder)
+    private var countryPicker = PMCountryPicker(searchBarPlaceholderText: LUITranslation.sms_search_placeholder.l10n)
     private var completeViewModel: CompleteViewModel?
-    
+
     private let signupAccountTypeManager: SignupAccountTypeManagerProtocol
     private var name: String?
     private var password: String?
     private var verifyToken: String?
     private var tokenType: String?
     private var loginData: LoginData?
-    private var performBeforeFlow: WorkBeforeFlow?
-    private var customErrorPresenter: LoginErrorPresenter?
+    private let customization: LoginCustomizationOptions
     private let externalLinks: ExternalLinks
     private let longTermTask = LongTermTask()
-    
+
     // Payments
     private let paymentsAvailability: PaymentsAvailability
     private let paymentsManager: PaymentsManager?
 
-    private let isExternalSignupFeatureEnabled: Bool
-    
     init(container: Container,
          minimumAccountType: AccountType,
          isCloseButton: Bool,
          paymentsAvailability: PaymentsAvailability,
          signupAvailability: SignupAvailability,
-         performBeforeFlow: WorkBeforeFlow?,
-         customErrorPresenter: LoginErrorPresenter?,
-         isExternalSignupFeatureEnabled: Bool = FeatureFactory.shared.isEnabled(.externalSignup),
+         customization: LoginCustomizationOptions,
          signupAccountTypeManager: SignupAccountTypeManagerProtocol = SignupAccountTypeManager()) {
         self.container = container
         self.minimumAccountType = minimumAccountType
         self.isCloseButton = isCloseButton
         self.signupAvailability = signupAvailability
-        self.performBeforeFlow = performBeforeFlow
-        self.customErrorPresenter = customErrorPresenter
+        self.customization = customization
         self.paymentsAvailability = paymentsAvailability
-        self.isExternalSignupFeatureEnabled = isExternalSignupFeatureEnabled
         self.signupAccountTypeManager = signupAccountTypeManager
         if case .available(let paymentParameters) = paymentsAvailability {
             self.paymentsManager = container.makePaymentsCoordinator(
                 for: paymentParameters.listOfIAPIdentifiers,
                 shownPlanNames: paymentParameters.listOfShownPlanNames,
+                customization: PaymentsUICustomizationOptions(
+                    inAppTheme: customization.inAppTheme,
+                    customPlansDescription: paymentParameters.customPlansDescription
+                ),
                 reportBugAlertHandler: paymentParameters.reportBugAlertHandler
             )
         } else {
@@ -117,7 +118,7 @@ final class SignupCoordinator {
         }
         externalLinks = container.makeExternalLinks()
     }
-    
+
     func start(kind: FlowStartKind) {
         switch signupAvailability {
         case .notAvailable:
@@ -129,25 +130,21 @@ final class SignupCoordinator {
             showSignupViewController(kind: kind, signupParameters: parameters)
         }
     }
-    
+
     // MARK: - View controller internal account presentation methods
 
     func createSignupViewController(signupParameters: SignupParameters) -> SignupViewController {
 
         switch minimumAccountType {
         case .username, .external:
-            if isExternalSignupFeatureEnabled {
-                signupAccountTypeManager.setSignupAccountType(type: .external)
-            } else {
-                signupAccountTypeManager.setSignupAccountType(type: .internal)
-            }
+            signupAccountTypeManager.setSignupAccountType(type: .external)
         case .internal:
             signupAccountTypeManager.setSignupAccountType(type: .internal)
         }
 
-        let signupViewController = UIStoryboard.instantiate(SignupViewController.self)
+        let signupViewController = UIStoryboard.instantiateInSignup(SignupViewController.self, inAppTheme: customization.inAppTheme)
         signupViewController.viewModel = container.makeSignupViewModel()
-        signupViewController.customErrorPresenter = customErrorPresenter
+        signupViewController.customErrorPresenter = customization.customErrorPresenter
         signupViewController.delegate = self
         self.signupViewController = signupViewController
 
@@ -155,7 +152,7 @@ final class SignupCoordinator {
         case .internal:
             signupViewController.showOtherAccountButton = false
         case .username, .external:
-            signupViewController.showOtherAccountButton = isExternalSignupFeatureEnabled
+            signupViewController.showOtherAccountButton = true
         }
         signupViewController.showSeparateDomainsButton = signupParameters.separateDomainsButton
         signupViewController.showCloseButton = isCloseButton
@@ -171,7 +168,7 @@ final class SignupCoordinator {
         }
         return signupViewController
     }
-    
+
     private func showSignupViewController(kind: FlowStartKind, signupParameters: SignupParameters) {
 
         let signupViewController = createSignupViewController(signupParameters: signupParameters)
@@ -189,43 +186,43 @@ final class SignupCoordinator {
             navigationViewController.setViewControllers([signupViewController], animated: true)
         }
     }
-    
+
     private func showPasswordViewController() {
         guard let signupParameters = signupParameters else { return }
-        let passwordViewController = UIStoryboard.instantiate(PasswordViewController.self)
+        let passwordViewController = UIStoryboard.instantiateInSignup(PasswordViewController.self, inAppTheme: customization.inAppTheme)
         passwordViewController.viewModel = container.makePasswordViewModel()
-        passwordViewController.customErrorPresenter = customErrorPresenter
+        passwordViewController.customErrorPresenter = customization.customErrorPresenter
         passwordViewController.delegate = self
         passwordViewController.signupAccountType = signupAccountTypeManager.accountType
         passwordViewController.signupPasswordRestrictions = signupParameters.passwordRestrictions
         passwordViewController.onDohTroubleshooting = { [weak self] in
             guard let self = self else { return }
             self.container.executeDohTroubleshootMethodFromApiDelegate()
-            
+
             guard let nav = self.navigationController else { return }
             self.container.troubleShootingHelper.showTroubleShooting(over: nav)
         }
-        
+
         navigationController?.pushViewController(passwordViewController, animated: true)
     }
-    
+
     private func showRecoveryViewController() {
-        let recoveryViewController = UIStoryboard.instantiate(RecoveryViewController.self)
+        let recoveryViewController = UIStoryboard.instantiateInSignup(RecoveryViewController.self, inAppTheme: customization.inAppTheme)
         recoveryViewController.viewModel = container.makeRecoveryViewModel(initialCountryCode: countryPicker.getInitialCode())
         recoveryViewController.delegate = self
         recoveryViewController.minimumAccountType = minimumAccountType
         recoveryViewController.onDohTroubleshooting = { [weak self] in
             guard let self = self else { return }
             self.container.executeDohTroubleshootMethodFromApiDelegate()
-            
+
             guard let nav = self.navigationController else { return }
             self.container.troubleShootingHelper.showTroubleShooting(over: nav)
         }
         self.recoveryViewController = recoveryViewController
-        
+
         navigationController?.pushViewController(recoveryViewController, animated: true)
     }
-    
+
     private func finishSignupProcess(email: String? = nil, phoneNumber: String? = nil, completionHandler: (() -> Void)?) {
         guard let paymentsManager = paymentsManager, let signupViewController = signupViewController else {
             completionHandler?()
@@ -254,11 +251,11 @@ final class SignupCoordinator {
         if !(paymentsManager?.selectedPlan?.isFreePlan ?? true) {
             initDisplaySteps += [.payment]
         }
-        if let performBeforeFlow = performBeforeFlow {
+        if let performBeforeFlow = customization.performBeforeFlow {
             initDisplaySteps += [.custom(performBeforeFlow.stepName)]
         }
-        
-        let completeViewController = UIStoryboard.instantiate(CompleteViewController.self)
+
+        let completeViewController = UIStoryboard.instantiateInSignup(CompleteViewController.self, inAppTheme: customization.inAppTheme)
         completeViewModel = container.makeCompleteViewModel(initDisplaySteps: initDisplaySteps)
         completeViewController.viewModel = completeViewModel
         completeViewController.delegate = self
@@ -272,18 +269,20 @@ final class SignupCoordinator {
         navigationController?.setUpShadowLessNavigationBar()
         navigationController?.pushViewController(completeViewController, animated: true)
     }
-    
+
     private func showCountryPickerViewController() {
-        let countryPickerViewController = countryPicker.getCountryPickerViewController()
+        let countryPickerViewController = countryPicker.getCountryPickerViewController(
+            inAppTheme: customization.inAppTheme
+        )
         countryPickerViewController.delegate = self
         countryPickerViewController.modalTransitionStyle = .coverVertical
         self.countryPickerViewController = countryPickerViewController
-        
+
         navigationController?.present(countryPickerViewController, animated: true)
     }
-    
+
     private func showTermsAndConditionsViewController() {
-        let tcViewController = UIStoryboard.instantiate(TCViewController.self)
+        let tcViewController = UIStoryboard.instantiateInSignup(TCViewController.self, inAppTheme: customization.inAppTheme)
         tcViewController.termsAndConditionsURL = externalLinks.termsAndConditions
         tcViewController.delegate = self
 
@@ -291,24 +290,24 @@ final class SignupCoordinator {
         navigationVC.modalPresentationStyle = .pageSheet
         navigationController?.present(navigationVC, animated: true)
     }
-    
+
     // MARK: - View controller external account presentation methods
-    
+
     private func showEmailVerificationViewController() {
         guard let email = name else {
             assertionFailure("email missing")
             return
         }
-        let emailVerificationViewController = UIStoryboard.instantiate(EmailVerificationViewController.self)
+        let emailVerificationViewController = UIStoryboard.instantiateInSignup(EmailVerificationViewController.self, inAppTheme: customization.inAppTheme)
         let emailVerificationViewModel = container.makeEmailVerificationViewModel()
         emailVerificationViewModel.email = email
         emailVerificationViewController.viewModel = emailVerificationViewModel
-        emailVerificationViewController.customErrorPresenter = customErrorPresenter
+        emailVerificationViewController.customErrorPresenter = customization.customErrorPresenter
         emailVerificationViewController.delegate = self
         emailVerificationViewController.onDohTroubleshooting = { [weak self] in
             guard let self = self else { return }
             self.container.executeDohTroubleshootMethodFromApiDelegate()
-            
+
             guard let nav = self.navigationController else { return }
             self.container.troubleShootingHelper.showTroubleShooting(over: nav)
         }
@@ -326,17 +325,17 @@ final class SignupCoordinator {
         guard let completeVCIndex = completeVCIndex, completeVCIndex >= 0, viewControllers.count > completeVCIndex else { return nil }
         return viewControllers[completeVCIndex]
     }
-    
+
     private func finalizeAccountCreation(loginData: LoginData) {
         guard let paymentsManager = paymentsManager else {
             tryRefreshingLoginDataBeforeFinishingAccountCreation(loginData: loginData)
             return
         }
-            
+
         if !(paymentsManager.selectedPlan?.isFreePlan ?? true) {
             completeViewModel?.progressStepWait(progressStep: .payment)
         }
-        
+
         paymentsManager.finishPaymentProcess(loginData: loginData) { [weak self] result in
             switch result {
             case .success(let purchasedPlan):
@@ -346,7 +345,7 @@ final class SignupCoordinator {
             }
         }
     }
-    
+
     private func tryRefreshingLoginDataBeforeFinishingAccountCreation(loginData: LoginData, purchasedPlan: InAppPurchasePlan? = nil) {
         let login = container.login
         login.refreshCredentials { [weak self] credentialsResult in
@@ -357,12 +356,12 @@ final class SignupCoordinator {
             case .failure:
                 break
             }
-            
+
             guard possiblyRefreshedLoginData.getCredential.hasFullScope else {
                 self?.finishAccountCreation(loginData: possiblyRefreshedLoginData, purchasedPlan: purchasedPlan)
                 return
             }
-            
+
             login.refreshUserInfo { [weak self] userResult in
                 switch userResult {
                 case .success(let user):
@@ -373,11 +372,11 @@ final class SignupCoordinator {
             }
         }
     }
-    
+
     private func finishAccountCreation(loginData: LoginData, purchasedPlan: InAppPurchasePlan? = nil) {
         longTermTask.inProgress = false
         DispatchQueue.main.async { [weak self] in
-            guard let performBeforeFlow = self?.performBeforeFlow else {
+            guard let performBeforeFlow = self?.customization.performBeforeFlow else {
                 self?.summarySignupFlow(data: loginData, purchasedPlan: purchasedPlan)
                 return
             }
@@ -411,12 +410,12 @@ final class SignupCoordinator {
             }
         }
     }
-    
+
     private func showSummaryViewController(data: LoginData, purchasedPlan: InAppPurchasePlan?) {
         guard let signupParameters = signupParameters else { return }
         self.loginData = data
-        let summaryViewController = UIStoryboard.instantiate(SummaryViewController.self)
-        
+        let summaryViewController = UIStoryboard.instantiateInSignup(SummaryViewController.self, inAppTheme: customization.inAppTheme)
+
         var planName: String?
         if let paymentsManager = paymentsManager {
             planName = paymentsManager.planTitle(plan: purchasedPlan)
@@ -432,7 +431,7 @@ final class SignupCoordinator {
         navigationVC.modalPresentationStyle = .fullScreen
         navigationController?.present(navigationVC, animated: true)
     }
-    
+
     private func completeSignupFlow(signupState: SignupState) {
         if case .signupFinished = signupState {
             navigationController?.presentingViewController?.dismiss(animated: true)
@@ -455,7 +454,7 @@ extension SignupCoordinator: SignupViewControllerDelegate {
             showEmailVerificationViewController()
         }
     }
-    
+
     func validatedEmail(email: String, signupAccountType: SignupAccountType) {
         self.name = email
         self.verifyToken = container.token
@@ -464,21 +463,21 @@ extension SignupCoordinator: SignupViewControllerDelegate {
         updateLoginAccountType(accountType: .external)
         showPasswordViewController()
     }
-    
+
     func signupCloseButtonPressed() {
         // on leaving the signup flow, we need to restore the login's minimum account type requirement to original value
         updateLoginAccountType(accountType: minimumAccountType)
         navigationController?.dismiss(animated: true)
         delegate?.userDidDismissSignupCoordinator(signupCoordinator: self)
     }
-    
+
     func signinButtonPressed() {
         // on leaving the signup flow, we need to restore the login's minimum account type requirement to original value
         updateLoginAccountType(accountType: minimumAccountType)
         guard let navigationController = navigationController else { return }
         delegate?.userSelectedSignin(email: nil, navigationViewController: navigationController)
     }
-    
+
     func hvEmailAlreadyExists(email: String) {
         // on leaving the signup flow, we need to restore the login service's minimum account type requirement to original value
         updateLoginAccountType(accountType: minimumAccountType)
@@ -499,13 +498,13 @@ extension SignupCoordinator: SignupViewControllerDelegate {
 
 extension SignupCoordinator: PasswordViewControllerDelegate {
     func passwordIsShown() {
-        
+
         if signupAccountTypeManager.accountType == .external {
             // if PasswordViewController is presented we need to remove HumanVerifyViewController from the navigation stack to don't allow to come back to it.
             HumanCheckHelper.removeHumanVerification(from: navigationController)
         }
     }
-    
+
     func validatedPassword(password: String, completionHandler: (() -> Void)?) {
         self.password = password
         if signupAccountTypeManager.accountType == .internal {
@@ -515,7 +514,7 @@ extension SignupCoordinator: PasswordViewControllerDelegate {
             finishSignupProcess(completionHandler: completionHandler)
         }
     }
-    
+
     func passwordBackButtonPressed() {
         navigationController?.popViewController(animated: true)
     }
@@ -528,15 +527,15 @@ extension SignupCoordinator: RecoveryViewControllerDelegate {
     func recoveryFinish(email: String?, phoneNumber: String?, completionHandler: (() -> Void)?) {
         finishSignupProcess(email: email, phoneNumber: phoneNumber, completionHandler: completionHandler)
     }
-    
+
     func recoveryBackButtonPressed() {
         navigationController?.popViewController(animated: true)
     }
-    
+
     func termsAndConditionsLinkPressed() {
         showTermsAndConditionsViewController()
     }
-    
+
     func recoveryCountryPickerPressed() {
         showCountryPickerViewController()
     }
@@ -549,11 +548,11 @@ extension SignupCoordinator: CountryPickerViewControllerDelegate {
         countryPickerViewController?.dismiss(animated: true)
         recoveryViewController?.updateCountryCode(countryCode.phone_code)
     }
-    
+
     func didCountryPickerClose() {
         countryPickerViewController?.dismiss(animated: true)
     }
-    
+
     func didCountryPickerDissmised() {
         recoveryViewController?.countryPickerDissmised()
     }
@@ -565,15 +564,15 @@ extension SignupCoordinator: CompleteViewControllerDelegate {
     func accountCreationStart() {
         longTermTask.inProgress = true
     }
-    
+
     func accountCreationFinish(loginData: LoginData) {
         finalizeAccountCreation(loginData: loginData)
     }
-    
+
     func accountCreationError(error: Error) {
         errorHandler(error: error)
     }
-    
+
     // swiftlint:disable:next cyclomatic_complexity
     private func errorHandler(error: Error) {
         longTermTask.inProgress = false
@@ -582,22 +581,22 @@ extension SignupCoordinator: CompleteViewControllerDelegate {
         }
         let errorVC = activeViewController ?? navigationController?.viewControllers.last
         if let error = error as? LoginError {
-            if let vc = errorVC, self.customErrorPresenter?.willPresentError(error: error, from: vc) == true {
+            if let vc = errorVC, self.customization.customErrorPresenter?.willPresentError(error: error, from: vc) == true {
             } else if let vc = errorVC as? LoginErrorCapable {
                 vc.showError(error: error)
             }
         } else if let error = error as? SignupError {
-            if let vc = errorVC, self.customErrorPresenter?.willPresentError(error: error, from: vc) == true {
+            if let vc = errorVC, self.customization.customErrorPresenter?.willPresentError(error: error, from: vc) == true {
             } else if let vc = errorVC as? SignUpErrorCapable {
                 vc.showError(error: error)
             }
         } else if let error = error as? StoreKitManagerErrors {
-            if let vc = errorVC, self.customErrorPresenter?.willPresentError(error: error, from: vc) == true {
+            if let vc = errorVC, self.customization.customErrorPresenter?.willPresentError(error: error, from: vc) == true {
             } else if let vc = errorVC as? PaymentErrorCapable {
                 vc.showError(error: error)
             }
         } else if let error = error as? AvailabilityError {
-            if let vc = errorVC, self.customErrorPresenter?.willPresentError(error: error, from: vc) == true {
+            if let vc = errorVC, self.customization.customErrorPresenter?.willPresentError(error: error, from: vc) == true {
             } else if let vc = errorVC as? SignUpErrorCapable {
                 switch error {
                 case .protonDomainUsedForExternalAccount:
@@ -612,7 +611,7 @@ extension SignupCoordinator: CompleteViewControllerDelegate {
                 }
             }
         } else if let error = error as? SetUsernameError {
-            if let vc = errorVC, self.customErrorPresenter?.willPresentError(error: error, from: vc) == true {
+            if let vc = errorVC, self.customization.customErrorPresenter?.willPresentError(error: error, from: vc) == true {
             } else if let vc = errorVC as? SignUpErrorCapable {
                 switch error {
                 case .generic(let message, let code, let originalError):
@@ -624,7 +623,7 @@ extension SignupCoordinator: CompleteViewControllerDelegate {
                 }
             }
         } else if let error = error as? CreateAddressError {
-            if let vc = errorVC, self.customErrorPresenter?.willPresentError(error: error, from: vc) == true {
+            if let vc = errorVC, self.customization.customErrorPresenter?.willPresentError(error: error, from: vc) == true {
             } else if let vc = errorVC as? SignUpErrorCapable {
                 switch error {
                 case .generic(let message, let code, let originalError):
@@ -632,11 +631,11 @@ extension SignupCoordinator: CompleteViewControllerDelegate {
                 case .apiMightBeBlocked(let message, let originalError):
                     vc.showError(error: SignupError.apiMightBeBlocked(message: message, originalError: originalError))
                 case .cannotCreateInternalAddress, .alreadyHaveInternalOrCustomDomainAddress:
-                    vc.showError(error: SignupError.generic(message: error.messageForTheUser, code: error.bestShotAtReasonableErrorCode, originalError: error))
+                    vc.showError(error: SignupError.generic(message: error.localizedDescription, code: error.bestShotAtReasonableErrorCode, originalError: error))
                 }
             }
         } else if let error = error as? CreateAddressKeysError {
-            if let vc = errorVC, self.customErrorPresenter?.willPresentError(error: error, from: vc) == true {
+            if let vc = errorVC, self.customization.customErrorPresenter?.willPresentError(error: error, from: vc) == true {
             } else if let vc = errorVC as? SignUpErrorCapable {
                 switch error {
                 case .generic(let message, let code, let originalError):
@@ -644,20 +643,20 @@ extension SignupCoordinator: CompleteViewControllerDelegate {
                 case .apiMightBeBlocked(let message, let originalError):
                     vc.showError(error: SignupError.apiMightBeBlocked(message: message, originalError: originalError))
                 case .alreadySet:
-                    vc.showError(error: SignupError.generic(message: error.messageForTheUser, code: error.bestShotAtReasonableErrorCode, originalError: error))
+                    vc.showError(error: SignupError.generic(message: error.localizedDescription, code: error.bestShotAtReasonableErrorCode, originalError: error))
                 }
             }
         } else if let error = error as? ResponseError, let message = error.userFacingMessage ?? error.underlyingError?.localizedDescription {
-            if let vc = errorVC, self.customErrorPresenter?.willPresentError(error: error, from: vc) == true {
+            if let vc = errorVC, self.customization.customErrorPresenter?.willPresentError(error: error, from: vc) == true {
             } else if let vc = errorVC as? SignUpErrorCapable {
                 vc.showError(error: SignupError.generic(message: message, code: error.bestShotAtReasonableErrorCode, originalError: error))
             }
         } else {
-            if let vc = errorVC, self.customErrorPresenter?.willPresentError(error: error, from: vc) == true {
+            if let vc = errorVC, self.customization.customErrorPresenter?.willPresentError(error: error, from: vc) == true {
             } else if let vc = errorVC as? SignUpErrorCapable {
-                vc.showError(error: SignupError.generic(message: error.messageForTheUser, code: error.bestShotAtReasonableErrorCode, originalError: error))
+                vc.showError(error: SignupError.generic(message: error.localizedDescription, code: error.bestShotAtReasonableErrorCode, originalError: error))
             } else if let vc = errorVC as? LoginErrorCapable {
-                vc.showError(error: LoginError.generic(message: error.messageForTheUser, code: error.bestShotAtReasonableErrorCode, originalError: error))
+                vc.showError(error: LoginError.generic(message: error.localizedDescription, code: error.bestShotAtReasonableErrorCode, originalError: error))
             }
         }
         if let vc = errorVC as? PaymentsUIViewController {
@@ -680,11 +679,11 @@ extension SignupCoordinator: EmailVerificationViewControllerDelegate {
         self.tokenType = VerifyMethod.PredefinedMethod.email.rawValue
         showPasswordViewController()
     }
-    
+
     func emailVerificationBackButtonPressed() {
         navigationController?.popViewController(animated: true)
     }
-    
+
     func emailAlreadyExists(email: String) {
         guard let navigationController = navigationController else { return }
         delegate?.userSelectedSignin(email: email, navigationViewController: navigationController)
@@ -700,7 +699,9 @@ extension SignupCoordinator: SummaryViewControllerDelegate {
 }
 
 private extension UIStoryboard {
-    static func instantiate<T: UIViewController>(_ controllerType: T.Type) -> T {
-        self.instantiate(storyboardName: "PMSignup", controllerType: controllerType)
+    static func instantiateInSignup<T: UIViewController>(_ controllerType: T.Type, inAppTheme: () -> InAppTheme) -> T {
+        self.instantiate(storyboardName: "PMSignup", controllerType: controllerType, inAppTheme: inAppTheme)
     }
 }
+
+#endif

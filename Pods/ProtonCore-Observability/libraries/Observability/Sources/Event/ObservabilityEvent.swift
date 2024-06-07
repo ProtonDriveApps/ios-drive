@@ -19,6 +19,8 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+import Foundation
+
 /// ObservabilityEvent structure defines the envelope for the event payload
 public struct ObservabilityEvent<Payload>: Encodable where Payload: Encodable {
 
@@ -46,4 +48,5 @@ public struct ObservabilityEvent<Payload>: Encodable where Payload: Encodable {
 /// Defines the versioning for the event schema
 public enum ObservabilityEventVersion: Int, Encodable {
     case v1 = 1
+    case v2 = 2
 }

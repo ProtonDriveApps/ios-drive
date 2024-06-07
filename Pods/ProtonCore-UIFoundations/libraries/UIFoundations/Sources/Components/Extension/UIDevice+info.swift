@@ -19,7 +19,11 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
+import ProtonCoreFoundations
+
 public extension UIDevice {
     /// A boolean value that indicates the device has a physical home button or not.
     static var hasPhysicalHome: Bool {
@@ -28,9 +32,7 @@ public extension UIDevice {
             return true
         }
 
-        guard let application = UIApplication.getInstance(),
-              let keyWindow = application.windows.first,
-              keyWindow.safeAreaInsets.bottom > 0 else {
+        guard let keyWindow = UIApplication.firstKeyWindow, keyWindow.safeAreaInsets.bottom > 0 else {
             // Device has physical home button
             return true
         }
@@ -44,11 +46,12 @@ public extension UIDevice {
             // Device has physical home button
             return .zero
         }
-        guard let application = UIApplication.getInstance(),
-              let keyWindow = application.windows.first else {
+        guard let keyWindow = UIApplication.firstKeyWindow else {
             // Device has physical home button
             return .zero
         }
         return keyWindow.safeAreaInsets
     }()
 }
+
+#endif

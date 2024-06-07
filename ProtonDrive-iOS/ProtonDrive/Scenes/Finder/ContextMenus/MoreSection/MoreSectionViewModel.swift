@@ -19,7 +19,7 @@ import Combine
 import PDCore
 import SwiftUI
 import PDUIComponents
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 struct MoreSectionViewModel {
     let file: File

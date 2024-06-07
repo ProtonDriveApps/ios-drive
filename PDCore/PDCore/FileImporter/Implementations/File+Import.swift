@@ -25,6 +25,7 @@ extension File {
         coreDataFile.name = file.name
         coreDataFile.nodeHash = file.hash
         coreDataFile.mimeType = file.mimeType
+        coreDataFile.size = file.size
         coreDataFile.nodeKey = file.nodeKey
         coreDataFile.nodePassphrase = file.nodePassphrase
         coreDataFile.nodePassphraseSignature = file.nodePassphraseSignature
@@ -36,13 +37,14 @@ extension File {
         coreDataFile.shareID = file.shareID
         coreDataFile.signatureEmail = file.signatureAddress
         coreDataFile.nameSignatureEmail = file.signatureAddress
+        coreDataFile.state = .interrupted
 
         coreDataFile.uploadID = file.uploadID
         coreDataFile.createdDate = Date()
         coreDataFile.modifiedDate = Date()
 
         // Create new Revision
-        let coreDataRevision = Revision.`import`(id: file.uploadID.uuidString, url: file.resourceURL, creatorEmail: file.signatureAddress, moc: moc)
+        let coreDataRevision = Revision.`import`(id: file.uploadID.uuidString, url: file.resourceURL, size: file.size, creatorEmail: file.signatureAddress, moc: moc)
 
         // Relationships
         coreDataRevision.file = coreDataFile // This adds the current coreDataRevision to File's revisions
@@ -54,10 +56,11 @@ extension File {
 
 extension Revision {
     /// Create a new Revision with the provided id
-    static func `import`(id: String, url: URL, creatorEmail: String, moc: NSManagedObjectContext) -> Revision {
+    static func `import`(id: String, url: URL, size: Int, creatorEmail: String, moc: NSManagedObjectContext) -> Revision {
         let coreDataRevision: Revision = NSManagedObject.newWithValue(id, by: "id", in: moc)
         coreDataRevision.uploadState = .created
-        coreDataRevision.uploadableResourceURL = url
+        coreDataRevision.uploadSize = size
+        coreDataRevision.normalizedUploadableResourceURL = url
         coreDataRevision.signatureAddress = creatorEmail
 
         return coreDataRevision

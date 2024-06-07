@@ -39,7 +39,7 @@ final class StreamRevisionEncryptor: RevisionEncryptor {
     func encrypt(_ draft: CreatedRevisionDraft, completion: @escaping Completion) {
         guard !isCancelled, !isExecuting else { return }
         isExecuting = true
-        ConsoleLogger.shared?.log("STAGE: 1.2 Encrypt Revision 🏞📦📦 started", osLogType: FileUploader.self)
+        Log.info("STAGE: 1.2 Encrypt Revision 🏞📦📦 started", domain: .uploader)
 
         moc.performAndWait {
             do {
@@ -48,14 +48,14 @@ final class StreamRevisionEncryptor: RevisionEncryptor {
                 guard let signatureAddress = revision.signatureAddress else { throw RevisionEncryptorError.noSignatureEmailInRevision }
                 let signersKit = try signersKitFactory.make(forSigner: .address(signatureAddress))
 
-                let uploadBlocks = try self.createEncryptedBlocks(draft.localURL, revision: revision, signersKit: signersKit)
-                self.finalize(uploadBlocks, revision: revision, cleanupCleartext: draft.localURL, signersKit: signersKit)
-                ConsoleLogger.shared?.log("STAGE: 1.2 Encrypt Revision 🏞📦📦 finished ✅", osLogType: FileUploader.self)
-                completion(.success(Void()))
+                let uploadBlocks = try self.createEncryptedBlocks(draft, revision: revision, signersKit: signersKit)
+                try self.finalize(uploadBlocks, revision: revision, cleanupCleartext: draft.localURL, signersKit: signersKit, id: draft.uploadID)
 
+                try self.moc.saveOrRollback()
+                Log.info("STAGE: 1.2 Encrypt Revision 🏞📦📦 finished ✅", domain: .uploader)
+                completion(.success)
             } catch {
-                ConsoleLogger.shared?.log("STAGE: 1.2 Encrypt Revision 🏞📦📦 finished ❌", osLogType: FileUploader.self)
-                moc.rollback()
+                Log.info("STAGE: 1.2 Encrypt Revision 🏞📦📦 finished ❌", domain: .uploader)
                 completion(.failure(error))
             }
         }
@@ -70,8 +70,11 @@ final class StreamRevisionEncryptor: RevisionEncryptor {
 extension StreamRevisionEncryptor {
 
     /// Breaks cleartext file into a number of Blocks
-    private func createEncryptedBlocks(_ cleartextlUrl: URL, revision: Revision, signersKit: SignersKit) throws -> [UploadBlock] {
-        let cleartextBlockUrls = try FileManager.default.split(file: cleartextlUrl, maxBlockSize: maxBlockSize, chunkSize: Constants.maxBlockChunkSize)
+    private func createEncryptedBlocks(_ draft: CreatedRevisionDraft, revision: Revision, signersKit: SignersKit) throws -> [UploadBlock] {
+        assert(maxBlockSize % Constants.maxBlockChunkSize == 0, "The chunk should be divider without remainder. Otherwise block sizes in committer and xAttr encryptor need to be aligned")
+        let expectedBlockSizes = draft.size.split(divisor: maxBlockSize)
+
+        let cleartextBlockUrls = try FileManager.default.split(file: draft.localURL, maxBlockSize: maxBlockSize, chunkSize: Constants.maxBlockChunkSize)
 
         var iterator = cleartextBlockUrls.makeIterator()
         var uploadBlocks = [UploadBlock]()
@@ -79,16 +82,27 @@ extension StreamRevisionEncryptor {
 
         while let blockURL = iterator.next() {
             index += 1
-            ConsoleLogger.shared?.log("STAGE: 1.2 Encrypting block \(index) 🚧🚰", osLogType: FileUploader.self)
+            Log.info("STAGE: 1.2 Encrypting block \(index) 🚧🚰. UUID: \(draft.uploadID)", domain: .uploader)
             try autoreleasepool {
                 let pack = NewBlockUrlCleartext(index: index, cleardata: blockURL) // Cloud requires first index == 1
                 let encryptedBlock = try self.encryptBlock(pack, file: revision.file)
                 let encSignature = try self.encryptSignature(blockURL, file: revision.file, signersKit: signersKit)
-                let block = try self.createNewBlock(encSignature, signersKit.address.email, encryptedBlock)
+                let block = try self.createNewBlock(encSignature, signersKit.address.email, encryptedBlock, pack)
                 _ = try block.store(cyphertext: encryptedBlock.cypherdata)
                 try FileManager.default.removeItem(at: blockURL)
+
+                // A safeguard to ensure the expected number of blocks read
+                guard block.clearSize == expectedBlockSizes[index - 1] else {
+                    throw UploadedRevisionCheckerError.blockUploadSizeIncorrect
+                }
+
                 uploadBlocks.append(block)
             }
+        }
+
+        // A safeguard to ensure no blocks were missed
+        guard uploadBlocks.count == expectedBlockSizes.count else {
+            throw UploadedRevisionCheckerError.blockUploadCountIncorrect
         }
 
         return uploadBlocks
@@ -115,32 +129,30 @@ extension StreamRevisionEncryptor {
         return encSignature
     }
 
-    private func finalize(_ blocks: [UploadBlock], revision: Revision, cleanupCleartext cleartextlUrl: URL, signersKit: SignersKit) {
-        do {
-            if !self.isCancelled {
-                blocks.forEach { $0.revision = revision }
-                revision.size = blocks.map(\.size).reduce(0, +)
-                revision.blocks = Set(blocks)
-                revision.signatureAddress = signersKit.address.email
-            } else {
-                ConsoleLogger.shared?.log("🧹 Clear blocks - Operation cancelled ", osLogType: FileUploader.self)
-                blocks.forEach(self.moc.delete)
-            }
-
-            try self.moc.save()
-        } catch {
-            ConsoleLogger.shared?.log(error, osLogType: FileUploader.self)
-            assert(false, error.localizedDescription)
+    private func finalize(_ blocks: [UploadBlock], revision: Revision, cleanupCleartext cleartextlUrl: URL, signersKit: SignersKit, id: UUID) throws {
+        if !self.isCancelled {
+            blocks.forEach { $0.revision = revision }
+            revision.size = blocks.map(\.size).reduce(0, +)
+            revision.blocks = Set(blocks)
+            revision.signatureAddress = signersKit.address.email
+        } else {
+            Log.info("STAGE: 1.2 🧹 Clear blocks - Operation cancelled. UUID: \(id)", domain: .uploader)
+            blocks.forEach(self.moc.delete)
         }
     }
 
-    private func createNewBlock(_ signature: String, _ signatureEmail: String, _ encrypted: NewBlockUrlCyphertext) throws -> UploadBlock {
-        UploadBlock.make(
+    private func createNewBlock(_ signature: String, _ signatureEmail: String, _ encrypted: NewBlockUrlCyphertext, _ cleartext: NewBlockUrlCleartext) throws -> UploadBlock {
+        guard let clearSize = cleartext.size else {
+            throw URLConsistencyError.noURLSize
+        }
+
+        return UploadBlock.make(
             signature: signature,
             signatureEmail: signatureEmail,
             index: encrypted.index,
             hash: encrypted.hash,
             size: encrypted.size,
+            clearSize: clearSize,
             moc: moc
         )
     }

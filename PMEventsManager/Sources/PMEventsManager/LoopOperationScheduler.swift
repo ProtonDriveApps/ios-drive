@@ -29,7 +29,9 @@ class LoopOperationScheduler<Loop: EventsLoop> {
     }
     
     func addOperation() {
-        let operation = LoopOperation(loop: loop, onDidReceiveMultiplePagesResponse: addOperation)
+        let operation = LoopOperation(loop: loop, onDidReceiveMultiplePagesResponse: { [weak self] in
+            self?.addOperation()
+        })
         queue.addOperation(operation)
     }
 

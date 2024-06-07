@@ -16,9 +16,9 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
-import ProtonCore_Login
-import ProtonCore_LoginUI
-import ProtonCore_UIFoundations
+import ProtonCoreLogin
+import ProtonCoreLoginUI
+import ProtonCoreUIFoundations
 
 final class AuthenticateViewController: UIViewController {
     private let viewModel: AuthenticateViewModel
@@ -41,8 +41,8 @@ final class AuthenticateViewController: UIViewController {
         authenticator.authenticate(
             over: self,
             body: viewModel.welcomeBody,
-            userDataBlock: { [weak self] data in
-                self?.viewModel.save(data)
+            userDataBlock: { [weak self] data, errorBlock in
+                self?.viewModel.save(data, errorBlock)
             },
             onCompletion: { [weak self] in
                 self?.viewModel.completeAuthentication()

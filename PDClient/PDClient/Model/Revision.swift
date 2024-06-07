@@ -21,7 +21,7 @@ public struct RevisionShort: Codable {
     public let ID: Revision.RevisionID
     public let createTime: TimeInterval
     public let size: Int
-    public let manifestSignature: String
+    public let manifestSignature: String? // can be nil if revision is a draft
     public let signatureAddress: String
     public let state: NodeState
     public let thumbnailDownloadUrl: URL?
@@ -73,6 +73,7 @@ public struct Block: Codable {
 }
 
 public struct Thumbnail: Codable {
+    public let thumbnailID: String
     public let type: Int
     public let hash: String
     public let size: Int

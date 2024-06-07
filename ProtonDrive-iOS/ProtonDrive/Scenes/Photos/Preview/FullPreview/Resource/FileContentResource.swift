@@ -23,15 +23,23 @@ import PDCore
 protocol FileContentResource {
     var result: AnyPublisher<URL, Error> { get }
     func execute(with id: NodeIdentifier)
+    func cancel()
+}
+
+enum FileContentResourceError: Error {
+    case cancelled
 }
 
 final class DecryptedFileContentResource: FileContentResource {
     private let storage: StorageManager
     private let downloader: Downloader
     private let fetchResource: FileFetchResource
+    private let validationResource: FileURLValidationResource
+    private let managedObjectContext: NSManagedObjectContext
     private let subject = PassthroughSubject<URL, Error>()
-    private var ids = [NodeIdentifier]()
+    private var id: NodeIdentifier?
     private var task: Task<Void, Never>?
+    private var capturedContinuation: CheckedContinuation<Void, Error>?
 
     var result: AnyPublisher<URL, Error> {
         subject
@@ -39,22 +47,37 @@ final class DecryptedFileContentResource: FileContentResource {
             .eraseToAnyPublisher()
     }
 
-    init(storage: StorageManager, downloader: Downloader, fetchResource: FileFetchResource) {
+    init(storage: StorageManager, downloader: Downloader, fetchResource: FileFetchResource, validationResource: FileURLValidationResource) {
         self.downloader = downloader
         self.storage = storage
         self.fetchResource = fetchResource
+        self.validationResource = validationResource
+        managedObjectContext = storage.newBackgroundContext()
     }
 
     deinit {
-        task?.cancel()
-        downloader.cancel(operationsOf: ids)
+        cancel()
     }
 
     func execute(with id: NodeIdentifier) {
-        ids.append(id)
-        task = Task { [weak self] in
+        guard self.id != id else {
+            return
+        }
+        cancel()
+        self.id = id
+        task = Task(priority: .userInitiated) { [weak self] in
             await self?.executeInBackground(id: id)
         }
+    }
+
+    func cancel() {
+        task?.cancel()
+        capturedContinuation?.resume(throwing: FileContentResourceError.cancelled)
+        capturedContinuation = nil
+        if let id {
+            downloader.cancel(operationsOf: [id])
+        }
+        id = nil
     }
 
     @MainActor
@@ -71,6 +94,7 @@ final class DecryptedFileContentResource: FileContentResource {
         do {
             let file = try await loadFile(with: id)
             let url = try loadDecryptedURL(from: file)
+            try await validationResource.validate(file: file, url: url)
             await finish(with: url)
         } catch {
             await finish(with: error)
@@ -79,11 +103,10 @@ final class DecryptedFileContentResource: FileContentResource {
 
     private func loadFile(with id: NodeIdentifier) async throws -> File {
         let file = try fetchFile(with: id)
-        if isCached(file: file) {
-            return file
-        } else {
-            return try await download(file: file)
+        if !isCached(file: file) {
+            try await download(file: file)
         }
+        return file
     }
 
     private func isCached(file: File) -> Bool {
@@ -93,16 +116,21 @@ final class DecryptedFileContentResource: FileContentResource {
     }
 
     private func fetchFile(with id: NodeIdentifier) throws -> File {
-        return try fetchResource.fetchFile(with: id, context: storage.backgroundContext)
+        return try fetchResource.fetchFile(with: id, context: managedObjectContext)
     }
 
-    private func download(file: File) async throws -> File {
+    private func download(file: File) async throws {
         return try await withCheckedThrowingContinuation { [weak self] continuation in
-            self?.storage.backgroundContext.perform {
+            self?.capturedContinuation = continuation
+            self?.managedObjectContext.perform {
                 self?.downloader.scheduleDownloadWithBackgroundSupport(cypherdataFor: file) { result in
+                    guard let continuation = self?.capturedContinuation else {
+                        return
+                    }
+                    self?.capturedContinuation = nil
                     switch result {
-                    case let .success(file):
-                        continuation.resume(returning: file)
+                    case .success:
+                        continuation.resume()
                     case let .failure(error):
                         continuation.resume(throwing: error)
                     }

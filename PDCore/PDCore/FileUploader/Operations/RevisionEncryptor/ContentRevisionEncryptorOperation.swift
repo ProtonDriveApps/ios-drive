@@ -36,7 +36,7 @@ final class ContentRevisionEncryptorOperation: AsynchronousOperation {
 
     override func main() {
         contentEncryptor.encrypt(revision) { [weak self] result in
-            guard let self = self else { return }
+            guard let self = self, !self.isCancelled else { return }
 
             switch result {
             case .success:
@@ -50,7 +50,7 @@ final class ContentRevisionEncryptorOperation: AsynchronousOperation {
     }
 
     override func cancel() {
-        ConsoleLogger.shared?.log("🙅‍♂️🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
+        Log.info("🙅‍♂️🙅‍♂️ CANCEL \(type(of: self))", domain: .uploader)
         contentEncryptor.cancel()
         super.cancel()
     }

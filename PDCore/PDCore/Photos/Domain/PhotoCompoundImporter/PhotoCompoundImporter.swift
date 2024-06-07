@@ -18,5 +18,5 @@
 import Foundation
 
 public protocol PhotoCompoundImporter {
-    func `import`(_ compound: PhotoAssetCompound)
+    func `import`(_ compounds: [PhotoAssetCompoundType]) async throws
 }

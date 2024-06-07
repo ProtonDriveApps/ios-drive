@@ -18,7 +18,11 @@
 import Foundation
 
 // swiftlint:disable unused_optional_binding
-extension File {
+public extension File {
+    var isUploadable: Bool {
+        uploadID != nil
+    }
+
     /// Asserts if this File is a new file, as it comes out from the `CoreDataFileImporter`.
     /// At this points it needs to have its Revision skeleton populated.
     func isEncryptingRevision() -> Bool {
@@ -32,7 +36,7 @@ extension File {
               let activeRevisionDraft = activeRevisionDraft,
               activeRevisionDraft.id == uploadID,
               activeRevisionDraft.uploadState == .created,
-              activeRevisionDraft.uploadableResourceURL.isNotNil,
+              activeRevisionDraft.normalizedUploadableResourceURL.isNotNil,
               revisions == [activeRevisionDraft],
               activeRevision.isNil  else {
             return false
@@ -53,7 +57,7 @@ extension File {
               let activeRevisionDraft = activeRevisionDraft,
               activeRevisionDraft.id == uploadID,
               activeRevisionDraft.uploadState == .encrypted,
-              activeRevisionDraft.uploadableResourceURL.isNil,
+              activeRevisionDraft.normalizedUploadableResourceURL.isNil,
               revisions == [activeRevisionDraft],
               activeRevision.isNil else {
             return false
@@ -74,7 +78,7 @@ extension File {
               let activeRevisionDraft = activeRevisionDraft,
               activeRevisionDraft.id != uploadID,
               activeRevisionDraft.uploadState == .encrypted,
-              activeRevisionDraft.uploadableResourceURL.isNil,
+              activeRevisionDraft.normalizedUploadableResourceURL.isNil,
               revisions.contains(activeRevisionDraft) else {
             return false
         }
@@ -94,7 +98,7 @@ extension File {
               let activeRevisionDraft = activeRevisionDraft,
               activeRevisionDraft.id != uploadID,
               activeRevisionDraft.uploadState == .uploaded,
-              activeRevisionDraft.uploadableResourceURL.isNil,
+              activeRevisionDraft.normalizedUploadableResourceURL.isNil,
               revisions.contains(activeRevisionDraft) else {
             return false
         }
@@ -113,7 +117,7 @@ extension File {
               let activeRevisionDraft = activeRevisionDraft,
               activeRevisionDraft.id == uploadID,
               activeRevisionDraft.uploadState == .created,
-              activeRevisionDraft.uploadableResourceURL.isNotNil,
+              activeRevisionDraft.normalizedUploadableResourceURL.isNotNil,
               revisions.contains(activeRevisionDraft),
               activeRevision.isNotNil  else {
             return false
@@ -134,7 +138,7 @@ extension File {
               let activeRevisionDraft = activeRevisionDraft,
               activeRevisionDraft.id == uploadID,
               activeRevisionDraft.uploadState == .encrypted,
-              activeRevisionDraft.uploadableResourceURL.isNil,
+              activeRevisionDraft.normalizedUploadableResourceURL.isNil,
               revisions.contains(activeRevisionDraft),
               activeRevision.isNotNil else {
             return false
@@ -152,6 +156,32 @@ extension File {
               uploadID == nil,
               activeRevisionDraft == nil,
               !revisions.isEmpty else {
+            return false
+        }
+        return true
+    }
+
+    /// Gives an uploadID only if at least one revision has already been uploaded and there is a new revision draft.
+    func uploadIDIfUploadingNewRevision() -> UUID? {
+        guard let _ = name,
+              let _ = contentKeyPacket,
+              let _ = contentKeyPacketSignature,
+              let _ = nameSignatureEmail,
+              let uploadID,
+              let _ = activeRevisionDraft,
+              !revisions.isEmpty,
+              activeRevision.isNotNil else {
+            return nil
+        }
+        return uploadID
+    }
+    
+    func isDraft() -> Bool {
+        guard let activeRevisionDraft,
+              activeRevision == nil,
+              revisions.count == 1,
+              revisions.contains(activeRevisionDraft)
+        else {
             return false
         }
         return true

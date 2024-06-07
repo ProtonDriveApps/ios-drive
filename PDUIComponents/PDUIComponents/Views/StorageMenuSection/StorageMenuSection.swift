@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 public struct StorageMenuSection: View {
     public init(usedPercent: Binding<Double>, usedBreakdown: Binding<String>, highStorageUsageRatio: Double, isStoreKitReady: Bool) {
@@ -66,14 +66,20 @@ public struct StorageMenuSection: View {
             Text(usedBreakdown)
                 .font(.body)
                 .foregroundColor(Color.SidebarTextNorm)
+                .accessibilityIdentifier("StorageMenuSection.usedBreakdown")
         }
     }
     
     private var usageString: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .percent
+        let formatter = StorageMenuSection.formatter
         return formatter.string(from: NSNumber(value: usedPercent)) ?? "?"
     }
+
+    private static let formatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .percent
+        return formatter
+    }()
 }
 
 struct StorageMenuSection_Previews: PreviewProvider {

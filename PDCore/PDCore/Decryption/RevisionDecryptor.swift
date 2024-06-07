@@ -24,6 +24,13 @@ public actor RevisionDecryptor {
     public func decrypt(_ revision: Revision, on moc: NSManagedObjectContext) throws -> URL {
         return try moc.performAndWait {
             let revision = revision.in(moc: moc)
+            #if os(macOS)
+            guard revision.size > 0 else {
+                let url = try revision.clearURL()
+                FileManager.default.createFile(atPath: url.path, contents: nil)
+                return url
+            }
+            #endif
             return try revision.decryptFile()
         }
     }

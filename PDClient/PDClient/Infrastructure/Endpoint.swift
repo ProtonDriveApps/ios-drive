@@ -16,17 +16,20 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import ProtonCore_Networking
+import ProtonCoreNetworking
 
 public typealias NetworkingCredential = Credential
 
-public protocol Endpoint: Request {
+public protocol Endpoint: EndpointWithRawResponse {
     associatedtype Response: Codable
+}
+
+public protocol EndpointWithRawResponse: Request {
     var request: URLRequest { get }
     var parameters: [String: Any]? { get }
 }
 
-extension Endpoint {
+extension EndpointWithRawResponse {
     public var path: String {
         guard let url = self.request.url else {
             assert(false, "Request with no URL")

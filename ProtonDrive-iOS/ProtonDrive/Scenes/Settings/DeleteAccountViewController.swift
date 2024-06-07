@@ -18,8 +18,8 @@
 import UIKit
 import SwiftUI
 import Combine
-import ProtonCore_Settings
-import ProtonCore_UIFoundations
+import PMSettings
+import ProtonCoreUIFoundations
 
 final class DeleteAccountViewController: UIViewController, PMContainerReloading {
     @ObservedObject var viewModel: DeleteAccountViewModel

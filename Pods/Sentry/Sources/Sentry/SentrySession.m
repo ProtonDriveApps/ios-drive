@@ -1,8 +1,9 @@
-#import "SentrySession.h"
-#import "NSDate+SentryExtras.h"
-#import "SentryCurrentDate.h"
-#import "SentryInstallation.h"
+#import "NSMutableDictionary+Sentry.h"
+#import "SentryDateUtils.h"
+#import "SentryDependencyContainer.h"
 #import "SentryLog.h"
+#import "SentrySession+Private.h"
+#import "SentrySwift.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -30,23 +31,23 @@ nameForSentrySessionStatus(SentrySessionStatus status)
  * Default private constructor. We don't name it init to avoid the overlap with the default init of
  * NSObject, which is not available as we specified in the header with SENTRY_NO_INIT.
  */
-- (instancetype)initDefault
+- (instancetype)initDefault:(NSString *)distinctId
 {
     if (self = [super init]) {
         _sessionId = [NSUUID UUID];
-        _started = [SentryCurrentDate date];
+        _started = [SentryDependencyContainer.sharedInstance.dateProvider date];
         _status = kSentrySessionStatusOk;
         _sequence = 1;
         _errors = 0;
-        _distinctId = [SentryInstallation id];
+        _distinctId = distinctId;
     }
 
     return self;
 }
 
-- (instancetype)initWithReleaseName:(NSString *)releaseName
+- (instancetype)initWithReleaseName:(NSString *)releaseName distinctId:(NSString *)distinctId
 {
-    if (self = [self initDefault]) {
+    if (self = [self initDefault:distinctId]) {
         _init = @YES;
         _releaseName = releaseName;
     }
@@ -68,7 +69,7 @@ nameForSentrySessionStatus(SentrySessionStatus status)
         id started = [jsonObject valueForKey:@"started"];
         if (started == nil || ![started isKindOfClass:[NSString class]])
             return nil;
-        NSDate *startedDate = [NSDate sentry_fromIso8601String:started];
+        NSDate *startedDate = sentry_fromIso8601String(started);
         if (nil == startedDate) {
             return nil;
         }
@@ -124,7 +125,7 @@ nameForSentrySessionStatus(SentrySessionStatus status)
 
         id timestamp = [jsonObject valueForKey:@"timestamp"];
         if ([timestamp isKindOfClass:[NSString class]]) {
-            _timestamp = [NSDate sentry_fromIso8601String:timestamp];
+            _timestamp = sentry_fromIso8601String(timestamp);
         }
 
         id duration = [jsonObject valueForKey:@"duration"];
@@ -197,40 +198,39 @@ nameForSentrySessionStatus(SentrySessionStatus status)
         NSMutableDictionary *serializedData = @{
             @"sid" : _sessionId.UUIDString,
             @"errors" : @(_errors),
-            @"started" : [_started sentry_toIso8601String],
+            @"started" : sentry_toIso8601String(_started),
         }
                                                   .mutableCopy;
 
-        if (nil != _init) {
-            [serializedData setValue:_init forKey:@"init"];
-        }
+        [SentryDictionary setBoolValue:_init forKey:@"init" intoDictionary:serializedData];
 
         NSString *statusString = nameForSentrySessionStatus(_status);
 
-        if (nil != statusString) {
+        if (statusString != nil) {
             [serializedData setValue:statusString forKey:@"status"];
         }
 
-        NSDate *timestamp = nil != _timestamp ? _timestamp : [SentryCurrentDate date];
-        [serializedData setValue:[timestamp sentry_toIso8601String] forKey:@"timestamp"];
+        NSDate *timestamp = nil != _timestamp
+            ? _timestamp
+            : [SentryDependencyContainer.sharedInstance.dateProvider date];
+        [serializedData setValue:sentry_toIso8601String(timestamp) forKey:@"timestamp"];
 
-        if (nil != _duration) {
+        if (_duration != nil) {
             [serializedData setValue:_duration forKey:@"duration"];
-        } else if (nil == _init) {
+        } else if (_init == nil) {
             NSTimeInterval secondsBetween = [_timestamp timeIntervalSinceDate:_started];
             [serializedData setValue:[NSNumber numberWithDouble:secondsBetween] forKey:@"duration"];
         }
 
-        // TODO: seq to be just unix time in mills?
         [serializedData setValue:@(_sequence) forKey:@"seq"];
 
-        if (nil != _releaseName || nil != _environment) {
+        if (_releaseName != nil || _environment != nil) {
             NSMutableDictionary *attrs = [[NSMutableDictionary alloc] init];
-            if (nil != _releaseName) {
+            if (_releaseName != nil) {
                 [attrs setValue:_releaseName forKey:@"release"];
             }
 
-            if (nil != _environment) {
+            if (_environment != nil) {
                 [attrs setValue:_environment forKey:@"environment"];
             }
             [serializedData setValue:attrs forKey:@"attrs"];

@@ -1,6 +1,6 @@
 //
 //  PaymentsUIMode.swift
-//  ProtonCore_PaymentsUI - Created on 01/06/2021.
+//  ProtonCorePaymentsUI - Created on 01/06/2021.
 //
 //  Copyright (c) 2022 Proton Technologies AG
 //
@@ -19,9 +19,12 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import enum ProtonCore_DataModel.ClientApp
-import ProtonCore_Payments
+import enum ProtonCoreDataModel.ClientApp
+import ProtonCorePayments
+import ProtonCoreUIFoundations
 
 public enum PaymentsUIPresentationType {
     case modal          // modal presentation
@@ -32,6 +35,7 @@ public enum PaymentsUIResultReason {
     case open(vc: PaymentsUIViewController, opened: Bool)
     case close
     case purchasedPlan(accountPlan: InAppPurchasePlan)
+    @available(*, deprecated, message: "Please stop using `toppedUpCredits`. We no longer credit accounts")
     case toppedUpCredits
     case planPurchaseProcessingInProgress(accountPlan: InAppPurchasePlan)
     case purchaseError(error: Error)
@@ -46,15 +50,28 @@ enum PaymentsUIMode {
 
 public typealias CustomPlansDescription = [String: (purchasable: PurchasablePlanDescription?, current: CurrentPlanDescription?)]
 
+public struct PaymentsUICustomizationOptions {
+    let inAppTheme: () -> InAppTheme
+    let customPlansDescription: CustomPlansDescription
+
+    public static let empty: PaymentsUICustomizationOptions = .init()
+
+    public init(inAppTheme: @escaping () -> InAppTheme = { .default },
+                customPlansDescription: CustomPlansDescription = [:]) {
+        self.inAppTheme = inAppTheme
+        self.customPlansDescription = customPlansDescription
+    }
+}
+
 public final class PaymentsUI {
 
     private let coordinator: PaymentsUICoordinator
     private let paymentsUIAlertManager: PaymentsUIAlertManager
-    
+
     public init(payments: Payments,
                 clientApp: ClientApp,
                 shownPlanNames: ListOfShownPlanNames,
-                customPlansDescription: CustomPlansDescription = [:],
+                customization: PaymentsUICustomizationOptions,
                 alertManager: AlertManagerProtocol? = nil) {
         if let alertManager = alertManager {
             self.paymentsUIAlertManager = AlwaysDelegatingPaymentsUIAlertManager(delegatedAlertManager: alertManager)
@@ -68,25 +85,25 @@ public final class PaymentsUI {
                                                  purchaseManager: payments.purchaseManager,
                                                  clientApp: clientApp,
                                                  shownPlanNames: shownPlanNames,
-                                                 customPlansDescription: customPlansDescription,
+                                                 customization: customization,
                                                  alertManager: paymentsUIAlertManager,
                                                  onDohTroubleshooting: { [weak payments] in
             payments?.executeDohTroubleshootMethodFromApiDelegate()
         })
     }
-    
+
     // MARK: Public interface
-    
+
     public func showSignupPlans(viewController: UIViewController, completionHandler: @escaping ((PaymentsUIResultReason) -> Void)) {
         coordinator.start(viewController: viewController, completionHandler: completionHandler)
     }
-    
+
     public func showCurrentPlan(presentationType: PaymentsUIPresentationType,
                                 backendFetch: Bool,
                                 completionHandler: @escaping ((PaymentsUIResultReason) -> Void)) {
         coordinator.start(presentationType: presentationType, mode: .current, backendFetch: backendFetch, completionHandler: completionHandler)
     }
-    
+
     public func showUpgradePlan(presentationType: PaymentsUIPresentationType,
                                 backendFetch: Bool,
                                 completionHandler: @escaping ((PaymentsUIResultReason) -> Void)) {
@@ -94,3 +111,5 @@ public final class PaymentsUI {
     }
 
 }
+
+#endif

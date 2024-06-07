@@ -20,16 +20,18 @@
 //  along with ProtonCore. If not, see https://www.gnu.org/licenses/.
 //
 
-import ProtonCore_Networking
+import ProtonCoreNetworking
 
 public final class AuthModulusResponse: Response, Codable {
 
-    public var Modulus: String?
-    public var ModulusID: String?
+    public var modulus: String?
+    public var modulusID: String?
 
     override public func ParseResponse(_ response: [String: Any]!) -> Bool {
-        self.Modulus = response["Modulus"] as? String
-        self.ModulusID = response["ModulusID"] as? String
+        self.modulus = response["Modulus"] as? String
+        self.modulusID = response["ModulusID"] as? String
         return true
     }
+
+    required init() {}
 }

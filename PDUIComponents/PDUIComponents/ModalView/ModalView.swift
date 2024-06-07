@@ -17,7 +17,7 @@
 
 import SwiftUI
 import UIKit
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 public enum PresentationStyle {
     case fullScreenWithBlender, fullScreenWithoutBlender, sheet

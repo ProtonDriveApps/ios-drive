@@ -16,16 +16,11 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 public struct ProgressMenuSectionGeneric<ProgressProviderType>: View where ProgressProviderType: NSObject, ProgressProviderType: ProgressFractionCompletedProvider {
     
     public init(progressObserver: ProgressMenuSectionViewModelGeneric<ProgressProviderType>) {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .percent
-        formatter.multiplier = 100
-        formatter.maximumFractionDigits = 0
-        self.percentFormatter = formatter
         self.progressObserver = progressObserver
     }
     
@@ -35,9 +30,7 @@ public struct ProgressMenuSectionGeneric<ProgressProviderType>: View where Progr
     @State var showSpinner: Bool = false
     @State var showAnimation: Bool = false
     @ObservedObject var progressObserver: ProgressMenuSectionViewModelGeneric<ProgressProviderType>
-    
-    var percentFormatter: NumberFormatter
-    
+
     public var body: some View {
         VStack(alignment: .leading) {
             HStack {
@@ -96,8 +89,20 @@ public struct ProgressMenuSectionGeneric<ProgressProviderType>: View where Progr
     }
     
     private var percentString: String {
-        percentFormatter.string(from: progressObserver.progressCompleted as NSNumber) ?? ""
+        let percentFormatter = ProgressMenuSectionGenericFormatter.percentFormatter
+        return percentFormatter.string(from: progressObserver.progressCompleted as NSNumber) ?? ""
     }
+}
+
+/// Static variables are not supported in generic types (ProgressMenuSectionGeneric), so it needs to be wrapped in standalone declaration.
+private struct ProgressMenuSectionGenericFormatter {
+    static let percentFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .percent
+        formatter.multiplier = 100
+        formatter.maximumFractionDigits = 0
+        return formatter
+    }()
 }
 
 struct ProcessMenuSection_Previews: PreviewProvider {

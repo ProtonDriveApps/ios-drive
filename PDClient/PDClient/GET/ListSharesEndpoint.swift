@@ -101,6 +101,7 @@ extension ListSharesEndpoint {
             public enum State: Int, Codable {
                 case active = 1
                 case deleted = 2
+                case restored = 3
             }
 
             public struct Flags: OptionSet, Codable {

@@ -15,8 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import ProtonCoreUtilities
+
 /// DriveAPIService:
 /// Protocol that will allow us to decouple from Core's statically defined APIService and implement polymorphisim in a clean way
 public protocol DriveAPIService {
-    func request<E: Endpoint, R>(from endpoint: E, completion: @escaping (Result<R, Error>) -> Void) where R == E.Response
+    func request<E: Endpoint, R>(from endpoint: E, completionExecutor: CompletionBlockExecutor, completion: @escaping (Result<R, Error>) -> Void) where R == E.Response
 }

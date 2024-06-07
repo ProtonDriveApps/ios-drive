@@ -17,4 +17,5 @@
 
 protocol PhotosRootCoordinator {
     func openMenu()
+    func close()
 }

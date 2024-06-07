@@ -20,27 +20,32 @@
 //  along with ProtonCore. If not, see https://www.gnu.org/licenses/.
 //
 
-import ProtonCore_Networking
-import ProtonCore_FeatureSwitch
+import ProtonCoreNetworking
+import ProtonCoreLog
 
 public struct ObservabilityEnv {
-    
+
     public static var current = ObservabilityEnv()
-    
+
     public static func report<Labels: Encodable & Equatable>(_ event: ObservabilityEvent<PayloadWithLabels<Labels>>) {
         ObservabilityEnv.current.observabilityService?.report(event)
     }
-    
+
     /// The setupWorld function sets up the service used to report events before the
     /// user is logged in. Session ID is not relevant in the context of Observability.
     /// - Parameters:
     ///     - requestPerformer: Should be an instance conforming to RequestPerforming used
     ///     before the user is logged in.
     public mutating func setupWorld(requestPerformer: RequestPerforming) {
-        if FeatureFactory.shared.isEnabled(.observability) {
-            self.observabilityService = ObservabilityServiceImpl(requestPerformer: requestPerformer)
+        self.observabilityService = ObservabilityServiceImpl(requestPerformer: requestPerformer) { _, result in
+            switch result {
+            case .success:
+                break
+            case .failure(let error):
+                PMLog.error(error, sendToExternal: true)
+            }
         }
     }
-    
+
     var observabilityService: ObservabilityService?
 }

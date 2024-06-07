@@ -1,12 +1,18 @@
 #import "SentryScreenshotIntegration.h"
-#import "SentryAttachment.h"
-#import "SentryCrashC.h"
-#import "SentryDependencyContainer.h"
-#import "SentryEvent+Private.h"
-#import "SentryHub+Private.h"
-#import "SentrySDK+Private.h"
 
 #if SENTRY_HAS_UIKIT
+
+#    import "SentryAttachment.h"
+#    import "SentryCrashC.h"
+#    import "SentryDependencyContainer.h"
+#    import "SentryEvent+Private.h"
+#    import "SentryException.h"
+#    import "SentryHub+Private.h"
+#    import "SentrySDK+Private.h"
+
+#    if SENTRY_HAS_METRIC_KIT
+#        import "SentryMetricKitIntegration.h"
+#    endif // SENTRY_HAS_METRIC_KIT
 
 void
 saveScreenShot(const char *path)
@@ -49,12 +55,23 @@ saveScreenShot(const char *path)
 {
 
     // We don't take screenshots if there is no exception/error.
-    // We dont take screenshots if the event is a crash event.
-    if ((event.exceptions == nil && event.error == nil) || event.isCrashEvent) {
+    // We don't take screenshots if the event is a crash or metric kit event.
+    if ((event.exceptions == nil && event.error == nil) || event.isCrashEvent
+#    if SENTRY_HAS_METRIC_KIT
+        || [event isMetricKitEvent]
+#    endif // SENTRY_HAS_METRIC_KIT
+    ) {
         return attachments;
     }
 
-    NSArray *screenshot = [SentryDependencyContainer.sharedInstance.screenshot appScreenshots];
+    // If the event is an App hanging event, we cant take the
+    // screenshot because the the main thread it's blocked.
+    if (event.isAppHangEvent) {
+        return attachments;
+    }
+
+    NSArray *screenshot =
+        [SentryDependencyContainer.sharedInstance.screenshot appScreenshotsFromMainThread];
 
     NSMutableArray *result =
         [NSMutableArray arrayWithCapacity:attachments.count + screenshot.count];
@@ -74,4 +91,5 @@ saveScreenShot(const char *path)
 }
 
 @end
-#endif
+
+#endif // SENTRY_HAS_UIKIT

@@ -19,10 +19,13 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import Foundation
-import ProtonCore_DataModel
-import ProtonCore_Networking
-import ProtonCore_UIFoundations
+import UIKit
+import ProtonCoreDataModel
+import ProtonCoreNetworking
+import ProtonCoreUIFoundations
 
 protocol MailboxPasswordCoordinatorDelegate: AnyObject {
     func mailboxPasswordCoordinatorDidFinish(mailboxPasswordCoordinator: MailboxPasswordCoordinator, mailboxPassword: String)
@@ -35,15 +38,20 @@ final class MailboxPasswordCoordinator {
     private var navigationController: LoginNavigationViewController?
     private let container: Container
     private let externalLinks: ExternalLinks
+    private let inAppTheme: InAppTheme
 
-    init(container: Container, delegate: MailboxPasswordCoordinatorDelegate?) {
+    init(container: Container,
+         delegate: MailboxPasswordCoordinatorDelegate?,
+         inAppTheme: InAppTheme) {
         self.container = container
         self.externalLinks = container.makeExternalLinks()
         self.delegate = delegate
+        self.inAppTheme = inAppTheme
     }
 
     func start(viewController: UIViewController) {
-        let mailboxPasswordViewController = UIStoryboard.instantiate(MailboxPasswordViewController.self)
+        let inAppTheme = inAppTheme
+        let mailboxPasswordViewController = UIStoryboard.instantiateInLogin(MailboxPasswordViewController.self, inAppTheme: { inAppTheme })
         mailboxPasswordViewController.setupAsStandaloneComponent(delegate: self)
 
         let navigationController = LoginNavigationViewController(rootViewController: mailboxPasswordViewController)
@@ -71,8 +79,4 @@ extension MailboxPasswordCoordinator: MailboxPasswordViewControllerInStandaloneF
     }
 }
 
-private extension UIStoryboard {
-    static func instantiate<T: UIViewController>(_ controllerType: T.Type) -> T {
-        self.instantiate(storyboardName: "PMLogin", controllerType: controllerType)
-    }
-}
+#endif

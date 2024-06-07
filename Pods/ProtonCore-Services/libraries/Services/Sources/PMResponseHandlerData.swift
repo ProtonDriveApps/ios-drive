@@ -20,7 +20,8 @@
 //  along with ProtonCore. If not, see https://www.gnu.org/licenses/.
 //
 
-import ProtonCore_Networking
+import Foundation
+import ProtonCoreNetworking
 
 public struct PMResponseHandlerData {
     public var method: HTTPMethod
@@ -34,8 +35,20 @@ public struct PMResponseHandlerData {
     public var nonDefaultTimeout: TimeInterval?
     public var retryPolicy: ProtonRetryPolicy.RetryMode
     public var task: URLSessionDataTask?
-    
-    public init(method: HTTPMethod, path: String, parameters: Any? = nil, headers: [String: Any]? = nil, authenticated: Bool, authRetry: Bool, authRetryRemains: Int, customAuthCredential: AuthCredential? = nil, nonDefaultTimeout: TimeInterval? = nil, retryPolicy: ProtonRetryPolicy.RetryMode, task: URLSessionDataTask? = nil) {
+    public var onDataTaskCreated: (URLSessionDataTask) -> Void
+
+    public init(method: HTTPMethod,
+                path: String,
+                parameters: Any? = nil,
+                headers: [String: Any]? = nil,
+                authenticated: Bool,
+                authRetry: Bool,
+                authRetryRemains: Int,
+                customAuthCredential: AuthCredential? = nil,
+                nonDefaultTimeout: TimeInterval? = nil,
+                retryPolicy: ProtonRetryPolicy.RetryMode,
+                task: URLSessionDataTask? = nil,
+                onDataTaskCreated: @escaping (URLSessionDataTask) -> Void) {
         self.method = method
         self.path = path
         self.parameters = parameters
@@ -47,5 +60,6 @@ public struct PMResponseHandlerData {
         self.nonDefaultTimeout = nonDefaultTimeout
         self.retryPolicy = retryPolicy
         self.task = task
+        self.onDataTaskCreated = onDataTaskCreated
     }
 }

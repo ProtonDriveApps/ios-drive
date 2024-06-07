@@ -19,21 +19,22 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import Foundation
-import ProtonCore_CoreTranslation
-import ProtonCore_DataModel
-import ProtonCore_UIFoundations
+import ProtonCoreDataModel
+import ProtonCoreUIFoundations
 import UIKit
 
 class SummaryViewModel {
-    
+
     private let planName: String?
     private let screenVariant: SummaryScreenVariant
     private let clientApp: ClientApp
     private let paymentsAvailability: PaymentsAvailability
-    
+
     // MARK: Public interface
-    
+
     init(planName: String?, paymentsAvailability: PaymentsAvailability,
          screenVariant: SummaryScreenVariant, clientApp: ClientApp) {
         self.planName = planName
@@ -41,20 +42,20 @@ class SummaryViewModel {
         self.clientApp = clientApp
         self.paymentsAvailability = paymentsAvailability
     }
-    
+
     var descriptionText: NSAttributedString {
         let attrFont = UIFont.adjustedFont(forTextStyle: .body, weight: .bold)
         if case .notAvailable = paymentsAvailability {
-            return NSAttributedString(string: CoreString._su_summary_no_plan_description)
-        
+            return NSAttributedString(string: LUITranslation.summary_no_plan_description.l10n)
+
         } else if let planName = planName {
-            return String(format: CoreString._su_summary_paid_description, planName).getAttributedString(replacement: planName, attrFont: attrFont)
-        
+            return String(format: LUITranslation.summary_paid_description.l10n, planName).getAttributedString(replacement: planName, attrFont: attrFont)
+
         } else {
-            return CoreString._su_summary_free_description.getAttributedString(replacement: CoreString._su_summary_free_description_replacement, attrFont: attrFont)
+            return LUITranslation.summary_free_description.l10n.getAttributedString(replacement: LUITranslation.summary_free_description_replacement.l10n, attrFont: attrFont)
         }
     }
-    
+
     var summaryImage: UIImage? {
         switch screenVariant {
         case .noSummaryScreen:
@@ -81,3 +82,5 @@ class SummaryViewModel {
         }
     }
 }
+
+#endif

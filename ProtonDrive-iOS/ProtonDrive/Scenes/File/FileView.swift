@@ -18,7 +18,7 @@
 import SwiftUI
 import UIKit
 import PDUIComponents
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 struct FileView: View {
     @EnvironmentObject var root: RootViewModel

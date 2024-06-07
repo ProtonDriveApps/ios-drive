@@ -1,6 +1,6 @@
 //
 //  UIStoryboard+Extensions.swift
-//  ProtonCore_PaymentsUI - Created on 01/06/2021.
+//  ProtonCorePaymentsUI - Created on 01/06/2021.
 //
 //  Copyright (c) 2022 Proton Technologies AG
 //
@@ -19,14 +19,22 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import Foundation
 import UIKit
+import ProtonCoreUIFoundations
 
 extension UIStoryboard {
-    static func instantiate<T: UIViewController>(storyboardName: String, controllerType: T.Type) -> T {
+    static func instantiate<T: UIViewController>(
+        storyboardName: String, controllerType: T.Type, inAppTheme: () -> InAppTheme
+    ) -> T {
         let storyboard = UIStoryboard(name: storyboardName, bundle: PaymentsUI.bundle)
         let name = "\(controllerType)".replacingOccurrences(of: "ViewController", with: "")
         let viewController = storyboard.instantiateViewController(withIdentifier: name) as! T
+        viewController.overrideUserInterfaceStyle = inAppTheme().userInterfaceStyle
         return viewController
     }
 }
+
+#endif

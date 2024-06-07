@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 #if os(iOS)
 public struct TextNavigationBarButton: View {
@@ -54,6 +54,12 @@ public struct TextNavigationBarButton: View {
         case .bold:
             return Font.body.bold()
         }
+    }
+}
+
+public extension TextNavigationBarButton {
+    static func cancel(_ action: @escaping () -> Void) -> some View {
+        TextNavigationBarButton(title: "Cancel", weight: .bold, action: action)
     }
 }
 #endif

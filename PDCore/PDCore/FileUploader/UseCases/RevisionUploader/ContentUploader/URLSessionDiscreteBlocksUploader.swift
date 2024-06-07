@@ -17,6 +17,7 @@
 
 import Foundation
 import PDClient
+import CoreData
 
 final class URLSessionDiscreteBlocksUploader: URLSessionDataTaskUploader, ContentUploader {
     private let uploadBlock: UploadBlock
@@ -25,27 +26,35 @@ final class URLSessionDiscreteBlocksUploader: URLSessionDataTaskUploader, Conten
     init(
         uploadBlock: UploadBlock,
         fullUploadableBlock: FullUploadableBlock,
+        uploadID: UUID,
         progressTracker: Progress,
         session: URLSession,
         apiService: APIService,
-        credentialProvider: CredentialProvider
+        credentialProvider: CredentialProvider,
+        moc: NSManagedObjectContext
     ) {
         self.uploadBlock = uploadBlock
         self.fullUploadableBlock = fullUploadableBlock
-        super.init(progressTracker: progressTracker, session: session, apiService: apiService, credentialProvider: credentialProvider)
+        super.init(uploadID: uploadID, progressTracker: progressTracker, session: session, apiService: apiService, credentialProvider: credentialProvider, moc: moc)
     }
 
     func upload(completion: @escaping Completion) {
         guard !isCancelled else { return }
 
         guard let credential = credentialProvider.clientCredential() else {
-            return completion(.failure(UploaderErrors.noCredentialInCloudSlot))
+            return completion(.failure(FileUploaderError.noCredentialFound))
         }
 
         do {
+            guard FileManager.default.fileExists(atPath: fullUploadableBlock.localURL.path) else {
+                throw ContentCleanedError(area: .block)
+            }
             var data = try Data(contentsOf: fullUploadableBlock.localURL)
             let endpoint = UploadBlockFromDataEndpoint(url: fullUploadableBlock.remoteURL, data: &data, credential: credential, service: apiService)
+
             try setWillStartUpload()
+            
+            guard !isCancelled else { return }
 
             upload(data, request: endpoint.request) { [weak self] result in
                 guard let self = self, !self.isCancelled else { return }
@@ -57,27 +66,40 @@ final class URLSessionDiscreteBlocksUploader: URLSessionDataTaskUploader, Conten
             completion(.failure(error))
         }
     }
-
+    
+    /// This will mark the blocks as invalid in case we want to resume the upload and we should request another URL
+    private func setWillStartUpload() throws {
+        try moc.performAndWait { [weak self] in
+            guard let self, !self.isCancelled else { return }
+            
+            guard uploadBlock.uploadUrl != nil && uploadBlock.uploadToken != nil else {
+                throw uploadBlock.invalidState("The block should have an upload token.")
+            }
+            uploadBlock.unsetUploadableState()
+            try moc.saveIfNeeded()
+        }
+    }
+    
     override func saveUploadedState() {
-        guard let moc = uploadBlock.moc else { return }
-
-        moc.performAndWait {
+        moc.performAndWait { [weak self] in
+            // If we logout or the upload is cancelled, we should not save the state, we will retry again later
+            guard let self, !self.isCancelled else { return }
+            
+            // We change the local state of the block to uploaded
             uploadBlock.isUploaded = true
             uploadBlock.uploadToken = fullUploadableBlock.uploadToken
             uploadBlock.uploadUrl = fullUploadableBlock.remoteURL.absoluteString
-            try? moc.save()
-        }
-    }
-
-    /// This will mark the blocks as invalid in case we want to resume the upload and we should request another URL
-    private func setWillStartUpload() throws {
-        guard let moc = uploadBlock.moc else {
-            throw Block.noMOC()
-        }
-
-        try moc.performAndWait {
-            uploadBlock.unsetUploadableState()
-            try moc.saveIfNeeded()
+            
+            do {
+                // If we fail to save the local state, even if the block is uploaded, we will retry again later
+                #if os(iOS)
+                try moc.saveOrRollback()
+                #else
+                try moc.saveWithParentLinkCheck()
+                #endif
+            } catch {
+                Log.error(error, domain: .uploader)
+            }
         }
     }
 }

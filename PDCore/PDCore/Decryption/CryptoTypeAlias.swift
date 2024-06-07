@@ -37,4 +37,4 @@ typealias ArmoredEncryptionKey = ArmoredKey
 typealias ArmoredSigningKey = ArmoredKey
 
 public typealias SessionKey = Data
-typealias PublicKey = String
+public typealias PublicKey = String

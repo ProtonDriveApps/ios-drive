@@ -17,4 +17,4 @@
 
 import Foundation
 
-final class PhotoDraftCreatorOperationFactory: NameResolvingFileDraftCreatorOperationFactory { }
+final class PhotoDraftCreatorOperationFactory: DefaultFileDraftCreatorOperationFactory { }

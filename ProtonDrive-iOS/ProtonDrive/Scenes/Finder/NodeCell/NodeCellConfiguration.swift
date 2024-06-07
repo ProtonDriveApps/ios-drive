@@ -30,7 +30,7 @@ struct NodeCellButton: Hashable {
 
     enum ActionButtonType: Hashable {
         case menu
-        case trash(id: String)
+        case trash(id: NodeIdentifier)
         case cancel
         case retry
     }
@@ -67,7 +67,7 @@ protocol NodeCellConfiguration: AnyObject {
     var progressCompleted: Double { get }
     var progressDirection: ProgressTracker.Direction? { get }
     var selectionModel: CellSelectionModel? { get }
-    var id: String { get }
+    var id: NodeIdentifier { get }
 
     var thumbnailViewModel: ThumbnailImageViewModel? { get }
     
@@ -82,7 +82,7 @@ extension NodeCellConfiguration {
     var defaultSecondLineSubtitle: String {
         let suffix = "Modified \(DateStamper.stamp(for: self.lastModified))"
         if nodeType == .file && self.size > 0 {
-            let sizeString = ByteCountFormatter().string(fromByteCount: Int64(self.size))
+            let sizeString = ByteCountFormatter.storageSizeString(forByteCount: Int64(self.size))
             return "\(sizeString), \(suffix)"
         } else {
             return suffix

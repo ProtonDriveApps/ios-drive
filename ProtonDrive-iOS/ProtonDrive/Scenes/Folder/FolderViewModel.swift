@@ -22,6 +22,7 @@ import PDUIComponents
 
 class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, HasRefreshControl, UploadingViewModel, DownloadingViewModel, SortingViewModel, HasMultipleSelection {
     typealias FolderErrorModel = FolderModel & FinderErrorModel
+    typealias Identifier = NodeIdentifier
     private let localSettings: LocalSettings
     
     // MARK: FinderViewModel
@@ -110,7 +111,7 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
     
     // MARK: HasMultipleSelection
     private var multiselectWasActivatedOnce: Bool = false
-    lazy var selection = MultipleSelectionModel(selectable: Set<String>())
+    lazy var selection = MultipleSelectionModel(selectable: Set<NodeIdentifier>())
     @Published var listState: ListState = .active
     
     // MARK: others
@@ -134,7 +135,7 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] permanent in
-                self?.selection.updateSelectable(Set(permanent.map(\.id)))
+                self?.selection.updateSelectable(Set(permanent.map(\.node.identifier)))
             }
             .store(in: &cancellables)
 
@@ -159,6 +160,10 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
                 self?.isUploadDisclaimerVisible = value
             }
             .store(in: &cancellables)
+    }
+
+    func actionBarItems() -> [ActionBarButtonViewModel] {
+        [.trashMultiple, .moveMultiple, .offlineAvailableMultiple]
     }
 }
 

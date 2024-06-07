@@ -18,7 +18,12 @@
 import Foundation
 import PDClient
 
-extension CloudSlot {
+protocol CloudEventProvider {
+    func fetchInitialEvent(ofVolumeID volumeID: String) async throws -> EventID
+    func scanEventsFromRemote(ofVolumeID volumeID: String, since loopEventID: EventID) async throws -> EventsEndpoint.Response
+}
+
+extension CloudSlot: CloudEventProvider {
     
     func fetchInitialEvent(ofVolumeID volumeID: String) async throws -> EventID {
         try await withCheckedThrowingContinuation { continuation in

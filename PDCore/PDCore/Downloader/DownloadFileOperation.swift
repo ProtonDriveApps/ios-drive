@@ -43,43 +43,43 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
     override func start() {
         super.start()
         guard !self.isCancelled else { return }
-        ConsoleLogger.shared?.log("Start operation", osLogType: Downloader.self)
+        Log.info("Start operation", domain: .downloader)
         
-        ConsoleLogger.shared?.log("Fetch full file details", osLogType: Downloader.self)
+        Log.info("Fetch full file details", domain: .downloader)
         self.cloudSlot.scanNode(fileIdentifier) { resultFile in
             guard !self.isCancelled else { return }
             switch resultFile {
             case .failure(let error):
-                ConsoleLogger.shared?.log(error, osLogType: Downloader.self)
+                Log.error(error, domain: .downloader)
                 self.completion?(.failure(error))
                 self.cancel()
 
             case .success(let node):
                 guard let file = node as? File, let revision = file.activeRevision else {
-                    ConsoleLogger.shared?.log(Errors.errorReadingMetadata, osLogType: Downloader.self)
+                    Log.error(Errors.errorReadingMetadata, domain: .downloader)
                     self.completion?(.failure(Errors.errorReadingMetadata))
                     self.cancel()
                     return
                 }
 
-                ConsoleLogger.shared?.log("Fetch full revision details", osLogType: Downloader.self)
+                Log.info("Fetch full revision details", domain: .downloader)
                 self.cloudSlot.scanRevision(revision.identifier) { resultRevision in
                     guard !self.isCancelled else { return }
                     switch resultRevision {
                     case .failure(let error):
-                        ConsoleLogger.shared?.log(error, osLogType: Downloader.self)
+                        Log.error(error, domain: .downloader)
                         self.completion?(.failure(error))
                         self.cancel()
 
                     case .success(let updatedRevision) where updatedRevision.blocks.isEmpty:
-                        ConsoleLogger.shared?.log("The revision is an empty file, creating empty file locally", osLogType: Downloader.self)
+                        Log.info("The revision is an empty file, creating empty file locally", domain: .downloader)
                         self.createEmptyFile(in: updatedRevision) // will call completion
                         self.state = .finished
 
                     case .success(let updatedRevision):
                         var blocks = updatedRevision.blocks.compactMap { $0 as? DownloadBlock }
                         guard !blocks.isEmpty else {
-                            ConsoleLogger.shared?.log(Errors.blockListNotAvailable, osLogType: Downloader.self)
+                            Log.error(Errors.blockListNotAvailable, domain: .downloader)
                             self.completion?(.failure(Errors.blockListNotAvailable))
                             self.cancel()
                             return
@@ -87,7 +87,7 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
 
                         blocks.sort(by: { $0.index < $1.index })
 
-                        ConsoleLogger.shared?.log("Configure blocks download operations: \(blocks.count)", osLogType: Downloader.self)
+                        Log.info("Configure blocks download operations: \(blocks.count)", domain: .downloader)
                         let operations = blocks.map { self.createOperationFor($0) }
                         let finishOperation = BlockOperation { [weak self] in
                             guard let self = self, !self.isCancelled else { return }
@@ -95,7 +95,7 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
                             // this may happen if the app is locked during download
                             guard let moc = updatedRevision.managedObjectContext else {
                                 let error = Errors.mocDestroyedTooEarly
-                                ConsoleLogger.shared?.log(error, osLogType: Downloader.self)
+                                Log.error(error, domain: .storage)
                                 self.completion?(.failure(error))
                                 self.cancel()
                                 return
@@ -103,11 +103,11 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
 
                             moc.performAndWait {
                                 do {
-                                    try moc.save()
-                                    ConsoleLogger.shared?.log("Connected blocks to revision, revision to file", osLogType: Downloader.self)
+                                    try moc.saveWithParentLinkCheck()
+                                    Log.info("Connected blocks to revision, revision to file", domain: .downloader)
                                     self.completion?(.success(updatedRevision.file))
                                 } catch let error {
-                                    ConsoleLogger.shared?.log(error, osLogType: Downloader.self)
+                                    Log.error(error, domain: .storage)
                                     self.completion?(.failure(error))
                                     self.cancel()
                                 }
@@ -131,7 +131,7 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
     }
     
     override func cancel() {
-        ConsoleLogger.shared?.log("Cancel operation", osLogType: Downloader.self)
+        Log.info("Cancel operation", domain: .downloader)
         self.internalQueue.cancelAllOperations()
         self.completion = nil
         if !self.progress.isIndeterminate {
@@ -160,7 +160,7 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
         }
         
         if let revision = file.activeRevision, !revision.blocksAreValid() {
-            ConsoleLogger.shared?.log("Invalid blocks are connected to revision, cleaning up", osLogType: Downloader.self)
+            Log.warning("Invalid blocks are connected to revision, cleaning up", domain: .downloader)
             file.activeRevision?.restoreAfterInvalidBlocksFound()
         }
     }
@@ -168,21 +168,22 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
     private func createOperationFor(_ block: DownloadBlock) -> DownloadBlockOperation {
         DownloadBlockOperation(downloadTaskURL: URL(string: block.downloadUrl)!, endpointFactory: endpointFactory) { [weak self] result in
             guard let self = self else { return }
+            guard !self.isCancelled else { return }
             switch result {
             case .success(let intermediateUrl):
-                ConsoleLogger.shared?.log("Downloaded block", osLogType: Downloader.self)
+                Log.info("Downloaded block", domain: .downloader)
                                 
                 block.managedObjectContext?.performAndWait {
                     do {
                         _ = try block.store(cypherfileFrom: intermediateUrl)
                     } catch let error {
-                        ConsoleLogger.shared?.log(error, osLogType: Downloader.self)
+                        Log.error(error, domain: .storage)
                         self.completion?(.failure(error))
                         self.cancel()
                     }
                 }
             case .failure(let error):
-                ConsoleLogger.shared?.log(error, osLogType: Downloader.self)
+                Log.error(error, domain: .downloader)
                 self.completion?(.failure(error))
                 self.cancel()
             }
@@ -190,6 +191,7 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
     }
     
     private func createEmptyFile(in updatedRevision: Revision) {
+        guard !self.isCancelled else { return }
         let moc = self.cloudSlot.storage.backgroundContext
         moc.performAndWait {
             do {
@@ -207,7 +209,7 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
                 try emptyBlock.createEmptyFile() // will save moc
                 self.completion?(.success(updatedRevision.file))
             } catch let error {
-                ConsoleLogger.shared?.log(error, osLogType: Downloader.self)
+                Log.error(error, domain: .storage)
                 self.completion?(.failure(error))
                 self.cancel()
             }

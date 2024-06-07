@@ -44,7 +44,12 @@ extension NSFileProviderItemIdentifier: CustomDebugStringConvertible {
         case .rootContainer: return "ROOT"
         case .trashContainer: return "TRASH"
         case .workingSet: return "WORKING_SET"
-        default: return Emojifier.emoji.symbolicate(self.rawValue)
+        default:
+            #if DEBUG
+            return rawValue
+            #else
+            return Emojifier.emoji.symbolicate(self.rawValue)
+            #endif
         }
     }
 }

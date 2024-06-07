@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 public struct TextBarButton: View {
     @Environment(\.isEnabled) private var isEnabled
@@ -38,7 +38,6 @@ public struct TextBarButton: View {
         }
     }
 }
-
 
 struct TextBarButton_Previews: PreviewProvider {
     static var previews: some View {

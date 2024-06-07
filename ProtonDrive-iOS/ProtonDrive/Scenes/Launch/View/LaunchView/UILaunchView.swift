@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import UIKit
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 final class UILaunchView: UIView {
     @IBOutlet var contentView: UIView!

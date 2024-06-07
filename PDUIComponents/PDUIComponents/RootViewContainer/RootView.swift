@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 /// Container with Menu underneath and ActionBar switching hierarchies in the main section
 public struct RootView<ActiveArea>: View where ActiveArea: View {

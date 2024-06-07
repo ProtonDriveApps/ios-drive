@@ -16,18 +16,36 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import ProtonCoreUtilities
+
+public struct InvalidLinkIdError: ErrorWithDetailedMessage {
+    public let detailedMessage: String
+    public let errorDescription: String? = "Tried to use an invalid linkID"
+}
 
 public struct LinkEndpoint: Endpoint {
+    
     public struct Response: Codable {
         public typealias Link = PDClient.Link
 
         public var code: Int
         public var link: Link
+        
+        public init(code: Int, link: Link) {
+            self.code = code
+            self.link = link
+        }
     }
     
     public var request: URLRequest
     
-    init(shareID: Share.ShareID, linkID: Link.LinkID, service: APIService, credential: ClientCredential) {
+    init(shareID: Share.ShareID, linkID: Link.LinkID, service: APIService, credential: ClientCredential, breadcrumbs: Breadcrumbs) throws {
+        guard UUID(uuidString: linkID) == nil else {
+            let message = "Tried to get a link with invalid linkID \(linkID) [shareID \(shareID)], breadcrumbs: \(breadcrumbs.collect().reduceIntoErrorMessage())"
+            assertionFailure(message)
+            throw InvalidLinkIdError(detailedMessage: message)
+        }
+        
         // url
         var url = service.url(of: "/shares")
         url.appendPathComponent(shareID)

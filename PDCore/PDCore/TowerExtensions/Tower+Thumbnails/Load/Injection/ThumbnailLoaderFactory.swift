@@ -16,30 +16,31 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDClient
 
 public struct ThumbnailLoaderFactory {
     public init() {}
     
-    func makeFileThumbnailLoader(storage: StorageManager, cloudSlot: CloudSlot) -> CancellableThumbnailLoader {
-        let repository = FileThumbnailRepository(store: storage)
+    func makeFileThumbnailLoader(storage: StorageManager, cloudSlot: CloudSlot, client: PDClient.Client) -> CancellableThumbnailLoader {
+        let repository = FileNodeThumbnailRepository(store: storage)
         let typeStrategy = DefaultThumbnailTypeStrategy()
-        return makeLoader(storage: storage, cloudSlot: cloudSlot, repository: repository, typeStrategy: typeStrategy)
+        return makeLoader(storage: storage, cloudSlot: cloudSlot, client: client, repository: repository, typeStrategy: typeStrategy)
     }
 
     public func makePhotoSmallThumbnailLoader(tower: Tower) -> ThumbnailLoader {
         let typeStrategy = DefaultThumbnailTypeStrategy()
-        let repository = PhotoThumbnailRepository(store: tower.storage, typeStrategy: typeStrategy)
-        return makeLoader(storage: tower.storage, cloudSlot: tower.cloudSlot, repository: repository, typeStrategy: typeStrategy)
+        let repository = PhotoNodeThumbnailRepository(store: tower.storage, typeStrategy: typeStrategy)
+        return makeLoader(storage: tower.storage, cloudSlot: tower.cloudSlot, client: tower.client, repository: repository, typeStrategy: typeStrategy)
     }
 
     public func makePhotoBigThumbnailLoader(tower: Tower) -> ThumbnailLoader {
         let typeStrategy = PhotoBigThumbnailTypeStrategy()
-        let repository = PhotoThumbnailRepository(store: tower.storage, typeStrategy: typeStrategy)
-        return makeLoader(storage: tower.storage, cloudSlot: tower.cloudSlot, repository: repository, typeStrategy: typeStrategy)
+        let repository = PhotoNodeThumbnailRepository(store: tower.storage, typeStrategy: typeStrategy)
+        return makeLoader(storage: tower.storage, cloudSlot: tower.cloudSlot, client: tower.client, repository: repository, typeStrategy: typeStrategy)
     }
 
-    private func makeLoader(storage: StorageManager, cloudSlot: CloudSlot, repository: ThumbnailRepository, typeStrategy: ThumbnailTypeStrategy) -> DispatchedAsyncThumbnailLoader {
-        let thumbnailsOperatiosFactory = LoadThumbnailOperationsFactory(store: storage, cloud: cloudSlot, thumbnailRepository: repository, typeStrategy: typeStrategy)
+    private func makeLoader(storage: StorageManager, cloudSlot: CloudSlot, client: PDClient.Client, repository: NodeThumbnailRepository, typeStrategy: ThumbnailTypeStrategy) -> DispatchedAsyncThumbnailLoader {
+        let thumbnailsOperatiosFactory = LoadThumbnailOperationsFactory(store: storage, cloud: cloudSlot, client: client, thumbnailRepository: repository, typeStrategy: typeStrategy)
         let asyncLoader = AsyncThumbnailLoader(operationsFactory: thumbnailsOperatiosFactory)
         return DispatchedAsyncThumbnailLoader(thumbnailLoader: asyncLoader)
     }

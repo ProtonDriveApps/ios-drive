@@ -18,6 +18,8 @@
 import UIKit
 import PDCore
 import Combine
+import ProtonCoreAccountRecovery
+import ProtonCoreServices
 
 final class LaunchCoordinator {
     private let window: UIWindow
@@ -46,7 +48,15 @@ final class LaunchCoordinator {
 
     func presentAlert(alert: FailingAlert) {
         let vc = failingAlertFactory(alert)
-        let topController = UIApplication.shared.topViewController()
-        topController?.present(vc, animated: true, completion: nil)
+        
+        UIApplication.shared.rootViewController()?.presentedViewController?.dismiss(animated: false) // dismiss active modals, if any
+        UIApplication.shared.topViewController()?.present(vc, animated: true, completion: nil)
+    }
+
+    func presentAccountRecovery(apiService: APIService) {
+        let accountRecoveryViewController = AccountRecoveryModule.settingsViewController(
+            apiService
+        ) { _ in }
+        UIApplication.shared.topViewController()?.present(accountRecoveryViewController, animated: true)
     }
 }

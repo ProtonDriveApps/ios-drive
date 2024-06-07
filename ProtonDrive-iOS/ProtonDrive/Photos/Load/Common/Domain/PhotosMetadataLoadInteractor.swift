@@ -15,31 +15,42 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Foundation
 import PDClient
 import PDCore
 
-final class PhotosMetadataLoadInteractor: Interactor {
+final class PhotosMetadataLoadInteractor: ThrowingAsynchronousInteractor {
     private let shareIdDataSource: PhotoShareIdDataSource
     private let listing: PhotosListing
-    private let updateRepository: LocalLinksUpdateRepository
+    private let updateRepository: LinksUpdateRepository
+    private let oldestPhotoIdRepository: OldestPhotoIdRepository
 
-    init(shareIdDataSource: PhotoShareIdDataSource, listing: PhotosListing, updateRepository: LocalLinksUpdateRepository) {
+    init(shareIdDataSource: PhotoShareIdDataSource, listing: PhotosListing, updateRepository: LinksUpdateRepository, oldestPhotoIdRepository: OldestPhotoIdRepository) {
         self.shareIdDataSource = shareIdDataSource
         self.listing = listing
         self.updateRepository = updateRepository
+        self.oldestPhotoIdRepository = oldestPhotoIdRepository
     }
 
-    func execute(with list: PhotosList) async throws -> PhotosListIds {
+    func execute(with list: PhotosList) async throws -> PhotosLoadResponse {
         let shareId = try await shareIdDataSource.getShareId()
         try await updateLocalLinks(with: list, shareId: shareId)
-        return list.photos.map { $0.linkID }
+        guard let lastPhoto = list.photos.last else {
+            return PhotosLoadResponse(lastItem: nil)
+        }
+
+        let lastId = lastPhoto.linkID
+        let localLastId = try? oldestPhotoIdRepository.getOldestPhotoId()
+        let item = PhotosLoadResponse.Item(
+            id: lastId,
+            captureTime: Date(timeIntervalSince1970: TimeInterval(lastPhoto.captureTime)),
+            isLastLocally: localLastId == lastId
+        )
+        return PhotosLoadResponse(lastItem: item)
     }
 
     private func updateLocalLinks(with list: PhotosList, shareId: String) async throws {
         let linkIds = list.photos.map { $0.linkID }
-        guard !linkIds.isEmpty else {
-            return
-        }
         let parameters = LinksMetadataParameters(shareId: shareId, linkIds: linkIds)
         let links = try await listing.getLinksMetadata(with: parameters).links
         try updateRepository.update(links: links, shareId: shareId)

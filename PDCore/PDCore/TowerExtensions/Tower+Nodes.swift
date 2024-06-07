@@ -16,68 +16,56 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import CoreData
 
 extension Tower {
+    public func rootFolderAvailable() -> Bool {
+        rootFolderIdentifier() != nil
+    }
+    
     public func rootFolderIdentifier() -> NodeIdentifier? {
         var rootIdentifier: NodeIdentifier?
         let moc = self.storage.backgroundContext
         moc.performAndWait {
-            
             let creatorAddresses = self.sessionVault.addressIDs
-            if let mainShare = self.storage.mainShareOfVolume(by: creatorAddresses, moc: moc),
-               let root = mainShare.root as? Folder
-            {
-                rootIdentifier = root.identifier
-            }
+            guard let mainShare = self.storage.mainShareOfVolume(by: creatorAddresses, moc: moc),
+                  let root = mainShare.root as? Folder
+            else { return }
+            rootIdentifier = root.identifier
         }
         return rootIdentifier
     }
     
+    public func folderForNodeIdentifier(_ nodeId: NodeIdentifier) -> Folder? {
+        guard let node = fileSystemSlot?.getNode(nodeId) else { return nil }
+        guard let folder = node as? Folder else {
+            return node.parentLink
+        }
+        return folder
+    }
+    
     public func createFolder(named name: String, under parent: Folder, handler: @escaping (Result<Folder, Error>) -> Void) {
-        let scratchpadMoc = storage.privateChildContext(of: storage.backgroundContext)
-        scratchpadMoc.performAndWait {
+        Task {
             do {
-                let parent = parent.in(moc: scratchpadMoc)
-                let signersKit = try SignersKit(sessionVault: sessionVault)
-                let folder: Folder = self.storage.new(with: name, by: "name", in: scratchpadMoc)
-                self.cloudSlot?.createFolder(folder, parent: parent, signersKit: signersKit) { result in
-                    DispatchQueue.main.async {
-                        switch result {
-                        case let .success(folder): handler(.success(folder))
-                        case let .failure(error): handler(.failure(error))
-                        }
-                    }
-                }
-            } catch let error {
-                DispatchQueue.main.async {
-                    handler(.failure(error))
-                }
+                let folder = try await cloudSlot.createFolder(name, parent: parent)
+                handler(.success(folder))
+            } catch {
+                handler(.failure(error))
             }
         }
     }
-    
+
     public func rename(node: NodeIdentifier, cleartextName newName: String, handler: @escaping (Result<Node, Error>) -> Void) {
-        let scratchpadMoc = storage.privateChildContext(of: storage.backgroundContext)
-        scratchpadMoc.performAndWait {
+        Task {
             do {
-                guard let node = storage.fetchNode(id: node, moc: scratchpadMoc) else {
+                guard let node = storage.fetchNode(id: node, moc: storage.backgroundContext) else {
                     return handler(.failure(NSError(domain: "Failed to find Node", code: 0, userInfo: nil)))
                 }
                 let newMime = node is Folder ? Folder.mimeType : URL(fileURLWithPath: newName).mimeType()
-                let signersKit = try SignersKit(sessionVault: sessionVault)
-                
-                self.cloudSlot?.rename(node: node, cleartextName: newName, mimeType: newMime, signersKit: signersKit) { result in
-                    DispatchQueue.main.async {
-                        switch result {
-                        case let .success(node): handler(.success(node))
-                        case let .failure(error): handler(.failure(error))
-                        }
-                    }
-                }
-            } catch let error {
-                DispatchQueue.main.async {
-                    handler(.failure(error))
-                }
+                try await cloudSlot.rename(node, to: newName, mimeType: newMime)
+                handler(.success(node))
+            } catch {
+                handler(.failure(error))
             }
         }
     }
@@ -89,7 +77,7 @@ extension Tower {
             nodes.forEach { $0.isFavorite = favorite }
             
             do {
-                try self.storage.backgroundContext.save()
+                try self.storage.backgroundContext.saveWithParentLinkCheck()
                 handler(.success(nodes))
             } catch let error {
                 handler(.failure(error))
@@ -105,7 +93,7 @@ extension Tower {
             nodes.forEach { $0.isMarkedOfflineAvailable = mark }
             
             do {
-                try self.storage.backgroundContext.save()
+                try self.storage.backgroundContext.saveWithParentLinkCheck()
                 handler(.success(nodes))
             } catch let error {
                 handler(.failure(error))
@@ -114,23 +102,35 @@ extension Tower {
     }
     
     public func move(nodeID nodeIdentifier: NodeIdentifier, under newParent: Folder, with newName: String? = nil, handler: @escaping (Result<Node, Error>) -> Void) {
-        let scratchpadMoc = storage.privateChildContext(of: storage.backgroundContext)
-        scratchpadMoc.performAndWait {
+        Task {
             do {
-                guard let node = self.storage.fetchNode(id: nodeIdentifier, moc: scratchpadMoc) else {
+                let moc = self.storage.backgroundContext
+                guard let node = self.storage.fetchNode(id: nodeIdentifier, moc: moc) else {
                     return  handler(.failure(CloudSlot.Errors.noNodeFound))
                 }
-                guard newParent.identifier != node.parentLink?.identifier else {
+                // Changed by macOS, this should probably be dealt somewhere else in the file proveider code
+                // This should be the case where the system asks us to move a folder to the same parent (no movement)
+                let currentParentID = moc.performAndWait { node.parentLink?.identifier }
+                guard newParent.identifier != currentParentID else {
                     return handler(.success(node))
                 }
-                let signersKit = try SignersKit(sessionVault: sessionVault)
-                self.cloudSlot?.move(node: node, under: newParent, with: newName, signersKit: signersKit, handler: handler)
-            } catch let error {
-                DispatchQueue.main.async {
-                    handler(.failure(error))
-                }
+
+                let name = try await decryptedName(node, moc, newName)
+                try await cloudSlot.move(node: node, to: newParent, name: name)
+                handler(.success(node))
+            } catch {
+                handler(.failure(error))
             }
         }
     }
 
+    private func decryptedName(_ node: Node, _ moc: NSManagedObjectContext, _ newName: String?) async throws -> String {
+        if let newName {
+            return newName
+        }
+        return try await moc.perform {
+            let node = node.in(moc: moc)
+            return try node.decryptName()
+        }
+    }
 }

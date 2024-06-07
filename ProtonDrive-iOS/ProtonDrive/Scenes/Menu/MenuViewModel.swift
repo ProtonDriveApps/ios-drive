@@ -26,21 +26,25 @@ class MenuViewModel: ObservableObject, LogoutRequesting {
     private let model: MenuModel
     private let offlineSaver: OfflineSaver
     let downloads: ProgressMenuSectionViewModel
+    private let logLoader: LogContentLoader?
 
     @Published var accountInfo: AccountInfo = .blank
     @Published var usagePercent: Double = 0.0
     @Published var usageBreakdown: String = ""
     @Published var isStorageButtonAvailable: Bool = false
-    
+    @Published var logsShareURL: URL?
+    @Published var loadingLogs: Bool = false
+
     private var cancellables: Set<AnyCancellable> = []
     private let selectedScreenSubject = CurrentValueSubject<Destination, Never>(.myFiles)
     var selectedScreenPublisher: AnyPublisher<Destination, Never> {
         selectedScreenSubject.eraseToAnyPublisher()
     }
 
-    init(model: MenuModel, offlineSaver: OfflineSaver) {
+    init(model: MenuModel, offlineSaver: OfflineSaver, logLoader: LogContentLoader?) {
         self.model = model
         self.offlineSaver = offlineSaver
+        self.logLoader = logLoader
         self.downloads = ProgressMenuSectionViewModel(
             progressProvider: offlineSaver,
             steadyTitle: "Available offline",
@@ -57,20 +61,9 @@ class MenuViewModel: ObservableObject, LogoutRequesting {
         return "\(name ?? "") v\(version ?? "") (\(build ?? ""))"
     }()
 
-    private lazy var formatter: ByteCountFormatter = {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .binary
-        formatter.formattingContext = .standalone
-        formatter.allowsNonnumericFormatting = true
-        formatter.zeroPadsFractionDigits = false
-        formatter.includesUnit = true
-        formatter.isAdaptive = false
-        return formatter
-    }()
-    
     private func apply(userInfo: UserInfo) {
         usagePercent = userInfo.usedSpace / max(userInfo.maxSpace, 1)
-        usageBreakdown = "\(formatter.string(for: userInfo.usedSpace) ?? "?") of \(formatter.string(for: userInfo.maxSpace) ?? "?") used"
+        usageBreakdown = "\(ByteCountFormatter.storageSizeString(forByteCount: userInfo.usedSpace)) of \(ByteCountFormatter.storageSizeString(forByteCount: userInfo.maxSpace)) used"
         isStorageButtonAvailable = !userInfo.isPaid
     }
 

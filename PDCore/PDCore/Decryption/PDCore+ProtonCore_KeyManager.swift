@@ -15,10 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import ProtonCore_DataModel
-import ProtonCore_KeyManager
+import ProtonCoreDataModel
+import ProtonCoreKeyManager
 
-typealias DecryptionKey = ProtonCore_KeyManager.DecryptionKey
+public typealias DecryptionKey = ProtonCoreKeyManager.DecryptionKey
 
 struct KeyPair: Equatable {
     let publicKey: ArmoredKey

@@ -20,17 +20,23 @@
 //  along with ProtonCore. If not, see https://www.gnu.org/licenses/.
 //
 
-import GoLibs
-import ProtonCore_Networking
-import ProtonCore_Services
+import ProtonCoreCryptoGoInterface
+import ProtonCoreNetworking
+import ProtonCoreServices
 
 public protocol SRPBuilderProtocol {
     func buildSRP(username: String, password: String, authInfo: AuthInfoResponse, srpAuth: SrpAuth?) throws -> Result<SRPClientInfo, AuthErrors>
 }
 
+public extension SRPBuilderProtocol {
+    func buildSRP(username: String, password: String, authInfo: AuthInfoResponse) throws -> Result<SRPClientInfo, AuthErrors> {
+        try buildSRP(username: username, password: password, authInfo: authInfo, srpAuth: nil)
+    }
+}
+
 public struct SRPBuilder: SRPBuilderProtocol {
     public init() {}
-    
+
     /**
      A function that provides SRP (Secure Remote Password) client information to validate the password.
      - Parameter username: The user's username.
@@ -41,16 +47,16 @@ public struct SRPBuilder: SRPBuilderProtocol {
      */
     public func buildSRP(username: String, password: String, authInfo: AuthInfoResponse, srpAuth: SrpAuth? = nil) throws -> Result<SRPClientInfo, AuthErrors> {
         let passSlice = password.data(using: .utf8)
-        guard let auth = srpAuth ?? SrpAuth.init(authInfo.version,
-                                      username: username,
-                                      password: passSlice,
-                                      b64salt: authInfo.salt,
-                                      signedModulus: authInfo.modulus,
-                                      serverEphemeral: authInfo.serverEphemeral) else
+        guard let auth = srpAuth ?? CryptoGo.SrpAuth(authInfo.version,
+                                                     username,
+                                                     passSlice,
+                                                     authInfo.salt,
+                                                     authInfo.modulus,
+                                                     authInfo.serverEphemeral) else
         {
             return .failure(AuthErrors.emptyServerSrpAuth)
         }
-        
+
         // client SRP
         let srpClient = try auth.generateProofs(2048)
         guard let clientEphemeral = srpClient.clientEphemeral,
@@ -59,7 +65,7 @@ public struct SRPBuilder: SRPBuilderProtocol {
         {
             return .failure(AuthErrors.emptyClientSrpAuth)
         }
-        
+
         return .success(SRPClientInfo(
             clientEphemeral: clientEphemeral,
             clientProof: clientProof,

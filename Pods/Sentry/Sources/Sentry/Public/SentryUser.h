@@ -3,6 +3,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class SentryGeo;
+
 NS_SWIFT_NAME(User)
 @interface SentryUser : NSObject <SentrySerializable, NSCopying>
 
@@ -30,6 +32,16 @@ NS_SWIFT_NAME(User)
  * The user segment, for apps that divide users in user segments.
  */
 @property (atomic, copy) NSString *_Nullable segment;
+
+/**
+ * Optional: Human readable name
+ */
+@property (atomic, copy) NSString *_Nullable name;
+
+/**
+ * Optional: Geo location of user
+ */
+@property (nullable, nonatomic, strong) SentryGeo *geo;
 
 /**
  * Optional: Additional data

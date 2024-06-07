@@ -24,7 +24,7 @@ extension Node {
         return NSFetchRequest<Node>(entityName: "Node")
     }
  
-    @NSManaged internal var name: String? // encrypted value, makes no sense in the higher level, use .decryptedName instead
+    @NSManaged public var name: String? // encrypted value, makes no sense in the higher level, use .decryptedName instead
     @NSManaged public var attributesMaskRaw: Int
     @NSManaged public var id: String
     @NSManaged public var isFavorite: Bool
@@ -38,7 +38,7 @@ extension Node {
     @NSManaged public var nodePassphraseSignature: String
     @NSManaged public var permissionsMaskRaw: Int
     @NSManaged public var shareID: String
-    @NSManaged public var signatureEmail: String
+    @NSManaged public var signatureEmail: String?
     @NSManaged public var nameSignatureEmail: String?
     @NSManaged public var size: Int
     @NSManaged public var directShares: Set<Share>
@@ -51,7 +51,7 @@ extension Node {
     // this adds safety to accessing complex data types such as Date when underlying Core Data object doesn't exist
     public var createdDate: Date {
         get {
-            guard !isFault else { return Date() }
+            guard !isFault, !isDeleted else { return Date() }
             return created
         } set {
             created = newValue
@@ -64,7 +64,7 @@ extension Node {
     // this adds safety to accessing complex data types such as Date when underlying Core Data object doesn't exist
     public var modifiedDate: Date {
         get {
-            guard !isFault else { return Date() }
+            guard !isFault, !isDeleted else { return Date() }
             return modified
         } set {
             modified = newValue

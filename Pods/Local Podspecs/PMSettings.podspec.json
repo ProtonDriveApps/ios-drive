@@ -1,0 +1,43 @@
+{
+  "name": "PMSettings",
+  "version": "2.0.0",
+  "summary": "Settings + Lock/Unlock",
+  "description": "Building blocks of configurable Settings user flow for Proton iOS applications",
+  "homepage": "https://gitlab.protontech.ch/apple/shared/pmsettings",
+  "license": "ProtonDrive",
+  "authors": "Aaron Huánuco Ramos",
+  "platforms": {
+    "ios": "14.0"
+  },
+  "swift_versions": "5.5",
+  "dependencies": {
+    "ProtonCore-UIFoundations": [
+
+    ]
+  },
+  "source": {
+    "path": "Sources/"
+  },
+  "source_files": "Sources/**/*.swift",
+  "resource_bundles": {
+    "Resources-PMSettings": [
+      "Sources/Resources/*.lproj/*.strings"
+    ]
+  },
+  "pod_target_xcconfig": {
+    "APPLICATION_EXTENSION_API_ONLY": "NO"
+  },
+  "testspecs": [
+    {
+      "name": "Tests",
+      "test_type": "unit",
+      "dependencies": {
+        "ProtonCore-TestingToolkit/UnitTests/Core": [
+
+        ]
+      },
+      "source_files": "Tests/**/*.swift"
+    }
+  ],
+  "swift_version": "5.5"
+}

@@ -24,14 +24,14 @@ extension Block {
         return NSFetchRequest<Block>(entityName: "Block")
     }
 
-    @NSManaged fileprivate var localPath: String? // this should be relative path, relative to some BaseURL
+    @NSManaged var localPath: String? // this should be relative path, relative to some BaseURL
     @NSManaged public var index: Int
     @NSManaged public var sha256: Data
     @NSManaged public var revision: Revision
     @NSManaged public var encSignature: String?
     @NSManaged public var signatureEmail: String?
     
-    internal var localUrl: URL? {
+    public var localUrl: URL? {
         guard self.localPath != nil else { return nil }
         if FileManager.default.fileExists(atPath: self.temporaryUrl!.path) {
             return self.temporaryUrl
@@ -74,7 +74,7 @@ extension DownloadBlock {
         try FileManager.default.copyItem(at: intermediateUrl, to: localUrl)
         
         do {
-            try self.managedObjectContext?.save()
+            try self.managedObjectContext?.saveWithParentLinkCheck()
         } catch let error {
             assert(false, error.localizedDescription)
             throw error
@@ -91,7 +91,7 @@ extension DownloadBlock {
         FileManager.default.createFile(atPath: localUrl.path, contents: nil, attributes: nil)
 
         do {
-            try self.managedObjectContext?.save()
+            try self.managedObjectContext?.saveWithParentLinkCheck()
         } catch let error {
             assert(false, error.localizedDescription)
             throw error

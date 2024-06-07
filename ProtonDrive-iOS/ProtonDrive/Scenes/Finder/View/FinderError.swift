@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import ProtonCore_Networking
+import ProtonCoreNetworking
 import PDCore
 
 enum FinderError: Error, Equatable {

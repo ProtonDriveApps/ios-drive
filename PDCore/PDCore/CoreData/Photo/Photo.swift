@@ -40,6 +40,9 @@ public class Photo: File {
 
     // Transient
     @objc public var monthIdentifier: String? {
+        guard !isDeleted else {
+            return nil
+        }
         willAccessValue(forKey: "monthIdentifier")
         var cachedIdentifier = primitiveValue(forKey: "monthIdentifier") as? String
         didAccessValue(forKey: "monthIdentifier")
@@ -55,22 +58,59 @@ public class Photo: File {
         return cachedIdentifier
     }
     private static let calendar = Calendar.current
+    
+    func iCloudID() -> String? {
+        return moc?.performAndWait {
+            if let meta = tempBase64Metadata {
+                return TemporalMetadata(base64String: meta)?.iOSPhotos.iCloudID
+            } else {
+                return activeRevisionDraft?.clearXAttributes?.iOSPhotos?.iCloudID
+            }
+        }
+    }
+
+    public func iOSPhotos() -> PhotoAssetMetadata.iOSPhotos? {
+        let iOSPhotos = moc?.performAndWait {
+            if let meta = tempBase64Metadata {
+                return TemporalMetadata(base64String: meta)?.iOSPhotos
+            } else {
+                return try? photoRevision.unsafeDecryptedExtendedAttributes().iOSPhotos
+            }
+        }
+        guard let iOSPhotos = iOSPhotos, let iCloudID = iOSPhotos.iCloudID else {
+            return nil
+        }
+        let modificationTime = ISO8601DateFormatter().date(iOSPhotos.modificationTime)
+        return PhotoAssetMetadata.iOSPhotos(identifier: iCloudID, modificationTime: modificationTime)
+    }
+    
+    @objc(addChildrenObject:)
+    @NSManaged public func addToChildren(_ value: Photo)
+
+    @objc(removeChildrenObject:)
+    @NSManaged public func removeFromChildren(_ value: Photo)
+
+    @objc(addChildren:)
+    @NSManaged public func addToRevisions(_ values: Set<Photo>)
+
+    @objc(removeChildren:)
+    @NSManaged public func removeFromChildren(_ values: Set<Photo>)
 }
 
 // MARK: - PDCore DTO's for saving metadata and exif
 
-struct TemporalMetadata: Codable {
-    let location: ExtendedAttributes.Location?
-    let camera: ExtendedAttributes.Camera?
-    let media: ExtendedAttributes.Media
-    let iOSPhotos: ExtendedAttributes.iOSPhotos
+public struct TemporalMetadata: Codable {
+    public let location: ExtendedAttributes.Location?
+    public let camera: ExtendedAttributes.Camera?
+    public let media: ExtendedAttributes.Media
+    public let iOSPhotos: ExtendedAttributes.iOSPhotos
     
     func base64Encoded() -> String? {
         try? JSONEncoder().encode(self).base64EncodedString()
     }
 }
 
-extension TemporalMetadata {
+public extension TemporalMetadata {
     init?(base64String: String?) {
         guard let base64String,
               let data = Data(base64Encoded: base64String),

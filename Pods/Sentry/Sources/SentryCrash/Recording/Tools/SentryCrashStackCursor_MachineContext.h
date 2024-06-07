@@ -1,3 +1,4 @@
+// Adapted from: https://github.com/kstenerud/KSCrash
 //
 //  SentryCrashStackCursor_MachineContext.h
 //
@@ -25,11 +26,11 @@
 #ifndef SentryCrashStackCursor_MachineContext_h
 #define SentryCrashStackCursor_MachineContext_h
 
+#import "SentryCrashStackCursor.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "SentryCrashStackCursor.h"
 
 #define MAX_STACKTRACE_LENGTH 100
 

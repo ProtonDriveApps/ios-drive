@@ -15,9 +15,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import UIKit
 import PDCore
 import PDUIComponents
-import ProtonCore_UIFoundations
 import Combine
 
 final class SharedLinkEditorViewController: UIViewController {

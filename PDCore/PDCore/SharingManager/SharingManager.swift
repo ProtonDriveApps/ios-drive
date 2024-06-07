@@ -16,14 +16,14 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDClient
-import GoLibs
+import ProtonCoreCryptoGoInterface
 import Foundation
 import CoreData
 
 struct SharingManager {
     typealias ShareUrlMeta = PDClient.ShareURLMeta
     typealias ShareUrlObj = PDCore.ShareURL
-    
+
     enum Errors: Error {
         case failedToCreateShareUrlInCoreData
         case failedToGenerateRandomPassword
@@ -64,12 +64,12 @@ extension SharingManager {
                         }
 
                     case let .failure(error):
-                        ConsoleLogger.shared?.log(DriveError(error, "SharingManager"))
+                        Log.error(DriveError(error), domain: .networking)
                         completion(.failure(error))
                     }
                 }
             case let .failure(error):
-                ConsoleLogger.shared?.log(DriveError(error, "SharingManager"))
+                Log.error(DriveError(error), domain: .networking)
                 completion(.failure(error))
             }
         }
@@ -82,7 +82,7 @@ extension SharingManager {
                 self.onObtainedShare(share, completion)
 
             case let .failure(error):
-                ConsoleLogger.shared?.log(DriveError(error, "SharingManager"))
+                Log.error(DriveError(error), domain: .networking)
                 completion(.failure(error))
             }
         }
@@ -91,22 +91,22 @@ extension SharingManager {
     private func onObtainedShare(_ share: Share, _ completion: @escaping (Result<ShareURL, Error>) -> Void) {
         createShareURL(share: share) { shareUrlResult in
             switch shareUrlResult {
-            case let .success(shareUrlMeta) :
+            case let .success(shareUrlMeta):
                 let moc = share.managedObjectContext
                 moc?.performAndWait {
                     do {
                         share.root?.isShared = true
                         let shareUrl = try self.shareUrlFromMeta(shareUrlMeta, moc: moc!)
-                        try moc?.save()
+                        try moc?.saveWithParentLinkCheck()
                         completion(.success(shareUrl))
                     } catch {
-                        ConsoleLogger.shared?.log(DriveError(error, "SharingManager"))
+                        Log.error(DriveError(error), domain: .networking)
                         completion(.failure(error))
                     }
                 }
 
             case let .failure(error):
-                ConsoleLogger.shared?.log(DriveError(error, "SharingManager"))
+                Log.error(DriveError(error), domain: .networking)
                 completion(.failure(error))
             }
         }
@@ -118,7 +118,10 @@ extension SharingManager {
             case let .success(modulusResponse):
                 share.managedObjectContext?.performAndWait {
                     do {
-                        let createParameters = try self.getNewShareURLParameters(share: share, modulus: modulusResponse.modulus, modulusID: modulusResponse.modulusID)
+                        guard let creator = share.creator else {
+                            throw share.invalidState("Share should have a creator.")
+                        }
+                        let createParameters = try self.getNewShareURLParameters(share: share, modulus: modulusResponse.modulus, modulusID: modulusResponse.modulusID, rootCreator: creator)
                         self.cloudSlot.createShareURL(shareID: share.id, parameters: createParameters, completion: handler)
 
                     } catch let error {
@@ -139,10 +142,11 @@ extension SharingManager {
     func getNewShareURLParameters(
         share: Share,
         modulus: String,
-        modulusID: String
+        modulusID: String,
+        rootCreator: String
     ) throws -> NewShareURLParameters  {
         let randomPassword = Decryptor.randomPassword(ofSize: Constants.minSharedLinkRandomPasswordSize)
-        let currentAddressKey = try signersKitFactory.make().addressKey.publicKey
+        let currentAddressKey = try signersKitFactory.make(signatureAddress: rootCreator).addressKey.publicKey
         let encryptedPassword = try Encryptor.encrypt(randomPassword, key: currentAddressKey)
 
         let srpRandomPassword = try Decryptor.srpForPassword(randomPassword, modulus: modulus)
@@ -185,28 +189,28 @@ extension SharingManager {
     ) {
         updateShareURL(shareURL: shareURL, node: node, details: details) { result in
             switch result {
-            case let .success(shareUrlMeta) :
+            case let .success(shareUrlMeta):
                 let moc = shareURL.managedObjectContext
                 moc?.performAndWait {
                     do {
                         let shareUrl = try self.shareUrlFromMeta(shareUrlMeta, moc: moc!)
                         shareUrl.clearPassword = nil
-                        try moc!.save()
+                        try moc!.saveWithParentLinkCheck()
                         completion(.success(shareUrl))
 
                     } catch {
-                        ConsoleLogger.shared?.log(DriveError(error, "SharingManager"))
+                        Log.error(DriveError(error), domain: .networking)
                         completion(.failure(error))
                     }
                 }
 
             case let .failure(error):
-                ConsoleLogger.shared?.log(DriveError(error, "SharingManager"))
+                Log.error(DriveError(error), domain: .networking)
                 completion(.failure(error))
             }
         }
     }
-    
+
     /// Internal for unit tests only, returns metadata
     func updateShareURL(
         shareURL: ShareURL,
@@ -364,7 +368,7 @@ extension SharingManager {
         cloudSlot.deleteShareURL(shareURL) { result in
             completion(
                 result.mapError { error in
-                    ConsoleLogger.shared?.log(DriveError(error, "SharingManager"))
+                    Log.error(DriveError(error), domain: .networking)
                     return error
                 }
             )

@@ -25,4 +25,20 @@ public extension Sequence {
         }
         return values
     }
+
+    /// async version of `forEach`
+    func forEach(_ operation: (Element) async throws -> Void) async rethrows {
+        for element in self {
+            try await operation(element)
+        }
+    }
+
+    func parallelMap<T>(_ transform: @escaping (Element) async throws -> T) async rethrows -> [T] {
+        return try await withThrowingTaskGroup(of: T.self) { taskGroup in
+            for element in self {
+                taskGroup.addTask { try await transform(element) }
+            }
+            return try await taskGroup.reduce([], { $0 + [$1] })
+        }
+    }
 }

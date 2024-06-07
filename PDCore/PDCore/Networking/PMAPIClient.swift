@@ -17,12 +17,14 @@
 
 import PDClient
 import Reachability
-import ProtonCore_Authentication
-import ProtonCore_DataModel
-import ProtonCore_HumanVerification
-import ProtonCore_Services
-import ProtonCore_Networking
-import GoLibs
+import ProtonCoreAuthentication
+import ProtonCoreDataModel
+import ProtonCoreEnvironment
+import ProtonCoreFeatureFlags
+import ProtonCoreHumanVerification
+import ProtonCoreServices
+import ProtonCoreNetworking
+import ProtonCoreCryptoGoInterface
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -40,9 +42,12 @@ public class PMAPIClient: NSObject, APIServiceDelegate {
     
     internal let sessionStore: SessionStore
     
-    internal var generalReachability: Reachability?
-    internal var authenticator: AuthenticatorInterface?
-    internal var apiService: PMAPIService?
+    internal let generalReachability: Reachability?
+    internal let authenticator: AuthenticatorInterface
+    internal let apiService: ProtonCoreServices.APIService
+    internal private(set) var sessionRelatedCommunicator: SessionRelatedCommunicatorBetweenMainAppAndExtensions
+
+    private let observationCenter: UserDefaultsObservationCenter
 
     public weak var responseDelegateForLoginAndSignup: HumanVerifyResponseDelegate?
     public weak var paymentDelegateForLoginAndSignup: HumanVerifyPaymentDelegate?
@@ -50,15 +55,37 @@ public class PMAPIClient: NSObject, APIServiceDelegate {
 
     // To be observed by UI layer in order to communicate with the user
     @objc public internal(set) dynamic var currentActivity: NSUserActivity = Activity.none
+    
+    @SettingsStorage(UserDefaults.NotificationPropertyKeys.cryptoServerTime.rawValue) var cryptoServerTime: TimeInterval?
 
-    init(version: String, sessionVault: SessionStore, authenticator: AuthenticatorInterface? = nil) {
+    init(version: String,
+         sessionVault: SessionStore,
+         apiService: ProtonCoreServices.APIService,
+         authenticator: AuthenticatorInterface,
+         generalReachability: Reachability?,
+         sessionRelatedCommunicator: SessionRelatedCommunicatorBetweenMainAppAndExtensions,
+         settingsStorage: SettingsStorageSuite = .group(named: Constants.appGroup)) {
         self.appVersion = version
         self.sessionStore = sessionVault
+        self.apiService = apiService
         self.authenticator = authenticator
+        self.generalReachability = generalReachability
+        self.sessionRelatedCommunicator = sessionRelatedCommunicator
+        self.observationCenter = UserDefaultsObservationCenter(userDefaults: settingsStorage.userDefaults)
         super.init()
-
+        _cryptoServerTime.configure(with: settingsStorage)
+        if let cryptoServerTime {
+            CryptoGo.CryptoUpdateTime(Int64(cryptoServerTime))
+        }
+        observationCenter.addObserver(self, of: \.cryptoServerTime) { value in
+            guard let value else { return }
+            CryptoGo.CryptoUpdateTime(Int64(value))
+        }
         NotificationCenter.default.addObserver(self, selector: #selector(downgradeTrustKitRestrictions), name: Self.downgradeTrustKit, object: nil)
-        TrustKitFactory.make(isHardfail: true, delegate: self)
+    }
+    
+    deinit {
+        observationCenter.removeObserver(self)
     }
 
     public var userAgent: String? {
@@ -74,8 +101,7 @@ public class PMAPIClient: NSObject, APIServiceDelegate {
     }
 
     public func onUpdate(serverTime: Int64) {
-        ConsoleLogger.shared?.log("Server time update from PMCommon: \(serverTime)", osLogType: Tower.self)
-        CryptoUpdateTime(serverTime)
+        cryptoServerTime = TimeInterval(serverTime)
     }
 
     public func isReachable() -> Bool {
@@ -93,16 +119,17 @@ public class PMAPIClient: NSObject, APIServiceDelegate {
 
     @objc func downgradeTrustKitRestrictions() {
         let newTrustKit = TrustKitFactory.make(isHardfail: false, delegate: self)
-        apiService?.getSession()?.setChallenge(noTrustKit: false, trustKit: newTrustKit)
+        apiService.getSession()?.setChallenge(noTrustKit: false, trustKit: newTrustKit)
     }
 }
 
 extension PMAPIClient: AuthDelegate {
 
-    public func onSessionObtaining(credential: ProtonCore_Networking.Credential) {
+    public func onSessionObtaining(credential: ProtonCoreNetworking.Credential) {
         let coreCredential = CoreCredential(credential)
-        ConsoleLogger.shared?.log("Session obtained", osLogType: Tower.self)
+        Log.info("Session obtained", domain: .networking)
         self.sessionStore.storeCredential(coreCredential)
+        refreshFeatureFlags(for: credential.userID)
     }
 
     public func onAdditionalCredentialsInfoObtained(sessionUID: String, password: String?, salt: String?, privateKey: String?) {
@@ -120,16 +147,30 @@ extension PMAPIClient: AuthDelegate {
     }
 
     public func onAuthenticatedSessionInvalidated(sessionUID: String) {
-        ConsoleLogger.shared?.log("Authenticated session invalidated from PMCommon", osLogType: Tower.self)
-        self.currentActivity = Activity.logout
+        if Constants.runningInExtension {
+            Log.info("""
+                     Authenticated session invalidated in the extension.
+                     Clears the child session storage and asks the main app for the new session.
+                     """,
+                     domain: .networking)
+            sessionStore.removeAuthenticatedCredential()
+            apiService.setSessionUID(uid: "")
+            sessionRelatedCommunicator.askMainAppToProvideNewChildSession()
+            self.currentActivity = Activity.childSessionExpired
+        } else {
+            Log.info("Authenticated session invalidated in the main app. Logout!", domain: .networking)
+            self.currentActivity = Activity.logout
+        }
     }
 
     public func onUnauthenticatedSessionInvalidated(sessionUID: String) {
-        ConsoleLogger.shared?.log("Unauthenticated session invalidated from PMCommon", osLogType: Tower.self)
-        eraseSessionCredentials(sessionUID: sessionUID)
+        Log.info("Unauthenticated session invalidated from PMCommon", domain: .networking)
+        self.sessionStore.removeUnauthenticatedCredential()
+        apiService.acquireSessionIfNeeded { _ in }
     }
 
     public enum Activity {
+        public static let childSessionExpired: NSUserActivity = NSUserActivity(activityType: "ch.protondrive.PDCore.Tower.ChildSessionExpired")
         public static let logout: NSUserActivity = NSUserActivity(activityType: "ch.protondrive.PDCore.Tower.Logout")
         public static let humanVerification: NSUserActivity = NSUserActivity(activityType: "ch.protondrive.PDCore.Tower.HumanVerification")
         public static let forceUpgrade: NSUserActivity = NSUserActivity(activityType: "ch.protondrive.PDCore.Tower.ForceUpgrade")
@@ -154,25 +195,9 @@ extension PMAPIClient: AuthDelegate {
     }
     
     public func onUpdate(credential auth: Credential, sessionUID: String) {
-        ConsoleLogger.shared?.log("Update credential callback from PMCommon", osLogType: Tower.self)
+        Log.info("Update credential callback from PMCommon", domain: .networking)
         self.sessionStore.storeCredential(CoreCredential(auth))
     }
-    
-    public func onLogout(sessionUID uid: String) {
-        ConsoleLogger.shared?.log("Logout callback from PMCommon", osLogType: Tower.self)
-        self.currentActivity = Activity.logout
-    }
-
-    public func onForceUpgrade() {
-        ConsoleLogger.shared?.log("ForceUpgrade callback from PMCommon", osLogType: Tower.self)
-        self.currentActivity = Activity.forceUpgrade
-    }
-
-    private func eraseSessionCredentials(sessionUID: String) {
-        guard self.sessionStore.sessionCredential != nil else { return }
-        self.sessionStore.removeCredential()
-    }
-
 }
 
 extension PMAPIClient: HumanVerifyDelegate {
@@ -196,12 +221,13 @@ extension PMAPIClient: HumanVerifyDelegate {
 }
 
 extension PMAPIClient: ForceUpgradeDelegate {
-    public func onForceUpgrade(message: String) {
-        self.onForceUpgrade()
+    public func onForceUpgrade(message _: String) {
+        Log.info("ForceUpgrade callback from PMCommon", domain: .networking)
+        self.currentActivity = Activity.forceUpgrade
     }
 }
 
-extension PMAPIClient: TrustKitFailureDelegate {
+extension PMAPIClient: TrustKitDelegate {
     public func onTrustKitValidationError(_ error: TrustKitError) {
         switch error {
         case .hardfailed:
@@ -249,16 +275,12 @@ extension PMAPIClient {
     }
 }
 
-extension PDClient.ClientCredential {
-    var coreCredential: PDCore.CoreCredential {
-        CoreCredential(
-            UID: self.UID,
-            accessToken: self.accessToken,
-            refreshToken: self.refreshToken,
-            expiration: self.expiration,
-            userName: self.userName,
-            userID: self.userID,
-            scope: self.scope
-        )
+extension PMAPIClient {
+    private func refreshFeatureFlags(for userId: String) {
+        ProtonCoreFeatureFlags.FeatureFlagsRepository.shared.setUserId(userId)
+        ProtonCoreFeatureFlags.FeatureFlagsRepository.shared.setApiService(apiService)
+        Task {
+            try? await ProtonCoreFeatureFlags.FeatureFlagsRepository.shared.fetchFlags()
+        }
     }
 }

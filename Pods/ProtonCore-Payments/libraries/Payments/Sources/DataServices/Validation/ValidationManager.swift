@@ -21,9 +21,10 @@
 
 import Foundation
 import StoreKit
+import ProtonCoreUtilities
 
 protocol ValidationManagerDependencies: AnyObject {
-    var planService: ServicePlanDataServiceProtocol { get }
+    var planService: Either<ServicePlanDataServiceProtocol, PlansDataSourceProtocol> { get }
     var products: [SKProduct] { get }
 }
 
@@ -47,10 +48,17 @@ class ValidationManager {
             return .failure(StoreKitManager.Errors.unavailableProduct)
         }
 
-        guard dependencies.planService.currentSubscription?.hasExistingProtonSubscription == false else {
-            return .failure(StoreKitManager.Errors.invalidPurchase)
+        switch dependencies.planService {
+        case .left(let planService):
+            guard planService.currentSubscription?.hasExistingProtonSubscription == false else {
+                return .failure(StoreKitManager.Errors.invalidPurchase)
+            }
+            return .success(product)
+        case .right(let planDataSource):
+            guard planDataSource.currentPlan?.hasExistingProtonSubscription == false else {
+                return .failure(StoreKitManager.Errors.invalidPurchase)
+            }
+            return .success(product)
         }
-
-        return .success(product)
     }
 }

@@ -20,7 +20,8 @@
 //  along with ProtonCore. If not, see https://www.gnu.org/licenses/.
 //
 
-import ProtonCore_Networking
+import Foundation
+import ProtonCoreNetworking
 
 struct ObservabilityEndpoint: Request {
     var path: String { "/data/v1/metrics" }
@@ -30,5 +31,5 @@ struct ObservabilityEndpoint: Request {
     var authCredential: AuthCredential? { nil }
     var retryPolicy: ProtonRetryPolicy.RetryMode { .background }
     var nonDefaultTimeout: TimeInterval? { nil }
-    var autoRetry: Bool { true }
+    var authRetry: Bool { true }
 }

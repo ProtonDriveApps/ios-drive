@@ -19,28 +19,26 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
-// swiftlint:disable function_parameter_count
-
 import Foundation
-import ProtonCore_Doh
-import ProtonCore_Log
-import ProtonCore_Networking
-import ProtonCore_Utilities
+import ProtonCoreDoh
+import ProtonCoreLog
+import ProtonCoreNetworking
+import ProtonCoreUtilities
 
 // MARK: - Handling device verification
 
 extension PMAPIService {
-    
+
     /// This function is responsible for handling device verification for an API request. It first checks if there is an ongoing device verification process or not. If there is an ongoing process, it waits for it to finish and then retries the request. If there is no ongoing process, it calls the deviceVerificationProcess function.
     func deviceVerificationHandler<T>(responseHandlerData: PMResponseHandlerData, completion: PMAPIService.APIResponseCompletion<T>, response: JSONDictionary) where T: APIDecodableResponse {
         let customAuthCredential = responseHandlerData.customAuthCredential.map(AuthCredential.init(copying:))
-        
+
         // return completion if humanDelegate in not present
         guard self.humanDelegate != nil else {
             completion.call(task: responseHandlerData.task, response: .left(response))
             return
         }
-        
+
         // device verification required
         if self.isDeviceVerifyProcessing.transform({ $0 }) {
             // wait until ongoing device verification is finished
@@ -57,6 +55,7 @@ extension PMAPIService {
                                       customAuthCredential: customAuthCredential,
                                       nonDefaultTimeout: responseHandlerData.nonDefaultTimeout,
                                       retryPolicy: responseHandlerData.retryPolicy,
+                                      onDataTaskCreated: responseHandlerData.onDataTaskCreated,
                                       completion: completion)
                 }
             }
@@ -74,10 +73,11 @@ extension PMAPIService {
                                            retryPolicy: responseHandlerData.retryPolicy,
                                            task: responseHandlerData.task,
                                            response: response,
+                                           onDataTaskCreated: responseHandlerData.onDataTaskCreated,
                                            completion: completion)
         }
     }
-    
+
     /// This function initiates the device verification process. It first parses the response object and checks if the API requires device verification. If it does, the function sets a flag (isDeviceVerifyProcessing) to indicate that a device verification process is ongoing. Then, it calls the onDeviceVerify delegate method, which should be implemented by the upper layer. Once the device verification is completed, the API request is retried with the new headers containing the solved challenge.
     private func deviceVerificationProcess<T>(method: HTTPMethod,
                                               path: String,
@@ -91,6 +91,7 @@ extension PMAPIService {
                                               retryPolicy: ProtonRetryPolicy.RetryMode,
                                               task: URLSessionDataTask?,
                                               response: JSONDictionary,
+                                              onDataTaskCreated: @escaping (URLSessionDataTask) -> Void,
                                               completion: APIResponseCompletion<T>) where T: APIDecodableResponse {
         let responseDict = response.serialized
         let (dvResponse, _) = Response.parseNetworkCallResults(
@@ -104,9 +105,9 @@ extension PMAPIService {
             completion.call(task: task, error: self.getResponseError(task: task, response: response, error: nil) as NSError)
             return
         }
-        
+
         self.isDeviceVerifyProcessing.mutate { $0 = true }
-        
+
         // device verification required delegate
         dvSynchronizingQueue.async {
             self.dvDispatchGroup.enter()
@@ -117,10 +118,10 @@ extension PMAPIService {
                     self.releaseDeviceVerificationMutex()
                     return
                 }
-                
+
                 var newHeaders = headers ?? [:]
                 newHeaders.merge(["X-PM-DV": solvedChallenge]) { (_, new) in new }
-                
+
                 let retryCompletion = self.createRetryCompletion(completion)
                 self.startRequest(method: method,
                                   path: path,
@@ -132,18 +133,19 @@ extension PMAPIService {
                                   customAuthCredential: customAuthCredential,
                                   nonDefaultTimeout: nonDefaultTimeout,
                                   retryPolicy: retryPolicy,
+                                  onDataTaskCreated: onDataTaskCreated,
                                   completion: retryCompletion)
             }
         }
     }
-    
+
     private func releaseDeviceVerificationMutex() {
         if isDeviceVerifyProcessing.transform({ $0 }) {
             isDeviceVerifyProcessing.mutate({ $0 = false })
             dvDispatchGroup.leave()
         }
     }
-    
+
     private func createRetryCompletion<T>(_ completion: APIResponseCompletion<T>) -> APIResponseCompletion<T> where T: APIDecodableResponse {
         switch completion {
         case .left(let jsonCompletion):

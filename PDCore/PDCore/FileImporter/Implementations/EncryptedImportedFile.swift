@@ -23,6 +23,7 @@ struct EncryptedImportedFile {
     let name: String
     let hash: String
     let mimeType: String
+    let size: Int
     let nodeKey: String
     let nodePassphrase: String
     let nodePassphraseSignature: String

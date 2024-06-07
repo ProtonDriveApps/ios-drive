@@ -56,7 +56,7 @@ extension CloudSlot {
                             share.root?.isShared = false
                             share.shareUrls.forEach(mocUI.delete)
                             mocUI.delete(share)
-                            try? mocUI.save()
+                            try? mocUI.saveWithParentLinkCheck()
                             completion(.success)
                         }
                     }

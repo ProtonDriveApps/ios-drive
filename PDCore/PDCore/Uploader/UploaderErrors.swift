@@ -16,11 +16,9 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import os.log
 
 @available(*, deprecated, message: "This object will be deprecated soon, please replace it with FileUploaderError")
 public enum UploaderErrors: String, Error, LocalizedError {
-    public static var osLog = OSLog.init(subsystem: "ch.protondrive.PDCore", category: "UploaderErrors")
     private static let uploadFail: NSNotification.Name = .init("ch.protondrive.PDCore.uploadFail")
 
     case blockLacksMetadata, cleartextLost, retryImpossible, noFileToUpdateRevisionFor, noFileKeyPacket

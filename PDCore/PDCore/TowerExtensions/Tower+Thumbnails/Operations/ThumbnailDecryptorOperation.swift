@@ -28,7 +28,7 @@ class ThumbnailDecryptorOperation: ThumbnailIdentifiableOperation {
     }
 
     convenience init(model: FullThumbnail, decryptor: ThumbnailDecryptor) {
-        self.init(encryptedThumbnail: model.encrypted, decryptor: decryptor, identifier: model.id.nodeIdentifier)
+        self.init(encryptedThumbnail: model.encrypted, decryptor: decryptor, identifier: model.revisionId.nodeIdentifier)
     }
 
     override func main() {
@@ -66,14 +66,12 @@ class ThumbnailDecryptorOperation: ThumbnailIdentifiableOperation {
 }
 
 final class ThumbnailDecryptor {
-    let identifier: NodeIdentifier
     let store: NodeStore
     let thumbnailRepository: ThumbnailRepository
 
     private var isCancelled = false
 
-    init(identifier: NodeIdentifier, store: NodeStore, thumbnailRepository: ThumbnailRepository) {
-        self.identifier = identifier
+    init(store: NodeStore, thumbnailRepository: ThumbnailRepository) {
         self.store = store
         self.thumbnailRepository = thumbnailRepository
     }
@@ -85,26 +83,27 @@ final class ThumbnailDecryptor {
         guard !isCancelled else { return }
 
         let moc = store.backgroundContext
-        moc.performAndWait {
+        moc.perform { [weak self] in
+            guard let self = self else { return }
 
             do {
-                let thumbnail = try thumbnailRepository.fetchThumbnail(fileID: identifier)
+                let thumbnail = try self.getThumbnail(in: moc)
                 thumbnail.encrypted = encrypted
                 thumbnail.downloadURL = nil
                 thumbnail.clearData = thumbnail.clearThumbnail
 
-                try moc.save()
+                try moc.saveWithParentLinkCheck()
                 completion(.success)
 
             } catch {
-                ConsoleLogger.shared?.log(DriveError(error, "ThumbnailDecryptor"))
+                Log.error(DriveError(error), domain: .encryption)
                 completion(.failure(ThumbnailLoaderError.nonRecoverable))
             }
         }
     }
 
     private func getThumbnail(in moc: NSManagedObjectContext) throws -> Thumbnail {
-        let thumbnail = try thumbnailRepository.fetchThumbnail(fileID: identifier)
+        let thumbnail = try thumbnailRepository.getThumbnail()
         return thumbnail.in(moc: moc)
     }
 

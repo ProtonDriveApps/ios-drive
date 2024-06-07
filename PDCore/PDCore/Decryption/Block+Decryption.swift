@@ -61,11 +61,11 @@ extension Block {
             case .verified(let cleardata):
                 return cleardata
             case .unverified(let cleardata, let error):
-                ConsoleLogger.shared?.log(SignatureError(error, "Block"))
+                Log.error(SignatureError(error, "Block", description: "RevisionID: \(revision.id) \nLinkID: \(revision.file.id) \nShareID: \(revision.file.shareID)"), domain: .encryption)
                 return cleardata
             }
         } catch {
-            ConsoleLogger.shared?.log(DecryptionError(error, "Block"))
+            Log.error(DecryptionError(error, "Block", description: "RevisionID: \(revision.id) \nLinkID: \(revision.file.id) \nShareID: \(revision.file.shareID)"), domain: .encryption)
             throw error
         }
     }
@@ -94,7 +94,7 @@ extension Block {
             try Decryptor.decryptStream(localUrl, clearUrl, [blockDecryptionKey], keyPacket, verificationKeys, signature)
 
         } catch {
-            ConsoleLogger.shared?.log(DecryptionError(error, "Block - stream"))
+            Log.error(DecryptionError(error, "Block - stream", description: "RevisionID: \(revision.id) \nLinkID: \(revision.file.id) \nShareID: \(revision.file.shareID)"), domain: .encryption)
             throw error
         }
     }
@@ -103,10 +103,7 @@ extension Block {
         guard let signatureEmail = signatureEmail else {
             throw Errors.noEncryptedSignatureOrEmail
         }
-        guard case let publicKeys = SessionVault.current.getPublicKeys(for: signatureEmail), !publicKeys.isEmpty else {
-            throw SessionVault.Errors.noRequiredAddressKey
-        }
-        return publicKeys
+        return SessionVault.current.getPublicKeys(for: signatureEmail)
     }
 }
 

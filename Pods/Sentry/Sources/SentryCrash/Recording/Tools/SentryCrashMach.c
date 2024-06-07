@@ -27,6 +27,10 @@
 #include <mach/mach.h>
 #include <stdlib.h>
 
+#if defined(__arm__) || defined(__arm64__)
+#    include <mach/arm/exception.h>
+#endif /* defined (__arm__) || defined (__arm64__) */
+
 #define RETURN_NAME_FOR_ENUM(A)                                                                    \
     case A:                                                                                        \
         return #A
@@ -104,6 +108,19 @@ sentrycrashmach_kernelReturnCodeName(const int64_t returnCode)
         RETURN_NAME_FOR_ENUM(KERN_NOT_WAITING);
         RETURN_NAME_FOR_ENUM(KERN_OPERATION_TIMED_OUT);
         RETURN_NAME_FOR_ENUM(KERN_CODESIGN_ERROR);
+
+#if defined(__arm__) || defined(__arm64__)
+        /*
+         * Located at mach/arm/exception.h
+         * For EXC_BAD_ACCESS
+         * Note: do not conflict with kern_return_t values returned by vm_fault
+         */
+        RETURN_NAME_FOR_ENUM(EXC_ARM_DA_ALIGN);
+        RETURN_NAME_FOR_ENUM(EXC_ARM_DA_DEBUG);
+        RETURN_NAME_FOR_ENUM(EXC_ARM_SP_ALIGN);
+        RETURN_NAME_FOR_ENUM(EXC_ARM_SWP);
+        RETURN_NAME_FOR_ENUM(EXC_ARM_PAC_FAIL);
+#endif /* defined (__arm__) || defined (__arm64__) */
     }
     return NULL;
 }
@@ -111,63 +128,3 @@ sentrycrashmach_kernelReturnCodeName(const int64_t returnCode)
 #define EXC_UNIX_BAD_SYSCALL 0x10000 /* SIGSYS */
 #define EXC_UNIX_BAD_PIPE 0x10001 /* SIGPIPE */
 #define EXC_UNIX_ABORT 0x10002 /* SIGABRT */
-
-int
-sentrycrashmach_machExceptionForSignal(const int sigNum)
-{
-    switch (sigNum) {
-    case SIGFPE:
-        return EXC_ARITHMETIC;
-    case SIGSEGV:
-        return EXC_BAD_ACCESS;
-    case SIGBUS:
-        return EXC_BAD_ACCESS;
-    case SIGILL:
-        return EXC_BAD_INSTRUCTION;
-    case SIGTRAP:
-        return EXC_BREAKPOINT;
-    case SIGEMT:
-        return EXC_EMULATION;
-    case SIGSYS:
-        return EXC_UNIX_BAD_SYSCALL;
-    case SIGPIPE:
-        return EXC_UNIX_BAD_PIPE;
-    case SIGABRT:
-        // The Apple reporter uses EXC_CRASH instead of EXC_UNIX_ABORT
-        return EXC_CRASH;
-    case SIGKILL:
-        return EXC_SOFT_SIGNAL;
-    }
-    return 0;
-}
-
-int
-sentrycrashmach_signalForMachException(const int exception, const mach_exception_code_t code)
-{
-    switch (exception) {
-    case EXC_ARITHMETIC:
-        return SIGFPE;
-    case EXC_BAD_ACCESS:
-        return code == KERN_INVALID_ADDRESS ? SIGSEGV : SIGBUS;
-    case EXC_BAD_INSTRUCTION:
-        return SIGILL;
-    case EXC_BREAKPOINT:
-        return SIGTRAP;
-    case EXC_EMULATION:
-        return SIGEMT;
-    case EXC_SOFTWARE: {
-        switch (code) {
-        case EXC_UNIX_BAD_SYSCALL:
-            return SIGSYS;
-        case EXC_UNIX_BAD_PIPE:
-            return SIGPIPE;
-        case EXC_UNIX_ABORT:
-            return SIGABRT;
-        case EXC_SOFT_SIGNAL:
-            return SIGKILL;
-        }
-        break;
-    }
-    }
-    return 0;
-}

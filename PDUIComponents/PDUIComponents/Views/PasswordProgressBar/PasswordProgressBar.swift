@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 public struct PasswordProgressBar: View {
     static let height: CGFloat = 6
@@ -44,7 +44,7 @@ public struct PasswordProgressBar: View {
                         .frame(width: progress.clamped * geometry.size.width)
                         .cornerRadius(Self.cornerRadius)
                 }
-                .frame(height:Self.height )
+                .frame(height: Self.height )
             }
         }
     }

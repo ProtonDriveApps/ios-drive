@@ -9,8 +9,9 @@
 #import "SentryQueueableRequestManager.h"
 #import "SentryRateLimitParser.h"
 #import "SentryRateLimits.h"
-#import "SentryReachability.h"
+
 #import "SentryRetryAfterHeaderParser.h"
+#import "SentrySpotlightTransport.h"
 #import "SentryTransport.h"
 #import <Foundation/Foundation.h>
 
@@ -23,8 +24,9 @@ SentryTransportFactory ()
 
 @implementation SentryTransportFactory
 
-+ (id<SentryTransport>)initTransport:(SentryOptions *)options
-                   sentryFileManager:(SentryFileManager *)sentryFileManager
++ (NSArray<id<SentryTransport>> *)initTransports:(SentryOptions *)options
+                               sentryFileManager:(SentryFileManager *)sentryFileManager
+                             currentDateProvider:(SentryCurrentDateProvider *)currentDateProvider
 {
     NSURLSessionConfiguration *configuration =
         [NSURLSessionConfiguration ephemeralSessionConfiguration];
@@ -36,11 +38,14 @@ SentryTransportFactory ()
 
     SentryHttpDateParser *httpDateParser = [[SentryHttpDateParser alloc] init];
     SentryRetryAfterHeaderParser *retryAfterHeaderParser =
-        [[SentryRetryAfterHeaderParser alloc] initWithHttpDateParser:httpDateParser];
-    SentryRateLimitParser *rateLimitParser = [[SentryRateLimitParser alloc] init];
+        [[SentryRetryAfterHeaderParser alloc] initWithHttpDateParser:httpDateParser
+                                                 currentDateProvider:currentDateProvider];
+    SentryRateLimitParser *rateLimitParser =
+        [[SentryRateLimitParser alloc] initWithCurrentDateProvider:currentDateProvider];
     id<SentryRateLimits> rateLimits =
         [[SentryDefaultRateLimits alloc] initWithRetryAfterHeaderParser:retryAfterHeaderParser
-                                                     andRateLimitParser:rateLimitParser];
+                                                     andRateLimitParser:rateLimitParser
+                                                    currentDateProvider:currentDateProvider];
 
     SentryEnvelopeRateLimit *envelopeRateLimit =
         [[SentryEnvelopeRateLimit alloc] initWithRateLimits:rateLimits];
@@ -51,14 +56,27 @@ SentryTransportFactory ()
         [[SentryDispatchQueueWrapper alloc] initWithName:"sentry-http-transport"
                                               attributes:attributes];
 
-    return [[SentryHttpTransport alloc] initWithOptions:options
-                                            fileManager:sentryFileManager
-                                         requestManager:requestManager
-                                         requestBuilder:[[SentryNSURLRequestBuilder alloc] init]
-                                             rateLimits:rateLimits
-                                      envelopeRateLimit:envelopeRateLimit
-                                   dispatchQueueWrapper:dispatchQueueWrapper
-                                           reachability:[[SentryReachability alloc] init]];
+    SentryNSURLRequestBuilder *requestBuilder = [[SentryNSURLRequestBuilder alloc] init];
+
+    SentryHttpTransport *httpTransport =
+        [[SentryHttpTransport alloc] initWithOptions:options
+                                         fileManager:sentryFileManager
+                                      requestManager:requestManager
+                                      requestBuilder:requestBuilder
+                                          rateLimits:rateLimits
+                                   envelopeRateLimit:envelopeRateLimit
+                                dispatchQueueWrapper:dispatchQueueWrapper];
+
+    if (options.enableSpotlight) {
+        SentrySpotlightTransport *spotlightTransport =
+            [[SentrySpotlightTransport alloc] initWithOptions:options
+                                               requestManager:requestManager
+                                               requestBuilder:requestBuilder
+                                         dispatchQueueWrapper:dispatchQueueWrapper];
+        return @[ httpTransport, spotlightTransport ];
+    } else {
+        return @[ httpTransport ];
+    }
 }
 
 @end

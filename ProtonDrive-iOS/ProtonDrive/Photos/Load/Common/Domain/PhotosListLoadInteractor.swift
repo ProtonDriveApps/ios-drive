@@ -22,7 +22,7 @@ struct PhotosListLoadId: Equatable {
     let photoId: PhotoListId?
 }
 
-final class PhotosListLoadInteractor: Interactor {
+final class PhotosListLoadInteractor: ThrowingAsynchronousInteractor {
     private let volumeIdDataSource: PhotosVolumeIdDataSource
     private let listing: PhotosListing
 
@@ -33,7 +33,7 @@ final class PhotosListLoadInteractor: Interactor {
 
     func execute(with input: PhotosListLoadId) async throws -> PhotosListResponse {
         let volumeId = try await volumeIdDataSource.getVolumeId()
-        let parameters = PhotosListRequestParameters(volumeId: volumeId, lastId: input.photoId, pageSize: 500)
+        let parameters = PhotosListRequestParameters(volumeId: volumeId, lastId: input.photoId, pageSize: 150)
         return try await listing.getPhotosList(with: parameters)
     }
 }

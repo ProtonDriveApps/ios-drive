@@ -18,8 +18,27 @@
 import PDCore
 import Combine
 
+enum PhotoLibraryLoadUpdate: Equatable {
+    case fullLoad(PhotoIdentifiers)
+    case update(PhotoIdentifiers)
+    case loading
+
+    var identifiers: PhotoIdentifiers {
+        switch self {
+        case .fullLoad(let identifiers):
+            return identifiers
+        case .update(let identifiers):
+            return identifiers
+        case .loading:
+            return []
+        }
+    }
+}
+
 protocol PhotoLibraryIdentifiersResource {
-    var updatePublisher: AnyPublisher<PhotoIdentifiers, Never> { get }
+    var updatePublisher: AnyPublisher<PhotoLibraryLoadUpdate, Never> { get }
     func execute()
     func cancel()
+    func suspend()
+    func resume()
 }

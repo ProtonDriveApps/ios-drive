@@ -19,6 +19,9 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
+import UIKit
 import Foundation
 
 public extension NSMutableAttributedString {
@@ -30,7 +33,7 @@ public extension NSMutableAttributedString {
         }
         return false
     }
-    
+
     func addHyperLink(subString: String, link: String, font: UIFont? = nil) {
         if let subStrRange = self.string.range(of: subString) {
             let nsRange = NSRange(subStrRange, in: self.string)
@@ -40,7 +43,7 @@ public extension NSMutableAttributedString {
             }
         }
     }
-    
+
     func addHyperLinks(hyperlinks: [String: String]) {
         for (key, value) in hyperlinks {
             self.addHyperLink(subString: key, link: value)
@@ -65,3 +68,5 @@ public extension String {
                                                       NSAttributedString.Key.foregroundColor: color])
     }
 }
+
+#endif

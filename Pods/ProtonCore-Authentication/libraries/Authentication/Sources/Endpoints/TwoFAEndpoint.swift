@@ -20,45 +20,76 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Networking
+import ProtonCoreNetworking
+import ProtonCoreServices
 
 extension AuthService {
-    
+
     struct TwoFAResponse: APIDecodableResponse, Encodable {
         var scopes: CredentialConvertible.Scopes
     }
-    
+
     struct TwoFAEndpoint: Request {
-        let code: String
-        
-        init(code: String)  {
-            self.code = code
+        let twoFAParams: TwoFAParams
+
+        init(code: String) {
+            self.twoFAParams = .totp(code)
         }
-        
+
+        init(signature: Fido2Signature, authenticationOptions: AuthenticationOptions) {
+            self.twoFAParams = .fido2(signature, authenticationOptions)
+        }
+
         var path: String {
             "/auth/v4/2fa"
         }
-        
+
         var method: HTTPMethod {
             .post
         }
-        
+
         var parameters: [String: Any]? {
-            ["TwoFactorCode": code]
+            twoFAParams.asParameterDictionary
         }
-        
+
         var isAuth: Bool {
             true
         }
-        
+
         var auth: AuthCredential?
-        
+
         var authCredential: AuthCredential? {
             auth
         }
-        
-        var autoRetry: Bool {
+
+        var authRetry: Bool {
             false
+        }
+    }
+
+    enum TwoFAParams {
+        case totp(String)
+        case fido2(Fido2Signature, AuthenticationOptions)
+
+        var asParameterDictionary: [String: Any]? {
+            switch self {
+            case let .totp(code):
+                return ["TwoFactorCode": code]
+            case let .fido2(signature, authenticationOptions):
+                let encoder = JSONEncoder()
+                encoder.dataEncodingStrategy = .deferredToData
+                guard let authenticationOptionsDictionary = try? JSONSerialization.jsonObject(with: try encoder.encode(authenticationOptions)) else {
+                    return nil
+                }
+                return ["FIDO2": [
+                    "AuthenticationOptions": authenticationOptionsDictionary,
+                    "ClientData": signature.clientData.base64EncodedString(),
+                    "AuthenticatorData": signature.authenticatorData.base64EncodedString(),
+                    "Signature": signature.signature.base64EncodedString(),
+                    "CredentialID": [UInt8](signature.credentialID)
+                ]
+                ]
+            }
         }
     }
 }

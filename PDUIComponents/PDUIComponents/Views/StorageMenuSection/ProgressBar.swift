@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 public struct ProgressBar: View {
     public init(value: Binding<Double>, offset: CGFloat = 0, foregroundColor: Color = Color.BrandNorm, backgroundColor: Color = ColorProvider.TextWeak) {

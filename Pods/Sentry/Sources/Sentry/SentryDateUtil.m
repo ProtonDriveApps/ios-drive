@@ -1,31 +1,41 @@
 #import "SentryDateUtil.h"
-#import "SentryCurrentDate.h"
+#import "SentrySwift.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface
 SentryDateUtil ()
 
+@property (nonatomic, strong) SentryCurrentDateProvider *currentDateProvider;
+
 @end
 
 @implementation SentryDateUtil
 
-+ (BOOL)isInFuture:(NSDate *_Nullable)date
+- (instancetype)initWithCurrentDateProvider:(SentryCurrentDateProvider *)currentDateProvider
 {
-    if (nil == date)
+    if (self = [super init]) {
+        self.currentDateProvider = currentDateProvider;
+    }
+    return self;
+}
+
+- (BOOL)isInFuture:(NSDate *_Nullable)date
+{
+    if (date == nil)
         return NO;
 
-    NSComparisonResult result = [[SentryCurrentDate date] compare:date];
+    NSComparisonResult result = [[self.currentDateProvider date] compare:date];
     return result == NSOrderedAscending;
 }
 
 + (NSDate *_Nullable)getMaximumDate:(NSDate *_Nullable)first andOther:(NSDate *_Nullable)second
 {
-    if (nil == first && nil == second)
+    if (first == nil && second == nil)
         return nil;
-    if (nil == first)
+    if (first == nil)
         return second;
-    if (nil == second)
+    if (second == nil)
         return first;
 
     NSComparisonResult result = [first compare:second];

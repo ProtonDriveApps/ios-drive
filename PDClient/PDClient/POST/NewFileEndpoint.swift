@@ -32,7 +32,8 @@ public struct NewFileParameters: Codable {
                 signatureAddress: String,
                 contentKeyPacket: String,
                 contentKeyPacketSignature: String,
-                mimeType: String)
+                mimeType: String,
+                clientUID: String)
     {
         self.Name = name
         self.Hash = hash
@@ -44,6 +45,7 @@ public struct NewFileParameters: Codable {
         self.ContentKeyPacket = contentKeyPacket
         self.ContentKeyPacketSignature = contentKeyPacketSignature
         self.MIMEType = mimeType
+        self.ClientUID = clientUID
     }
 
     var Name: String
@@ -56,6 +58,7 @@ public struct NewFileParameters: Codable {
     var ContentKeyPacket: String
     var ContentKeyPacketSignature: String
     var MIMEType: String
+    var ClientUID: String
 }
 
 struct NewFileEndpoint: Endpoint {

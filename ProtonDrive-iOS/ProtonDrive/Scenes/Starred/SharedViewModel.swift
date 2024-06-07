@@ -18,10 +18,11 @@
 import Combine
 import PDCore
 import SwiftUI
-import ProtonCore_Networking
+import ProtonCoreNetworking
 import PDUIComponents
 
 class SharedViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, SortingViewModel, HasMultipleSelection, HasRefreshControl {
+    typealias Identifier = NodeIdentifier
 
     @Published var layout: Layout
     var cancellables = Set<AnyCancellable>()
@@ -31,7 +32,7 @@ class SharedViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, 
     var childrenCancellable: AnyCancellable?
     @Published var transientChildren: [NodeWrapper] = []
     @Published var permanentChildren: [NodeWrapper] = []  {
-        didSet { selection.updateSelectable(Set(permanentChildren.map(\.id))) }
+        didSet { selection.updateSelectable(Set(permanentChildren.map(\.node.identifier))) }
     }
     var isVisible: Bool = true
     let genericErrors = ErrorRegulator()
@@ -80,7 +81,7 @@ class SharedViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, 
     }
     
     // MARK: HasMultipleSelection
-    lazy var selection = MultipleSelectionModel(selectable: Set<String>())
+    lazy var selection = MultipleSelectionModel(selectable: Set<NodeIdentifier>())
     @Published var listState: ListState = .active
     
     // MARK: others
@@ -99,31 +100,32 @@ class SharedViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, 
 }
 
 extension SharedViewModel {
-    private func fetchAllPages() {
+    func fetchAllPages() {
         guard !isUpdating else { return }
-        self.isUpdating = true
+        isUpdating = true
 
-        model.fetchShared(at: 0) { [weak self] result in
-            guard let self = self else { return }
-            DispatchQueue.main.async {
-                switch result {
-                case .success:
+        Task {
+            do {
+                try await model.fetchSharedByUrl()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     self.isUpdating = false
-
-                case .failure(let error):
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                        let error: Error = (error as? ResponseError)?.underlyingError ?? error
-                        self.genericErrors.send(error)
-                        self.isUpdating = false
-                    }
+                }
+            } catch {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                    self.genericErrors.send(error)
+                    self.isUpdating = false
                 }
             }
         }
     }
+
+    func actionBarItems() -> [ActionBarButtonViewModel] {
+        [.trashMultiple, .offlineAvailableMultiple]
+    }
 }
 
 extension MultipleSelectionModel {
-    func unselectOnEmpty(for vm: HasMultipleSelection) {
+    func unselectOnEmpty(for vm: any HasMultipleSelection) {
         let listState = Binding(
             get: { [weak vm] in (vm?.listState ?? .active) },
             set: { [weak vm] in vm?.listState = $0 })

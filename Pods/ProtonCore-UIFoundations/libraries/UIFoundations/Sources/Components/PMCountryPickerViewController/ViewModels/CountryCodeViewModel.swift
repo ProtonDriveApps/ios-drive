@@ -19,8 +19,10 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import Foundation
-import ProtonCore_Log
+import ProtonCoreLog
 
 public class CountryCodeViewModel {
 
@@ -30,7 +32,7 @@ public class CountryCodeViewModel {
     private var searchBarPlaceholderText: String = ""
 
     // MARK: Public interface
-    
+
     public init() {
         countryCodes = getCountryCodes()
         prepareData()
@@ -110,3 +112,5 @@ public class CountryCodeViewModel {
     }
 
 }
+
+#endif

@@ -25,7 +25,7 @@ extension PMAPIClient {
             .eraseToAnyPublisher()
     }
 
-    private static func mapToFailingAlert(_ activity: NSUserActivity?) -> DriveCoreAlert? {
+    public static func mapToFailingAlert(_ activity: NSUserActivity?) -> DriveCoreAlert? {
         switch activity {
         case PMAPIClient.Activity.logout:
             return .logout

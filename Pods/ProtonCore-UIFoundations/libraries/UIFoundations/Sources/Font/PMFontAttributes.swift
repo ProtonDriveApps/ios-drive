@@ -19,6 +19,8 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
 
 /// When needing customization, this typealias can make life easier to access the attributes.
@@ -74,7 +76,7 @@ extension Dictionary where Key == NSAttributedString.Key, Value: Any {
     public static var HeadlineWelcomeSmall: [NSAttributedString.Key: Any] {
         return HeadlineSmall(color: ColorProvider.White)
     }
-    
+
     static func HeadlineSmall(color: UIColor) -> [NSAttributedString.Key: Any] {
         let font = UIFont.systemFont(ofSize: 17, weight: .semibold)
         let paragraphStyle = NSMutableParagraphStyle()
@@ -141,7 +143,7 @@ extension Dictionary where Key == NSAttributedString.Key, Value: Any {
         let font = UIFont.systemFont(ofSize: 17)
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.lineHeightMultiple = 1.18
- 
+
         let foregroundColor: UIColor = ColorProvider.TextHint
         let attributes: [NSAttributedString.Key: Any] = [
             .kern: -0.41,
@@ -354,3 +356,5 @@ extension Dictionary where Key == NSAttributedString.Key, Value: Any {
         set( color ) { self[.foregroundColor] = color as? Value }
     }
 }
+
+#endif

@@ -23,8 +23,8 @@ class DefaultRevisionEncryptor: RevisionEncryptor {
     private let thumbnailEncryptor: RevisionEncryptor
     private let xAttributesEncryptor: RevisionEncryptor
     private let moc: NSManagedObjectContext
-
-    private let queue = OperationQueue(underlyingQueue: .global())
+    private let queue: OperationQueue
+    private var operationsContainer = OperationsContainer()
 
     private var isCancelled = false
     private var isExecuting = false
@@ -33,68 +33,92 @@ class DefaultRevisionEncryptor: RevisionEncryptor {
         blocksEncryptor: RevisionEncryptor,
         thumbnailEncryptor: RevisionEncryptor,
         xAttributesEncryptor: RevisionEncryptor,
-        moc: NSManagedObjectContext
+        moc: NSManagedObjectContext,
+        queue: OperationQueue = OperationQueue(underlyingQueue: .global(qos: .userInitiated))
     ) {
         self.blocksEncryptor = blocksEncryptor
         self.thumbnailEncryptor = thumbnailEncryptor
         self.xAttributesEncryptor = xAttributesEncryptor
         self.moc = moc
+        self.queue = queue
     }
 
     func encrypt(_ draft: CreatedRevisionDraft, completion: @escaping Completion) {
         guard !isCancelled, !isExecuting else { return }
         isExecuting = true
 
-        let thumbnailEncryptorOperation = ContentRevisionEncryptorOperation(
-            revision: draft,
-            contentEncryptor: thumbnailEncryptor,
-            onError: { _ in })
+        if draft.isEmpty {
+            Log.info("STAGE: 1 🏞📦🏜️ Encrypt revision finished ✅. UUID: \(draft.uploadID)", domain: .uploader)
 
-        let blocksEncryptorOperation = ContentRevisionEncryptorOperation(
-            revision: draft,
-            contentEncryptor: blocksEncryptor
-        ) { [weak self] error in
-            guard let self = self, !self.isCancelled else { return }
-            self.cancel()
-            completion(.failure(error))
+            let xAttrEncryptorOperation = ContentRevisionEncryptorOperation(
+                revision: draft,
+                contentEncryptor: xAttributesEncryptor
+            ) { [weak self] error in
+                guard let self = self, !self.isCancelled else { return }
+                self.cancel()
+                completion(.failure(error))
+            }
+
+            let finishOperation = BlockOperation { [weak self] in
+                guard let self = self, !self.isCancelled else { return }
+                self.finalize(draft: draft, completion: completion)
+            }
+
+            finishOperation.addDependency(xAttrEncryptorOperation)
+            let operations = [xAttrEncryptorOperation, finishOperation]
+            operationsContainer.set(operations: operations)
+            queue.addOperations(operations, waitUntilFinished: false)
+        } else {
+            let thumbnailEncryptorOperation = ContentRevisionEncryptorOperation(
+                revision: draft,
+                contentEncryptor: thumbnailEncryptor,
+                onError: { _ in })
+
+            let blocksEncryptorOperation = ContentRevisionEncryptorOperation(
+                revision: draft,
+                contentEncryptor: blocksEncryptor
+            ) { [weak self] error in
+                guard let self = self, !self.isCancelled else { return }
+                self.cancel()
+                completion(.failure(error))
+            }
+
+            let xAttrEncryptorOperation = ContentRevisionEncryptorOperation(
+                revision: draft,
+                contentEncryptor: xAttributesEncryptor
+            ) { [weak self] error in
+                guard let self = self, !self.isCancelled else { return }
+                self.cancel()
+                completion(.failure(error))
+            }
+
+            let finishOperation = BlockOperation { [weak self] in
+                guard let self = self, !self.isCancelled else { return }
+                self.finalize(draft: draft, completion: completion)
+            }
+
+            xAttrEncryptorOperation.addDependency(blocksEncryptorOperation)
+            [thumbnailEncryptorOperation, xAttrEncryptorOperation].forEach(finishOperation.addDependency)
+            let operations = [thumbnailEncryptorOperation, blocksEncryptorOperation, xAttrEncryptorOperation, finishOperation]
+            operationsContainer.set(operations: operations)
+            queue.addOperations(operations, waitUntilFinished: false)
         }
-
-        let xAttrEncryptorOperation = ContentRevisionEncryptorOperation(
-            revision: draft,
-            contentEncryptor: xAttributesEncryptor
-        ) { [weak self] error in
-            guard let self = self, !self.isCancelled else { return }
-            self.cancel()
-            completion(.failure(error))
-        }
-
-        let finishOperation = BlockOperation { [weak self] in
-            guard let self = self, !self.isCancelled else { return }
-            self.finalize(draft: draft, completion: completion)
-        }
-
-        xAttrEncryptorOperation.addDependency(blocksEncryptorOperation)
-        [thumbnailEncryptorOperation, xAttrEncryptorOperation].forEach(finishOperation.addDependency)
-        [thumbnailEncryptorOperation, blocksEncryptorOperation, xAttrEncryptorOperation, finishOperation].forEach(queue.addOperation)
     }
 
     func cancel() {
-        guard !isCancelled else { return }
-
+        operationsContainer.cancelAllOperations()
         isCancelled = true
-        queue.cancelAllOperations()
     }
 
     private func finalize(draft: CreatedRevisionDraft, completion: @escaping Completion) {
-        moc.perform {
+        moc.perform { [weak self] in
+            guard let self, !self.isCancelled else { return }
             do {
                 let revision = draft.revision.in(moc: self.moc)
                 revision.uploadState = .encrypted
 
-                if let url = revision.uploadableResourceURL {
-                    revision.uploadableResourceURL = nil
-                    try? FileManager.default.removeItem(at: url)
-                }
+                revision.clearUnencryptedContents()
+                revision.normalizedUploadableResourceURL = nil
 
                 try self.moc.saveOrRollback()
                 completion(.success)

@@ -18,6 +18,9 @@
 import Foundation
 
 public enum SettingsStorageSuite {
+    
+    private static var groupUserDefaultInstances: [String: UserDefaults] = [:]
+    
     case standard
     case group(named: String)
     case inMemory(initialContentFrom: URL)
@@ -41,10 +44,17 @@ public enum SettingsStorageSuite {
     public var userDefaults: UserDefaults {
         switch self {
         case let .group(named: name):
+            if let alreadyExistingUserDefaults = Self.groupUserDefaultInstances[name] {
+                return alreadyExistingUserDefaults
+            }
             guard let customDefaults = UserDefaults(suiteName: name) else {
-                assert(false, "Shared UserDefaults could not be created.")
+                let message = "Shared UserDefaults for \(name) could not be created"
+                Log.error(message, domain: .storage)
+                assertionFailure(message)
                 return .standard
             }
+            Log.info("Shared UserDefaults for group \(name) created successfully.", domain: .storage)
+            Self.groupUserDefaultInstances[name] = customDefaults
             return customDefaults
         case .standard, .inMemory:
             return .standard
@@ -57,8 +67,11 @@ public class SettingsStorage<T> {
     private let label: String
     private var suite: SettingsStorageSuite = .standard
     
-    public init(_ label: String) {
+    private var additionalLogging: Bool
+    
+    public init(_ label: String, additionalLogging: Bool = false) {
         self.label = label
+        self.additionalLogging = additionalLogging
     }
     
     public func configure(with suite: SettingsStorageSuite) {
@@ -71,7 +84,17 @@ public class SettingsStorage<T> {
         }
         set {
             guard let newValue = newValue else {
+                if additionalLogging {
+                    Log.info("SettingsStorage: removing object for key: \(label)", domain: .syncing)
+                }
                 return suite.userDefaults.removeObject(forKey: label)
+            }
+            if additionalLogging {
+                if let oldValue = suite.userDefaults.object(forKey: label) as? T {
+                    Log.info("SettingsStorage: replacing \(oldValue) with \(newValue) for key: \(label)", domain: .syncing)
+                } else {
+                    Log.info("SettingsStorage: creating (first time) \(newValue) for key: \(label)", domain: .syncing)
+                }
             }
             suite.userDefaults.set(newValue, forKey: label)
         }

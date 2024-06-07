@@ -19,12 +19,14 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import ProtonCore_CoreTranslation
-import ProtonCore_Foundations
-import ProtonCore_UIFoundations
-import typealias ProtonCore_Login.AccountType
-import ProtonCore_Observability
+import ProtonCoreFoundations
+import ProtonCoreUIFoundations
+import typealias ProtonCoreLogin.AccountType
+import ProtonCoreObservability
+import ProtonCoreTelemetry
 
 protocol RecoveryViewControllerDelegate: AnyObject {
     func recoveryBackButtonPressed()
@@ -33,7 +35,12 @@ protocol RecoveryViewControllerDelegate: AnyObject {
     func recoveryCountryPickerPressed()
 }
 
-class RecoveryViewController: UIViewController, AccessibleView, Focusable {
+class RecoveryViewController: UIViewController, AccessibleView, Focusable, ProductMetricsMeasurable {
+    var productMetrics: ProductMetrics = .init(
+        group: TelemetryMeasurementGroup.signUp.rawValue,
+        flow: TelemetryFlow.signUpFull.rawValue,
+        screen: .recoveryMethod
+    )
 
     enum RecoveryMethod: Int {
         case email = 0
@@ -45,7 +52,7 @@ class RecoveryViewController: UIViewController, AccessibleView, Focusable {
     var minimumAccountType: AccountType?
     private var countryCode: String = ""
     var onDohTroubleshooting: () -> Void = {}
-    
+
     override var preferredStatusBarStyle: UIStatusBarStyle { darkModeAwarePreferredStatusBarStyle() }
 
     // MARK: Outlets
@@ -68,7 +75,7 @@ class RecoveryViewController: UIViewController, AccessibleView, Focusable {
     }
     @IBOutlet weak var recoveryEmailTextField: PMTextField! {
         didSet {
-            recoveryEmailTextField.title = CoreString._su_recovery_email_field_title
+            recoveryEmailTextField.title = LUITranslation.recovery_email_field_title.l10n
             recoveryEmailTextField.delegate = self
             recoveryEmailTextField.keyboardType = .emailAddress
             recoveryEmailTextField.textContentType = .emailAddress
@@ -79,7 +86,7 @@ class RecoveryViewController: UIViewController, AccessibleView, Focusable {
     }
     @IBOutlet weak var recoveryPhoneTextField: PMTextFieldCombo! {
         didSet {
-            recoveryPhoneTextField.title = CoreString._su_recovery_phone_field_title
+            recoveryPhoneTextField.title = LUITranslation.recovery_phone_field_title.l10n
             recoveryPhoneTextField.placeholder = "XX XXX XX XX"
             recoveryPhoneTextField.delegate = self
             recoveryPhoneTextField.keyboardType = .phonePad
@@ -98,7 +105,7 @@ class RecoveryViewController: UIViewController, AccessibleView, Focusable {
     }
     @IBOutlet weak var nextButton: ProtonButton! {
         didSet {
-            nextButton.setTitle(CoreString._su_next_button, for: .normal)
+            nextButton.setTitle(LUITranslation.next_button.l10n, for: .normal)
             nextButton.isEnabled = false
         }
     }
@@ -126,9 +133,9 @@ class RecoveryViewController: UIViewController, AccessibleView, Focusable {
         super.viewDidLoad()
         view.backgroundColor = ColorProvider.BackgroundNorm
 
-        recoveryMethodDescriptionLabel.text = CoreString._su_recovery_view_desc
-        recoveryMethodTitleLabel.text = CoreString._su_recovery_view_title_optional
-        let skipButton = UIBarButtonItem(title: CoreString._su_skip_button,
+        recoveryMethodDescriptionLabel.text = LUITranslation.recovery_view_desc.l10n
+        recoveryMethodTitleLabel.text = LUITranslation.recovery_view_title_optional.l10n
+        let skipButton = UIBarButtonItem(title: LUITranslation.skip_button.l10n,
                                          style: .done,
                                          target: self,
                                          action: #selector(RecoveryViewController.onSkipButtonTap(_:)))
@@ -153,6 +160,7 @@ class RecoveryViewController: UIViewController, AccessibleView, Focusable {
         case RecoveryMethod.phoneNumber.rawValue: focusOnce(view: recoveryPhoneTextField)
         default: break
         }
+        measureOnViewDisplayed()
     }
 
     override func viewDidLayoutSubviews() {
@@ -160,12 +168,12 @@ class RecoveryViewController: UIViewController, AccessibleView, Focusable {
         navigationBarAdjuster.setUp(for: scrollView, parent: parent)
         scrollView.adjust(forKeyboardVisibilityNotification: nil)
     }
-    
+
     func updateCountryCode(_ responseCode: Int) {
         countryCode = "+\(responseCode)"
         recoveryPhoneTextField.buttonTitleText = countryCode
     }
-    
+
     func countryPickerDissmised() {
         recoveryPhoneTextField.pickerButton(isActive: false)
     }
@@ -178,10 +186,12 @@ class RecoveryViewController: UIViewController, AccessibleView, Focusable {
             recoveryEmailTextField.isHidden = false
             recoveryPhoneTextField.isHidden = true
             _ = recoveryEmailTextField.becomeFirstResponder()
+            measureOnViewClicked(item: "email")
         case RecoveryMethod.phoneNumber.rawValue:
             recoveryEmailTextField.isHidden = true
             recoveryPhoneTextField.isHidden = false
             _ = recoveryPhoneTextField.becomeFirstResponder()
+            measureOnViewClicked(item: "phone")
         default:
             break
         }
@@ -190,15 +200,18 @@ class RecoveryViewController: UIViewController, AccessibleView, Focusable {
 
     @objc func onBackButtonTap(_ sender: UIButton) {
         delegate?.recoveryBackButtonPressed()
+        measureOnViewClosed()
     }
 
     @objc func onSkipButtonTap(_ sender: UIButton) {
         PMBanner.dismissAll(on: self)
         showSkipRecoveryAlert()
+        measureOnViewClicked(item: "skip")
     }
 
     @IBAction func onNextButtonTap(_ sender: ProtonButton) {
         PMBanner.dismissAll(on: self)
+        measureOnViewClicked(item: "next")
         switch methodSegmenedControl.selectedSegmentIndex {
         case RecoveryMethod.email.rawValue:
             nextButton.isSelected = true
@@ -211,7 +224,7 @@ class RecoveryViewController: UIViewController, AccessibleView, Focusable {
         default: break
         }
     }
-    
+
     private func validateEmailServerSide() {
         let email = recoveryEmailTextField.value
         guard !email.isEmpty else { return }
@@ -223,10 +236,15 @@ class RecoveryViewController: UIViewController, AccessibleView, Focusable {
                 self?.unlockUI()
                 self?.nextButton.isSelected = false
                 self?.showError(error: error)
+                self?.measureOnViewAction(
+                    action: .verify,
+                    additionalValues: [.httpCode(error.codeInLogin)],
+                    additionalDimensions: [.result("failure")]
+                )
             }
         }
     }
-    
+
     private func validatePhoneNumberServerSide() {
         let phoneNumber = countryCode + recoveryPhoneTextField.value
         guard !phoneNumber.isEmpty else { return }
@@ -238,11 +256,20 @@ class RecoveryViewController: UIViewController, AccessibleView, Focusable {
                 self?.unlockUI()
                 self?.nextButton.isSelected = false
                 self?.showError(error: error)
+                self?.measureOnViewAction(
+                    action: .verify,
+                    additionalValues: [.httpCode(error.codeInLogin)],
+                    additionalDimensions: [.result("failure")]
+                )
             }
         }
     }
-    
+
     private func pressNextButton(email: String?, phoneNumber: String?) {
+        measureOnViewAction(
+            action: .verify,
+            additionalDimensions: [.result("success")]
+        )
         self.delegate?.recoveryFinish(email: email, phoneNumber: phoneNumber) {
             self.unlockUI()
             self.nextButton.isSelected = false
@@ -269,10 +296,10 @@ class RecoveryViewController: UIViewController, AccessibleView, Focusable {
     }
 
     private func showSkipRecoveryAlert() {
-        let title = CoreString._su_recovery_skip_title
-        let message = CoreString._su_recovery_skip_desc
+        let title = LUITranslation.recovery_skip_title.l10n
+        let message = LUITranslation.recovery_skip_desc.l10n
         let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        let skipAction = UIAlertAction(title: CoreString._su_skip_button, style: .default, handler: { _ in
+        let skipAction = UIAlertAction(title: LUITranslation.skip_button.l10n, style: .default, handler: { _ in
             self.nextButton.isSelected = true
             self.nextButton.isEnabled = true
             self.lockUI()
@@ -284,7 +311,7 @@ class RecoveryViewController: UIViewController, AccessibleView, Focusable {
         })
         skipAction.accessibilityLabel = "DialogSkipButton"
         alertController.addAction(skipAction)
-        let recoveryMethodAction = UIAlertAction(title: CoreString._su_recovery_method_button, style: .default)
+        let recoveryMethodAction = UIAlertAction(title: LUITranslation.recovery_method_button.l10n, style: .default)
         recoveryMethodAction.accessibilityLabel = "DialogRecoveryMethodButton"
         alertController.addAction(recoveryMethodAction)
         present(alertController, animated: true, completion: nil)
@@ -333,18 +360,12 @@ class RecoveryViewController: UIViewController, AccessibleView, Focusable {
     }
 
     private func configSegment() {
-        if #available(iOS 13.0, *) {
             methodSegmenedControl.setImage(image: IconProvider.envelope,
-                                           withText: CoreString._su_recovery_seg_email,
+                                           withText: LUITranslation.recovery_seg_email.l10n,
                                            forSegmentAt: 0)
             methodSegmenedControl.setImage(image: IconProvider.mobile,
-                                           withText: CoreString._su_recovery_seg_phone,
+                                           withText: LUITranslation.recovery_seg_phone.l10n,
                                            forSegmentAt: 1)
-        } else {
-            // don't show icons for the version below iOS 13
-            methodSegmenedControl.setTitle(CoreString._su_recovery_seg_email, forSegmentAt: 0)
-            methodSegmenedControl.setTitle(CoreString._su_recovery_seg_phone, forSegmentAt: 1)
-        }
     }
 }
 
@@ -363,13 +384,27 @@ extension RecoveryViewController: PMTextFieldDelegate {
     }
 
     func didBeginEditing(textField: PMTextField) {
-
+        switch textField {
+        case recoveryEmailTextField:
+            measureOnViewFocused(item: "email")
+        default:
+            break
+        }
     }
 }
 
 extension RecoveryViewController: PMTextFieldComboDelegate {
     func didChangeValue(_ textField: PMTextFieldCombo, value: String) {
         validateNextButton()
+    }
+
+    func didBeginEditing(textField: PMTextFieldCombo) {
+        switch textField {
+        case recoveryPhoneTextField:
+            measureOnViewFocused(item: "phone")
+        default:
+            break
+        }
     }
 
     func didEndEditing(textField: PMTextFieldCombo) {
@@ -384,12 +419,14 @@ extension RecoveryViewController: PMTextFieldComboDelegate {
     func userDidRequestDataSelection(button: UIButton) {
         delegate?.recoveryCountryPickerPressed()
         recoveryPhoneTextField.pickerButton(isActive: true)
+        measureOnViewFocused(item: "phone_country")
     }
 }
 
 extension RecoveryViewController: UITextViewDelegate {
     func textView(_ textView: UITextView, shouldInteractWith URL: URL, in characterRange: NSRange, interaction: UITextItemInteraction) -> Bool {
         delegate?.termsAndConditionsLinkPressed()
+        measureOnViewClicked(item: "terms")
         return false
     }
 }
@@ -397,3 +434,5 @@ extension RecoveryViewController: UITextViewDelegate {
 extension RecoveryViewController: SignUpErrorCapable, LoginErrorCapable {
     var bannerPosition: PMBannerPosition { .top }
 }
+
+#endif

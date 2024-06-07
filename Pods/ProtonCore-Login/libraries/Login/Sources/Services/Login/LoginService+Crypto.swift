@@ -19,10 +19,10 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
-import GoLibs
 import Foundation
-import ProtonCore_DataModel
-import ProtonCore_Utilities
+import ProtonCoreCryptoGoInterface
+import ProtonCoreDataModel
+import ProtonCoreUtilities
 
 extension LoginService {
     // Code take from Drive
@@ -34,16 +34,16 @@ extension LoginService {
             $0.keySalt != nil
         }.map { salt -> (String, String) in
             let keySalt = salt.keySalt!
-            
+
             let passSlice = mailboxPassword.data(using: .utf8)
 
             let saltPackage = Data(base64Encoded: keySalt, options: NSData.Base64DecodingOptions(rawValue: 0))
-            let passphraseSlice = SrpMailboxPassword(passSlice, saltPackage, &error)
-            
+            let passphraseSlice = CryptoGo.SrpMailboxPassword(passSlice, saltPackage, &error)
+
             let passphraseUncut = String.init(data: passphraseSlice!, encoding: .utf8)
             // by some internal reason of go-srp, output will be 60 characters but we need only last 31 of them
             let passphrase = passphraseUncut!.suffix(31)
-            
+
             return (salt.ID, String(passphrase))
         }
 
@@ -56,17 +56,17 @@ extension LoginService {
 
     func validateMailboxPassword(passphrases: ([String: String]), userKeys: [Key]) -> Bool {
         var isValid = false
-  
+
         // new keys - user keys
         passphrases.forEach { keyID, passphrase in
             userKeys.filter { $0.keyID == keyID && $0.primary == 1 }
             .map(\.privateKey)
             .forEach { privateKey in
                 var error: NSError?
-                let armored = CryptoNewKeyFromArmored(privateKey, &error)
+                let armored = CryptoGo.CryptoNewKeyFromArmored(privateKey, &error)
 
                 do {
-                    try armored?.unlock(passphrase.utf8)
+                    _ = try armored?.unlock(passphrase.utf8)
                     isValid = true
                 } catch {
                     // do nothing

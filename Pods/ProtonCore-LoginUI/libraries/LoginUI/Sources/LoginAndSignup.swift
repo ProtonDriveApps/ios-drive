@@ -19,22 +19,15 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
-import Foundation
-import enum ProtonCore_DataModel.ClientApp
-import ProtonCore_Authentication
-import ProtonCore_Doh
-import ProtonCore_Login
-import ProtonCore_Networking
-import ProtonCore_Services
-import typealias ProtonCore_Payments.ListOfIAPIdentifiers
-import enum ProtonCore_Payments.StoreKitManagerErrors
-import ProtonCore_UIFoundations
-import ProtonCore_PaymentsUI
-import ProtonCore_Environment
-import ProtonCore_FeatureSwitch
-import ProtonCore_Utilities
+#if os(iOS)
+
 import UIKit
-import TrustKit
+import enum ProtonCoreDataModel.ClientApp
+import ProtonCoreLogin
+import ProtonCoreNetworking
+import ProtonCoreServices
+import enum ProtonCorePayments.StoreKitManagerErrors
+import ProtonCoreUIFoundations
 
 public enum ScreenVariant<SpecificScreenData, CustomScreenData> {
     case mail(SpecificScreenData)
@@ -48,7 +41,7 @@ public enum ScreenVariant<SpecificScreenData, CustomScreenData> {
 public struct WorkBeforeFlow {
     let stepName: String
     let completion: FlowCompletion
-    
+
     public init(stepName: String, completion: @escaping FlowCompletion) {
         self.stepName = stepName
         self.completion = completion
@@ -70,32 +63,35 @@ public protocol LoginErrorPresenter {
 public typealias FlowCompletion = (LoginData, @escaping (Result<Void, Error>) -> Void) -> Void
 
 public struct LoginCustomizationOptions {
-    
+
     public static let empty: LoginCustomizationOptions = .init()
-    
+
     let username: String?
     let performBeforeFlow: WorkBeforeFlow?
     let customErrorPresenter: LoginErrorPresenter?
     let initialError: String?
     let helpDecorator: ([[HelpItem]]) -> [[HelpItem]]
-    
+    let inAppTheme: () -> InAppTheme
+
     public init(username: String? = nil,
                 performBeforeFlow: WorkBeforeFlow? = nil,
                 customErrorPresenter: LoginErrorPresenter? = nil,
                 initialError: String? = nil,
-                helpDecorator: @escaping ([[HelpItem]]) -> [[HelpItem]] = { $0 }) {
+                helpDecorator: @escaping ([[HelpItem]]) -> [[HelpItem]] = { $0 },
+                inAppTheme: @escaping () -> InAppTheme = { .default }) {
         self.username = username
         self.performBeforeFlow = performBeforeFlow
         self.customErrorPresenter = customErrorPresenter
         self.initialError = initialError
         self.helpDecorator = helpDecorator
+        self.inAppTheme = inAppTheme
     }
 }
 
 public protocol LoginAndSignupInterface {
-    
+
     // older API
-    
+
     func presentLoginFlow(over viewController: UIViewController,
                           customization: LoginCustomizationOptions,
                           completion: @escaping (LoginResult) -> Void)
@@ -112,9 +108,9 @@ public protocol LoginAndSignupInterface {
     func welcomeScreenForPresentingFlow(variant welcomeScreen: WelcomeScreenVariant,
                                         customization: LoginCustomizationOptions,
                                         completion: @escaping (LoginResult) -> Void) -> UIViewController
-    
+
     // newer API
-    
+
     func presentLoginFlow(over viewController: UIViewController,
                           customization: LoginCustomizationOptions,
                           updateBlock: @escaping (LoginAndSignupResult) -> Void)
@@ -131,25 +127,27 @@ public protocol LoginAndSignupInterface {
     func welcomeScreenForPresentingFlow(variant welcomeScreen: WelcomeScreenVariant,
                                         customization: LoginCustomizationOptions,
                                         updateBlock: @escaping (LoginAndSignupResult) -> Void) -> UIViewController
-    
+
     // helper API
 
-    func presentMailboxPasswordFlow(over viewController: UIViewController, completion: @escaping (String) -> Void)
-    
+    func presentMailboxPasswordFlow(over viewController: UIViewController,
+                                    inAppTheme: InAppTheme,
+                                    completion: @escaping (String) -> Void)
+
     func logout(credential: AuthCredential, completion: @escaping (Result<Void, Error>) -> Void)
 }
 
 extension LoginAndSignupInterface {
-    
+
     public func presentLoginFlow(over viewController: UIViewController,
                                  completion: @escaping (LoginResult) -> Void) {
         presentLoginFlow(over: viewController, customization: .empty, completion: completion)
     }
-    
+
     public func presentSignupFlow(over viewController: UIViewController, completion: @escaping (LoginResult) -> Void) {
         presentSignupFlow(over: viewController, customization: .empty, completion: completion)
     }
-    
+
     public func presentFlowFromWelcomeScreen(over viewController: UIViewController,
                                              welcomeScreen: WelcomeScreenVariant,
                                              completion: @escaping (LoginResult) -> Void) {
@@ -158,15 +156,20 @@ extension LoginAndSignupInterface {
                                      customization: .empty,
                                      completion: completion)
     }
-    
+
     public func welcomeScreenForPresentingFlow(variant welcomeScreen: WelcomeScreenVariant,
                                                completion: @escaping (LoginResult) -> Void) -> UIViewController {
         welcomeScreenForPresentingFlow(variant: welcomeScreen, customization: .empty, completion: completion)
     }
+
+    public func presentMailboxPasswordFlow(over viewController: UIViewController,
+                                           completion: @escaping (String) -> Void) {
+        presentMailboxPasswordFlow(over: viewController, inAppTheme: .matchSystem, completion: completion)
+    }
 }
 
 public final class LoginAndSignup {
-    
+
     let container: Container
     private let isCloseButtonAvailable: Bool
     private let minimumAccountType: AccountType
@@ -180,7 +183,7 @@ public final class LoginAndSignup {
     private var loginAndSignupCompletion: (LoginAndSignupResult) -> Void = { _ in }
     private var loginDataTemporarilyCachedForOlderAPI: LoginData?
     private var mailboxPasswordCompletion: ((String) -> Void)?
-    
+
     public init(appName: String,
                 clientApp: ClientApp,
                 apiService: APIService,
@@ -196,11 +199,6 @@ public final class LoginAndSignup {
         self.paymentsAvailability = paymentsAvailability
         self.signupAvailability = signupAvailability
         self.minimumAccountType = minimumAccountType
-        
-        // Workaround for drive
-        if ProcessInfo.processInfo.environment["FeatureSwitch"] != nil {
-            FeatureFactory.shared.loadEnv()
-        }
     }
 
     @discardableResult
@@ -212,9 +210,9 @@ public final class LoginAndSignup {
         self.customization = customization
 
         container.registerHumanVerificationDelegates()
-        self.loginAndSignupCompletion = { [weak self] in
+        self.loginAndSignupCompletion = { [weak self] result in
             self?.container.unregisterHumanVerificationDelegates()
-            completion($0)
+            completion(result)
         }
 
         let shouldShowCloseButton = viewController == nil ? false : isCloseButtonAvailable
@@ -249,15 +247,14 @@ public final class LoginAndSignup {
                                               isCloseButton: isCloseButtonAvailable,
                                               paymentsAvailability: paymentsAvailability,
                                               signupAvailability: signupAvailability,
-                                              performBeforeFlow: customization.performBeforeFlow,
-                                              customErrorPresenter: customization.customErrorPresenter)
+                                              customization: customization)
         signupCoordinator?.delegate = self
         signupCoordinator?.start(kind: start)
     }
 }
 
 extension LoginAndSignup: LoginAndSignupInterface {
-    
+
     public func presentLoginFlow(over viewController: UIViewController,
                                  customization: LoginCustomizationOptions,
                                  updateBlock: @escaping (LoginAndSignupResult) -> Void) {
@@ -276,34 +273,35 @@ extension LoginAndSignup: LoginAndSignupInterface {
         }
         presentSignup(.over(viewController, .coverVertical), customization: customization, completion: updateBlock)
     }
-    
+
     public func presentMailboxPasswordFlow(over viewController: UIViewController,
+                                           inAppTheme: InAppTheme = .matchSystem,
                                            completion: @escaping (String) -> Void) {
         self.viewController = viewController
         self.mailboxPasswordCompletion = completion
-        mailboxPasswordCoordinator = MailboxPasswordCoordinator(container: container, delegate: self)
+        mailboxPasswordCoordinator = MailboxPasswordCoordinator(container: container, delegate: self, inAppTheme: inAppTheme)
         mailboxPasswordCoordinator?.start(viewController: viewController)
     }
-    
+
     public func presentFlowFromWelcomeScreen(over viewController: UIViewController,
                                              welcomeScreen: WelcomeScreenVariant,
                                              customization: LoginCustomizationOptions,
                                              updateBlock: @escaping (LoginAndSignupResult) -> Void) {
         presentLogin(over: viewController, welcomeScreen: welcomeScreen, customization: customization, completion: updateBlock)
     }
-    
+
     public func welcomeScreenForPresentingFlow(variant welcomeScreen: WelcomeScreenVariant,
                                                customization: LoginCustomizationOptions,
                                                updateBlock: @escaping (LoginAndSignupResult) -> Void) -> UIViewController {
         presentLogin(over: nil, welcomeScreen: welcomeScreen, customization: customization, completion: updateBlock)
     }
-    
+
     public func logout(credential: AuthCredential, completion: @escaping (Result<Void, Error>) -> Void) {
         container.login.logout(credential: credential, completion: completion)
     }
-    
+
     // backwards compatibility
-    
+
     public func presentLoginFlow(over viewController: UIViewController,
                                  customization: LoginCustomizationOptions,
                                  completion: @escaping (LoginResult) -> Void) {
@@ -328,7 +326,7 @@ extension LoginAndSignup: LoginAndSignupInterface {
                                                completion: @escaping (LoginResult) -> Void) -> UIViewController {
         welcomeScreenForPresentingFlow(variant: welcomeScreen, customization: customization, updateBlock: transformedCompletion(completion))
     }
-    
+
     private func transformedCompletion(_ completion: @escaping (LoginResult) -> Void) -> (LoginAndSignupResult) -> Void {
         return { [unowned self] (result: LoginAndSignupResult) in
             switch result {
@@ -354,7 +352,7 @@ extension LoginAndSignup: LoginCoordinatorDelegate {
     func userDidDismissLoginCoordinator(loginCoordinator: LoginCoordinator) {
         loginAndSignupCompletion(.dismissed)
     }
-    
+
     func loginCoordinatorDidFinish(loginCoordinator: LoginCoordinator, data: LoginData) {
         loginAndSignupCompletion(.loginStateChanged(.dataIsAvailable(data)))
         loginAndSignupCompletion(.loginStateChanged(.loginFinished))
@@ -369,11 +367,11 @@ extension LoginAndSignup: SignupCoordinatorDelegate {
     func userDidDismissSignupCoordinator(signupCoordinator: SignupCoordinator) {
         loginAndSignupCompletion(.dismissed)
     }
-    
+
     func signupCoordinatorDidFinish(signupCoordinator: SignupCoordinator, signupState: SignupState) {
         loginAndSignupCompletion(.signupStateChanged(signupState))
     }
-    
+
     func userSelectedSignin(email: String?, navigationViewController: LoginNavigationViewController) {
         loginCoordinator = LoginCoordinator(container: container,
                                             isCloseButtonAvailable: isCloseButtonAvailable,
@@ -400,7 +398,7 @@ extension LoginAndSignup: MailboxPasswordCoordinatorDelegate {
 public typealias LoginInterface = LoginAndSignupInterface
 
 extension LoginAndSignupInterface {
-    
+
     @available(*, deprecated, message: "Please switch to variant taking LoginCustomizationOptions parameter")
     public func presentLoginFlow(over viewController: UIViewController,
                                  username: String?,
@@ -409,7 +407,7 @@ extension LoginAndSignupInterface {
                          customization: LoginCustomizationOptions(username: username),
                          completion: completion)
     }
-    
+
     @available(*, deprecated, message: "Please switch to variant taking LoginCustomizationOptions parameter")
     func presentLoginFlow(over viewController: UIViewController,
                           username: String?,
@@ -437,7 +435,7 @@ extension LoginAndSignupInterface {
                           ),
                           completion: completion)
     }
-    
+
     @available(*, deprecated, message: "Please switch to variant taking LoginCustomizationOptions parameter")
     public func presentFlowFromWelcomeScreen(over viewController: UIViewController,
                                              welcomeScreen: WelcomeScreenVariant,
@@ -450,7 +448,6 @@ extension LoginAndSignupInterface {
     }
 
     @available(*, deprecated, message: "Please switch to variant taking LoginCustomizationOptions parameter")
-    // swiftlint:disable:next function_parameter_count
     func presentFlowFromWelcomeScreen(over viewController: UIViewController,
                                       welcomeScreen: WelcomeScreenVariant,
                                       username: String?,
@@ -494,3 +491,5 @@ extension LoginAndSignupInterface {
 
 @available(*, deprecated, renamed: "LoginAndSignup")
 public typealias PMLogin = LoginAndSignup
+
+#endif

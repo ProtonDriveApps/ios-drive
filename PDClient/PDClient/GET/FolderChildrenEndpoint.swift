@@ -53,13 +53,18 @@ public enum FolderChildrenEndpointParameters {
     }
 }
 
-struct FolderChildrenEndpoint: Endpoint {
+public struct FolderChildrenEndpoint: Endpoint {
     public struct Response: Codable {
         var code: Int
         var links: [Link]
+        
+        public init(code: Int, links: [Link]) {
+            self.code = code
+            self.links = links
+        }
     }
     
-    var request: URLRequest
+    public var request: URLRequest
     
     init(shareID: Share.ShareID, folderID: Link.LinkID, parameters: [FolderChildrenEndpointParameters]? = nil, service: APIService, credential: ClientCredential) {
         // url

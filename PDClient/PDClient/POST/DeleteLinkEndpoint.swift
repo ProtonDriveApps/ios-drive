@@ -64,10 +64,23 @@ struct DeleteLinkEndpoint: Endpoint {
     }
 }
 
-struct DeleteLinkInFolderEndpoint: Endpoint {
-    public struct Response: Codable {
-        var code: Int
+public struct MultiLinkResponse: Codable {
+    public struct Item: Codable {
+        public struct Response: Codable {
+            public let code: Int
+            public let error: String?
+        }
+
+        public let linkID: String
+        public let response: Response
     }
+
+    public let code: Int
+    public let responses: [Item]
+}
+
+struct DeleteLinkInFolderEndpoint: Endpoint {
+    typealias Response = MultiLinkResponse
 
     struct Parameters {
         let shareID: Share.ShareID

@@ -62,7 +62,7 @@ open class AsynchronousOperation: Operation {
         main()
     }
 
-    override public func cancel() {
+    override open func cancel() {
         super.cancel()
 
         guard isExecuting else { return }

@@ -94,8 +94,8 @@ public class UISlot {
         storage.subscriptionToStarred(share: shareID, sorting: sorting, moc: moc)
     }
     
-    public func subscribeToShared(share shareID: String, sorting: SortPreference) -> NSFetchedResultsController<Node> {
-        storage.subscriptionToShared(share: shareID, sorting: sorting, moc: moc)
+    public func subscribeToShared(sorting: SortPreference) -> NSFetchedResultsController<Node> {
+        storage.subscriptionToShared(sorting: sorting, moc: moc)
     }
     
 }

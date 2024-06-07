@@ -19,11 +19,11 @@ import SwiftUI
 import PDCore
 
 enum NodeOperationType {
-    case single(id: String, type: NodeType)
-    case multiple(ids: [String], type: NodeType)
-    case all(ids: [String], type: NodeType)
+    case single(id: NodeIdentifier, type: NodeType)
+    case multiple(ids: [NodeIdentifier], type: NodeType)
+    case all(ids: [NodeIdentifier], type: NodeType)
 
-    var itemID: String? {
+    var itemID: NodeIdentifier? {
         switch self {
         case .single(let id, _):
             return id
@@ -68,7 +68,7 @@ enum NodeOperationType {
         }
     }
 
-    private func manyConfirmationTitle(ids: [String], type: NodeType) -> String {
+    private func manyConfirmationTitle(ids: [NodeIdentifier], type: NodeType) -> String {
         "\(type.rawValue)\(ids.ending) will be deleted permanently. \nDelete anyway?"
     }
 
@@ -83,7 +83,7 @@ enum NodeOperationType {
         }
     }
 
-    private func manyDeletionButtonText(ids: [String], type: NodeType) -> String {
+    private func manyDeletionButtonText(ids: [NodeIdentifier], type: NodeType) -> String {
         "Delete \(ids.count) \(type.type)" + ids.ending
     }
 }
@@ -93,7 +93,7 @@ enum TrashItemAction {
     case restore
 }
 
-private extension Array where Element == String {
+private extension Array where Element == NodeIdentifier {
     var ending: String {
         count > 1 ? "s" : ""
     }

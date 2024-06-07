@@ -19,7 +19,10 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
+import ProtonCoreFoundations
 
 extension UIViewController {
     public func lockUI() {
@@ -31,7 +34,13 @@ extension UIViewController {
     }
 
     private func enableUserInteraction(enable: Bool) {
-        view.window?.isUserInteractionEnabled = enable
+        DispatchQueue.main.async { [weak self] in
+            if let window = self?.view.window {
+                window.isUserInteractionEnabled = enable
+            } else if enable {
+                UIApplication.firstKeyWindow?.isUserInteractionEnabled = enable
+            }
+        }
     }
 }
 
@@ -54,29 +63,28 @@ public extension UIViewController {
         navigationItem.setLeftBarButton(backButton, animated: true)
         navigationItem.assignNavItemIndentifiers()
     }
-    
+
     func updateTitleAttributes() {
         let foregroundColor: UIColor = ColorProvider.TextNorm
         let textAttributes = [NSAttributedString.Key.foregroundColor: foregroundColor]
-        if #available(iOS 13.0, *) {
-            let appearance = navigationController?.navigationBar.standardAppearance
-            appearance?.titleTextAttributes = textAttributes
-            navigationController?.navigationBar.scrollEdgeAppearance = appearance
-        } else {
-            navigationController?.navigationBar.titleTextAttributes = textAttributes
-        }
+        let appearance = navigationController?.navigationBar.standardAppearance
+        appearance?.titleTextAttributes = textAttributes
+        navigationController?.navigationBar.scrollEdgeAppearance = appearance
+
     }
 
     static var topVC: UIViewController? {
         var topViewController: UIViewController?
-        let keyWindow = UIApplication.getInstance()?.windows.filter { $0.isKeyWindow }.first
+        let keyWindow = UIApplication.firstKeyWindow
         if var top = keyWindow?.rootViewController {
             while let presentedViewController = top.presentedViewController {
                 top = presentedViewController
             }
             topViewController = top
         }
-        
+
         return topViewController
     }
 }
+
+#endif

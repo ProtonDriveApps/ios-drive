@@ -23,9 +23,8 @@
 import Foundation
 import TrustKit
 import Alamofire
-import ProtonCore_Log
-import ProtonCore_CoreTranslation
-import ProtonCore_Utilities
+import ProtonCoreLog
+import ProtonCoreUtilities
 
 private let requestQueue = DispatchQueue(label: "ch.protonmail.alamofire")
 
@@ -33,7 +32,7 @@ internal class AlamofireSessionDelegate: SessionDelegate {
     var trustKit: TrustKit?
     var noTrustKit: Bool = false
     var failedTLS: ((URLRequest) -> Void)?
-    
+
     override public func urlSession(_ session: URLSession, task: URLSessionTask,
                                     didReceive challenge: URLAuthenticationChallenge,
                                     completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
@@ -54,14 +53,14 @@ internal class AlamofireSessionDelegate: SessionDelegate {
 public class AlamofireSession: Session {
 
     public let defaultJSONDecoder: JSONDecoder = .decapitalisingFirstLetter
-    
+
     public var sessionConfiguration: URLSessionConfiguration { session.sessionConfiguration }
-    
+
     typealias AfSession = Alamofire.Session
     var session: AfSession
     var sessionChallenge: AlamofireSessionDelegate = AlamofireSessionDelegate()
     private var tlsFailedRequests = [URLRequest]()
-    
+
     public init() {
         self.session = AfSession(
             configuration: URLSessionConfiguration.af.ephemeral,
@@ -69,7 +68,7 @@ public class AlamofireSession: Session {
             redirectHandler: Redirector.doNotFollow
         )
     }
-    
+
     public func setChallenge(noTrustKit: Bool, trustKit: TrustKit?) {
         self.sessionChallenge.trustKit = trustKit
         self.sessionChallenge.noTrustKit = noTrustKit
@@ -78,20 +77,20 @@ public class AlamofireSession: Session {
             self.markAsFailedTLS(request: request)
         }
     }
-    
-    public func generate(with method: HTTPMethod, urlString: String, parameters: Any? = nil, timeout: TimeInterval? = nil, retryPolicy: ProtonRetryPolicy.RetryMode) -> SessionRequest {
-        return AlamofireRequest.init(parameters: parameters, urlString: urlString, method: method, timeout: timeout ?? defaultTimeout, retryPolicy: retryPolicy)
+
+    public func generate(with method: HTTPMethod, urlString: String, parameters: Any? = nil, timeout: TimeInterval? = nil, retryPolicy: ProtonRetryPolicy.RetryMode) throws -> SessionRequest {
+        try AlamofireRequest.init(parameters: parameters, urlString: urlString, method: method, timeout: timeout ?? defaultTimeout, retryPolicy: retryPolicy)
     }
-    
+
     public func failsTLS(request: SessionRequest) -> String? {
         if let request = request as? URLRequestConvertible, let url = try? request.asURLRequest().url,
            let index = tlsFailedRequests.firstIndex(where: { $0.url?.absoluteString == url.absoluteString }) {
             tlsFailedRequests.remove(at: index)
-            return CoreString._net_insecure_connection_error
+            return NWTranslation.insecure_connection_error.l10n
         }
         return nil
     }
-    
+
     private func markAsFailedTLS(request: URLRequest) {
         tlsFailedRequests.append(request)
     }
@@ -109,9 +108,9 @@ extension AlamofireSession {
                     return
                 }
                 completion(taskOut(), .success(jsonDict))
-                
+
             case .failure(let error):
-                
+
                 // MARK: workaround start
                 // after enabled the HTTP code validation. when received invalid HTTP code like 404. the response will become an error.
                 //  and the response data will not be parsed(contains the details from the server side). here add a workaround.
@@ -120,7 +119,7 @@ extension AlamofireSession {
                 if case .responseValidationFailed(let reason) = error,
                    case .unacceptableStatusCode = reason,
                    let responseData = jsonResponse.data {
-                    
+
                     do {
                         let data = try JSONResponseSerializer.defaultDataPreprocessor.preprocess(responseData)
                         guard let jsonDict = try JSONSerialization.jsonObject(with: data, options: .allowFragments) as? [String: Any] else {
@@ -135,31 +134,31 @@ extension AlamofireSession {
                     }
                 }
                 // MARK: workaround end
-                
+
                 let err = error.underlyingError ?? error
                 completion(taskOut(), .failure(.networkingEngineError(underlyingError: err as NSError)))
             }
         }
     }
-    
+
     private func finalizeDecodableResponse<T>(
         dataRequest: DataRequest, taskOut: @escaping () -> URLSessionDataTask?, jsonDecoder: JSONDecoder?, completion: @escaping DecodableResponseCompletion<T>
     ) where T: SessionDecodableResponse {
         dataRequest.responseDecodable(
             of: T.self, queue: requestQueue, decoder: jsonDecoder ?? defaultJSONDecoder
         ) { (decodedResponse: AFDataResponse<T>) in
-            
+
             // If we can identify the response as error response, we should fail immediately and let the upper layers handle the error
             if let body = decodedResponse.data, (try? self.defaultJSONDecoder.decode(ErrorResponse.self, from: body)) != nil {
                 completion(taskOut(), .failure(.responseBodyIsNotADecodableObject(body: body, response: decodedResponse.response)))
                 return
             }
-            
+
             switch decodedResponse.result {
             case .success(let object):
                 completion(taskOut(), .success(object))
             case .failure(let error):
-                
+
                 // MARK: workaround start
                 // after enabled the HTTP code validation. when received invalid HTTP code like 404. the response will become an error.
                 //  and the response data will not be parsed(contains the details from the server side). here add a workaround.
@@ -168,7 +167,7 @@ extension AlamofireSession {
                 if case .responseValidationFailed(let reason) = error,
                    case .unacceptableStatusCode = reason,
                    let responseData = decodedResponse.data {
-                    
+
                     do {
                         let data = try DecodableResponseSerializer<T>.defaultDataPreprocessor.preprocess(responseData)
                         let decoder = jsonDecoder ?? self.defaultJSONDecoder
@@ -181,7 +180,7 @@ extension AlamofireSession {
                     }
                 }
                 // MARK: workaround end
-                
+
                 let err = error.underlyingError ?? error
                 if error.isResponseSerializationError {
                     completion(taskOut(), .failure(.responseBodyIsNotADecodableObject(body: decodedResponse.data, response: decodedResponse.response)))
@@ -196,34 +195,45 @@ extension AlamofireSession {
 // MARK: - Request methods
 
 extension AlamofireSession {
-    
-    public func request(with sessionRequest: SessionRequest, completion: @escaping JSONResponseCompletion) {
+
+    public func request(with sessionRequest: SessionRequest,
+                        onDataTaskCreated: @escaping (URLSessionDataTask) -> Void,
+                        completion: @escaping JSONResponseCompletion) {
         guard let alamofireRequest = sessionRequest as? AlamofireRequest else {
             completion(nil, .failure(.configurationError))
             return
         }
-        let (taskOut, dataRequest) = request(alamofireRequest: alamofireRequest)
+        let (taskOut, dataRequest) = request(alamofireRequest: alamofireRequest,
+                                             onDataTaskCreated: onDataTaskCreated)
         finalizeJSONResponse(dataRequest: dataRequest, taskOut: taskOut, completion: completion)
     }
-    
+
     public func request<T>(
-        with sessionRequest: SessionRequest, jsonDecoder: JSONDecoder?, completion: @escaping DecodableResponseCompletion<T>
+        with sessionRequest: SessionRequest,
+        jsonDecoder: JSONDecoder?,
+        onDataTaskCreated: @escaping (URLSessionDataTask) -> Void,
+        completion: @escaping DecodableResponseCompletion<T>
     ) where T: SessionDecodableResponse {
         guard let alamofireRequest = sessionRequest as? AlamofireRequest else {
             completion(nil, .failure(.configurationError))
             return
         }
-        let (taskOut, dataRequest) = request(alamofireRequest: alamofireRequest)
+        let (taskOut, dataRequest) = request(alamofireRequest: alamofireRequest,
+                                             onDataTaskCreated: onDataTaskCreated)
         finalizeDecodableResponse(dataRequest: dataRequest, taskOut: taskOut, jsonDecoder: jsonDecoder, completion: completion)
     }
-    
-    private func request(alamofireRequest: AlamofireRequest) -> (() -> URLSessionDataTask?, DataRequest) {
+
+    private func request(
+        alamofireRequest: AlamofireRequest, onDataTaskCreated: @escaping (URLSessionDataTask) -> Void
+    ) -> (() -> URLSessionDataTask?, DataRequest) {
         alamofireRequest.updateHeader()
         var taskOut: URLSessionDataTask?
         // Added: call Validate after request created. this is the key to trigger retry logic when received none 2xx http code.
         //    - default valid httpcode: 200-300
         let dataRequest = self.session.request(alamofireRequest, interceptor: alamofireRequest.interceptor).validate(statusCode: 200..<300).onURLSessionTaskCreation { task in
-            taskOut = task as? URLSessionDataTask
+            guard let dataTask = task as? URLSessionDataTask else { return }
+            taskOut = dataTask
+            onDataTaskCreated(dataTask)
         }
         return ({ taskOut }, dataRequest)
     }
@@ -232,7 +242,7 @@ extension AlamofireSession {
 // MARK: - Download methods
 
 extension AlamofireSession {
-    
+
     public func download(with request: SessionRequest,
                          destinationDirectoryURL: URL,
                          completion: @escaping DownloadCompletion) {
@@ -263,27 +273,25 @@ extension AlamofireSession {
 // MARK: upload key data packets with signature
 
 extension AlamofireSession {
-    
-    // swiftlint:disable function_parameter_count
+
     public func upload(with request: SessionRequest,
                        keyPacket: Data,
                        dataPacket: Data,
                        signature: Data?,
                        completion: @escaping JSONResponseCompletion,
                        uploadProgress: ProgressCompletion?) {
-        
+
         guard let alamofireRequest = request as? AlamofireRequest,
               let parameters = alamofireRequest.parameters as? [String: String] else {
             completion(nil, .failure(.configurationError))
             return
         }
-        
+
         let (taskOut, uploadRequest) = upload(with: alamofireRequest, parameters: parameters, keyPacket: keyPacket,
                                               dataPacket: dataPacket, signature: signature, uploadProgress: uploadProgress)
         finalizeJSONResponse(dataRequest: uploadRequest, taskOut: taskOut, completion: completion)
     }
-    
-    // swiftlint:disable function_parameter_count
+
     public func upload<T>(with request: SessionRequest,
                           keyPacket: Data,
                           dataPacket: Data,
@@ -296,14 +304,13 @@ extension AlamofireSession {
             completion(nil, .failure(.configurationError))
             return
         }
-        
+
         let (taskOut, uploadRequest) = upload(with: alamofireRequest, parameters: parameters, keyPacket: keyPacket,
                                               dataPacket: dataPacket, signature: signature, uploadProgress: uploadProgress)
-        
+
         finalizeDecodableResponse(dataRequest: uploadRequest, taskOut: taskOut, jsonDecoder: jsonDecoder, completion: completion)
     }
-    
-    // swiftlint:disable function_parameter_count
+
     private func upload(with alamofireRequest: AlamofireRequest,
                         parameters: [String: String],
                         keyPacket: Data,
@@ -350,7 +357,7 @@ extension AlamofireSession {
 // MARK: upload files on disk
 
 extension AlamofireSession {
-    
+
     public func upload(with request: SessionRequest,
                        files: [String: URL],
                        completion: @escaping JSONResponseCompletion,
@@ -363,7 +370,7 @@ extension AlamofireSession {
         let (taskOut, uploadRequest) = upload(with: alamofireRequest, parameters: parameters, files: files, uploadProgress: uploadProgress)
         finalizeJSONResponse(dataRequest: uploadRequest, taskOut: taskOut, completion: completion)
     }
-    
+
     public func upload<T>(with request: SessionRequest,
                           files: [String: URL],
                           jsonDecoder: JSONDecoder?,
@@ -377,7 +384,7 @@ extension AlamofireSession {
         let (taskOut, uploadRequest) = upload(with: alamofireRequest, parameters: parameters, files: files, uploadProgress: uploadProgress)
         finalizeDecodableResponse(dataRequest: uploadRequest, taskOut: taskOut, jsonDecoder: jsonDecoder, completion: completion)
     }
-    
+
     private func upload(with alamofireRequest: AlamofireRequest,
                         parameters: [String: String],
                         files: [String: URL],
@@ -391,7 +398,7 @@ extension AlamofireSession {
                     data.append(valueData, withName: key)
                 }
             }
-            
+
             for (name, file) in files {
                 data.append(file, withName: name)
             }
@@ -409,15 +416,14 @@ extension AlamofireSession {
 // MARK: upload data packet from disk
 
 extension AlamofireSession {
-    
-    // swiftlint:disable function_parameter_count
+
     public func uploadFromFile(with request: SessionRequest,
                                keyPacket: Data,
                                dataPacketSourceFileURL: URL,
                                signature: Data?,
                                completion: @escaping JSONResponseCompletion,
                                uploadProgress: ProgressCompletion?) {
-        
+
         guard let alamofireRequest = request as? AlamofireRequest,
               let parameters = alamofireRequest.parameters as? [String: String] else {
             completion(nil, .failure(.configurationError))
@@ -429,8 +435,7 @@ extension AlamofireSession {
         )
         finalizeJSONResponse(dataRequest: uploadRequest, taskOut: taskOut, completion: completion)
     }
-    
-    // swiftlint:disable function_parameter_count
+
     public func uploadFromFile<T>(with request: SessionRequest,
                                   keyPacket: Data,
                                   dataPacketSourceFileURL: URL,
@@ -438,7 +443,7 @@ extension AlamofireSession {
                                   jsonDecoder: JSONDecoder? = nil,
                                   completion: @escaping DecodableResponseCompletion<T>,
                                   uploadProgress: ProgressCompletion?) where T: SessionDecodableResponse {
-        
+
         guard let alamofireRequest = request as? AlamofireRequest,
               let parameters = alamofireRequest.parameters as? [String: String] else {
             completion(nil, .failure(.configurationError))
@@ -450,15 +455,14 @@ extension AlamofireSession {
         )
         finalizeDecodableResponse(dataRequest: uploadRequest, taskOut: taskOut, jsonDecoder: jsonDecoder, completion: completion)
     }
-    
-    // swiftlint:disable function_parameter_count
+
     private func uploadFromFile(alamofireRequest: AlamofireRequest,
                                 parameters: [String: String],
                                 keyPacket: Data,
                                 dataPacketSourceFileURL: URL,
                                 signature: Data?,
                                 uploadProgress: ProgressCompletion?) -> (() -> URLSessionDataTask?, UploadRequest) {
-        
+
         alamofireRequest.updateHeader()
         var taskOut: URLSessionDataTask?
         let uploadRequest = self.session.upload(multipartFormData: { (formData) -> Void in
@@ -497,7 +501,7 @@ extension AlamofireSession {
 }
 
 class AlamofireRequest: SessionRequest, URLRequestConvertible {
-    
+
     var parameterEncoding: ParameterEncoding {
         switch method {
         case .get:
@@ -506,17 +510,15 @@ class AlamofireRequest: SessionRequest, URLRequestConvertible {
             return JSONEncoding.default
         }
     }
-    
-    override init(parameters: Any?, urlString: String, method: HTTPMethod, timeout: TimeInterval, retryPolicy: ProtonRetryPolicy.RetryMode) {
-        // super.init(parameters: parameters, urlString: urlString, method: method, timeout: 1, retryPolicy: retryPolicy)
-        super.init(parameters: parameters, urlString: urlString, method: method, timeout: timeout, retryPolicy: retryPolicy)
-        // TODO: this url need to add a validation and throws
-        let url = URL.init(string: urlString)!
+
+    override init(parameters: Any?, urlString: String, method: HTTPMethod, timeout: TimeInterval, retryPolicy: ProtonRetryPolicy.RetryMode) throws {
+        try super.init(parameters: parameters, urlString: urlString, method: method, timeout: timeout, retryPolicy: retryPolicy)
+        let url = try urlString.asURL()
         self.request = URLRequest(url: url)
         self.request?.timeoutInterval = timeout
         self.request?.httpMethod = self.method.rawValue
     }
-    
+
     func asURLRequest() throws -> URLRequest {
         return try parameterEncoding.encode(request!, with: parameters as? [String: Any])
     }

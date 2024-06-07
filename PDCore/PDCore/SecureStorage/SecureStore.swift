@@ -16,16 +16,16 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import ProtonCore_Keymaker
+import ProtonCoreKeymaker
 
 class SecureStore<T: Codable> {
     internal weak var keyProvider: MainKeyProvider?
     private let label: String
     private let keychain: DriveKeychain
     
-    internal init(label: String) {
+    internal init(label: String, keychain: DriveKeychain = .shared) {
         self.label = label
-        self.keychain = DriveKeychain()
+        self.keychain = keychain
     }
     
     internal func hasCyphertext() -> Bool {
@@ -33,26 +33,22 @@ class SecureStore<T: Codable> {
     }
     
     internal func update(_ newValue: T) throws {
-        guard let key = keyProvider?.mainKey else {
-            return
-        }
+        guard let keyProvider else { return }
+        guard let key = try keyProvider.mainKeyOrError else { return }
         
         let data = try JSONEncoder().encode(newValue)
         let locked = try Locked<Data>(clearValue: data, with: key)
         let cypherdata = locked.encryptedValue
         
-        keychain.set(cypherdata, forKey: label)
+        try keychain.setOrError(cypherdata, forKey: label)
     }
     
     internal func retrieve() throws -> T? {
-        guard let key = keyProvider?.mainKey else {
-            return nil
-        }
+        guard let keyProvider else { return nil } 
+        guard let key = try keyProvider.mainKeyOrError else { return nil }
         
         // Read value from Keychain
-        guard let cypherdata = keychain.data(forKey: label) else {
-            return nil
-        }
+        guard let cypherdata = try keychain.dataOrError(forKey: label) else { return nil }
         
         let locked = Locked<Data>(encryptedValue: cypherdata)
         let data = try locked.unlock(with: key)
@@ -62,7 +58,14 @@ class SecureStore<T: Codable> {
         return value
     }
     
-    internal func wipe() {
-        keychain.remove(forKey: label)
+    internal func wipe() throws {
+        try keychain.removeOrError(forKey: label)
+    }
+    
+    internal func duplicate(to newLabel: String) throws {
+        guard let cypherdata = try keychain.dataOrError(forKey: label) else {
+            return keychain.remove(forKey: newLabel)
+        }
+        try keychain.setOrError(cypherdata, forKey: newLabel)
     }
 }

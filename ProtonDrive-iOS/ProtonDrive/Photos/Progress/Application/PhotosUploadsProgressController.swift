@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import PDCore
 
 final class LocalPhotosUploadsProgressController: PhotosLoadProgressController {
     private let repository: PhotoUploadsRepository
@@ -30,6 +31,7 @@ final class LocalPhotosUploadsProgressController: PhotosLoadProgressController {
     init(repository: PhotoUploadsRepository) {
         self.repository = repository
         totalCount = repository.getInitialCount()
+        subject.value = PhotosBackupProgress(total: totalCount, inProgress: totalCount)
         subscribeToUpdates()
     }
 
@@ -48,6 +50,7 @@ final class LocalPhotosUploadsProgressController: PhotosLoadProgressController {
 
     private func handleUpdate(_ count: Int) {
         let progress = PhotosBackupProgress(total: totalCount, inProgress: count)
+        Log.info("Photos upload progress: \(progress)", domain: .photosProcessing)
         subject.send(progress)
     }
 }

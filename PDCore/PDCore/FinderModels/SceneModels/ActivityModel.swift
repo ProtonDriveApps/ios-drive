@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import CoreData
 
 /// Used for WorkingSet in FileProviders
 public final class ActivityModel: FinderModel, NodesListing, UploadsListing, DownloadsListing {

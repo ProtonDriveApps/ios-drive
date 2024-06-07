@@ -1,4 +1,4 @@
-framework module ProtonCore_UIFoundations {
+framework module ProtonCoreUIFoundations {
   umbrella header "ProtonCore-UIFoundations-dynamic-umbrella.h"
 
   export *

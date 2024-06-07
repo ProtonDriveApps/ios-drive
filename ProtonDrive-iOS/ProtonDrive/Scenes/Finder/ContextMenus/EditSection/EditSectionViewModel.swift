@@ -19,7 +19,7 @@ import Combine
 import PDCore
 import PDUIComponents
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 final class EditSectionViewModel: ObservableObject {
     @Published var node: Node
@@ -30,14 +30,14 @@ final class EditSectionViewModel: ObservableObject {
         self.node = node
         self.nodeEditionViewModel = model
         self.node.objectWillChange
-        .sink { [weak self] _ in
-            self?.objectWillChange.send()
-        }
-        .store(in: &cancellables)
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
     }
 
     var items: [EditSectionItem] {
-        [download, shareLink, .rename, .move, .details(isFile: isFile), .remove].compactMap { $0 }
+        [download, shareLink, rename, move, .details(isFile: isFile), .remove].compactMap { $0 }
     }
 
     var isFile: Bool {
@@ -56,12 +56,28 @@ final class EditSectionViewModel: ObservableObject {
         nodeEditionViewModel.markOfflineAvailable(!node.isMarkedOfflineAvailable, nodes: [node])
     }
     
-    private var download: EditSectionItem {
-        return .download(isMarked: node.isMarkedOfflineAvailable)
+    private var download: EditSectionItem? {
+        .download(isMarked: node.isMarkedOfflineAvailable)
     }
 
     private var shareLink: EditSectionItem? {
         .shareLink(exists: self.node.isShared)
+    }
+
+    private var rename: EditSectionItem? {
+        if node is Photo {
+            return nil
+        } else {
+            return .rename
+        }
+    }
+
+    private var move: EditSectionItem? {
+        if node is Photo {
+            return nil
+        } else {
+            return .move
+        }
     }
 }
 

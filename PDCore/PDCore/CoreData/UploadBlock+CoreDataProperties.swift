@@ -33,6 +33,7 @@ extension UploadBlock {
 // Upload File Process
 extension UploadBlock {
     @NSManaged var isUploaded: Bool
+    @NSManaged var clearSize: Int
 
     /// Removes upload related values that are not permanent.
     /// `uploadToken` and `uploadUrl` come from the BE and they live during certain time aprox. 3 h.

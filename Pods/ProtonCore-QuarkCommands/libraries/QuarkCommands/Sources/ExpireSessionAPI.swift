@@ -29,6 +29,8 @@ public enum ExpireSessionError: Error {
 }
 
 extension QuarkCommands {
+
+    @available(*, deprecated, renamed: "userExpireSession", message: "`QuarkCommands` has been updated to `Quark`.")
     public static func expireSession(currentlyUsedHostUrl host: String,
                                      username: String,
                                      expireRefreshToken: Bool = false,
@@ -38,7 +40,7 @@ extension QuarkCommands {
         if expireRefreshToken {
             urlString += "&--refresh=null"
         }
-        
+
         let completion: (Result<Void, ExpireSessionError>) -> Void = { result in
             callCompletionBlockOn.async { completion(result) }
         }
@@ -50,9 +52,9 @@ extension QuarkCommands {
                 completion(.failure(.callFailed(reason: error)))
                 return
             }
-            
+
             let body = data.flatMap { String(data: $0, encoding: .utf8) }
-            
+
             guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
                 completion(.failure(.callFailedOfUnknownReason(responseBody: body)))
                 return

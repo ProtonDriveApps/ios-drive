@@ -19,7 +19,6 @@ import UIKit
 import SwiftUI
 import Combine
 import PDUIComponents
-import ProtonCore_UIFoundations
 
 final class ShareLinkCreatorViewController: UIViewController {
     private let viewModel: ShareLinkCreatorViewModel

@@ -20,8 +20,8 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import GoLibs
-import ProtonCore_DataModel
+import ProtonCoreCryptoGoInterface
+import ProtonCoreDataModel
 
 public func decryptAttachmentNonOptional(dataPackage: Data,
                                          keyPackage: Data,

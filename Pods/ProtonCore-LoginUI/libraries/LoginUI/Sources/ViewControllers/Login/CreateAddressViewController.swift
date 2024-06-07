@@ -19,13 +19,14 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import Foundation
 import UIKit
-import ProtonCore_CoreTranslation
-import ProtonCore_Foundations
-import ProtonCore_UIFoundations
-import ProtonCore_Login
-import ProtonCore_Observability
+import ProtonCoreFoundations
+import ProtonCoreUIFoundations
+import ProtonCoreLogin
+import ProtonCoreObservability
 
 protocol CreateAddressViewControllerDelegate: AnyObject {
     func userDidGoBack()
@@ -50,7 +51,7 @@ final class CreateAddressViewController: UIViewController, AccessibleView, Error
     var viewModel: CreateAddressViewModel!
     var customErrorPresenter: LoginErrorPresenter?
     var onDohTroubleshooting: () -> Void = { }
-    
+
     override var preferredStatusBarStyle: UIStatusBarStyle { darkModeAwarePreferredStatusBarStyle() }
 
     var focusNoMore = false
@@ -68,21 +69,21 @@ final class CreateAddressViewController: UIViewController, AccessibleView, Error
         setupDelegates()
         setupNotifications()
         generateAccessibilityIdentifiers()
-        
+
         configureDomainSuffix()
         ObservabilityEnv.report(.screenLoadCountTotal(screenName: .createProtonAccountWithCurrentEmail))
     }
 
     private func setupUI() {
         view.backgroundColor = ColorProvider.BackgroundNorm
-        titleLabel.text = CoreString._ls_create_address_screen_title
+        titleLabel.text = LUITranslation.create_address_screen_title.l10n
         titleLabel.textColor = ColorProvider.TextNorm
         let attrFont = UIFont.systemFont(ofSize: 15.0, weight: .bold)
-        subtitleLabel.attributedText = String(format: CoreString._ls_create_address_screen_info, viewModel.externalEmail).getAttributedString(replacement: viewModel.externalEmail, attrFont: attrFont)
+        subtitleLabel.attributedText = String(format: LUITranslation.create_address_screen_info.l10n, viewModel.externalEmail).getAttributedString(replacement: viewModel.externalEmail, attrFont: attrFont)
         subtitleLabel.textColor = ColorProvider.TextWeak
-        addressTextField.title = CoreString._ls_create_address_username_title
-        continueButton.setTitle(CoreString._ls_create_address_button_title, for: .normal)
-        cancelButton.setTitle(CoreString._hv_cancel_button, for: .normal)
+        addressTextField.title = LUITranslation.create_address_username_title.l10n
+        continueButton.setTitle(LUITranslation._core_create_address_button_title.l10n, for: .normal)
+        cancelButton.setTitle(LUITranslation._core_cancel_button.l10n, for: .normal)
         cancelButton.setMode(mode: .text)
 
         addressTextField.suffix = ""
@@ -92,13 +93,13 @@ final class CreateAddressViewController: UIViewController, AccessibleView, Error
         addressTextField.textContentType = .username
         addressTextField.autocapitalizationType = .none
         addressTextField.autocorrectionType = .no
-        
+
         // domain button
         domainsButton.setMode(mode: .image(type: .textWithImage(image: nil)))
 
         setUpBackArrow(action: #selector(CreateAddressViewController.goBack(_:)))
     }
-    
+
     private func setupBinding() {
         viewModel.isLoading.bind { [weak self] isLoading in
             self?.view.isUserInteractionEnabled = !isLoading
@@ -112,7 +113,7 @@ final class CreateAddressViewController: UIViewController, AccessibleView, Error
                 let .createAddressError(.apiMightBeBlocked(message, _)),
                 let .setUsernameError(.apiMightBeBlocked(message, _)):
                 self.showError(message: message,
-                               button: CoreString._net_api_might_be_blocked_button) { [weak self] in
+                               button: LUITranslation._core_api_might_be_blocked_button.l10n) { [weak self] in
                     self?.onDohTroubleshooting()
                 }
             case let .availabilityError(.notAvailable(message: message)):
@@ -187,11 +188,11 @@ final class CreateAddressViewController: UIViewController, AccessibleView, Error
         _ = addressTextField.resignFirstResponder()
         viewModel.finish(username: addressTextField.value)
     }
-    
+
     @IBAction private func cancelPressed(_ sender: Any) {
         delegate?.userDidGoBack()
     }
-    
+
     @objc private func goBack(_ sender: Any) {
         delegate?.userDidGoBack()
     }
@@ -214,7 +215,7 @@ final class CreateAddressViewController: UIViewController, AccessibleView, Error
             return true
         }
     }
-    
+
     private func configureDomainSuffix() {
         domainsButton.setTitle("@\(viewModel.currentlyChosenSignUpDomain)", for: .normal)
         if viewModel.allSignUpDomains.count > 1 {
@@ -225,7 +226,7 @@ final class CreateAddressViewController: UIViewController, AccessibleView, Error
             domainsButton.setMode(mode: .image(type: .textWithImage(image: nil)))
         }
     }
-    
+
     @IBAction private func onDomainsButtonTapped() {
         dismissKeyboard()
         var sheet: PMActionSheet?
@@ -239,7 +240,7 @@ final class CreateAddressViewController: UIViewController, AccessibleView, Error
             }
         }
         let header = PMActionSheetHeaderView(
-            title: CoreString._su_domains_sheet_title,
+            title: LUITranslation.domains_sheet_title.l10n,
             subtitle: nil,
             leftItem: .right(IconProvider.crossSmall),
             rightItem: nil,
@@ -255,11 +256,11 @@ final class CreateAddressViewController: UIViewController, AccessibleView, Error
         sheet?.eventsListener = self
         sheet?.presentAt(self, animated: true)
     }
-    
+
     @objc func dismissKeyboard(_ sender: UITapGestureRecognizer) {
         dismissKeyboard()
     }
-    
+
     private func dismissKeyboard() {
         if addressTextField.isFirstResponder {
             _ = addressTextField.resignFirstResponder()
@@ -295,6 +296,8 @@ extension CreateAddressViewController: PMActionSheetEventsListener {
         tapGesture?.cancelsTouchesInView = true
         domainsButton?.isSelected = false
     }
-    
+
     func didDismiss() { }
 }
+
+#endif

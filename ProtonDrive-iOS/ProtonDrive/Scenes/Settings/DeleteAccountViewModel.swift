@@ -19,8 +19,8 @@ import UIKit
 import Combine
 import Foundation
 import PDCore
-import ProtonCore_Services
-import ProtonCore_AccountDeletion
+import ProtonCoreServices
+import ProtonCoreAccountDeletion
 
 final class DeleteAccountViewModel: ObservableObject, LogoutRequesting {
 
@@ -38,8 +38,11 @@ final class DeleteAccountViewModel: ObservableObject, LogoutRequesting {
 
         DriveNotification.signOut.publisher
             .sink { _ in
-                signoutManager.signOut()
-                NotificationCenter.default.post(.checkAuthentication)
+                Task {
+                    NotificationCenter.default.post(.isLoggingOut)
+                    await signoutManager.signOut()
+                    NotificationCenter.default.post(.checkAuthentication)
+                }
             }
             .store(in: &cancellables)
     }

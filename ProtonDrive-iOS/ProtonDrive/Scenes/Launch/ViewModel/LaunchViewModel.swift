@@ -25,16 +25,19 @@ final class LaunchViewModel {
 
     let alertPublisher: AnyPublisher<FailingAlert, Never>
     let bannerPublisher: AnyPublisher<BannerModel, Never>
+    let accountRecoveryWrapper: AccountRecoveryWrapper
 
     init(
         alertPresenting: AnyPublisher<DriveCoreAlert, Never>,
         alertDismissing: AnyPublisher<Void, Never>,
         userPublisher: AnyPublisher<UserInfo, Never>,
         bannerPublisher: AnyPublisher<BannerModel, Never>,
+        accountRecoveryWrapper: AccountRecoveryWrapper,
         configurator: LaunchConfigurator
     ) {
         launcherConfigurator = configurator
         self.bannerPublisher = bannerPublisher
+        self.accountRecoveryWrapper = accountRecoveryWrapper
 
         alertPresenting
             .sink { alert in

@@ -1,6 +1,6 @@
 //
 //  PaymentsUIAlertManager.swift
-//  ProtonCore_PaymentsUI - Created on 19/08/2021.
+//  ProtonCorePaymentsUI - Created on 19/08/2021.
 //
 //  Copyright (c) 2022 Proton Technologies AG
 //
@@ -19,14 +19,16 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
-import ProtonCore_CoreTranslation
-import ProtonCore_Payments
-import ProtonCore_UIFoundations
+#if os(iOS)
+
+import Foundation
+import ProtonCorePayments
+import ProtonCoreUIFoundations
 
 protocol PaymentsUIAlertManager: AlertManagerProtocol {
     var viewController: PaymentsUIViewController? { get set }
     var delegatedAlertManager: AlertManagerProtocol { get }
-    func showError(message: String, error: Error)
+    func showError(message: String, error: Error?, action: ActionCallback)
 }
 
 extension PaymentsUIAlertManager {
@@ -43,7 +45,7 @@ extension PaymentsUIAlertManager {
     func showErrorOnDelegatedManager(message: String) {
         delegatedAlertManager.title = nil
         delegatedAlertManager.message = message
-        delegatedAlertManager.confirmButtonTitle = CoreString._hv_ok_button
+        delegatedAlertManager.confirmButtonTitle = PUITranslations._core_ok_button.l10n
         delegatedAlertManager.cancelButtonTitle = nil
         delegatedAlertManager.confirmButtonStyle = .cancel
         delegatedAlertManager.cancelButtonStyle = .default
@@ -76,21 +78,17 @@ final class LocallyPresentingPaymentsUIAlertManager: PaymentsUIAlertManager {
         showError(message: message, action: confirmAction ?? cancelAction)
     }
 
-    func showError(message: String, error: Error) {
-        showError(message: message, error: error, action: nil)
-    }
-
-    private func showError(message: String, error: Error? = nil, action: ActionCallback) {
+    func showError(message: String, error: Error? = nil, action: ActionCallback = nil) {
         guard let viewController = viewController else { return }
         if !viewController.activityIndicator.isHidden {
             viewController.activityIndicator.isHidden = true
         }
         // show overlay error in case of internet connection issue
-        if let error = error, (error as NSError).isNetworkIssueError {
+        if let error = error, (error as NSError).isNetworkIssueError || error.httpCode == 505 {
             viewController.showOverlayConnectionError()
         } else {
             let banner = PMBanner(message: message, style: PMBannerNewStyle.error, dismissDuration: Double.infinity)
-            banner.addButton(text: CoreString._hv_ok_button) {
+            banner.addButton(text: PUITranslations._core_ok_button.l10n) {
                 $0.dismiss()
                 action?()
             }
@@ -119,7 +117,9 @@ final class AlwaysDelegatingPaymentsUIAlertManager: PaymentsUIAlertManager {
         passAlertToDelegatedManager(confirmAction: confirmAction, cancelAction: cancelAction)
     }
 
-    func showError(message: String, error: Error) {
+    func showError(message: String, error: Error?, action: ProtonCorePayments.ActionCallback) {
         showErrorOnDelegatedManager(message: message)
     }
 }
+
+#endif

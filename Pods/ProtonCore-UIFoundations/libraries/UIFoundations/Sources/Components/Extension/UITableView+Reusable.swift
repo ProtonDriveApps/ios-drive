@@ -19,19 +19,32 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-// MARK: - UITableView Extensions
-extension UITableView {
-    final func  register<T: UITableViewHeaderFooterView & Reusable>(cellType: T.Type) {
-        register(cellType.self, forHeaderFooterViewReuseIdentifier: cellType.reuseIdentifier)
-    }
-}
 
 extension UITableView {
-    final func dequeueReusableCell<T: UITableViewHeaderFooterView & Reusable>() -> T {
+    public final func  register<T: UITableViewHeaderFooterView & Reusable>(cellType: T.Type) {
+        register(cellType.self, forHeaderFooterViewReuseIdentifier: cellType.reuseIdentifier)
+    }
+
+    public final func register<T: UITableViewCell & Reusable>(cellType: T.Type) {
+        register(cellType, forCellReuseIdentifier: cellType.reuseIdentifier)
+    }
+
+    public final func dequeueReusableCell<T: UITableViewHeaderFooterView & Reusable>() -> T {
         guard let cell = dequeueReusableHeaderFooterView(withIdentifier: T.reuseIdentifier) as? T else {
             fatalError("Failed to dequeue reusable cell with identifier '\(T.reuseIdentifier)'.")
         }
         return cell
     }
+
+    public final func dequeueReusableCell<T: UITableViewCell & Reusable>() -> T {
+        guard let cell = dequeueReusableCell(withIdentifier: T.reuseIdentifier) as? T else {
+            fatalError("Failed to dequeue reusable cell with identifier '\(T.reuseIdentifier)'.")
+        }
+        return cell
+    }
 }
+
+#endif

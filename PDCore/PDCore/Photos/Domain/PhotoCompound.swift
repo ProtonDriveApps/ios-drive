@@ -25,6 +25,23 @@ public struct PhotoAssetCompound: Equatable {
         self.secondary = secondary
     }
 
+    public var allAssets: PhotoAssets {
+        [primary] + secondary
+    }
 }
 
-public  typealias PhotoAssets = [PhotoAsset]
+public typealias PhotoAssets = [PhotoAsset]
+
+public enum PhotoAssetCompoundType: Equatable {
+    case new(PhotoAssetCompound)
+    case existing(linkID: String, secondary: PhotoAssets)
+
+    public var allAssets: PhotoAssets {
+        switch self {
+        case let .new(compound):
+            return compound.allAssets
+        case let .existing(_, secondary):
+            return secondary
+        }
+    }
+}

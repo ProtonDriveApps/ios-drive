@@ -39,23 +39,13 @@ final class PhotosPreviewCoordinator: PhotosPreviewListCoordinator, PhotosPrevie
 
     // MARK: - PhotoPreviewDetailCoordinator
 
-    func openShare(with preview: PhotoFullPreview) {
+    func openShare(url: URL) {
         guard let rootViewController = rootViewController else {
             return
         }
 
-        let item = getItem(from: preview)
-        let viewController = UIActivityViewController(activityItems: [item], applicationActivities: nil)
+        let viewController = UIActivityViewController(activityItems: [url], applicationActivities: nil)
         viewController.popoverPresentationController?.sourceView = rootViewController.view
         rootViewController.present(viewController, animated: true, completion: nil)
-    }
-
-    private func getItem(from preview: PhotoFullPreview) -> Any {
-        switch preview {
-        case .photo(let data):
-            return data
-        case .video(let url):
-            return url
-        }
     }
 }

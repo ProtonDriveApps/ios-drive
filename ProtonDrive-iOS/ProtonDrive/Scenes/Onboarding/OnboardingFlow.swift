@@ -17,7 +17,7 @@
 
 import SwiftUI
 import PDUIComponents
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import PDCore
 
 struct OnboardingFlow: View {

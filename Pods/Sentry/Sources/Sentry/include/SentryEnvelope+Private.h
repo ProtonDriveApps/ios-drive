@@ -1,10 +1,11 @@
 #import "SentryEnvelope.h"
-#import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class SentryClientReport;
+
 @interface
-SentryEnvelopeItem (Private)
+SentryEnvelopeItem ()
 
 - (instancetype)initWithClientReport:(SentryClientReport *)clientReport;
 

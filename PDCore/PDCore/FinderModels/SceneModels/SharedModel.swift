@@ -29,8 +29,8 @@ public final class SharedModel: FinderModel, NodesListing, DownloadsListing, Nod
     public private(set) weak var tower: Tower!
     public private(set) var childrenObserver: FetchedObjectsObserver<Node>
     @Published public private(set) var sorting: SortPreference
-    
-    private let shareID: String
+
+    private let volumeID: String
     
     // MARK: NodesSorting
     private var sortingObserver: AnyCancellable!
@@ -39,41 +39,27 @@ public final class SharedModel: FinderModel, NodesListing, DownloadsListing, Nod
     }
     
     // MARK: others
-    public init(tower: Tower, shareID: String) {
+    public init(tower: Tower, volumeID: String) {
         self.tower = tower
-        self.shareID = shareID
+        self.volumeID = volumeID
         
-        let children = tower.uiSlot!.subscribeToShared(share: shareID, sorting: tower.localSettings.nodesSortPreference)
+        let children = tower.uiSlot!.subscribeToShared(sorting: tower.localSettings.nodesSortPreference)
         self.childrenObserver = FetchedObjectsObserver(children)
         
         self.sorting = self.tower.localSettings.nodesSortPreference
         
         self.sortingObserver = self.tower.localSettings.publisher(for: \.nodesSortPreference)
-        .receive(on: DispatchQueue.main)
-        .sink { [weak self] sort in
-            guard let self = self else { return }
-            self.sorting = sort
-            let children = tower.uiSlot!.subscribeToShared(share: shareID, sorting: sort)
-            self.childrenObserver.inject(fetchedResultsController: children)
-        }
-    }
-    
-    public func fetchShared(at page: Int = 0, completion: @escaping (Result<Int, Error>) -> Void) {
-        let pageSize = Constants.pageSizeForRefreshes
-        tower.cloudSlot.scanAllShareURLs(ofMainShare: shareID, page: page, pageSize: pageSize) { [weak self] result in
-            guard let self = self else { return }
-            switch result {
-            case .success(let nodes):
-                if nodes.count < pageSize {
-                    self.tower.didFetchAllShareURLs = true
-                    completion(.success(nodes.count))
-                } else {
-                    self.fetchShared(at: page + 1, completion: completion)
-                }
-            case .failure(let error):
-                completion(.failure(error))
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] sort in
+                guard let self = self else { return }
+                self.sorting = sort
+                let children = tower.uiSlot!.subscribeToShared(sorting: sort)
+                self.childrenObserver.inject(fetchedResultsController: children)
             }
-        }
+    }
+
+    public func fetchSharedByUrl() async throws {
+        try await tower.cloudSlot.scanAllShareURL(volumeID: volumeID)
     }
 }
 

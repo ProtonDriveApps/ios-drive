@@ -18,7 +18,7 @@
 import UIKit
 import Combine
 import PDCore
-import ProtonCore_HumanVerification
+import ProtonCoreHumanVerification
 import SwiftUI
 
 final class ProtectCoordinator {

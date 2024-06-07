@@ -17,7 +17,7 @@
 
 import SwiftUI
 import PDCore
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import PDUIComponents
 import Combine
 
@@ -36,12 +36,14 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
     private let menuItem: Binding<FinderMenu?>
     private let isList: Bool
     private let isEnabled: Bool
+    private let index: Int
 
     init(node: Node, finderViewModel: ViewModel, deeplink: Binding<String?>,
          presentedModal: Binding<FinderCoordinator.Destination?>,
          presentedSheet: Binding<FinderCoordinator.Destination?>,
-         menuItem: Binding<FinderMenu?>, isList: Bool) {
+         menuItem: Binding<FinderMenu?>, isList: Bool, index: Int) {
         self.node = node
+        self.index = index
         self.finderViewModel = finderViewModel
         self.deeplinkTo = deeplink
         self.presentedModal = presentedModal
@@ -116,6 +118,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 presentedModal: presentedModal,
                 presentedSheet: presentedSheet,
                 menuItem: menuItem,
+                index: index,
                 onTap: { [unowned vm] in
                     onCellTap(cellViewModel: vm)
                 },
@@ -128,6 +131,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 presentedModal: presentedModal,
                 presentedSheet: presentedSheet,
                 menuItem: menuItem,
+                index: index,
                 onTap: { [unowned vm] in
                     onCellTap(cellViewModel: vm)
                 },
@@ -141,6 +145,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 presentedModal: presentedModal,
                 presentedSheet: presentedSheet,
                 menuItem: menuItem,
+                index: index,
                 onTap: { [unowned vm] in
                     onCellTap(cellViewModel: vm)
                 },
@@ -159,6 +164,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 presentedModal: presentedModal,
                 presentedSheet: presentedSheet,
                 menuItem: menuItem,
+                index: index,
                 onTap: { [unowned vm] in
                     onCellTap(cellViewModel: vm)
                 },
@@ -171,6 +177,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 presentedModal: presentedModal,
                 presentedSheet: presentedSheet,
                 menuItem: menuItem,
+                index: index,
                 onTap: { [unowned vm] in
                     onCellTap(cellViewModel: vm)
                 },
@@ -184,6 +191,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 presentedModal: presentedModal,
                 presentedSheet: presentedSheet,
                 menuItem: menuItem,
+                index: index,
                 onTap: { [unowned vm] in
                     onCellTap(cellViewModel: vm)
                 },

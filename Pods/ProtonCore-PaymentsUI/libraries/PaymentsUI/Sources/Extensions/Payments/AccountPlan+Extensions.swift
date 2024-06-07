@@ -1,6 +1,6 @@
 //
 //  AccountPlan+Extensions.swift
-//  ProtonCore_PaymentsUI - Created on 01/06/2021.
+//  ProtonCorePaymentsUI - Created on 01/06/2021.
 //
 //  Copyright (c) 2022 Proton Technologies AG
 //
@@ -19,31 +19,26 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
-import Foundation
-import ProtonCore_Payments
+#if os(iOS)
 
-extension InAppPurchasePlan {
+import Foundation
+import ProtonCorePayments
+
+public extension InAppPurchasePlan {
     func planPrice(from storeKitManager: StoreKitManagerProtocol) -> String? {
-        guard let storeKitProductId = storeKitProductId,
-              let price = storeKitManager.priceLabelForProduct(storeKitProductId: storeKitProductId)
-        else { return nil }
-        return InAppPurchasePlan.formatPlanPrice(price: price.0, locale: price.1)
+        guard let priceLabel = priceLabel(from: storeKitManager) else { return nil }
+        return PriceFormatter.formatPlanPrice(price: priceLabel.value.doubleValue,
+                                              locale: priceLabel.locale)
     }
-    
-    func planLocale(from storeKitManager: StoreKitManagerProtocol) -> Locale? {
-        guard let storeKitProductId = storeKitProductId,
-              let price = storeKitManager.priceLabelForProduct(storeKitProductId: storeKitProductId)
-        else { return nil }
-        return price.1
+
+    func priceLocale(from storeKitManager: StoreKitManagerProtocol) -> Locale? {
+        priceLabel(from: storeKitManager)?.locale
     }
-    
-    static func formatPlanPrice(price: NSDecimalNumber, locale: Locale, maximumFractionDigits: Int = 2) -> String? {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = locale
-        formatter.maximumFractionDigits = maximumFractionDigits
-        let total = price as Decimal
-        let priceString = formatter.string(from: total as NSNumber) ?? ""
-        return priceString
+
+    func priceLabel(from storeKitManager: StoreKitManagerProtocol) -> (value: NSDecimalNumber, locale: Locale)? {
+        guard let storeKitProductId else { return nil }
+        return storeKitManager.priceLabelForProduct(storeKitProductId: storeKitProductId)
     }
 }
+
+#endif

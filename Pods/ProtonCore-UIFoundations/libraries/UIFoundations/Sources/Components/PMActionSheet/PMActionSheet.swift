@@ -19,8 +19,10 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import ProtonCore_Foundations
+import ProtonCoreFoundations
 
 private struct Constants {
     static let PLAIN_CELL_NAME = "PMActionSheetPlainCell"
@@ -236,9 +238,8 @@ extension PMActionSheet {
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.backgroundColor = PMActionSheetConfig.shared.actionSheetBackgroundColor
         tableView.bounces = false
-        if #available(iOS 13.0, *) {
-            tableView.automaticallyAdjustsScrollIndicatorInsets = false
-        }
+        tableView.automaticallyAdjustsScrollIndicatorInsets = false
+
         if #available(iOS 15.0, *) {
             tableView.sectionHeaderTopPadding = 0
         }
@@ -518,3 +519,5 @@ extension PMActionSheet: UIGestureRecognizerDelegate {
         return false
     }
 }
+
+#endif

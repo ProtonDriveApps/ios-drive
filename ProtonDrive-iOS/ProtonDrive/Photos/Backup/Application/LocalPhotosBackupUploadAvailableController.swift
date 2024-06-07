@@ -21,6 +21,7 @@ import PDCore
 final class LocalPhotosBackupUploadAvailableController: PhotosBackupUploadAvailableController {
     private let backupController: PhotosBackupController
     private let networkConstraintController: PhotoBackupConstraintController
+    private let quotaConstraintController: PhotoBackupConstraintController
     private var cancellables = Set<AnyCancellable>()
     private let subject = CurrentValueSubject<Bool, Never>(false)
 
@@ -28,18 +29,30 @@ final class LocalPhotosBackupUploadAvailableController: PhotosBackupUploadAvaila
         subject.eraseToAnyPublisher()
     }
 
-    init(backupController: PhotosBackupController, networkConstraintController: PhotoBackupConstraintController) {
+    init(
+        backupController: PhotosBackupController,
+        networkConstraintController: PhotoBackupConstraintController,
+        quotaConstraintController: PhotoBackupConstraintController
+    ) {
         self.backupController = backupController
         self.networkConstraintController = networkConstraintController
+        self.quotaConstraintController = quotaConstraintController
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
-        Publishers.CombineLatest(backupController.isAvailable, networkConstraintController.constraint)
-            .map { isAvailable, isConstrained in
-                isAvailable && !isConstrained
+        Publishers.CombineLatest3(backupController.isAvailable, networkConstraintController.constraint, quotaConstraintController.constraint)
+            .map { availability, isNetworkConstrained, isQuotaConstrained -> Bool in
+                switch availability {
+                case .available:
+                    return !isNetworkConstrained && !isQuotaConstrained
+                case .unavailable, .locked:
+                    return false
+                }
             }
+            .removeDuplicates()
             .sink { [weak self] isAvailable in
+                Log.debug("Photos backup upload state changed, isAvailable: \(isAvailable)", domain: .photosProcessing)
                 self?.subject.send(isAvailable)
             }
             .store(in: &cancellables)

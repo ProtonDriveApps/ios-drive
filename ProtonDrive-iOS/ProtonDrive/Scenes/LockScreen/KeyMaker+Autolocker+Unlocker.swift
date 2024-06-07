@@ -18,17 +18,17 @@
 import PDCore
 import os.log
 import SwiftUI
-import ProtonCore_Settings
-import ProtonCore_Keymaker
+import PMSettings
+import ProtonCoreKeymaker
 import LocalAuthentication
 
 extension Keymaker: AutoLocker {
     public var autolockerTimeout: LockTime {
-        .init(rawValue: DriveKeychain().lockTime.rawValue)
+        .init(rawValue: DriveKeychain.shared.lockTime.rawValue)
     }
 
     public func setAutolockerTimeout(_ timeout: LockTime) {
-        DriveKeychain().lockTime = .init(rawValue: timeout.rawValue)
+        DriveKeychain.shared.lockTime = .init(rawValue: timeout.rawValue)
     }
 }
 
@@ -42,7 +42,7 @@ extension Keymaker: Unlocker {
     }
 
     public func bioUnlock(completion: @escaping UnlockResult) {
-        obtainMainKey(with: BioProtection(keychain: DriveKeychain()), handler: { key in
+        obtainMainKey(with: BioProtection(keychain: DriveKeychain.shared), handler: { key in
             guard let key = key, !key.isEmpty else {
                 return completion(false)
             }
@@ -51,7 +51,7 @@ extension Keymaker: Unlocker {
     }
 
     public func pinUnlock(pin: String, completion: @escaping UnlockResult) {
-        obtainMainKey(with: PinProtection(pin: pin, keychain: DriveKeychain()), handler: { key in
+        obtainMainKey(with: PinProtection(pin: pin, keychain: DriveKeychain.shared), handler: { key in
             guard let key = key, !key.isEmpty else {
                 return completion(false)
             }

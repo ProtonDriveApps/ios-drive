@@ -19,8 +19,10 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import ProtonCore_Foundations
+import ProtonCoreFoundations
 
 public protocol CountryPickerViewControllerDelegate: AnyObject {
     func didSelectCountryCode(countryCode: CountryCode)
@@ -56,7 +58,7 @@ public class CountryPickerViewController: UIViewController, AccessibleView {
         setupNotifications()
         generateAccessibilityIdentifiers()
     }
-    
+
     override public func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         delegate?.didCountryPickerDissmised()
@@ -102,7 +104,7 @@ public class CountryPickerViewController: UIViewController, AccessibleView {
         tableView.tintColor = ColorProvider.BrandNorm
         tableView.separatorColor = ColorProvider.SeparatorNorm
         tableView.tableHeaderView?.backgroundColor = ColorProvider.BackgroundNorm
-        
+
         let nib = UINib(nibName: countryCodeHeader, bundle: PMUIFoundations.bundle)
         tableView.register(nib, forHeaderFooterViewReuseIdentifier: countryCodeHeader)
     }
@@ -215,3 +217,5 @@ extension CountryPickerViewController: UIGestureRecognizerDelegate {
     }
 
 }
+
+#endif

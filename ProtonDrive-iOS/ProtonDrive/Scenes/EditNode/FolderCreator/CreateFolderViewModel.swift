@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import Foundation
 
 final class CreateFolderViewModel: EditNodeViewModel {
     var onDismiss: (() -> Void)?
@@ -60,11 +61,13 @@ final class CreateFolderViewModel: EditNodeViewModel {
         }
 
         folderCreator.createFolder(with: name) { [weak self] result in
-            switch result {
-            case .failure(let error):
-                self?.onError?(error)
-            case .success:
-                self?.onSuccess?()
+            DispatchQueue.main.async {
+                switch result {
+                case .failure(let error):
+                    self?.onError?(error)
+                case .success:
+                    self?.onSuccess?()
+                }
             }
         }
     }

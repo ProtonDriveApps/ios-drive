@@ -18,353 +18,80 @@
 import Foundation
 import CoreData
 import PDClient
-import ProtonCore_Authentication
+import ProtonCoreAuthentication
 
 extension CloudSlot {
-    // MARK: - SEND FROM DB TO CLOUD
-    internal func createFolder(_ folder: Folder,
-                               parent: Folder,
-                               signersKit: SignersKit,
-                               handler: @escaping (Result<Folder, Error>) -> Void)
-    {
-        let scratchpadMoc = folder.managedObjectContext!
+    public func createFolder(_ name: String, parent: Folder) async throws -> Folder {
+        let creator = FolderCreator(storage: storage, cloudFolderCreator: client.createFolder, signersKitFactory: signersKitFactory, moc: storage.backgroundContext)
 
-        scratchpadMoc.performAndWait {
-            do {
-                assert(folder.name != nil)
-                let cleartextName = try folder.name?.validateNodeName(validator: NameValidations.iosName) ?? "Unnamed"
-                
-                folder.parentLink = parent
-                folder.signatureEmail = signersKit.address.email
-                
-                let credentials = try folder.generateNodeKeys(signersKit: signersKit)
-                let name = try folder.encryptName(cleartext: cleartextName, signersKit: signersKit)
-                let hash = try folder.hashFilename(cleartext: cleartextName)
-                let hashKey = try folder.generateHashKey(nodeKey: credentials)
-                
-                folder.shareID = parent.shareID
-                folder.name = name
-                folder.nameSignatureEmail = signersKit.address.email
-                folder.nodeKey = credentials.key
-                folder.nodePassphrase = credentials.passphrase
-                folder.nodePassphraseSignature = credentials.signature
-                folder.nodeHash = hash
-                folder.nodeHashKey = hashKey
-                folder.state = .active
-                folder.mimeType = Folder.mimeType
-                folder.createdDate = Date()
-                folder.modifiedDate = Date()
-
-                let parameters = NewFolderParameters(name: name,
-                                    hash: hash,
-                                    parentLinkID: folder.parentLink!.id,
-                                    folderKey: credentials.key,
-                                    folderHashKey: hashKey,
-                                    nodePassphrase: credentials.passphrase,
-                                    nodePassphraseSignature: credentials.signature,
-                                    signatureAddress: folder.signatureEmail)
-                self.client.postFolder(folder.shareID, parameters: parameters) { result in
-                    scratchpadMoc.performAndWait {
-                        switch result {
-                        case .failure(let error):
-                            ConsoleLogger.shared?.log(DriveError(error, "Cloudslot"))
-                            self.resetScratchpadContext(object: folder) {
-                                handler(.failure(error))
-                            }
-                        case .success(let newFolderMeta):
-                            do {
-                                let obj = self.update(newFolderMeta, folder: folder)
-                                try scratchpadMoc.save()
-                                self.moc.performAndWait {
-                                    do {
-                                        try self.moc.save()
-                                        let newObj = obj.in(moc: self.moc)
-                                        handler(.success(newObj))
-                                    } catch {
-                                        ConsoleLogger.shared?.log(DriveError(error, "Cloudslot"))
-                                        // Folder was successfully created in BE, but for some reason failed to be saved locally, clear local state so that it can be managed by the Events System
-                                        self.resetScratchpadContext(object: folder) {
-                                            handler(.failure(error))
-                                        }
-                                    }
-                                }
-                            } catch let error {
-                                ConsoleLogger.shared?.log(DriveError(error, "Cloudslot"))
-                                // Folder was successfully created in BE, but for some reason failed to be saved locally, clear local state so that it can be managed by the Events System
-                                self.resetScratchpadContext(object: folder) {
-                                    handler(.failure(error))
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch let error {
-                ConsoleLogger.shared?.log(DriveError(error, "Cloudslot"))
-                // Folder was not created in BE, clear local state
-                resetScratchpadContext(object: folder) {
-                    handler(.failure(error))
-                }
-            }
-        }
+        return try await creator.createFolder(name, parent: parent)
     }
 
-    private func resetScratchpadContext(object: NSManagedObject, handler: @escaping () -> Void) {
-        let context = object.managedObjectContext!
-        context.rollback()
-        handler()
-    }
-
-    internal func rename(node: Node,
-                         cleartextName newNameUnnormalized: String,
-                         mimeType: String,
-                         signersKit: SignersKit,
-                         handler: @escaping (Result<Node, Error>) -> Void)
-    {
-        let scratchpadMoc = node.managedObjectContext!
-
-        scratchpadMoc.performAndWait {
+    @available(*, deprecated, message: "use async/await createFolder")
+    func createFolder(_ name: String, parent: Folder, handler: @escaping (Result<Folder, Error>) -> Void) {
+        Task {
             do {
-                let newName = try newNameUnnormalized.validateNodeName(validator: NameValidations.iosName)
-                let (parentPassphrase, parentKey) = try node.getDirectParentPack()
-
-                let encryptedName = try node.renameNode(
-                    oldEncryptedName: node.name!,
-                    oldParentKey: parentKey,
-                    oldParentPassphrase: parentPassphrase,
-                    newClearName: newName,
-                    newParentKey: parentKey,
-                    signersKit: signersKit
-                )
-                let hash = try node.hashFilename(cleartext: newName)
-
-                let parameters = RenameNodeParameters(
-                    name: encryptedName,
-                    hash: hash,
-                    MIMEType: mimeType,
-                    signatureAddress: signersKit.address.email
-                )
-
-                self.client.putRenameNode(shareID: node.shareID, nodeID: node.id, parameters: parameters) { result in
-                    scratchpadMoc.performAndWait {
-                        switch result {
-                        case .failure(let error):
-                            ConsoleLogger.shared?.log(DriveError(error, "Cloudslot"))
-                            self.resetScratchpadContext(object: node) {
-                                handler(.failure(error))
-                            }
-                        case .success:
-                            node.name = encryptedName
-                            node.nodeHash = hash
-                            node.mimeType = mimeType
-                            do {
-                                try scratchpadMoc.save()
-                                self.moc.performAndWait {
-                                    do {
-                                        try self.moc.save()
-                                        let node = node.in(moc: self.moc)
-                                        handler(.success(node))
-                                    } catch let error {
-                                        ConsoleLogger.shared?.log(DriveError(error, "Cloudslot"))
-                                        self.resetScratchpadContext(object: node) {
-                                            handler(.failure(error))
-                                        }
-                                    }
-                                }
-                            } catch let error {
-                                ConsoleLogger.shared?.log(DriveError(error, "Cloudslot"))
-                                self.resetScratchpadContext(object: node) {
-                                    handler(.failure(error))
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch let error {
-                ConsoleLogger.shared?.log(DriveError(error, "Cloudslot"))
-                resetScratchpadContext(object: node) {
-                    handler(.failure(error))
-                }
-            }
-        }
-    }
-    
-    internal func move(node: Node, under newParent: Folder, with newName: String?, signersKit: SignersKit, handler: @escaping (Result<Node, Error>) -> Void) {
-        let scratchpadMoc = node.managedObjectContext!
-
-        scratchpadMoc.performAndWait {
-            do {
-                let node = node.in(moc: scratchpadMoc)
-                let newParent = newParent.in(moc: scratchpadMoc)
-                let clearname = try newName ?? node.decryptName()
-
-                let oldNodePassphrase = node.nodePassphrase
-                let (oldParentPassphrase, oldParentKey) = try node.getDirectParentPack()
-
-                let oldHash = node.nodeHash
-
-                node.clearPassphrase = nil
-
-                node.parentLink = newParent
-                let (_, newParentKey) = try node.getDirectParentPack()
-
-                let newPassphrase = try node.reencryptNodePassphrase(
-                    oldNodePassphrase: oldNodePassphrase,
-                    oldParentKey: oldParentKey,
-                    oldParentPassphrase: oldParentPassphrase,
-                    newParentKey: newParentKey
-                )
-                node.nodePassphrase = newPassphrase
-
-                let encryptedName = try node.renameNode(
-                    oldEncryptedName: node.name!,
-                    oldParentKey: oldParentKey,
-                    oldParentPassphrase: oldParentPassphrase,
-                    newClearName: clearname,
-                    newParentKey: newParentKey,
-                    signersKit: signersKit
-                )
-
-                let hash = try node.hashFilename(cleartext: clearname)
-
-                node.name = encryptedName
-                node.nodeHash = hash
-                node.createdDate = Date()
-                node.modifiedDate = Date()
-
-                let parameters = MoveNodeParameters(
-                    name: encryptedName,
-                    hash: hash,
-                    parentLinkID: newParent.id,
-                    nodePassphrase: newPassphrase,
-                    nodePassphraseSignature: node.nodePassphraseSignature,
-                    signatureAddress: node.signatureEmail,
-                    originalHash: oldHash
-                )
-
-                self.client.putMoveNode(shareID: node.shareID, nodeID: node.id, parameters: parameters) { result in
-                    scratchpadMoc.performAndWait {
-                        switch result {
-                        case .failure(let error):
-                            ConsoleLogger.shared?.log(DriveError(error, "Cloudslot"))
-                            self.resetScratchpadContext(object: node) {
-                                handler(.failure(error))
-                            }
-
-                        case .success:
-                            do {
-                                try scratchpadMoc.save() // save temporary moc to self.moc
-                                self.moc.performAndWait {
-                                    do {
-                                        try self.moc.save() // save self.moc to persistent store
-                                        let node = node.in(moc: self.moc)
-                                        handler(.success(node))
-
-                                    } catch {
-                                        ConsoleLogger.shared?.log(DriveError(error, "Cloudslot"))
-                                        self.resetScratchpadContext(object: node) {
-                                            handler(.failure(error))
-                                        }
-                                    }
-                                }
-                            } catch {
-                                ConsoleLogger.shared?.log(DriveError(error, "Cloudslot"))
-                                self.resetScratchpadContext(object: node) {
-                                    handler(.failure(error))
-                                }
-                            }
-                        }
-                    }
-                }
-
+                let folder = try await createFolder(name, parent: parent)
+                handler(.success(folder))
             } catch {
-                ConsoleLogger.shared?.log(DriveError(error, "Cloudslot"))
-                resetScratchpadContext(object: node) {
-                    handler(.failure(error))
-                }
+                handler(.failure(error))
             }
         }
     }
 
-    internal func createShare(node: Node, handler: @escaping (Result<Share, Error>) -> Void) {
-        let scratchpadMoc = node.managedObjectContext!
-        scratchpadMoc.performAndWait {
+    public func rename(_ node: Node, to newName: String, mimeType: String) async throws {
+        let renamer = NodeRenamer(storage: storage, cloudNodeRenamer: client.renameEntry, signersKitFactory: signersKitFactory, moc: storage.backgroundContext)
+
+        return try await renamer.rename(node, to: newName, mimeType: mimeType)
+    }
+
+    @available(*, deprecated, message: "use async/await rename")
+    func rename(node: Node, cleartextName newNameUnnormalized: String, mimeType: String, handler: @escaping (Result<Node, Error>) -> Void) {
+        Task {
             do {
-                let signersKit = try signersKitFactory.make(forSigner: .main)
-                let share: ShareObj = self.storage.new(with: signersKit.address.email, by: #keyPath(ShareObj.creator), in: scratchpadMoc)
-                let shareKeys = try share.generateShareKeys(signersKit: signersKit)
-                share.addressID = signersKit.address.addressID
-                share.creator = signersKit.address.email
-                share.key = shareKeys.key
-                share.passphrase = shareKeys.passphrase
-                share.passphraseSignature = shareKeys.signature
-
-                let allShares: [ShareObj] = self.storage.unique(with: Set([node.shareID]), in: scratchpadMoc)
-                guard let mainShare = allShares.first, mainShare.flags.contains(.main) == true else {
-                    throw Errors.couldNotFindMainShareForNewShareCreation
-                }
-                guard let volume = mainShare.volume else {
-                    throw Errors.couldNotFindVolumeForNewShareCreation
-                }
-                let volumeId = volume.id
-                share.volume = mainShare.volume
-                node.directShares.insert(share)
-
-                let passphraseKeyPacket = try node.keyPacket(node.nodePassphrase, newKey: shareKeys.key)
-                let nameKeyPacket = try node.keyPacket(node.name!, newKey: shareKeys.key)
-
-                let parameters = NewShareParameters(type: 0, // unused on BE yet
-                                                    addressID: signersKit.address.addressID,
-                                                    name: "New share",
-                                                    rootLinkID: node.id,
-                                                    shareKey: shareKeys.key,
-                                                    sharePassphrase: shareKeys.passphrase,
-                                                    sharePassphraseSignature: shareKeys.signature,
-                                                    passphraseKeyPacket: passphraseKeyPacket,
-                                                    nameKeyPacket: nameKeyPacket)
-
-                self.client.postShare(volumeID: volumeId, parameters: parameters) { result in
-                    switch result {
-                    case .failure(let error):
-                        ConsoleLogger.shared?.log(DriveError(error, "Cloudslot"))
-                        self.resetScratchpadContext(object: node) {
-                            handler(.failure(error))
-                        }
-                    case .success(let shareID):
-                        scratchpadMoc.performAndWait {
-                            share.id = shareID
-
-                            do {
-                                try scratchpadMoc.save()
-                                self.moc.performAndWait {
-                                    do {
-                                        try self.moc.save()
-                                        let share = share.in(moc: self.moc)
-                                        handler(.success(share))
-
-                                    } catch let error {
-                                        ConsoleLogger.shared?.log(DriveError(error, "Cloudslot"))
-                                        self.resetScratchpadContext(object: node) {
-                                            handler(.failure(error))
-                                        }
-                                    }
-                                }
-
-                            } catch {
-                                ConsoleLogger.shared?.log(DriveError(error, "Cloudslot"))
-                                self.resetScratchpadContext(object: node) {
-                                    handler(.failure(error))
-                                }
-                            }
-                        }
-                    }
-                }
+                try await rename(node, to: newNameUnnormalized, mimeType: mimeType)
+                handler(.success(node))
             } catch {
-                ConsoleLogger.shared?.log(DriveError(error, "Cloudslot"))
                 handler(.failure(error))
             }
         }
     }
     
+    public func move(node: Node, to newParent: Folder, name: String) async throws {
+        let mover = NodeMover(storage: storage, cloudNodeMover: client.moveEntry, signersKitFactory: signersKitFactory, moc: storage.backgroundContext)
+
+        return try await mover.move(node, to: newParent, name: name)
+    }
+
+    @available(*, deprecated, message: "use async/await move")
+    func move(node: Node, under newParent: Folder, with newName: String, handler: @escaping (Result<Node, Error>) -> Void) {
+        Task {
+            do {
+                try await move(node: node, to: newParent, name: newName)
+                handler(.success(node))
+            } catch {
+                handler(.failure(error))
+            }
+        }
+    }
+
+    public func createShare(for node: Node) async throws -> Share {
+        let shareCreator = ShareCreator(storage: storage, sessionVault: sessionVault, cloudShareCreator: client.createShare, signersKitFactory: signersKitFactory, moc: storage.backgroundContext)
+
+        return try await shareCreator.create(for: node)
+    }
+
+    internal func createShare(node: Node, handler: @escaping (Result<Share, Error>) -> Void) {
+        Task {
+            do {
+                let share = try await createShare(for: node)
+                handler(.success(share))
+            } catch {
+                handler(.failure(error))
+            }
+        }
+    }
+
     internal func createVolume(signersKit: SignersKit, handler: @escaping (Result<Share, Error>) -> Void) {
         let volumeName = "MainVolume"
         let shareName = "MainShare"
@@ -416,7 +143,7 @@ extension CloudSlot {
                 self.client.postVolume(parameters: parameters) {
                     switch $0 {
                     case .failure(let error):
-                        ConsoleLogger.shared?.log(DriveError(error, "Cloudslot"))
+                        Log.error(DriveError(error), domain: .networking)
                         handler(.failure(error))
 
                     case .success(let newVolume):
@@ -434,32 +161,9 @@ extension CloudSlot {
                 }
 
             } catch {
-                ConsoleLogger.shared?.log(DriveError(error, "Cloudslot"))
+                Log.error(DriveError(error), domain: .encryption)
                 handler(.failure(error))
             }
         }
-    }
-}
-
-extension NewBlockMeta {
-    init(block: UploadBlock) throws {
-        let base64Hash = block.sha256.base64EncodedString()
-        guard let encSignature = block.encSignature,
-              let signatureEmail = block.signatureEmail else {
-            throw CloudSlot.Errors.failedToEncryptBlocks
-        }
-        self.init(hash: base64Hash, encryptedSignature: encSignature, signatureEmail: signatureEmail, size: Int(block.size), index: Int(block.index))
-    }
-
-    init(block: UploadableBlock) {
-        self.init(hash: block.hash, encryptedSignature: block.encryptedSignature, signatureEmail: block.signatureEmail, size: block.size, index: block.index)
-    }
-}
-
-extension NewThumbnailMeta {
-    init?(thumbnail: UploadableThumbnail?) {
-        guard let size = thumbnail?.encrypted.count,
-              let hash = thumbnail?.sha256.base64EncodedString() else { return nil }
-        self.init(size: size, hash: hash)
     }
 }

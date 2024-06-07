@@ -1,4 +1,4 @@
-framework module ProtonCore_Foundations {
+framework module ProtonCoreFoundations {
   umbrella header "ProtonCore-Foundations-static-umbrella.h"
 
   export *

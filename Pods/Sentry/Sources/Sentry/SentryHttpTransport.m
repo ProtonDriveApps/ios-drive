@@ -1,13 +1,14 @@
 #import "SentryHttpTransport.h"
 #import "SentryClientReport.h"
-#import "SentryCurrentDate.h"
 #import "SentryDataCategoryMapper.h"
+#import "SentryDependencyContainer.h"
 #import "SentryDiscardReasonMapper.h"
 #import "SentryDiscardedEvent.h"
 #import "SentryDispatchQueueWrapper.h"
 #import "SentryDsn.h"
 #import "SentryEnvelope+Private.h"
 #import "SentryEnvelope.h"
+#import "SentryEnvelopeItemHeader.h"
 #import "SentryEnvelopeItemType.h"
 #import "SentryEnvelopeRateLimit.h"
 #import "SentryEvent.h"
@@ -17,13 +18,20 @@
 #import "SentryNSURLRequest.h"
 #import "SentryNSURLRequestBuilder.h"
 #import "SentryOptions.h"
-#import "SentryReachability.h"
 #import "SentrySerialization.h"
+#import "SentrySwift.h"
+
+#if !TARGET_OS_WATCH
+#    import "SentryReachability.h"
+#endif // !TARGET_OS_WATCH
 
 static NSTimeInterval const cachedEnvelopeSendDelay = 0.1;
 
 @interface
 SentryHttpTransport ()
+#if SENTRY_HAS_REACHABILITY
+    <SentryReachabilityObserver>
+#endif // !TARGET_OS_WATCH
 
 @property (nonatomic, strong) SentryFileManager *fileManager;
 @property (nonatomic, strong) id<SentryRequestManager> requestManager;
@@ -33,13 +41,16 @@ SentryHttpTransport ()
 @property (nonatomic, strong) SentryEnvelopeRateLimit *envelopeRateLimit;
 @property (nonatomic, strong) SentryDispatchQueueWrapper *dispatchQueue;
 @property (nonatomic, strong) dispatch_group_t dispatchGroup;
-@property (nonatomic, strong) SentryReachability *reachability;
+
+#if TEST || TESTCI
+@property (nullable, nonatomic, strong) void (^startFlushCallback)(void);
+#endif
 
 /**
  * Relay expects the discarded events split by data category and reason; see
  * https://develop.sentry.dev/sdk/client-reports/#envelope-item-payload.
  * We could use nested dictionaries, but instead, we use a dictionary with key
- * `data-category:reason` and value `SentryDiscardedEvent` because it's easier to read and type.
+ * @c data-category:reason and value @c SentryDiscardedEvent because it's easier to read and type.
  */
 @property (nonatomic, strong)
     NSMutableDictionary<NSString *, SentryDiscardedEvent *> *discardedEvents;
@@ -63,7 +74,6 @@ SentryHttpTransport ()
               rateLimits:(id<SentryRateLimits>)rateLimits
        envelopeRateLimit:(SentryEnvelopeRateLimit *)envelopeRateLimit
     dispatchQueueWrapper:(SentryDispatchQueueWrapper *)dispatchQueueWrapper
-            reachability:(SentryReachability *)reachability
 {
     if (self = [super init]) {
         self.options = options;
@@ -79,31 +89,32 @@ SentryHttpTransport ()
         self.discardedEvents = [NSMutableDictionary new];
         [self.envelopeRateLimit setDelegate:self];
         [self.fileManager setDelegate:self];
-        self.reachability = reachability;
 
         [self sendAllCachedEnvelopes];
 
-#if !TARGET_OS_WATCH
-        [self.reachability monitorURL:[NSURL URLWithString:@"https://sentry.io"]
-                        usingCallback:^(BOOL connected, NSString *_Nonnull typeDescription) {
-                            if (connected) {
-                                SENTRY_LOG_DEBUG(@"Internet connection is back.");
-                                [self sendAllCachedEnvelopes];
-                            } else {
-                                SENTRY_LOG_DEBUG(@"Lost internet connection.");
-                            }
-                        }];
-#endif
+#if SENTRY_HAS_REACHABILITY
+        [SentryDependencyContainer.sharedInstance.reachability addObserver:self];
+#endif // !TARGET_OS_WATCH
     }
     return self;
 }
 
+#if SENTRY_HAS_REACHABILITY
+- (void)connectivityChanged:(BOOL)connected typeDescription:(nonnull NSString *)typeDescription
+{
+    if (connected) {
+        SENTRY_LOG_DEBUG(@"Internet connection is back.");
+        [self sendAllCachedEnvelopes];
+    } else {
+        SENTRY_LOG_DEBUG(@"Lost internet connection.");
+    }
+}
+
 - (void)dealloc
 {
-#if !TARGET_OS_WATCH
-    [self.reachability stopMonitoring];
-#endif
+    [SentryDependencyContainer.sharedInstance.reachability removeObserver:self];
 }
+#endif // !TARGET_OS_WATCH
 
 - (void)sendEnvelope:(SentryEnvelope *)envelope
 {
@@ -119,9 +130,10 @@ SentryHttpTransport ()
     // With this we accept the a tradeoff. We might loose some envelopes when a hard crash happens,
     // because this being done on a background thread, but instead we don't block the calling
     // thread, which could be the main thread.
+    __weak SentryHttpTransport *weakSelf = self;
     [self.dispatchQueue dispatchAsyncWithBlock:^{
-        [self.fileManager storeEnvelope:envelopeToStore];
-        [self sendAllCachedEnvelopes];
+        [weakSelf.fileManager storeEnvelope:envelopeToStore];
+        [weakSelf sendAllCachedEnvelopes];
     }];
 }
 
@@ -149,7 +161,14 @@ SentryHttpTransport ()
     }
 }
 
-- (BOOL)flush:(NSTimeInterval)timeout
+#if TEST || TESTCI
+- (void)setStartFlushCallback:(void (^)(void))callback
+{
+    _startFlushCallback = callback;
+}
+#endif
+
+- (SentryFlushResult)flush:(NSTimeInterval)timeout
 {
     // Calculate the dispatch time of the flush duration as early as possible to guarantee an exact
     // flush duration. Any code up to the dispatch_group_wait can take a couple of ms, adding up to
@@ -160,19 +179,24 @@ SentryHttpTransport ()
     // Double-Checked Locking to avoid acquiring unnecessary locks.
     if (_isFlushing) {
         SENTRY_LOG_DEBUG(@"Already flushing.");
-        return NO;
+        return kSentryFlushResultAlreadyFlushing;
     }
 
     @synchronized(self) {
         if (_isFlushing) {
             SENTRY_LOG_DEBUG(@"Already flushing.");
-            return NO;
+            return kSentryFlushResultAlreadyFlushing;
         }
 
         SENTRY_LOG_DEBUG(@"Start flushing.");
 
         _isFlushing = YES;
         dispatch_group_enter(self.dispatchGroup);
+#if TEST || TESTCI
+        if (self.startFlushCallback != nil) {
+            self.startFlushCallback();
+        }
+#endif
     }
 
     [self sendAllCachedEnvelopes];
@@ -185,10 +209,10 @@ SentryHttpTransport ()
 
     if (result == 0) {
         SENTRY_LOG_DEBUG(@"Finished flushing.");
-        return YES;
+        return kSentryFlushResultSuccess;
     } else {
         SENTRY_LOG_DEBUG(@"Flushing timed out.");
-        return NO;
+        return kSentryFlushResultTimedOut;
     }
 }
 
@@ -270,6 +294,9 @@ SentryHttpTransport ()
         return;
     }
 
+    // We must set sentAt as close as possible to the transmission of the envelope to Sentry.
+    rateLimitedEnvelope.header.sentAt = SentryDependencyContainer.sharedInstance.dateProvider.date;
+
     NSError *requestError = nil;
     NSURLRequest *request = [self.requestBuilder createEnvelopeRequest:rateLimitedEnvelope
                                                                    dsn:self.options.parsedDsn
@@ -291,29 +318,41 @@ SentryHttpTransport ()
     SENTRY_LOG_DEBUG(@"Deleting envelope and sending next.");
     [self.fileManager removeFileAtPath:envelopePath];
     self.isSending = NO;
+
+    __weak SentryHttpTransport *weakSelf = self;
     [self.dispatchQueue dispatchAfter:cachedEnvelopeSendDelay
-                                block:^{ [self sendAllCachedEnvelopes]; }];
+                                block:^{
+                                    if (weakSelf == nil) {
+                                        return;
+                                    }
+                                    [weakSelf sendAllCachedEnvelopes];
+                                }];
 }
 
 - (void)sendEnvelope:(SentryEnvelope *)envelope
         envelopePath:(NSString *)envelopePath
              request:(NSURLRequest *)request
 {
-    __block SentryHttpTransport *_self = self;
+    __weak SentryHttpTransport *weakSelf = self;
     [self.requestManager
                addRequest:request
         completionHandler:^(NSHTTPURLResponse *_Nullable response, NSError *_Nullable error) {
+            if (weakSelf == nil) {
+                SENTRY_LOG_DEBUG(@"WeakSelf is nil. Not doing anything.");
+                return;
+            }
+
             // If the response is not nil we had an internet connection.
             if (error && response.statusCode != 429) {
-                [_self recordLostEventFor:envelope.items];
+                [weakSelf recordLostEventFor:envelope.items];
             }
 
             if (nil != response) {
-                [_self.rateLimits update:response];
-                [_self deleteEnvelopeAndSendNext:envelopePath];
+                [weakSelf.rateLimits update:response];
+                [weakSelf deleteEnvelopeAndSendNext:envelopePath];
             } else {
                 SENTRY_LOG_DEBUG(@"No internet connection.");
-                [_self finishedSending];
+                [weakSelf finishedSending];
             }
         }];
 }

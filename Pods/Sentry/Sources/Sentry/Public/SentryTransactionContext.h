@@ -27,40 +27,37 @@ SENTRY_NO_INIT
 @property (nonatomic, strong, nullable) NSNumber *sampleRate;
 
 /**
- * Init a SentryTransactionContext with given name and set other fields by default
- *
+ * If app launch profiling is enabled via @c SentryOptions.enableAppLaunchProfiling and
+ * @c SentryOptions.tracesSampler and/or @c SentryOptions.profilesSampler are defined,
+ * @c SentrySDK.startWithOptions will call the sampler function with this property set to @c YES ,
+ * and the returned value will be stored to disk for the next launch to calculate a sampling
+ * decision on whether or not to run the profiler.
+ */
+@property (nonatomic, assign) BOOL forNextAppLaunch;
+
+/**
  * @param name Transaction name
  * @param operation The operation this span is measuring.
- *
  * @return SentryTransactionContext
  */
 - (instancetype)initWithName:(NSString *)name operation:(NSString *)operation;
 
 /**
- * Init a SentryTransactionContext with given name and set other fields by default
- *
  * @param name Transaction name
  * @param operation The operation this span is measuring.
  * @param sampled Determines whether the trace should be sampled.
- *
- * @return SentryTransactionContext
  */
 - (instancetype)initWithName:(NSString *)name
                    operation:(NSString *)operation
                      sampled:(SentrySampleDecision)sampled;
 
 /**
- * Init a SentryTransactionContext with given name, traceId, SpanId, parentSpanId and whether the
- * parent is sampled.
- *
  * @param name Transaction name
  * @param operation The operation this span is measuring.
  * @param traceId Trace Id
  * @param spanId Span Id
  * @param parentSpanId Parent span id
  * @param parentSampled Whether the parent is sampled
- *
- * @return SentryTransactionContext
  */
 - (instancetype)initWithName:(NSString *)name
                    operation:(NSString *)operation

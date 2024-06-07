@@ -18,7 +18,6 @@
 import Foundation
 import Combine
 import PDClient
-import os.log
 
 public final class MoveModel: FinderModel, NodesListing, NodesFetching, NodesSorting {
     // MARK: FinderModel
@@ -83,27 +82,33 @@ extension MoveModel {
         self.moveCancellable?.cancel()
         self.moveCancellable = self.nodeIdsToMove.compactMap { nodeID in
             Deferred {
-                Future<Node, Error> { [weak self] promise in
-                    ConsoleLogger.shared?.log("Start move call: \(nodeID)", osLogType: MoveLogger.self)
+                Future<NodeIdentifier, Error> { [weak self] promise in
+                    Log.info("Start move call: \(nodeID)", domain: .networking)
                     self?.tower.move(nodeID: nodeID, under: node) { result in
-                        ConsoleLogger.shared?.log("Finish move call: \(nodeID)", osLogType: MoveLogger.self)
-                        promise(result)
+                        Log.info("Finish move call: \(nodeID)", domain: .networking)
+                        switch result {
+                        case .success(let node):
+                            promise(.success(node.identifier))
+                        case .failure(let error):
+                            promise(.failure(error))
+                        }
                     }
                 }
             }
         }
         .serialize()?
+        .receive(on: DispatchQueue.main)
         .sink(receiveCompletion: { completion in
-            ConsoleLogger.shared?.log("Finished moving nodes", osLogType: MoveLogger.self)
+            Log.info("Finished moving nodes", domain: .networking)
             switch completion {
             case .finished:
                 handler(.success(nodeIds))
             case let .failure(error):
                 handler(.failure(error))
             }
-        }, receiveValue: { [weak self] node in
-            self?.nodeIdsToMove = nodeIds.filter { $0.nodeID != node.id }
-            ConsoleLogger.shared?.log("Moved node: \(node.identifier)", osLogType: MoveLogger.self)
+        }, receiveValue: { [weak self] nodeIdentifier in
+            self?.nodeIdsToMove = nodeIds.filter { $0.nodeID != nodeIdentifier.nodeID }
+            Log.info("Moved node: \(node.identifier)", domain: .networking)
         })
     }
 }
@@ -116,8 +121,4 @@ extension MoveModel: ThumbnailLoader {
     public func cancelThumbnailLoading(_ id: Identifier) {
         tower.cancelThumbnailLoading(id)
     }
-}
-
-struct MoveLogger: LogObject {
-    static var osLog: OSLog = OSLog(subsystem: "ch.protondrive", category: "Move")
 }

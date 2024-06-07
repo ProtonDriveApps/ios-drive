@@ -17,7 +17,7 @@
 
 import SwiftUI
 import PDCore
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import PDUIComponents
 
 enum TrashMenu {
@@ -37,13 +37,13 @@ struct TrashView: View {
         ZStack {
             trashView
                 .flatNavigationBar(
-                    vm.pageTitle,
+                    vm.nodeName,
                     leading: leadingBarButtons(vm.leadingNavBarItems),
                     trailing: trailingBarButtons(vm.trailingNavBarItems)
                 )
         }
         .background(ColorProvider.BackgroundNorm.edgesIgnoringSafeArea(.all))
-        .onAppear(perform: vm.onAppear)
+        .onAppear(perform: vm.refreshOnAppear)
         .errorToast(location: .bottom, errors: vm.genericErrors.stream)
         .dialogSheet(item: $menuItem, model: dialogSheetModel())
         .overlay(
@@ -54,7 +54,7 @@ struct TrashView: View {
 
     var trashView: some View {
         VStack {
-            if vm.trashedNodes.isEmpty && !vm.isUpdating {
+            if vm.permanentChildren.isEmpty && !vm.isUpdating {
                 HStack {
                     Spacer()
                     EmptyFolderView(viewModel: .trash)
@@ -64,10 +64,10 @@ struct TrashView: View {
                 GridOrList(vm: vm) {
                     EmptyView()
                 } contents2: {
-                    ForEach(vm.trashedNodes) { node in
+                    ForEach(vm.permanentChildren) { nodeWrapper in
                         let svm = vm.prepareSelectionModel()
-                        let nodeRowViewModel = NodeRowActionMenuViewModel(node: node, model: vm)
-                        let nodeVM = TrashCellViewModel(node: node, selectionModel: svm, nodeRowActionMenuViewModel: nodeRowViewModel)
+                        let nodeRowViewModel = NodeRowActionMenuViewModel(node: nodeWrapper.node, model: vm)
+                        let nodeVM = TrashCellViewModel(node: nodeWrapper.node, selectionModel: svm, nodeRowActionMenuViewModel: nodeRowViewModel)
                         let cvm = addAction(to: nodeVM, menuItem: $menuItem)
 
                         Button(action: {}, label: {
@@ -75,7 +75,8 @@ struct TrashView: View {
                                 vm: cvm,
                                 presentedModal: .constant(nil),
                                 presentedSheet: .constant(nil),
-                                menuItem: .constant(nil),
+                                menuItem: .constant(nil), 
+                                index: -1,
                                 onTap: nodeVM.onTap,
                                 onLongPress: svm.onLongPress
                             )
@@ -115,7 +116,7 @@ struct TrashView: View {
             guard let selectedNodesType = vm.findNodesType(isAll: false) else { return }
             let selectedIDs = Array(vm.selection.selected)
             let type: NodeOperationType = .multiple(ids: selectedIDs, type: selectedNodesType)
-                self.menuItem = .confirmation(on: type) { [weak vm = self.vm] in
+            self.menuItem = .confirmation(on: type) { [weak vm = self.vm] in
                 vm?.delete(nodes: selectedIDs) {
                     vm?.cancelSelection()
                 }
@@ -132,7 +133,7 @@ struct TrashView: View {
 
 extension TrashView {
     private func addAction(to cvm: TrashCellViewModel, menuItem: Binding<TrashMenu?>) -> TrashCellViewModel {
-        let id = cvm.nodeID
+        let id = cvm.node.identifier
         let single = NodeOperationType.single(id: id, type: cvm.nodeType)
         cvm.restoreButtonAction = { vm.restore(nodes: [id], completion: {}) }
         cvm.actionButtonAction = {
@@ -158,7 +159,7 @@ extension TrashView {
     @ViewBuilder
     private func navigationBarButton(_ item: NavigationBarButton) -> some View {
         switch item {
-        case .action where !vm.trashedNodes.isEmpty:
+        case .action where !vm.permanentChildren.isEmpty:
             menuButton
             .accessibilityIdentifier("TrashView.NavigationBarButton.Three_Dots_Horizontal")
         case .menu:
@@ -166,14 +167,14 @@ extension TrashView {
         case let .apply(title, disabled):
             selectAll(title, disabled: disabled)
         case .cancel:
-            TextButton.cancel(vm.cancelSelection)
+            TextNavigationBarButton.cancel(vm.cancelSelection)
         default:
             AssertionView("Unsupported NavigationBarButton requested")
         }
     }
 
     private func selectAll(_ title: String, disabled: Bool) -> some View {
-        TextButton(
+        TextNavigationBarButton(
             title: title,
             action: { [weak vm] in vm?.selectAll() }
         )

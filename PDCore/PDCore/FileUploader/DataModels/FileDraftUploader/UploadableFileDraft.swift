@@ -27,4 +27,5 @@ struct UploadableFileDraft: Equatable {
     let contentKeyPacket: String
     let contentKeyPacketSignature: String
     let mimeType: String
+    let clientUID: String
 }

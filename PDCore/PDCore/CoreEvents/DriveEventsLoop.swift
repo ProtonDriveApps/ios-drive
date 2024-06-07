@@ -24,15 +24,16 @@ class DriveEventsLoop: EventsLoop {
     typealias LogHandler = (Error) -> Void
     
     private let volumeID: String // CloudSlot and EventPeriodicScheduler work with VolumeID
-    private let cloudSlot: CloudSlot
+    private let cloudSlot: CloudEventProvider
     private let conveyor: EventsConveyor
     private let observers: [EventsListener]
-    private let processor: DriveEventsLoopProcessor
+    private let processor: DriveEventsLoopProcessorType
     private let logError: LogHandler?
     
     private let mode: DriveEventsLoopMode
     
-    init(volumeID: String, cloudSlot: CloudSlot, processor: DriveEventsLoopProcessor, conveyor: EventsConveyor, observers: [EventsListener], mode: DriveEventsLoopMode, logError: LogHandler? = nil) {
+    init(volumeID: String, cloudSlot: CloudEventProvider, processor: DriveEventsLoopProcessorType, 
+         conveyor: EventsConveyor, observers: [EventsListener], mode: DriveEventsLoopMode, logError: LogHandler? = nil) {
         self.volumeID = volumeID
         self.cloudSlot = cloudSlot
         self.conveyor = conveyor
@@ -42,19 +43,28 @@ class DriveEventsLoop: EventsLoop {
         self.logError = logError
     }
     
+    /// Latest event received and recorded by this loop
     var latestLoopEventId: String? {
-        get { cloudSlot.lastScannedEventID }
-        set { cloudSlot.lastScannedEventID = newValue }
+        get { conveyor.latestFetchedEventID }
+        set { conveyor.latestFetchedEventID = newValue }
     }
     
+    /// Moment when initial event was fetched
     var referenceDate: Date? {
-        get { cloudSlot.referenceDate }
-        set { cloudSlot.referenceDate = newValue }
+        get { conveyor.referenceDate }
+        set { conveyor.referenceDate = newValue }
     }
     
+    /// ID of initial event
+    var referenceID: EventID? {
+        get { conveyor.referenceID }
+        set { conveyor.referenceID = newValue }
+    }
+    
+    /// Moment when latest fetch was performed (and request did not fail)
     var lastEventFetchTime: Date? {
-        get { cloudSlot.lastEventFetchTime }
-        set { cloudSlot.lastEventFetchTime = newValue }
+        get { conveyor.latestEventFetchTime }
+        set { conveyor.latestEventFetchTime = newValue }
     }
     
     func initialEventUnknown() async {
@@ -62,6 +72,7 @@ class DriveEventsLoop: EventsLoop {
             let eventID = try await cloudSlot.fetchInitialEvent(ofVolumeID: volumeID)
             
             latestLoopEventId = eventID
+            referenceID = eventID
             referenceDate = Date()
             lastEventFetchTime = Date()
         } catch {
@@ -92,8 +103,15 @@ class DriveEventsLoop: EventsLoop {
     }
     
     func performRecording(events: [Event], till latest: EventID) {
-        // 0. return early if there are no events to skip triggering observers
-        guard !events.isEmpty else { return }
+        // 0. return early if there are no events to skip triggering observers,
+        // or signal observers if there are events that haven't been processed
+        guard !events.isEmpty else {
+            guard conveyor.hasUnprocessedEvents() else { return }
+            observers.forEach {
+                $0.processorReceivedEvents()
+            }
+            return
+        }
         
         // 1. record events into conveyor
         conveyor.record(events)
@@ -120,6 +138,7 @@ class DriveEventsLoop: EventsLoop {
         latestLoopEventId = nil
         lastEventFetchTime = nil
         referenceDate = nil
+        referenceID = nil
     }
 
     func onError(_ error: Error) {

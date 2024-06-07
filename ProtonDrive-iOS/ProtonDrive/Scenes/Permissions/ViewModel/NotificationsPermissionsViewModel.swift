@@ -18,15 +18,28 @@
 import Foundation
 
 protocol NotificationsPermissionsViewModel {
+    var data: NotificationsPermissionsViewData { get }
     func enable()
     func close()
 }
 
+struct NotificationsPermissionsViewData {
+    let isNavigationVisible: Bool
+    let title: String
+    let description: String
+    let enableButton: String
+    let closeButton: String
+}
+
 final class NotificationsPermissionsViewModelImpl: NotificationsPermissionsViewModel {
+    private let type: NotificationsPermissionsType
     private let controller: NotificationsPermissionsController
     private let flowController: NotificationsPermissionsFlowController
+
+    lazy var data = makeViewData()
     
-    init(controller: NotificationsPermissionsController, flowController: NotificationsPermissionsFlowController) {
+    init(type: NotificationsPermissionsType, controller: NotificationsPermissionsController, flowController: NotificationsPermissionsFlowController) {
+        self.type = type
         self.controller = controller
         self.flowController = flowController
     }
@@ -38,5 +51,26 @@ final class NotificationsPermissionsViewModelImpl: NotificationsPermissionsViewM
     func close() {
         controller.skip()
         flowController.event.send(.close)
+    }
+
+    private func makeViewData() -> NotificationsPermissionsViewData {
+        switch type {
+        case .myFiles:
+            return NotificationsPermissionsViewData(
+                isNavigationVisible: true,
+                title: "Turn on notifications",
+                description: "We’ll notify you if there are any interruptions to your uploads or downloads.",
+                enableButton: "Allow notifications",
+                closeButton: "Not now"
+            )
+        case .photos:
+            return NotificationsPermissionsViewData(
+                isNavigationVisible: false,
+                title: "Ensure seamless backups",
+                description: "We’ll only notify you if your action is required to complete backups and uploads.",
+                enableButton: "Allow notifications",
+                closeButton: "Not now"
+            )
+        }
     }
 }

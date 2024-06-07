@@ -20,25 +20,24 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import WebKit
-import ProtonCore_Log
+import ProtonCoreLog
 
-public final class AlternativeRoutingRequestInterceptor: NSObject, WKURLSchemeHandler, URLSessionDelegate {
-    
+public final class AlternativeRoutingRequestInterceptor: NSObject, URLSessionDelegate {
+
     public static let schemeMapping: [(String, String)] = [("coreioss", "https"), ("coreios", "http")]
-    
+
     private enum RequestInterceptorError: Error {
         case noUrlInRequest
         case constructedUrlIsIncorrect
     }
-    
+
     private let headersGetter: () -> [String: String]
-    private let cookiesSynchronization: (URLResponse?, [String: String]) -> Void
+    private let cookiesSynchronization: (URLResponse?, [String: String], @escaping () -> Void) -> Void
     private let cookiesStorage: HTTPCookieStorage?
     private let onAuthenticationChallengeContinuation: (URLAuthenticationChallenge, @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) -> Void
-    
+
     public init(headersGetter: @escaping () -> [String: String],
-                cookiesSynchronization: @escaping (URLResponse?, [String: String]) -> Void = { _, _ in },
+                cookiesSynchronization: @escaping (URLResponse?, [String: String], @escaping () -> Void) -> Void = { _, _, completion in completion() },
                 cookiesStorage: HTTPCookieStorage?,
                 onAuthenticationChallengeContinuation: @escaping (URLAuthenticationChallenge, @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) -> Void) {
         self.headersGetter = headersGetter
@@ -46,21 +45,28 @@ public final class AlternativeRoutingRequestInterceptor: NSObject, WKURLSchemeHa
         self.cookiesStorage = cookiesStorage
         self.onAuthenticationChallengeContinuation = onAuthenticationChallengeContinuation
     }
-    
+
+}
+
+#if canImport(WebKit)
+import WebKit
+
+extension AlternativeRoutingRequestInterceptor: WKURLSchemeHandler {
+
     public func setup(webViewConfiguration: WKWebViewConfiguration) {
         for (custom, _) in AlternativeRoutingRequestInterceptor.schemeMapping {
             webViewConfiguration.setURLSchemeHandler(self, forURLScheme: custom)
         }
     }
-    
+
     public func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
         var request = urlSchemeTask.request
-        
+
         guard var urlString = request.url?.absoluteString else {
             urlSchemeTask.didFailWithError(RequestInterceptorError.noUrlInRequest)
             return
         }
-        
+
         // Implements rewriting the request if alternative routing is on. Rewriting request means:
         // 1. Changing the custom scheme "coreios" in the request url to "http"
         // 2. Replacing the "-api" suffix appended to the first part of url host by captcha JS code.
@@ -90,10 +96,10 @@ public final class AlternativeRoutingRequestInterceptor: NSObject, WKURLSchemeHa
             }
             request.url = url
         }
-        
+
         performRequest(request, apiRange, urlSchemeTask)
     }
-    
+
     private func performRequest(_ request: URLRequest, _ apiRange: Range<String.Index>?, _ urlSchemeTask: WKURLSchemeTask) {
         guard let urlString = request.url?.absoluteString else {
             urlSchemeTask.didFailWithError(RequestInterceptorError.noUrlInRequest)
@@ -111,22 +117,32 @@ public final class AlternativeRoutingRequestInterceptor: NSObject, WKURLSchemeHa
         let headers = HTTPCookie.requestHeaderFields(with: cookies)
         PMLog.debug("[COOKIES][REQUEST][INTERCEPTOR] \(headers)")
         #endif
-        let task = session.dataTask(with: request) { [weak self] data, response, error in
-            if let response = response {
-                self?.transformAndProcessResponse(response, request.allHTTPHeaderFields, apiRange, urlSchemeTask)
-            }
-            if let data = data {
-                urlSchemeTask.didReceive(data)
-            }
-            if let error = error {
-                urlSchemeTask.didFailWithError(error)
-            } else {
-                urlSchemeTask.didFinish()
+        let task = session.dataTask(with: request) { data, response, error in
+            Task { [weak self, data, response, error] in
+                if let response = response {
+                    await self?.transformAndProcessResponse(response, request.allHTTPHeaderFields, apiRange, urlSchemeTask)
+                }
+                if let data = data {
+                    urlSchemeTask.didReceive(data)
+                }
+                if let error = error {
+                    urlSchemeTask.didFailWithError(error)
+                } else {
+                    urlSchemeTask.didFinish()
+                }
             }
         }
         task.resume()
     }
-    
+
+    private func cookiesSynchronization(_ response: URLResponse?, _ requestHeaders: [String: String]) async {
+        await withUnsafeContinuation { c in
+            cookiesSynchronization(response, requestHeaders) {
+                c.resume()
+            }
+        }
+    }
+
     // Implements rewriting the response if alternative routing is on. Rewriting response means:
     // 1. Enabling the Content Security Policy for captcha with proxy domains by adding the proxy domains
     //    to frame-src. Both the original and `-api` variants are added. Also, if all "http" is allowed via frame-src,
@@ -138,15 +154,15 @@ public final class AlternativeRoutingRequestInterceptor: NSObject, WKURLSchemeHa
     // 3. Adding back (if needed) the the "-api" suffix appended to the first part of url host by captcha JS code.
     //    NOTE: It's applicable only to human verification but it doesn't influence other usecases so we can leave single implemention.
     // 4. Changing the "http" scheme back to the custom one "coreios" in the response url
-    public func transformAndProcessResponse(_ response: URLResponse, _ requestHeaders: [String: String]?, _ apiRange: Range<String.Index>?, _ urlSchemeTask: WKURLSchemeTask) {
-        cookiesSynchronization(response, requestHeaders ?? [:])
+    public func transformAndProcessResponse(_ response: URLResponse, _ requestHeaders: [String: String]?, _ apiRange: Range<String.Index>?, _ urlSchemeTask: WKURLSchemeTask) async {
+        await cookiesSynchronization(response, requestHeaders ?? [:])
         guard let httpResponse = response as? HTTPURLResponse,
               var urlString = httpResponse.url?.absoluteString
         else {
             urlSchemeTask.didReceive(response)
             return
         }
-        
+
         var headers: [String: String] = httpResponse.allHeaderFields as? [String: String] ?? [:]
         headers = headers.mapValues { (originalValue: String) -> String in
             var value = originalValue
@@ -154,14 +170,14 @@ public final class AlternativeRoutingRequestInterceptor: NSObject, WKURLSchemeHa
                 value = value.replacingOccurrences(of: "\(original)://", with: "\(custom)://")
                 if let range = value.range(of: "frame-src 'self' blob: "), let host = URL(string: urlString)?.host {
                     value.insert(contentsOf: "\(custom)://\(host) ", at: range.upperBound)
-                    
+
                     if let index = host.firstIndex(of: ".") {
                         var hostWithAPI = host
                         hostWithAPI.insert(contentsOf: "-api", at: index)
                         value.insert(contentsOf: "\(custom)://\(hostWithAPI) ", at: range.upperBound)
                     }
                 }
-                
+
                 [
                     "script-src",
                     "style-src",
@@ -175,29 +191,29 @@ public final class AlternativeRoutingRequestInterceptor: NSObject, WKURLSchemeHa
                         value.insert(contentsOf: " \(custom):", at: range.upperBound)
                     }
                 }
-                
+
             }
             return value
         }
-        
+
         if let apiRange = apiRange {
             urlString.insert(contentsOf: "-api", at: apiRange.lowerBound)
         }
-        
+
         for (custom, original) in AlternativeRoutingRequestInterceptor.schemeMapping where urlString.contains(original) {
             urlString = urlString.replacingOccurrences(of: original, with: custom)
         }
-        
+
         guard let url = URL(string: urlString),
               let newResponse = HTTPURLResponse(url: url, statusCode: httpResponse.statusCode, httpVersion: nil, headerFields: headers)
         else {
             urlSchemeTask.didReceive(response)
             return
         }
-    
+
         urlSchemeTask.didReceive(newResponse)
     }
-    
+
     public func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {
         let request = urlSchemeTask.request
         guard let urlString = request.url?.absoluteString else {
@@ -207,10 +223,12 @@ public final class AlternativeRoutingRequestInterceptor: NSObject, WKURLSchemeHa
         // we only log here and not cancel the url data task just for the simplicity of implementation
         PMLog.debug("request interceptor stops request to \(urlString) with \(DoHConstants.dohHostHeader): \(request.allHTTPHeaderFields?[DoHConstants.dohHostHeader] ?? "")")
     }
-    
+
     public func urlSession(_ session: URLSession,
                            didReceive challenge: URLAuthenticationChallenge,
                            completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
         onAuthenticationChallengeContinuation(challenge, completionHandler)
     }
 }
+
+#endif

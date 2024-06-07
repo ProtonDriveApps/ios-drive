@@ -47,7 +47,6 @@ final class PageRevisionUploaderOperation: AsynchronousOperation {
     }
 
     override func cancel() {
-        ConsoleLogger.shared?.log("🙅‍♂️🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
         uploader.cancel()
         super.cancel()
     }

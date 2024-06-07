@@ -53,7 +53,7 @@ struct CameraPicker: UIViewControllerRepresentable {
         root.closeCurrentSheet.send()
     }
 
-    func picker(didFinishPicking item: Result<URL, Error>) {
+    func picker(didFinishPicking item: URLResult) {
         delegate?.picker(didFinishPicking: [item])
         close()
     }
@@ -79,9 +79,11 @@ struct CameraPicker: UIViewControllerRepresentable {
             }
 
             do {
+                let size = try urlFromPicker.getFileSize()
                 let copyUrl = PDFileManager.prepareUrlForFile(named: urlFromPicker.lastPathComponent)
                 try FileManager.default.moveItem(at: urlFromPicker, to: copyUrl)
-                parent.picker(didFinishPicking: .success(copyUrl))
+                let content = URLContent(copyUrl, size)
+                parent.picker(didFinishPicking: .success(content))
             } catch {
                 parent.picker(didFinishPicking: .failure(error))
             }

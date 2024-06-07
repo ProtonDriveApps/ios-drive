@@ -24,21 +24,25 @@ public extension Tower {
         set { storage.finishedFetchingTrash = newValue }
     }
     
-    func getTrash(shareID: String, page: Int, pageSize size: Int, handler: @escaping (Result<Int, Error>) -> Void) {
+    func getTrash(shareID: String, page: Int, pageSize size: Int, handler: @escaping (Result<[Node], Error>) -> Void) {
         cloudSlot?.scanTrashed(shareID: shareID, page: page, pageSize: size, handler: handler)
     }
 
     func trash(nodes: [Node], completion: @escaping (Result<Void, Error>) -> Void)  {
-        guard let parent = nodes.first?.parentLink else { return }
-        let groups = nodes.map(\.id).splitInGroups(of: 150)
+        guard let moc = nodes.first?.moc else { return }
+        moc.performAndWait {
+            guard let parent = nodes.first?.parentLink else { return }
+            let groups = nodes.map(\.id).splitInGroups(of: 150)
 
-        groups.forEach { linkGroup in
-            cloudSlot?.trash(shareID: parent.shareID, parentLinkID: parent.id, linkIDs: linkGroup) { [unowned self] result in
-                completion(result.map { self.trashNodeLocally(nodes) })
+            groups.forEach { linkGroup in
+                cloudSlot?.trash(shareID: parent.shareID, parentLinkID: parent.id, linkIDs: linkGroup, breadcrumbs: .startCollecting()) { [unowned self] result in
+                    completion(result.map { self.trashNodeLocally(linkGroup) })
+                }
             }
         }
     }
 
+    @available(*, deprecated, message: "Use the NodeIdentifier version")
     func delete(nodes: [String], shareID: String, completion: @escaping (Result<Void, Error>) -> Void) {
         let groups = nodes.splitInGroups(of: 150)
 
@@ -62,42 +66,43 @@ public extension Tower {
         })
     }
 
+    @available(*, deprecated, message: "Use the NodeIdentifier version")
     func emptyTrash(nodes: [String], shareID: String, completion: @escaping (Result<Void, Error>) -> Void) {
         cloudSlot?.emptyTrash(shareID: shareID) { [unowned self] result in
             completion(result.map { self.setToBeDeleted(nodes) })
         }
     }
 
+    @available(*, deprecated, message: "Use the NodeIdentifier version")
     func restoreFromTrash(shareID: String, nodes: [String], completion: @escaping (Result<Void, Error>) -> Void)  {
         let groups = nodes.splitInGroups(of: 150)
 
         groups.forEach { linkGroup in
             cloudSlot?.restore(shareID: shareID, linkIDs: linkGroup) { [unowned self] result in
-                completion( result.flatMap { complete(original: linkGroup, failed: $0, action: self.restoreLocally) })
+                completion( result.flatMap { completeRestoration(original: linkGroup, failed: $0, action: self.restoreLocally) })
             }
         }
     }
 
-    private func complete(original: [String], failed: [PartialFailure], action performActionWith: ([String]) -> Void) -> Result<Void, Error> {
+    private func completeRestoration(original: [String], failed: [PartialFailure], action performActionWith: ([String]) -> Void) -> Result<Void, Error> {
         let failedIDs = Set(failed.map(\.id))
         let successful = original.filter { !failedIDs.contains($0) }
         performActionWith(successful)
         return failed.isEmpty ? .success : .failure(failed[0].error)
     }
 
-    // This parameter `Node` comes from a main context, to be replaced by id parameter
-    private func trashNodeLocally(_ nodes: [Node]) {
-        let moc = storage.mainContext
+    private func trashNodeLocally(_ ids: [String]) {
+        let moc = storage.backgroundContext
         moc.performAndWait {
-            let newNodes = storage.fetchNodes(ids: nodes.map(\.id), moc: moc)
+            let newNodes = storage.fetchNodes(ids: ids, moc: moc)
             newNodes.forEach { $0.state = .deleted }
-            try? moc.save()
+            try? moc.saveWithParentLinkCheck()
         }
     }
 
     private func setToBeDeleted(_ ids: [String]) {
         // should happen on a main context because changes a transient property relevant to main context only
-        // moc.save() is not needed by same reason
+        // moc.saveWithSpecialCheck() is not needed by same reason
         let moc = storage.mainContext
         let nodes = storage.fetchNodes(ids: ids, moc: moc)
         moc.performAndWait {
@@ -112,7 +117,98 @@ public extension Tower {
         let nodes = storage.fetchNodes(ids: ids, moc: moc)
         moc.performAndWait {
             nodes.forEach { $0.state = .active }
-            try? moc.save()
+            try? moc.saveWithParentLinkCheck()
         }
+    }
+}
+
+// MARK: - New APIs with NodeIdentifier
+public extension Tower {
+    
+    func delete(_ nodes: [NodeIdentifier], completion: @escaping (Result<Void, Error>) -> Void) {
+        Task { [weak self] in
+            var requestError: (any Error)?
+            var links = [String]()
+            
+            do {
+                for group in nodes.splitIntoChunks() {
+                    guard let cloudSlot = self?.cloudSlot else { break } // emptyTrash is async, Tower may be deallocated meanwhile
+                    
+                    try await cloudSlot.delete(shareID: group.share, linkIDs: group.links)
+                    links.append(contentsOf: group.links)
+                }
+            } catch {
+                requestError = error
+            }
+            
+            self?.setToBeDeleted(links)
+
+            if let requestError = requestError {
+                completion(.failure(requestError))
+            } else {
+                completion(.success)
+            }
+        }
+    }
+
+    func emptyTrash(_ nodes: [NodeIdentifier], completion: @escaping (Result<Void, Error>) -> Void) {
+        Task { [weak self] in
+            var requestError: (any Error)?
+            var links = [String]()
+            
+            do {
+                for group in nodes.splitIntoChunks() {
+                    guard let cloudSlot = self?.cloudSlot else { break } // emptyTrash is async, Tower may be deallocated meanwhile
+                    
+                    try await cloudSlot.emptyTrash(shareID: group.share)
+                    links.append(contentsOf: group.links)
+                }
+            } catch {
+                requestError = error
+            }
+        
+            self?.setToBeDeleted(links)
+            
+            if let requestError = requestError {
+                completion(.failure(requestError))
+            } else {
+                completion(.success)
+            }
+        }
+    }
+
+    func restore(_ nodes: [NodeIdentifier], completion: @escaping (Result<Void, Error>) -> Void)  {
+        Task { [weak self] in
+            var requestError: (any Error)?
+            var failed = [PartialFailure]()
+            var links = Set<String>()
+
+            do {
+                for group in nodes.splitIntoChunks() {
+                    guard let cloudSlot = self?.cloudSlot else { break } // restoration is async, Tower may be deallocated meanwhile
+                    
+                    let groupResult = try await cloudSlot.restore(shareID: group.share, linkIDs: group.links)
+                    failed.append(contentsOf: groupResult)
+                    links.formUnion(group.links)
+                }
+            } catch {
+                requestError = error
+            }
+                
+            let successfulIDs = links.subtracting(failed.map(\.id))
+            self?.restoreLocally(successfulIDs)
+            
+            if let atLeastOneError = requestError ?? failed.first?.error {
+                completion(.failure(atLeastOneError))
+            } else {
+                completion(.success)
+            }
+        }
+    }
+}
+
+private extension Tower {
+    func restoreLocally(_ ids: Set<String>) {
+        self.restoreLocally(Array(ids))
     }
 }

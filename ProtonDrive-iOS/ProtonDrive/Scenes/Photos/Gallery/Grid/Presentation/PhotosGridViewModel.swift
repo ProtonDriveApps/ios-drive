@@ -16,9 +16,13 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import PDCore
+import Foundation
 
 protocol PhotosGridViewModelProtocol: ObservableObject {
     var sections: [PhotosGridViewSection] { get }
+    var error: PassthroughSubject<Error?, Never> { get }
+    var footer: String { get }
     func didShowLastItem()
 }
 
@@ -26,15 +30,15 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
     private let controller: PhotosGalleryController
     private let loadController: PhotosPagingLoadController
     private let monthFormatter: MonthFormatter
-    private let durationFormatter: DurationFormatter
     private var cancellables = Set<AnyCancellable>()
 
     @Published var sections: [PhotosGridViewSection] = []
+    let error = PassthroughSubject<Error?, Never>()
+    let footer: String = "End-to-end encrypted"
 
-    init(controller: PhotosGalleryController, loadController: PhotosPagingLoadController, monthFormatter: MonthFormatter, durationFormatter: DurationFormatter) {
+    init(controller: PhotosGalleryController, loadController: PhotosPagingLoadController, monthFormatter: MonthFormatter) {
         self.controller = controller
         self.monthFormatter = monthFormatter
-        self.durationFormatter = durationFormatter
         self.loadController = loadController
         subscribeToUpdates()
     }
@@ -42,22 +46,32 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
     func didShowLastItem() {
         loadController.loadNext()
     }
-
+    
     private func subscribeToUpdates() {
         controller.sections
             .sink { [weak self] sections in
                 self?.handle(sections)
             }
             .store(in: &cancellables)
+        
+        loadController.errorPublisher
+            .sink { [weak self] error in
+                Log.error(error, domain: .photosProcessing)
+                #if HAS_QA_FEATURES
+                self?.error.send(PhotosGridError.failedFetch)
+                #endif
+            }
+            .store(in: &cancellables)
     }
-
+    
     private func handle(_ sections: [PhotosSection]) {
-        self.sections = sections.map(makeSection)
+        self.sections = sections.enumerated().map { makeSection(from: $0.element, index: $0.offset) }
     }
 
-    private func makeSection(from section: PhotosSection) -> PhotosGridViewSection {
+    private func makeSection(from section: PhotosSection, index: Int) -> PhotosGridViewSection {
         PhotosGridViewSection(
             title: monthFormatter.formatMonth(from: section.month),
+            isFirst: index == 0,
             items: section.photos.map(makePhoto)
         )
     }
@@ -66,7 +80,11 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
         PhotoGridViewItem(
             photoId: photo.id.nodeID,
             shareId: photo.id.shareID,
-            duration: photo.duration.map { durationFormatter.formatDuration(from: $0) }
+            isShared: photo.isShared,
+            isVideo: photo.isVideo,
+            captureTime: photo.captureTime,
+            isDownloading: photo.isDownloading,
+            isAvailableOffline: photo.isAvailableOffline
         )
     }
 }

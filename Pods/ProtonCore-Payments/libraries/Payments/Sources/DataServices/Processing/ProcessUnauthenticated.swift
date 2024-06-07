@@ -19,8 +19,12 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+import Foundation
 import StoreKit
-import ProtonCore_Log
+import ProtonCoreFeatureFlags
+import ProtonCoreLog
+import ProtonCoreObservability
+import ProtonCoreUtilities
 
 /*
 
@@ -68,16 +72,19 @@ import ProtonCore_Log
 
 final class ProcessUnauthenticated: ProcessUnathenticatedProtocol {
 
+    let areSubscriptionsEnabled: Bool
+
     unowned let dependencies: ProcessDependencies
 
-    init(dependencies: ProcessDependencies) {
+    init(dependencies: ProcessDependencies, featureFlagsRepository: FeatureFlagsRepositoryProtocol = FeatureFlagsRepository.shared) {
         self.dependencies = dependencies
+        self.areSubscriptionsEnabled = featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan)
     }
 
     let queue = DispatchQueue(label: "ProcessUnauthenticated async queue", qos: .userInitiated)
-    
+
     // MARK: - This code is performed before the user account has been created and authenticated during signup process
-    
+
     func process(
         transaction: SKPaymentTransaction, plan: PlanToBeProcessed, completion: @escaping ProcessCompletionCallback
     ) throws {
@@ -85,25 +92,56 @@ final class ProcessUnauthenticated: ProcessUnathenticatedProtocol {
             assertionFailure("This is a blocking network request, should never be called from main thread")
             throw AwaitInternalError.synchronousCallPerformedFromTheMainThread
         }
-        
+
         #if DEBUG_CORE_INTERNALS
         guard TemporaryHacks.simulateBackendPlanPurchaseFailure == false else {
             TemporaryHacks.simulateBackendPlanPurchaseFailure = false
             throw StoreKitManager.Errors.invalidPurchase
         }
         #endif
-        
         // Step 3. Obtain the StoreKit receipt that hopefully confirms the IAP purchase (we don't check this locally)
         let receipt = try dependencies.getReceipt()
         do {
-            
+
             // Step 4. Exchange the receipt for a token that's worth product's Proton price amount of money
             PMLog.debug("Making TokenRequest")
-            let tokenApi = dependencies.paymentsApiProtocol.tokenRequest(
-                api: dependencies.apiService, amount: plan.amount, receipt: receipt
-            )
-            let tokenRes = try tokenApi.awaitResponse(responseObject: TokenResponse())
-            guard let token = tokenRes.paymentToken else { return }
+
+            let futureToken: Either<PaymentToken, BaseApiRequest<TokenResponse>>
+            if areSubscriptionsEnabled {
+
+                guard let transactionIdentifier = transaction.transactionIdentifier else {
+                    throw StoreKitManagerErrors.transactionFailedByUnknownReason
+                }
+                guard let bundleIdentifier = Bundle.main.bundleIdentifier else {
+                    assertionFailure("You shouldn't be running this outside an application bundle")
+                    throw StoreKitManagerErrors.notAllowed
+                }
+
+                if let existingToken = dependencies.tokenStorage.get(), existingToken.status == .chargeable {
+                    futureToken = .left(existingToken)
+                } else {
+                    let tokenApi = dependencies.paymentsApiProtocol.paymentTokenRequest(
+                        api: dependencies.apiService,
+                        amount: plan.amount,
+                        currencyCode: plan.currencyCode,
+                        receipt: receipt,
+                        transactionId: transactionIdentifier,
+                        bundleId: bundleIdentifier,
+                        productId: transaction.payment.productIdentifier
+                    )
+
+                    futureToken = .right(tokenApi)
+                }
+
+            } else {
+                let tokenApi = dependencies.paymentsApiProtocol.paymentTokenOldRequest(
+                    api: dependencies.apiService, amount: plan.amount, receipt: receipt
+                )
+                futureToken = .right(tokenApi)
+            }
+
+            guard let token = try obtainToken(futureToken: futureToken) else { return }
+
             PMLog.debug("StoreKit: payment token created for signup")
             dependencies.tokenStorage.add(token)
             processUnauthenticated(withToken: token, transaction: transaction, plan: plan, completion: completion)
@@ -121,9 +159,9 @@ final class ProcessUnauthenticated: ProcessUnathenticatedProtocol {
                                         completion: @escaping ProcessCompletionCallback) {
         do {
             PMLog.debug("Making TokenRequestStatus")
-            
+
             // Step 5. Wait until the token is ready for consumption (status `chargeable`)
-            let tokenStatusApi = dependencies.paymentsApiProtocol.tokenStatusRequest(api: dependencies.apiService, token: token)
+            let tokenStatusApi = dependencies.paymentsApiProtocol.paymentTokenStatusRequest(api: dependencies.apiService, token: token)
             let tokenStatusRes = try tokenStatusApi.awaitResponse(responseObject: TokenStatusResponse())
             let status = tokenStatusRes.paymentTokenStatus?.status ?? .failed
             switch status {
@@ -151,7 +189,7 @@ final class ProcessUnauthenticated: ProcessUnathenticatedProtocol {
             finishWhenStillUnauthenticated(transaction: transaction, result: .withoutObtainingToken, completion: completion)
         }
     }
-    
+
     private func finishWhenStillUnauthenticated(transaction: SKPaymentTransaction,
                                                 result: PaymentSucceeded,
                                                 completion: @escaping ProcessCompletionCallback) {
@@ -159,7 +197,7 @@ final class ProcessUnauthenticated: ProcessUnathenticatedProtocol {
         dependencies.addTransactionsBeforeSignup(transaction: transaction)
         completion(.finished(result))
     }
-    
+
     // MARK: - This code is performed after the user has been already authenticated during signup process
 
     func processAuthenticatedBeforeSignup(
@@ -171,20 +209,48 @@ final class ProcessUnauthenticated: ProcessUnathenticatedProtocol {
             guard let self = self else { return }
             try self.retryAlertView(transaction: transaction, plan: plan, completion: completion)
         }
-
         // Step 9. Retrieve the token worth product's Proton price of money from the storage.
         guard let token = dependencies.tokenStorage.get() else {
             PMLog.debug("StoreKit: No proton token found")
             // Step 9. If the token is not available we effectively repeat step 3: we obtain the StoreKit receipt that hopefully confirms the IAP purchase (we don't check this locally)
             let receipt = try dependencies.getReceipt()
             do {
-                
                 // Step 9. If the token is not available we effectively repeat step 4: we exchange the receipt for a token that's worth product's Proton price amount of money
-                let tokenApi = dependencies.paymentsApiProtocol.tokenRequest(
-                    api: dependencies.apiService, amount: plan.amount, receipt: receipt
-                )
-                let tokenRes = try tokenApi.awaitResponse(responseObject: TokenResponse())
-                guard let token = tokenRes.paymentToken else {
+                let futureToken: Either<PaymentToken, BaseApiRequest<TokenResponse>>
+                if areSubscriptionsEnabled {
+
+                    guard let transactionIdentifier = transaction.transactionIdentifier else {
+                        throw StoreKitManagerErrors.transactionFailedByUnknownReason
+                    }
+                    guard let bundleIdentifier = Bundle.main.bundleIdentifier else {
+                        assertionFailure("You shouldn't be running this outside an application bundle")
+                        throw StoreKitManagerErrors.notAllowed
+                    }
+
+                    if let existingToken = dependencies.tokenStorage.get(), existingToken.status == .chargeable {
+                        futureToken = .left(existingToken)
+                    } else {
+                        let tokenApi = dependencies.paymentsApiProtocol.paymentTokenRequest(
+                            api: dependencies.apiService,
+                            amount: plan.amount,
+                            currencyCode: plan.currencyCode,
+                            receipt: receipt,
+                            transactionId: transactionIdentifier,
+                            bundleId: bundleIdentifier,
+                            productId: transaction.payment.productIdentifier
+                        )
+
+                        futureToken = .right(tokenApi)
+                    }
+
+                } else {
+                    let tokenApi = dependencies.paymentsApiProtocol.paymentTokenOldRequest(
+                        api: dependencies.apiService, amount: plan.amount, receipt: receipt
+                    )
+                    futureToken = .right(tokenApi)
+                }
+
+                guard let token = try obtainToken(futureToken: futureToken) else {
                     throw StoreKitManager.Errors.transactionFailedByUnknownReason
                 }
                 dependencies.tokenStorage.add(token)
@@ -233,7 +299,7 @@ final class ProcessUnauthenticated: ProcessUnathenticatedProtocol {
                                                          completion: @escaping ProcessCompletionCallback) throws {
 
         // Step 10. Wait until the token is ready for consumption (status `chargeable`)
-        let tokenStatusApi = dependencies.paymentsApiProtocol.tokenStatusRequest(api: dependencies.apiService, token: token)
+        let tokenStatusApi = dependencies.paymentsApiProtocol.paymentTokenStatusRequest(api: dependencies.apiService, token: token)
         let tokenStatusRes = try tokenStatusApi.awaitResponse(responseObject: TokenStatusResponse())
         let status = tokenStatusRes.paymentTokenStatus?.status ?? .failed
         switch status {
@@ -273,7 +339,7 @@ final class ProcessUnauthenticated: ProcessUnathenticatedProtocol {
             try retryOnError()
         }
     }
-    
+
     private func buySubscription(transaction: SKPaymentTransaction,
                                  plan: PlanToBeProcessed,
                                  token: PaymentToken,
@@ -283,31 +349,36 @@ final class ProcessUnauthenticated: ProcessUnathenticatedProtocol {
         do {
             let request = try dependencies.paymentsApiProtocol.buySubscriptionRequest(
                 api: dependencies.apiService,
-                planId: plan.protonIdentifier,
-                amount: plan.amount,
+                plan: plan,
                 amountDue: plan.amountDue,
-                paymentAction: .token(token: token.token)
+                paymentAction: .token(token: token.token),
+                isCreditingAllowed: !areSubscriptionsEnabled
             )
-            let recieptRes = try request.awaitResponse(responseObject: SubscriptionResponse())
+            let receiptRes = try request.awaitResponse(responseObject: SubscriptionResponse())
             PMLog.debug("StoreKit: success (2)")
-            if let newSubscription = recieptRes.newSubscription {
-                dependencies.updateSubscription(newSubscription)
+            if let newSubscription = receiptRes.newSubscription {
+                // the error is ignored, because the current plan will be fetched regardless after the user is logged in
+                try? dependencies.updateSubscription(newSubscription)
                 // Step 13. Finish the IAP transaction
                 finishWhenAuthenticated(transaction: transaction, result: .resolvingIAPToSubscription, completion: completion)
             } else {
-                throw StoreKitManager.Errors.noNewSubscriptionInSuccessfullResponse
+                throw StoreKitManager.Errors.noNewSubscriptionInSuccessfulResponse
             }
-        } catch let error where error.isPaymentAmmountMismatchOrUnavailablePlanError {
+        } catch let error where error.isPaymentAmountMismatchOrUnavailablePlanError {
             PMLog.debug("StoreKit: amount mismatch")
-            try recoverByToppingUpCredits(
-                plan: plan, token: token, transaction: transaction, retryOnError: retryOnError, completion: completion
-            )
+            if areSubscriptionsEnabled {
+                try retryOnError()
+            } else {
+                try recoverByToppingUpCredits(
+                    plan: plan, token: token, transaction: transaction, retryOnError: retryOnError, completion: completion
+                )
+            }
         } catch {
             PMLog.debug("StoreKit: Buy plan failed: \(error.userFacingMessageInPayments)")
             try retryOnError()
         }
     }
-    
+
     private func recoverByToppingUpCredits(plan: PlanToBeProcessed,
                                            token: PaymentToken,
                                            transaction: SKPaymentTransaction,
@@ -360,6 +431,22 @@ final class ProcessUnauthenticated: ProcessUnathenticatedProtocol {
             let receipt = try? self.dependencies.getReceipt()
             self.finishWhenAuthenticated(transaction: transaction, result: .cancelled, completion: completion)
             self.dependencies.bugAlertHandler?(receipt)
+        }
+    }
+
+    private func obtainToken(futureToken: Either<PaymentToken, BaseApiRequest<TokenResponse>>) throws -> PaymentToken? {
+        switch futureToken {
+        case let .left(token):
+            return token
+        case let .right(tokenApi):
+            let tokenRes = try tokenApi.awaitResponse(responseObject: TokenResponse())
+
+            if let tokenError = tokenRes.error {
+                ObservabilityEnv.report(.paymentCreatePaymentTokenTotal(error: tokenError))
+            } else {
+                ObservabilityEnv.report(.paymentCreatePaymentTokenTotal(status: .http2xx))
+            }
+            return tokenRes.paymentToken
         }
     }
 }

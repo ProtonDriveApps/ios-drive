@@ -16,7 +16,8 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
+import SwiftUI
 import UIKit
 
 final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewModelProtocol>: UIViewController, PhotosPreviewItemView {
@@ -24,8 +25,8 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
     private var cancellables = Set<AnyCancellable>()
     private weak var rootViewController: UIViewController?
     private lazy var contentView = UIView()
-    private var interactiveView: InteractiveImageView?
-    private var isFirstAppear = true
+    private weak var interactiveView: InteractiveImageView?
+    private var isContentUpdateNeeded = true
     private var gestureRecognizers = [UIGestureRecognizer]()
 
     init(viewModel: ViewModel) {
@@ -47,10 +48,16 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        if isFirstAppear {
+        if isContentUpdateNeeded {
             handleUpdate()
-            isFirstAppear = false
+            isContentUpdateNeeded = false
         }
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        isContentUpdateNeeded = true
+        resetContent()
     }
 
     private func subscribeToUpdates() {
@@ -60,9 +67,14 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
         .store(in: &cancellables)
     }
 
-    private func handleUpdate() {
+    private func resetContent() {
+        children.forEach { $0.remove() }
         contentView.subviews.forEach { $0.removeFromSuperview() }
         gestureRecognizers.forEach { view.removeGestureRecognizer($0) }
+    }
+
+    private func handleUpdate() {
+        resetContent()
 
         guard let state = viewModel.state else {
             return
@@ -74,6 +86,8 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
             addLoading(text: loadingText)
         case let .preview(fullPreview):
             addFullPreview(fullPreview)
+        case let .error(title: title, text: text):
+            addError(title: title, text: text)
         }
     }
 
@@ -92,6 +106,7 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
 
     private func addInteractiveImageView(with data: Data) {
         let imageView = InteractiveImageView(data: data)
+        imageView.accessibilityIdentifier = "PhotoPreviewDetail.Image"
         contentView.addSubview(imageView)
         imageView.fillSuperview()
         interactiveView = imageView
@@ -100,11 +115,20 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
 
     private func addVideoView(with url: URL) {
         let viewController = VideoContentViewController(url: url)
+        add(viewController, to: contentView)
+        addVideoGestureRecognizers()
+    }
+
+    private func addError(title: String, text: String) {
+        let configuration = EmptyViewConfiguration(image: .cloudError, title: title, message: text)
+        let viewController = UIHostingController(rootView: EmptyFolderView(viewModel: configuration))
+        add(viewController, to: contentView)
+    }
+
+    private func setChildViewController(_ viewController: UIViewController) {
         addChild(viewController)
         contentView.addSubview(viewController.view)
         viewController.view.fillSuperview()
-        viewController.didMove(toParent: self)
-        addVideoGestureRecognizers()
     }
 
     private func addDefaultGestureRecognizers() {
@@ -125,7 +149,10 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
 
     private func addFullPreview(_ preview: PhotoFullPreview) {
         switch preview {
-        case let .photo(data):
+        case let .thumbnail(data):
+            addInteractiveImageView(with: data)
+        case let .image(url):
+            let data = (try? Data(contentsOf: url)) ?? Data()
             addInteractiveImageView(with: data)
         case let .video(url):
             addVideoView(with: url)
@@ -138,6 +165,13 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
 
     @objc private func handleDoubleTap() {
         interactiveView?.handleDoubleTap()
+    }
+
+    private func showError(_ error: PhotoPreviewDetailError) {
+        let alertController = UIAlertController(title: nil, message: error.message, preferredStyle: .alert)
+        let action = UIAlertAction(title: error.button, style: .cancel)
+        alertController.addAction(action)
+        present(alertController, animated: true)
     }
 
     // MARK: - PhotosPreviewItemView

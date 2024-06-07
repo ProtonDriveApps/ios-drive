@@ -16,32 +16,56 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import Combine
 
 final class AsyncThumbnailLoader: CancellableThumbnailLoader {
     private var denied = Set<Identifier>()
     private let scheduled: NSMapTable<NSString, ThumbnailIdentifiableOperation> = NSMapTable(keyOptions: .copyIn, valueOptions: .weakMemory)
-    private let regulatingQueue = DispatchQueue(label: "thumbnail.loader.queue", attributes: .concurrent)
+    private let regulatingQueue = DispatchQueue(label: "thumbnail.loader.queue", qos: .userInitiated, attributes: .concurrent)
     private let operationsFactory: ThumbnailOperationsFactory
+    private let failedIdSubject = PassthroughSubject<Identifier, Never>()
+    private let succeededIdSubject = PassthroughSubject<Identifier, Never>()
 
     let schedulingQueue = OperationQueue()
 
+    var succeededId: AnyPublisher<Identifier, Never> {
+        succeededIdSubject.eraseToAnyPublisher()
+    }
+
+    var failedId: AnyPublisher<Identifier, Never> {
+        failedIdSubject.eraseToAnyPublisher()
+    }
+
     init(operationsFactory: ThumbnailOperationsFactory) {
         self.operationsFactory = operationsFactory
+        schedulingQueue.maxConcurrentOperationCount = 10
     }
 }
 
 extension AsyncThumbnailLoader {
     func loadThumbnail(with id: Identifier) {
+        guard isIdAllowed(id) else {
+            Log.info("Load thumbnail not allowed: \(id)", domain: .thumbnails)
+            failedIdSubject.send(id)
+            return
+        }
+        guard canScheduleOperation(id) else {
+            return
+        }
+
         do {
-            guard canScheduleOperation(id) else { return }
             let operation = try operationsFactory.makeThumbnailModel(forFileWithID: id)
             operation.delegate = self
             scheduleOperation(operation, key: id)
         } catch ThumbnailLoaderError.nonRecoverable {
+            Log.warning("Non recoverable load error: \(id)", domain: .thumbnails)
             handlingNonRecoverableError(id: id)
             removeScheduledOperation(with: id)
+            failedIdSubject.send(id)
         } catch {
+            Log.warning("Load error: \(id), \(error.localizedDescription)", domain: .thumbnails)
             removeScheduledOperation(with: id)
+            failedIdSubject.send(id)
         }
     }
 
@@ -59,7 +83,13 @@ extension AsyncThumbnailLoader {
 extension AsyncThumbnailLoader {
     private func canScheduleOperation(_ id: Identifier) -> Bool {
         regulatingQueue.sync {
-            isAllowed(id) && isNotScheduled(id)
+            isNotScheduled(id)
+        }
+    }
+
+    private func isIdAllowed(_ id: Identifier) -> Bool {
+        regulatingQueue.sync {
+            isAllowed(id)
         }
     }
 
@@ -94,9 +124,11 @@ extension AsyncThumbnailLoader {
 extension AsyncThumbnailLoader: ThumbnailLoaderDelegate {
     func finishOperationWithSuccess(_ id: NodeIdentifier) {
         removeScheduledOperation(with: id)
+        succeededIdSubject.send(id)
     }
 
     func finishOperationWithFailure(_ id: NodeIdentifier, error: Error) {
+        Log.info("finishOperationWithFailure, \(error.localizedDescription)", domain: .thumbnails)
         switch error {
         case ThumbnailLoaderError.nonRecoverable:
             handlingNonRecoverableError(id: id)
@@ -105,6 +137,7 @@ extension AsyncThumbnailLoader: ThumbnailLoaderDelegate {
         default:
             removeScheduledOperation(with: id)
         }
+        failedIdSubject.send(id)
     }
 }
 

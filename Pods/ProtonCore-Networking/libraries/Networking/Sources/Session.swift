@@ -29,12 +29,12 @@ public typealias SessionDecodableResponse = Decodable
 public typealias APIDecodableResponse = SessionDecodableResponse
 
 public enum SessionResponseError: Error {
-    
+
     case configurationError
     case responseBodyIsNotAJSONDictionary(body: Data?, response: HTTPURLResponse?)
     case responseBodyIsNotADecodableObject(body: Data?, response: HTTPURLResponse?)
     case networkingEngineError(underlyingError: NSError)
-    
+
     private var withoutResponse: SessionResponseError {
         switch self {
         case .configurationError: return self
@@ -43,7 +43,7 @@ public enum SessionResponseError: Error {
         case .networkingEngineError: return self
         }
     }
-    
+
     public var underlyingError: NSError {
         switch self {
         case .configurationError: return self as NSError
@@ -102,7 +102,7 @@ public func handleAuthenticationChallenge(
         }
         let credential = URLCredential(trust: trust)
         challengeCompletionHandler(.useCredential, credential)
-        
+
     } else if let tk = trustKit {
         let wrappedCompletionHandler: (URLSession.AuthChallengeDisposition, URLCredential?) -> Void = { disposition, credential in
             trustKitCompletionHandler(disposition, credential, challengeCompletionHandler)
@@ -113,46 +113,47 @@ public func handleAuthenticationChallenge(
             challengeCompletionHandler(.performDefaultHandling, nil)
             return
         }
-        
+
     } else {
         assertionFailure("TrustKit not initialized correctly")
         challengeCompletionHandler(.performDefaultHandling, nil)
-        
+
     }
 }
 
 public protocol Session {
-    
+
     typealias DecodableResponseCompletion<T> = (_ task: URLSessionDataTask?,
                                                 _ result: Result<T, SessionResponseError>) -> Void where T: SessionDecodableResponse
-    
+
     typealias JSONResponseCompletion = (_ task: URLSessionDataTask?, _ result: Result<JSONDictionary, SessionResponseError>) -> Void
-    
+
     func generate(with method: HTTPMethod,
                   urlString: String,
                   parameters: Any?,
                   timeout: TimeInterval?,
                   retryPolicy: ProtonRetryPolicy.RetryMode) throws -> SessionRequest
-    
-    func request(with request: SessionRequest, completion: @escaping JSONResponseCompletion)
-    
+
+    func request(with request: SessionRequest,
+                 onDataTaskCreated: @escaping (URLSessionDataTask) -> Void,
+                 completion: @escaping JSONResponseCompletion)
+
     func request<T>(with request: SessionRequest,
                     jsonDecoder: JSONDecoder?,
+                    onDataTaskCreated: @escaping (URLSessionDataTask) -> Void,
                     completion: @escaping DecodableResponseCompletion<T>) where T: SessionDecodableResponse
-    
+
     func download(with request: SessionRequest,
                   destinationDirectoryURL: URL,
                   completion: @escaping DownloadCompletion)
 
-    // swiftlint:disable function_parameter_count
     func upload(with request: SessionRequest,
                 keyPacket: Data,
                 dataPacket: Data,
                 signature: Data?,
                 completion: @escaping JSONResponseCompletion,
                 uploadProgress: ProgressCompletion?)
-    
-    // swiftlint:disable function_parameter_count
+
     func upload<T>(with request: SessionRequest,
                    keyPacket: Data,
                    dataPacket: Data,
@@ -160,27 +161,25 @@ public protocol Session {
                    jsonDecoder: JSONDecoder?,
                    completion: @escaping DecodableResponseCompletion<T>,
                    uploadProgress: ProgressCompletion?) where T: SessionDecodableResponse
-    
+
     func upload(with request: SessionRequest,
                 files: [String: URL],
                 completion: @escaping JSONResponseCompletion,
                 uploadProgress: ProgressCompletion?)
-    
+
     func upload<T>(with request: SessionRequest,
                    files: [String: URL],
                    jsonDecoder: JSONDecoder?,
                    completion: @escaping DecodableResponseCompletion<T>,
                    uploadProgress: ProgressCompletion?) where T: SessionDecodableResponse
 
-    // swiftlint:disable function_parameter_count
     func uploadFromFile(with request: SessionRequest,
                         keyPacket: Data,
                         dataPacketSourceFileURL: URL,
                         signature: Data?,
                         completion: @escaping JSONResponseCompletion,
                         uploadProgress: ProgressCompletion?)
-    
-    // swiftlint:disable function_parameter_count
+
     func uploadFromFile<T>(with request: SessionRequest,
                            keyPacket: Data,
                            dataPacketSourceFileURL: URL,
@@ -188,16 +187,29 @@ public protocol Session {
                            jsonDecoder: JSONDecoder?,
                            completion: @escaping DecodableResponseCompletion<T>,
                            uploadProgress: ProgressCompletion?) where T: SessionDecodableResponse
-    
+
     func setChallenge(noTrustKit: Bool, trustKit: TrustKit?)
-    
+
     func failsTLS(request: SessionRequest) -> String?
-    
+
     var sessionConfiguration: URLSessionConfiguration { get }
 }
 
 public extension Session {
-    
+    func request(with request: SessionRequest,
+                 completion: @escaping JSONResponseCompletion) {
+        self.request(with: request, onDataTaskCreated: { _ in }, completion: completion)
+    }
+
+    func request<T>(with request: SessionRequest,
+                    jsonDecoder: JSONDecoder?,
+                    completion: @escaping DecodableResponseCompletion<T>) where T: SessionDecodableResponse {
+        self.request(with: request, jsonDecoder: jsonDecoder, onDataTaskCreated: { _ in }, completion: completion)
+    }
+}
+
+public extension Session {
+
     @available(*, deprecated, message: "Please use the variant returning either DecodableResponseCompletion or JSONResponseCompletion")
     func request(with request: SessionRequest, completion: @escaping ResponseCompletion) {
         self.request(with: request) { task, result in
@@ -208,7 +220,7 @@ public extension Session {
             }
         }
     }
-    
+
     @available(*, deprecated, message: "Please use the variant returning either DecodableResponseCompletion or JSONResponseCompletion")
     func upload(with request: SessionRequest,
                 keyPacket: Data,
@@ -224,7 +236,6 @@ public extension Session {
     }
 
     @available(*, deprecated, message: "Please use the variant returning either DecodableResponseCompletion or JSONResponseCompletion")
-    // swiftlint:disable function_parameter_count
     func upload(with request: SessionRequest,
                 keyPacket: Data, dataPacket: Data, signature: Data?,
                 completion: @escaping ResponseCompletion,
@@ -238,14 +249,14 @@ public extension Session {
             uploadProgress?(progress)
         }
     }
-    
+
     @available(*, deprecated, message: "Please use the variant returning either DecodableResponseCompletion or JSONResponseCompletion")
     func upload(with request: SessionRequest,
                 files: [String: URL],
                 completion: @escaping ResponseCompletion) {
         self.upload(with: request, files: files, completion: completion, uploadProgress: nil)
     }
-    
+
     @available(*, deprecated, message: "Please use the variant returning either DecodableResponseCompletion or JSONResponseCompletion")
     func upload(with request: SessionRequest,
                 files: [String: URL],
@@ -276,7 +287,6 @@ public extension Session {
     }
 
     @available(*, deprecated, message: "Please use the variant returning either DecodableResponseCompletion or JSONResponseCompletion")
-    // swiftlint:disable function_parameter_count
     func uploadFromFile(with request: SessionRequest,
                         keyPacket: Data,
                         dataPacketSourceFileURL: URL,
@@ -298,59 +308,59 @@ public extension Session {
 }
 
 extension Session {
-    
+
     public func generate(with method: HTTPMethod, urlString: String, parameters: Any? = nil, timeout: TimeInterval? = nil, retryPolicy: ProtonRetryPolicy.RetryMode) throws -> SessionRequest {
-        return SessionRequest.init(parameters: parameters,
-                                   urlString: urlString,
-                                   method: method,
-                                   timeout: timeout ?? defaultTimeout,
-                                   retryPolicy: retryPolicy)
+        try SessionRequest.init(parameters: parameters,
+                                urlString: urlString,
+                                method: method,
+                                timeout: timeout ?? defaultTimeout,
+                                retryPolicy: retryPolicy)
     }
 }
 
 public protocol SessionFactoryInterface {
     func createSessionInstance(url apiHostUrl: String) -> Session
-    func createSessionRequest(parameters: Any?, urlString: String, method: HTTPMethod, timeout: TimeInterval, retryPolicy: ProtonRetryPolicy.RetryMode) -> SessionRequest
+    func createSessionRequest(parameters: Any?, urlString: String, method: HTTPMethod, timeout: TimeInterval, retryPolicy: ProtonRetryPolicy.RetryMode) throws -> SessionRequest
 }
 
 public final class SessionFactory: SessionFactoryInterface {
-    
+
     public static let instance = SessionFactory()
-    
+
     private init() {}
-    
+
     public static func createSessionInstance(url apiHostUrl: String) -> Session {
         instance.createSessionInstance(url: apiHostUrl)
     }
-    
+
     public static func createSessionRequest(parameters: Any?,
                                             urlString: String,
                                             method: HTTPMethod,
                                             timeout: TimeInterval,
-                                            retryPolicy: ProtonRetryPolicy.RetryMode = .userInitiated) -> SessionRequest {
-        instance.createSessionRequest(parameters: parameters, urlString: urlString, method: method, timeout: timeout, retryPolicy: retryPolicy)
+                                            retryPolicy: ProtonRetryPolicy.RetryMode = .userInitiated) throws -> SessionRequest {
+        try instance.createSessionRequest(parameters: parameters, urlString: urlString, method: method, timeout: timeout, retryPolicy: retryPolicy)
     }
-    
+
     public func createSessionInstance(url apiHostUrl: String) -> Session {
         AlamofireSession()
     }
-    
+
     public func createSessionRequest(
         parameters: Any?, urlString: String, method: HTTPMethod, timeout: TimeInterval, retryPolicy: ProtonRetryPolicy.RetryMode = .userInitiated
-    ) -> SessionRequest {
-        AlamofireRequest(parameters: parameters, urlString: urlString, method: method, timeout: timeout, retryPolicy: retryPolicy)
+    ) throws -> SessionRequest {
+        try AlamofireRequest(parameters: parameters, urlString: urlString, method: method, timeout: timeout, retryPolicy: retryPolicy)
     }
 }
 
 public class SessionRequest {
-    init(parameters: Any?, urlString: String, method: HTTPMethod, timeout: TimeInterval, retryPolicy: ProtonRetryPolicy.RetryMode = .userInitiated) {
+    init(parameters: Any?, urlString: String, method: HTTPMethod, timeout: TimeInterval, retryPolicy: ProtonRetryPolicy.RetryMode = .userInitiated) throws {
         self.parameters = parameters
         self.method = method
         self.urlString = urlString
         self.timeout = timeout
         self.interceptor = ProtonRetryPolicy(mode: retryPolicy)
     }
-    
+
     var _request: URLRequest?
     public var request: URLRequest? {
         get {
@@ -361,39 +371,39 @@ public class SessionRequest {
             self._request?.timeoutInterval = self.timeout
         }
     }
-    
+
     let parameters: Any?
     let urlString: String
     let method: HTTPMethod
     let timeout: TimeInterval
     let interceptor: ProtonRetryPolicy
-    
+
     // in the future this dict may have race condition issue. fix it later
-    private var headers: [String: String] = [:]
-    
+    public var headers: [String: String] = [:]
+
     internal func headerCounts() -> Int {
         return self.headers.count
     }
-    
+
     internal func hasHeader(key: String) -> Bool {
         return self.headers[key] != nil
     }
-    
+
     internal func matches(key: String, value: String) -> Bool {
         guard let v = self.headers[key] else {
             return false
         }
         return v == value
     }
-    
+
     internal func value(key: String) -> String? {
         return self.headers[key]
     }
-    
+
     public func setValue(header: String, _ value: String) {
         self.headers[header] = value
     }
-    
+
     // must call after the request be set
     public func updateHeader() {
         for (header, value) in self.headers {

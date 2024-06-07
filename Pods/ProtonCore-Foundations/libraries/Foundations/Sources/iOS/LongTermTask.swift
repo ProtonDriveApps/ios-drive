@@ -19,12 +19,13 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
 import Foundation
 import UIKit
-import ProtonCore_Log
+import ProtonCoreLog
 
 public class LongTermTask {
-    
+
     private let timeout = 20
     private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
 
@@ -35,28 +36,28 @@ public class LongTermTask {
             }
         }
     }
-    
+
     public init() {
         setupObservers()
     }
-    
+
     deinit {
         NotificationCenter.default.removeObserver(self)
         finishLongTermTask()
     }
-    
+
     private func setupObservers() {
         NotificationCenter.default.removeObserver(self)
         let notificationCenter = NotificationCenter.default
         notificationCenter.addObserver(self, selector: #selector(appMovedToBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
     }
-    
+
     @objc private func appMovedToBackground() {
         if inProgress {
             scheduleLongTermTask()
         }
     }
-    
+
     private func scheduleLongTermTask() {
         guard let application = UIApplication.getInstance() else {
             return
@@ -71,7 +72,7 @@ public class LongTermTask {
         }
         PMLog.debug("Schedule background task: \(self.backgroundTaskID)")
     }
-    
+
     private func finishLongTermTask() {
         if backgroundTaskID == .invalid { return }
         PMLog.debug("End background task: \(backgroundTaskID)")
@@ -79,3 +80,4 @@ public class LongTermTask {
         backgroundTaskID = .invalid
     }
 }
+#endif

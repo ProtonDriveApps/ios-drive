@@ -20,21 +20,24 @@ import FileProvider
 
 extension Tower {
 
-    func retrieveSiblings(of itemTemplate: NSFileProviderItem) throws -> [Node] {
-        guard let shareID = self.node(itemIdentifier: itemTemplate.parentItemIdentifier)?.shareID,
-              let parentID = nodeIdentifier(for: itemTemplate.parentItemIdentifier) else {
-            return []
+    func nodeWithName(of item: NSFileProviderItem) throws -> Node? {
+        guard let parent = self.node(itemIdentifier: item.parentItemIdentifier) as? Folder,
+              let moc = parent.moc else {
+            throw Errors.parentNotFound
         }
 
-        let siblingsAndSelf = try storage.fetchChildren(of: parentID.nodeID, share: shareID, sorting: .default, moc: storage.mainContext)
-        let siblings = siblingsAndSelf.filter { child in
-            child.identifier != nodeIdentifier(for: itemTemplate.itemIdentifier)
-            && child.localID != itemTemplate.itemIdentifier.rawValue
+        return try moc.performAndWait {
+            let hash = try NameHasher.hash(item.filename, parent: parent)
+            let clientUID = sessionVault.getUploadClientUID()
+            return (try storage.fetchChildrenUploadedByClientsOtherThan(clientUID,
+                                                                        with: hash,
+                                                                        of: parent.id,
+                                                                        share: parent.shareID,
+                                                                        moc: moc)).first
         }
-        return siblings
     }
 
-    func rootFolder() throws -> Folder {
+    public func rootFolder() throws -> Folder {
         guard let root = node(itemIdentifier: .rootContainer) as? Folder else {
             assertionFailure("Could not find rootContainer")
             throw NSFileProviderError(.noSuchItem)
@@ -67,7 +70,15 @@ extension Tower {
         guard let parent = parentFolder(of: item) else {
             return nil
         }
-        return fileSystemSlot?.getDraft(item.itemIdentifier.rawValue, shareID: parent.shareID) as? File
+
+        guard let moc = parent.moc else {
+            Log.error("Attempting to fetch identifier when moc is nil (node has been deleted)", domain: .fileProvider)
+            fatalError()
+        }
+
+        return moc.performAndWait {
+            return fileSystemSlot?.getDraft(item.itemIdentifier.rawValue, shareID: parent.shareID) as? File
+        }
     }
 
 }

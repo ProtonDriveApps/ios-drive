@@ -16,9 +16,9 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import ProtonCore_Payments
+import ProtonCorePayments
 
-// Can not reuse from ProtonCore_Payments because object there does not use Codable for parsing of BE response
+// Can not reuse from ProtonCorePayments because object there does not use Codable for parsing of BE response
 
 public struct Subscription: Codable {
     public let ID: String

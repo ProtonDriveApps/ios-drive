@@ -17,6 +17,7 @@
 
 import CoreData
 
+#if os(iOS)
 protocol HasTransientValues {
     var _observation: Any? { get set }
 }
@@ -35,12 +36,14 @@ extension HasTransientValues where Self: NSManagedObject {
                let objectID = self?.objectID,
                updated.map(\.objectID).contains(objectID)
             {
-                self?.managedObjectContext?.perform { [weak self] in
+                guard let moc = self?.moc else { return }
+                moc.perform { [weak self] in
                     if let self = self, !self.isDeleted {
-                        self.managedObjectContext?.refresh(self, mergeChanges: false)
+                        moc.refresh(self, mergeChanges: false)
                     }
                 }
             }
         }
     }
 }
+#endif

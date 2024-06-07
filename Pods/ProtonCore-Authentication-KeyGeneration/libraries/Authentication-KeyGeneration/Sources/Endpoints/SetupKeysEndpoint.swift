@@ -20,9 +20,9 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Crypto
-import ProtonCore_Authentication
-import ProtonCore_Networking
+import ProtonCoreCrypto
+import ProtonCoreAuthentication
+import ProtonCoreNetworking
 
 extension AuthService {
     struct SetupKeysEndpointResponse: APIDecodableResponse {}
@@ -30,7 +30,7 @@ extension AuthService {
     struct SetupKeysEndpoint: Request {
         let addresses: [[String: Any]]
         let privateKey: ArmoredKey
-        
+
         /// base64 encoded need random value
         let keySalt: String
         let passwordAuth: PasswordAuth
@@ -56,7 +56,7 @@ extension AuthService {
                 "KeySalt": keySalt,
                 "PrimaryKey": privateKey.value,
                 "AddressKeys": addresses,
-                "Auth": passwordAuth.toDictionary()!
+                "Auth": passwordAuth.parameters!
             ]
 
             return out

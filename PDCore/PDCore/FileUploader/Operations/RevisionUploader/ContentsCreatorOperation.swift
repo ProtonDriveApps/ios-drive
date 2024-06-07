@@ -19,13 +19,16 @@ import Foundation
 
 final class ContentsCreatorOperation: AsynchronousOperation {
 
+    private let id: UUID
     private let contentCreator: ContentCreator
     private let onError: OnUploadError
 
     init(
+        id: UUID,
         contentCreator: ContentCreator,
         onError: @escaping OnUploadError
     ) {
+        self.id = id
         self.contentCreator = contentCreator
         self.onError = onError
         super.init()
@@ -33,22 +36,26 @@ final class ContentsCreatorOperation: AsynchronousOperation {
 
     override func main() {
         guard !isCancelled else { return }
+        
+        Log.info("STAGE: 3.0 Content creator 🏞📦☁️ started. UUID: \(id.uuidString)", domain: .uploader)
 
         contentCreator.create { [weak self] result in
             guard let self = self, !self.isCancelled else { return }
 
             switch result {
             case .success:
+                Log.info("STAGE: 3.0 Content creator 🏞📦☁️ finished ✅. UUID: \(self.id.uuidString)", domain: .uploader)
                 self.state = .finished
 
             case .failure(let error):
+                Log.info("STAGE: 3.0 Content creator 🏞📦☁️ finished ❌. UUID: \(self.id.uuidString)", domain: .uploader)
+                Log.error("UUID: \(self.id.uuidString) ERROR: \(error)", domain: .uploader)
                 self.onError(error)
             }
         }
     }
 
     override func cancel() {
-        ConsoleLogger.shared?.log("🙅‍♂️🙅‍♂️🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
         contentCreator.cancel()
         super.cancel()
     }

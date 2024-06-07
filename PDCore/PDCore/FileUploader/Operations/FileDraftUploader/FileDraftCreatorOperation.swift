@@ -45,30 +45,38 @@ final class FileDraftCreatorOperation: AsynchronousOperation, UploadOperation {
         guard !isCancelled else { return }
 
         record()
+        NotificationCenter.default.post(name: .operationStart, object: draft.uri)
 
-        ConsoleLogger.shared?.log("STAGE: 1 Create File ✍️☁️ started", osLogType: FileUploader.self)
-        
+        Log.info("STAGE: 2 Create File ✍️☁️ started. UUID: \(id.uuidString)", domain: .uploader)
+
         fileDraftCreator.create(draft) { [weak self] result in
             guard let self = self, !self.isCancelled else { return }
 
             switch result {
             case .success:
-                ConsoleLogger.shared?.log("STAGE: 1 Create File ✍️☁️ finished ✅", osLogType: FileUploader.self)
+                Log.info("STAGE: 2 Create File ✍️☁️ finished ✅. UUID: \(self.id.uuidString)", domain: .uploader)
+                NotificationCenter.default.post(name: .operationEnd, object: draft.uri)
                 self.progress.complete()
                 self.state = .finished
 
             case .failure(let error):
-                ConsoleLogger.shared?.log("STAGE: 1 Create File ✍️☁️ finished ❌", osLogType: FileUploader.self)
+                Log.info("STAGE: 2 Create File ✍️☁️ finished ❌. UUID: \(self.id.uuidString)", domain: .uploader)
+                NotificationCenter.default.post(name: .operationEnd, object: draft.uri)
                 self.onError(error)
             }
         }
     }
 
     override func cancel() {
-        ConsoleLogger.shared?.log("🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
+        Log.info("STAGE: 2 🙅‍♂️ CANCEL \(type(of: self)). UUID: \(id.uuidString)", domain: .uploader)
+        NotificationCenter.default.post(name: .operationEnd, object: draft.uri)
         fileDraftCreator.cancel()
         super.cancel()
     }
 
     var recordingName: String { "creatingFileDraft" }
+
+    deinit {
+        Log.info("STAGE: 2 ☠️🚨 \(type(of: self)). UUID: \(id.uuidString)", domain: .uploader)
+    }
 }

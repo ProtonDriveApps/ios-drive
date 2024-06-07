@@ -41,18 +41,17 @@ struct PhotosPreviewFactory {
         id: PhotoId,
         tower: Tower,
         coordinator: PhotosPreviewCoordinator,
-        smallThumbnailsController: ThumbnailsController,
-        bigThumbnailsController: ThumbnailsController,
+        thumbnailsContainer: ThumbnailsControllersContainer,
         modeController: PhotosPreviewModeController,
         previewController: PhotosPreviewController,
         detailController: PhotoPreviewDetailController
     ) -> UIViewController {
-        let smallThumbnailController = LocalThumbnailController(thumbnailsController: smallThumbnailsController, id: id)
-        let fullThumbnailController = LocalThumbnailController(thumbnailsController: bigThumbnailsController, id: id)
-        let contentResource = DecryptedFileContentResource(storage: tower.storage, downloader: tower.downloader, fetchResource: PhotoFetchResource(storage: tower.storage))
-        let contentController = LocalFileContentController(resource: contentResource)
-        let fullPreviewController = LocalPhotoFullPreviewController(detailController: detailController, thumbnailController: fullThumbnailController, contentController: contentController, storageResource: LocalFileStorageResource())
-        let viewModel = PhotoPreviewDetailViewModel(thumbnailController: smallThumbnailController, modeController: modeController, previewController: previewController, detailController: detailController, fullPreviewController: fullPreviewController, id: id, coordinator: coordinator)
+        let smallThumbnailController = thumbnailsContainer.makeSmallThumbnailController(id: id)
+        let fullThumbnailController = thumbnailsContainer.makeBigThumbnailController(id: id)
+        let fileContentController = PhotosScenesFactory().makeFileContentController(tower: tower)
+        let fullPreviewController = LocalPhotoFullPreviewController(id: id, detailController: detailController, fullThumbnailController: fullThumbnailController, smallThumbnailController: smallThumbnailController, contentController: fileContentController)
+        let shareController = CachingPhotoPreviewDetailShareController(fileContentController: fileContentController, coordinator: coordinator, id: id)
+        let viewModel = PhotoPreviewDetailViewModel(thumbnailController: smallThumbnailController, modeController: modeController, previewController: previewController, detailController: detailController, fullPreviewController: fullPreviewController, shareController: shareController, id: id, coordinator: coordinator)
         return PhotoPreviewDetailViewController(viewModel: viewModel)
     }
 

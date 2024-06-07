@@ -11,6 +11,6 @@
 #endif
 
 
-FOUNDATION_EXPORT double ProtonCore_KeyManagerVersionNumber;
-FOUNDATION_EXPORT const unsigned char ProtonCore_KeyManagerVersionString[];
+FOUNDATION_EXPORT double ProtonCoreKeyManagerVersionNumber;
+FOUNDATION_EXPORT const unsigned char ProtonCoreKeyManagerVersionString[];
 

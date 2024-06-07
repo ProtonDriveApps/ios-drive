@@ -20,14 +20,14 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Crypto
-typealias CoreDecryptionKey = ProtonCore_Crypto.DecryptionKey
-typealias CoreSplitPacket = ProtonCore_Crypto.SplitPacket
-typealias CoreDecryptor = ProtonCore_Crypto.Decryptor
-import ProtonCore_DataModel
+import ProtonCoreCrypto
+typealias CoreDecryptionKey = ProtonCoreCrypto.DecryptionKey
+typealias CoreSplitPacket = ProtonCoreCrypto.SplitPacket
+typealias CoreDecryptor = ProtonCoreCrypto.Decryptor
+import ProtonCoreDataModel
 
 extension Data {
-    
+
     @available(*, deprecated, message: "Please use the non-optional variant")
     public func decryptAttachment(keyPackage: Data, userKeys: [Data], passphrase: String, keys: [Key]) throws -> Data? {
         do {
@@ -38,7 +38,7 @@ extension Data {
             throw error
         }
     }
-    
+
     public func decryptAttachmentNonOptional(keyPackage: Data, userKeys: [Data], passphrase: String, keys: [Key]) throws -> Data {
         var firstError: Error?
         for key in keys {
@@ -60,7 +60,7 @@ extension Data {
         }
         throw CryptoError.attachmentCouldNotBeDecrypted
     }
-    
+
     @available(*, deprecated, message: "Please use the non-optional variant")
     public func getSessionFromPubKeyPackage(userKeys: [Data], passphrase: String, keys: [Key]) throws -> SymmetricKey? {
         do {
@@ -71,7 +71,7 @@ extension Data {
             throw error
         }
     }
-    
+
     @available(*, deprecated, message: "Plase use ProtonCore-Crypto find a replacement Decryptor")
     public func getSessionFromPubKeyPackageNonOptional(userKeys: [Data], passphrase: String, keys: [Key]) throws -> SymmetricKey {
         var firstError: Error?

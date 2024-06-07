@@ -37,6 +37,17 @@ public extension NSManagedObject {
         managedObjectContext
     }
 
+    var objectIdentifier: String {
+        return self.objectID.uriRepresentation().absoluteString
+    }
+
+    func getManagedObjectContext() throws -> NSManagedObjectContext {
+        guard let managedObjectContext = managedObjectContext else {
+            throw Self.noMOC()
+        }
+        return managedObjectContext
+    }
+
     struct NoMOCError: Error, LocalizedError {
         let file: String
         let line: Int
@@ -51,7 +62,7 @@ public extension NSManagedObject {
         }
     }
 
-    public struct InvalidState: Error {
+    struct InvalidState: LocalizedError, CustomDebugStringConvertible {
         let line: Int
         let file: String
         let message: String
@@ -61,14 +72,30 @@ public extension NSManagedObject {
             self.file = (file as NSString).lastPathComponent
             self.line = line
         }
+
+        public var debugDescription: String {
+            return self.localizedDescription
+        }
+
+        public var errorDescription: String? {
+            #if HAS_BETA_FEATURES
+            "[\(file):\(line)] \(message)"
+            #else
+            "Invalid state: \(message)"
+            #endif
+        }
+
+        var localizedDescription: String {
+            self.errorDescription ?? "An unexpected error occurred."
+        }
     }
 
     static func noMOC(file: String = #filePath, line: Int = #line) -> Error {
         NoMOCError(file: file, line: line)
     }
 
-    public func invalidState(_ message: String, file: String = #filePath, line: Int = #line) -> InvalidState {
-        let message = "Invalid \(type(of: self)).\n" + message
+    func invalidState(_ message: String, file: String = #filePath, line: Int = #line) -> InvalidState {
+        let message = "Invalid \(type(of: self)). " + message
         return InvalidState(message: message, file: file, line: line)
     }
 }

@@ -18,6 +18,10 @@
 import Foundation
 import CoreData
 
+enum PageRevisionContentCreatorError: Error {
+    case inconsistentRevisionPage
+}
+
 class PageRevisionContentCreator: ContentCreator {
 
     private let page: RevisionPage
@@ -52,6 +56,10 @@ class PageRevisionContentCreator: ContentCreator {
                 case .success(let revision):
                     self.finalize(revision, completion)
 
+                case .failure(let error as ResponseError) where CommitPolicy.quotaExceeded.contains(error.responseCode):
+                    self.page.file.changeUploadingState(to: .cloudImpediment)
+                    completion(.failure(FileUploaderError.insuficientSpace))
+
                 case .failure(let error):
                     completion(.failure(error))
                 }
@@ -65,11 +73,13 @@ class PageRevisionContentCreator: ContentCreator {
     }
 
     func getUploadableRevision(_ page: RevisionPage) throws -> UploadableRevision {
-        try moc.performAndWait{
+        try moc.performAndWait {
             let revision = page.revision.in(moc: self.moc)
             let identifier = try revision.uploadableIdentifier()
             let addressID = try signersKitFactory.make(forSigner: .address(identifier.signatureEmail)).address.addressID
-            let blocks = normalizedBlocks().compactMap(UploadableBlock.init)
+            let blocks = try normalizedBlocks().compactMap {
+                try makeUploadableBlock(block: $0, verification: page.verification)
+            }
             let thumbnails = normalizedThumbnails().compactMap(\.uploadable)
 
             guard !blocks.isEmpty || !thumbnails.isEmpty else {
@@ -80,8 +90,17 @@ class PageRevisionContentCreator: ContentCreator {
         }
     }
 
+    private func makeUploadableBlock(block: UploadBlock, verification: BlockVerification) throws -> UploadableBlock? {
+        guard let verificationBlock = verification.blocks.first(where: { $0.index == block.index }) else {
+            throw PageRevisionContentCreatorError.inconsistentRevisionPage
+        }
+        return UploadableBlock(block: block, verificationToken: verificationBlock.verificationToken)
+    }
+
     private func finalize(_ fullUploadableRevision: FullUploadableRevision, _ completion: @escaping Completion) {
-        moc.performAndWait {
+        moc.performAndWait { [weak self] in
+            guard let self, !self.isCancelled else { return }
+
             do {
                 zip(fullUploadableRevision.blocks, normalizedBlocks()).forEach { fullUploadableBlock, block in
                     block.uploadToken = fullUploadableBlock.uploadToken
@@ -100,9 +119,9 @@ class PageRevisionContentCreator: ContentCreator {
             }
         }
     }
-
+    
     private func normalizedBlocks() -> [UploadBlock] {
-        page.blocks.filter { $0.isUploaded == false }
+        page.blocks.filter { $0.isUploaded == false }.sorted { $0.index < $1.index }
     }
 
     private func normalizedThumbnails() -> [Thumbnail] {

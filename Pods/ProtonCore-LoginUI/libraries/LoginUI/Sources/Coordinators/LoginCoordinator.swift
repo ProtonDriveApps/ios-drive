@@ -19,17 +19,18 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import Foundation
 import UIKit
-import ProtonCore_UIFoundations
-import ProtonCore_Login
-import ProtonCore_Authentication
-import ProtonCore_Networking
-import ProtonCore_CoreTranslation
-import ProtonCore_TroubleShooting
-import ProtonCore_FeatureSwitch
-import ProtonCore_Services
-import ProtonCore_Utilities
+import ProtonCoreUIFoundations
+import ProtonCoreLog
+import ProtonCoreLogin
+import ProtonCoreAuthentication
+import ProtonCoreNetworking
+import ProtonCoreTroubleShooting
+import ProtonCoreServices
+import ProtonCoreUtilities
 
 protocol LoginCoordinatorDelegate: AnyObject {
     func userDidDismissLoginCoordinator(loginCoordinator: LoginCoordinator)
@@ -48,7 +49,11 @@ final class LoginCoordinator {
     private let container: Container
     private let isCloseButtonAvailable: Bool
     private let isSignupAvailable: Bool
-    private var navigationController: LoginNavigationViewController?
+    private var navigationController: LoginNavigationViewController? {
+        didSet {
+            navigationController?.overrideUserInterfaceStyle = customization.inAppTheme().userInterfaceStyle
+        }
+    }
     private var childCoordinators: [ChildCoordinators: Any] = [:]
     private let externalLinks: ExternalLinks
     private var customization: LoginCustomizationOptions
@@ -72,23 +77,29 @@ final class LoginCoordinator {
 
     @discardableResult
     func start(_ kind: FlowStartKind, username: String? = nil) -> UINavigationController {
-        showInitialViewController(kind, initialViewController: loginViewController(username: username))
+        showInitialViewController(kind, initialViewController: createLoginViewController(username: username))
     }
 
     func startFromWelcomeScreen(
         viewController: UIViewController, variant: WelcomeScreenVariant, username: String? = nil
     ) -> UINavigationController {
-        let welcome = WelcomeViewController(variant: variant, delegate: self, username: username, signupAvailable: isSignupAvailable)
+        let welcome = createWelcomeViewController(variant: variant, username: username)
         return showInitialViewController(.over(viewController, .crossDissolve), initialViewController: welcome, navigationBarHidden: true)
     }
 
     func startWithUnmanagedWelcomeScreen(variant: WelcomeScreenVariant, username: String? = nil) -> UINavigationController {
-        let welcome = WelcomeViewController(variant: variant, delegate: self, username: username, signupAvailable: isSignupAvailable)
+        let welcome = createWelcomeViewController(variant: variant, username: username)
         return showInitialViewController(.unmanaged, initialViewController: welcome, navigationBarHidden: true)
     }
 
-    private func loginViewController(username: String?) -> UIViewController {
-        let loginViewController = UIStoryboard.instantiate(LoginViewController.self)
+    func createWelcomeViewController(variant: WelcomeScreenVariant, username: String? = nil) -> WelcomeViewController {
+        let welcome = WelcomeViewController(variant: variant, delegate: self, username: username, signupAvailable: isSignupAvailable)
+        welcome.overrideUserInterfaceStyle = customization.inAppTheme().userInterfaceStyle
+        return welcome
+    }
+
+    func createLoginViewController(username: String?) -> UIViewController {
+        let loginViewController = UIStoryboard.instantiateInLogin(LoginViewController.self, inAppTheme: customization.inAppTheme)
         loginViewController.viewModel = container.makeLoginViewModel()
         loginViewController.customErrorPresenter = customization.customErrorPresenter
         loginViewController.initialUsername = username
@@ -99,7 +110,7 @@ final class LoginCoordinator {
         loginViewController.onDohTroubleshooting = { [weak self] in
             guard let self = self else { return }
             self.container.executeDohTroubleshootMethodFromApiDelegate()
-            
+
             guard let nav = self.navigationController else { return }
             self.container.troubleShootingHelper.showTroubleShooting(over: nav)
         }
@@ -138,36 +149,67 @@ final class LoginCoordinator {
     }
 
     private func showHelp() {
-        let helpViewController = UIStoryboard.instantiate(HelpViewController.self)
+        let helpViewController = UIStoryboard.instantiateInLogin(HelpViewController.self,
+                                                          inAppTheme: customization.inAppTheme)
         helpViewController.delegate = self
         helpViewController.viewModel = HelpViewModel(helpDecorator: customization.helpDecorator)
         navigationController?.present(helpViewController, animated: true, completion: nil)
     }
 
-    private func showTwoFactorCode() {
-        let twoFactorViewController = UIStoryboard.instantiate(TwoFactorViewController.self)
-        twoFactorViewController.viewModel = container.makeTwoFactorViewModel()
+    private func showTwoFactorCode(username: String, password: String) {
+        let twoFactorViewController = UIStoryboard.instantiateInLogin(TwoFactorViewController.self,
+                                                               inAppTheme: customization.inAppTheme)
+        twoFactorViewController.viewModel = container.makeTwoFactorViewModel(username: username, password: password)
         twoFactorViewController.customErrorPresenter = customization.customErrorPresenter
         twoFactorViewController.delegate = self
         twoFactorViewController.onDohTroubleshooting = { [weak self] in
             guard let self = self else { return }
             self.container.executeDohTroubleshootMethodFromApiDelegate()
-            
+
             guard let nav = self.navigationController else { return }
             self.container.troubleShootingHelper.showTroubleShooting(over: nav)
         }
         navigationController?.pushViewController(twoFactorViewController, animated: true)
     }
 
+    @available(iOS 15.0, *)
+    func showKeySignature(challenge: Data, relyingPartyIdentifier: String, allowedCredentialIds: [Data]) {
+        let viewModel = container.makeFido2ViewModel(challenge: challenge, relyingPartyIdentifier: relyingPartyIdentifier, allowedCredentialIds: allowedCredentialIds)
+        viewModel.delegate = self
+        let fido2View = Fido2View(viewModel: viewModel)
+        let fido2ViewController = Fido2ViewController(rootView: fido2View)
+        navigationController?.pushViewController(fido2ViewController, animated: true)
+    }
+
+    @available(iOS 15.0, *)
+    @MainActor
+    func showTwoFactorChoice(username: String,
+                             password: String,
+                             challenge: Data,
+                             relyingPartyIdentifier: String,
+                             allowedCredentialIds: [Data]) {
+        let fido2ViewModel = container.makeFido2ViewModel(challenge: challenge, relyingPartyIdentifier: relyingPartyIdentifier, allowedCredentialIds: allowedCredentialIds)
+        fido2ViewModel.delegate = self
+
+        let totpViewModel = container.makeTOTPViewModel()
+        totpViewModel.delegate = self
+
+        let choose2FAView = Choose2FAView(totpViewModel: totpViewModel, fido2ViewModel: fido2ViewModel)
+        let choose2FAViewController = Choose2FAViewController(rootView: choose2FAView)
+
+        navigationController?.pushViewController(choose2FAViewController, animated: true)
+    }
+
     private func showMailboxPassword() {
-        let mailboxPasswordViewController = UIStoryboard.instantiate(MailboxPasswordViewController.self)
+        let mailboxPasswordViewController = UIStoryboard.instantiateInLogin(MailboxPasswordViewController.self,
+                                                                     inAppTheme: customization.inAppTheme)
         mailboxPasswordViewController.viewModel = container.makeMailboxPasswordViewModel()
         mailboxPasswordViewController.customErrorPresenter = customization.customErrorPresenter
         mailboxPasswordViewController.delegate = self
         mailboxPasswordViewController.onDohTroubleshooting = { [weak self] in
             guard let self = self else { return }
             self.container.executeDohTroubleshootMethodFromApiDelegate()
-            
+
             guard let nav = self.navigationController else { return }
             self.container.troubleShootingHelper.showTroubleShooting(over: nav)
         }
@@ -180,9 +222,11 @@ final class LoginCoordinator {
         }
 
         let coordinator = CreateAddressCoordinator(
-            container: container, navigationController: navigationController,
-            data: data, customErrorPresenter: customization.customErrorPresenter,
-            defaultUsername: defaultUsername
+            container: container,
+            navigationController: navigationController,
+            data: data,
+            defaultUsername: defaultUsername,
+            customization: customization
         )
         coordinator.delegate = self
         childCoordinators[.createAddress] = coordinator
@@ -202,7 +246,7 @@ final class LoginCoordinator {
                     case .success:
                         self?.completeLoginFlow(data: data)
                     case .failure(let error):
-                        self?.popAndShowError(error: .generic(message: error.messageForTheUser,
+                        self?.popAndShowError(error: .generic(message: error.localizedDescription,
                                                               code: error.bestShotAtReasonableErrorCode,
                                                               originalError: error))
                     }
@@ -222,12 +266,12 @@ final class LoginCoordinator {
             if self.customization.customErrorPresenter?.willPresentError(error: error, from: viewController) == true {
                 return
             }
-            
+
             guard let errorCapable = viewController as? LoginErrorCapable else { return }
             errorCapable.showError(error: error)
         }
     }
-    
+
     private func popAndShowInfo(message: String) {
         clearSessionAndPopToRootViewController(animated: true) { navigationController in
             guard let viewController = navigationController.topViewController else { return }
@@ -244,8 +288,25 @@ extension LoginCoordinator: LoginStepsDelegate {
         UIApplication.openURLIfPossible(externalLinks.accountSetup)
     }
 
-    func twoFactorCodeNeeded() {
-        showTwoFactorCode()
+    func requestTOTPCode(username: String, password: String) {
+        showTwoFactorCode(username: username, password: password)
+    }
+
+    @available(iOS 15.0, *)
+    func requestKeySignature(challenge: Data, relyingPartyIdentifier: String, allowedCredentialIds: [Data]) {
+         showKeySignature(challenge: challenge, relyingPartyIdentifier: relyingPartyIdentifier, allowedCredentialIds: allowedCredentialIds)
+    }
+
+    @available(iOS 15.0, *)
+    func requestTOTPOrKeySignature(username: String, password: String, challenge: Data, relyingPartyIdentifier: String, allowedCredentialIds: [Data]) {
+        Task {
+            await MainActor.run {  showTwoFactorChoice(username: username,
+                                                       password: password,
+                                                       challenge: challenge,
+                                                       relyingPartyIdentifier: relyingPartyIdentifier,
+                                                       allowedCredentialIds: allowedCredentialIds)
+            }
+        }
     }
 
     func mailboxPasswordNeeded() {
@@ -253,23 +314,13 @@ extension LoginCoordinator: LoginStepsDelegate {
     }
 
     func createAddressNeeded(data: CreateAddressData, defaultUsername: String?) {
-        if FeatureFactory.shared.isEnabled(.externalAccountConversion) {
-            showCreateAddress(data: data, defaultUsername: defaultUsername)
-        } else {
-            // account conversion not supported by feature flag
-            let externalAccountsNotSupportedError = LoginError.externalAccountsNotSupported(
-                message: CoreString._ls_external_accounts_not_supported_popup_local_desc,
-                title: CoreString._ls_external_accounts_address_required_popup_title,
-                originalError: NSError()
-            )
-            popAndShowError(error: externalAccountsNotSupportedError)
-        }
+        showCreateAddress(data: data, defaultUsername: defaultUsername)
     }
 
     func userAccountSetupNeeded() {
         UIApplication.openURLIfPossible(externalLinks.accountSetup)
     }
-    
+
     func learnMoreAboutExternalAccountsNotSupported() {
         UIApplication.openURLIfPossible(externalLinks.learnMoreAboutExternalAccountsNotSupported)
     }
@@ -388,6 +439,7 @@ extension LoginCoordinator: NavigationDelegate {
         if authCredential.isForUnauthenticatedSession {
             authDelegate.onUnauthenticatedSessionInvalidated(sessionUID: sessionUID)
         } else {
+            PMLog.signpost("Authenticated session invalidated in \(#function)", level: .info)
             authDelegate.onAuthenticatedSessionInvalidated(sessionUID: sessionUID)
         }
 
@@ -419,14 +471,14 @@ extension LoginCoordinator: TwoFactorViewControllerDelegate {
         popAndShowError(error: error)
     }
 
-    func twoFactorViewControllerDidFinish(endLoading: @escaping () -> Void, data: LoginData) {
+    func twoFactorViewControllerDidFinish(data: ProtonCoreLogin.LoginData, endLoading: @escaping () -> Void) {
         finish(endLoading: endLoading, data: data)
     }
 }
 
-private extension UIStoryboard {
-    static func instantiate<T: UIViewController>(_ controllerType: T.Type) -> T {
-        self.instantiate(storyboardName: "PMLogin", controllerType: controllerType)
+extension UIStoryboard {
+    static func instantiateInLogin<T: UIViewController>(_ controllerType: T.Type, inAppTheme: () -> InAppTheme) -> T {
+        self.instantiate(storyboardName: "PMLogin", controllerType: controllerType, inAppTheme: inAppTheme)
     }
 }
 
@@ -437,7 +489,7 @@ extension LoginCoordinator: WelcomeViewControllerDelegate {
     func userWantsToLogIn(username: String?) {
         guard let navigationController = navigationController else { return }
         navigationController.modalTransitionStyle = .coverVertical
-        let login = loginViewController(username: username)
+        let login = createLoginViewController(username: username)
         navigationController.autoresettingNextTransitionStyle = .modalLike
         navigationController.setViewControllers([login], animated: true)
     }
@@ -460,7 +512,9 @@ extension LoginCoordinator: AuthSessionInvalidatedDelegate {
         }
         guard isAuthenticatedSession else { return }
         CompletionBlockExecutor.asyncMainExecutor.execute { [weak self] in
-            self?.popAndShowInfo(message: CoreString._ls_info_session_expired)
+            self?.popAndShowInfo(message: LUITranslation.info_session_expired.l10n)
         }
     }
 }
+
+#endif

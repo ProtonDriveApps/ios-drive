@@ -17,43 +17,54 @@
 
 import UIKit
 import PDCore
-import ProtonCore_Keymaker
-import ProtonCore_Services
-import ProtonCore_HumanVerification
+import ProtonCoreKeymaker
+import ProtonCoreServices
+import ProtonCoreHumanVerification
+import PDUploadVerifier
 
 extension DriveDependencyContainer {
-    func makeProtectViewController() -> UIViewController {
-        let storageManager = StorageManager(suite: Constants.appGroup, sessionVault: sessionVault)
+    @MainActor
+    func makeProtectViewController() async -> UIViewController {
+        let tower = await initializeTowerInBackgroundQueue()
+
+        let authenticatedContainer = AuthenticatedDependencyContainer(
+            tower: tower, 
+            keymaker: keymaker,
+            networkService: networkService,
+            localSettings: localSettings,
+            windowScene: windowScene,
+            settingsSuite: appGroup
+        )
         
+        self.authenticatedContainer = authenticatedContainer
+
+        return await authenticatedContainer.makeProtectViewController()
+    }
+
+    func initializeTowerInBackgroundQueue() async -> Tower {
+        let storageManager = StorageManager(suite: Constants.appGroup, sessionVault: sessionVault)
         let tower = Tower(
             storage: storageManager,
             eventStorage: EventStorageManager(suiteUrl: appGroup.directoryUrl),
             appGroup: appGroup,
             mainKeyProvider: keymaker,
             sessionVault: sessionVault,
+            sessionCommunicator: sessionCommunicator,
             authenticator: authenticator,
             clientConfig: Constants.clientApiConfig,
             network: networkService,
             eventObservers: [],
-            eventProcessingMode: .full
+            eventProcessingMode: .full,
+            uploadVerifierFactory: ConcreteUploadVerifierFactory(),
+            localSettings: localSettings
         )
-
-        let authenticatedContainer = AuthenticatedDependencyContainer(
-            tower: tower, 
-            keymaker: keymaker,
-            networkService: networkService,
-            localSettings: LocalSettings(suite: appGroup),
-            windowScene: windowScene
-        )
-        
-        self.authenticatedContainer = authenticatedContainer
-
-        return authenticatedContainer.makeProtectViewController()
+        return tower
     }
 }
 
 extension AuthenticatedDependencyContainer {
-    func makeProtectViewController() -> UIViewController {
+    @MainActor
+    func makeProtectViewController() async -> UIViewController {
         let viewController = ProtectViewController()
         let viewModel = makeProtectViewModel()
         let coordinator = makeProtectCoordinator(viewController)
@@ -103,20 +114,11 @@ extension AuthenticatedDependencyContainer {
         let helper = HumanCheckHelper(
             apiService: networkService,
             supportURL: URL(string: "https://protonmail.com/support/knowledge-base/human-verification/")!,
+            inAppTheme: { .matchSystem },
             clientApp: .drive
         )
         // We're replacing the delegate set in the creation of InitialServices, so the HV delegate in iOS will be HumanCheckHelper instead of PMAPIClient, which still will be the HV delegate in macOS
         networkService.humanDelegate = helper
         return helper
-    }
-}
-
-extension Keymaker {
-    func isProtected() -> Bool {
-        isProtectorActive(BioProtection.self) || isProtectorActive(PinProtection.self)
-    }
-
-    func isLocked() -> Bool {
-        isProtected() ? mainKey == nil : false
     }
 }

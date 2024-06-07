@@ -1,0 +1,4 @@
+${PODS_ROOT}/Target Support Files/PMSettings/PMSettings-Unit-Tests-resources.sh
+${PODS_CONFIGURATION_BUILD_DIR}/PMSettings/Resources-PMSettings.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-UIFoundations-static/Resources-UIFoundations.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/Sentry-static/Sentry.bundle

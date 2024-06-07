@@ -45,13 +45,16 @@ public enum NameValidations {
                                         Self.dotNotAllowed,
                                         Self.twoDotsNotAllowed,
                                         Self.invalidCharacters])
-
-    public static let uploadFile = Validator(combining: [
-                                                Self.userSelectedName,
-                                                Self.noleadingWhitespaces,
-                                                Self.noTrailingWhitespaces])
-
+    
+    #if os(iOS)
     public static let iosName = Validator(combining: [
                                             Self.charCount,
-                                            Self.uploadFile])
+                                            Self.userSelectedName,
+                                            Self.noleadingWhitespaces,
+                                            Self.noTrailingWhitespaces])
+    #else
+    public static let iosName = Validator(combining: [
+                                            Self.nonEmpty,
+                                            Self.charCount])
+    #endif
 }

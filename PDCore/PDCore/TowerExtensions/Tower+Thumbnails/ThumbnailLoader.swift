@@ -15,9 +15,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Combine
+
 public protocol ThumbnailLoader {
     typealias Identifier = NodeIdentifier
 
+    var succeededId: AnyPublisher<Identifier, Never> { get }
+    var failedId: AnyPublisher<Identifier, Never> { get }
     func loadThumbnail(with file: Identifier)
     func cancelThumbnailLoading(_ id: Identifier)
 }
@@ -29,4 +33,14 @@ public enum ThumbnailLoaderError: Error {
     case thumbnailNotYetCreated
     case cancelled
     case other
+}
+
+public extension ThumbnailLoader {
+    var succeededId: AnyPublisher<Identifier, Never> {
+        Empty().eraseToAnyPublisher()
+    }
+
+    var failedId: AnyPublisher<Identifier, Never> {
+        Empty().eraseToAnyPublisher()
+    }
 }

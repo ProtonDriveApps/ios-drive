@@ -24,6 +24,7 @@ enum PhotoLibraryMappingResourceError: Error {
 
 protocol PhotoLibraryMappingResource {
     func map(assets: [PHAsset]) -> PhotoIdentifiers
+    func map(asset: PHAsset, localIdentifier: String) -> PhotoIdentifier?
 }
 
 final class LocalPhotoLibraryMappingResource: PhotoLibraryMappingResource {
@@ -35,6 +36,11 @@ final class LocalPhotoLibraryMappingResource: PhotoLibraryMappingResource {
         return assets.compactMap { try? makeAsset(from: $0, mapping: mapping) }
     }
 
+    func map(asset: PHAsset, localIdentifier: String) -> PhotoIdentifier? {
+        let mapping = library.cloudIdentifierMappings(forLocalIdentifiers: [localIdentifier])
+        return try? makeAsset(from: asset, mapping: mapping)
+    }
+
     private func makeAsset(from asset: PHAsset, mapping: [String: Result<PHCloudIdentifier, Error>]) throws -> PhotoIdentifier {
         guard let result = mapping[asset.localIdentifier] else {
             throw PhotoLibraryFetchResourceError.missingMapping
@@ -43,11 +49,14 @@ final class LocalPhotoLibraryMappingResource: PhotoLibraryMappingResource {
         return PhotoIdentifier(
             localIdentifier: asset.localIdentifier,
             cloudIdentifier: try getIdentifier(from: result),
-            creationDate: asset.creationDate,
             modifiedDate: asset.modificationDate,
-            width: asset.pixelWidth,
-            height: asset.pixelHeight
+            type: getType(from: asset)
         )
+    }
+
+    private func getType(from asset: PHAsset) -> PhotoIdentifier.IdentifierType {
+        let isSmallAsset = asset.mediaType == .image && !asset.representsBurst && asset.burstIdentifier == nil
+        return isSmallAsset ? .small : .big
     }
 
     private func getIdentifier(from result: Result<PHCloudIdentifier, Error>) throws -> String {

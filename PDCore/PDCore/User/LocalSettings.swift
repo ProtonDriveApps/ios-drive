@@ -23,16 +23,31 @@ public class LocalSettings: NSObject {
     @SettingsStorage("layoutPreferenceCache") private var layoutPreferenceCache: LayoutPreference.RawValue?
     @SettingsStorage("isUploadingDisclaimerActiveValue") private var isUploadingDisclaimerActiveValue: Bool?
     @SettingsStorage("isOnboarded") private var isOnboardedValue: Bool?
-    
+
     @SettingsStorage("optOutFromTelemetry") var optOutFromTelemetry: Bool?
     @SettingsStorage("optOutFromCrashReports") var optOutFromCrashReports: Bool?
     @SettingsStorage("isNoticationPermissionsSkipped") public var isNoticationPermissionsSkipped: Bool?
     @SettingsStorage("isPhotosBackupEnabledValue") private(set) var isPhotosBackupEnabledValue: Bool?
     @SettingsStorage("isPhotosBackupConnectionConstrainedValue") private(set) var isPhotosBackupConnectionConstrainedValue: Bool?
+    @SettingsStorage("isPhotosNotificationsPermissionsSkipped") public var isPhotosNotificationsPermissionsSkipped: Bool?
+    @SettingsStorage("isPhotosMediaTypeImageSupportedValue") private(set) var isPhotosMediaTypeImageSupportedValue: Bool?
+    @SettingsStorage("isPhotosMediaTypeVideoSupportedValue") private(set) var isPhotosMediaTypeVideoSupportedValue: Bool?
+    @SettingsStorage("photosBackupNotOlderThanValue") private(set) var photosBackupNotOlderThanValue: Date?
+
+    @SettingsStorage("photosEnabled") public var photosEnabledValue: Bool?
+    @SettingsStorage("photosUploadDisabled") public var photosUploadDisabledValue: Bool?
+    @SettingsStorage("photosBackgroundSyncEnabled") public var photosBackgroundSyncEnabledValue: Bool?
+    @SettingsStorage("logsCompressionDisabledValue") public var logsCompressionDisabledValue: Bool?
+    @SettingsStorage("domainReconnectionEnabledValue") public var domainReconnectionEnabledValue: Bool?
+    @SettingsStorage("postMigrationJunkFilesCleanupValue") public var postMigrationJunkFilesCleanupValue: Bool?
+    @SettingsStorage("newTrayAppMenuEnabledValue") public var newTrayAppMenuEnabledValue: Bool?
+
+    @SettingsStorage("DriveiOSLogCollection") public var driveiOSLogCollection: Bool?
+    @SettingsStorage("DriveiOSLogCollectionDisabled") public var driveiOSLogCollectionDisabled: Bool?
 
     public init(suite: SettingsStorageSuite) {
         super.init()
-        
+
         self._sortPreferenceCache.configure(with: suite)
         self._layoutPreferenceCache.configure(with: suite)
         self._optOutFromTelemetry.configure(with: suite)
@@ -42,6 +57,22 @@ public class LocalSettings: NSObject {
         self._isNoticationPermissionsSkipped.configure(with: suite)
         self._isPhotosBackupEnabledValue.configure(with: suite)
         self._isPhotosBackupConnectionConstrainedValue.configure(with: suite)
+        self._isPhotosNotificationsPermissionsSkipped.configure(with: suite)
+        self._isPhotosMediaTypeImageSupportedValue.configure(with: suite)
+        self._isPhotosMediaTypeVideoSupportedValue.configure(with: suite)
+        self._photosBackupNotOlderThanValue.configure(with: suite)
+        self._photosEnabledValue.configure(with: suite)
+        self._photosUploadDisabledValue.configure(with: suite)
+        self._photosBackgroundSyncEnabledValue.configure(with: suite)
+        self._logsCompressionDisabledValue.configure(with: suite)
+        self._driveiOSLogCollection.configure(with: suite)
+        self._driveiOSLogCollectionDisabled.configure(with: suite)
+        self._domainReconnectionEnabledValue.configure(with: suite)
+        self._postMigrationJunkFilesCleanupValue.configure(with: suite)
+        self._newTrayAppMenuEnabledValue.configure(with: suite)
+
+        self._driveiOSLogCollection.configure(with: suite)
+        self._driveiOSLogCollectionDisabled.configure(with: suite)
 
         if let sortPreferenceCache = self.sortPreferenceCache {
             nodesSortPreference = SortPreference(rawValue: sortPreferenceCache) ?? SortPreference.default
@@ -49,12 +80,29 @@ public class LocalSettings: NSObject {
             nodesSortPreference = SortPreference.default
         }
 
+        setDynamicVariables()
+    }
+
+    /// KVO compliant dynamic variables need to be set inidividually after initialization / cleanup
+    private func setDynamicVariables() {
         nodesLayoutPreference = LayoutPreference(cachedValue: layoutPreferenceCache)
         isUploadingDisclaimerActive = isUploadingDisclaimerActiveValue ?? true
         isPhotosBackupEnabled = isPhotosBackupEnabledValue ?? false
         isPhotosBackupConnectionConstrained = isPhotosBackupConnectionConstrainedValue ?? true
+        isPhotosMediaTypeImageSupported = isPhotosMediaTypeImageSupportedValue ?? true
+        isPhotosMediaTypeVideoSupported = isPhotosMediaTypeVideoSupportedValue ?? true
+        photosBackupNotOlderThan = photosBackupNotOlderThanValue ?? .distantPast
+        photosEnabled = photosEnabledValue ?? false
+        photosUploadDisabled = photosUploadDisabledValue ?? false
+        photosBackgroundSyncEnabled = photosBackgroundSyncEnabledValue ?? false
+        logsCompressionDisabled = logsCompressionDisabledValue ?? false
+        logCollectionEnabled = driveiOSLogCollection ?? false
+        logCollectionDisabled = driveiOSLogCollectionDisabled ?? false
+        domainReconnectionEnabled = domainReconnectionEnabledValue ?? false
+        postMigrationJunkFilesCleanup = postMigrationJunkFilesCleanupValue ?? false
+        newTrayAppMenuEnabled = newTrayAppMenuEnabledValue ?? false
     }
-    
+
     public func cleanUp() {
         self.sortPreferenceCache = nil
         self.layoutPreferenceCache = nil
@@ -65,8 +113,19 @@ public class LocalSettings: NSObject {
         self.isNoticationPermissionsSkipped = nil
         self.isPhotosBackupEnabledValue = nil
         self.isPhotosBackupConnectionConstrainedValue = nil
+        self.isPhotosNotificationsPermissionsSkipped = nil
+        self.isPhotosMediaTypeImageSupportedValue = nil
+        self.isPhotosMediaTypeVideoSupportedValue = nil
+        self.photosEnabledValue = nil
+        self.photosUploadDisabledValue = nil
+        self.photosBackgroundSyncEnabledValue = nil
+        self.logsCompressionDisabledValue = nil
+        self.domainReconnectionEnabledValue = nil
+        self.postMigrationJunkFilesCleanupValue = nil
+        self.newTrayAppMenuEnabledValue = nil
+        setDynamicVariables()
     }
-    
+
     @objc public dynamic var nodesSortPreference: SortPreference = SortPreference.default {
         willSet {
             self.sortPreferenceCache = newValue.rawValue
@@ -78,7 +137,7 @@ public class LocalSettings: NSObject {
             self.layoutPreferenceCache = newValue.rawValue
         }
     }
-    
+
     @objc public dynamic var isUploadingDisclaimerActive: Bool = true {
         willSet {
             isUploadingDisclaimerActiveValue = newValue
@@ -96,9 +155,86 @@ public class LocalSettings: NSObject {
             isPhotosBackupConnectionConstrainedValue = newValue
         }
     }
-    
+
+    @objc public dynamic var isPhotosMediaTypeImageSupported: Bool = true {
+        willSet {
+            isPhotosMediaTypeImageSupportedValue = newValue
+        }
+    }
+
+    @objc public dynamic var isPhotosMediaTypeVideoSupported: Bool = true {
+        willSet {
+            isPhotosMediaTypeVideoSupportedValue = newValue
+        }
+    }
+
+    @objc public dynamic var photosBackupNotOlderThan: Date = .distantPast {
+        willSet {
+            photosBackupNotOlderThanValue = newValue
+        }
+    }
+
+    @objc public dynamic var photosEnabled: Bool = false {
+        willSet {
+            photosEnabledValue = newValue
+        }
+    }
+
+    @objc public dynamic var photosUploadDisabled: Bool = false {
+        willSet {
+            photosUploadDisabledValue = newValue
+        }
+    }
+
+    @objc public dynamic var photosBackgroundSyncEnabled: Bool = false {
+        willSet {
+            photosBackgroundSyncEnabledValue = newValue
+        }
+    }
+
+    @objc public dynamic var logsCompressionDisabled: Bool = false {
+        willSet {
+            logsCompressionDisabledValue = newValue
+        }
+    }
+
+    @objc public dynamic var domainReconnectionEnabled: Bool = false {
+        willSet {
+            domainReconnectionEnabledValue = newValue
+        }
+    }
+
+    @objc public dynamic var postMigrationJunkFilesCleanup: Bool = false {
+        willSet {
+            postMigrationJunkFilesCleanupValue = newValue
+        }
+    }
+
+    @objc public dynamic var newTrayAppMenuEnabled: Bool = false {
+        willSet {
+            newTrayAppMenuEnabledValue = newValue
+        }
+    }
+
+    @objc public dynamic var logCollectionEnabled: Bool = false {
+        willSet {
+            driveiOSLogCollection = newValue
+        }
+    }
+
+    @objc public dynamic var logCollectionDisabled: Bool = false {
+        willSet {
+            driveiOSLogCollectionDisabled = newValue
+        }
+    }
+
     public var isOnboarded: Bool {
         get { isOnboardedValue == true }
         set { isOnboardedValue = (newValue ? true : nil) }
     }
+}
+
+public extension LocalSettings {
+    // Please do not create new instances of this class. Use the shared instance instead.
+    static let shared = LocalSettings(suite: .group(named: Constants.appGroup))
 }

@@ -18,12 +18,22 @@
 import Foundation
 
 public extension Optional {
-    func forceUnwrap(file: StaticString = #file, line: UInt = #line) -> Wrapped {
+    func throwUnwrap(file: StaticString = #file, line: UInt = #line) throws -> Wrapped {
         switch self {
         case .some(let wrapped):
             return wrapped
         case .none:
-            fatalError("Could not find: " + String(describing: Wrapped.self) + "\n" + "in \(file).", file: file, line: line)
+            throw NSError(domain: "me.proton.drive",
+                          code: 0,
+                          localizedDescription: "Could not find: " + String(describing: Wrapped.self) + "\n" + "in \(file).")
+        }
+    }
+    
+    func forceUnwrap(file: StaticString = #file, line: UInt = #line) -> Wrapped {
+        do {
+            return try throwUnwrap(file: file, line: line)
+        } catch {
+            fatalError(error.localizedDescription, file: file, line: line)
         }
     }
 
@@ -40,4 +50,20 @@ public extension Optional where Wrapped: Collection {
     var isNilOrEmpty: Bool {
         return self?.isEmpty ?? true
     }
+}
+
+struct UnwrapError: Error, LocalizedError {
+    let message: String
+
+    var errorDescription: String? {
+        message
+    }
+}
+
+infix operator ?!
+public func ?! <T>(lhs: T?, message: String) throws -> T {
+    guard let unwrapped = lhs else {
+        throw UnwrapError(message: message)
+    }
+    return unwrapped
 }

@@ -19,6 +19,10 @@ import UIKit
 
 extension UIViewController {
     func add(_ child: UIViewController) {
+        add(child, to: view)
+    }
+
+    func add(_ child: UIViewController, to view: UIView) {
         addChild(child)
         view.addSubview(child.view)
         child.view.fillSuperview()

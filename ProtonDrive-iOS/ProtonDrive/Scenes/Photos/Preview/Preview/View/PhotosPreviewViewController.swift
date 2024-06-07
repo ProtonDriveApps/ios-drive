@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import UIKit
 
 final class PhotosPreviewViewController<ViewModel: PhotosPreviewViewModelProtocol>: UIPageViewController, UIPageViewControllerDataSource, UIPageViewControllerDelegate {
@@ -56,13 +56,6 @@ final class PhotosPreviewViewController<ViewModel: PhotosPreviewViewModelProtoco
         }
     }
 
-    override func viewWillDisappear(_ animated: Bool) {
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            (UIApplication.shared.delegate as? AppDelegate)?.lockOrientationIfNeeded(in: .portrait)
-        }
-        super.viewWillDisappear(animated)
-    }
-
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
         coordinator.animateAlongsideTransition(in: nil, animation: { [weak self] _ in
             self?.setupNavigationControls()
@@ -99,14 +92,17 @@ final class PhotosPreviewViewController<ViewModel: PhotosPreviewViewModelProtoco
     }
 
     private func makeBarButtons() -> [UIBarButtonItem] {
-        let buttons = [
-            UIBarButtonItem(image: IconProvider.arrowUpFromSquare, style: .plain, target: self, action: #selector(share)),
-        ]
+        let shareButton = UIBarButtonItem(image: IconProvider.arrowUpFromSquare, style: .plain, target: self, action: #selector(share))
+        shareButton.accessibilityIdentifier = "PhotoPreviewDetail.ShareButton"
+        let buttons = [shareButton]
         buttons.forEach { $0.tintColor = ColorProvider.IconNorm }
         return buttons
     }
 
     @objc private func close() {
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            (UIApplication.shared.delegate as? AppDelegate)?.lockOrientationIfNeeded(in: .portrait)
+        }
         viewModel.close()
     }
 

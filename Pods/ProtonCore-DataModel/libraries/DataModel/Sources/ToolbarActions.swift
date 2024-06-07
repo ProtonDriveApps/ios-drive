@@ -22,13 +22,13 @@
 
 import Foundation
 
-public final class ToolbarActions: NSObject, NSCoding {
+public final class ToolbarActions: NSObject, NSCoding, Codable {
     /// Are the actions the same as the default toolbar actions.
     public var isCustom: Bool
     /// The list of actions of the toolbar
     public var actions: [String]
 
-    init(isCustom: Bool, actions: [String]) {
+    public init(isCustom: Bool, actions: [String]) {
         self.isCustom = isCustom
         self.actions = actions
     }

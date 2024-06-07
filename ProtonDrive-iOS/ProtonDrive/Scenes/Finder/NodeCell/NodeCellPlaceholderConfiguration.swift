@@ -40,7 +40,7 @@ class NodeCellPlaceholderConfiguration: ObservableObject, NodeCellConfiguration 
     var progressDirection: ProgressTracker.Direction?
     var secondLineSubtitle: String { "Unknown" }
     var selectionModel: CellSelectionModel?
-    var id: String = ""
+    var id: NodeIdentifier = NodeIdentifier("", "")
     
     let thumbnailViewModel: ThumbnailImageViewModel?
     let nodeRowActionMenuViewModel: NodeRowActionMenuViewModel? = nil

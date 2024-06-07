@@ -15,13 +15,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import os.log
 import Foundation
 import CoreData
 import PDClient
 
-final class DriveEventsLoopProcessor: LogObject {
-    static let osLog: OSLog = OSLog(subsystem: "PDCore", category: "DriveEventsLoopProcessor")
+protocol DriveEventsLoopProcessorType {
+    func process() throws -> [NodeIdentifier]
+}
+
+final class DriveEventsLoopProcessor: DriveEventsLoopProcessorType {
     
     private let cloudSlot: CloudSlot
     private let conveyor: EventsConveyor
@@ -45,11 +47,11 @@ final class DriveEventsLoopProcessor: LogObject {
             try applyEventsToStorage(&affectedNodes)
             
             if moc.hasChanges {
-                try moc.save()
+                try moc.saveWithParentLinkCheck()
             }
         }
         
-        ConsoleLogger.shared?.log("Finished processing events for \(affectedNodes.count) nodes", osLogType: Self.self)
+        Log.info("Finished processing events for \(affectedNodes.count) nodes", domain: .events)
         return affectedNodes
     }
     
@@ -59,7 +61,7 @@ final class DriveEventsLoopProcessor: LogObject {
             let nodeID = event.inLaneNodeId
             let parentID = event.inLaneParentId
             
-            ConsoleLogger.shared?.log("Process event `\(event.genericType)`. Node id: \(nodeID) parent id: \(parentID ?? "-")", osLogType: Self.self)
+            Log.info("Process event `\(event.genericType)`. Node id: \(nodeID) parent id: \(parentID ?? "-")", domain: .events)
 
             switch event.genericType {
             case .create where nodeExists(id: parentID): // need to know parent
@@ -75,11 +77,11 @@ final class DriveEventsLoopProcessor: LogObject {
                 affectedNodes.append(contentsOf: updated)
 
             default: // ignore event
-                ConsoleLogger.shared?.log("Ignore event because it is not relevant for current metadata", osLogType: Self.self)
+                Log.info("Ignore event because it is not relevant for current metadata", domain: .events)
                 ignored(event: event, storage: storage)
             }
 
-            ConsoleLogger.shared?.log("Done processing event, now removing it", osLogType: Self.self)
+            Log.info("Done processing event, now removing it", domain: .events)
             conveyor.completeProcessing(of: objectID)
         }
         
@@ -118,7 +120,7 @@ extension DriveEventsLoopProcessor {
             guard let file: File = storage.existing(with: [nodeID], in: moc).first else {
                 return []
             }
-            if let revision = file.activeRevision {
+            if let revision = file.activeRevision, revision.id != event.link.fileProperties?.activeRevision?.ID {
                 storage.removeOldBlocks(of: revision)
                 file.activeRevision = nil
             }
@@ -138,7 +140,7 @@ extension DriveEventsLoopProcessor {
 extension DriveEventsLoopProcessor {
     
     private func findNode(id: String, by attribute: String = "id") -> Node? {
-        let asFile: File? = storage.existing(with: [id], by: attribute, in: moc).first
+        let asFile: File? = storage.existing(with: [id], by: attribute, allowSubclasses: true, in: moc).first
         let asFolder: Folder? = storage.existing(with: [id], by: attribute, in: moc).first
         return asFolder ?? asFile
     }

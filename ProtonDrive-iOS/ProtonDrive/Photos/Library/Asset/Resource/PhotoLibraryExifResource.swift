@@ -21,8 +21,10 @@ import ImageIO
 import PDCore
 
 protocol PhotoLibraryExifResource {
-    func getPhotoExif(at url: URL) throws -> PhotoAsset.Exif
-    func getVideoExif(at url: URL) async throws -> PhotoAsset.Exif
+    func getCameraInfo(at url: URL) -> PhotoAssetMetadata.Camera
+    func getLocation(at url: URL) -> PhotoAssetMetadata.Location?
+    func getPhotoExif(at url: URL) -> PhotoAsset.Exif
+    func getVideoExif(at url: URL) async -> PhotoAsset.Exif
 }
 
 enum PhotoLibraryExifResourceError: Error {
@@ -30,43 +32,96 @@ enum PhotoLibraryExifResourceError: Error {
     case missingProperties
 }
 
-final class LocalPhotoLibraryExifResource: PhotoLibraryExifResource {
-    func getPhotoExif(at url: URL) throws -> PhotoAsset.Exif {
-        // TODO: need to specify exact keys and values format / or if this is the way to extract the keys
-        return PhotoAsset.Exif()
-//        guard let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil) else {
-//            throw PhotoLibraryExifResourceError.invalidSource
-//        }
-//        guard let dictionary = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) else {
-//            throw PhotoLibraryExifResourceError.missingProperties
-//        }
-//        return parse(dictionary)
+final class CoreImagePhotoLibraryExifResource: PhotoLibraryExifResource {
+    private let parser: PhotoLibraryExifParser
+
+    init(parser: PhotoLibraryExifParser) {
+        self.parser = parser
     }
 
-    func getVideoExif(at url: URL) async throws -> PhotoAsset.Exif {
-        // TODO: need to specify exact keys and values format / or if this is the way to extract the keys
-        return PhotoAsset.Exif()
-//        let asset = AVAsset(url: url)
-//        var allMetadata = [AVMetadataItem]()
-//        for format in try await asset.load(.availableMetadataFormats) {
-//            allMetadata += try await asset.loadMetadata(for: format)
-//        }
-//        return parse(allMetadata)
+    func getCameraInfo(at url: URL) -> PhotoAssetMetadata.Camera {
+        let dictionary = getExifDictionary(at: url)
+        return parser.parseCameraInfo(from: dictionary)
     }
 
-//    private func parse(_ dictionary: CFDictionary) -> PhotoAsset.Exif {
-//        let dictionary = dictionary as NSDictionary
-//        let exifDictionary = dictionary[kCGImagePropertyExifDictionary]
-//        return [:]
-//    }
+    func getLocation(at url: URL) -> PhotoAssetMetadata.Location? {
+        let dictionary = getExifDictionary(at: url)
+        return parser.parseLocation(from: dictionary)
+    }
 
-//    private func parse(_ metadata: [AVMetadataItem]) -> PhotoAsset.Exif {
-//        var exif = PhotoAsset.Exif()
-//        metadata.forEach { item in
-//            if let key = item.key as? String {
-//                exif[key] = item.stringValue
-//            }
-//        }
-//        return exif
-//    }
+    func getPhotoExif(at url: URL) -> PhotoAsset.Exif {
+        let dictionary = getExifDictionary(at: url)
+        return parser.parseExif(from: dictionary)
+    }
+
+    func getVideoExif(at url: URL) async -> PhotoAsset.Exif {
+        let items = (try? await getVideoMetadataItems(at: url)) ?? []
+        var dictionary = [String: Any]()
+        items.forEach { item in
+            if let key = item.key as? String {
+                dictionary[key] = item.stringValue
+            }
+        }
+        let exif = try? JSONSerialization.data(withJSONObject: dictionary)
+        return exif ?? Data()
+    }
+
+    private func getVideoMetadataItems(at url: URL) async throws -> [AVMetadataItem] {
+        let asset = AVAsset(url: url)
+        let metadata = try await asset.load(.metadata)
+        let commonMetadata = try await asset.load(.commonMetadata)
+        let availableFormats = try await asset.load(.availableMetadataFormats)
+        var allItems = metadata + commonMetadata
+        for format in availableFormats {
+            allItems += try await asset.loadMetadata(for: format)
+        }
+        return allItems
+    }
+
+    private func getExifDictionary(at url: URL) -> NSDictionary {
+        guard let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil) else {
+            return [:]
+        }
+        guard let dictionary = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) else {
+            return [:]
+        }
+        return dictionary as NSDictionary
+    }
+}
+
+final class PartialPhotoLibraryExifResource: PhotoLibraryExifResource {
+    func getCameraInfo(at url: URL) -> PhotoAssetMetadata.Camera {
+        let dictionary = getExifDictionary(at: url)
+        let exifDictionary = dictionary[kCGImagePropertyExifDictionary] as? NSDictionary ?? [:]
+        let cameraTime = CameraCaptureTimeParser().parseCameraCaptureTime(fromExif: exifDictionary)
+        return PhotoAssetMetadata.Camera(
+            captureTime: cameraTime.captureTime,
+            device: nil,
+            modificationTime: cameraTime.modificationTime,
+            orientation: nil,
+            subjectCoordinates: nil
+        )
+    }
+
+    func getLocation(at url: URL) -> PhotoAssetMetadata.Location? {
+        return nil
+    }
+
+    func getPhotoExif(at url: URL) -> PhotoAsset.Exif {
+        return Data()
+    }
+
+    func getVideoExif(at url: URL) async -> PhotoAsset.Exif {
+        return Data()
+    }
+
+    private func getExifDictionary(at url: URL) -> NSDictionary {
+        guard let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil) else {
+            return [:]
+        }
+        guard let dictionary = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) else {
+            return [:]
+        }
+        return dictionary as NSDictionary
+    }
 }

@@ -20,9 +20,9 @@
 //  along with ProtonCore. If not, see https://www.gnu.org/licenses/.
 //
 
-import ProtonCore_FeatureSwitch
-import ProtonCore_Networking
-import ProtonCore_Utilities
+import Foundation
+import ProtonCoreNetworking
+import ProtonCoreUtilities
 
 public protocol ObservabilityService {
     /// Reports events to Back-End
@@ -32,19 +32,19 @@ public protocol ObservabilityService {
 }
 
 public class ObservabilityServiceImpl: ObservabilityService {
-    
-    private let requestPerformer: ProtonCore_Networking.RequestPerforming?
-    
+
+    private let requestPerformer: ProtonCoreNetworking.RequestPerforming?
+
     private let timer: ObservabilityTimer
     private let aggregator: ObservabilityAggregator
     private let reportingQueue: CompletionBlockExecutor
     private let completion: ((URLSessionDataTask?, Result<JSONDictionary, NSError>) -> Void)?
-    
+
     private let encoder = JSONEncoder()
     private let endpoint = ObservabilityEndpoint()
-    
+
     private var isTimerRunning: Atomic<Bool> = .init(false)
-    
+
     public convenience init(requestPerformer: RequestPerforming) {
         self.init(
             requestPerformer: requestPerformer,
@@ -53,7 +53,7 @@ public class ObservabilityServiceImpl: ObservabilityService {
             reportingQueue: .asyncExecutor(dispatchQueue: .global())
         )
     }
-    
+
     init(requestPerformer: RequestPerforming,
          timer: ObservabilityTimer = ObservabilityTimerImpl(),
          aggregator: ObservabilityAggregator = ObservabilityAggregatorImpl(),
@@ -73,13 +73,8 @@ public class ObservabilityServiceImpl: ObservabilityService {
         }
         timer.start()
     }
-    
+
     public func report<Labels: Encodable & Equatable>(_ event: ObservabilityEvent<PayloadWithLabels<Labels>>) {
-        
-        guard FeatureFactory.shared.isEnabled(.unauthSession), FeatureFactory.shared.isEnabled(.observability) else {
-            return
-        }
-        
         isTimerRunning.mutate { value in
             guard value else {
                 value = true
@@ -87,24 +82,24 @@ public class ObservabilityServiceImpl: ObservabilityService {
                 return
             }
         }
-        
+
         aggregator.aggregate(event: event)
     }
-    
+
     private func sendMetrics(completion: ((URLSessionDataTask?, Result<JSONDictionary, NSError>) -> Void)?) {
-        
+
         if aggregator.aggregatedEvents.value.isEmpty { return }
-        
+
         reportingQueue.execute { [weak self] in
             guard let self else { return }
             let eventToReport = self.aggregator.aggregatedEvents.value
             self.aggregator.clear()
             let metrics = Metrics(metrics: eventToReport)
-            
+
             do {
                 let metricsData = try self.encoder.encode(metrics)
                 let parameters = try JSONSerialization.jsonObject(with: metricsData, options: [])
-            
+
                 self.requestPerformer?.performRequest(request: self.endpoint,
                                                       parameters: parameters,
                                                       headers: self.endpoint.headers,

@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 #if os(iOS)
 public struct LongPressCell<Content: View>: View {
@@ -24,21 +24,26 @@ public struct LongPressCell<Content: View>: View {
     let onLongPress: () -> Void
     let content: () -> Content
 
-    public init(onTap: @escaping () -> Void = {},
-         onLongPress: @escaping () -> Void = {},
-         @ViewBuilder content: @escaping () -> Content) {
+    public init(
+        onTap: @escaping () -> Void = {},
+        onLongPress: @escaping () -> Void = {},
+        @ViewBuilder content: @escaping () -> Content
+    ) {
         self.onTap = onTap
         self.onLongPress = onLongPress
         self.content = content
     }
 
     public var body: some View {
-        Button(action: {}) {
+        Button {
+            
+        } label: {
             content()
                 .onTapGesture(perform: onTap)
                 .onLongPressGesture(perform: onLongPress)
         }
         .buttonStyle(HighlightableButtonStyle())
+
     }
 }
 #endif

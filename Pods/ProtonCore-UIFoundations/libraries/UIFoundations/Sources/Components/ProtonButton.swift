@@ -19,11 +19,13 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import ProtonCore_Foundations
+import ProtonCoreFoundations
 
 public class ProtonButton: UIButton, AccessibleView {
-    
+
     public enum ImageType: Equatable {
         case textWithImage(image: UIImage?)
         case textWithChevron
@@ -68,7 +70,11 @@ public class ProtonButton: UIButton, AccessibleView {
         willSet {
             switch mode {
             case .solid, .outlined, .text:
-                newValue ? showLoading() : stopLoading()
+                if newValue {
+                    showLoading()
+                } else {
+                    stopLoading()
+                }
             case .image:
                 if isChevron {
                     animateChevron(isSelected: newValue, animated: true)
@@ -141,7 +147,7 @@ public class ProtonButton: UIButton, AccessibleView {
             dynamicUpdate()
         }
     }
-    
+
     private func applyImage(image: UIImage?, isImageOnly: Bool) {
         if let rightImage = createRightImage(image: image, isImageOnly: isImageOnly) {
             rightImage.tintColor = ColorProvider.IconNorm
@@ -150,7 +156,7 @@ public class ProtonButton: UIButton, AccessibleView {
             updateEdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16)
         }
     }
-    
+
     private func updateEdgeInsets(top: CGFloat, leading: CGFloat, bottom: CGFloat, trailing: CGFloat) {
         if #available(iOS 15.0, *), var configuration = configuration {
             configuration.contentInsets = .init(top: top, leading: leading, bottom: bottom, trailing: trailing)
@@ -173,9 +179,9 @@ public class ProtonButton: UIButton, AccessibleView {
                                         dark: ColorProvider.InteractionNormMajor1PassTheme),
                                forState: .normal)
         }
-        setBackgroundColor(ColorProvider.BrandDarken20, forState: .highlighted)
-        setBackgroundColor(ColorProvider.BrandDarken20, forState: .selected)
-        setBackgroundColor(ColorProvider.BrandLighten40, forState: .disabled)
+        setBackgroundColor(ColorProvider.InteractionNormPressed, forState: .highlighted)
+        setBackgroundColor(ColorProvider.InteractionNormPressed, forState: .selected)
+        setBackgroundColor(ColorProvider.InteractionNormDisabled, forState: .disabled)
     }
 
     private func nonSolidLayout() {
@@ -194,7 +200,7 @@ public class ProtonButton: UIButton, AccessibleView {
         setBackgroundColor(ColorProvider.BackgroundSecondary, forState: .selected)
         setBackgroundColor(ColorProvider.BackgroundNorm, forState: .disabled)
     }
-    
+
     private func imageLayout(isImageOnly: Bool) {
         if isImageOnly {
             switch Brand.currentBrand {
@@ -234,7 +240,7 @@ public class ProtonButton: UIButton, AccessibleView {
             rightHandImage?.tintColor = titleColor(for: state)
         }
     }
-    
+
     fileprivate func showLoading() {
         contentEdgeInsets = UIEdgeInsets(top: contentEdgeInsets.top, left: 40, bottom: contentEdgeInsets.bottom, right: 40)
         if let activityIndicator = activityIndicator {
@@ -252,12 +258,9 @@ public class ProtonButton: UIButton, AccessibleView {
     }
 
     fileprivate func createActivityIndicator() {
-        if #available(iOS 13.0, *) {
-            activityIndicator = UIActivityIndicatorView(style: .medium)
-            activityIndicator?.color = titleColor(for: state)
-        } else {
-            activityIndicator = UIActivityIndicatorView(style: mode == .solid ? .white : .gray)
-        }
+        activityIndicator = UIActivityIndicatorView(style: .medium)
+        activityIndicator?.color = titleColor(for: state)
+
         guard let activityIndicator = activityIndicator else { return }
         activityIndicator.hidesWhenStopped = true
         activityIndicator.startAnimating()
@@ -269,7 +272,7 @@ public class ProtonButton: UIButton, AccessibleView {
         activityIndicator.centerYAnchor.constraint(equalTo: centerYAnchor).isActive = true
         layoutIfNeeded()
     }
-    
+
     @discardableResult
     private func createRightImage(image: UIImage?, isImageOnly: Bool) -> UIImageView? {
         guard let image = image else {
@@ -281,7 +284,7 @@ public class ProtonButton: UIButton, AccessibleView {
         if let rightHandImage = rightHandImage {
             return rightHandImage
         }
-        
+
         let rightHandImage = UIImageView(image: image)
         addSubview(rightHandImage)
         rightHandImage.translatesAutoresizingMaskIntoConstraints = false
@@ -295,15 +298,15 @@ public class ProtonButton: UIButton, AccessibleView {
         self.rightHandImage = rightHandImage
         return rightHandImage
     }
-    
+
     private var isChevron: Bool {
         return .image(type: .textWithChevron) == mode || .image(type: .chevron) == mode
     }
-    
+
     private var hasImageBorder: Bool {
         return .image(type: .textWithChevron) == mode || .image(type: .textWithImage(image: nil)) == mode
     }
-    
+
     private func animateChevron(isSelected: Bool, animated: Bool) {
         guard isChevron else { return }
         if animated {
@@ -313,9 +316,11 @@ public class ProtonButton: UIButton, AccessibleView {
         } else {
             rotateChevron(isSelected: isSelected)
         }
-        
+
         func rotateChevron(isSelected: Bool) {
             rightHandImage?.transform = CGAffineTransform(rotationAngle: isSelected ? -Double.pi : Double.pi * 2)
         }
     }
 }
+
+#endif

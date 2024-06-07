@@ -16,6 +16,8 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import CoreData
+
 public class FileDraft: Equatable {
 
     /// Initial state of the file
@@ -30,18 +32,43 @@ public class FileDraft: Equatable {
     /// Backing CoreData file
     public let file: File
 
-    public init(uploadID: UUID, file: File, state: FileDraft.State, numberOfBlocks: Int) {
+    /// CoreData object uri path
+    public let uri: String
+
+    /// file size in bytes
+    private let size: Int
+
+    var roundedKilobytes: Double {
+        round(Double(size) / 1024)
+    }
+
+    public init(uploadID: UUID, file: File, state: FileDraft.State, numberOfBlocks: Int, isEmpty: Bool, uri: String, size: Int) {
         self.uploadID = uploadID
         self.file = file
         self.state = state
         self.numberOfBlocks = numberOfBlocks
+        self.isEmpty = isEmpty
+        self.uri = uri
+        self.size = size
     }
 
-    var isEmpty: Bool {
-        numberOfBlocks == .zero
-    }
+    public let isEmpty: Bool
 
     public static func == (lhs: FileDraft, rhs: FileDraft) -> Bool {
         lhs === rhs
+    }
+}
+
+extension FileDraft {
+    func assertIsCreatingFileDraft(in moc: NSManagedObjectContext) throws {
+        try moc.performAndWait { guard file.in(moc: moc).isCreatingFileDraft() else { throw file.in(moc: moc).invalidState("The file is not in a creating file draft state.") } }
+    }
+
+    func assertIsUploadingRevision(in moc: NSManagedObjectContext) throws {
+        try moc.performAndWait { guard file.in(moc: moc).isUploadingRevision() else { throw file.in(moc: moc).invalidState("The file is not in an uploading revision state.") } }
+    }
+
+    func assertIsCommitingRevision(in moc: NSManagedObjectContext) throws {
+        try moc.performAndWait { guard file.in(moc: moc).isCommitingRevision() else { throw file.in(moc: moc).invalidState("The file is not in a commiting revision state.") } }
     }
 }

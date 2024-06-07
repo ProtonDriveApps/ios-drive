@@ -16,12 +16,13 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
+import PDCore
 
 final class CellSelectionModel {
     let selecting: Binding<Bool>
-    let sm: MultipleSelectionModel
+    let sm: MultipleSelectionModel<NodeIdentifier>
 
-    init(state: Binding<Bool>, sm: MultipleSelectionModel) {
+    init(state: Binding<Bool>, sm: MultipleSelectionModel<NodeIdentifier>) {
         self.selecting = state
         self.sm = sm
     }
@@ -34,7 +35,7 @@ final class CellSelectionModel {
         sm.hideTabBar(selecting.wrappedValue)
     }
 
-    func onTap(id: String) {
+    func onTap(id: NodeIdentifier) {
         sm.updateSelection(with: .item(id: id))
         selecting.wrappedValue = true
     }
@@ -43,7 +44,7 @@ final class CellSelectionModel {
         selecting.wrappedValue
     }
 
-    func isSelected(id: String) -> Bool {
+    func isSelected(id: NodeIdentifier) -> Bool {
         sm.selected.contains(id)
     }
 }

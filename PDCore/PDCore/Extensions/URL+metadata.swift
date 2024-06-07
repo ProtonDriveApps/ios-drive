@@ -17,12 +17,41 @@
 
 import Foundation
 
-extension URL {
+public enum URLConsistencyError: Error, LocalizedError {
+    case noURLSize
+    case urlSizeMismatch
+
+    public var errorDescription: String? {
+        switch self {
+        case .noURLSize:
+            return "Can't get file size for URL"
+        case .urlSizeMismatch:
+            return "The original URL's size does not match the copy's size"
+        }
+    }
+}
+
+public extension URL {
     var fileSize: Int? {
+        // Returns nil if a folder (including package resource "files")
         return try? resourceValues(forKeys: [.fileSizeKey]).fileSize
+    }
+
+    func getFileSize() throws -> Int {
+        guard let fileSize else {
+            throw URLConsistencyError.noURLSize
+        }
+
+        return fileSize
     }
 
     var contentModificationDate: Date? {
         return try? resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+    }
+
+    /// Returns the last modification date of the file, or the earliest date if the file doesn't exist
+    var lastModificationDate: Date {
+        let modificationDate = try? resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+        return modificationDate ?? Date(timeIntervalSince1970: .zero)
     }
 }

@@ -20,10 +20,12 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_DataModel
-import ProtonCore_Log
-import ProtonCore_Services
+import ProtonCoreDataModel
+import ProtonCoreFeatureFlags
+import ProtonCoreLog
+import ProtonCoreServices
 
+// Static plan data service
 public protocol ServicePlanDataServiceProtocol: Service, AnyObject {
 
     var isIAPAvailable: Bool { get }
@@ -38,7 +40,7 @@ public protocol ServicePlanDataServiceProtocol: Service, AnyObject {
 
     var currentSubscriptionChangeDelegate: CurrentSubscriptionChangeDelegate? { get set }
 
-    func detailsOfServicePlan(named name: String) -> Plan?
+    func detailsOfPlanCorrespondingToIAP(_ plan: InAppPurchasePlan) -> Plan?
 
     /// This is a blocking network call that should never be called from the main thread — there's an assertion ensuring that
     func updateServicePlans() throws
@@ -59,7 +61,7 @@ public extension ServicePlanDataServiceProtocol {
     func updateCredits(success: @escaping () -> Void, failure: @escaping (Error) -> Void) {
         updateCredits(callBlocksOnParticularQueue: .main, success: success, failure: failure)
     }
-    
+
     func updateCountriesCount(success: @escaping () -> Void, failure: @escaping (Error) -> Void) {
         updateCountriesCount(callBlocksOnParticularQueue: .main, success: success, failure: failure)
     }
@@ -72,7 +74,7 @@ public protocol ServicePlanDataStorage: AnyObject {
     var credits: Credits? { get set }
     var paymentMethods: [PaymentMethod]? { get set }
     var paymentsBackendStatusAcceptsIAP: Bool { get set }
-    
+
     /// Informs about the result of the payments backend status call /payments/v4/status concerning IAP acceptance
     @available(*, deprecated, renamed: "paymentsBackendStatusAcceptsIAP")
     var isIAPUpgradePlanAvailable: Bool { get set }
@@ -89,18 +91,18 @@ public extension ServicePlanDataStorage {
 public struct Credits: Codable {
     public let credit: Double
     public let currency: String
-    
+
     public init(credit: Double, currency: String) {
         self.credit = credit
         self.currency = currency
     }
 }
 
-public struct PaymentMethod: Codable {
-    
+public struct PaymentMethod: Codable, Equatable {
+
     // we don't use any properties so it's ok to leave it as simple as possible
     public let type: String
-    
+
 }
 
 public struct Countries: Codable {
@@ -113,25 +115,31 @@ public protocol CurrentSubscriptionChangeDelegate: AnyObject {
 }
 
 final class ServicePlanDataService: ServicePlanDataServiceProtocol {
-    
+
     public let service: APIService
 
     private let paymentsApi: PaymentsApiProtocol
     private let localStorage: ServicePlanDataStorage
+    private let featureFlagsRepository: FeatureFlagsRepositoryProtocol
 
     let listOfIAPIdentifiers: ListOfIAPIdentifiersGet
 
     public weak var currentSubscriptionChangeDelegate: CurrentSubscriptionChangeDelegate?
 
     public var isIAPAvailable: Bool {
+        guard !featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan) else {
+            assertionFailure("ServicePlanDataService should never be called with Dynamic Plans FF enabled")
+            return false
+        }
         guard paymentsBackendStatusAcceptsIAP else { return false }
+
         return true
     }
 
     public var availablePlansDetails: [Plan] {
         willSet { localStorage.servicePlansDetails = newValue }
     }
-    
+
     public var paymentsBackendStatusAcceptsIAP: Bool {
         willSet { localStorage.paymentsBackendStatusAcceptsIAP = newValue }
     }
@@ -156,7 +164,7 @@ final class ServicePlanDataService: ServicePlanDataServiceProtocol {
         willSet { localStorage.currentSubscription = newValue }
         didSet { currentSubscriptionChangeDelegate?.onCurrentSubscriptionChange(old: oldValue, new: currentSubscription) }
     }
-    
+
     public var paymentMethods: [PaymentMethod]? {
         willSet { localStorage.paymentMethods = newValue }
     }
@@ -164,16 +172,17 @@ final class ServicePlanDataService: ServicePlanDataServiceProtocol {
     public var credits: Credits? {
         willSet { localStorage.credits = newValue }
     }
-    
+
     public var user: User?
-    
+
     public var countriesCount: [Countries]?
-    
+
     init(inAppPurchaseIdentifiers: @escaping ListOfIAPIdentifiersGet,
          paymentsApi: PaymentsApiProtocol,
          apiService: APIService,
          localStorage: ServicePlanDataStorage,
-         paymentsAlertManager: PaymentsAlertManager) {
+         paymentsAlertManager: PaymentsAlertManager,
+         featureFlagsRepository: FeatureFlagsRepositoryProtocol = FeatureFlagsRepository.shared) {
         self.localStorage = localStorage
         self.availablePlansDetails = localStorage.servicePlansDetails ?? []
         self.paymentsBackendStatusAcceptsIAP = localStorage.paymentsBackendStatusAcceptsIAP
@@ -182,13 +191,24 @@ final class ServicePlanDataService: ServicePlanDataServiceProtocol {
         self.paymentsApi = paymentsApi
         self.service = apiService
         self.listOfIAPIdentifiers = inAppPurchaseIdentifiers
+        self.featureFlagsRepository = featureFlagsRepository
     }
 
-    public func detailsOfServicePlan(named name: String) -> Plan? {
-        if InAppPurchasePlan.isThisAFreePlan(protonName: name) {
+    public func detailsOfPlanCorrespondingToIAP(_ plan: InAppPurchasePlan) -> Plan? {
+        if InAppPurchasePlan.isThisAFreePlan(protonName: plan.protonName) {
             return defaultPlanDetails
         } else {
-            return availablePlansDetails.first(where: { $0.name == name })
+            return availablePlansDetails.first(where: {
+                if let iapIdentifier = plan.storeKitProductId,
+                   let period = plan.period,
+                   let availablePlanIAPIdentifier = $0.vendors?.apple.plans[period] {
+                     return availablePlanIAPIdentifier == iapIdentifier
+                } else if let iapOffer = plan.offer {
+                    return $0.name == plan.protonName && iapOffer == $0.offer
+                } else {
+                    return $0.name == plan.protonName && ($0.offer == nil || $0.offer == InAppPurchasePlan.defaultOffer)
+                }
+            })
         }
     }
 }
@@ -204,37 +224,39 @@ extension ServicePlanDataService {
             assertionFailure("This is a blocking network request, should never be called from main thread")
             throw AwaitInternalError.synchronousCallPerformedFromTheMainThread
         }
-        
+
         // get API atatus
-        let statusApi = self.paymentsApi.statusRequest(api: self.service)
-        let statusRes = try statusApi.awaitResponse(responseObject: StatusResponse())
-        self.paymentsBackendStatusAcceptsIAP = statusRes.isAvailable ?? false
+        let paymentStatusApi = paymentsApi.paymentStatusRequest(api: service)
+        let paymentStatusResponse = try paymentStatusApi.awaitResponse(responseObject: PaymentStatusResponse())
+        paymentsBackendStatusAcceptsIAP = paymentStatusResponse.isAvailable ?? false
 
         // get service plans
-        let servicePlanApi = self.paymentsApi.plansRequest(api: self.service)
+        let servicePlanApi = paymentsApi.plansRequest(api: service)
         let servicePlanRes = try servicePlanApi.awaitResponse(responseObject: PlansResponse())
-        self.availablePlansDetails = servicePlanRes.availableServicePlans?
-            .filter { InAppPurchasePlan.nameAndCycleArePresentInIAPIdentifierList(name: $0.name, cycle: $0.cycle, identifiers: self.listOfIAPIdentifiers()) }
-            .sorted { $0.pricing(for: String(12)) ?? 0 > $1.pricing(for: String(12)) ?? 0 }
+        availablePlansDetails = servicePlanRes.availableServicePlans?
+            .filter {
+                InAppPurchasePlan.protonPlanIsPresentInIAPIdentifierList(protonPlan: $0, identifiers: self.listOfIAPIdentifiers())
+            }
+            .sorted(by: Plan.sortPurchasablePlans)
             ?? []
 
-        let defaultServicePlanApi = self.paymentsApi.defaultPlanRequest(api: self.service)
+        let defaultServicePlanApi = paymentsApi.defaultPlanRequest(api: service)
         let defaultServicePlanRes = try defaultServicePlanApi.awaitResponse(responseObject: DefaultPlanResponse())
-        self.defaultPlanDetails = defaultServicePlanRes.defaultServicePlanDetails
+        defaultPlanDetails = defaultServicePlanRes.defaultServicePlanDetails
     }
 
     public func updateCurrentSubscription(callBlocksOnParticularQueue: DispatchQueue?, success: @escaping () -> Void, failure: @escaping (Error) -> Void) {
         performWork(work: { try self.updateCurrentSubscription() },
                     callBlocksOnParticularQueue: callBlocksOnParticularQueue, success: success, failure: failure)
     }
-    
+
     public func updateCredits(callBlocksOnParticularQueue: DispatchQueue?, success: @escaping () -> Void, failure: @escaping (Error) -> Void) {
         performWork(work: {
             let user = try self.getUserInfo()
             self.updateCredits(user: user)
         }, callBlocksOnParticularQueue: callBlocksOnParticularQueue, success: success, failure: failure)
     }
-    
+
     public func updateCountriesCount(callBlocksOnParticularQueue: DispatchQueue?, success: @escaping () -> Void, failure: @escaping (Error) -> Void) {
         performWork(work: {
             let countriesCountAPI = self.paymentsApi.countriesCountRequest(api: self.service)
@@ -242,9 +264,14 @@ extension ServicePlanDataService {
             self.countriesCount = countriesCountRes.countriesCount
         }, callBlocksOnParticularQueue: callBlocksOnParticularQueue, success: success, failure: failure)
     }
-    
+
     func willRenewAutomatically(plan: InAppPurchasePlan) -> Bool {
         guard let subscription = currentSubscription else {
+            return false
+        }
+
+        guard !featureFlagsRepository.isEnabled(CoreFeatureFlagType.dynamicPlan) else {
+            assertionFailure("You shouldn't be using plan data services with Dynamic Plans")
             return false
         }
         // Special coupon that will extend subscription
@@ -257,17 +284,17 @@ extension ServicePlanDataService {
         }
         return false
     }
-    
+
     // MARK: Private interface
-    
+
     private func hasEnoughCreditToExtendSubscription(plan: InAppPurchasePlan) -> Bool {
         let credit = credits?.credit ?? 0
-        guard let details = detailsOfServicePlan(named: plan.protonName), let amount = details.pricing(for: plan.period)
+        guard let details = detailsOfPlanCorrespondingToIAP(plan), let amount = details.pricing(for: plan.period)
         else { return false }
         let cost = Double(amount) / 100
         return credit >= cost
     }
-    
+
     private func performWork(work: @escaping () throws -> Void, callBlocksOnParticularQueue: DispatchQueue?,
                              success: @escaping () -> Void, failure: @escaping (Error) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
@@ -291,7 +318,8 @@ extension ServicePlanDataService {
             }
         }
     }
-    
+
+    /// Updates the subscription information about the current user
     private func updateCurrentSubscription() throws {
         guard Thread.isMainThread == false else {
             assertionFailure("This is a blocking network request, should never be called from main thread")
@@ -302,23 +330,23 @@ extension ServicePlanDataService {
             // no user info means we don't even need to ask for subscription, so it's ok to throw here
             let user = try self.getUserInfo()
             self.user = user
-            
+
             updateCredits(user: user)
-            
+
             let methodsAPI = self.paymentsApi.methodsRequest(api: self.service)
             let methodsRes = try methodsAPI.awaitResponse(responseObject: MethodResponse())
             self.paymentMethods = methodsRes.methods
-            
+
             guard user.hasAnySubscription else {
                 self.currentSubscription = .userHasNoPlanAKAFreePlan
                 self.currentSubscription?.usedSpace = Int64(user.usedSpace)
                 return
             }
-                
+
             let subscriptionApi = self.paymentsApi.getSubscriptionRequest(api: self.service)
             let subscriptionRes = try subscriptionApi.awaitResponse(responseObject: GetSubscriptionResponse())
             self.currentSubscription = subscriptionRes.subscription
-            
+
             let organizationsApi = self.paymentsApi.organizationsRequest(api: self.service)
             let organizationsRes = try organizationsApi.awaitResponse(responseObject: OrganizationsResponse())
             self.currentSubscription?.organization = organizationsRes.organization
@@ -336,7 +364,7 @@ extension ServicePlanDataService {
             }
         }
     }
-    
+
     private func getUserInfo() throws -> User {
         do {
             return try self.paymentsApi.getUser(api: self.service)
@@ -344,7 +372,7 @@ extension ServicePlanDataService {
             throw error
         }
     }
-    
+
     private func updateCredits(user: User) {
         credits = Credits(credit: Double(user.credit) / 100, currency: user.currency)
     }

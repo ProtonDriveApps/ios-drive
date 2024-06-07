@@ -15,7 +15,7 @@ public protocol SideMenuControllerDelegate: AnyObject {
     // MARK: Animation
 
     /// Called to allow the delegate to return a non-interactive animator object for use during view controller transitions.
-    /// Same with UIKit's `navigationController:animationControllerForOperation:fromViewController:toViewController:`.
+    /// Same with UIKit's ``navigationController(_:animationControllerFor:from:to:)``.
     ///
     /// - Parameters:
     ///   - sideMenuController: The side menu controller
@@ -47,6 +47,13 @@ public protocol SideMenuControllerDelegate: AnyObject {
 
     // MARK: Revealing
 
+    /// Asks the delegate whether the side menu should be shown.
+    ///
+    /// Triggered by the pan gesture.
+    /// - Parameter sideMenuController: The side menu
+    /// - Returns: Whether the menu should be revealed.
+    func sideMenuControllerShouldRevealMenu(_ sideMenuController: SideMenuController) -> Bool
+
     /// Side menu is going to reveal.
     ///
     /// - Parameter sideMenu: The side menu
@@ -66,6 +73,11 @@ public protocol SideMenuControllerDelegate: AnyObject {
     ///
     /// - Parameter sideMenu: The side menu
     func sideMenuControllerDidHideMenu(_ sideMenuController: SideMenuController)
+    
+    
+    /// Get the width of side menu in current size
+    /// - Parameter sideMenuController: The side menu
+    func sideMenuControllerGetMenuWidth(_ sideMenuController: SideMenuController, for size: CGSize) -> CGFloat?
 }
 
 // Provides default implementation for delegates
@@ -82,8 +94,10 @@ public extension SideMenuControllerDelegate {
     func sideMenuController(_ sideMenuController: SideMenuController,
                             didShow viewController: UIViewController,
                             animated: Bool) {}
+    func sideMenuControllerShouldRevealMenu(_ sideMenuController: SideMenuController) -> Bool { true }
     func sideMenuControllerWillRevealMenu(_ sideMenuController: SideMenuController) {}
     func sideMenuControllerDidRevealMenu(_ sideMenuController: SideMenuController) {}
     func sideMenuControllerWillHideMenu(_ sideMenuController: SideMenuController) {}
     func sideMenuControllerDidHideMenu(_ sideMenuController: SideMenuController) {}
+    func sideMenuControllerGetMenuWidth(_ sideMenuController: SideMenuController, for size: CGSize) -> CGFloat? { nil }
 }

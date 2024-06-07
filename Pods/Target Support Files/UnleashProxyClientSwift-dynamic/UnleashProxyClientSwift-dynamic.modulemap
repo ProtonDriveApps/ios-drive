@@ -1,0 +1,6 @@
+framework module UnleashProxyClientSwift {
+  umbrella header "UnleashProxyClientSwift-dynamic-umbrella.h"
+
+  export *
+  module * { export * }
+}

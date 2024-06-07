@@ -20,16 +20,16 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Crypto
-import ProtonCore_Authentication
-import ProtonCore_DataModel
-import ProtonCore_Networking
+import ProtonCoreCrypto
+import ProtonCoreAuthentication
+import ProtonCoreDataModel
+import ProtonCoreNetworking
 
 extension AuthService {
     struct CreateAddressKeysEndpointResponse: APIDecodableResponse {
         let key: Key
     }
-    
+
     /// this is only used for phase 2 user.
     ///     if user not migrated to phase2 yet use `CreateAddressKeyEndpointV1` instead
     struct CreateAddressKeyEndpoint: Request {
@@ -39,7 +39,7 @@ extension AuthService {
         let isPrimary: Bool
         let token: ArmoredMessage
         let tokenSignature: ArmoredSignature
-        
+
         var path: String {
             "/keys/address"
         }

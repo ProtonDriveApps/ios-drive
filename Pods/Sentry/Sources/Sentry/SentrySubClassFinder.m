@@ -5,11 +5,16 @@
 #import <objc/runtime.h>
 #import <string.h>
 
+#if SENTRY_HAS_UIKIT
+#    import <UIKit/UIKit.h>
+#endif // SENTRY_HAS_UIKIT
+
 @interface
 SentrySubClassFinder ()
 
 @property (nonatomic, strong) SentryDispatchQueueWrapper *dispatchQueue;
 @property (nonatomic, strong) id<SentryObjCRuntimeWrapper> objcRuntimeWrapper;
+@property (nonatomic, copy) NSSet<NSString *> *swizzleClassNameExcludes;
 
 @end
 
@@ -17,18 +22,21 @@ SentrySubClassFinder ()
 
 - (instancetype)initWithDispatchQueue:(SentryDispatchQueueWrapper *)dispatchQueue
                    objcRuntimeWrapper:(id<SentryObjCRuntimeWrapper>)objcRuntimeWrapper
+             swizzleClassNameExcludes:(NSSet<NSString *> *)swizzleClassNameExcludes
 {
     if (self = [super init]) {
         self.dispatchQueue = dispatchQueue;
         self.objcRuntimeWrapper = objcRuntimeWrapper;
+        self.swizzleClassNameExcludes = swizzleClassNameExcludes;
     }
     return self;
 }
 
+#if SENTRY_HAS_UIKIT
 - (void)actOnSubclassesOfViewControllerInImage:(NSString *)imageName block:(void (^)(Class))block;
 {
     [self.dispatchQueue dispatchAsyncWithBlock:^{
-        Class viewControllerClass = NSClassFromString(@"UIViewController");
+        Class viewControllerClass = [UIViewController class];
         if (viewControllerClass == nil) {
             SENTRY_LOG_DEBUG(@"UIViewController class not found.");
             return;
@@ -53,6 +61,22 @@ SentrySubClassFinder ()
         NSMutableArray<NSString *> *classesToSwizzle = [NSMutableArray new];
         for (int i = 0; i < count; i++) {
             NSString *className = [NSString stringWithUTF8String:classes[i]];
+
+            BOOL shouldExcludeClassFromSwizzling = NO;
+            for (NSString *swizzleClassNameExclude in self.swizzleClassNameExcludes) {
+                if ([className containsString:swizzleClassNameExclude]) {
+                    shouldExcludeClassFromSwizzling = YES;
+                    break;
+                }
+            }
+
+            // It is vital to avoid calling NSClassFromString for the excluded classes because we
+            // had crashes for specific classes when calling NSClassFromString, such as
+            // https://github.com/getsentry/sentry-cocoa/issues/3798.
+            if (shouldExcludeClassFromSwizzling) {
+                continue;
+            }
+
             Class class = NSClassFromString(className);
             if ([self isClass:class subClassOf:viewControllerClass]) {
                 [classesToSwizzle addObject:className];
@@ -73,11 +97,12 @@ SentrySubClassFinder ()
         }];
     }];
 }
+#endif // SENTRY_HAS_UIKIT
 
 - (BOOL)isClass:(Class)childClass subClassOf:(Class)parentClass
 {
     if (!childClass || childClass == parentClass) {
-        return false;
+        return NO;
     }
 
     // Using a do while loop, like pointed out in Cocoa with Love

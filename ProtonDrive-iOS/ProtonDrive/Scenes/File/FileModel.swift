@@ -98,7 +98,7 @@ class FileModel: NSObject, QLPreviewControllerDataSource, QLPreviewControllerDel
     
     func cleanup() {
         if let url = self.cleartextUrl {
-            try? FileManager.default.removeItem(at: url)
+            try? FileManager.default.removeItemIncludingUniqueDirectory(at: url)
             self.cleartextUrl = nil
         }
         self.eventsSubject.send(.closed)

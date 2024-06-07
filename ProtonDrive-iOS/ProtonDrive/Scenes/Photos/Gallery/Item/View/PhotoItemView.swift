@@ -15,22 +15,26 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import SwiftUI
 
 struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
     @ObservedObject private var viewModel: ViewModel
+    private let accessibilityIdentifier: String
+    @State private var isAnimating = false
 
-    init(viewModel: ViewModel) {
+    init(viewModel: ViewModel, accessibilityIndex: String) {
         self.viewModel = viewModel
+        accessibilityIdentifier = "PhotoItemView_\(accessibilityIndex)"
     }
 
     var body: some View {
-        Button(action: viewModel.openPreview) {
-            content
-        }
-        .onAppear(perform: viewModel.onAppear)
-        .onDisappear(perform: viewModel.onDisappear)
+        content
+            .onAppear(perform: viewModel.onAppear)
+            .onDisappear(perform: viewModel.onDisappear)
+            .contentShape(.interaction, Rectangle())
+            .onTapGesture(perform: viewModel.didTap)
+            .onLongPressGesture(perform: viewModel.didLongPress)
     }
 
     private var content: some View {
@@ -38,8 +42,26 @@ struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
             ColorProvider.BackgroundDeep
             viewModel.image.map(makeImage)
         }
+        .accessibilityIdentifier(accessibilityIdentifier)
         .overlay(alignment: .bottom) {
             viewModel.duration.map(makeDurationView)
+        }
+        .overlay(alignment: .top) {
+            if viewModel.isShared || viewModel.isDownloading || viewModel.isAvailableOffline {
+                statusView
+            }
+        }
+        .overlay(alignment: .topLeading) {
+            selectionView
+        }
+    }
+
+    @ViewBuilder
+    private var selectionView: some View {
+        if viewModel.isSelecting {
+            RoundedSelectionView(isSelected: viewModel.isSelected)
+                .accessibilityIdentifier("\(accessibilityIdentifier).SelectionButton")
+                .padding(11)
         }
     }
 
@@ -59,13 +81,79 @@ struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
             Spacer()
             Text(duration)
                 .font(.caption)
-                .foregroundColor(ColorProvider.TextInverted)
+                .foregroundColor(ColorProvider.White)
             Image("ic-play-filled-background")
         }
         .padding(EdgeInsets(top: 4, leading: 6, bottom: 6, trailing: 6))
         .background {
             Image("video-background")
                 .resizable(resizingMode: .tile)
+        }
+    }
+
+    private var statusView: some View {
+        HStack(spacing: 4) {
+            Spacer()
+            if viewModel.isAvailableOffline {
+                offlineAvailableView
+            }
+            if viewModel.isDownloading {
+                downloadingView
+            }
+            if viewModel.isShared {
+                shareView
+            }
+        }
+        .padding(EdgeInsets(top: 6, leading: 6, bottom: 4, trailing: 6))
+        .background {
+            Image("icons-background")
+                .resizable(resizingMode: .stretch)
+        }
+    }
+
+    private var downloadingView: some View {
+        Image("ellipse-dotted")
+            .resizable()
+            .rotationEffect(Angle(degrees: isAnimating ? 360 : 0.0))
+            .animation(Animation.linear(duration: 2.0).repeatForever(autoreverses: false), value: isAnimating)
+            .overlay {
+                Image("arrow-down-white")
+                    .resizable()
+                    .frame(width: 12, height: 12)
+            }
+            .onAppear { isAnimating = true }
+            .onDisappear { isAnimating = false }
+            .frame(width: 16, height: 16)
+            .accessibilityIdentifier("\(accessibilityIdentifier).DownloadingIcon")
+    }
+
+    private var offlineAvailableView: some View {
+        Image("ic-arrow-down-background")
+            .resizable()
+            .frame(width: 16, height: 16)
+            .accessibilityIdentifier("\(accessibilityIdentifier).AvailableOfflineIcon")
+    }
+
+    private var shareView: some View {
+        Image("ic-link-filled-background")
+            .resizable()
+            .frame(width: 16, height: 16)
+            .accessibilityIdentifier("\(accessibilityIdentifier).ShareIcon")
+    }
+}
+
+// SwiftUI calls init on some views in ForEach multiple times.
+// This is prevented by moving content initialization to body, thus saving processing and memory.
+struct PhotoItemWrapperView<ContentView: View>: View {
+    private let content: () -> ContentView
+
+    init(content: @escaping () -> ContentView) {
+        self.content = content
+    }
+
+    var body: some View {
+        ZStack {
+            content()
         }
     }
 }

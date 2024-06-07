@@ -1,3 +1,4 @@
+// Adapted from: https://github.com/kstenerud/KSCrash
 //
 //  SentryCrashSystemCapabilities.h
 //
@@ -34,12 +35,17 @@
 #    define SentryCrashCRASH_HOST_ANDROID 1
 #endif
 
+#ifndef TARGET_OS_VISION
+#    define TARGET_OS_VISION 0
+#endif
+
 #define SentryCrashCRASH_HOST_IOS (SentryCrashCRASH_HOST_APPLE && TARGET_OS_IOS)
 #define SentryCrashCRASH_HOST_TV (SentryCrashCRASH_HOST_APPLE && TARGET_OS_TV)
 #define SentryCrashCRASH_HOST_WATCH (SentryCrashCRASH_HOST_APPLE && TARGET_OS_WATCH)
+#define SentryCrashCRASH_HOST_VISION (SentryCrashCRASH_HOST_APPLE && TARGET_OS_VISION)
 #define SentryCrashCRASH_HOST_MAC                                                                  \
     (SentryCrashCRASH_HOST_APPLE && TARGET_OS_MAC                                                  \
-        && !(TARGET_OS_IOS || TARGET_OS_TV || TARGET_OS_WATCH))
+        && !(TARGET_OS_IOS || TARGET_OS_TV || TARGET_OS_WATCH || TARGET_OS_VISION))
 
 #if SentryCrashCRASH_HOST_APPLE
 #    define SentryCrashCRASH_CAN_GET_MAC_ADDRESS 1
@@ -67,52 +73,16 @@
 #    define SentryCrashCRASH_HAS_STRNSTR 0
 #endif
 
-#if SentryCrashCRASH_HOST_IOS || SentryCrashCRASH_HOST_TV || SentryCrashCRASH_HOST_WATCH
-#    define SentryCrashCRASH_HAS_UIKIT 1
-#else
-#    define SentryCrashCRASH_HAS_UIKIT 0
-#endif
-
-#if SentryCrashCRASH_HOST_IOS || SentryCrashCRASH_HOST_TV
-#    define SentryCrashCRASH_HAS_UIAPPLICATION 1
-#else
-#    define SentryCrashCRASH_HAS_UIAPPLICATION 0
-#endif
-
 #if SentryCrashCRASH_HOST_WATCH
 #    define SentryCrashCRASH_HAS_NSEXTENSION 1
 #else
 #    define SentryCrashCRASH_HAS_NSEXTENSION 0
 #endif
 
-#if SentryCrashCRASH_HOST_IOS
-#    define SentryCrashCRASH_HAS_MESSAGEUI 1
-#else
-#    define SentryCrashCRASH_HAS_MESSAGEUI 0
-#endif
-
-#if SentryCrashCRASH_HOST_IOS || SentryCrashCRASH_HOST_TV
-#    define SentryCrashCRASH_HAS_UIDEVICE 1
-#else
-#    define SentryCrashCRASH_HAS_UIDEVICE 0
-#endif
-
 #if SentryCrashCRASH_HOST_IOS || SentryCrashCRASH_HOST_MAC || SentryCrashCRASH_HOST_TV
 #    define SentryCrashCRASH_HAS_ALERTVIEW 1
 #else
 #    define SentryCrashCRASH_HAS_ALERTVIEW 0
-#endif
-
-#if SentryCrashCRASH_HOST_IOS
-#    define SentryCrashCRASH_HAS_UIALERTVIEW 1
-#else
-#    define SentryCrashCRASH_HAS_UIALERTVIEW 0
-#endif
-
-#if SentryCrashCRASH_HOST_TV
-#    define SentryCrashCRASH_HAS_UIALERTCONTROLLER 1
-#else
-#    define SentryCrashCRASH_HAS_UIALERTCONTROLLER 0
 #endif
 
 #if SentryCrashCRASH_HOST_MAC

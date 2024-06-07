@@ -137,9 +137,21 @@ public final class DarwinNotificationCenter {
     public func removeObserver(_ observer: AnyObject, for name: DarwinNotification.Name? = nil) {
         cleanupObservers()
 
+        // Pointer to be compared against observation.observer pointer.
+        // We compare pointers because we want to avoid capturing `observer` instance in the queue.async work block.
+        // We need to avoid that because this method is called from the FileProviderExtension `deinit`, so instance is not valid after deinit exits.
+        // When the queue.async work block tries to access it, there's a crash — basically, it tries to access a dangling pointer.
+        let observerPointer = Unmanaged.passUnretained(observer).toOpaque()
+
         queue.async {
             self.observations = self.observations.filter { (observation) -> Bool in
-                let shouldRetain = observer !== observation.observer || (name != nil && observation.name != name)
+                var pointersAreDifferent = true
+                if let observerInside = observation.observer {
+                    let observationPointer = Unmanaged.passUnretained(observerInside).toOpaque()
+                    pointersAreDifferent = observerPointer != observationPointer
+                }
+                let namesAreDifferent = name != nil && observation.name != name
+                let shouldRetain = pointersAreDifferent || namesAreDifferent
                 if !shouldRetain {
                     observation.unobserve()
                 }

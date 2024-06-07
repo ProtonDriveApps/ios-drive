@@ -34,11 +34,11 @@ public struct BioProtection: ProtectionStrategy {
     public static var keychainLabel: String {
         return "BioProtection"
     }
-    
+
     private typealias Constants = BioProtectionConstants
     public let keychain: Keychain
     private let version: Version = .v1
-    
+
     enum Version: String {
         case lagcy = "0"
         case v1 = "1"
@@ -52,12 +52,14 @@ public struct BioProtection: ProtectionStrategy {
             }
         }
     }
-    
+
     public init(keychain: Keychain) {
         self.keychain = keychain
     }
-    
+
     private static func makeAsymmetricEncryptor(in keychain: Keychain) -> EllipticCurveKeyPair.Manager {
+        // Changing value of `protection` param to suppress warning could break the API. Some clients may rely on behavior defined by
+        // `kSecAttrAccessibleAlwaysThisDeviceOnly`.
         let publicAccessControl = EllipticCurveKeyPair.AccessControl(protection: kSecAttrAccessibleAlwaysThisDeviceOnly, flags: [.userPresence, .privateKeyUsage])
         let privateAccessControl = EllipticCurveKeyPair.AccessControl(protection: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly, flags: [.userPresence, .privateKeyUsage])
         let config = EllipticCurveKeyPair.Config(publicLabel: Constants.publicLabelKey,
@@ -70,15 +72,15 @@ public struct BioProtection: ProtectionStrategy {
                                                   token: .secureEnclave)
         return EllipticCurveKeyPair.Manager(config: config)
     }
-    
+
     // for iOS older than 10.3 - not capable of elliptic curve encryption
     private static func makeSymmetricEncryptor(in keychain: Keychain) -> MainKey {
         guard let key = keychain.data(forKey: Constants.legacyLabelKey) else {
             let oldAccessibility = keychain.accessibility
             let oldAuthPolicy = keychain.authenticationPolicy
-            
+
             keychain.switchAccessibilitySettings(.afterFirstUnlockThisDeviceOnly, authenticationPolicy: .userPresence)
-            
+
             let ethemeralKey = BioProtection.generateRandomValue(length: 32)
             keychain.set(Data(ethemeralKey), forKey: Constants.legacyLabelKey)
 
@@ -87,49 +89,25 @@ public struct BioProtection: ProtectionStrategy {
         }
         return key.bytes
     }
-    
+
     public func lock(value: MainKey) throws {
         let locked = try Locked<MainKey>(clearValue: value) { cleartext -> Data in
-            if #available(iOS 10.3, *) {
-                let encryptor = BioProtection.makeAsymmetricEncryptor(in: self.keychain)
-                return try encryptor.encrypt(Data(cleartext))
-            } else {
-                let ethemeral = BioProtection.makeSymmetricEncryptor(in: self.keychain)
-                let locked = try Locked<MainKey>(clearValue: cleartext, with: ethemeral)
-                return locked.encryptedValue
-            }
+            let encryptor = BioProtection.makeAsymmetricEncryptor(in: self.keychain)
+            return try encryptor.encrypt(Data(cleartext))
         }
         BioProtection.saveCyphertext(locked.encryptedValue, in: self.keychain)
         self.keychain.set(self.version.rawValue, forKey: Constants.versionKey)
     }
-    
+
     public func unlock(cypherBits: Data) throws -> MainKey {
         let locked = Locked<MainKey>(encryptedValue: cypherBits)
         let cleardata = try locked.unlock { cyphertext -> MainKey in
-            if #available(iOS 10.3, *) {
-                let encryptor = BioProtection.makeAsymmetricEncryptor(in: self.keychain)
-                return try encryptor.decrypt(cyphertext).bytes
-            } else {
-                let curVer: Version = Version.init(raw: self.keychain.string(forKey: Constants.versionKey))
-                do {
-                    switch curVer {
-                    case .lagcy:
-                        let ethemeral = BioProtection.makeSymmetricEncryptor(in: self.keychain)
-                        let key = try locked.lagcyUnlock(with: ethemeral)
-                        try self.lock(value: key)
-                        return key
-                    default:
-                        let ethemeral = BioProtection.makeSymmetricEncryptor(in: self.keychain)
-                        return try locked.unlock(with: ethemeral)
-                    }
-                } catch let error {
-                    throw error
-                }
-            }
+            let encryptor = BioProtection.makeAsymmetricEncryptor(in: self.keychain)
+            return try encryptor.decrypt(cyphertext).bytes
         }
         return cleardata
     }
-    
+
     public static func removeCyphertext(from keychain: Keychain) {
         (self as ProtectionStrategy.Type).removeCyphertext(from: keychain)
         try? BioProtection.makeAsymmetricEncryptor(in: keychain).deleteKeyPair()

@@ -52,10 +52,13 @@ class ExtendedAttributesRevisionEncryptor: RevisionEncryptor {
         isExecuting = true
         let revision = draft.revision
 
-        ConsoleLogger.shared?.log("STAGE: 1.3 📝 Encrypt xAttr started", osLogType: FileUploader.self)
+        Log.info("STAGE: 1.3 📝 Encrypt xAttr started. UUID: \(draft.uploadID)", domain: .uploader)
 
-        moc.perform {
+        moc.perform { [weak self] in
+            guard let self, !self.isCancelled else { return }
+            
             let revision = revision.in(moc: self.moc)
+            
             do {
                 guard let signatureEmail = revision.signatureAddress else { throw RevisionEncryptorError.noSignatureEmailInRevision }
                 let signersKit = try self.signersKitFactory.make(forSigner: .address(signatureEmail))
@@ -64,26 +67,27 @@ class ExtendedAttributesRevisionEncryptor: RevisionEncryptor {
                 let addressPassphrase = signersKit.addressPassphrase
 
                 let clearExtendedAttributes = try self.getXAttrs(draft)
-                let xAttr = try self.encryptAndSign(clearExtendedAttributes, publicNodeKey, addressKey, addressPassphrase)
+                let xAttr = try self.encryptAndSign(clearExtendedAttributes.encoded(), publicNodeKey, addressKey, addressPassphrase)
 
+                revision.clearXAttributes = clearExtendedAttributes
                 revision.xAttributes = xAttr
                 try self.moc.saveOrRollback()
 
-                ConsoleLogger.shared?.log("STAGE: 1.3 📝 Encrypt xAttr finished ✅", osLogType: FileUploader.self)
+                Log.info("STAGE: 1.3 📝 Encrypt xAttr finished ✅. UUID: \(draft.uploadID)", domain: .uploader)
 
                 self.progress.complete()
                 completion(.success)
-
+                
             } catch {
-                ConsoleLogger.shared?.log("STAGE: 1.3 📝 Encrypt xAttr finished ❌", osLogType: FileUploader.self)
+                Log.info("STAGE: 1.3 📝 Encrypt xAttr finished ❌. UUID: \(draft.uploadID)", domain: .uploader)
                 completion(.failure(error))
             }
         }
     }
     
-    func getXAttrs(_ draft: CreatedRevisionDraft) throws -> Data {
+    func getXAttrs(_ draft: CreatedRevisionDraft) throws -> ExtendedAttributes {
         let commonAttributes = commonAttributes(draft)
-        return try ExtendedAttributes(common: commonAttributes).encoded()
+        return ExtendedAttributes(common: commonAttributes)
     }
     
     func commonAttributes(_ draft: CreatedRevisionDraft) -> ExtendedAttributes.Common {
@@ -94,11 +98,8 @@ class ExtendedAttributesRevisionEncryptor: RevisionEncryptor {
     }
     
     func sizes(_ draft: CreatedRevisionDraft) -> (totalSize: Int, blockSizes: [Int]) {
-        if let fileSize = draft.localURL.fileSize {
-            return (fileSize, fileSize.split(divisor: self.maxBlockSize))
-        } else {
-            return (.zero, [])
-        }
+        let fileSize = draft.size
+        return (fileSize, fileSize.split(divisor: self.maxBlockSize))
     }
     
     func modificationDate(_ draft: CreatedRevisionDraft) -> String {

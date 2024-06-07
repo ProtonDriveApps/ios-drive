@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import PDCore
 
 protocol PhotoBackupConstraintsController {
     var constraints: AnyPublisher<PhotoBackupConstraints, Never> { get }
@@ -24,6 +25,11 @@ protocol PhotoBackupConstraintsController {
 final class LocalPhotoBackupConstraintsController: PhotoBackupConstraintsController {
     private let storageController: PhotoBackupConstraintController
     private let networkController: PhotoBackupConstraintController
+    private let quotaController: PhotoBackupConstraintController
+    private let thermalController: PhotoBackupConstraintController
+    private let availableSpaceController: PhotoBackupConstraintController
+    private let featureFlagController: PhotoBackupConstraintController
+    private let circuitBreakerController: ConstraintController
     private let constraintsSubject: CurrentValueSubject<PhotoBackupConstraints, Never> = .init([])
     private var cancellables = Set<AnyCancellable>()
 
@@ -31,25 +37,43 @@ final class LocalPhotoBackupConstraintsController: PhotoBackupConstraintsControl
         constraintsSubject.eraseToAnyPublisher()
     }
 
-    init(storageController: PhotoBackupConstraintController, networkController: PhotoBackupConstraintController) {
+    init(storageController: PhotoBackupConstraintController, networkController: PhotoBackupConstraintController, quotaController: PhotoBackupConstraintController, thermalController: PhotoBackupConstraintController, availableSpaceController: PhotoBackupConstraintController, featureFlagController: PhotoBackupConstraintController, circuitBreakerController: ConstraintController) {
         self.storageController = storageController
         self.networkController = networkController
+        self.quotaController = quotaController
+        self.thermalController = thermalController
+        self.availableSpaceController = availableSpaceController
+        self.featureFlagController = featureFlagController
+        self.circuitBreakerController = circuitBreakerController
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
-        Publishers.CombineLatest(storageController.constraint, networkController.constraint)
-            .sink { [weak self] isStorageConstrained, isNetworkConstrained in
-                self?.handleUpdate(isStorageConstrained: isStorageConstrained, isNetworkConstrained: isNetworkConstrained)
+        let cloudPublisher = Publishers.CombineLatest3(quotaController.constraint, featureFlagController.constraint, circuitBreakerController.constraint)
+        let storagePublisher = Publishers.CombineLatest(storageController.constraint, availableSpaceController.constraint)
+            .map { $0.0 || $0.1 }
+        
+        Publishers.CombineLatest4(storagePublisher, networkController.constraint, cloudPublisher, thermalController.constraint)
+            .sink { [weak self] isStorageConstrained, isNetworkConstrained, isBackendConstrained, isThermalStateConstranined in
+                let isQuotaExceeded = isBackendConstrained.0
+                let isFeatureFlagDisabled = isBackendConstrained.1
+                let isCircuitBroken = isBackendConstrained.2
+                self?.handleUpdate(isStorageConstrained: isStorageConstrained, isNetworkConstrained: isNetworkConstrained, isQuotaExceeded: isQuotaExceeded, isThermalStateConstranined: isThermalStateConstranined, isFeatureFlagDisabled: isFeatureFlagDisabled, isCircuitBroken: isCircuitBroken)
             }
             .store(in: &cancellables)
     }
 
-    private func handleUpdate(isStorageConstrained: Bool, isNetworkConstrained: Bool) {
+    private func handleUpdate(isStorageConstrained: Bool, isNetworkConstrained: Bool, isQuotaExceeded: Bool, isThermalStateConstranined: Bool, isFeatureFlagDisabled: Bool, isCircuitBroken: Bool) {
         let constraints = [
             isStorageConstrained ? PhotoBackupConstraint.storage : nil,
             isNetworkConstrained ? .network : nil,
+            isQuotaExceeded ? .quota : nil,
+            isThermalStateConstranined ? .thermalState : nil,
+            isFeatureFlagDisabled ? .featureFlag : nil,
+            isCircuitBroken ? .circuitBroken : nil
         ].compactMap { $0 }
-        constraintsSubject.send(Set(constraints))
+        let constraintsSet = Set(constraints)
+        Log.info("Photos backup constraints: \(constraintsSet)", domain: .photosProcessing)
+        constraintsSubject.send(constraintsSet)
     }
 }

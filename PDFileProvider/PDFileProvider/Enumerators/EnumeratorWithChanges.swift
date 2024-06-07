@@ -18,95 +18,121 @@
 import FileProvider
 import PDCore
 
-protocol EnumeratorWithChanges: LogObject {
+protocol EnumeratorWithChanges: AnyObject {
     var shareID: String { get }
     var eventsManager: EventsSystemManager { get }
     var fileSystemSlot: FileSystemSlot { get }
     var cloudSlot: CloudSlot { get }
+    var changeObserver: FileProviderChangeObserver? { get }
+    var shouldReenumerateItems: Bool { get set }
 }
 
 extension EnumeratorWithChanges {
-    // MARK: Changes Tracking
     
-    private func latestAnchor() -> NSFileProviderSyncAnchor? {
-        #if os(iOS)
-        return latestAnchorIOS()
-        #else
-        return latestAnchorMacOS()
-        #endif
-    }
-
-    private func latestAnchorIOS() -> NSFileProviderSyncAnchor? {
-        guard let eventID = eventsManager.lastProcessedEvent()?.eventId ?? cloudSlot.lastScannedEventID,
-              let referenceDate = cloudSlot.referenceDate else
-        {
-            return nil
+    // MARK: - Anchors
+    
+    private func prospectiveAnchor() throws -> NSFileProviderSyncAnchor {
+        // Anchor includes latest event that touched metadata DB and moment when we began tracking events (login, cache clearing):
+        // 1. latest event that has been applied to metadata DB but not enumerated yet
+        // 2. otherwise, anchor can not be created and so there are no changes to be enumerated
+        guard let eventID = eventsManager.lastUnenumeratedEvent()?.eventId,
+              let referenceDate = eventsManager.eventSystemReferenceDate
+        else {
+            throw Errors.couldNotProduceSyncAnchor
         }
 
-        return NSFileProviderSyncAnchor(anchor: .init(eventID: eventID, shareID: shareID, referenceDate: referenceDate))
-    }
-
-    private func latestAnchorMacOS() -> NSFileProviderSyncAnchor? {
-        guard let event = eventsManager.lastReceivedEvent() else {
-            return nil
-        }
-
-        let eventID = event.eventId
-        let eventDate = Date(timeIntervalSince1970: event.eventEmittedAt)
-
-        return NSFileProviderSyncAnchor(anchor: .init(eventID: eventID, shareID: shareID, referenceDate: eventDate))
+        let anchor = NSFileProviderSyncAnchor.UnderlyingAnchor(
+            eventID: eventID,
+            shareID: shareID,
+            eventSystemRerefenceDate: referenceDate
+        )
+        
+        return NSFileProviderSyncAnchor(anchor: anchor)
     }
     
     func currentSyncAnchor(_ completionHandler: @escaping (NSFileProviderSyncAnchor?) -> Void) {
-        let anchor = latestAnchor()
-        ConsoleLogger.shared?.log("⚓️ current sync anchor: " + String(describing: anchor), osLogType: Self.self)
-        completionHandler(anchor)
+        // Anchor includes latest event that touched metadata DB and moment when we began tracking events (login, cache clearing):
+        // 1. latest event that has been applied to metadata DB and enumerated
+        // 2. otherwise, anchor can not be created becase no event has been fully processed yet
+        guard let eventID = eventsManager.lastEnumeratedEvent()?.eventId,
+              let referenceDate = eventsManager.eventSystemReferenceDate
+        else {
+            completionHandler(nil)
+            return
+        }
+
+        let anchor = NSFileProviderSyncAnchor.UnderlyingAnchor(
+            eventID: eventID,
+            shareID: shareID,
+            eventSystemRerefenceDate: referenceDate
+        )
+        
+        Log.info("⚓️ current sync anchor: " + String(describing: anchor), domain: .fileProvider)
+        completionHandler(NSFileProviderSyncAnchor(anchor: anchor))
     }
     
-    func enumerateChanges(_ observer: NSFileProviderChangeObserver, _ syncAnchor: NSFileProviderSyncAnchor) {
-        ConsoleLogger.shared?.log("🔄 enumerating changes", osLogType: Self.self)
+    func enumerateChanges(_ observers: [NSFileProviderChangeObserver], _ syncAnchor: NSFileProviderSyncAnchor) {
+        Log.info("🔄 enumerating changes", domain: .fileProvider)
+        changeObserver?.incrementSyncCounter(enumeratingChange: true)
 
         #if os(iOS)
-        enumerateChangesIOS(observer, syncAnchor)
+        enumerateChangesIOS(observers, syncAnchor)
         #else
-        enumerateChangesMacOS(observer, syncAnchor)
+        enumerateChangesMacOS(observers, syncAnchor)
         #endif
     }
 
-    private func enumerateChangesIOS(_ observer: NSFileProviderChangeObserver, _ syncAnchor: NSFileProviderSyncAnchor) {
-        // no known events means no changes
-        guard let newSyncAnchor = self.latestAnchor() else {
-            observer.finishEnumeratingWithError(Errors.mapToFileProviderError(Errors.couldNotProduceSyncAnchor)!)
-            return
-        }
-
-        enumerateChangesCommon(observer, syncAnchor, newSyncAnchor)
+    @available(macOS, unavailable)
+    private func enumerateChangesIOS(_ observers: [NSFileProviderChangeObserver], _ syncAnchor: NSFileProviderSyncAnchor) {
+        enumerateChangesCommon(observers, syncAnchor)
     }
 
-    private func enumerateChangesMacOS(_ observer: NSFileProviderChangeObserver, _ syncAnchor: NSFileProviderSyncAnchor) {
-        // on macOS we only process events here, latestAnchor might be nil on the first run
+    @available(iOS, unavailable)
+    private func enumerateChangesMacOS(_ observers: [NSFileProviderChangeObserver], _ syncAnchor: NSFileProviderSyncAnchor) {
         eventsManager.forceProcessEvents()
+        enumerateChangesCommon(observers, syncAnchor)
+    }
+    
+    private func reEnumerationIsNeeded(_ syncAnchor: NSFileProviderSyncAnchor, _ newSyncAnchor: NSFileProviderSyncAnchor) -> Bool {
+        // reference date is date of last login or cache clearing
+        // reference date changed -> reEnumerationIsNeeded
+        guard !syncAnchor.rawValue.isEmpty else {
+            return false
+        }
 
-        // no known events means no changes
-        guard let newSyncAnchor = self.latestAnchor() else {
-            observer.finishEnumeratingChanges(upTo: syncAnchor, moreComing: false)
+        return newSyncAnchor[\.referenceDate] != syncAnchor[\.referenceDate]
+    }
+
+    private func enumerateChangesCommon(_ observers: [NSFileProviderChangeObserver], _ syncAnchor: NSFileProviderSyncAnchor) {
+        guard !shouldReenumerateItems else {
+            // forces the `enumerateItems`
+            observers.forEach { $0.finishEnumeratingWithError(NSFileProviderError(.syncAnchorExpired)) }
+            Log.info("Forcing items reenumeration", domain: .forceRefresh)
+            shouldReenumerateItems = false
+            return
+        }
+        let newSyncAnchor: NSFileProviderSyncAnchor
+        do {
+            newSyncAnchor = try prospectiveAnchor()
+        } catch {
+            guard syncAnchor.rawValue.isEmpty || syncAnchor[\.referenceDate] == eventsManager.eventSystemReferenceDate else {
+                observers.forEach { $0.finishEnumeratingWithError(NSFileProviderError(.syncAnchorExpired)) }
+                return
+            }
+
+            observers.forEach { $0.finishEnumeratingChanges(upTo: syncAnchor, moreComing: false) }
             return
         }
 
-        enumerateChangesCommon(observer, syncAnchor, newSyncAnchor)
-    }
-
-    private func enumerateChangesCommon(_ observer: NSFileProviderChangeObserver, _ syncAnchor: NSFileProviderSyncAnchor, _ newSyncAnchor: NSFileProviderSyncAnchor) {
         // same anchor means no new events
         guard newSyncAnchor != syncAnchor else {
-            ConsoleLogger.shared?.log("Sync anchor did not change" + String(describing: syncAnchor), osLogType: Self.self)
-            observer.finishEnumeratingChanges(upTo: syncAnchor, moreComing: false)
+            Log.info("Sync anchor did not change" + String(describing: syncAnchor), domain: .fileProvider)
+            observers.forEach { $0.finishEnumeratingChanges(upTo: syncAnchor, moreComing: false) }
             return
         }
 
-        // tracking changes across logins does not make sense because they are event-based
-        guard newSyncAnchor[\.referenceDate] != syncAnchor[\.referenceDate] else {
-            observer.finishEnumeratingWithError(NSFileProviderError(.syncAnchorExpired))
+        guard !reEnumerationIsNeeded(syncAnchor, newSyncAnchor) else {
+            observers.forEach { $0.finishEnumeratingWithError(NSFileProviderError(.syncAnchorExpired)) }
             return
         }
 
@@ -115,21 +141,22 @@ extension EnumeratorWithChanges {
 
         do {
             let events = try eventsManager.eventsHistory(since: syncAnchor[\.eventID])
-            ConsoleLogger.shared?.log("History: \(events.count) events", osLogType: Self.self)
+            Log.info("History: \(events.count) events", domain: .events)
             events.forEach { self.categorize(row: $0, into: &nodesToUpdate, or: &itemsToDelete) }
+            eventsManager.setEnumerated(events.map { $0.objectID })
         } catch let error {
-            ConsoleLogger.shared?.log(error, osLogType: Self.self)
+            Log.error("Error fetching events history: \(error.localizedDescription) events", domain: .events)
         }
 
         if !itemsToDelete.isEmpty {
-            ConsoleLogger.shared?.log("Delete: \(itemsToDelete.count) events", osLogType: Self.self)
-            observer.didDeleteItems(withIdentifiers: itemsToDelete)
+            Log.info("Delete: \(itemsToDelete.count) events", domain: .events)
+            observers.forEach { $0.didDeleteItems(withIdentifiers: itemsToDelete) }
         }
 
         // successful completion
         let completion: () -> Void = {
-            ConsoleLogger.shared?.log("Enumerated changes from sync anchor \(syncAnchor) till " + String(describing: newSyncAnchor), osLogType: Self.self)
-            observer.finishEnumeratingChanges(upTo: newSyncAnchor, moreComing: false)
+            Log.info("Enumerated changes from sync anchor \(syncAnchor) till" + String(describing: newSyncAnchor), domain: .events)
+            observers.forEach { $0.finishEnumeratingChanges(upTo: newSyncAnchor, moreComing: false) }
         }
 
         guard let moc = nodesToUpdate.first?.managedObjectContext else {
@@ -137,10 +164,33 @@ extension EnumeratorWithChanges {
             return
         }
 
-        moc.perform {
-            let itemsToUpdate = nodesToUpdate.map(NodeItem.init)
-            ConsoleLogger.shared?.log("Update: \(itemsToUpdate.count)", osLogType: Self.self)
-            observer.didUpdate(itemsToUpdate)
+        moc.perform { [weak self] in
+            let itemsToUpdate = nodesToUpdate.compactMap {
+                do {
+                    return try NodeItem(node: $0)
+                } catch {
+                    #if os(macOS)
+                    guard let self else { return nil }
+                    let reportableSyncItem = ReportableSyncItem(
+                        id: $0.identifier.rawValue,
+                        modificationTime: Date(),
+                        filename: "Error: Not available",
+                        location: nil,
+                        mimeType: $0.mimeType,
+                        operation: .enumerateChanges,
+                        state: .errored,
+                        description: "Access to file attribute (e.g., file name) not available. Please retry or contact support."
+                    )
+                    if let syncStorage = self.fileSystemSlot.syncStorage {
+                        let syncReportingController = SyncReportingController(storage: syncStorage, suite: .group(named: Constants.appGroup), appTarget: .main)
+                        try? syncReportingController.report(item: reportableSyncItem)
+                    }
+                    #endif
+                    return nil
+                }
+            }
+            Log.info("Update: \(itemsToUpdate.count)", domain: .events)
+            observers.forEach { $0.didUpdate(itemsToUpdate) }
             completion()
         }
     }
@@ -151,19 +201,27 @@ extension EnumeratorWithChanges {
     {
         switch row.event.genericType {
         case .delete:
-            let nodeIdentifier = NodeIdentifier(row.event.inLaneNodeId, row.share)
+            let shareID = !row.share.isEmpty ? row.share : shareID
+            let nodeIdentifier = NodeIdentifier(row.event.inLaneNodeId, shareID)
             itemsToDelete.append(.init(nodeIdentifier))
             
         case .updateContent, .updateMetadata, .create:
-            guard let node = self.fileSystemSlot.getNode(.init(row.event.inLaneNodeId, row.share)) else {
+            let nodeIdentifier = NodeIdentifier(row.event.inLaneNodeId, row.share)
+            guard let node = self.fileSystemSlot.getNode(nodeIdentifier) else {
+                Log.info("Event's node not found in storage - event has not yet been processed", domain: .events)
                 return
             }
-            
-            if node.state == .deleted || node.state == .deleting {
-                // trashed items need to be deleted from enumerator here - the fact that they do not appear in enumeration is not enough
-                itemsToDelete.append(.init(node.identifier))
+
+            // We do this so that we don't show remotely trashed items locally.
+            // When trashing locally, we mark the item as .excludedFromSync,
+            // which disassociates the item and all children, preserving a local
+            // copy before automatically requesting remote deletion (which we handle by
+            // trashing) from remote server.
+            //   This is prefered due to the differences between macOS's more complex
+            // trash capabilities and our BE model.
+            if node.state == .deleted {
+                itemsToDelete.append(.init(nodeIdentifier))
             } else {
-                // others just updated
                 nodesToUpdate.append(node)
             }
         default: break

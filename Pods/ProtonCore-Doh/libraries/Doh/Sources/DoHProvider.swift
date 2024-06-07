@@ -20,8 +20,7 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Log
-import ProtonCore_FeatureSwitch
+import ProtonCoreLog
 
 enum DoHProvider {
     case google
@@ -61,13 +60,13 @@ protocol DoHProviderInternal: DoHProviderPublic {
 
 extension DoHProviderInternal {
     public static var defaultRecordType: DNSRecordType {
-        FeatureFactory.shared.isEnabled(.dohARecordQueries) ? .a : .txt
+        .txt
     }
     public static var defaultTimeout: TimeInterval { 5 }
 
     func query(host: String, type: DNSRecordType, sessionId: String?) -> String {
         var query = host
-        if let sessionId {
+        if let sessionId, !sessionId.isEmpty {
             query = sessionId + "." + host
         }
 
@@ -76,7 +75,7 @@ extension DoHProviderInternal {
             .init(name: "name", value: query)
         ]
 
-        guard #available(macOS 13.0, iOS 16.0, *) else {
+        guard #available(macOS 13.0, iOS 16.0, tvOS 16.0, *) else {
             return queryUrl.appendingQueryItemsLegacy(queryItems).absoluteString
         }
 
@@ -86,11 +85,11 @@ extension DoHProviderInternal {
     public func fetch(host: String, sessionId: String?, type: DNSRecordType, timeout: TimeInterval, completion: @escaping ([DNS]?) -> Void) {
         let urlStr = self.query(host: host, type: type, sessionId: sessionId)
         let url = URL(string: urlStr)!
-        
+
         let request = URLRequest(
             url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: timeout
         )
-        
+
         fetchAsynchronously(request: request) { data in
             guard let resData = data else { completion(nil); return }
             guard let dns = self.parse(data: resData) else { completion(nil); return }
@@ -117,7 +116,7 @@ extension DoHProviderInternal {
         }
         task.resume()
     }
-    
+
     func parse(data response: Data) -> [DNS]? {
         do {
             guard let dictRes = try JSONSerialization.jsonObject(with: response, options: JSONSerialization.ReadingOptions.allowFragments) as? [String: Any]
@@ -129,9 +128,9 @@ extension DoHProviderInternal {
             for answer in answers {
                 guard let type = answer["type"] as? Int, supported.map(\.rawValue).contains(type) else { continue }
                 guard let addr = answer["data"] as? String, let timeout = answer["TTL"] as? Int else { continue }
-                
+
                 let pureAddr = addr.replacingOccurrences(of: "\"", with: "")
-                
+
                 // validate that the data we received is a valid url, ignore if not
                 guard URL(string: "https://\(pureAddr)") != nil else { continue }
                 proxyAddressData.append((pureAddr, timeout))
@@ -142,9 +141,9 @@ extension DoHProviderInternal {
                 dnsList.append(DNS(host: data.0, ttl: data.1))
             }
             return dnsList
-            
+
         } catch {
-            PMLog.debug("parse error: \(error)")
+            PMLog.error("parse error: \(error)", sendToExternal: true)
             return nil
         }
     }

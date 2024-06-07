@@ -1,0 +1,6 @@
+framework module ProtonCoreTroubleShooting {
+  umbrella header "ProtonCore-TroubleShooting-dynamic-umbrella.h"
+
+  export *
+  module * { export * }
+}

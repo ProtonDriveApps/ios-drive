@@ -1,36 +1,27 @@
-#import "SentryEvent.h"
-#import "NSDate+SentryExtras.h"
-#import "NSDictionary+SentrySanitize.h"
+#import "SentryANRTrackingIntegration.h"
 #import "SentryBreadcrumb.h"
 #import "SentryClient.h"
-#import "SentryCurrentDate.h"
 #import "SentryDebugMeta.h"
+#import "SentryDependencyContainer.h"
+#import "SentryEvent+Private.h"
 #import "SentryException.h"
-#import "SentryId.h"
+#import "SentryInternalDefines.h"
 #import "SentryLevelMapper.h"
 #import "SentryMessage.h"
 #import "SentryMeta.h"
+#import "SentryNSDictionarySanitize.h"
 #import "SentryRequest.h"
 #import "SentryStacktrace.h"
+#import "SentrySwift.h"
 #import "SentryThread.h"
 #import "SentryUser.h"
 
+#if SENTRY_HAS_METRIC_KIT
+#    import "SentryMechanism.h"
+#    import "SentryMetricKitIntegration.h"
+#endif // SENTRY_HAS_METRIC_KIT
+
 NS_ASSUME_NONNULL_BEGIN
-
-@interface
-SentryEvent ()
-
-@property (nonatomic) BOOL isCrashEvent;
-
-// We're storing serialized breadcrumbs to disk in JSON, and when we're reading them back (in
-// the case of OOM), we end up with the serialized breadcrumbs again. Instead of turning those
-// dictionaries into proper SentryBreadcrumb instances which then need to be serialized again in
-// SentryEvent, we use this serializedBreadcrumbs property to set the pre-serialized
-// breadcrumbs. It saves a LOT of work - especially turning an NSDictionary into a SentryBreadcrumb
-// is silly when we're just going to do the opposite right after.
-@property (nonatomic, strong) NSArray *serializedBreadcrumbs;
-
-@end
 
 @implementation SentryEvent
 
@@ -45,8 +36,8 @@ SentryEvent ()
     if (self) {
         self.eventId = [[SentryId alloc] init];
         self.level = level;
-        self.platform = @"cocoa";
-        self.timestamp = [SentryCurrentDate date];
+        self.platform = SentryPlatformName;
+        self.timestamp = [SentryDependencyContainer.sharedInstance.dateProvider date];
     }
     return self;
 }
@@ -61,13 +52,13 @@ SentryEvent ()
 - (NSDictionary<NSString *, id> *)serialize
 {
     if (nil == self.timestamp) {
-        self.timestamp = [SentryCurrentDate date];
+        self.timestamp = [SentryDependencyContainer.sharedInstance.dateProvider date];
     }
 
     NSMutableDictionary *serializedData = @{
         @"event_id" : self.eventId.sentryIdString,
         @"timestamp" : @(self.timestamp.timeIntervalSince1970),
-        @"platform" : @"cocoa",
+        @"platform" : SentryPlatformName,
     }
                                               .mutableCopy;
 
@@ -80,7 +71,7 @@ SentryEvent ()
 
     // This is important here, since we probably use __sentry internal extras
     // before
-    [serializedData setValue:[self.extra sentry_sanitize] forKey:@"extra"];
+    [serializedData setValue:sentry_sanitize(self.extra) forKey:@"extra"];
     [serializedData setValue:self.tags forKey:@"tags"];
 
     return serializedData;
@@ -128,15 +119,13 @@ SentryEvent ()
 
 - (void)addSimpleProperties:(NSMutableDictionary *)serializedData
 {
-    [serializedData setValue:[self.sdk sentry_sanitize] forKey:@"sdk"];
+    [serializedData setValue:sentry_sanitize(self.sdk) forKey:@"sdk"];
     [serializedData setValue:self.releaseName forKey:@"release"];
     [serializedData setValue:self.dist forKey:@"dist"];
     [serializedData setValue:self.environment forKey:@"environment"];
 
     if (self.transaction) {
         [serializedData setValue:self.transaction forKey:@"transaction"];
-    } else if (self.extra[@"__sentry_transaction"]) {
-        [serializedData setValue:self.extra[@"__sentry_transaction"] forKey:@"transaction"];
     }
 
     [serializedData setValue:self.fingerprint forKey:@"fingerprint"];
@@ -154,7 +143,7 @@ SentryEvent ()
         [serializedData setValue:breadcrumbs forKey:@"breadcrumbs"];
     }
 
-    [serializedData setValue:[self.context sentry_sanitize] forKey:@"contexts"];
+    [serializedData setValue:sentry_sanitize(self.context) forKey:@"contexts"];
 
     if (nil != self.message) {
         [serializedData setValue:[self.message serialize] forKey:@"message"];
@@ -185,6 +174,36 @@ SentryEvent ()
         [crumbs addObject:[crumb serialize]];
     }
     return crumbs;
+}
+
+#if SENTRY_HAS_METRIC_KIT
+
+- (BOOL)isMetricKitEvent
+{
+    if (self.exceptions == nil || self.exceptions.count != 1) {
+        return NO;
+    }
+
+    NSArray<NSString *> *metricKitMechanisms = @[
+        SentryMetricKitDiskWriteExceptionMechanism, SentryMetricKitCpuExceptionMechanism,
+        SentryMetricKitHangDiagnosticMechanism, @"MXCrashDiagnostic"
+    ];
+
+    SentryException *exception = self.exceptions[0];
+    if (exception.mechanism != nil &&
+        [metricKitMechanisms containsObject:exception.mechanism.type]) {
+        return YES;
+    } else {
+        return NO;
+    }
+}
+
+#endif // SENTRY_HAS_METRIC_KIT
+
+- (BOOL)isAppHangEvent
+{
+    return self.exceptions.count == 1 &&
+        [self.exceptions.firstObject.type isEqualToString:SentryANRExceptionType];
 }
 
 @end

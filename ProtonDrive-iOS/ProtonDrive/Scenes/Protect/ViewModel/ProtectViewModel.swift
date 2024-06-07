@@ -54,9 +54,12 @@ final class ProtectViewModel: LogoutRequesting {
 
         DriveNotification.signOut.publisher
             .sink { _ in
-                signoutManager.signOut()
-                ConsoleLogger.shared?.log(DriveError(DriveLogout(), "ProtectViewModel", method: "DriveNotification.signOut"))
-                NotificationCenter.default.post(.checkAuthentication)
+                Task {
+                    Log.info("DriveNotification.signOut", domain: .application)
+                    NotificationCenter.default.post(.isLoggingOut)
+                    await signoutManager.signOut()
+                    NotificationCenter.default.post(.checkAuthentication)
+                }
             }
             .store(in: &cancellables)
     }

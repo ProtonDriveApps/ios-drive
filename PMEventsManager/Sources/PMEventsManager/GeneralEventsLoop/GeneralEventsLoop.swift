@@ -17,8 +17,8 @@
 
 import Foundation
 import Combine
-import ProtonCore_Networking
-import ProtonCore_Services
+import ProtonCoreNetworking
+import ProtonCoreServices
 
 public class GeneralEventsLoop<Processor: EventLoopProcessor>: EventsLoop where Processor.Response == GeneralLoopResponse {
     public typealias Response = GeneralLoopResponse
@@ -62,7 +62,7 @@ public class GeneralEventsLoop<Processor: EventLoopProcessor>: EventsLoop where 
     // MARK: - Event paging
     
     public func poll(since loopEventID: String) async throws -> Response {
-        let request: Router = .getEvent(eventID: loopEventID, messageCounts: false, conversationCounts: false)
+        let request: Router = .getEvent(eventID: loopEventID)
         let response: GeneralLoopResponse = try await apiService.exec(route: request)
         return response
     }

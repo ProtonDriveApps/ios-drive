@@ -20,13 +20,11 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Authentication
-import ProtonCore_APIClient
-import ProtonCore_DataModel
-import ProtonCore_Log
-import ProtonCore_Networking
-import ProtonCore_FeatureSwitch
-import ProtonCore_CoreTranslation
+import ProtonCoreAuthentication
+import ProtonCoreAPIClient
+import ProtonCoreDataModel
+import ProtonCoreLog
+import ProtonCoreNetworking
 
 // these methods are responsible for fetching and refreshing the data: user, addresses, keys, salts etc.
 // in case we detect the need for account migration, it's also performed (if possible, otherwise process fails with error)
@@ -52,9 +50,6 @@ extension LoginService {
         // account migration needs to take place and we cannot do it automatically because user has not chosen the internal username yet
         if user.isExternal, self.minimumAccountType == .internal {
 
-            // Cap C blocked
-            guard isCapCEnabled(completion: completion) else { return }
-
             // external to internal conversion flow kick-off
             withAuthDelegateAvailable(completion) { authManager in
                 completion(.success(.chooseInternalUsernameAndCreateInternalAddress(CreateAddressData(email: self.username!, credential: authManager.authCredential(sessionUID: sessionId)!, user: user, mailboxPassword: mailboxPassword, passwordMode: passwordMode))))
@@ -73,7 +68,7 @@ extension LoginService {
         manager.getAddresses { [weak self] result in
             switch result {
             case .failure(let error):
-                PMLog.error("Cannot fetch addresses for user")
+                PMLog.error("Cannot fetch addresses for user", sendToExternal: true)
                 completion(.failure(error.asLoginError()))
 
             case .success(let addresses):
@@ -83,7 +78,7 @@ extension LoginService {
             }
         }
     }
-    
+
     private func fetchEncryptionDataPerformingAutomaticAccountMigrationIfNeeded(
         addresses: [Address], user: User, mailboxPassword: String, passwordMode: PasswordMode, completion: @escaping (Result<LoginStatus, LoginError>) -> Void
     ) {
@@ -111,10 +106,10 @@ extension LoginService {
             }
             return
         }
-        
+
         // when external user has no key. external address is not empty. try to create keys only. other logic stays the same
         if hasNoKeys, user.isExternal, hasExternalAddressAndNoInternalOnes {
-            
+
             self.createAccountKeysIfNeeded(user: user,
                                            addresses: addresses,
                                            mailboxPassword: mailboxPassword) { [weak self] result in
@@ -308,7 +303,7 @@ extension LoginService {
                 case let .failure(.apiMightBeBlocked(message, originalError)):
                     completion(.failure(.apiMightBeBlocked(message: message, originalError: originalError)))
                 case let .failure(error):
-                    PMLog.debug("Fetching user info with \(error)")
+                    PMLog.error("Fetching user info with \(error)", sendToExternal: true)
                     completion(.failure(.generic(message: error.userFacingMessageInLogin, code: error.codeInLogin, originalError: error)))
                 }
             }
@@ -351,10 +346,10 @@ extension LoginService {
                     PMLog.debug("Address keys already created, moving on")
                     fetchUserDataAndRetryFetchingAddressesAndEncryptionData()
                 case let .generic(message, code, originalError):
-                    PMLog.error("Cannot fetch addresses for user")
+                    PMLog.error("Cannot fetch addresses for user", sendToExternal: true)
                     completion(.failure(.generic(message: message, code: code, originalError: originalError)))
                 case let .apiMightBeBlocked(message, originalError):
-                    PMLog.error("Cannot fetch addresses for user")
+                    PMLog.error("Cannot fetch addresses for user", sendToExternal: true)
                     completion(.failure(.apiMightBeBlocked(message: message, originalError: originalError)))
                 }
             }
@@ -412,7 +407,7 @@ extension LoginService {
             case let .success(salts):
                 self?.makesPassphrasesAndValidateMailboxPassword(addresses: addresses, user: user, mailboxPassword: mailboxPassword, salts: salts, completion: completion)
             case let .failure(error):
-                PMLog.debug("Fetching key salts failed with \(error)")
+                PMLog.error("Fetching key salts failed with \(error)", sendToExternal: true)
                 completion(.failure(error.asLoginError()))
             }
         }
@@ -455,33 +450,20 @@ extension LoginService {
                                                        scopes: credentials.scopes))))
 
             case let .failure(error):
-                PMLog.debug("Making passphrases failed with \(error)")
-                completion(.failure(.generic(message: error.messageForTheUser,
+                PMLog.error("Making passphrases failed with \(error)", sendToExternal: true)
+                completion(.failure(.generic(message: error.localizedDescription,
                                              code: error.bestShotAtReasonableErrorCode,
                                              originalError: error)))
             }
         }
     }
-    
-    private func isCapCEnabled(completion: @escaping (Result<LoginStatus, LoginError>) -> Void) -> Bool {
-        guard FeatureFactory.shared.isEnabled(.externalAccountConversion) else {
-            let localError = NSError.asProtonAddrRequiredError()
-            completion(.failure(.externalAccountsNotSupported(
-                message: CoreString._ls_external_accounts_not_supported_popup_local_desc, title: CoreString._ls_external_accounts_address_required_popup_title,
-                originalError: localError
-            )))
-            return false
-        }
-        
-        return true
-    }
 }
 
 extension NSError {
-    
+
     class func asProtonAddrRequiredError() -> Error {
         return NSError.init(domain: "protoncore-login",
                             code: -100,
-                            localizedDescription: CoreString._ls_external_accounts_not_supported_popup_local_desc)
+                            localizedDescription: LSTranslation._loginservice_external_accounts_not_supported_popup_local_desc.l10n)
     }
 }

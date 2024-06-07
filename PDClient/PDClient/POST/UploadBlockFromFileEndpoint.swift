@@ -46,27 +46,27 @@ public struct UploadBlockFromFileEndpoint: Endpoint {
         }
         FileManager.default.createFile(atPath: copy.path, contents: Data(), attributes: nil)
         let writeHandle = try FileHandle(forWritingTo: copy)
+        defer { try? writeHandle.close() }
         
         // prefix
-        writeHandle.write(Self.prefix(boundary: boundary))
+        try writeHandle.write(contentsOf: Self.prefix(boundary: boundary))
         
         // data to upload
         let reader = try FileHandle(forReadingFrom: dataUrl)
-        var data = reader.readData(ofLength: chunkSize)
+        defer { try? reader.close() }
+        var data = try reader.read(upToCount: chunkSize) ?? Data()
         while !data.isEmpty {
-            autoreleasepool {
-                writeHandle.write(data)
-                data = reader.readData(ofLength: chunkSize)
+            try autoreleasepool {
+                try writeHandle.write(contentsOf: data)
+                data = try reader.read(upToCount: chunkSize) ?? Data()
             }
         }
-        try reader.close()
         
         // suffix
-        writeHandle.write(Self.suffix(boundary: boundary))
+        try writeHandle.write(contentsOf: Self.suffix(boundary: boundary))
         
         // close
-        let contentLength = writeHandle.offsetInFile
-        writeHandle.closeFile()
+        let contentLength = try writeHandle.offset()
         return (copy, contentLength)
     }
     

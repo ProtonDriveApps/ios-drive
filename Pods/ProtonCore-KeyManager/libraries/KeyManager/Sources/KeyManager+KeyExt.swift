@@ -20,30 +20,30 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import GoLibs
-import ProtonCore_Crypto
-import ProtonCore_DataModel
+import ProtonCoreCryptoGoInterface
+import ProtonCoreCrypto
+import ProtonCoreDataModel
 
 /// Array<Key> extensions
 extension Array where Element: Key {
-    
+
     /// loop and combin all keys in binary
     public var binPrivKeys: Data {
         var out = Data()
         var error: NSError?
         for key in self {
-            if let privK = ArmorUnarmor(key.privateKey, &error) {
+            if let privK = CryptoGo.ArmorUnarmor(key.privateKey, &error) {
                 out.append(privK)
             }
         }
         return out
     }
-    
+
     public var binPrivKeysArray: [Data] {
         var out: [Data] = []
         var error: NSError?
         for key in self {
-            if let privK = ArmorUnarmor(key.privateKey, &error) {
+            if let privK = CryptoGo.ArmorUnarmor(key.privateKey, &error) {
                 out.append(privK)
             }
         }
@@ -57,7 +57,7 @@ extension Array where Element == Data {
         var out = [ArmoredKey]()
         var error: NSError?
         for key in self {
-            let privK = ArmorArmorKey(key, &error)
+            let privK = CryptoGo.ArmorArmorKey(key, &error)
             out.append(ArmoredKey.init(value: privK))
         }
         return out
@@ -65,21 +65,21 @@ extension Array where Element == Data {
 }
 
 extension Key {
-    
+
     /// TODO:: need to handle the nil case
     internal var binPrivKeys: Data {
         var error: NSError?
-        return ArmorUnarmor(self.privateKey, &error)!
+        return CryptoGo.ArmorUnarmor(self.privateKey, &error)!
     }
-    
+
     public var publicKey: String {
         return self.privateKey.publicKey
     }
-    
+
     public var fingerprint: String {
         return self.privateKey.fingerprint
     }
-    
+
     public var shortFingerprint: String {
         let fignerprint = self.fingerprint
         if fignerprint.count > 8 {
@@ -106,7 +106,7 @@ extension Key {
         guard let token = self.token, let signature = self.signature else {
             return mailboxPassphrase
         }
-        
+
         let plainToken: String
         do {
             plainToken = try token.decryptMessageNonOptional(binKeys: userBinKeys, passphrase: mailboxPassphrase)
@@ -132,11 +132,11 @@ extension Key {
         return try self.passphrase(userPrivateKeys: userKeys.toArmoredPrivateKeys,
                                    mailboxPassphrase: Passphrase.init(value: mailboxPassphrase)).value
     }
-    
+
     public func decryptMessageNonOptional(encrypted: String, userBinKeys privateKeys: [Data], passphrase: String) throws -> String {
         let addressKeyPassphrase = try self.passphrase(userPrivateKeys: privateKeys.toArmored,
                                                        mailboxPassphrase: Passphrase.init(value: passphrase))
-        
+
         return try encrypted.decryptMessageWithSingleKeyNonOptional(ArmoredKey.init(value: self.privateKey),
                                                                     passphrase: Passphrase.init(value: addressKeyPassphrase.value))
     }

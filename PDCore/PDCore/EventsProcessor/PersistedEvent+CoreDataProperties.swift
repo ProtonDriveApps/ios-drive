@@ -29,6 +29,7 @@ extension PersistedEvent {
     @NSManaged public var eventEmittedAt: Double
     @NSManaged public var eventId: String?
     @NSManaged public var isProcessed: Bool
+    @NSManaged public var isEnumerated: Bool
     @NSManaged public var providerType: String?
     @NSManaged public var shareId: String?
 

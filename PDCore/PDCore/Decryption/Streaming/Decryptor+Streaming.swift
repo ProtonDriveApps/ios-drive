@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import GoLibs
+import ProtonCoreCryptoGoInterface
 
 extension Decryptor {
     
@@ -36,9 +36,9 @@ extension Decryptor {
         FileManager.default.createFile(atPath: cleartextUrl.path, contents: Data(), attributes: nil)
 
         let readFileHandle = try FileHandle(forReadingFrom: cyphertextUrl)
-        defer { readFileHandle.closeFile() }
+        defer { try? readFileHandle.close() }
         let writeFileHandle = try FileHandle(forWritingTo: cleartextUrl)
-        defer { writeFileHandle.closeFile() }
+        defer { try? writeFileHandle.close() }
         // cryptography
 
         let decryptionKeyRing = try CoreDecryptor.buildPrivateKeyRing(with: decryptionKeys)
@@ -48,14 +48,14 @@ extension Decryptor {
         try Decryptor.decryptBinaryStream(sessionKey, nil, readFileHandle, writeFileHandle, Constants.maxBlockChunkSize)
 
         let verifyFileHandle = try FileHandle(forReadingFrom: cleartextUrl)
-        defer { verifyFileHandle.closeFile() }
+        defer { try? verifyFileHandle.close() }
         let verificationKeyRing = try buildPublicKeyRing(armoredKeys: verificationKeys)
 
         do {
             try Decryptor.verifyStreamWithEncryptedSignature(verificationKeyRing, decryptionKeyRing, verifyFileHandle, signature)
         } catch {
             // This method is only used on the context of decrypting Blocks from the FileProvider
-            ConsoleLogger.shared?.log(SignatureError(error, "Block - stream"))
+            Log.error(SignatureError(error, "Block - stream"), domain: .encryption)
         }
     }
 }
@@ -67,15 +67,15 @@ extension Decryptor {
                                                            _ plaintextFile: FileHandle,
                                                            _ encSignatureArmored: String) throws
     {
-        let plaintextReader = HelperMobile2GoReader(FileMobileReader(file: plaintextFile))
+        let plaintextReader = CryptoGo.HelperMobile2GoReader(FileMobileReader(file: plaintextFile))
         
-        let encSignature = CryptoPGPMessage(fromArmored: encSignatureArmored)
+        let encSignature = CryptoGo.CryptoPGPMessage(fromArmored: encSignatureArmored)
 
         try verifyKeyRing.verifyDetachedEncryptedStream(
             plaintextReader,
             encryptedSignature: encSignature,
             decryptionKeyRing: decryptKeyRing,
-            verifyTime: CryptoGetUnixTime()
+            verifyTime: CryptoGo.CryptoGetUnixTime()
         )
     }
     
@@ -86,20 +86,20 @@ extension Decryptor {
                                             _ bufferSize: Int) throws
     {
         
-        let ciphertextReader = HelperMobile2GoReader(FileMobileReader(file: ciphertextFile))
+        let ciphertextReader = CryptoGo.HelperMobile2GoReader(FileMobileReader(file: ciphertextFile))
         
         let plaintextMessageReader = try sessionKey.decryptStream(
             ciphertextReader,
             verifyKeyRing: verifyKeyRing,
-            verifyTime: CryptoGetUnixTime()
+            verifyTime: CryptoGo.CryptoGetUnixTime()
         )
 
-        let reader = HelperGo2IOSReader(plaintextMessageReader)!
+        let reader = CryptoGo.HelperGo2IOSReader(plaintextMessageReader)!
         var isEOF: Bool = false
         while !isEOF {
             try autoreleasepool {
                 let result = try reader.read(bufferSize)
-                blockFile.write(result.data ?? Data())
+                try blockFile.write(contentsOf: result.data ?? Data())
                 isEOF = result.isEOF
             }
         }

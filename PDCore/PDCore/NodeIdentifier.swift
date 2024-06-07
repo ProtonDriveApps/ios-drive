@@ -43,7 +43,13 @@ extension NodeIdentifier: RawRepresentable {
 
 public extension Node {
     var identifier: NodeIdentifier {
-        return .init(self.id, self.shareID)
+        guard let moc else {
+            return NodeIdentifier("", "")
+        }
+
+        return moc.performAndWait {
+            NodeIdentifier(self.id, self.shareID)
+        }
     }
 }
 
@@ -70,6 +76,12 @@ public struct RevisionIdentifier: Hashable {
     public let share: String
     public let file: String
     public let revision: String
+
+    public init(share: String, file: String, revision: String) {
+        self.share = share
+        self.file = file
+        self.revision = revision
+    }
 
     var nodeIdentifier: NodeIdentifier {
         NodeIdentifier(file, share)

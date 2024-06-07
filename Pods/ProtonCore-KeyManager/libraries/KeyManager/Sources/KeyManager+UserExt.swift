@@ -20,8 +20,8 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import GoLibs
-import ProtonCore_DataModel
+import ProtonCoreCryptoGoInterface
+import ProtonCoreDataModel
 
 extension UserInfo {
     var addressPrivateKeys: Data {
@@ -29,14 +29,14 @@ extension UserInfo {
         var error: NSError?
         for addr in userAddresses {
             for key in addr.keys {
-                if let privK = ArmorUnarmor(key.privateKey, &error) {
+                if let privK = CryptoGo.ArmorUnarmor(key.privateKey, &error) {
                     out.append(privK)
                 }
             }
         }
         return out
     }
-    
+
     var firstUserPublicKey: String? {
         if userKeys.count > 0 {
             for k in userKeys {

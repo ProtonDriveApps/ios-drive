@@ -21,21 +21,21 @@ public typealias PhotoIdentifiers = [PhotoIdentifier]
 public typealias PhotoLibraryIdentifier = String
 
 public struct PhotoIdentifier: Equatable, Hashable {
+    public enum IdentifierType {
+        case small
+        case big
+    }
 
     public let localIdentifier: String
     public let cloudIdentifier: PhotoLibraryIdentifier
-    public let creationDate: Date?
     public let modifiedDate: Date?
-    public let width: Int
-    public let height: Int
+    public let type: IdentifierType
 
-    public init(localIdentifier: String, cloudIdentifier: PhotoLibraryIdentifier, creationDate: Date? = nil, modifiedDate: Date? = nil, width: Int, height: Int) {
+    public init(localIdentifier: String, cloudIdentifier: PhotoLibraryIdentifier, modifiedDate: Date? = nil, type: IdentifierType) {
         self.localIdentifier = localIdentifier
         self.cloudIdentifier = cloudIdentifier
-        self.creationDate = creationDate
         self.modifiedDate = modifiedDate
-        self.width = width
-        self.height = height
+        self.type = type
     }
 
     public func hash(into hasher: inout Hasher) {

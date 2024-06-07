@@ -16,9 +16,20 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import Foundation
+
+struct PhotosLoadResponse: Equatable {
+    struct Item: Equatable {
+        let id: PhotoListId
+        let captureTime: Date
+        let isLastLocally: Bool
+    }
+
+    let lastItem: Item?
+}
 
 typealias PhotoListId = String
-typealias PhotoIdsResult = Result<[PhotoListId], Error>
+typealias PhotoIdsResult = Result<PhotosLoadResponse, Error>
 
 protocol PhotosFullLoadInteractor {
     var result: AnyPublisher<PhotoIdsResult, Never> { get }
@@ -58,7 +69,12 @@ final class RemotePhotosFullLoadInteractor: PhotosFullLoadInteractor {
     private func handleList(_ result: PhotosListLoadResult) {
         switch result {
         case let .success(list):
-            metadataInteractor.execute(with: list)
+            if list.photos.isEmpty {
+                let response = PhotosLoadResponse(lastItem: nil)
+                subject.send(.success(response))
+            } else {
+                metadataInteractor.execute(with: list)
+            }
         case let .failure(error):
             subject.send(.failure(error))
         }

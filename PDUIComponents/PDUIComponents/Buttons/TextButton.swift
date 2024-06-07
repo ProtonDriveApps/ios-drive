@@ -16,30 +16,26 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 #if os(iOS)
 public struct TextButton: View {
     let title: String
+    let variant: ButtonVariant
     let action: () -> Void
 
-    public init(title: String, action: @escaping () -> Void) {
+    public init(title: String, variant: ButtonVariant, action: @escaping () -> Void) {
         self.title = title
+        self.variant = variant
         self.action = action
     }
 
     public var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.body.weight(.semibold))
+                .font(.body)
         }
-        .buttonStyle(BrandButtonStyle())
-    }
-}
-
-extension TextButton {
-    public static func cancel(_ action: @escaping () -> Void) -> some View {
-        TextButton(title: "Cancel", action: action)
+        .buttonStyle(TextButtonStyle(variant: variant))
     }
 }
 #endif

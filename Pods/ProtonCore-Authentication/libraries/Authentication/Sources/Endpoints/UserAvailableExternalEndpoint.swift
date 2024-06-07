@@ -20,28 +20,28 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Networking
+import ProtonCoreNetworking
 
 extension AuthService {
-    
+
     public struct UserAvailableExternalResponse: APIDecodableResponse, Encodable {}
-    
+
     struct UserAvailableExternalEndpoint: Request {
-        
+
         let email: String
-        
+
         init(email: String)  {
             self.email = email
         }
-        
+
         var path: String {
             return "/users" + "/availableExternal?Name=" + (self.email.addingPercentEncoding(withAllowedCharacters: urlQueryValueAllowed) ?? "")
         }
-        
+
         var method: HTTPMethod {
             return .get
         }
-        
+
         var isAuth: Bool {
             return false
         }

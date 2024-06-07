@@ -19,14 +19,21 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import ProtonCore_Foundations
+import ProtonCoreFoundations
 
 public protocol PMTextFieldComboDelegate: AnyObject {
     /**
      Tells the delegate that editing stopped for the specified text field.
      */
     func didEndEditing(textField: PMTextFieldCombo)
+
+    /**
+     Tells the delegate that editing started for the specified text field.
+     */
+    func didBeginEditing(textField: PMTextFieldCombo)
 
     /**
      Tells the delegate the value changed for the specific text field
@@ -222,7 +229,7 @@ public class PMTextFieldCombo: UIView, AccessibleView {
             textField.spellCheckingType = newValue
         }
     }
-    
+
     /**
      Picker button active method
      */
@@ -277,7 +284,7 @@ public class PMTextFieldCombo: UIView, AccessibleView {
             }
         }
     }
-    
+
     @objc private func textFieldDidChange(textField: UITextField) {
         updateClearMode()
         delegate?.didChangeValue(self, value: value)
@@ -311,6 +318,7 @@ extension PMTextFieldCombo: UITextFieldDelegate {
 
     public func textFieldDidBeginEditing(_ textField: UITextField) {
         self.textField.setBorder()
+        delegate?.didBeginEditing(textField: self)
     }
 
     public func textFieldDidEndEditing(_ textField: UITextField) {
@@ -334,3 +342,5 @@ extension PMTextFieldCombo: PMInternalTextFieldDelegate {
         textFieldDidChange(textField: textField)
     }
 }
+
+#endif

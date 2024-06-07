@@ -17,14 +17,29 @@
 
 import Foundation
 
-final class ImmediatelyFinishingOperation: AsynchronousOperation, OperationWithProgress {
-
+class ImmediatelyFinishingOperation: AsynchronousOperation, OperationWithProgress, UploadOperation {
+    let id: UUID
     let progress = Progress(unitsOfWork: 1)
+
+    init(id: UUID? = nil) {
+        self.id = id ?? UUID()
+        super.init()
+    }
 
     override func main() {
         guard !isCancelled else { return }
         progress.complete()
         state = .finished
+        Log.info("STAGE: 0 💨 \(type(of: self)). UUID: \(id)", domain: .uploader)
     }
 
+    override public func cancel() {
+        Log.info("STAGE: 0 🙅‍♂️ CANCEL \(type(of: self)). UUID: \(id.uuidString)", domain: .uploader)
+        super.cancel()
+    }
+
+    deinit {
+        Log.info("STAGE: 0 ☠️🚨 \(type(of: self)). UUID: \(id.uuidString)", domain: .uploader)
+        NotificationCenter.default.post(name: .uploadPendingPhotos)
+    }
 }

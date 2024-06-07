@@ -17,7 +17,7 @@
 
 import CoreData
 
-final class PhotoThumbnailRepository: ThumbnailRepository {
+final class PhotoNodeThumbnailRepository: NodeThumbnailRepository {
     private let store: StorageManager
     private let typeStrategy: ThumbnailTypeStrategy
 

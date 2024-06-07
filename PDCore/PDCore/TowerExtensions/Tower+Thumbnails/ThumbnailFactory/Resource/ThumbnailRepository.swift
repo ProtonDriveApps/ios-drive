@@ -15,8 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import Foundation
-
 protocol ThumbnailRepository {
-    func fetchThumbnail(fileID: NodeIdentifier) throws -> Thumbnail
+    func getThumbnail() throws -> Thumbnail
 }

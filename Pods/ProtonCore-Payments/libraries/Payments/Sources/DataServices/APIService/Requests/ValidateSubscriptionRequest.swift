@@ -20,23 +20,27 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Log
-import ProtonCore_Networking
-import ProtonCore_Services
+import ProtonCoreLog
+import ProtonCoreNetworking
+import ProtonCoreServices
 
-public final class ValidateSubscriptionRequest: BaseApiRequest<ValidateSubscriptionResponse> {
+typealias ValidateSubscriptionRequest = BaseApiRequest<ValidateSubscriptionResponse>
+
+final class V4ValidateSubscriptionRequest: ValidateSubscriptionRequest {
     private let protonPlanName: String
     private let isAuthenticated: Bool
+    private let cycle: Int
 
-    public init(api: APIService, protonPlanName: String, isAuthenticated: Bool) {
+    public init(api: APIService, protonPlanName: String, isAuthenticated: Bool, cycle: Int) {
         self.protonPlanName = protonPlanName
         self.isAuthenticated = isAuthenticated
+        self.cycle = cycle
         super.init(api: api)
     }
 
     override public var isAuth: Bool { isAuthenticated }
 
-    override public var method: HTTPMethod { .put }
+    override public var method: HTTPMethod { .post }
 
     override public var path: String { super.path + "/v4/subscription/check" }
 
@@ -44,7 +48,34 @@ public final class ValidateSubscriptionRequest: BaseApiRequest<ValidateSubscript
         [
             "Currency": "USD",
             "Plans": [protonPlanName: 1],
-            "Cycle": 12
+            "Cycle": cycle
+        ]
+    }
+}
+
+final class V5ValidateSubscriptionRequest: ValidateSubscriptionRequest {
+    private let protonPlanName: String
+    private let isAuthenticated: Bool
+    private let cycle: Int
+
+    public init(api: APIService, protonPlanName: String, isAuthenticated: Bool, cycle: Int) {
+        self.protonPlanName = protonPlanName
+        self.isAuthenticated = isAuthenticated
+        self.cycle = cycle
+        super.init(api: api)
+    }
+
+    override public var isAuth: Bool { isAuthenticated }
+
+    override public var method: HTTPMethod { .post }
+
+    override public var path: String { super.path + "/v5/subscription/check" }
+
+    override public var parameters: [String: Any]? {
+        [
+            "Currency": "USD",
+            "Plans": [protonPlanName: 1],
+            "Cycle": cycle
         ]
     }
 }

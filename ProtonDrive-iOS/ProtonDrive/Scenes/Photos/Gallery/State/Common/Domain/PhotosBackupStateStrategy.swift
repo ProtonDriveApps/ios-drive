@@ -17,10 +17,16 @@
 
 struct PhotosBackupStatesInput: Equatable {
     let progress: PhotosBackupProgress?
+    let failures: Int
     let isComplete: Bool
+    let isLibraryLoading: Bool
     let isBackupEnabled: Bool
     let permissions: PhotoLibraryPermissions
     let isNetworkConstrained: Bool
+    let isQuotaConstrained: Bool
+    let isStorageConstrained: Bool
+    let isFeatureFlagConstrained: Bool
+    let isApplicationStateConstrained: Bool
 }
 
 protocol PhotosBackupStateStrategy {
@@ -36,16 +42,44 @@ final class PrioritizedPhotosBackupStateStrategy: PhotosBackupStateStrategy {
         guard input.permissions == .full else {
             return .restrictedPermissions
         }
+        
+        guard !input.isFeatureFlagConstrained else {
+            return .featureFlag
+        }
 
         guard !input.isNetworkConstrained else {
             return .networkConstrained
+        }
+
+        guard !input.isStorageConstrained else {
+            return .storageConstrained
+        }
+
+        guard !input.isQuotaConstrained else {
+            return .quotaConstrained
+        }
+
+        guard !input.isApplicationStateConstrained else {
+            return .applicationStateConstrained
+        }
+
+        guard !input.isLibraryLoading else {
+            return .libraryLoading
+        }
+
+        guard !input.isComplete else {
+            if input.failures > 0 {
+                return .completeWithFailures(input.failures)
+            } else {
+                return .complete
+            }
         }
 
         guard !input.isComplete else {
             return .complete
         }
 
-        if let progress = input.progress {
+        if let progress = input.progress, !progress.isCompleted {
             return .inProgress(progress)
         } else {
             return .empty

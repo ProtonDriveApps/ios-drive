@@ -36,7 +36,7 @@ extension ShareURL {
 
             return clearPassword
         } catch {
-            ConsoleLogger.shared?.log(DecryptionError(error, "ShareURL"))
+            Log.error(DecryptionError(error, "ShareURL", description: "ShareURLID: \(id), ShareID: \(share.id)"), domain: .encryption)
             throw error
         }
     }

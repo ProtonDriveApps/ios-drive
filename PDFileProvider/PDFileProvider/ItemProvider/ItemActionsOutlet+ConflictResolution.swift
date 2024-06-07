@@ -20,24 +20,78 @@ import PDCore
 
 extension ItemActionsOutlet: ConflictResolution {
 
-    public func findAndResolveConflictIfNeeded(
-        tower: Tower,
-        item: NSFileProviderItem,
-        changeType: ItemActionChangeType,
-        fields: NSFileProviderItemFields,
-        contentsURL: URL?) async throws -> NSFileProviderItem?
-    {
-        #if os(iOS)
-        return nil
-        #else
-        guard let (action, node) = identifyConflict(tower: tower, basedOn: item, changeType: changeType, fields: fields) else {
-            ConsoleLogger.shared?.log("No conflict identified", osLogType: Self.self)
-            return nil // no conflict found
-        }
-        
-        ConsoleLogger.shared?.log("Conflict identified: \(action)", osLogType: Self.self)
-        return try await tower.resolveConflict(between: item, with: contentsURL, and: node, applying: action)
-        #endif
-    }
+    public func resolveConflict(tower: Tower, between item: NSFileProviderItem, with url: URL?, and conflictingNode: Node?, applying action: ResolutionAction) async throws -> NSFileProviderItem {
+        switch action {
+        case .ignore:
+            // if the conflict is direct, then `conflictingNode` will be the remote version of item,
+            // however in the case of indirect conflicts, will represent a different node
+            guard let remoteNode = tower.node(itemIdentifier: item.itemIdentifier) else {
+                guard let conflictingNode else {
+                    throw Errors.itemDeleted
+                }
+                return try NodeItem(node: conflictingNode)
+            }
 
+            let (state, isTrashInheriting) = remoteNode.moc!.performAndWait {
+                return (remoteNode.state, remoteNode.isTrashInheriting)
+            }
+            guard state != .deleted && !isTrashInheriting else {
+                throw Errors.itemTrashed
+            }
+            
+            return try NodeItem(node: remoteNode)
+
+        case .recreate:
+            guard let parent = tower.parentFolder(of: item) else {
+                throw Errors.parentNotFound
+            }
+            if item.isFolder {
+                let recreatedFolder = try await tower.createFolder(named: item.filename, under: parent)
+                return try NodeItem(node: recreatedFolder)
+            } else {
+                let recreatedFile = try await createFile(tower: tower, item: item, with: url, under: parent)
+                return try NodeItem(node: recreatedFile)
+            }
+
+        case .createWithUniqueSuffix:
+            let newItem = NodeItem(item: item, filename: item.conflictName(with: (conflictingNode != nil) ? .nameClash : .edit))
+            guard let parent = tower.parentFolder(of: item) else {
+                throw Errors.parentNotFound
+            }
+            if item.isFolder {
+                let createdNode = try await tower.createFolder(named: newItem.filename, under: parent)
+                return try NodeItem(node: createdNode)
+            } else {
+                let createdFile = try await createFile(tower: tower, item: newItem, with: url, under: parent)
+                return try NodeItem(node: createdFile)
+            }
+
+        case .renameWithUniqueSuffix:
+            let newItem = NodeItem(item: item, filename: item.conflictName(with: .nameClash))
+            guard let nodeIdentifier = tower.nodeIdentifier(for: newItem.itemIdentifier) else {
+                assertionFailure("Could not create nodeIdentifier from newItem.itemIdentifier: \(newItem.itemIdentifier.debugDescription)")
+                throw NSFileProviderError(.noSuchItem)
+            }
+
+            _ = try await tower.rename(node: nodeIdentifier, cleartextName: newItem.filename)
+
+            return newItem
+
+        case .moveAndRenameWithUniqueSuffix:
+            let newItem = NodeItem(item: item, filename: item.conflictName(with: .nameClash))
+            guard let nodeIdentifier = tower.nodeIdentifier(for: newItem.itemIdentifier) else {
+                assertionFailure("Could not create nodeIdentifier from newItem.itemIdentifier: \(newItem.itemIdentifier.debugDescription)")
+                throw NSFileProviderError(.noSuchItem)
+            }
+
+            guard let newParent = tower.parentFolder(of: newItem) else {
+                throw Errors.parentNotFound
+            }
+
+            _ = try await tower.move(nodeID: nodeIdentifier, under: newParent, withNewName: newItem.filename)
+
+            return newItem
+        }
+    }
+    
 }

@@ -24,11 +24,8 @@ final class TrashViewCoordinator: ObservableObject, SwiftUICoordinator {
     typealias Context = Tower
 
     func start(_ context: Context) -> AnyView {
-        let logger = ConsoleLogger.shared
         let model = TrashModel(tower: context)
-        model.logger = logger
-        let selectionModel = MultipleSelectionModel(selectable: Set<String>())
-        let viewModel = TrashViewModel(model: model, selection: selectionModel)
+        let viewModel = TrashViewModel(model: model)
         return TrashView(vm: viewModel).any()
     }
 

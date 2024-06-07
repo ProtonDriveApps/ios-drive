@@ -23,7 +23,20 @@ struct PhotosSection: Equatable {
     let photos: [Photo]
 
     struct Photo: Equatable {
-        let id: NodeIdentifier
-        let duration: UInt?
+        let id: PhotoId
+        let isShared: Bool
+        let isVideo: Bool
+        let captureTime: Date
+        let isAvailableOffline: Bool
+        let isDownloading: Bool
+
+        init(id: PhotoId, isShared: Bool = false, isVideo: Bool = false, captureTime: Date, isAvailableOffline: Bool = false, isDownloading: Bool = false) {
+            self.id = id
+            self.isShared = isShared
+            self.isVideo = isVideo
+            self.captureTime = captureTime
+            self.isAvailableOffline = isAvailableOffline
+            self.isDownloading = isDownloading
+        }
     }
 }

@@ -24,42 +24,44 @@ enum PhotoLibraryFetchResourceError: Error {
 }
 
 final class LocalPhotoLibraryFetchResource: PhotoLibraryIdentifiersResource {
-    private let mappingResource: PhotoLibraryMappingResource
+    private let identifiersRepository: PhotoLibraryIdentifiersRepository
+    private let measurementRepository: DurationMeasurementRepository
     private let updateSubject = PassthroughSubject<PhotoIdentifiers, Never>()
-    private var task: Task<Void, Never>?
+    private let queue = OperationQueue(underlyingQueue: DispatchQueue(label: "LocalPhotoLibraryFetchResource", qos: .default, attributes: .concurrent))
 
-    var updatePublisher: AnyPublisher<PhotoIdentifiers, Never> {
-        updateSubject.eraseToAnyPublisher()
+    var updatePublisher: AnyPublisher<PhotoLibraryLoadUpdate, Never> {
+        updateSubject
+            .map { PhotoLibraryLoadUpdate.fullLoad($0) }
+            .eraseToAnyPublisher()
     }
 
-    init(mappingResource: PhotoLibraryMappingResource) {
-        self.mappingResource = mappingResource
+    init(identifiersRepository: PhotoLibraryIdentifiersRepository, measurementRepository: DurationMeasurementRepository) {
+        self.identifiersRepository = identifiersRepository
+        self.measurementRepository = measurementRepository
     }
 
     func execute() {
         cancel()
-        task = Task(priority: .medium) { [weak self] in
-            let identifiers = self?.getIdentifiers() ?? []
-            await self?.finish(with: identifiers)
+        let operation = CancellableBlockOperation { [weak self] in
+            self?.measurementRepository.start()
+            let identifiers = self?.identifiersRepository.getIdentifiers() ?? []
+            DispatchQueue.main.async {
+                self?.updateSubject.send(identifiers)
+                self?.measurementRepository.stop()
+            }
         }
+        queue.addOperation(operation)
     }
 
     func cancel() {
-        task?.cancel()
-        task = nil
+        queue.cancelAllOperations()
     }
 
-    private func getIdentifiers() -> PhotoIdentifiers {
-        let assetsResult = PHAsset.fetchAssets(with: nil)
-        var assets = [PHAsset]()
-        assetsResult.enumerateObjects { asset, _, _ in
-            assets.append(asset)
-        }
-        return mappingResource.map(assets: assets)
+    func suspend() {
+        queue.isSuspended = true
     }
 
-    @MainActor
-    private func finish(with identifiers: PhotoIdentifiers) {
-        updateSubject.send(identifiers)
+    func resume() {
+        queue.isSuspended = false
     }
 }

@@ -17,261 +17,241 @@
 
 import Combine
 import CoreData
-import os.log
 
-public enum FileUploaderError: Error {
-    case missingOperations
-    case insuficientSpace
-    case expiredUploadURL
-    case expiredFileDraft
-}
+public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorController {
 
-public class FileUploader: OperationProcessor<MainFileUploaderOperation>, LogObject {
-
-    public static let osLog: OSLog = OSLog(subsystem: "ProtonDrive", category: "FileUploader")
-
-    private let fileUploadFactory: FileUploadOperationsProvider
-    private let storage: StorageManager
+    let fileUploadFactory: FileUploadOperationsProvider
+    let filecleaner: CloudFileCleaner
     let moc: NSManagedObjectContext
-
-    public var queue: OperationQueue {
-        processingQueue
+    var isEnabled = true {
+        didSet { Log.info("\(type(of: self)) isEnabled will become \(isEnabled)", domain: .uploader) }
     }
+    var didSignOut = false {
+        didSet { Log.info("\(type(of: self)) didSignOut will become \(didSignOut)", domain: .uploader) }
+    }
+    let dispatchQueue: DispatchQueue
 
     let errorStream: PassthroughSubject<Error, Never> = PassthroughSubject()
     private var cancellables = Set<AnyCancellable>()
 
-    init(
-        concurrentOperations: Int = 5,
+    public var errorPublisher: AnyPublisher<Error, Never> {
+        errorStream
+            .receive(on: DispatchQueue.main)
+            .eraseToAnyPublisher()
+    }
+
+    public init(
+        concurrentOperations: Int = Constants.maxCountOfConcurrentFileUploaderOperations,
         fileUploadFactory: FileUploadOperationsProvider,
-        storage: StorageManager,
-        sessionVault: SessionVault,
-        moc: NSManagedObjectContext
+        filecleaner: CloudFileCleaner,
+        moc: NSManagedObjectContext,
+        dispatchQueue: DispatchQueue? = nil
     ) {
         self.fileUploadFactory = fileUploadFactory
-        self.storage = storage
+        self.filecleaner = filecleaner
         self.moc = moc
-        super.init(queue: OperationQueue(maxConcurrentOperation: concurrentOperations))
-
-        sessionVault
-            .objectWillChange
-            .compactMap(sessionVault.getUserInfo)
-            .map(\.availableStorage)
-            .receive(on: DispatchQueue.main)
-            .sink { [unowned self] in
-                restartWaitingOperations(availableStorage: $0)
-            }
-            .store(in: &cancellables)
-
-        NotificationCenter.default
-            .publisher(for: .restartUploadExpired)
-            .delay(for: 0.5, scheduler: DispatchQueue.main)
-            .sink { [weak self] notification in
-                guard let file = notification.object as? File else { return }
-                self?.upload(file)
-            }
-            .store(in: &cancellables)
+        self.dispatchQueue = dispatchQueue ?? DispatchQueue.global(qos: .userInitiated)
+        super.init(queue: OperationQueue(maxConcurrentOperation: concurrentOperations, underlyingQueue: dispatchQueue))
     }
 
-    public func restartOperations() throws {
-        let uploading = storage.fetchFilesUploading(moc: storage.mainContext)
-        restartFilesUpload(files: uploading)
-        if !isProcessingOperations {
-            throw FileUploaderError.missingOperations
+    public func upload(_ file: File, completion: @escaping OnUploadCompletion = { _ in }) {
+        fatalError("Should not be used.")
+    }
+
+    @discardableResult
+    public func uploadFile(_ file: File, completion: @escaping OnUploadCompletion) throws -> Progress {
+        return try moc.performAndWait {
+            let file = file.in(moc: self.moc)
+            let draft = try FileDraft.extract(from: file)
+            let uploadID = draft.uploadID
+            let clientUID = file.clientUID
+
+            let shareID = file.shareID
+            guard let parentID = file.parentLink?.id else {
+                throw file.invalidState("The file doesn't have a parentID")
+            }
+
+            let operation = self.fileUploadFactory.getOperations(for: draft) { [weak self] result in
+                guard let self else { return }
+
+                let handleFailedUpload: ((Error) -> Void) = { [weak self] error in
+                    guard let self else { return }
+
+                    let error = self.mapDefaultError(error)
+                    NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
+                    Log.error("Upload error: \(error.localizedDescription)", domain: .uploader)
+                    self.cancelOperation(id: uploadID)
+                    completion(.failure(error))
+                }
+
+                switch result {
+                case .success(let file):
+                    completion(.success(file))
+
+                // File or draft already exists
+                case .failure(let error as ResponseError):
+                    if let linkID = error.linkIDOfPreviousFailedUploadFromCurrentClient(clientUID: clientUID) {
+                        self.filecleaner.deleteUploadingFile(linkId: linkID, parentId: parentID, shareId: shareID, completion: { [weak self] result in
+                            guard let self else { return }
+
+                            switch result {
+                            case .success:
+                                do {
+                                    try self.uploadFile(file, completion: completion)
+                                } catch let error {
+                                    handleFailedUpload(error)
+                                }
+                            case .failure(let error):
+                                handleFailedUpload(error)
+                            }
+                        })
+                    } else {
+                        handleFailedUpload(error)
+                    }
+                case .failure(let error):
+                    handleFailedUpload(error)
+                }
+            }
+            draft.file.changeUploadingState(to: .uploading)
+            addOperation(operation)
+            return operation.progress
+        }
+    }
+
+    func canUpload(_ file: File) -> Bool {
+        guard let id = file.uploadID,
+              !file.isUploading,
+              isEnabled,
+              getProcessingOperation(with: id) == nil else {
+            return false
+        }
+        return true
+    }
+    
+    func canUploadWithError(_ file: File) throws {
+        guard !file.isUploading else {
+            throw CanUploadError.isUploading
+        }
+
+        guard let id = file.uploadID else {
+            throw CanUploadError.noUploadID
+        }
+
+        guard getProcessingOperation(with: id) == nil else {
+            throw CanUploadError.processingOperationAlreadyExists
+        }
+
+        guard let state = file.state, !file.committedStates.contains(state) else {
+            throw CanUploadError.fileAlreadyUploaded
+        }
+
+        guard isEnabled else {
+            throw CanUploadError.uploaderNotEnabled
         }
     }
     
-    public func restartInterruptedUploads() {
-        let interrupted = storage.fetchFilesInterrupted(moc: storage.mainContext)
-        restartFilesUpload(files: interrupted)
+    enum CanUploadError: Error, LocalizedError {
+        case noUploadID
+        case isUploading
+        case uploaderNotEnabled
+        case processingOperationAlreadyExists
+        case fileAlreadyUploaded
+    }
+
+    func pauseFileUpload(id: UUID) {
+        getProcessingOperation(with: id)?.pauseUpload()
+    }
+
+    public func deleteUploadingFile(_ file: File) {
+        moc.perform { [weak self] in
+            guard let self else { return }
+
+            let file = file.in(moc: self.moc)
+            self.performDeletionOfUploadingFileOutsideMOC(file)
+        }
     }
     
-    private func restartFilesUpload(files: [File]) {
-        for file in files {
-            self.upload(file)
+    public func performDeletionOfUploadingFileOutsideMOC(_ file: File) {
+
+        guard let uploadID = file.uploadID,
+              let parentId = file.parentLink?.id else {
+            Log.info("\(type(of: self)).deleteUploadingFile: no uploadID or parentID ❌", domain: .uploader)
+            return
         }
-    }
 
-    public func pause(file: File) {
-        guard let uploadID = file.uploadID else { return }
-        getProcessingOperation(with: uploadID)?.pause()
-    }
+        self.getProcessingOperation(with: uploadID)?.cancel()
 
-    public func cancel(uploadID: UUID?) {
-        guard let uploadID = uploadID else { return }
-        cancelOperation(with: uploadID)
-    }
-
-    public func remove(file: File, completion: @escaping (Error?) -> Void) {
-        pause(file: file)
-        if let url = file.activeRevisionDraft?.uploadableResourceURL {
-            cleaupCleartext(at: url)
-        }
-        file.managedObjectContext!.perform {
-            do {
-                file.managedObjectContext?.delete(file)
-                try file.managedObjectContext?.save()
-                completion(nil)
-            } catch {
-                ConsoleLogger.shared?.log(DriveError(error, "FileUploader"))
-                completion(error)
+        // Handle create new revision when avaiable
+        if file.isCreatingFileDraft() || file.isEncryptingRevision() {
+            Log.info("\(type(of: self)).deleteUploadingFile: deleting local File/Photo state:encryptingRevision", domain: .uploader)
+            file.delete()
+        } else if file.isUploadingRevision() || file.isCommitingRevision() {
+            if file is Photo {
+                let fileID = file.id
+                let parentID = parentId
+                let shareID = file.shareID
+                Task {
+                    do {
+                        Log.info("\(type(of: self)).deleteUploadingFile: deleting remote Photo state: .creatingFileDraft, .uploadingRevision, .commitingRevision", domain: .uploader)
+                        try await self.filecleaner.deleteUploadingFile(shareId: shareID, parentId: parentID, linkId: fileID)
+                        file.delete()
+                    } catch let responseError as ResponseError {
+                        Log.error(responseError, domain: .uploader)
+                        file.delete()
+                    } catch CloudFileCleanerError.fileIsNotADraft {
+                        Log.error(CloudFileCleanerError.fileIsNotADraft, domain: .uploader)
+                    } catch {
+                        file.delete()
+                        Log.error(error, domain: .uploader)
+                    }
+                }
+            } else {
+                Log.info("\(type(of: self)).deleteUploadingFile: deleting remote File state: .creatingFileDraft, .uploadingRevision, .commitingRevision", domain: .uploader)
+                self.filecleaner.deleteUploadingFile(linkId: file.id, parentId: parentId, shareId: file.shareID, completion: { _ in
+                    // The result is ignored because deleting file draft is not strictly required.
+                    // * the file draft will be cleared after 4 hours by backend's collector,
+                    // * during the initial file upload, if the file draft already exists and its uploadClientUID
+                    //   matches the new file, we will delete the file draft, see `uploadFile` method
+                })
+                file.delete()
             }
+        } else {
+            Log.info("\(type(of: self)).deleteUploadingFile: unknown state ❌", domain: .uploader)
         }
-    }
-
-    public func cancelAll() {
-        cancellAllOperations()
     }
 
     public func pauseAllUploads() {
         NotificationCenter.default.post(name: .didInterruptOnFileUpload, object: nil)
-        getAllScheduledOperations().forEach { $0.interrupt() }
-    }
-    
-    func cleaupCleartext(at url: URL) {
-        do {
-            if FileManager.default.fileExists(atPath: url.path) {
-                try FileManager.default.removeItem(at: url)
-            }
-        } catch {
-            ConsoleLogger.shared?.log(DriveError(error, "FileUploader"))
-            assertionFailure("Could not remove cleartext file: " + error.localizedDescription)
-        }
-    }
-}
-
-extension FileUploader {
-    private func restartWaitingOperations(availableStorage: Int) {
-        var storageLeft = availableStorage
-        let runningOperationsIDs = Set(getAllScheduledOperations().map(\.id))
-        let waiting = storage.fetchWaiting(maxSize: availableStorage, moc: storage.mainContext)
-            .filter { file in
-                guard let uploadID = file.uploadID else { return false }
-                return !runningOperationsIDs.contains(uploadID)
-            }
-
-        ConsoleLogger.shared?.log("Free cloud storage \(availableStorage) found, will attempt to restart \(waiting.count) waiting uploads", osLogType: FileUploader.self)
-
-        for file in waiting {
-            guard storageLeft > 0 else { break }
-            file.managedObjectContext?.performAndWait {
-                ConsoleLogger.shared?.log("Attempt to restart waiting upload with size \(file.size)", osLogType: FileUploader.self)
-                storageLeft -= file.size
-                self.upload(file) { [weak self] result in
-                    switch result {
-                    case .success:
-                        break
-                    case .failure(let error):
-                        self?.errorStream.send(error)
-                        ConsoleLogger.shared?.log(DriveError(error, "FileUploader"))
-                        self?.cancel(uploadID: file.uploadID)
-                    }
-                }
-            }
-        }
-    }
-}
-
-extension FileUploader {
-    
-    @discardableResult
-    public func upload(_ file: File, completion: @escaping OnUploadCompletion = { _ in }) -> any UploadOperation {
-        return moc.performAndWait {
-            let file = file.in(moc: moc)
-            let draft = FileDraft.extract(from: file, moc: moc)
-            let uploadID = draft.uploadID
-            
-            let operation = fileUploadFactory.getOperations(for: draft) { [weak self] result in
-                switch result {
-                case .success(let file):
-                    completion(.success(file))
-                case .failure(let error):
-                    NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
-                    ConsoleLogger.shared?.log(DriveError(error, "FileUploader"))
-                    
-                    self?.cancel(uploadID: uploadID)
-                    self?.handleError(error, file: file)
-                    completion(.failure(error))
-                }
-            }
-            draft.file.changeState(to: .uploading)
-            addOperation(operation)
-            return operation
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self?.getAllScheduledOperations().forEach { $0.interrupt() }
         }
     }
 
-    private func handleError(_ error: Error, file: File) {
-        if let fileUploadError = (error as? ResponseError)?.asFileUploadError {
-            switch fileUploadError {
-            case .expiredUploadURL:
-                setExpiredUploadURLsForRevisionIn(file)
+    func handleDefaultError(_ error: Error, completion: @escaping OnUploadCompletion) {
+        guard !didSignOut else { return }
 
-            case .expiredFileDraft:
-                errorStream.send(fileUploadError)
-                /*
-                 Call:
-                 setExpiredRevisionDraft(file)
-                 when the BE does not send delete events for drafts anymore
-                 */
+        let error = mapDefaultError(error)
+        NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
+        Log.error(error.localizedDescription, domain: .uploader)
+        errorStream.send(error)
+        completion(.failure(error))
+    }
 
-            default:
-                errorStream.send(fileUploadError)
-            }
-
+    func mapDefaultError(_ error: Error) -> Error {
+        if let error = error as? ResponseError, error.isVerificationError {
+            return FileUploaderError.verificationError(error)
         } else {
-            errorStream.send(error)
+            return error
         }
-
     }
 
-    private func setExpiredUploadURLsForRevisionIn(_ file: File) {
-        guard let moc = file.moc else { return }
-
-        moc.performAndWait {
-            file.state = .paused
-            file.activeRevisionDraft?.uploadState = .encrypted
-            file.activeRevisionDraft?.blocks.compactMap(\.asUploadBlock).filter { !$0.isUploaded }.forEach { $0.unsetUploadableState() }
-            file.activeRevisionDraft?.thumbnails.forEach { $0.unsetUploadedState() }
-            try? moc.saveOrRollback()
-        }
-        NotificationCenter.default.post(name: .restartUploadExpired, object: file)
-    }
-
-    private func setExpiredRevisionDraft(_ file: File) {
-        guard let moc = file.moc else { return }
-
-        moc.performAndWait {
-            file.state = .paused
-
-            let uploadID = UUID()
-
-            file.uploadID = uploadID
-            file.id = uploadID.uuidString
-            file.clientUID = uploadID.uuidString
-            file.activeRevisionDraft?.id = uploadID.uuidString
-            file.activeRevisionDraft?.unsetUploadedState()
-
-            try? moc.saveOrRollback()
-        }
-        NotificationCenter.default.post(name: .restartUploadExpired, object: file)
-    }
 }
 
-extension ResponseError {
-    private var noSpaceOnCloud: Int { 200002 }
-    private var expiredResource: Int { 2501 }
-
-    var asFileUploadError: FileUploaderError? {
-        if httpCode == 422, code == expiredResource {
-            if (self.underlyingError as? FileUploaderError) == .expiredUploadURL {
-                return .expiredUploadURL
-            } else {
-                return .expiredFileDraft
-            }
-        } else if code == noSpaceOnCloud {
-            return .insuficientSpace
-        } else {
-            return nil
-        }
+extension FileUploader: WorkingNotifier {
+    public var isWorkingPublisher: AnyPublisher<Bool, Never> {
+        processingQueue.publisher(for: \.operationCount)
+            .map { $0 != 0 }
+            .removeDuplicates()
+            .eraseToAnyPublisher()
     }
 }

@@ -17,7 +17,8 @@
 
 import UIKit
 import Combine
-import ProtonCore_UIFoundations
+import PDCore
+import ProtonCoreUIFoundations
 
 final class ProtectViewController: UIViewController {
     private var cancellable: Cancellable?

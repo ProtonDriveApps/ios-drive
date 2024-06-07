@@ -24,16 +24,9 @@ public class ProgressTracker {
     public private(set) var progress: Progress?
     public let direction: Direction
     
-    internal init(operation: OperationWithProgress) {
+    internal init(operation: OperationWithProgress, direction: Direction) {
         self.progress = operation.progress
-        
-        switch operation {
-        case is DownloadFileOperation, is DownloadTreeOperation:
-            self.direction = .downstream
-        default:
-            assert(false, "Should not happen")
-            self.direction = .downstream
-        }
+        self.direction = direction
     }
 
     public init(progress: Progress, direction: Direction) {
@@ -57,7 +50,7 @@ public extension ProgressTracker {
         self.id == downloadID && downloadID != nil
     }
     
-    private var id: String? {
+    var id: String? {
         return self.progress?.fileURL?.path
     }
 }

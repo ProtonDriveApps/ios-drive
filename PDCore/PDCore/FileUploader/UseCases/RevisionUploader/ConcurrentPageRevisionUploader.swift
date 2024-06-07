@@ -23,6 +23,7 @@ final class ConcurrentPageRevisionUploader: PageRevisionUploader {
     private let page: RevisionPage
     private let moc: NSManagedObjectContext
     private let queue: OperationQueue
+    private var operationsContainer = OperationsContainer()
 
     private let contentCreatorOperationFactory: (RevisionPage) -> Operation
     private let blockUploaderOperationFactory: (UploadBlock, FullUploadableBlock) -> Operation
@@ -49,23 +50,42 @@ final class ConcurrentPageRevisionUploader: PageRevisionUploader {
     func upload(completion: @escaping (Result<Void, Error>) -> Void) {
         guard !isCancelled else { return }
 
-        let initialOperations = makeThumbnailUploaderOperations() + makeBlockUploaderOperations(onError: { completion(.failure($0)) })
-        queue.addOperations(initialOperations, waitUntilFinished: true)
+        Log.info("ConcurrentPageRevisionUploader 0️⃣ started", domain: .uploader)
+        executeFirstStep(completion: completion)
+    }
 
-        guard !isCancelled else { return }
+    private func executeFirstStep(completion: @escaping (Result<Void, Error>) -> Void) {
+        do {
+            let initialOperations = makeThumbnailUploaderOperations() + (try makeBlockUploaderOperations())
+            let creatorOperation = makeContentCreatorOperation()
+            creatorOperation.addDependencies(initialOperations)
+            let firstStepBarrierOperation = makeFirstStepBarrierOperation(completion: completion)
+            firstStepBarrierOperation.addDependency(creatorOperation)
+            addOperations(initialOperations + [creatorOperation, firstStepBarrierOperation])
+        } catch {
+            Log.info("ConcurrentPageRevisionUploader ❌ completed with error", domain: .uploader)
+            completion(.failure(error))
+        }
+    }
 
-        let contentCreatorOperation = makeContentCreatorOperation()
-        queue.addOperations([contentCreatorOperation], waitUntilFinished: true)
+    private func makeFirstStepBarrierOperation(completion: @escaping (Result<Void, Error>) -> Void) -> Operation {
+        BlockOperation { [weak self] in
+            guard let self, !self.isCancelled else { return }
+            Log.info("ConcurrentPageRevisionUploader 1️⃣ first step completed", domain: .uploader)
+            self.executeSecondStep(completion: completion)
+        }
+    }
 
-        guard !isCancelled else { return }
-
-        let operations = makeThumbnailUploaderOperations() + makeBlockUploaderOperations(onError: { completion(.failure($0)) })
-        queue.addOperations(operations, waitUntilFinished: true)
-
-        guard !isCancelled else { return }
-
-        let finalOperation = makeFinishingPageUploadOperation(onSuccess: { completion(.success) })
-        queue.addOperations([finalOperation], waitUntilFinished: false)
+    private func executeSecondStep(completion: @escaping (Result<Void, Error>) -> Void) {
+        do {
+            let secondaryOperations = makeThumbnailUploaderOperations() + (try makeBlockUploaderOperations())
+            let finishOperation = makeFinishingPageUploadOperation(completion: completion)
+            finishOperation.addDependencies(secondaryOperations)
+            addOperations(secondaryOperations + [finishOperation])
+        } catch {
+            Log.info("ConcurrentPageRevisionUploader ❌ completed with error", domain: .uploader)
+            completion(.failure(error))
+        }
     }
 
     func makeThumbnailUploaderOperations() -> [Operation] {
@@ -83,21 +103,48 @@ final class ConcurrentPageRevisionUploader: PageRevisionUploader {
         }
     }
 
-    func makeBlockUploaderOperations(onError: @escaping OnUploadError) -> [Operation] {
-        return moc.performAndWait {
+    func makeBlockUploaderOperations() throws -> [Operation] {
+        return try moc.performAndWait {
             var operations = [Operation]()
             for block in self.page.blocks {
-                if let fullUploadableBlock = FullUploadableBlock(block: block), !block.isUploaded {
-                    operations.append(blockUploaderOperationFactory(block, fullUploadableBlock))
-                } else if UploadableBlock(block: block) != nil {
-                    continue
-                } else {
-                    onError(block.invalidState("The Block is in an invalid state."))
-                    operations.append(NonFinishingOperation())
-                    break
-                }
+
+                // Uploaded blocks
+                guard !block.isUploaded else { continue }
+
+                let hash = block.sha256.base64EncodedString()
+                guard let localURL = block.localUrl else { throw block.invalidState("UploadBlock does not have local URL.") }
+                guard let encSignature = block.encSignature else { throw block.invalidState("UploadBlock does not have an encrypted signature.") }
+                guard let signatureEmail = block.signatureEmail else { throw block.invalidState("UploadBlock does not have a signature address.") }
+
+                let verificationToken = try page.verification.verificationTokenForBlock(at: block.index)
+
+                let uploadableBlock = UploadableBlock(
+                    index: block.index,
+                    size: block.size,
+                    hash: hash,
+                    localURL: localURL,
+                    signatureEmail: signatureEmail,
+                    encryptedSignature: encSignature,
+                    verificationToken: verificationToken
+                )
+
+                // The block has requested an uploadURL and a token
+                guard let remoteURLString = block.uploadUrl,
+                      let remoteURL = URL(string: remoteURLString),
+                      let uploadToken = block.uploadToken  else { continue }
+
+                let fullUploadableBlock = FullUploadableBlock(remoteURL: remoteURL, uploadToken: uploadToken, uploadable: uploadableBlock)
+
+                operations.append(blockUploaderOperationFactory(block, fullUploadableBlock))
             }
             return operations
+        }
+    }
+    
+    func uploadFinished() -> Bool {
+        return moc.performAndWait {
+            page.blocks.count == page.blocks.filter { $0.isUploaded }.count &&
+            page.thumbnails.count == page.thumbnails.filter { $0.isUploaded }.count
         }
     }
 
@@ -105,12 +152,36 @@ final class ConcurrentPageRevisionUploader: PageRevisionUploader {
         contentCreatorOperationFactory(page)
     }
 
-    func makeFinishingPageUploadOperation(onSuccess: @escaping () -> Void) -> Operation {
-        BlockOperation(block: onSuccess)
+    func makeFinishingPageUploadOperation(completion: @escaping (Result<Void, Error>) -> Void) -> Operation {
+        BlockOperation { [weak self] in
+            guard let self, !self.isCancelled else { return }
+            self.finish(completion: completion)
+        }
+    }
+
+    private func finish(completion: @escaping (Result<Void, Error>) -> Void) {
+        Log.info("ConcurrentPageRevisionUploader 2️⃣ finishing", domain: .uploader)
+        guard uploadFinished() else {
+            return completion(.failure(PageFinishedWithRetriableErrors()))
+        }
+        completion(.success)
+    }
+
+    private func addOperations(_ operations: [Operation]) {
+        queue.addOperations(operations, waitUntilFinished: false)
+        operationsContainer.set(operations: operations)
     }
 
     func cancel() {
+        Log.info("ConcurrentPageRevisionUploader ⏹️ cancelled", domain: .uploader)
         isCancelled = true
-        queue.cancelAllOperations()
+        operationsContainer.cancelAllOperations()
+    }
+
+    deinit {
+        Log.info("ConcurrentPageRevisionUploader ⏹️ deinit", domain: .uploader)
+        operationsContainer.cancelAllOperations()
     }
 }
+
+struct PageFinishedWithRetriableErrors: Error { }

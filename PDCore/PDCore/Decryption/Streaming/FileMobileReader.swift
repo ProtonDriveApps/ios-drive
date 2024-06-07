@@ -16,9 +16,9 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import GoLibs
+import ProtonCoreCryptoGoInterface
 
-class FileMobileReader: NSObject, HelperMobileReaderProtocol {
+class FileMobileReader: NSObject, ProtonCoreCryptoGoInterface.HelperMobileReaderProtocol {
     enum Errors: Error {
         case failedToCreateCryptoHelper
     }
@@ -28,9 +28,9 @@ class FileMobileReader: NSObject, HelperMobileReaderProtocol {
         self.file = file
     }
     
-    func read(_ max: Int) throws -> HelperMobileReadResult {
-        let data = self.file.readData(ofLength: max)
-        guard let helper = HelperMobileReadResult(data.count, eof: data.isEmpty, data: data) else {
+    func read(_ max: Int) throws -> ProtonCoreCryptoGoInterface.HelperMobileReadResult {
+        let data = try self.file.read(upToCount: max) ?? Data()
+        guard let helper = CryptoGo.HelperMobileReadResult(data.count, eof: data.isEmpty, data: data) else {
             assertionFailure("Failed to create Helper of Crypto - should not happen")
             throw Errors.failedToCreateCryptoHelper
         }

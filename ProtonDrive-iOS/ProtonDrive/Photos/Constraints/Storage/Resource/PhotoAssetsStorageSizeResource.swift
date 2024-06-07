@@ -25,45 +25,44 @@ protocol PhotoAssetsStorageSizeResource {
     func cancel()
 }
 
-final class LocalPhotoAssetsStorageSizeResource: PhotoAssetsStorageSizeResource {
-    private let updateResource: FolderUpdateResource
-    private let sizeResource: FolderSizeResource
-    private lazy var url = PDFileManager.cleartextPhotosCacheDirectory
-    private var cancellables = Set<AnyCancellable>()
-    private let sizeSubject = PassthroughSubject<Int, Never>()
+final class UploadingPhotoAssetsStorageSizeResource: PhotoAssetsStorageSizeResource {
+    private let observer: FetchedResultsControllerObserver<Photo>
+    private var subject = PassthroughSubject<Int, Never>()
+    private var subscription: AnyCancellable?
 
     var size: AnyPublisher<Int, Never> {
-        sizeSubject
-            .removeDuplicates()
-            .receive(on: DispatchQueue.main)
-            .eraseToAnyPublisher()
+        subject.eraseToAnyPublisher()
     }
 
-    init(updateResource: FolderUpdateResource, sizeResource: FolderSizeResource) {
-        self.updateResource = updateResource
-        self.sizeResource = sizeResource
-        subscribeToUpdates()
-    }
-
-    private func subscribeToUpdates() {
-        updateResource.updatePublisher
-            .sink { [weak self] in
-                self?.handleUpdate()
-            }
-            .store(in: &cancellables)
+    init(observer: FetchedResultsControllerObserver<Photo>) {
+        self.observer = observer
     }
 
     func execute() {
-        updateResource.execute(with: url)
+        cancel()
+        subscription = observer
+            .getPublisher()
+            .compactMap { [weak self] photos in
+                self?.getSize(from: photos)
+            }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] size in
+                self?.subject.send(size)
+            }
+    }
+
+    private func getSize(from photos: [Photo]) -> Int {
+        guard let managedObjectContext = photos.first?.moc else {
+            return 0
+        }
+
+        return managedObjectContext.performAndWait {
+            return photos.flatMap { $0.children + [$0] }.map { $0.size }.reduce(0, +)
+        }
     }
 
     func cancel() {
-        updateResource.cancel()
-    }
-
-    private func handleUpdate() {
-        if let size = try? sizeResource.getSize(at: url) {
-            sizeSubject.send(size)
-        }
+        subscription?.cancel()
+        subscription = nil
     }
 }

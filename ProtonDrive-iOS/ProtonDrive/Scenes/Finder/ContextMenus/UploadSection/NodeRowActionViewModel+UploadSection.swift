@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDUIComponents
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import UIKit
 import PDCore
 

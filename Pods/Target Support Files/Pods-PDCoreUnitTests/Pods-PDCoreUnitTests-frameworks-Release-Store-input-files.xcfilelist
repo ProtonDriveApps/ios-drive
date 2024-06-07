@@ -1,2 +1,2 @@
 ${PODS_ROOT}/Target Support Files/Pods-PDCoreUnitTests/Pods-PDCoreUnitTests-frameworks.sh
-${PODS_XCFRAMEWORKS_BUILD_DIR}/ProtonCore-OpenPGP/OpenPGP.framework/OpenPGP
+${PODS_XCFRAMEWORKS_BUILD_DIR}/ProtonCore-VCard/VCard.framework/VCard

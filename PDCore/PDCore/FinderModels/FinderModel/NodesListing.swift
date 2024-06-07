@@ -16,14 +16,19 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import CoreData
 
 public protocol NodesListing: AnyObject {
     var tower: Tower! { get }
     var childrenObserver: FetchedObjectsObserver<Node> { get }
     var sorting: SortPreference { get }
+    func reportDecryptionError(for node: Node, underlyingError: Error)
 }
 
 extension NodesListing {
+    
+    // MARK: Children
+    
     public func children() -> AnyPublisher<([Node], [Node]), Never> {
         self.childrenObserver.objectWillChange
         .map {
@@ -44,5 +49,32 @@ extension NodesListing {
     
     public func loadChildrenFromCache() {
         self.childrenObserver.start()
+    }
+    
+    // MARK: Node Error Reporting
+
+    #if os(macOS)
+    private var syncReporter: SyncReporting? {
+        guard let storage = tower.syncStorage else {
+            return nil
+        }
+        return SyncReportingController(storage: storage, suite: .group(named: Constants.appGroup), appTarget: .main)
+    }
+    #endif
+
+    public func reportDecryptionError(for node: Node, underlyingError: Error) {
+        #if os(macOS)
+        let reportableError = ReportableSyncItem(
+            id: node.identifier.rawValue,
+            modificationTime: Date(),
+            filename: "Error: Not available",
+            location: nil,
+            mimeType: node.mimeType,
+            operation: .enumerateItems,
+            state: .errored,
+            description: "Access to file attribute (e.g., file name) not available. Please retry or contact support."
+        )
+        try? syncReporter?.report(item: reportableError)
+        #endif
     }
 }

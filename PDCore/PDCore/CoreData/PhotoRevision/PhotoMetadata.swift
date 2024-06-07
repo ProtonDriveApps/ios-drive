@@ -23,20 +23,18 @@ public struct PhotoMetadata: Equatable, Codable {
 
     public struct iOSMeta: Equatable, Codable {
         public let cloudIdentifier: String
-        public let creationDate: Date?
         public let modifiedDate: Date?
 
-        public init(cloudIdentifier: String, creationDate: Date?, modifiedDate: Date?) {
+        public init(cloudIdentifier: String, modifiedDate: Date?) {
             self.cloudIdentifier = cloudIdentifier
-            self.creationDate = creationDate
             self.modifiedDate = modifiedDate
         }
     }
 }
 
 extension PhotoMetadata {
-    init(_ metadata: PhotoAsset.Metadata) {
-        self.ios = iOSMeta(cloudIdentifier: metadata.cloudIdentifier, creationDate: metadata.creationDate, modifiedDate: metadata.modifiedDate)
+    init(_ metadata: PhotoAssetMetadata) {
+        self.ios = iOSMeta(cloudIdentifier: metadata.iOSPhotos.identifier, modifiedDate: metadata.iOSPhotos.modificationTime)
     }
 
     static var blank: PhotoMetadata { PhotoMetadata(ios: nil) }

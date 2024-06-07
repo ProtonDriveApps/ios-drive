@@ -19,6 +19,8 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
 
 public extension UILabel {
@@ -26,7 +28,7 @@ public extension UILabel {
         let termsText = NSMutableAttributedString(string: text)
         let foregroundColor: UIColor = ColorProvider.InteractionNorm
         actionHandler(handler: handler)
-        
+
         if termsText.setAttributes(textToFind: link, attributes: [
             NSAttributedString.Key.foregroundColor: foregroundColor,
             NSAttributedString.Key.underlineColor: UIColor.clear
@@ -37,7 +39,7 @@ public extension UILabel {
             isUserInteractionEnabled = true
         }
     }
-    
+
     private func actionHandler(handler: (() -> Void)? = nil) {
         struct ActionHandler {
             static var handler: (() -> Void)?
@@ -53,3 +55,5 @@ public extension UILabel {
         self.actionHandler()
     }
 }
+
+#endif

@@ -19,7 +19,13 @@ import Foundation
 import CoreData
 
 class PhotosRevisionEncryptorOperationFactory: DiscreteRevisionEncryptorOperationFactory {
-    
+    private let globalQueue: OperationQueue
+
+    init(signersKitFactory: SignersKitFactoryProtocol, moc: NSManagedObjectContext, globalQueue: OperationQueue) {
+        self.globalQueue = globalQueue
+        super.init(signersKitFactory: signersKitFactory, moc: moc)
+    }
+
     override func makeRevisionEncryptor(_ progress: Progress, blocks: Int) -> RevisionEncryptor {
         let shaDigestBuilder = SHA1DigestBuilder()
         let blocksEncryptor = makeBlocksRevisionEncryptor(progress: progress.child(pending: blocks), moc: moc.childContext(), digestBuilder: shaDigestBuilder)
@@ -30,7 +36,8 @@ class PhotosRevisionEncryptorOperationFactory: DiscreteRevisionEncryptorOperatio
             blocksEncryptor: blocksEncryptor,
             thumbnailEncryptor: thumbnailEncryptor,
             xAttributesEncryptor: xAttrEncryptor,
-            moc: moc
+            moc: moc,
+            queue: globalQueue
         )
     }
 

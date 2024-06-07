@@ -19,12 +19,13 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(macOS)
+
 import AppKit
-import ProtonCore_DataModel
-import ProtonCore_Networking
-import ProtonCore_Services
-import ProtonCore_UIFoundations
-import ProtonCore_CoreTranslation
+import ProtonCoreDataModel
+import ProtonCoreNetworking
+import ProtonCoreServices
+import ProtonCoreUIFoundations
 
 final class HumanCheckCoordinator {
 
@@ -57,13 +58,13 @@ final class HumanCheckCoordinator {
         self.apiService = apiService
         self.clientApp = clientApp
         self.title = parameters.title
-        
+
         self.humanVerifyViewModel = HumanVerifyViewModel(api: apiService, startToken: parameters.startToken, methods: parameters.methods, clientApp: clientApp)
         self.humanVerifyViewModel.onVerificationCodeBlock = { [weak self] verificationCodeBlock in
             guard let self = self else { return }
             self.delegate?.verificationCode(tokenType: self.humanVerifyViewModel.getToken(), verificationCodeBlock: verificationCodeBlock)
         }
-        
+
         if NSClassFromString("XCTest") == nil {
             if parameters.methods.count == 0 {
                 self.initialHelpViewController = getHelpViewController
@@ -78,10 +79,10 @@ final class HumanCheckCoordinator {
     }
 
     // MARK: - Private methods
-    
+
     private func instantiateViewController() {
-        self.initialViewController = instatntiateVC(method: HumanVerifyViewController.self,
-                                                    identifier: "HumanVerifyViewController")
+        self.initialViewController = instantiateVC(type: HumanVerifyViewController.self,
+                                                   identifier: "HumanVerifyViewController")
         self.initialViewController?.viewModel = self.humanVerifyViewModel
         self.initialViewController?.delegate = self
         self.initialViewController?.viewTitle = title
@@ -95,7 +96,7 @@ final class HumanCheckCoordinator {
             NSApplication.shared.keyWindow?.contentViewController?.presentAsModalWindow(viewController)
         }
     }
-    
+
     private func showHelp() {
         guard let initialViewController = initialViewController else { return }
         initialViewController.present(getHelpViewController,
@@ -104,10 +105,10 @@ final class HumanCheckCoordinator {
                                       preferredEdge: .maxX,
                                       behavior: .transient)
     }
-    
+
     private var getHelpViewController: HVHelpViewController {
-        let helpViewController = instatntiateVC(method: HVHelpViewController.self,
-                                                identifier: "HumanCheckHelpViewController")
+        let helpViewController = instantiateVC(type: HVHelpViewController.self,
+                                               identifier: "HumanCheckHelpViewController")
         helpViewController.delegate = self
         helpViewController.viewModel = HelpViewModel(url: apiService.humanDelegate?.getSupportURL(), clientApp: clientApp)
         return helpViewController
@@ -125,19 +126,19 @@ extension HumanCheckCoordinator: HumanVerifyViewControllerDelegate {
         instantiateViewController()
         showHumanVerification()
     }
-    
+
     func didDismissViewController() {
         delegate?.close()
     }
-    
+
     func didShowHelpViewController() {
         showHelp()
     }
-    
+
     func didDismissWithError(code: Int, description: String) {
         // TODO: Missing implmenetation
     }
-    
+
     func emailAddressAlreadyTakenWithError(code: Int, description: String) {
         // TODO: Missing implmenetation
     }
@@ -154,9 +155,11 @@ extension HumanCheckCoordinator: HVHelpViewControllerDelegate {
 }
 
 extension HumanCheckCoordinator {
-    private func instatntiateVC<T: NSViewController>(method: T.Type, identifier: String) -> T {
+    private func instantiateVC<T: NSViewController>(type: T.Type, identifier: String) -> T {
         let storyboard = NSStoryboard.init(name: "HumanVerify", bundle: HVCommon.bundle)
         let customViewController = storyboard.instantiateController(withIdentifier: identifier) as! T
         return customViewController
     }
 }
+
+#endif

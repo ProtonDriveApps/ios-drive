@@ -46,12 +46,18 @@ public struct NewPhotoBlocksParameters: Codable {
         let Index: Int
         let EncSignature: String
         let Hash: String
+        let Verifier: VerifierInfo
+
+        struct VerifierInfo: Codable {
+            let Token: String
+        }
         
-        public init(size: Int, index: Int, encSignature: String, hash: String) {
+        public init(size: Int, index: Int, encSignature: String, hash: String, verificationToken: String) {
             self.Size = size
             self.Index = index
             self.EncSignature = encSignature
             self.Hash = hash
+            self.Verifier = VerifierInfo(Token: verificationToken)
         }
     }
     

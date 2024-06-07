@@ -17,7 +17,7 @@
 
 import SwiftUI
 import UIKit
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import PDUIComponents
 
 struct NoSpaceView: View {
@@ -35,11 +35,13 @@ struct NoSpaceView: View {
                 .font(.title)
                 .bold()
                 .foregroundColor(ColorProvider.TextNorm)
+                .accessibilityIdentifier("NoSpaceView.storage.title")
 
             Text(self.storage.subtitle)
                 .font(.subheadline)
                 .foregroundColor(ColorProvider.TextWeak)
                 .padding(.top, 8)
+                .accessibilityIdentifier("NoSpaceView.storage.subtitle")
 
             if self.storage == .local {
                 BlueRectButton(title: "Go to local storage settings",

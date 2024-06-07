@@ -20,7 +20,9 @@ import PDCore
 import Combine
 import PMSideMenu
 import PDUIComponents
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
+import ProtonCoreAccountRecovery
+import ProtonCoreServices
 
 final class LaunchViewController: UIViewController {
     private var cancellables = Set<AnyCancellable>()
@@ -29,6 +31,7 @@ final class LaunchViewController: UIViewController {
     var viewModel: LaunchViewModel!
     var onViewDidLoad: (() -> Void)?
     var onPresentAlert: ((FailingAlert) -> Void)?
+    var onPresentAccountRecovery: ((APIService) -> Void)?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -61,6 +64,14 @@ final class LaunchViewController: UIViewController {
             }
             .store(in: &cancellables)
 
+        viewModel.accountRecoveryWrapper.publisher
+            .sink { [weak self] _ in
+                if let self {
+                    self.onPresentAccountRecovery?(self.viewModel.accountRecoveryWrapper.apiService)
+                }
+            }
+            .store(in: &cancellables)
+
         NotificationCenter.default.post(.didDismissAlert)
     }
     
@@ -69,10 +80,13 @@ final class LaunchViewController: UIViewController {
     }
 
     func presentBanner(_ banner: BannerModel) {
-        let banner = PMBanner(message: banner.message, style: banner.style)
+        // Longer duration for UI test to prevent test failed due to banner dismiss too early 
+        let duration: TimeInterval = Constants.isUITest ? 10 : 4
+        let banner = PMBanner(message: banner.message, style: banner.style, dismissDuration: duration)
         banner.accessibilityIdentifier = "Banner.bannerShown"
         banner.show(at: .bottom, on: UIApplication.shared.topViewController()!)
     }
+
 }
 
 extension LaunchViewController: ContentHostingControllerProtocol {

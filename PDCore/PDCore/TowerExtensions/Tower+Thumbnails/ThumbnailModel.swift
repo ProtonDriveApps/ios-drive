@@ -17,40 +17,41 @@
 
 import Foundation
 
-protocol ThumbnailModel {
-    typealias Identifier = RevisionIdentifier
-    typealias FileIdentifier = NodeIdentifier
-
-    var id: Identifier { get }
-    var fileId: FileIdentifier { get }
-}
-
-extension ThumbnailModel {
-    var fileId: FileIdentifier {
-        .init(id.file, id.share)
-    }
+enum ThumbnailModel {
+    case full(FullThumbnail)
+    case inProgress(InProgressThumbnail)
+    case revisionId(IncompleteThumbnail)
+    case thumbnailId(ThumbnailIdentifier)
 }
 
 /// `FullThumbnail` represents a thumbnail object that has available the locally its encrypted data. Can be found on fully downloaded thumbnails or thumbnails that were created and uploaded
-struct FullThumbnail: ThumbnailModel, Equatable {
-    let id: Identifier
+struct FullThumbnail: Equatable {
+    let revisionId: RevisionIdentifier
     let encrypted: Data
 }
 
 /// `InProgressThumbnail` represents a thumbnail object that has available the URL used to download the encrypted thumbnail. Can be found when we enter a new folder that has requested some folder's children.
-struct InProgressThumbnail: ThumbnailModel, Equatable {
-    let id: Identifier
+struct InProgressThumbnail: Equatable {
+    let revisionId: RevisionIdentifier
     let url: URL
+    let thumbnailIdentifier: ThumbnailIdentifier?
 }
 
 /// `IncompleteThumbnail` represents a the existence of a thumbnail in a revision, but for which we don't have neither the URL nor the encrypted data. Can be found for example when some trashed file is restored and we don't have its fullmetadata.
-struct IncompleteThumbnail: ThumbnailModel, Equatable {
-    let id: Identifier
+struct IncompleteThumbnail: Equatable {
+    let revisionId: RevisionIdentifier
+}
+
+/// `ThumbnailIdentifier` represents an intermediary state where we have only id and need to fetch all other attributes.
+struct ThumbnailIdentifier: Equatable {
+    let thumbnailId: String
+    let volumeId: String
+    let nodeIdentifier: NodeIdentifier
 }
 
 /// `UploadableThumbnail` a thumbnail ready to start the uploading process, but for which we don't yet have the URL to be uploaded.
-struct UploadableThumbnail: ThumbnailModel, Equatable {
-    let id: Identifier
+struct UploadableThumbnail: Equatable {
+    let revisionId: RevisionIdentifier
     let type: Int
     let encrypted: Data
     let sha256: Data
@@ -65,11 +66,15 @@ struct UploadableThumbnail: ThumbnailModel, Equatable {
 }
 
 /// `FullUploadableThumbnail` represents a thumbnail ready to be uploaded, the uploadURL property is the URL where the encrypted data should be uploaded.
-struct FullUploadableThumbnail: ThumbnailModel {
+struct FullUploadableThumbnail {
     let uploadURL: URL
     let uploadable: UploadableThumbnail
 
-    var id: Identifier {
-        uploadable.id
+    var revisionId: RevisionIdentifier {
+        uploadable.revisionId
+    }
+
+    var uploadToken: String {
+        uploadURL.lastPathComponent
     }
 }

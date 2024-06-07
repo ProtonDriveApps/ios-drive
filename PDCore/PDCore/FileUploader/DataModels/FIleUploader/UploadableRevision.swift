@@ -83,9 +83,12 @@ private extension UploadableBlock {
 }
 
 struct RevisionPage: Equatable {
+    let index: Int
     let identifier: UploadableRevisionIdentifier
     let addressID: String
     let revision: Revision
+    let file: File
     let blocks: [UploadBlock]
     let thumbnails: [Thumbnail]
+    let verification: BlockVerification
 }

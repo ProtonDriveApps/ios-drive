@@ -17,79 +17,110 @@
 
 import Combine
 import Foundation
+import PDCore
 
 enum PhotoFullPreview: Equatable {
-    case photo(Data)
+    case thumbnail(Data)
+    case image(URL)
     case video(URL)
 }
 
-protocol PhotoFullPreviewController {
+protocol PhotoFullPreviewController: ErrorController {
     var updatePublisher: AnyPublisher<Void, Never> { get }
     func getPreview() -> PhotoFullPreview?
+    func load()
     func clear()
+}
+
+enum PhotoFullPreviewError: Error {
+    case noPreviewAvailable
 }
 
 // Will return full thumbnail for photo or full asset video url.
 final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
+    private let id: PhotoId
     private let detailController: PhotoPreviewDetailController
-    private let thumbnailController: ThumbnailController
+    private let fullThumbnailController: ThumbnailController
+    private let smallThumbnailController: ThumbnailController
     private let contentController: FileContentController
-    private let storageResource: LocalStorageResource
     private let publisher = ObservableObjectPublisher()
     private var fullPreview: PhotoFullPreview?
     private var cancellables = Set<AnyCancellable>()
+    private var errorSubject = PassthroughSubject<Error, Never>()
 
     var updatePublisher: AnyPublisher<Void, Never> {
         publisher.eraseToAnyPublisher()
     }
 
-    init(detailController: PhotoPreviewDetailController, thumbnailController: ThumbnailController, contentController: FileContentController, storageResource: LocalStorageResource) {
+    var errorPublisher: AnyPublisher<Error, Never> {
+        errorSubject.eraseToAnyPublisher()
+    }
+
+    init(id: PhotoId, detailController: PhotoPreviewDetailController, fullThumbnailController: ThumbnailController, smallThumbnailController: ThumbnailController, contentController: FileContentController) {
+        self.id = id
         self.detailController = detailController
-        self.thumbnailController = thumbnailController
+        self.fullThumbnailController = fullThumbnailController
+        self.smallThumbnailController = smallThumbnailController
         self.contentController = contentController
-        self.storageResource = storageResource
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
-        detailController.photo
-            .removeDuplicates()
-            .sink { [weak self] info in
-                self?.handleInfo(info)
+        fullThumbnailController.bootstrap()
+        smallThumbnailController.bootstrap()
+        
+        let detailPublisher = detailController.photo.setFailureType(to: Error.self)
+        Publishers.CombineLatest(detailPublisher, contentController.url)
+            .sink(receiveCompletion: { [weak self] completion in
+                if case .failure = completion {
+                    self?.fallBackToThumbnails()
+                }
+            }, receiveValue: { [weak self] info, url in
+                self?.handle(info: info, url: url)
+            })
+            .store(in: &cancellables)
+    }
+
+    private func subscribeToThumbnails() {
+        Publishers.Merge(smallThumbnailController.updatePublisher, fullThumbnailController.updatePublisher)
+            .sink { [weak self] in
+                self?.handleThumbnailUpdate()
             }
             .store(in: &cancellables)
 
-        thumbnailController.updatePublisher
-            .compactMap { [weak self] in
-                self?.thumbnailController.getImage()
-            }
-            .sink { [weak self] data in
-                self?.fullPreview = .photo(data)
-                self?.publisher.send()
-            }
-            .store(in: &cancellables)
-
-        contentController.url
-            .sink { [weak self] url in
-                self?.update(with: .video(url))
+        Publishers.CombineLatest(smallThumbnailController.isFailed, fullThumbnailController.isFailed)
+            .map { $0.0 && $0.1 }
+            .filter { $0 }
+            .sink { [weak self] _ in
+                self?.errorSubject.send(PhotoFullPreviewError.noPreviewAvailable)
             }
             .store(in: &cancellables)
     }
 
-    private func handleInfo(_ info: PhotoInfo) {
+    private func fallBackToThumbnails() {
+        subscribeToThumbnails()
+        fullThumbnailController.load()
+        smallThumbnailController.load()
+        handleThumbnailUpdate()
+    }
+
+    private func handle(info: PhotoInfo, url: URL) {
         switch info.type {
         case .photo:
-            handlePhotoUpdate()
+            update(with: .image(url))
         case .video:
-            contentController.execute(with: info.id)
+            update(with: .video(url))
         }
     }
 
-    private func handlePhotoUpdate() {
-        if let image = thumbnailController.getImage() {
-            update(with: .photo(image))
-        } else {
-            thumbnailController.load()
+    private func handleThumbnailUpdate() {
+        switch fullPreview {
+        case .none, .thumbnail:
+            if let data = fullThumbnailController.getImage() ?? smallThumbnailController.getImage() {
+                update(with: .thumbnail(data))
+            }
+        case .video, .image:
+            break
         }
     }
 
@@ -100,13 +131,15 @@ final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
         }
     }
 
+    func load() {
+        contentController.execute(with: id)
+    }
+
     func getPreview() -> PhotoFullPreview? {
         fullPreview
     }
 
     func clear() {
-        if case let .video(url) = fullPreview {
-            try? storageResource.delete(at: url)
-        }
+        contentController.clear()
     }
 }

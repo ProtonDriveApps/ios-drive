@@ -20,10 +20,10 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import GoLibs
-import ProtonCore_Crypto
-import ProtonCore_DataModel
-import ProtonCore_Utilities
+import ProtonCoreCryptoGoInterface
+import ProtonCoreCrypto
+import ProtonCoreDataModel
+import ProtonCoreUtilities
 
 ///
 public class DecryptionAddress {
@@ -37,7 +37,7 @@ public class DecryptionAddress {
         self.passphrase = passphrase
         self.addressKeys = addressKeys
     }
-    
+
     public let userBinKeys: [Data]
     public let passphrase: String
     public let addressKeys: [Key]
@@ -53,7 +53,7 @@ public class DecryptionKey {
         self.privateKey = privateKey
         self.passphrase = passphrase
     }
-    
+
     public let privateKey: String
     public let passphrase: String
 }
@@ -74,38 +74,38 @@ public enum Decryptor {
         case noPGPMessageFound
         case outputFileAlreadyExists
     }
-    
+
     @available(*, deprecated, renamed: "Decryptor.decrypt(decryptionKeys:value:)")
     public static func decrypt(encValue: String, decryptionKeys: [DecryptionKey]) throws -> String {
         try decrypt(decryptionKeys: decryptionKeys, value: encValue)
     }
-    
+
     public static func decrypt(decryptionKeys: [DecryptionKey], value: String) throws -> String {
         let decryptionKeyRing = try buildPrivateKeyRing(with: decryptionKeys)
         defer { decryptionKeyRing.clearPrivateParams() }
-        
-        guard let pgpMsg = CryptoPGPMessage(fromArmored: value) else {
+
+        guard let pgpMsg = CryptoGo.CryptoPGPMessage(fromArmored: value) else {
             throw NSError(domain: "Invalid messge", code: 0)
         }
-        let plainMsg = try decryptionKeyRing.decrypt(pgpMsg, verifyKey: nil, verifyTime: CryptoGetUnixTime())
+        let plainMsg = try decryptionKeyRing.decrypt(pgpMsg, verifyKey: nil, verifyTime: CryptoGo.CryptoGetUnixTime())
         let plaintext = plainMsg.getString()
         return plaintext
     }
-    
+
     // Check if this can be part of a future Decryptor protocol
     static func decryptAndVerify(verificationKeys: [String],
                                  decryptionKeys: [DecryptionKey],
                                  value: String) throws -> String {
         let decryptionKeyRing = try buildPrivateKeyRing(with: decryptionKeys)
         defer { decryptionKeyRing.clearPrivateParams() }
-        
+
         let verificationKeyRing = try buildPublicKeyRing(armoredKeys: verificationKeys)
-        let pgpMsg = CryptoPGPMessage(fromArmored: value)
-        let plainMsg = try decryptionKeyRing.decrypt(pgpMsg, verifyKey: verificationKeyRing, verifyTime: CryptoGetUnixTime())
+        let pgpMsg = CryptoGo.CryptoPGPMessage(fromArmored: value)
+        let plainMsg = try decryptionKeyRing.decrypt(pgpMsg, verifyKey: verificationKeyRing, verifyTime: CryptoGo.CryptoGetUnixTime())
         let plaintext = plainMsg.getString()
         return plaintext
     }
-    
+
     // Can be made private
     static func decryptAndVerifyDetached(verificationKeys: [String],
                                          decryptionKeys: [DecryptionKey],
@@ -113,17 +113,17 @@ public enum Decryptor {
                                          armoredSignature: String) throws -> CryptoPlainMessage {
         let decryptionKeyRing = try buildPrivateKeyRing(with: decryptionKeys)
         defer { decryptionKeyRing.clearPrivateParams() }
-        
+
         let verificationKeyRing = try buildPublicKeyRing(armoredKeys: verificationKeys)
-        let pgpMsg = CryptoPGPMessage(fromArmored: armoredCiphertext)
-        let plainMsg = try decryptionKeyRing.decrypt(pgpMsg, verifyKey: nil, verifyTime: CryptoGetUnixTime())
-        
-        let pgpSignature = CryptoPGPSignature(fromArmored: armoredSignature)
-        try verificationKeyRing?.verifyDetached(plainMsg, signature: pgpSignature, verifyTime: CryptoGetUnixTime())
-        
+        let pgpMsg = CryptoGo.CryptoPGPMessage(fromArmored: armoredCiphertext)
+        let plainMsg = try decryptionKeyRing.decrypt(pgpMsg, verifyKey: nil, verifyTime: CryptoGo.CryptoGetUnixTime())
+
+        let pgpSignature = CryptoGo.CryptoPGPSignature(fromArmored: armoredSignature)
+        try verificationKeyRing?.verifyDetached(plainMsg, signature: pgpSignature, verifyTime: CryptoGo.CryptoGetUnixTime())
+
         return plainMsg
     }
-    
+
     // Can be made private
     static func decryptAndVerifyDetachedEncrypted(verificationKeys: [String],
                                                   decryptionKeys: [DecryptionKey],
@@ -131,89 +131,89 @@ public enum Decryptor {
                                                   encryptedSignature: String) throws -> CryptoPlainMessage {
         let decryptionKeyRing = try buildPrivateKeyRing(with: decryptionKeys)
         defer { decryptionKeyRing.clearPrivateParams() }
-        
+
         let verificationKeyRing = try buildPublicKeyRing(armoredKeys: verificationKeys)
-        let plainMsg = try decryptionKeyRing.decrypt(pgpMsg, verifyKey: nil, verifyTime: CryptoGetUnixTime())
-        let pgpEncSignature = CryptoPGPMessage(fromArmored: encryptedSignature)
-        try verificationKeyRing?.verifyDetachedEncrypted(plainMsg, encryptedSignature: pgpEncSignature, decryptionKeyRing: decryptionKeyRing, verifyTime: CryptoGetUnixTime())
+        let plainMsg = try decryptionKeyRing.decrypt(pgpMsg, verifyKey: nil, verifyTime: CryptoGo.CryptoGetUnixTime())
+        let pgpEncSignature = CryptoGo.CryptoPGPMessage(fromArmored: encryptedSignature)
+        try verificationKeyRing?.verifyDetachedEncrypted(plainMsg, encryptedSignature: pgpEncSignature, decryptionKeyRing: decryptionKeyRing, verifyTime: CryptoGo.CryptoGetUnixTime())
         return plainMsg
     }
-    
+
     static func decryptBinary(keyPacket: Data,
                               dataPacket: Data,
                               decryptionKeys: [DecryptionKey]) throws -> Data {
-        
-        guard let pgpMsg = CryptoPGPSplitMessage(keyPacket, dataPacket: dataPacket)?.getPGPMessage() else {
+
+        guard let pgpMsg = CryptoGo.CryptoPGPSplitMessage(keyPacket, dataPacket: dataPacket)?.getPGPMessage() else {
             throw Errors.noPGPMessageFound
         }
-        
+
         let plainMsg = try decryptDetachedEncrypted(decryptionKeys: decryptionKeys, pgpMsg: pgpMsg)
-        
+
         guard let binary = plainMsg.getBinary() else { throw Errors.emptyResult }
-        
+
         return binary
     }
-    
+
     public static func decryptAndVerifyBinary(cypherData: Data,
                                               contentKeyPacket: Data,
                                               privateKey: String,
                                               passphrase: String,
                                               verificationKeys: [String]) throws -> Data {
         var error: NSError?
-        
-        let newSessionKey = HelperDecryptSessionKey(privateKey, passphrase.data(using: .utf8), contentKeyPacket, &error)
+
+        let newSessionKey = CryptoGo.HelperDecryptSessionKey(privateKey, passphrase.data(using: .utf8), contentKeyPacket, &error)
         guard error == nil else { throw error! }
         guard let sessionKey = newSessionKey else { throw Errors.invalidSessionKey }
-        
+
         let keyRing = try buildPublicKeyRing(armoredKeys: verificationKeys)
-        
-        let message = try sessionKey.decryptAndVerify(cypherData, verifyKeyRing: keyRing, verifyTime: CryptoGetUnixTime())
-        
+
+        let message = try sessionKey.decryptAndVerify(cypherData, verifyKeyRing: keyRing, verifyTime: CryptoGo.CryptoGetUnixTime())
+
         guard let binary = message.getBinary() else { throw Errors.emptyResult }
-        
+
         return binary
     }
-    
+
     static func decryptDetachedEncrypted(decryptionKeys: [DecryptionKey], pgpMsg: CryptoPGPMessage) throws -> CryptoPlainMessage {
         let decryptionKeyRing = try buildPrivateKeyRing(with: decryptionKeys)
         defer { decryptionKeyRing.clearPrivateParams() }
-        
-        let plainMsg = try decryptionKeyRing.decrypt(pgpMsg, verifyKey: nil, verifyTime: CryptoGetUnixTime())
+
+        let plainMsg = try decryptionKeyRing.decrypt(pgpMsg, verifyKey: nil, verifyTime: CryptoGo.CryptoGetUnixTime())
         return plainMsg
     }
-    
+
     public static func decryptBinary(keyPacket: Data, // crypto key packet
                                      dataPacket: Data, // cyphertext
                                      decryptionKeys: [DecryptionKey],
                                      encSignature: String,
                                      verificationKeys: [String]) throws -> Data {
-        
-        guard let pgpMsg = CryptoPGPSplitMessage(keyPacket, dataPacket: dataPacket)?.getPGPMessage() else {
+
+        guard let pgpMsg = CryptoGo.CryptoPGPSplitMessage(keyPacket, dataPacket: dataPacket)?.getPGPMessage() else {
             throw Errors.noPGPMessageFound
         }
-        
+
         let plainMsg = try decryptAndVerifyDetachedEncrypted(
             verificationKeys: verificationKeys,
             decryptionKeys: decryptionKeys,
             pgpMsg: pgpMsg,
             encryptedSignature: encSignature)
-        
+
         guard let binary = plainMsg.getBinary() else { throw Errors.emptyResult }
-        
+
         return binary
     }
-    
+
     public static func decryptSessionKey(of cyphertext: String,
                                          privateKey: String,
                                          passphrase: String) throws -> CryptoSessionKey {
-        let splitMessage = CryptoPGPSplitMessage(fromArmored: cyphertext)
+        let splitMessage = CryptoGo.CryptoPGPSplitMessage(fromArmored: cyphertext)
         let keyPacket = splitMessage?.keyPacket
-        
+
         var error: NSError?
-        let sessionKey = HelperDecryptSessionKey(privateKey, passphrase.data(using: .utf8), keyPacket, &error)
+        let sessionKey = CryptoGo.HelperDecryptSessionKey(privateKey, passphrase.data(using: .utf8), keyPacket, &error)
         guard error == nil else { throw error! }
         guard let unwrappedSessionKey = sessionKey else { throw Errors.invalidSessionKey }
-        
+
         return unwrappedSessionKey
     }
 }
@@ -230,7 +230,7 @@ extension Decryptor {
             armoredSignature: signature
         )
     }
-    
+
     public static func decryptPassphrase(verificationKeys: [String],
                                          decryptionKeys: [DecryptionKey],
                                          armoredCyphertext: String,
@@ -248,10 +248,10 @@ extension Decryptor {
 extension Decryptor {
     public static func buildPublicKeyRing(armoredKeys: [String]) throws -> CryptoKeyRing? {
         var error: NSError?
-        let newKeyRing = CryptoNewKeyRing(nil, &error)
+        let newKeyRing = CryptoGo.CryptoNewKeyRing(nil, &error)
         guard let keyRing = newKeyRing else { return nil }
         for armoredKey in armoredKeys {
-            let keyToAdd = CryptoNewKeyFromArmored(armoredKey, &error)
+            let keyToAdd = CryptoGo.CryptoNewKeyFromArmored(armoredKey, &error)
             guard error == nil else { throw error! }
             if keyToAdd?.isPrivate() == true {
                 let publicKey = try keyToAdd?.toPublic()
@@ -265,10 +265,10 @@ extension Decryptor {
 
     public static func buildPublicKeyRing(binKeys: [Data]) throws -> CryptoKeyRing? {
         var error: NSError?
-        let newKeyRing = CryptoNewKeyRing(nil, &error)
+        let newKeyRing = CryptoGo.CryptoNewKeyRing(nil, &error)
         guard let keyRing = newKeyRing else { return nil }
         for binKey in binKeys {
-            let keyToAdd = CryptoNewKey(binKey, &error)
+            let keyToAdd = CryptoGo.CryptoNewKey(binKey, &error)
             guard error == nil else { throw error! }
             if keyToAdd?.isPrivate() == true {
                 let publicKey = try keyToAdd?.toPublic()
@@ -283,17 +283,17 @@ extension Decryptor {
 
 // MARK: - CryptoKeyRing decryption helpers
 extension Decryptor {
-    
+
     public static func buildPrivateKeyRing(with decryptionKeys: [DecryptionKey]) throws -> CryptoKeyRing {
         var error: NSError?
         var unlockKeyErrors = [Error]()
-        let newKeyRing = CryptoNewKeyRing(nil, &error)
+        let newKeyRing = CryptoGo.CryptoNewKeyRing(nil, &error)
         if let error = error { throw error }
         guard let keyRing = newKeyRing else { throw Errors.couldNotCreateKeyRing }
-        
+
         for decryptionKey in decryptionKeys {
             let passphrase = decryptionKey.passphrase.utf8 // Data(from: decryptionKey.passphrase as! Decoder)
-            let lockedKey = CryptoNewKeyFromArmored(decryptionKey.privateKey, &error)
+            let lockedKey = CryptoGo.CryptoNewKeyFromArmored(decryptionKey.privateKey, &error)
             if let error = error { throw error }
             do {
                 let unlockedKey = try lockedKey?.unlock(passphrase)
@@ -303,49 +303,49 @@ extension Decryptor {
                 continue
             }
         }
-        
+
         guard unlockKeyErrors.count != decryptionKeys.count else {
             throw Errors.noKeyCouldBeUnlocked(errors: unlockKeyErrors)
         }
-        
+
         return keyRing
     }
 }
 
 // the calendar part
 extension Decryptor {
-    
+
     public static func getMemberPassphrase(privateKey: String,
                                            privateKeyPassphrase: String,
                                            encMemberPassphrase: String, error: inout NSError?) -> String {
-        HelperDecryptMessageArmored(privateKey,
-                                    privateKeyPassphrase.data(using: .utf8),
-                                    encMemberPassphrase,
-                                    &error)
+        CryptoGo.HelperDecryptMessageArmored(privateKey,
+                                             privateKeyPassphrase.data(using: .utf8),
+                                             encMemberPassphrase,
+                                             &error)
     }
-    
+
     public static func getMemberPassphrase(keyring: CryptoKeyRing, encMemberPassphrase: String) throws -> String {
-        let message = CryptoPGPMessage(fromArmored: encMemberPassphrase)
+        let message = CryptoGo.CryptoPGPMessage(fromArmored: encMemberPassphrase)
         let decryptedMsg = try keyring.decrypt(message,
                                                verifyKey: nil,
-                                               verifyTime: CryptoGetUnixTime()) 
+                                               verifyTime: CryptoGo.CryptoGetUnixTime())
         return decryptedMsg.getString()
     }
-    
+
     public static func getMemberPassphrase(privateKey: String,
                                            privateKeyPassphrase: String,
                                            encMemberPassphrase: String) throws -> String {
         var error: NSError?
-        let out = HelperDecryptMessageArmored(privateKey,
-                                              privateKeyPassphrase.data(using: .utf8),
-                                              encMemberPassphrase,
-                                              &error)
+        let out = CryptoGo.HelperDecryptMessageArmored(privateKey,
+                                                       privateKeyPassphrase.data(using: .utf8),
+                                                       encMemberPassphrase,
+                                                       &error)
         if let err = error {
             throw err
         }
         return out
     }
-    
+
     /// decrypt a encrypted passpharse use address key
     /// - Parameters:
     ///   - encPassphrase:
@@ -358,42 +358,41 @@ extension Decryptor {
                 let clear = try key.passphrase(userPrivateKeys: decryption.userBinKeys.toArmored,
                                                mailboxPassphrase: Passphrase.init(value: decryption.passphrase))
                 var error: NSError?
-                let out = HelperDecryptMessageArmored(key.privateKey,
-                                                      clear.data,
-                                                      encPassphrase, &error)
+                let out = CryptoGo.HelperDecryptMessageArmored(key.privateKey,
+                                                               clear.data,
+                                                               encPassphrase, &error)
                 if let err = error {
                     throw err
                 }
                 return out
             } catch {
-                
+
             }
         }
         throw Errors.emptyResult
     }
-    
+
     @available(*, deprecated, message: "deprecated")
     func getMemberPassphrase(privateKey: String, privateKeyPassphrase: String, encMemberPassphrase: String, error: inout NSError?) -> String {
-        HelperDecryptMessageArmored(privateKey,
-                                    privateKeyPassphrase.data(using: .utf8),
-                                    encMemberPassphrase,
-                                    &error)
+        CryptoGo.HelperDecryptMessageArmored(privateKey,
+                                             privateKeyPassphrase.data(using: .utf8),
+                                             encMemberPassphrase,
+                                             &error)
     }
-    
+
     @available(*, deprecated, message: "deprecated")
     public static func getMemberPassphrase(encPassphrase: String, keyring: CryptoKeyRing) throws -> String {
-        let message = CryptoPGPMessage(fromArmored: encPassphrase)
+        let message = CryptoGo.CryptoPGPMessage(fromArmored: encPassphrase)
         let decryptedMsg = try keyring.decrypt(message,
                                                verifyKey: nil,
-                                               verifyTime: CryptoGetUnixTime()) 
-        
+                                               verifyTime: CryptoGo.CryptoGetUnixTime())
+
         return decryptedMsg.getString()
     }
-    
+
     /**
      If no signature is passed in, we count it as a verification failed
      */
-    // swiftlint:disable:next function_parameter_count
     public static func decryptAndVerifySignature(keyPacket: Data,
                                                  dataPacket: Data,
                                                  signature: String?,
@@ -402,7 +401,7 @@ extension Decryptor {
                                                  signatureKeyRing: [CryptoKeyRing],
                                                  signatureKeyRingIndex: inout Int) throws -> (str: String, isValid: Bool) {
         var err: NSError?
-        
+
         let str = Decryptor.decryptString(keyPacket: keyPacket,
                                           dataPacket: dataPacket,
                                           keyRing: decryptionKeyRing,
@@ -410,7 +409,7 @@ extension Decryptor {
         if let err = err {
             throw err
         }
-        
+
         return try Decryptor.verifySignature(str: str,
                                              signature: signature,
                                              verifyTime: verifyTime,
@@ -418,7 +417,6 @@ extension Decryptor {
                                              signatureKeyRingIndex: &signatureKeyRingIndex)
     }
 
-    // swiftlint:disable:next function_parameter_count
     public static func decryptAndVerifySignature(keyPacket: Data,
                                                  dataPacket: Data,
                                                  signature: String?,
@@ -434,13 +432,13 @@ extension Decryptor {
         if let err = err {
             throw err
         }
-        
+
         return try Decryptor.verifySignature(str: str,
                                              signature: signature,
                                              verifyTime: verifyTime,
                                              signatureKeyRing: signatureKeyRing)
     }
-    
+
     /// decrypt and return string
     /// - Parameters:
     ///   - keyPacket: pgp keypacket
@@ -451,16 +449,16 @@ extension Decryptor {
     private static func decryptString(keyPacket: Data,
                                       dataPacket: Data,
                                       keyRing: CryptoKeyRing, error: inout NSError?) -> String {
-        HelperDecryptAttachment(keyPacket,
-                                dataPacket,
-                                keyRing,
-                                &error)?.getString() ?? ""
+        CryptoGo.HelperDecryptAttachment(keyPacket,
+                                         dataPacket,
+                                         keyRing,
+                                         &error)?.getString() ?? ""
     }
-    
+
     public static func verifyDetached(signature: String, plainText: String, keyRing: CryptoKeyRing, verifyTime: Int64) throws -> Bool {
         try verifyDetached(signature: signature, input: .left(plainText), keyRing: keyRing, verifyTime: verifyTime)
     }
-    
+
     public static func verifyDetached(signature: String, plainData: Data, keyRing: CryptoKeyRing, verifyTime: Int64) throws -> Bool {
         try verifyDetached(signature: signature, input: .right(plainData), keyRing: keyRing, verifyTime: verifyTime)
     }
@@ -470,15 +468,15 @@ extension Decryptor {
 
         let plainMessage: CryptoPlainMessage?
         switch input {
-        case .left(let plainText): plainMessage = CryptoNewPlainMessageFromString(plainText.trimTrailingSpaces())
-        case .right(let plainData): plainMessage = CryptoNewPlainMessage(plainData)
+        case .left(let plainText): plainMessage = CryptoGo.CryptoNewPlainMessageFromString(plainText.trimTrailingSpaces())
+        case .right(let plainData): plainMessage = CryptoGo.CryptoNewPlainMessage(plainData)
         }
 
-        let signature = CryptoNewPGPSignatureFromArmored(signature, &error)
+        let signature = CryptoGo.CryptoNewPGPSignatureFromArmored(signature, &error)
         if let err = error {
             throw err
         }
-        
+
         do {
             try keyRing.verifyDetached(plainMessage, signature: signature, verifyTime: verifyTime)
             return true
@@ -486,7 +484,7 @@ extension Decryptor {
             return false
         }
     }
-    
+
     public static func verifySignature(str: String, signature: String?,
                                        verifyTime: Int64,
                                        signatureKeyRing: CryptoKeyRing) throws -> (str: String, isValid: Bool) {
@@ -499,14 +497,14 @@ extension Decryptor {
             return (str, true)
         }
     }
-    
+
     private static func verifySignature(str: String, signature: String?,
                                         verifyTime: Int64,
                                         signatureKeyRing: [CryptoKeyRing],
                                         signatureKeyRingIndex: inout Int) throws -> (str: String, isValid: Bool) {
         if let signature = signature {
             var ok = false
-            
+
             for _ in 0 ..< signatureKeyRing.count {
                 let isValid = try Decryptor.verifyDetached(signature: signature,
                                                            plainText: str,
@@ -519,11 +517,11 @@ extension Decryptor {
                     signatureKeyRingIndex = (signatureKeyRingIndex + 1) % signatureKeyRing.count
                 }
             }
-            
+
             return (str, ok)
         } else {
             return (str, true)
         }
     }
-    
+
 }

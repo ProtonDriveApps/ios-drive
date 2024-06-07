@@ -25,7 +25,7 @@ class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
     enum Context {
         case move(rootNode: NodeIdentifier, nodesToMove: [NodeIdentifier], nodeToMoveParent: NodeIdentifier)
         case folder(nodeID: NodeIdentifier)
-        case shared(shareID: String)
+        case shared
         case offlineAvailable
     }
     
@@ -90,8 +90,12 @@ extension FinderCoordinator {
         case .offlineAvailable:
             self.startOfflineAvailable()
 
-        case let .shared(shareID):
-            self.startShared(shareID)
+        case let .shared:
+            if let volume = tower.uiSlot.getVolume() {
+                self.startShared(volumeID: volume.id)
+            } else {
+                TechnicalErrorPlaceholderView(message: "Started Shared Folder with insufficient context")
+            }
         }
     }
     
@@ -111,8 +115,8 @@ extension FinderCoordinator {
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
     }
     
-    private func startShared(_ shareID: String) -> some View {
-        let model = SharedModel(tower: tower, shareID: shareID)
+    private func startShared(volumeID: String) -> some View {
+        let model = SharedModel(tower: tower, volumeID: volumeID)
         self.model = model
         let viewModel = SharedViewModel(model: model)
         self.hookIntoViewLifecycle(viewModel)

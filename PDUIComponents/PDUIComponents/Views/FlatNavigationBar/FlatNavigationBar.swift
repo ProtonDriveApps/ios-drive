@@ -17,7 +17,7 @@
 
 import SwiftUI
 import UIKit
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 public protocol FlatNavigationBarDelegate: AnyObject {
     func numberOfControllers(_ count: Int, _ root: RootViewModel)
@@ -36,11 +36,13 @@ extension UINavigationBar {
 }
 
 public extension View {
-    func flatNavigationBar<L, T>(_ title: String,
-                                      displayMode: NavigationBarItem.TitleDisplayMode = .inline,
-                                      delegate: FlatNavigationBarDelegate? = nil,
-                                      leading: L?,
-                                      trailing: T?) -> some View where L: View, T: View {
+    func flatNavigationBar<L, T>(
+        _ title: String,
+        displayMode: NavigationBarItem.TitleDisplayMode = .inline,
+        delegate: FlatNavigationBarDelegate? = nil,
+        leading: L?,
+        trailing: T?
+    ) -> some View where L: View, T: View {
 
         let modifier = NavigationBarModifier(title: title, displayMode: displayMode, coordinator: delegate, leading: leading, trailing: trailing)
         return ModifiedContent(content: self, modifier: modifier)

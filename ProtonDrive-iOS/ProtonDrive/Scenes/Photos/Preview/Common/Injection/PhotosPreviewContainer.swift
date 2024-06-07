@@ -24,8 +24,7 @@ final class PhotosPreviewContainer {
         let id: PhotoId
         let tower: Tower
         let galleryController: PhotosGalleryController
-        let smallThumbnailsController: ThumbnailsController
-        let bigThumbnailsController: ThumbnailsController
+        let thumbnailsContainer: ThumbnailsControllersContainer
     }
 
     private let dependencies: Dependencies
@@ -63,8 +62,7 @@ final class PhotosPreviewContainer {
             id: id,
             tower: dependencies.tower,
             coordinator: coordinator,
-            smallThumbnailsController: dependencies.smallThumbnailsController,
-            bigThumbnailsController: dependencies.bigThumbnailsController,
+            thumbnailsContainer: dependencies.thumbnailsContainer,
             modeController: modeController,
             previewController: previewController,
             detailController: detailController

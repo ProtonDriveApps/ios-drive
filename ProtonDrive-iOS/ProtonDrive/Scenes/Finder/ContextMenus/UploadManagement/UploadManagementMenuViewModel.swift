@@ -18,7 +18,7 @@
 import SwiftUI
 import PDCore
 import PDUIComponents
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 final class UploadManagementMenuViewModel {
     let node: Node

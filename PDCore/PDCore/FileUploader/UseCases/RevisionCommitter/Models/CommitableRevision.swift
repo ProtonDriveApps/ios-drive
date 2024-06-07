@@ -27,8 +27,9 @@ struct CommitableRevision {
     var photo: Photo?
 
     struct Photo {
-        let mainPhotoID: String?
+        let mainPhotoLinkID: String?
         let captureTime: Int
         let exif: String?
+        let contentHash: String
     }
 }

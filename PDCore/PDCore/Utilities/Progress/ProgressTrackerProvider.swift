@@ -23,12 +23,12 @@ protocol ProgressTrackerProvider: AnyObject {
 }
 
 extension ProgressTrackerProvider {
-    public func progressPublisher() -> AnyPublisher<[ProgressTracker], Never> {
+    public func progressPublisher(direction: ProgressTracker.Direction) -> AnyPublisher<[ProgressTracker], Never> {
         self.queue.publisher(for: \.operations)
-        .compactMap { operations in
-            operations.compactMap { $0 as? OperationWithProgress }
-                      .map { $0.progressTracker() }
-        }
-        .eraseToAnyPublisher()
+            .compactMap { operations in
+                operations.compactMap { $0 as? OperationWithProgress }
+                    .map { $0.progressTracker(direction: direction) }
+            }
+            .eraseToAnyPublisher()
     }
 }

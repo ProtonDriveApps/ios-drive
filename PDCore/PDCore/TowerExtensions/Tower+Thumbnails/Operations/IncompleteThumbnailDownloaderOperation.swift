@@ -22,11 +22,11 @@ final class IncompleteThumbnailDownloaderOperation: DownloadThumbnailOperation {
     private let cloud: ThumbnailCloudClient
     private let typeStrategy: ThumbnailTypeStrategy
 
-    init(id: RevisionIdentifier, cloud: ThumbnailCloudClient, downloader: ThumbnailDownloader, decryptor: ThumbnailDecryptor, typeStrategy: ThumbnailTypeStrategy) {
+    init(id: RevisionIdentifier, cloud: ThumbnailCloudClient, downloader: ThumbnailDownloader, decryptor: ThumbnailDecryptor, typeStrategy: ThumbnailTypeStrategy, urlFetchInteractor: ThumbnailURLFetchInteractor) {
         self.id = id
         self.cloud = cloud
         self.typeStrategy = typeStrategy
-        super.init(url: nil, downloader: downloader, decryptor: decryptor, identifier: id.nodeIdentifier)
+        super.init(url: nil, thumbnailIdentifier: nil, downloader: downloader, decryptor: decryptor, identifier: id.nodeIdentifier, urlFetchInteractor: urlFetchInteractor)
     }
 
     convenience init(
@@ -34,9 +34,10 @@ final class IncompleteThumbnailDownloaderOperation: DownloadThumbnailOperation {
         cloud: ThumbnailCloudClient,
         downloader: ThumbnailDownloader,
         decryptor: ThumbnailDecryptor,
-        typeStrategy: ThumbnailTypeStrategy
+        typeStrategy: ThumbnailTypeStrategy,
+        urlFetchInteractor: ThumbnailURLFetchInteractor
     ) {
-        self.init(id: model.id, cloud: cloud, downloader: downloader, decryptor: decryptor, typeStrategy: typeStrategy)
+        self.init(id: model.revisionId, cloud: cloud, downloader: downloader, decryptor: decryptor, typeStrategy: typeStrategy, urlFetchInteractor: urlFetchInteractor)
     }
 
     override func main() {

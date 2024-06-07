@@ -15,13 +15,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import ProtonCore_Authentication
-import ProtonCore_DataModel
-import ProtonCore_Networking
+import ProtonCoreAuthentication
+import ProtonCoreDataModel
+import ProtonCoreNetworking
 
 public class AddressManager {
-    public typealias Address = ProtonCore_DataModel.Address
-    public typealias AddressKey = ProtonCore_DataModel.Key
+    public typealias Address = ProtonCoreDataModel.Address
+    public typealias AddressKey = ProtonCoreDataModel.Key
 
     private var sessionVault: SessionVault
     private var authenticator: Authenticator
@@ -67,7 +67,7 @@ public class AddressManager {
     }
 
     func fetchUserInfo(_ handler: @escaping (Result<User, Error>) -> Void) {
-        guard self.sessionVault.credential != nil else {
+        guard self.sessionVault.sessionCredential != nil else {
             return handler(.failure(Errors.noClientCredential))
         }
 

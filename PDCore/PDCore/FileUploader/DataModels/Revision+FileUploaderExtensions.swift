@@ -20,11 +20,7 @@ extension Revision {
         thumbnails.first?.unsafeFullUploadableThumbnail
     }
 
-    var unsafeFullUploadableBlocks: [FullUploadableBlock] {
-        unsafeSortedUploadBlocks.compactMap(\.unsafeFullUploadableBlock)
-    }
-
-    var unsafeSortedUploadBlocks: [UploadBlock] {
+    public var unsafeSortedUploadBlocks: [UploadBlock] {
         blocks.compactMap { $0 as? UploadBlock }.sorted(by: { $0.index < $1.index })
     }
 

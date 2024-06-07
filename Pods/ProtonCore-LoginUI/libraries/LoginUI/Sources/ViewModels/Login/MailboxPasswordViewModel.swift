@@ -19,9 +19,11 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import Foundation
-import ProtonCore_Log
-import ProtonCore_Login
+import ProtonCoreLog
+import ProtonCoreLogin
 
 final class MailboxPasswordViewModel {
     enum MailboxPasswordResult {
@@ -56,17 +58,12 @@ final class MailboxPasswordViewModel {
                 case let .finished(data):
                     self?.finished.publish(.done(data))
                 case let .chooseInternalUsernameAndCreateInternalAddress(data):
-                    self?.login.checkUsernameFromEmail(email: data.email) { [weak self] result in
-                        switch result {
-                        case .failure(let error):
-                            self?.error.publish(.generic(message: error.messageForTheUser, code: error.bestShotAtReasonableErrorCode, originalError: error))
-                        case .success(let defaultUsername):
-                            self?.finished.publish(.createAddressNeeded(data, defaultUsername))
-                        }
+                    self?.login.availableUsernameForExternalAccountEmail(email: data.email) { [weak self] username in
+                        self?.finished.publish(.createAddressNeeded(data, username))
                         self?.isLoading.value = false
                     }
-                case .ask2FA, .askSecondPassword:
-                    PMLog.error("Invalid state \(status) after entering Mailbox password")
+                case .askAny2FA, .askSecondPassword, .ssoChallenge, .askFIDO2, .askTOTP:
+                    PMLog.error("Invalid state \(status) after entering Mailbox password", sendToExternal: true)
                     self?.error.publish(.invalidState)
                     self?.isLoading.value = false
                 }
@@ -74,3 +71,5 @@ final class MailboxPasswordViewModel {
         }
     }
 }
+
+#endif

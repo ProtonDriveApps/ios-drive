@@ -26,8 +26,8 @@ public protocol OperationWithProgress where Self: Operation {
 }
 
 extension OperationWithProgress {
-    func progressTracker() -> ProgressTracker {
-        return .init(operation: self)
+    func progressTracker(direction: ProgressTracker.Direction) -> ProgressTracker {
+        return .init(operation: self, direction: direction)
     }
     
     func fingerprint(progress: Progress, _ id: URL?) {

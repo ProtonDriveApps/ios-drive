@@ -19,16 +19,19 @@ import CoreData
 
 class RevisionCommitterOperationFactory: FileUploadOperationFactory {
 
-    let cloudRevisionCommitter: CloudRevisionCommiter
+    let cloudRevisionCommitter: CloudRevisionCommitter
+    let uploadedRevisionChecker: UploadedRevisionChecker
     let signersKitFactory: SignersKitFactoryProtocol
     let moc: NSManagedObjectContext
 
     init(
-        cloudRevisionCommitter: CloudRevisionCommiter,
+        cloudRevisionCommitter: CloudRevisionCommitter,
+        uploadedRevisionChecker: UploadedRevisionChecker,
         signersKitFactory: SignersKitFactoryProtocol,
         moc: NSManagedObjectContext
     ) {
         self.cloudRevisionCommitter = cloudRevisionCommitter
+        self.uploadedRevisionChecker = uploadedRevisionChecker
         self.signersKitFactory = signersKitFactory
         self.moc = moc
     }
@@ -39,6 +42,6 @@ class RevisionCommitterOperationFactory: FileUploadOperationFactory {
     }
 
     func makeRevisionCommitter() -> RevisionCommitter {
-        NewFileRevisionCommitter(cloudRevisionCommiter: cloudRevisionCommitter, signersKitFactory: signersKitFactory, moc: moc)
+        NewFileRevisionCommitter(cloudRevisionCommitter: cloudRevisionCommitter, uploadedRevisionChecker: uploadedRevisionChecker, signersKitFactory: signersKitFactory, moc: moc)
     }
 }

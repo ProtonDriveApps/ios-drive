@@ -17,7 +17,7 @@
 
 import SwiftUI
 import Combine
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 public struct ToastModifier: ViewModifier {
     @ObservedObject var vm: ToastViewModel<Toast>

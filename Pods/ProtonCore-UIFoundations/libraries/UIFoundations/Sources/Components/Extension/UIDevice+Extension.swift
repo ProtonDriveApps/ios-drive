@@ -21,11 +21,13 @@
 
 // swiftlint:disable identifier_name
 
+#if os(iOS)
+
 import Foundation
 import UIKit
 
 public extension UIDevice {
-    
+
     var isIpad: Bool {
         return UIDevice.current.userInterfaceIdiom == .pad
     }
@@ -69,3 +71,7 @@ public extension UIDevice {
         }
     }
 }
+
+#endif
+
+// swiftlint:enable identifier_name

@@ -20,25 +20,26 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 //
 
-import ProtonCore_Log
+import Foundation
+import ProtonCoreLog
 
 public enum AddAccountEmailError: Error {
     case cannotConstructUrl
     case cannotDecodeResponseBody
     case responseError(String)
     case actualError(Error)
-    
+
     public var userFacingMessageInQuarkCommands: String {
         switch self {
         case .cannotConstructUrl: return "cannot construct url"
         case .cannotDecodeResponseBody: return "cannot decode response body"
         case .responseError(let error): return "response error: \(error)"
-        case .actualError(let error): return "actual error: \(error.messageForTheUser)"
+        case .actualError(let error): return "actual error: \(error.localizedDescription)"
         }
     }
 }
 extension QuarkCommands {
-    // swiftlint:disable function_parameter_count
+    @available(*, deprecated, renamed: "userCreateAddress", message: "`QuarkCommands` has been updated to `Quark`.")
     public static func addEmailToAccount(currentlyUsedHostUrl host: String,
                                          userID: String,
                                          password: String,
@@ -51,7 +52,7 @@ extension QuarkCommands {
             urlString.append("&--gen-keys=None")
         }
         guard let url = URL(string: urlString) else { completion(.failure(.cannotConstructUrl)); return }
-        
+
         let completion: (Result<Bool, AddAccountEmailError>) -> Void = { result in
             callCompletionBlockOn.async { completion(result) }
         }
@@ -69,7 +70,7 @@ extension QuarkCommands {
         }.resume()
     }
 }
-
+@available(*, deprecated, renamed: "userCreateAddress", message: "`QuarkCommands` has been updated to `Quark`.")
 public func addAddress(userID: String,
                        password: String,
                        email: String,

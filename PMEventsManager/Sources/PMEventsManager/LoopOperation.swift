@@ -23,7 +23,7 @@ enum EventsLoopError: Error {
 }
 
 final class LoopOperation<Loop: EventsLoop>: AsynchronousOperation {
-    let loop: Loop
+    private(set) weak var loop: Loop?
     private let onDidReceiveMultiplePagesResponse: () -> Void
     private var task: Task<Void, Never>?
     
@@ -33,9 +33,19 @@ final class LoopOperation<Loop: EventsLoop>: AsynchronousOperation {
     }
     
     override func main() {
-        task = Task {
+        task = Task { [weak self] in
+            defer {
+                self?.task = nil
+            }
+            guard let self = self, let loop = self.loop else {
+                // finish if loop is deallocated
+                // otherwise the operation will be stuck in the queue
+                // preventing scheduler from adding more operations via timer
+                self?.state = .finished
+                return
+            }
             do {
-                let loopEventID = try getLatestLoopID()
+                let loopEventID = try self.getLatestLoopID()
                 let page = try await loop.poll(since: loopEventID)
 
                 guard !isCancelled else { return }
@@ -69,11 +79,12 @@ final class LoopOperation<Loop: EventsLoop>: AsynchronousOperation {
     
     override func cancel() {
         task?.cancel()
+        task = nil
         super.cancel()
     }
     
     func getLatestLoopID() throws -> String {
-        if let eventID = loop.latestLoopEventId {
+        if let loop, let eventID = loop.latestLoopEventId {
             return eventID
         } else {
             throw EventsLoopError.missingLatestLoopEventID

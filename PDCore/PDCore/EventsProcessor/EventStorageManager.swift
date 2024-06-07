@@ -52,6 +52,7 @@ public class EventStorageManager: NSObject {
         let storeFileUrl = storeDirectoryUrl.appendingPathComponent(databaseName + ".sqlite")
         
         let storeDescription = NSPersistentStoreDescription(url: storeFileUrl)
+        storeDescription.shouldMigrateStoreAutomatically = true
         container.persistentStoreDescriptions = [storeDescription]
         
         container.loadPersistentStores(completionHandler: { (storeDescription, error) in
@@ -152,7 +153,7 @@ extension EventStorageManager {
             }
             
             do {
-                try self.backgroundContext.save()
+                try self.backgroundContext.saveWithParentLinkCheck()
             } catch let error {
                 assert(false, error.localizedDescription)
             }
@@ -164,10 +165,20 @@ extension EventStorageManager {
             let object = self.backgroundContext.object(with: objectID) as? PersistedEvent
             // we need to keep events for EventListeners
             object?.isProcessed = true
-            try? self.backgroundContext.save()
+            try? self.backgroundContext.saveWithParentLinkCheck()
         }
     }
     
+    public func setEnumerated(_ objectIDs: [NSManagedObjectID]) {
+        self.backgroundContext.performAndWait {
+            objectIDs.forEach { objectID in
+                let object = self.backgroundContext.object(with: objectID) as? PersistedEvent
+                object?.isEnumerated = true
+            }
+            try? self.backgroundContext.saveWithParentLinkCheck()
+        }
+    }
+
     public func queue() -> NSFetchedResultsController<NSFetchRequestResult> {
         let fetchRequest = self.requestEvents(excludeIsProcessedEqualTo: true)
         let controller = NSFetchedResultsController(fetchRequest: fetchRequest,
@@ -206,7 +217,7 @@ extension EventStorageManager {
     private func requestEvents(since lowerTimestamp: TimeInterval? = nil,
                                until higherTimestamp: TimeInterval? = nil,
                                excludeIsProcessedEqualTo: Bool? = nil,
-                               excluding anchorID: EventID? = nil) -> NSFetchRequest<NSFetchRequestResult>
+                               excludeIsEnumeratedEqualTo: Bool? = nil) -> NSFetchRequest<NSFetchRequestResult>
     {
         // this predicate is critical to exclude repetitive processing of same events
         // because events are not deleted after processing - we need to keep them for EventListeners
@@ -217,11 +228,11 @@ extension EventStorageManager {
         if let higher = higherTimestamp {
             subpredicates.append(NSPredicate(format: "%K <= %@", #keyPath(PersistedEvent.eventEmittedAt), NSNumber(value: higher)))
         }
-        if let eventID = anchorID {
-            subpredicates.append(NSPredicate(format: "%K != %@", #keyPath(PersistedEvent.eventId), eventID))
-        }
         if let excluding = excludeIsProcessedEqualTo {
             subpredicates.append(NSPredicate(format: "%K != %@", #keyPath(PersistedEvent.isProcessed), NSNumber(value: excluding)))
+        }
+        if let excluding = excludeIsEnumeratedEqualTo {
+            subpredicates.append(NSPredicate(format: "%K != %@", #keyPath(PersistedEvent.isEnumerated), NSNumber(value: excluding)))
         }
         
         let fetchRequest = self.baseRequest()
@@ -243,7 +254,20 @@ extension EventStorageManager {
     public func count() throws -> Int {
         let fetchRequest = NSFetchRequest<PersistedEvent>()
         fetchRequest.entity = PersistedEvent.entity()
-        return try backgroundContext.count(for: fetchRequest)
+        
+        return try backgroundContext.performAndWait {
+            try backgroundContext.count(for: fetchRequest)
+        }
+    }
+    
+    public func unprocessedEventCount() throws -> Int {
+        let fetchRequest = NSFetchRequest<PersistedEvent>()
+        fetchRequest.predicate = NSPredicate(format: "%K == %@", #keyPath(PersistedEvent.isProcessed), NSNumber(value: false))
+        fetchRequest.entity = PersistedEvent.entity()
+        
+        return try backgroundContext.performAndWait {
+            try backgroundContext.count(for: fetchRequest)
+        }
     }
     
     public func periodicalCleanup(horizon: DateComponents = .init(day: -10)) throws {
@@ -260,7 +284,7 @@ extension EventStorageManager {
                 try self.backgroundContext.fetch(fetchRequest)
                     .compactMap { $0 as? NSManagedObject }
                     .forEach(self.backgroundContext.delete)
-                try self.backgroundContext.save()
+                try self.backgroundContext.saveWithParentLinkCheck()
             } catch let error {
                 errorToThrow = error
             }
@@ -299,12 +323,51 @@ extension EventStorageManager {
         return event
     }
 
-    public func lastEvent(onlyProcessed: Bool) throws -> Entry? {
-        let fetchRequest = self.requestEvents()
-        fetchRequest.fetchLimit = 1
-        if onlyProcessed {
-            fetchRequest.predicate = NSPredicate(format: "%K == YES", #keyPath(PersistedEvent.isProcessed))
+    public func lastFullyHandledEvent() throws -> Entry? {
+        let fetchRequest: NSFetchRequest<NSFetchRequestResult>
+        fetchRequest = self.requestEvents(excludeIsProcessedEqualTo: false, excludeIsEnumeratedEqualTo: false)
+
+        return try lastEventBasedOnRequest(fetchRequest)
+    }
+
+    public func lastEvent(awaitingEnumerationOnly: Bool) throws -> Entry? {
+        let fetchRequest: NSFetchRequest<NSFetchRequestResult>
+        if awaitingEnumerationOnly {
+            fetchRequest = self.requestEvents(excludeIsProcessedEqualTo: false, excludeIsEnumeratedEqualTo: true)
+        } else {
+            fetchRequest = self.requestEvents()
         }
+
+        return try lastEventBasedOnRequest(fetchRequest)
+    }
+    
+    public func eventsAwaitingEnumeration(since anchorID: EventID?) throws -> [Entry] {
+        var anchorTimestamp: TimeInterval?
+        if let anchorID = anchorID {
+            guard let timestamp = try self.event(with: anchorID)?.eventEmittedAt else {
+                return []
+            }
+            anchorTimestamp = timestamp
+        }
+        
+        let fetchRequest = self.requestEvents(since: anchorTimestamp, excludeIsProcessedEqualTo: false, excludeIsEnumeratedEqualTo: true)
+        
+        var events: [Entry] = []
+        var errorToThrow: Error?
+        self.backgroundContext.performAndWait {
+            do {
+                events = try self.backgroundContext.fetch(fetchRequest) as? [Entry] ?? []
+            } catch let error {
+                errorToThrow = error
+            }
+        }
+        guard errorToThrow == nil else { throw errorToThrow! }
+        return events
+    }
+
+    private func lastEventBasedOnRequest(_ fetchRequest: NSFetchRequest<NSFetchRequestResult>) throws -> Entry? {
+        fetchRequest.fetchLimit = 1
+
         fetchRequest.sortDescriptors = [.init(key: #keyPath(PersistedEvent.eventEmittedAt), ascending: false)]
 
         var event: Entry?
@@ -318,29 +381,5 @@ extension EventStorageManager {
         }
         guard errorToThrow == nil else { throw errorToThrow! }
         return event
-    }
-    
-    public func events(since anchorID: EventID?) throws -> [Entry] {
-        var anchorTimestamp: TimeInterval?
-        if let anchorID = anchorID {
-            guard let timestamp = try self.event(with: anchorID)?.eventEmittedAt else {
-                return []
-            }
-            anchorTimestamp = timestamp
-        }
-        
-        let fetchRequest = self.requestEvents(since: anchorTimestamp, excluding: anchorID)
-        
-        var events: [Entry] = []
-        var errorToThrow: Error?
-        self.backgroundContext.performAndWait {
-            do {
-                events = try self.backgroundContext.fetch(fetchRequest) as? [Entry] ?? []
-            } catch let error {
-                errorToThrow = error
-            }
-        }
-        guard errorToThrow == nil else { throw errorToThrow! }
-        return events
     }
 }

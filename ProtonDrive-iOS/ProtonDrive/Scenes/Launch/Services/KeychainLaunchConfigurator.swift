@@ -32,7 +32,7 @@ final class KeychainLaunchConfigurator: LaunchConfigurator {
     }
 
     private func launchForTheFirstTime() {
-        DriveKeychain().removeEverything()
+        DriveKeychain.shared.removeEverything()
         firstLaunchHappened = true
     }
 }

@@ -36,7 +36,7 @@ class NodeDetailsViewModel: ObservableObject {
     static func subtitle(for node: Node, at date: Date = Date()) -> String? {
         switch node {
         case is File:
-            let size = self.sizeFormatter.string(fromByteCount: Int64(node.size))
+            let size = ByteCountFormatter.storageSizeString(forByteCount: Int64(node.size))
             let modified = node.modifiedDate
             if modified >= date {
                 return "\(size) | Moments ago"
@@ -65,17 +65,6 @@ class NodeDetailsViewModel: ObservableObject {
         return formatter
     }()
     
-    private static var sizeFormatter: ByteCountFormatter = {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .binary
-        formatter.formattingContext = .standalone
-        formatter.allowsNonnumericFormatting = true
-        formatter.zeroPadsFractionDigits = false
-        formatter.includesUnit = true
-        formatter.isAdaptive = false
-        return formatter
-    }()
-    
     lazy var title: String = {
         switch self.node {
         case is File:   return "File details"
@@ -100,7 +89,7 @@ class NodeDetailsViewModel: ObservableObject {
         var details = self.detailsFolder
         details.append(contentsOf: [
             .init(id: "Extension", value: self.fileExtension ?? "－"),
-            .init(id: "Size", value: Self.sizeFormatter.string(fromByteCount: Int64(node.size))),
+            .init(id: "Size", value: ByteCountFormatter.storageSizeString(forByteCount: Int64(node.size))),
             .init(id: "Shared", value: self.node.isShared ? "Yes" : "No")
         ])
         return details
@@ -119,7 +108,7 @@ class NodeDetailsViewModel: ObservableObject {
     }()
     
     lazy var editorAddress: String = {
-        guard let address = self.tower.sessionVault.getAddress(for: node.signatureEmail) else { return "－" }
+        guard let signatureEmail = node.signatureEmail, let address = self.tower.sessionVault.getAddress(for: signatureEmail) else { return "－" }
         if address.displayName.isEmpty {
             return "\(address.email)"
         } else {

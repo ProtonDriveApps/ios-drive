@@ -16,17 +16,19 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import ProtonCore_Environment
-import ProtonCore_Services
+import ProtonCoreEnvironment
+import ProtonCoreServices
 
 public typealias URLSessionDelegateCompletion = (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
 public typealias TrustChallenge = (URLSession, URLAuthenticationChallenge, @escaping URLSessionDelegateCompletion) -> Void
 
 public class APIService {
     public let configuration: Configuration
+    public let baseHeadersFactory: BaseHeadersFactory
     
-    public init(configuration: Configuration) {
+    public init(configuration: Configuration, baseHeadersFactory: BaseHeadersFactory) {
         self.configuration = configuration
+        self.baseHeadersFactory = baseHeadersFactory
     }
     
     var baseComponents: URLComponents {
@@ -35,22 +37,18 @@ public class APIService {
         return urlComponents
     }
     
-    var baseHeaders: [String: String] {
-        [
-            "x-pm-appversion": configuration.clientVersion,
-            "Accept": "application/vnd.protonmail.v1+json",
-            "Content-Type": "application/json;charset=utf-8"
-        ]
+    public var baseHeaders: [String: String] {
+        baseHeadersFactory.makeHeaders()
     }
     
-    func authHeaders(_ credential: ClientCredential) -> [String: String] {
+    public func authHeaders(_ credential: ClientCredential) -> [String: String] {
         [
             "Authorization": "Bearer " + credential.accessToken,
             "x-pm-uid": credential.UID
         ]
     }
 
-    func url(of path: String, parameters: [URLQueryItem]? = nil) -> URL {
+    public func url(of path: String, parameters: [URLQueryItem]? = nil) -> URL {
         var urlComponents = self.baseComponents
         urlComponents.queryItems = parameters
         guard let url = urlComponents.url else {

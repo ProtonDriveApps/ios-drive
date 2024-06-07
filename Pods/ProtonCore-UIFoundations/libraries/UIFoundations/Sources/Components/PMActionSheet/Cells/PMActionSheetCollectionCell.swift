@@ -19,8 +19,10 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import ProtonCore_Foundations
+import ProtonCoreFoundations
 
 final class PMActionSheetCollectionCell: UITableViewCell, AccessibleView {
     private var collectionView: UICollectionView = UICollectionView(frame: .zero, collectionViewLayout: .init())
@@ -133,3 +135,5 @@ extension PMActionSheetCollectionCell: UICollectionViewDelegateFlowLayout {
         return .init(width: width, height: 64)
     }
 }
+
+#endif

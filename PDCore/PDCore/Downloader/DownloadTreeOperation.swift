@@ -19,9 +19,8 @@ import Foundation
 import CoreData
 import PDClient
 
-/// Downloads whole tree of Drive objects under a Folder, including ecnrypted blocks of active revisions of files
-class DownloadTreeOperation: SynchronousOperation, OperationWithProgress {
-    typealias Completion = (Result<Folder, Error>) -> Void
+class TreeParsingOperation<ReturnType>: SynchronousOperation, OperationWithProgress {
+    typealias Completion = (Result<ReturnType, Error>) -> Void
     typealias Enumeration = Downloader.Enumeration
     
     fileprivate lazy var internalQueue: OperationQueue = {
@@ -31,7 +30,11 @@ class DownloadTreeOperation: SynchronousOperation, OperationWithProgress {
         return queue
     }()
     
-    internal init(node: Folder, cloudSlot: CloudSlot, enumeration: @escaping Enumeration, endpointFactory: EndpointFactory, completion: @escaping Completion) {
+    internal init(node: Folder,
+                  cloudSlot: CloudSlot,
+                  enumeration: @escaping Enumeration,
+                  endpointFactory: EndpointFactory,
+                  completion: @escaping Completion) {
         self.node = node
         self.enumeration = enumeration
         self.cloudSlot = cloudSlot
@@ -42,11 +45,12 @@ class DownloadTreeOperation: SynchronousOperation, OperationWithProgress {
     }
     
     fileprivate var recursiveScanErrors: [Error] = []
-    private var completion: Completion?
-    private var node: Folder
+    fileprivate var completion: Completion?
+    fileprivate var node: Folder
+    fileprivate var output: ReturnType!
     fileprivate var enumeration: Enumeration?
     fileprivate weak var cloudSlot: CloudSlot!
-    private let endpointFactory: EndpointFactory
+    fileprivate let endpointFactory: EndpointFactory
     
     lazy var progress: Progress = {
         let progress = Progress(totalUnitCount: 0)
@@ -62,7 +66,7 @@ class DownloadTreeOperation: SynchronousOperation, OperationWithProgress {
             return
         }
         self.node.managedObjectContext?.performAndWait {
-            self.completion?(.success(self.node))
+            self.completion?(.success(self.output))
         }
         self.state = .finished
     }
@@ -92,7 +96,16 @@ class DownloadTreeOperation: SynchronousOperation, OperationWithProgress {
         self.internalQueue.isSuspended = false
     }
     
-    fileprivate func scanNodeAndChildrenOperation(of currentNode: Folder) -> Operation {
+    fileprivate func scanNodeAndChildrenOperation(of _: Folder) -> Operation {
+        fatalError("Abstract method — must be overridden in the subclasses")
+    }
+}
+
+/// Downloads whole tree of Drive objects under a Folder, including ecnrypted blocks of active revisions of files
+class DownloadTreeOperation: TreeParsingOperation<Folder> {
+    
+    override fileprivate func scanNodeAndChildrenOperation(of currentNode: Folder) -> Operation {
+        self.output = currentNode
         self.enumeration?(currentNode)
         let operation = ScanNodeOperation(currentNode.identifier, cloudSlot: self.cloudSlot) { [weak self] result in
             guard let self = self, !self.isCancelled else { return }
@@ -132,8 +145,72 @@ class DownloadTreeOperation: SynchronousOperation, OperationWithProgress {
     }
 }
 
-class ScanChildrenOperation: DownloadTreeOperation {
-    override func scanNodeAndChildrenOperation(of currentNode: Folder) -> Operation {
+class ScanTreesOperation: TreeParsingOperation<[Node]> {
+    
+    private let nodes: [Folder]
+    
+    init(folders: [Folder],
+         cloudSlot: CloudSlot,
+         enumeration: @escaping TreeParsingOperation.Enumeration,
+         endpointFactory: EndpointFactory,
+         completion: @escaping TreeParsingOperation<[Node]>.Completion) {
+        guard let node = folders.first else {
+            fatalError("This operation must be called with at least a single node")
+        }
+        self.nodes = folders
+        super.init(node: node, cloudSlot: cloudSlot, enumeration: enumeration, endpointFactory: endpointFactory, completion: completion)
+        self.output = []
+        internalQueue.maxConcurrentOperationCount = 6
+    }
+    
+    override fileprivate func scanNodeAndChildrenOperation(of firstNode: Folder) -> Operation {
+        let operationForHeadNode = operationForNode(firstNode)
+        nodes
+            .dropFirst()
+            .map(operationForNode)
+            .forEach { operation in
+                self.finish.addDependency(operation)
+                self.internalQueue.addOperation(operation)
+            }
+        return operationForHeadNode
+    }
+    
+    private func operationForNode(_ node: Folder) -> Operation {
+        self.output.append(node)
+        let operation = ScanNodeOperation(node.identifier,
+                                          cloudSlot: self.cloudSlot,
+                                          shouldIncludeDeletedItems: true) { [weak self] result in
+            guard let self = self, !self.isCancelled else { return }
+            
+            self.enumeration?(node)
+            
+            switch result {
+            case .failure(let error):
+                self.progress.complete(units: 1)
+                if let responseError = error as? ResponseError,
+                    responseError.responseCode == 2501 {
+                    /* ignore because this can happen for the permanently deleted file */
+                } else {
+                    self.recursiveScanErrors.append(error)
+                }
+                
+            case .success(let children):
+                children.forEach { self.output.append($0) }
+                let scanSubfolders = children.compactMap { $0 as? Folder }.map(self.scanNodeAndChildrenOperation)
+                scanSubfolders.forEach(self.finish.addDependency)
+                self.progress.increaseTotalUnitsOfWork(by: scanSubfolders.count)
+                self.progress.complete(units: 1) // complete for current one
+                self.internalQueue.addOperations(scanSubfolders, waitUntilFinished: false)
+            }
+        }
+        return operation
+    }
+}
+
+class ScanChildrenOperation: TreeParsingOperation<Folder> {
+    
+    override fileprivate func scanNodeAndChildrenOperation(of currentNode: Folder) -> Operation {
+        self.output = currentNode
         let operation = ScanNodeOperation(currentNode.identifier, cloudSlot: self.cloudSlot) { [weak self] result in
             guard let self = self, !self.isCancelled else { return }
             

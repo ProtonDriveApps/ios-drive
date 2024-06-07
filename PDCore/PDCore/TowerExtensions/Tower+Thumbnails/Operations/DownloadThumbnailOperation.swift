@@ -19,20 +19,26 @@ import Foundation
 
 class DownloadThumbnailOperation: ThumbnailDecryptorOperation {
     private let thumbnailURL: URL?
+    private let thumbnailIdentifier: ThumbnailIdentifier?
     private let downloader: ThumbnailDownloader
+    let urlFetchInteractor: ThumbnailURLFetchInteractor
+    private var redownloadTask: Task<Void, Error>?
 
-    init(url: URL?, downloader: ThumbnailDownloader, decryptor: ThumbnailDecryptor, identifier: NodeIdentifier) {
+    init(url: URL?, thumbnailIdentifier: ThumbnailIdentifier?, downloader: ThumbnailDownloader, decryptor: ThumbnailDecryptor, identifier: NodeIdentifier, urlFetchInteractor: ThumbnailURLFetchInteractor) {
         self.thumbnailURL = url
+        self.thumbnailIdentifier = thumbnailIdentifier
         self.downloader = downloader
+        self.urlFetchInteractor = urlFetchInteractor
         super.init(encryptedThumbnail: nil, decryptor: decryptor, identifier: identifier)
     }
 
     convenience init(
         model: InProgressThumbnail,
         downloader: ThumbnailDownloader,
-        decryptor: ThumbnailDecryptor
+        decryptor: ThumbnailDecryptor,
+        urlFetchInteractor: ThumbnailURLFetchInteractor
     ) {
-        self.init(url: model.url, downloader: downloader, decryptor: decryptor, identifier: model.id.nodeIdentifier)
+        self.init(url: model.url, thumbnailIdentifier: model.thumbnailIdentifier, downloader: downloader, decryptor: decryptor, identifier: model.revisionId.nodeIdentifier, urlFetchInteractor: urlFetchInteractor)
     }
     
     override func main() {
@@ -52,15 +58,33 @@ class DownloadThumbnailOperation: ThumbnailDecryptorOperation {
             switch result {
             case .success(let encryptedThumbnail):
                 self.decrypt(encryptedThumbnail)
-
             case .failure(let error):
-                self.finishOperationWithFailure(error)
+                self.handleDownloadError(error)
             }
+        }
+    }
+
+    private func handleDownloadError(_ error: Error) {
+        if error as? URLSessionThumbnailDownloader.ThumbnailDownloadError == .notFound, let thumbnailIdentifier {
+            // URL is expired, need to refetch. This is only supported for thumbnails with ids for now.
+            redownloadURL(with: thumbnailIdentifier)
+        } else {
+            self.finishOperationWithFailure(error)
+        }
+    }
+
+    private func redownloadURL(with thumbnailIdentifier: ThumbnailIdentifier) {
+        redownloadTask = Task { [weak self] in
+            guard let self = self, !self.isCancelled else { return }
+            let url = try await self.urlFetchInteractor.execute(thumbnailId: thumbnailIdentifier.thumbnailId, volumeId: thumbnailIdentifier.volumeId)
+            guard !self.isCancelled else { return }
+            self.download(url)
         }
     }
 
     override func cancel() {
         super.cancel()
+        redownloadTask?.cancel()
         downloader.cancel()
     }
 }
@@ -95,7 +119,11 @@ final class URLSessionThumbnailDownloader: ThumbnailDownloader {
 
             guard let encryptedThumbnail = data,
                   responseCode == self.okStatusCode else {
-                completion(.failure(TumbnailDowloadingError(code: responseCode)))
+                if responseCode == 404 {
+                    completion(.failure(ThumbnailDownloadError.notFound))
+                } else {
+                    completion(.failure(ThumbnailDownloadError.other(code: responseCode)))
+                }
                 return
             }
 
@@ -113,7 +141,8 @@ final class URLSessionThumbnailDownloader: ThumbnailDownloader {
 
     private var okStatusCode: Int { 200 }
 
-    struct TumbnailDowloadingError: Error {
-        let code: Int?
+    enum ThumbnailDownloadError: Error, Equatable {
+        case notFound
+        case other(code: Int?)
     }
 }

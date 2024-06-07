@@ -17,13 +17,14 @@
 
 import Foundation
 import PMEventsManager
-import ProtonCore_DataModel
-import ProtonCore_Payments
+import ProtonCoreDataModel
+import ProtonCorePayments
+import ProtonCoreTelemetry
 
 final class GeneralEventsLoopProcessor: EventLoopProcessor {
     typealias Response = GeneralLoopResponse
     typealias SubscriptionMeta = PMEventsManager.Subscription
-    typealias Subscription = ProtonCore_Payments.Subscription
+    typealias Subscription = ProtonCorePayments.Subscription
     
     private let userVault: UserStorage
     private let userSettingsVault: UserSettingsStorage
@@ -76,11 +77,14 @@ final class GeneralEventsLoopProcessor: EventLoopProcessor {
     
     func process(_ userSettings: UserSettings) {
         userSettingsVault.storeUserSettings(userSettings)
+#if os(iOS)
+        TelemetryService.shared.setTelemetryEnabled(!userSettings.optOutFromTelementry)
+#endif
     }
     
     func process(_ usedSpace: Double) {
-        guard let present = userVault.userInfo, present.usedSpace != usedSpace else { return }
-        let updated = User(ID: present.ID, name: present.name, usedSpace: Double(usedSpace), currency: present.currency, credit: present.credit, maxSpace: present.maxSpace, maxUpload: present.maxUpload, role: present.role, private: present.private, subscribed: present.subscribed, services: present.services, delinquent: present.delinquent, orgPrivateKey: present.orgPrivateKey, email: present.email, displayName: present.displayName, keys: present.keys)
+        guard let present = userVault.userInfo, present.usedSpace != Int64(usedSpace) else { return }
+                let updated = User(ID: present.ID, name: present.name, usedSpace: Int64(usedSpace), usedBaseSpace: present.usedBaseSpace, usedDriveSpace: present.usedDriveSpace, currency: present.currency, credit: present.credit, maxSpace: present.maxSpace, maxBaseSpace: present.maxBaseSpace, maxDriveSpace: present.maxDriveSpace, maxUpload: present.maxUpload, role: present.role, private: present.private, subscribed: present.subscribed, services: present.services, delinquent: present.delinquent, orgPrivateKey: present.orgPrivateKey, email: present.email, displayName: present.displayName, keys: present.keys)
         userVault.storeUser(updated)
     }
     
@@ -114,7 +118,7 @@ final class GeneralEventsLoopProcessor: EventLoopProcessor {
 
 typealias GeneralEventsLoopWithProcessor = GeneralEventsLoop<GeneralEventsLoopProcessor>
 
-extension ProtonCore_Payments.Subscription {
+extension ProtonCorePayments.Subscription {
     
     init(_ meta: PMEventsManager.Subscription) {
         self.init(
@@ -145,7 +149,7 @@ protocol AddressStorage {
 }
 
 protocol PaymentsStorage: AnyObject {
-    var currentSubscription: ProtonCore_Payments.Subscription? { get set }
+    var currentSubscription: ProtonCorePayments.Subscription? { get set }
 }
 
 extension GeneralSettings: UserSettingsStorage {}

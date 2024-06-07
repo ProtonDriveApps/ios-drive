@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22757" systemVersion="23E224" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="SyncItem" representedClassName="SyncItem" syncable="YES">
+        <attribute name="errorDescription" optional="YES" attributeType="String"/>
+        <attribute name="errorRetryCount" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="filename" optional="YES" attributeType="Transformable" valueTransformerName="DriveStringCryptoTransformer" customClassName="String"/>
+        <attribute name="fileProviderOperationRaw" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="String"/>
+        <attribute name="location" optional="YES" attributeType="Transformable" valueTransformerName="DriveStringCryptoTransformer" customClassName="String"/>
+        <attribute name="mimeType" optional="YES" attributeType="String"/>
+        <attribute name="modificationTime" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="stateRaw" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+    </entity>
+</model>

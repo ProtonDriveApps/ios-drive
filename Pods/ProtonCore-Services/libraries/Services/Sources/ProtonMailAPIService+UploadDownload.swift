@@ -19,23 +19,20 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
-// swiftlint:disable function_parameter_count
-
 import Foundation
-import ProtonCore_Doh
-import ProtonCore_Log
-import ProtonCore_Networking
-import ProtonCore_Utilities
-import ProtonCore_FeatureSwitch
+import ProtonCoreDoh
+import ProtonCoreLog
+import ProtonCoreNetworking
+import ProtonCoreUtilities
 
 // MARK: - Performing the upload and download operation
 
 extension PMAPIService {
-    
+
     private typealias DummyGenericsOperationAndCompletion = Either<
         JSONOperationAndCompletion, DecodableOperationAndCompletion<DummyAPIDecodableResponseOnlyForSatisfyingGenericsResolving>
     >
-    
+
     public func upload(byPath path: String,
                        parameters: [String: String],
                        keyPackets: Data,
@@ -62,7 +59,7 @@ extension PMAPIService {
                                retryPolicy: retryPolicy,
                                operationAndCompletion: DummyGenericsOperationAndCompletion.left(jsonOperationAndCompletion))
     }
-    
+
     public func upload<T>(byPath path: String,
                           parameters: [String: String],
                           keyPackets: Data,
@@ -89,7 +86,7 @@ extension PMAPIService {
                                retryPolicy: retryPolicy,
                                operationAndCompletion: .right(decodableOperationAndCompletion))
     }
-    
+
     public func upload(byPath path: String,
                        parameters: Any?,
                        files: [String: URL],
@@ -100,7 +97,7 @@ extension PMAPIService {
                        retryPolicy: ProtonRetryPolicy.RetryMode,
                        uploadProgress: ProgressCompletion?,
                        jsonCompletion: @escaping JSONCompletion) {
-        
+
         let jsonOperationAndCompletion: JSONOperationAndCompletion = (
             { request, operationCompletion in
                 self.session.upload(with: request, files: files, completion: operationCompletion, uploadProgress: uploadProgress)
@@ -115,7 +112,7 @@ extension PMAPIService {
                                retryPolicy: retryPolicy,
                                operationAndCompletion: DummyGenericsOperationAndCompletion.left(jsonOperationAndCompletion))
     }
-    
+
     public func upload<T>(byPath path: String,
                           parameters: Any?,
                           files: [String: URL],
@@ -140,7 +137,7 @@ extension PMAPIService {
                                retryPolicy: retryPolicy,
                                operationAndCompletion: .right(decodableOperationAndCompletion))
     }
-    
+
     public func uploadFromFile(byPath path: String,
                                parameters: [String: String],
                                keyPackets: Data,
@@ -153,7 +150,7 @@ extension PMAPIService {
                                retryPolicy: ProtonRetryPolicy.RetryMode,
                                uploadProgress: ProgressCompletion?,
                                jsonCompletion: @escaping JSONCompletion) {
-        
+
         let jsonOperationAndCompletion: JSONOperationAndCompletion = (
             { request, operationCompletion in
                 self.session.uploadFromFile(
@@ -161,7 +158,7 @@ extension PMAPIService {
                 )
             }, transformJSONCompletion(jsonCompletion)
         )
-        
+
         performUploadOperation(path: path,
                                parameters: parameters,
                                headers: headers,
@@ -171,7 +168,7 @@ extension PMAPIService {
                                retryPolicy: retryPolicy,
                                operationAndCompletion: DummyGenericsOperationAndCompletion.left(jsonOperationAndCompletion))
     }
-    
+
     public func uploadFromFile<T>(byPath path: String,
                                   parameters: [String: String],
                                   keyPackets: Data,
@@ -184,14 +181,14 @@ extension PMAPIService {
                                   retryPolicy: ProtonRetryPolicy.RetryMode,
                                   uploadProgress: ProgressCompletion?,
                                   decodableCompletion: @escaping DecodableCompletion<T>) where T: APIDecodableResponse {
-        
+
         let decodableOperationAndCompletion: DecodableOperationAndCompletion<T> = (
             { request, jsonDecoder, operationCompletion in
                 self.session.uploadFromFile(with: request, keyPacket: keyPackets, dataPacketSourceFileURL: dataPacketSourceFileURL,
                                             signature: signature, jsonDecoder: jsonDecoder, completion: operationCompletion, uploadProgress: uploadProgress)
             }, decodableCompletion
         )
-        
+
         performUploadOperation(path: path,
                                parameters: parameters,
                                headers: headers,
@@ -201,19 +198,19 @@ extension PMAPIService {
                                retryPolicy: retryPolicy,
                                operationAndCompletion: .right(decodableOperationAndCompletion))
     }
-    
+
     typealias JSONOperationAndCompletion = (
         (_ request: SessionRequest, _ completion: @escaping Session.JSONResponseCompletion) -> Void,
         JSONCompletion
     )
-    
+
     typealias DecodableOperationAndCompletion<T> = (
         (_ request: SessionRequest,
          _ jsonDecoder: JSONDecoder?,
          _ completion: @escaping (_ task: URLSessionDataTask?, _ result: Result<T, SessionResponseError>) -> Void) -> Void,
         DecodableCompletion<T>
     ) where T: APIDecodableResponse
-    
+
     private func performUploadOperation<T>(
         path: String,
         parameters: Any?,
@@ -225,10 +222,10 @@ extension PMAPIService {
         operationAndCompletion: Either<JSONOperationAndCompletion, DecodableOperationAndCompletion<T>>
     ) where T: APIDecodableResponse {
         let url = self.dohInterface.getCurrentlyUsedHostUrl() + path
-        
+
         let operation = operationAndCompletion.mapLeft(f: \.0).mapRight(f: \.0)
         let completion = operationAndCompletion.mapLeft(f: \.1).mapRight(f: \.1)
-        
+
         let sessionRequestCall: (SessionRequest, @escaping (URLSessionDataTask?, ResponseFromSession<T>) -> Void) -> Void
         switch operation {
         case .left(let jsonOperation):
@@ -251,11 +248,11 @@ extension PMAPIService {
                                 nonDefaultTimeout: nonDefaultTimeout,
                                 retryPolicy: retryPolicy,
                                 errorOut: { completion.call(task: nil, error: $0) }) { request in
-            
+
             sessionRequestCall(request) { task, responseFromSession in
                 self.debugError(responseFromSession.possibleError())
                 self.updateServerTime(task?.response)
-                
+
                 // reachability temporarily failed because was switching from WiFi to Cellular
                 if responseFromSession.possibleError()?.underlyingError.code == -1005,
                    self.serviceDelegate?.isReachable() == true {
@@ -272,12 +269,12 @@ extension PMAPIService {
                     }
                     return
                 }
-                
+
                 let response = responseFromSession
                     .mapLeft { $0.mapError { $0.underlyingError } }
                     .mapRight { $0.mapError { $0.underlyingError } }
                     .sequence()
-                
+
                 switch response {
                 case .success(let value): completion.call(task: task, response: value)
                 case .failure(let error): completion.call(task: task, error: error)
@@ -285,7 +282,7 @@ extension PMAPIService {
             }
         }
     }
-    
+
     private func performNetworkOperation(url: String,
                                          method: HTTPMethod,
                                          parameters: Any?,
@@ -296,17 +293,17 @@ extension PMAPIService {
                                          retryPolicy: ProtonRetryPolicy.RetryMode,
                                          errorOut: @escaping (APIError) -> Void,
                                          operation: @escaping (_ request: SessionRequest) -> Void) {
-        
+
         let authBlock: (String?, String?, NSError?) -> Void = { token, sessionUID, error in
-            
+
             if let error = error {
                 self.debugError(error)
                 errorOut(error)
                 return
             }
-            
+
             do {
-                
+
                 let request = try self.createRequest(url: url,
                                                      method: method,
                                                      parameters: parameters,
@@ -317,13 +314,13 @@ extension PMAPIService {
                                                      retryPolicy: retryPolicy)
                 // the meat of this method
                 operation(request)
-                
+
             } catch {
                 self.debugError(error)
                 errorOut(error as NSError)
             }
         }
-        
+
         if let customAuthCredential = customAuthCredential {
             authBlock(customAuthCredential.accessToken, customAuthCredential.sessionID, nil)
         } else {
@@ -331,10 +328,6 @@ extension PMAPIService {
                 switch result {
                 case .found(let credentials):
                     authBlock(credentials.accessToken, credentials.sessionID, nil)
-                // legacy path
-                case .notFound where !FeatureFactory.shared.isEnabled(.unauthSession) && authenticated,
-                     .wrongConfigurationNoDelegate where !FeatureFactory.shared.isEnabled(.unauthSession) && authenticated:
-                    authBlock(nil, nil, result.toNSError)
                 case .notFound, .wrongConfigurationNoDelegate:
                     authBlock(nil, nil, nil)
                 }
@@ -351,7 +344,7 @@ extension PMAPIService {
                          retryPolicy: ProtonRetryPolicy.RetryMode,
                          downloadTask: ((URLSessionDownloadTask) -> Void)?,
                          downloadCompletion: @escaping ((URLResponse?, URL?, NSError?) -> Void)) {
-        
+
         performNetworkOperation(url: url,
                                 method: .get,
                                 parameters: nil,
@@ -360,11 +353,11 @@ extension PMAPIService {
                                 customAuthCredential: customAuthCredential.map(AuthCredential.init(copying:)),
                                 nonDefaultTimeout: nonDefaultTimeout,
                                 retryPolicy: retryPolicy) { error in
-            
+
             downloadCompletion(nil, nil, error)
-            
+
         } operation: { request in
-            
+
             self.session.download(with: request, destinationDirectoryURL: destinationDirectoryURL) { response, url, error in
                 downloadCompletion(response, url, error)
             }

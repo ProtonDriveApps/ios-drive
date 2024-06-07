@@ -19,8 +19,10 @@ enum CommitPolicy {
     private static var blocksUploadedWrongly: Int { 2000 }
     private static var invalidManifestSignature: Int { 2001 }
     
+    private static var revisionAlreadyCommited: Int { 2511 }
+    
     private static var storageQuotaExceeded: Int { 200002 }
-
+    
     static let invalidRevision: Set<Int?> = [
         blocksUploadedWrongly,
         invalidManifestSignature
@@ -28,5 +30,9 @@ enum CommitPolicy {
     
     static let quotaExceeded: Set<Int?> = [
         storageQuotaExceeded
+    ]
+    
+    static let revisionAlreadyCommittedErrors: Set<Int?> = [
+        revisionAlreadyCommited
     ]
 }

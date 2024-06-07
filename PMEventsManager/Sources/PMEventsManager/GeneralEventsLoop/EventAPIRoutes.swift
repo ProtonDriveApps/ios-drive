@@ -16,25 +16,20 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import ProtonCore_Networking
+import ProtonCoreNetworking
 
 enum EventAPIRoutes {
-    /// base route
-    static let route: String = "/core/v4/events"
-
-    /// default user route version
-    static let v_user_default: Int = 4
-
     enum Router: Request {
         case getLatestEventID
-        case getEvent(eventID: String, messageCounts: Bool, conversationCounts: Bool)
+        case getEvent(eventID: String)
 
         var path: String {
             switch self {
             case .getLatestEventID:
-                return route + "/latest"
-            case let .getEvent(eventID, _, _):
-                return route + "/\(eventID)"
+                // events/latest is intentionally still just v4.
+                return "/core/v4/events/latest"
+            case let .getEvent(eventID):
+                return "/core/v5/events/\(eventID)"
             }
         }
 
@@ -46,26 +41,8 @@ enum EventAPIRoutes {
             [:]
         }
 
-        var apiVersion: Int {
-            v_user_default
-        }
-
         var method: HTTPMethod {
             .get
-        }
-
-        var parameters: [String: Any]? {
-            switch self {
-            case let .getEvent(_, messageCounts, conversationCounts):
-                var ret: [String: Any] = [:]
-                ret["MessageCounts"] = messageCounts
-                ret["ConversationCounts"] = conversationCounts
-
-                return ret
-                
-            case .getLatestEventID:
-                return [:]
-            }
         }
     }
 }

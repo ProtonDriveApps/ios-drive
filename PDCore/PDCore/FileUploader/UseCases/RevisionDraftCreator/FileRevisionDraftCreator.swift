@@ -65,7 +65,6 @@ final class FileRevisionDraftCreator: RevisionDraftCreator {
             }
 
             revision.id = revisionIdentifier.revision
-            revision.uploadState = .created
 
             try moc.saveOrRollback()
         }

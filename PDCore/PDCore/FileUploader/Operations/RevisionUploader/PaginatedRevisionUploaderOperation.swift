@@ -25,7 +25,8 @@ final class PaginatedRevisionUploaderOperation: AsynchronousOperation, UploadOpe
     private let draft: FileDraft
     private let uploader: RevisionUploader
     private let onError: OnUploadError
-
+    private var task: Task<Void, Never>?
+    
     init(
         draft: FileDraft,
         parentProgress: Progress,
@@ -44,40 +45,53 @@ final class PaginatedRevisionUploaderOperation: AsynchronousOperation, UploadOpe
         guard !isCancelled else { return }
 
         record()
-
-        ConsoleLogger.shared?.log("STAGE: 3 Upload Revision 🏞📦📝☁️ started", osLogType: FileUploader.self)
-
-        // swiftlint:disable:next todo
-        // TODO: Improve this in order not to have flow control statements all over the place
-        guard !draft.isEmpty else {
-            ConsoleLogger.shared?.log("STAGE: 3 Upload Revision 🏞📦📝☁️ finished ✅", osLogType: FileUploader.self)
-            progress.complete()
-            state = .finished
-            return
+        NotificationCenter.default.post(name: .operationStart, object: draft.uri)
+        Log.info("STAGE: 3 Upload Revision 🏞📦📝☁️ started. UUID: \(self.id.uuidString)", domain: .uploader)
+        task = Task(priority: .userInitiated) { [weak self] in
+            guard !Task.isCancelled else { return }
+            await self?.performAsynchronously()
         }
+    }
 
-        uploader.upload(draft) { [weak self] result in
-            guard let self = self, !self.isCancelled else { return }
+    private func performAsynchronously() async {
+        do {
+            let verification = try await uploader.prepareVerification(draft)
+            uploader.upload(draft, verification: verification) { [weak self] result in
+                guard let self = self, !self.isCancelled else { return }
 
-            switch result {
-            case .success:
-                ConsoleLogger.shared?.log("STAGE: 3 Upload Revision 🏞📦📝☁️ finished ✅", osLogType: FileUploader.self)
-                self.progress.complete()
-                self.state = .finished
+                switch result {
+                case .success:
+                    Log.info("STAGE: 3 Upload Revision 🏞📦📝☁️ finished ✅. UUID: \(self.id.uuidString)", domain: .uploader)
+                    NotificationCenter.default.post(name: .operationEnd, object: draft.uri)
+                    self.progress.complete()
+                    self.state = .finished
 
-            case .failure(let error):
-                ConsoleLogger.shared?.log("STAGE: 3 Upload Revision 🏞📦📝☁️ finished ❌", osLogType: FileUploader.self)
-                self.onError(error)
+                case .failure(let error):
+                    Log.info("STAGE: 3 Upload Revision 🏞📦📝☁️ finished ❌. UUID: \(self.id.uuidString)", domain: .uploader)
+                    NotificationCenter.default.post(name: .operationEnd, object: draft.uri)
+                    self.onError(error)
+                }
             }
+        } catch {
+            Log.info("STAGE: 3 Upload Revision 🏞📦📝☁️ finished ❌. UUID: \(self.id.uuidString)", domain: .uploader)
+            NotificationCenter.default.post(name: .operationEnd, object: draft.uri)
+            onError(error)
         }
     }
 
     override func cancel() {
-        ConsoleLogger.shared?.log("🙅‍♂️ CANCEL \(type(of: self))", osLogType: FileUploader.self)
+        Log.info("STAGE: 3 🙅‍♂️ CANCEL \(type(of: self)). UUID: \(id.uuidString)", domain: .uploader)
+        NotificationCenter.default.post(name: .operationEnd, object: draft.uri)
+        task?.cancel()
+        task = nil
         uploader.cancel()
         super.cancel()
     }
 
     var recordingName: String { "uploadingRevision" }
 
+    deinit {
+        task = nil
+        Log.info("STAGE: 3 ☠️🚨 \(type(of: self)). UUID: \(id.uuidString)", domain: .uploader)
+    }
 }

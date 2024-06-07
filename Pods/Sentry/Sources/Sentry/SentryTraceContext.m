@@ -1,10 +1,13 @@
 #import "SentryTraceContext.h"
 #import "SentryBaggage.h"
+#import "SentryDefines.h"
 #import "SentryDsn.h"
 #import "SentryLog.h"
 #import "SentryOptions+Private.h"
+#import "SentrySampleDecision.h"
 #import "SentryScope+Private.h"
 #import "SentrySerialization.h"
+#import "SentrySwift.h"
 #import "SentryTracer.h"
 #import "SentryTransactionContext.h"
 #import "SentryUser.h"
@@ -20,6 +23,7 @@ NS_ASSUME_NONNULL_BEGIN
                     transaction:(nullable NSString *)transaction
                     userSegment:(nullable NSString *)userSegment
                      sampleRate:(nullable NSString *)sampleRate
+                        sampled:(nullable NSString *)sampled
 {
     if (self = [super init]) {
         _traceId = traceId;
@@ -29,6 +33,7 @@ NS_ASSUME_NONNULL_BEGIN
         _transaction = transaction;
         _userSegment = userSegment;
         _sampleRate = sampleRate;
+        _sampled = sampled;
     }
     return self;
 }
@@ -47,7 +52,7 @@ NS_ASSUME_NONNULL_BEGIN
                                   scope:(nullable SentryScope *)scope
                                 options:(SentryOptions *)options
 {
-    if (tracer.context.traceId == nil || options.parsedDsn == nil)
+    if (tracer.traceId == nil || options.parsedDsn == nil)
         return nil;
 
     NSString *userSegment;
@@ -57,18 +62,39 @@ NS_ASSUME_NONNULL_BEGIN
     }
 
     NSString *sampleRate = nil;
-    if ([tracer.context isKindOfClass:[SentryTransactionContext class]]) {
-        sampleRate = [NSString
-            stringWithFormat:@"%@", [(SentryTransactionContext *)tracer.context sampleRate]];
+    if ([tracer isKindOfClass:[SentryTransactionContext class]]) {
+        sampleRate =
+            [NSString stringWithFormat:@"%@", [(SentryTransactionContext *)tracer sampleRate]];
     }
 
-    return [self initWithTraceId:tracer.context.traceId
+    NSString *sampled = nil;
+    if (tracer.sampled != kSentrySampleDecisionUndecided) {
+        sampled
+            = tracer.sampled == kSentrySampleDecisionYes ? kSentryTrueString : kSentryFalseString;
+    }
+
+    return [self initWithTraceId:tracer.traceId
                        publicKey:options.parsedDsn.url.user
                      releaseName:options.releaseName
                      environment:options.environment
                      transaction:tracer.transactionContext.name
                      userSegment:userSegment
-                      sampleRate:sampleRate];
+                      sampleRate:sampleRate
+                         sampled:sampled];
+}
+
+- (instancetype)initWithTraceId:(SentryId *)traceId
+                        options:(SentryOptions *)options
+                    userSegment:(nullable NSString *)userSegment
+{
+    return [[SentryTraceContext alloc] initWithTraceId:traceId
+                                             publicKey:options.parsedDsn.url.user
+                                           releaseName:options.releaseName
+                                           environment:options.environment
+                                           transaction:nil
+                                           userSegment:userSegment
+                                            sampleRate:nil
+                                               sampled:nil];
 }
 
 - (nullable instancetype)initWithDict:(NSDictionary<NSString *, id> *)dictionary
@@ -93,7 +119,8 @@ NS_ASSUME_NONNULL_BEGIN
                      environment:dictionary[@"environment"]
                      transaction:dictionary[@"transaction"]
                      userSegment:userSegment
-                      sampleRate:dictionary[@"sample_rate"]];
+                      sampleRate:dictionary[@"sample_rate"]
+                         sampled:dictionary[@"sampled"]];
 }
 
 - (SentryBaggage *)toBaggage
@@ -104,7 +131,8 @@ NS_ASSUME_NONNULL_BEGIN
                                                        environment:_environment
                                                        transaction:_transaction
                                                        userSegment:_userSegment
-                                                        sampleRate:_sampleRate];
+                                                        sampleRate:_sampleRate
+                                                           sampled:_sampled];
     return result;
 }
 
@@ -131,6 +159,10 @@ NS_ASSUME_NONNULL_BEGIN
 
     if (_sampleRate != nil) {
         [result setValue:_sampleRate forKey:@"sample_rate"];
+    }
+
+    if (_sampled != nil) {
+        [result setValue:_sampleRate forKey:@"sampled"];
     }
 
     return result;

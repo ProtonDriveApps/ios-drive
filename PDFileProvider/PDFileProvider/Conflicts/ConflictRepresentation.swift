@@ -23,6 +23,7 @@ public enum ItemActionChangeType {
     case move(version: NSFileProviderItemVersion)
     case modifyMetadata(version: NSFileProviderItemVersion)
     case modifyContents(version: NSFileProviderItemVersion, contents: URL?)
+    case trash(version: NSFileProviderItemVersion)
     case delete(version: NSFileProviderItemVersion)
 }
 
@@ -32,18 +33,17 @@ public protocol ConflictDetection {
         tower: Tower,
         basedOn item: NSFileProviderItem,
         changeType: ItemActionChangeType,
-        fields: NSFileProviderItemFields) -> (ResolutionAction, Node?)?
+        fields: NSFileProviderItemFields) throws -> (ResolutionAction, Node?)?
 
 }
 
 public protocol ConflictResolution {
 
-    /// Return the item and if there was a conflict that needed to be handled
-    func findAndResolveConflictIfNeeded(
+    func resolveConflict(
         tower: Tower,
-        item: NSFileProviderItem,
-        changeType: ItemActionChangeType,
-        fields: NSFileProviderItemFields,
-        contentsURL: URL?) async throws -> NSFileProviderItem?
+        between item: NSFileProviderItem,
+        with url: URL?,
+        and conflictingNode: Node?,
+        applying action: ResolutionAction) async throws -> NSFileProviderItem
 
 }

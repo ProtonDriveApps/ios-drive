@@ -9,7 +9,7 @@
 Pod::Spec.new do |spec|
 
   spec.name         = "PMEventsManager"
-  spec.version      = "2.0.0"
+  spec.version      = "2.0.1"
   spec.summary      = "BE events engine"
   spec.description  = "Events pulling engine with support of 1 general and multiple special loops"
   spec.homepage     = "https://gitlab.protontech.ch/apple/shared/pmeventsmanager"
@@ -20,10 +20,7 @@ Pod::Spec.new do |spec|
 
   #  When using multiple platforms
   spec.ios.deployment_target = "15.0"
-  spec.macos.deployment_target = "11.0"
-
-  #  Crypto library variant
-  crypto_variant = "Crypto-patched-Go"
+  spec.macos.deployment_target = "13.0"
 
   # ――― Source Location ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
   #
@@ -37,9 +34,11 @@ Pod::Spec.new do |spec|
   spec.dependency 'ProtonCore-DataModel'
   spec.dependency 'ProtonCore-Networking'
   spec.dependency 'ProtonCore-Services'
-  spec.dependency "ProtonCore-Payments/#{crypto_variant}"
+  spec.dependency 'ProtonCore-Payments'
   
   spec.test_spec 'Tests' do |test_spec|
+    test_spec.ios.deployment_target = "15.0"
+    test_spec.macos.deployment_target = "13.0"
     test_spec.source_files = 'Tests/**/*'
     test_spec.dependency 'ProtonCore-TestingToolkit/UnitTests/Core'
   end

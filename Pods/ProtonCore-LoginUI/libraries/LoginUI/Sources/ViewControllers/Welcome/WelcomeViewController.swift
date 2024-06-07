@@ -19,10 +19,12 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import ProtonCore_CoreTranslation
-import ProtonCore_Foundations
-import ProtonCore_UIFoundations
+import ProtonCoreFoundations
+import ProtonCoreUIFoundations
+import ProtonCoreTelemetry
 import func AVFoundation.AVMakeRect
 
 public typealias WelcomeScreenVariant = ScreenVariant<WelcomeScreenTexts, WelcomeScreenCustomData>
@@ -32,10 +34,15 @@ public protocol WelcomeViewControllerDelegate: AnyObject {
     func userWantsToSignUp()
 }
 
-public final class WelcomeViewController: UIViewController, AccessibleView {
+public final class WelcomeViewController: UIViewController, AccessibleView, ProductMetricsMeasurable {
+    public var productMetrics: ProductMetrics = .init(
+        group: TelemetryMeasurementGroup.signUp.rawValue,
+        flow: TelemetryFlow.signUpFull.rawValue,
+        screen: .welcome
+    )
 
+    var layout: WelcomeViewLayout?
     private let variant: WelcomeScreenVariant
-    private let layout: WelcomeViewLayout?
     private let username: String?
     private let signupAvailable: Bool
     private weak var delegate: WelcomeViewControllerDelegate?
@@ -78,11 +85,20 @@ public final class WelcomeViewController: UIViewController, AccessibleView {
         generateAccessibilityIdentifiers()
     }
 
+    override public func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        measureOnViewDisplayed()
+    }
+
     @objc private func loginActionWasPerformed() {
         delegate?.userWantsToLogIn(username: username)
+        measureOnViewClicked(item: "sign_in")
     }
 
     @objc private func signupActionWasPerformed() {
         delegate?.userWantsToSignUp()
+        measureOnViewClicked(item: "sign_up")
     }
 }
+
+#endif

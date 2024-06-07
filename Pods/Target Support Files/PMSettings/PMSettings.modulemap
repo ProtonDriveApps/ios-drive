@@ -1,0 +1,6 @@
+framework module PMSettings {
+  umbrella header "PMSettings-umbrella.h"
+
+  export *
+  module * { export * }
+}

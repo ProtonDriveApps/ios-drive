@@ -19,8 +19,10 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 final class SummaryProgressCell: UITableViewCell {
 
@@ -41,7 +43,7 @@ final class SummaryProgressCell: UITableViewCell {
         super.awakeFromNib()
         stepLabel.font = .adjustedFont(forTextStyle: .subheadline)
     }
-    
+
     // MARK: - Properties
 
     func configureCell(displayProgress: DisplayProgress) {
@@ -57,10 +59,12 @@ final class SummaryProgressCell: UITableViewCell {
         stepLabel.textColor = displayProgress.state == .initial ? ColorProvider.TextDisabled : ColorProvider.TextNorm
         activityIndicator.color = ColorProvider.BrandNorm
     }
-    
+
     var getWidth: CGFloat {
         let fontAttributes = [NSAttributedString.Key.font: stepLabel.font]
         let size = stepLabel.text?.size(withAttributes: fontAttributes as [NSAttributedString.Key: Any])
         return (size?.width ?? 0) + labelLeadingConstraint.constant + 1
     }
 }
+
+#endif

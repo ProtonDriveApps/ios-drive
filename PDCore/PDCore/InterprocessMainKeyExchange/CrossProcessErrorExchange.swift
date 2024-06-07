@@ -23,6 +23,7 @@ public enum CrossProcessErrorExchange {
     public static let UnderlyingMessageKey = "UnderlyingMessageKey"
     
     public static let notAuthenticated = "notAuthenticated"
+    public static let childSessionExpired = "childSessionExpired"
     public static let pinExchangeInProgress = "pinExchangeInProgress"
     public static let pinExchangeNotSupported = "pinExchangeNotSupported"
     
@@ -31,6 +32,8 @@ public enum CrossProcessErrorExchange {
     public static let pinExchangeInProgressError = NSFileProviderError(.notAuthenticated, userInfo: [UnderlyingMessageKey: pinExchangeInProgress])
     
     public static let notAuthenticatedError = NSFileProviderError(.notAuthenticated, userInfo: [UnderlyingMessageKey: notAuthenticated])
+    
+    public static let childSessionExpiredError = NSFileProviderError(.notAuthenticated, userInfo: [UnderlyingMessageKey: childSessionExpired])
     
     public static let cancelError = NSError(domain: FPUIErrorDomain,
                                             code: Int(FPUIExtensionErrorCode.failed.rawValue),

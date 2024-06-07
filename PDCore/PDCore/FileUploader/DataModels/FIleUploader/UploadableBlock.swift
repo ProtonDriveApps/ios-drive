@@ -24,10 +24,11 @@ struct UploadableBlock: Equatable {
     let localURL: URL
     let signatureEmail: String
     let encryptedSignature: String
+    let verificationToken: String
 }
 
 extension UploadableBlock {
-    init?(block: UploadBlock) {
+    init?(block: UploadBlock, verificationToken: String) {
         let hash = block.sha256.base64EncodedString()
         guard let localURL = block.localUrl,
               let encSignature = block.encSignature,
@@ -40,5 +41,6 @@ extension UploadableBlock {
         self.localURL = localURL
         self.signatureEmail = signatureEmail
         self.encryptedSignature = encSignature
+        self.verificationToken = verificationToken
     }
 }

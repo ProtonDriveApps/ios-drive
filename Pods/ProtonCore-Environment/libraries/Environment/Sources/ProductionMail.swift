@@ -20,18 +20,20 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Doh
+import ProtonCoreDoh
 
 final class ProductionMail: DoH, VerificationModifiable {
-    
+
     let defaultHost: String = ProductionHosts.mailAPI.urlString
     let captchaHost: String = ProductionHosts.mailAPI.urlString
-    
+
     let accountHost: String = ProductionHosts.accountApp.urlString
     var _humanVerificationV3Host: String = ProductionHosts.verifyApp.urlString
     var humanVerificationV3Host: String { _humanVerificationV3Host }
-    
+
     let apiHost: String = ProductionHosts.mailAPI.dohHost
     let defaultPath: String = ""
     let signupDomain: String = "proton.me"
+    let proxyToken: String? = nil
+    let apnEnvironment: ProtonCoreDoh.APNEnvironment = ProductionHosts.mailAPI.apnEnvironment
 }

@@ -18,20 +18,6 @@
 import CoreData
 
 @objc(Thumbnail)
-public class Thumbnail: NSManagedObject, HasTransientValues {
-    var _observation: Any?
-
-    deinit {
-        NotificationCenter.default.removeObserver(_observation as Any)
-    }
-
-    override public func awakeFromFetch() {
-        super.awakeFromFetch()
-        self._observation = self.subscribeToContexts()
-    }
-
-    override public func willTurnIntoFault() {
-        super.willTurnIntoFault()
-        NotificationCenter.default.removeObserver(_observation as Any)
-    }
+public class Thumbnail: NSManagedObject {
+    
 }

@@ -15,9 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import os.log
 import Foundation
 import Sentry
+import ProtonCoreUtilities
+import PDClient
 
 public class SentryClient {
     typealias Event = Sentry.Event
@@ -32,36 +33,58 @@ public class SentryClient {
     }
     
     private var sentryEndpoint: String {
-        "https://d673e48788724e299a2dc4cd2cf004f5@sentry-new.protontech.ch/15" // drive
+        #if os(macOS)
+        "https://6d203fc5b3a5403b8c95d6100be9994e@drive-api.proton.me/core/v4/reports/sentry/40" // drive macOS
+        #else
+        "https://d673e48788724e299a2dc4cd2cf004f5@drive-api.proton.me/core/v4/reports/sentry/15" // drive iOS
+        #endif
     }
     
     private var environment: String {
         "production"
     }
     
-    public func start(localSettings: LocalSettings) {
+    public func start(localSettings: LocalSettings, clientGetter: @escaping () -> PDClient.Client?) {
         self.localSettings = localSettings
         
         SentrySDK.start { [optOutFromCrashReports, sentryEndpoint, environment] options in
             options.dsn = sentryEndpoint
             options.environment = environment
             options.enableCrashHandler = !optOutFromCrashReports
-            options.enableAutoPerformanceTracking = false
-            options.enableOutOfMemoryTracking = false
+            options.enableAutoPerformanceTracing = false
+
+            // was renamed from enableOutOfMemoryTracking
+            options.enableWatchdogTerminationTracking = false
+            options.enableAutoBreadcrumbTracking = false
             options.debug = false
+            options.beforeSend = { event in
+                guard let client = clientGetter(),
+                      let credential = client.credentialProvider.clientCredential() else {
+                    return event
+                }
+
+                event.user = User(userId: credential.userID)
+                return event
+            }
         }
     }
     
-    func recordError(_ error: NSError) {
+    func record(level: LogLevel, errorOrMessage: Either<NSError, String>) {
         guard !optOutFromCrashReports else { return }
         
-        let event = Event(level: .error)
-        event.message = SentryMessage(formatted: error.messageForTheUser)
-        event.extra = [
-            "Code": error.code,
-            "Description": String(describing: error),
-            "Underlying": error.underlyingErrors.map(String.init(describing:))
-        ]
+        let event = Event(level: level.toSentryLevel)
+        switch errorOrMessage {
+        case .left(let error):
+            event.message = SentryMessage(formatted: error.localizedDescription)
+            event.extra = [
+                "Code": error.code,
+                "Description": String(describing: error),
+                "Underlying": error.underlyingErrors.map(String.init(describing:))
+            ]
+        case .right(let message):
+            event.message = SentryMessage(formatted: message)
+        }
+        
         SentrySDK.capture(event: event)
     }
     
@@ -69,5 +92,16 @@ public class SentryClient {
         guard !optOutFromTelemetry else { return }
         
         assertionFailure("Not implemented yet")
+    }
+}
+
+private extension LogLevel {
+    var toSentryLevel: SentryLevel {
+        switch self {
+        case .error: return .error
+        case .warning: return .warning
+        case .info: return .info
+        case .debug: return .debug
+        }
     }
 }

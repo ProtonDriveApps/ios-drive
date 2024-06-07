@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 public struct ProtonSpinner: View {
     public enum Size {
@@ -28,7 +28,7 @@ public struct ProtonSpinner: View {
             switch self {
             case .small: return 0.7
             case .medium: return 1.5
-            case let .custom(size): return CGFloat(size)/24
+            case let .custom(size): return CGFloat(size) / 24
             }
         }
     }

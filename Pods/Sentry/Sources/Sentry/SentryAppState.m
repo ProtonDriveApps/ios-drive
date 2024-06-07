@@ -1,5 +1,5 @@
-#import <NSDate+SentryExtras.h>
 #import <SentryAppState.h>
+#import <SentryDateUtils.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -25,6 +25,7 @@ NS_ASSUME_NONNULL_BEGIN
         _isActive = NO;
         _wasTerminated = NO;
         _isANROngoing = NO;
+        _isSDKRunning = YES;
     }
     return self;
 }
@@ -63,7 +64,7 @@ NS_ASSUME_NONNULL_BEGIN
         id systemBoot = [jsonObject valueForKey:@"system_boot_timestamp"];
         if (systemBoot == nil || ![systemBoot isKindOfClass:[NSString class]])
             return nil;
-        NSDate *systemBootTimestamp = [NSDate sentry_fromIso8601String:systemBoot];
+        NSDate *systemBootTimestamp = sentry_fromIso8601String(systemBoot);
         if (nil == systemBootTimestamp) {
             return nil;
         }
@@ -89,6 +90,15 @@ NS_ASSUME_NONNULL_BEGIN
         } else {
             _isANROngoing = [isANROngoing boolValue];
         }
+
+        id isSDKRunning = [jsonObject valueForKey:@"is_sdk_running"];
+        if (isSDKRunning == nil || ![isSDKRunning isKindOfClass:[NSNumber class]]) {
+            // This property was added later so instead of returning nil,
+            // we're setting it to the default value.
+            _isSDKRunning = YES;
+        } else {
+            _isSDKRunning = [isSDKRunning boolValue];
+        }
     }
     return self;
 }
@@ -101,11 +111,12 @@ NS_ASSUME_NONNULL_BEGIN
     [data setValue:self.osVersion forKey:@"os_version"];
     [data setValue:self.vendorId forKey:@"vendor_id"];
     [data setValue:@(self.isDebugging) forKey:@"is_debugging"];
-    [data setValue:[self.systemBootTimestamp sentry_toIso8601String]
+    [data setValue:sentry_toIso8601String(self.systemBootTimestamp)
             forKey:@"system_boot_timestamp"];
     [data setValue:@(self.isActive) forKey:@"is_active"];
     [data setValue:@(self.wasTerminated) forKey:@"was_terminated"];
     [data setValue:@(self.isANROngoing) forKey:@"is_anr_ongoing"];
+    [data setValue:@(self.isSDKRunning) forKey:@"is_sdk_running"];
 
     return data;
 }

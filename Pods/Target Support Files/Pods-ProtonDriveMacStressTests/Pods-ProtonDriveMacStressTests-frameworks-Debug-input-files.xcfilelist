@@ -1,0 +1,13 @@
+${PODS_ROOT}/Target Support Files/Pods-ProtonDriveMacStressTests/Pods-ProtonDriveMacStressTests-frameworks.sh
+${BUILT_PRODUCTS_DIR}/Alamofire-dynamic/Alamofire.framework
+${BUILT_PRODUCTS_DIR}/ProtonCore-Doh-dynamic/ProtonCoreDoh.framework
+${BUILT_PRODUCTS_DIR}/ProtonCore-Environment-dynamic/ProtonCoreEnvironment.framework
+${BUILT_PRODUCTS_DIR}/ProtonCore-Foundations-dynamic/ProtonCoreFoundations.framework
+${BUILT_PRODUCTS_DIR}/ProtonCore-Log-dynamic/ProtonCoreLog.framework
+${BUILT_PRODUCTS_DIR}/ProtonCore-Networking-dynamic/ProtonCoreNetworking.framework
+${BUILT_PRODUCTS_DIR}/ProtonCore-Observability-dynamic/ProtonCoreObservability.framework
+${BUILT_PRODUCTS_DIR}/ProtonCore-Services-dynamic/ProtonCoreServices.framework
+${BUILT_PRODUCTS_DIR}/ProtonCore-Utilities-dynamic/ProtonCoreUtilities.framework
+${BUILT_PRODUCTS_DIR}/Sentry-dynamic/Sentry.framework
+${BUILT_PRODUCTS_DIR}/TrustKit-dynamic/TrustKit.framework
+${BUILT_PRODUCTS_DIR}/ProtonCore-QuarkCommands-dynamic/ProtonCoreQuarkCommands.framework

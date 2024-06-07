@@ -15,20 +15,32 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import SwiftUI
 
 /// Use the one from UIFoundations when implemented
 struct NotificationBanner: View {
+    enum Style {
+        case normal
+        case inverted
+    }
+
+    enum Padding {
+        case vertical
+        case bottom
+    }
+
     let message: String
+    let style: Style
+    let padding: Padding
     let closeBlock: () -> Void
-    
+
     var body: some View {
         VStack {
             HStack(alignment: .center) {
                 Text(message)
                     .font(.subheadline)
-                    .foregroundColor(ColorProvider.TextInverted)
+                    .foregroundColor(textColor)
                     .padding(12)
                     .accessibility(identifier: "NotificationBanner.text")
                 Spacer()
@@ -37,16 +49,44 @@ struct NotificationBanner: View {
                     IconProvider.crossBig
                         .resizable()
                         .frame(width: 24, height: 24)
-                        .foregroundColor(ColorProvider.IconInverted)
+                        .foregroundColor(buttonColor)
                 }
                 .padding(.trailing, 20)
                 .accessibility(identifier: "NotificationBanner.close")
             }
         }
         .background(
-            ColorProvider.NotificationNorm.cornerRadius(.huge)
+            backgroundColor.cornerRadius(.huge)
         )
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.vertical, padding == .vertical ? 8 : 0)
+        .padding(.bottom, padding == .bottom ? 10 : 0)
+    }
+
+    private var textColor: Color {
+        switch style {
+        case .normal:
+            return ColorProvider.TextNorm
+        case .inverted:
+            return ColorProvider.TextInverted
+        }
+    }
+
+    private var buttonColor: Color {
+        switch style {
+        case .normal:
+            return ColorProvider.IconNorm
+        case .inverted:
+            return ColorProvider.IconInverted
+        }
+    }
+
+    private var backgroundColor: Color {
+        switch style {
+        case .normal:
+            return ColorProvider.BackgroundSecondary
+        case .inverted:
+            return ColorProvider.NotificationNorm
+        }
     }
 }

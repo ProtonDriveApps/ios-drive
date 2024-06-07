@@ -39,6 +39,11 @@ public struct Volume: Codable {
     public struct Share: Codable {
         public let shareID: String
         public let linkID: String
+        
+        public init(shareID: String, linkID: String) {
+            self.shareID = shareID
+            self.linkID = linkID
+        }
     }
 
     public var volumeID: VolumeID
@@ -50,4 +55,18 @@ public struct Volume: Codable {
     public var state: State?
     public var share: Share
     public var restoreStatus: RestoreStatus?
+    
+    public init(volumeID: VolumeID, createTime: TimeInterval? = nil, modifyTime: TimeInterval? = nil,
+                uploadedBytes: Int, maxSpace: Int? = nil, usedSpace: Int? = nil, state: State? = nil,
+                share: Share, restoreStatus: RestoreStatus? = nil) {
+        self.volumeID = volumeID
+        self.createTime = createTime
+        self.modifyTime = modifyTime
+        self.uploadedBytes = uploadedBytes
+        self.maxSpace = maxSpace
+        self.usedSpace = usedSpace
+        self.state = state
+        self.share = share
+        self.restoreStatus = restoreStatus
+    }
 }

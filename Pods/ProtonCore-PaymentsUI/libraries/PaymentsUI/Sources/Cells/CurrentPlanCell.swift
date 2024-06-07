@@ -1,6 +1,6 @@
 //
 //  CurrentPlanCell.swift
-//  ProtonCore_PaymentsUI - Created on 01/06/2021.
+//  ProtonCorePaymentsUI - Created on 01/06/2021.
 //
 //  Copyright (c) 2022 Proton Technologies AG
 //
@@ -19,20 +19,19 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import UIKit
-import ProtonCore_UIFoundations
-import ProtonCore_Foundations
-import ProtonCore_CoreTranslation
+import ProtonCoreUIFoundations
+import ProtonCoreFoundations
 
 final class CurrentPlanCell: UITableViewCell, AccessibleCell {
 
     static let reuseIdentifier = "CurrentPlanCell"
     static let nib = UINib(nibName: "CurrentPlanCell", bundle: PaymentsUI.bundle)
 
-    var plan: PlanPresentation?
-
     // MARK: - Outlets
-    
+
     @IBOutlet weak var mainView: UIView! {
         didSet {
             mainView.layer.cornerRadius = 12.0
@@ -61,8 +60,7 @@ final class CurrentPlanCell: UITableViewCell, AccessibleCell {
             priceDescriptionLabel.textColor = ColorProvider.TextWeak
         }
     }
-    @IBOutlet weak var progressBarSpacerView: UIView!
-    @IBOutlet weak var progressBarView: StorageProgressView!
+    @IBOutlet weak var progressBarsStackView: UIStackView!
     @IBOutlet weak var planDetailsStackView: UIStackView!
     @IBOutlet weak var timeSeparator1View: UIView!
     @IBOutlet weak var separatorLineView: UIView! {
@@ -81,8 +79,9 @@ final class CurrentPlanCell: UITableViewCell, AccessibleCell {
         priceDescriptionLabel.font = .adjustedFont(forTextStyle: .footnote)
     }
     // MARK: - Properties
-    
+
     func configurePlan(plan: PlanPresentation) {
+        progressBarsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         planDetailsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         guard case PlanPresentationType.current(let planDetails) = plan.planPresentationType else { return }
         switch planDetails {
@@ -92,14 +91,13 @@ final class CurrentPlanCell: UITableViewCell, AccessibleCell {
             configureUnavailablePlan()
         }
     }
-    
+
     private func configureCurrentPlan(plan: PlanPresentation, currentPlanDetails: CurrentPlanDetails) {
-        self.plan = plan
         generateCellAccessibilityIdentifiers(currentPlanDetails.name)
-        
+
         planNameLabel.text = currentPlanDetails.name
-        planDescriptionLabel.text = CoreString._pu_current_plan_title
-        
+        planDescriptionLabel.text = PUITranslations.current_plan_title.l10n
+
         if let price = currentPlanDetails.price {
             priceLabel.isHidden = false
             priceDescriptionLabel.isHidden = false
@@ -110,11 +108,12 @@ final class CurrentPlanCell: UITableViewCell, AccessibleCell {
             priceDescriptionLabel.isHidden = true
         }
         if let usedSpaceDescription = currentPlanDetails.usedSpaceDescription {
+            let progressBarView = StorageProgressView()
             progressBarView.configure(usedSpaceDescription: usedSpaceDescription, usedSpace: currentPlanDetails.usedSpace, maxSpace: currentPlanDetails.maxSpace)
+            progressBarsStackView.addArrangedSubview(progressBarView)
         } else {
             // No progress view, hide it
-            progressBarSpacerView.isHidden = true
-            progressBarView.isHidden = true
+            progressBarsStackView.isHidden = true
         }
         currentPlanDetails.details.forEach {
             let detailView = PlanDetailView()
@@ -129,29 +128,80 @@ final class CurrentPlanCell: UITableViewCell, AccessibleCell {
             enableTimeView(enabled: false)
         }
     }
-    
+
     private func configureUnavailablePlan() {
         planNameLabel.text = ""
         priceLabel.text = ""
         priceDescriptionLabel.text = ""
         planDescriptionLabel.font = UIFont.systemFont(ofSize: 15.0, weight: .regular)
-        planDescriptionLabel.text = CoreString._pu_plan_details_plan_details_unavailable_contact_administrator
+        planDescriptionLabel.text = PUITranslations.plan_details_plan_details_unavailable_contact_administrator.l10n
         planDescriptionLabel.textColor = ColorProvider.TextNorm
-        enableProgressView(enabled: false)
+        enableProgressViews(enabled: false)
         enableTimeView(enabled: false)
     }
-    
+
     // MARK: Private interface
-    
+
     private func enableTimeView(enabled: Bool) {
         timeSeparator1View.isHidden = !enabled
         separatorLineView.isHidden = !enabled
         timeSeparator2View.isHidden = !enabled
         planTimeLabel.isHidden = !enabled
     }
-    
-    private func enableProgressView(enabled: Bool) {
-        progressBarSpacerView.isHidden = !enabled
-        progressBarView.isHidden = !enabled
+
+    private func enableProgressViews(enabled: Bool) {
+        progressBarsStackView.isHidden = !enabled
     }
 }
+
+// TODO: write snapshot tests: CP-6481
+// MARK: - Dynamic plans
+
+extension CurrentPlanCell {
+    func configurePlan(currentPlan: CurrentPlanPresentation) {
+        progressBarsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        planDetailsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        generateCellAccessibilityIdentifiers(currentPlan.details.title)
+
+        planNameLabel.text = currentPlan.details.title
+        planDescriptionLabel.text = PUITranslations.current_plan_title.l10n
+
+        priceLabel.isHidden = currentPlan.details.hidePriceDetails
+        priceDescriptionLabel.isHidden = currentPlan.details.hidePriceDetails
+        priceLabel.text = currentPlan.details.price
+        priceDescriptionLabel.text = currentPlan.details.cycleDescription
+
+        progressBarsStackView.isHidden = true
+
+        for entitlement in currentPlan.details.entitlements {
+            switch entitlement {
+            case .progress(let progressEntitlement):
+                progressBarsStackView.isHidden = false
+
+                let progressBarView = StorageProgressView()
+                progressBarView.configure(
+                    title: progressEntitlement.title,
+                    iconUrl: progressEntitlement.iconUrl,
+                    usedSpaceDescription: progressEntitlement.text,
+                    usedSpace: Int64(progressEntitlement.current),
+                    maxSpace: Int64(progressEntitlement.max)
+                )
+                progressBarsStackView.addArrangedSubview(progressBarView)
+            case .description(let descriptionEntitlement):
+                let detailView = PlanDetailView()
+                detailView.configure(iconUrl: descriptionEntitlement.iconUrl, text: descriptionEntitlement.text)
+                planDetailsStackView.addArrangedSubview(detailView)
+            }
+        }
+
+        if let endDate = currentPlan.details.endDate {
+            enableTimeView(enabled: true)
+            planTimeLabel.attributedText = endDate
+            planTimeLabel.font = .adjustedFont(forTextStyle: .footnote)
+        } else {
+            enableTimeView(enabled: false)
+        }
+    }
+}
+
+#endif

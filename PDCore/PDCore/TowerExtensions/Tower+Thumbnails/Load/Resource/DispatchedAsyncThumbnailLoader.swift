@@ -16,25 +16,55 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import Combine
 
 final class DispatchedAsyncThumbnailLoader: CancellableThumbnailLoader {
     private let thumbnailLoader: CancellableThumbnailLoader
+    private var requestedIds = [ThumbnailLoader.Identifier: WeakReference<BlockOperation>]()
+    private let throttlingQueue = OperationQueue(maxConcurrentOperation: 3)
 
     init(thumbnailLoader: CancellableThumbnailLoader) {
         self.thumbnailLoader = thumbnailLoader
+        throttlingQueue.qualityOfService = .userInitiated
+    }
+
+    var succeededId: AnyPublisher<Identifier, Never> {
+        thumbnailLoader.succeededId
+            .receive(on: DispatchQueue.main)
+            .eraseToAnyPublisher()
+    }
+
+    var failedId: AnyPublisher<Identifier, Never> {
+        thumbnailLoader.failedId
+            .receive(on: DispatchQueue.main)
+            .eraseToAnyPublisher()
     }
 
     func loadThumbnail(with id: ThumbnailLoader.Identifier) {
-        DispatchQueue.global().async { [weak self] in
-            self?.thumbnailLoader.loadThumbnail(with: id)
-        }
+        let operation = makeRequestOperation(with: id)
+        throttlingQueue.addOperation(operation)
+        requestedIds[id] = WeakReference(reference: operation)
+        requestedIds = requestedIds.filter { $0.value.reference != nil }
     }
 
     func cancelThumbnailLoading(_ id: ThumbnailLoader.Identifier) {
+        requestedIds[id]?.reference?.cancel()
         thumbnailLoader.cancelThumbnailLoading(id)
     }
 
     func cancelAll() {
+        requestedIds.values.forEach { $0.reference?.cancel() }
         thumbnailLoader.cancelAll()
+    }
+
+    private func makeRequestOperation(with id: ThumbnailLoader.Identifier) -> BlockOperation {
+        let operation = BlockOperation()
+        operation.addExecutionBlock { [weak self, weak operation] in
+            guard !(operation?.isCancelled ?? true) else {
+                return
+            }
+            self?.thumbnailLoader.loadThumbnail(with: id)
+        }
+        return operation
     }
 }

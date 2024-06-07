@@ -20,10 +20,10 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Doh
+import ProtonCoreDoh
 
 final class ProductionVPN: DoH, VerificationModifiable {
-    
+
     let defaultHost: String = ProductionHosts.legacyProtonVPNAPI.urlString
     let captchaHost: String = ProductionHosts.legacyProtonVPNAPI.urlString
 
@@ -34,4 +34,6 @@ final class ProductionVPN: DoH, VerificationModifiable {
     let apiHost: String = ProductionHosts.legacyProtonVPNAPI.dohHost
     let defaultPath: String = ""
     let signupDomain: String = "proton.me"
+    let proxyToken: String? = nil
+    let apnEnvironment: ProtonCoreDoh.APNEnvironment = ProductionHosts.legacyProtonVPNAPI.apnEnvironment
 }

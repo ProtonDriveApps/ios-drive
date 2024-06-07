@@ -20,7 +20,7 @@ import UIKit
 import Combine
 import PDCore
 import PDUIComponents
-import ProtonCore_Networking
+import ProtonCoreNetworking
 
 typealias ListState = TrashViewModel.ListState
 typealias ObservableFinderViewModel = FinderViewModel & ObservableObject
@@ -154,7 +154,7 @@ extension FinderViewModel {
 extension FinderViewModel where Self: HasMultipleSelection {
 
     func actionBarAction(_ tapped: ActionBarButtonViewModel?, sheet: Binding<FinderCoordinator.Destination?>, menuItem: Binding<FinderMenu?>) {
-        let nodes = self.permanentChildren.filter { self.selection.selected.contains($0.id) }
+        let nodes = self.permanentChildren.filter { self.selection.selected.contains($0.node.identifier) }
         
         switch tapped {
         case .trashMultiple:
@@ -240,6 +240,9 @@ extension FinderViewModel where Self: UploadingViewModel, Self.Model: UploadsLis
             case let error where error is ValidationError<String>:
                 self?.genericErrors.send(error)
 
+            case let FileUploaderError.verificationError(childError):
+                self?.genericErrors.send(childError)
+
             case let error as NSError where FinderError(error) == .noSpaceOnCloud:
                 self?.genericErrors.send(error)
                 fallthrough
@@ -256,6 +259,14 @@ extension FinderViewModel where Self: UploadingViewModel, Self.Model: UploadsLis
             self?.uploadsCount = files.count
             self?.uploadProgresses = progress
         })
+    }
+
+    private func getVerificationError(from error: FileUploaderError) -> Error? {
+        if case let .verificationError(error) = error {
+            return error
+        } else {
+            return nil
+        }
     }
 }
 
@@ -288,7 +299,7 @@ extension FinderViewModel where Self.Model: NodesListing {
               file.activeRevisionDraft == nil else { return }
 
         guard node.state != .uploading else {
-            ConsoleLogger.shared?.log(DriveError(DriveFinderUpload(), "FinderViewModel"))
+            Log.error(DriveError(DriveFinderUpload()), domain: .application)
             return
         }
 

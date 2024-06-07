@@ -111,6 +111,13 @@ public final class PDFileManager {
         }
     }
 
+    static func ensureDirectoryExists(_ url: URL) throws {
+        if !FileManager.default.fileExists(atPath: url.path) {
+            try FileManager.default.createDirectory(atPath: url.path, withIntermediateDirectories: true, attributes: nil)
+            try FileManager.default.secureFilesystemItems(url)
+        }
+    }
+
     static func copyMetadata(stage: String) {
         let sqlite = appGroupUrl.appendingPathComponent("Metadata.sqlite")
         let sqlite_shm = appGroupUrl.appendingPathComponent("Metadata.sqlite-shm")
@@ -128,5 +135,102 @@ public final class PDFileManager {
 
         dump("Recorder 🔴: key 🔑 - \(Data(SessionVault.current.mainKeyProvider.mainKey!).base64EncodedString()) ")
         dump("Recorder 🔴: stage 📁 - \(destination.absoluteURL)")
+    }
+
+    // MARK: Logs
+
+    public static func getLogsDirectory() throws -> URL {
+        guard let appGroupDirectory = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Constants.appGroup) else {
+            throw PDFileManagerError.noLogDirectory
+        }
+        return appGroupDirectory.appendingPathComponent("Logs", isDirectory: true)
+    }
+
+    /// Dumps given string into a log file.
+    /// Will overwrite the file if it's present.
+    public static func dumpLogs(_ logs: String, toFile filename: String, in directory: URL) throws {
+        let logPath = directory.appendingPathComponent(filename, isDirectory: false)
+        try? logs.write(to: logPath, atomically: false, encoding: .utf8)
+    }
+
+    public static func appendLogs(_ logs: String, toFile filename: String, in directory: URL) throws {
+        let logPath = directory.appendingPathComponent(filename, isDirectory: false)
+        if let fileHandle = FileHandle(forWritingAtPath: logPath.path) {
+            defer { try? fileHandle.close() }
+            try fileHandle.seekToEnd()
+
+            if let data = logs.data(using: .utf8) {
+                try fileHandle.write(contentsOf: data)
+            }
+        } else {
+            try logs.write(to: logPath, atomically: false, encoding: .utf8)
+        }
+    }
+
+    public static func appendFileContents(from sourceURL: URL, to destinationURL: URL) throws {
+        do {
+            let sourceContent = try String(contentsOf: sourceURL, encoding: .utf8)
+            try appendString(string: sourceContent, to: destinationURL)
+        } catch {
+            throw error
+        }
+    }
+    
+    public static func appendString(string: String, to destinationURL: URL) throws {
+        do {
+            if let fileHandle = FileHandle(forWritingAtPath: destinationURL.path) {
+                defer { try? fileHandle.close() }
+                try fileHandle.seekToEnd()
+                if let data = string.data(using: .utf8) {
+                    try fileHandle.write(contentsOf: data)
+                }
+            } else {
+                try string.write(to: destinationURL, atomically: false, encoding: .utf8)
+            }
+        } catch {
+            throw error
+        }
+    }
+
+    public static func copyDatabases(from source: URL, to destination: URL) throws {
+        #if INCLUDES_DB_IN_BUGREPORT
+        // Metadata
+        let metadata_sqlite = source.appendingPathComponent("Metadata.sqlite")
+        let metadata_sqlite_shm = source.appendingPathComponent("Metadata.sqlite-shm")
+        let metadata_sqlite_wal = source.appendingPathComponent("Metadata.sqlite-wal")
+
+        // Events
+        let events_sqlite = source.appendingPathComponent("EventStorageModel.sqlite")
+        let events_sqlite_shm = source.appendingPathComponent("EventStorageModel.sqlite-shm")
+        let events_sqlite_wal = source.appendingPathComponent("EventStorageModel.sqlite-wal")
+
+        if !FileManager.default.fileExists(atPath: destination.path) {
+            try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true, attributes: nil)
+        }
+
+        try? FileManager.default.removeItem(at: destination.appendingPathComponent("Metadata.sqlite"))
+        try? FileManager.default.removeItem(at: destination.appendingPathComponent("Metadata.sqlite-shm"))
+        try? FileManager.default.removeItem(at: destination.appendingPathComponent("Metadata.sqlite-wal"))
+
+        try? FileManager.default.removeItem(at: destination.appendingPathComponent("EventStorageModel.sqlite"))
+        try? FileManager.default.removeItem(at: destination.appendingPathComponent("EventStorageModel.sqlite-shm"))
+        try? FileManager.default.removeItem(at: destination.appendingPathComponent("EventStorageModel.sqlite-wal"))
+
+        try FileManager.default.copyItem(at: metadata_sqlite, to: destination.appendingPathComponent("Metadata.sqlite"))
+        try FileManager.default.copyItem(at: metadata_sqlite_shm, to: destination.appendingPathComponent("Metadata.sqlite-shm"))
+        try FileManager.default.copyItem(at: metadata_sqlite_wal, to: destination.appendingPathComponent("Metadata.sqlite-wal"))
+
+        try FileManager.default.copyItem(at: events_sqlite, to: destination.appendingPathComponent("EventStorageModel.sqlite"))
+        try FileManager.default.copyItem(at: events_sqlite_shm, to: destination.appendingPathComponent("EventStorageModel.sqlite-shm"))
+        try FileManager.default.copyItem(at: events_sqlite_wal, to: destination.appendingPathComponent("EventStorageModel.sqlite-wal"))
+        #endif
+    }
+
+    static func getLastTwoPathComponents(from url: URL) -> String? {
+        let pathComponents = url.pathComponents
+        guard pathComponents.count >= 2 else { return nil }
+
+        let lastTwoComponents = pathComponents.suffix(2)
+        return lastTwoComponents.joined(separator: "/")
     }
 }

@@ -43,29 +43,31 @@ NS_ASSUME_NONNULL_BEGIN
         return NO;
     }
 
-    if ((integrationOptions & kIntegrationOptionEnableOutOfMemoryTracking)
-        && !options.enableOutOfMemoryTracking) {
-        [self logWithOptionName:@"enableOutOfMemoryTracking"];
+    if ((integrationOptions & kIntegrationOptionEnableWatchdogTerminationTracking)
+        && !options.enableWatchdogTerminationTracking) {
+        [self logWithOptionName:@"enableWatchdogTerminationTracking"];
         return NO;
     }
 
-    if ((integrationOptions & kIntegrationOptionEnableAutoPerformanceTracking)
-        && !options.enableAutoPerformanceTracking) {
-        [self logWithOptionName:@"enableAutoPerformanceTracking"];
+    if ((integrationOptions & kIntegrationOptionEnableAutoPerformanceTracing)
+        && !options.enableAutoPerformanceTracing) {
+        [self logWithOptionName:@"enableAutoPerformanceTracing"];
         return NO;
     }
 
 #if SENTRY_HAS_UIKIT
-    if ((integrationOptions & kIntegrationOptionEnableUIViewControllerTracking)
-        && !options.enableUIViewControllerTracking) {
-        [self logWithOptionName:@"enableUIViewControllerTracking"];
+    if ((integrationOptions & kIntegrationOptionEnableUIViewControllerTracing)
+        && !options.enableUIViewControllerTracing) {
+        [self logWithOptionName:@"enableUIViewControllerTracing"];
         return NO;
     }
 
+#    if SENTRY_HAS_UIKIT
     if ((integrationOptions & kIntegrationOptionAttachScreenshot) && !options.attachScreenshot) {
         [self logWithOptionName:@"attachScreenshot"];
         return NO;
     }
+#    endif // SENTRY_HAS_UIKIT
 
     if ((integrationOptions & kIntegrationOptionEnableUserInteractionTracing)
         && !options.enableUserInteractionTracing) {
@@ -92,9 +94,9 @@ NS_ASSUME_NONNULL_BEGIN
         return NO;
     }
 
-    if ((integrationOptions & kIntegrationOptionEnableFileIOTracking)
-        && !options.enableFileIOTracking) {
-        [self logWithOptionName:@"enableFileIOTracking"];
+    if ((integrationOptions & kIntegrationOptionEnableFileIOTracing)
+        && !options.enableFileIOTracing) {
+        [self logWithOptionName:@"enableFileIOTracing"];
         return NO;
     }
 
@@ -104,9 +106,9 @@ NS_ASSUME_NONNULL_BEGIN
         return NO;
     }
 
-    if ((integrationOptions & kIntegrationOptionEnableCoreDataTracking)
-        && !options.enableCoreDataTracking) {
-        [self logWithOptionName:@"enableCoreDataTracking"];
+    if ((integrationOptions & kIntegrationOptionEnableCoreDataTracing)
+        && !options.enableCoreDataTracing) {
+        [self logWithOptionName:@"enableCoreDataTracing"];
         return NO;
     }
 
@@ -146,12 +148,25 @@ NS_ASSUME_NONNULL_BEGIN
         return NO;
     }
 
+#if SENTRY_HAS_METRIC_KIT
+    if (@available(iOS 15.0, macOS 12.0, macCatalyst 15.0, *)) {
+        if ((integrationOptions & kIntegrationOptionEnableMetricKit) && !options.enableMetricKit) {
+            [self logWithOptionName:@"enableMetricKit"];
+            return NO;
+        }
+    }
+#endif
+
     return YES;
 }
 
 - (SentryIntegrationOption)integrationOptions
 {
     return kIntegrationOptionNone;
+}
+
+- (void)uninstall
+{
 }
 
 @end

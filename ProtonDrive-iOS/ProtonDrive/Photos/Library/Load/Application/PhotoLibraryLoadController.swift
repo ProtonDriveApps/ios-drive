@@ -17,33 +17,106 @@
 
 import Combine
 
-protocol PhotoLibraryLoadController {}
+protocol PhotoLibraryLoadController {
+    var isLoading: AnyPublisher<Bool, Never> { get }
+    func getInitialCount() -> Int?
+}
 
 final class LocalPhotoLibraryLoadController: PhotoLibraryLoadController {
     private let backupController: PhotosBackupController
+    private let identifiersController: PhotoLibraryIdentifiersController
+    private let computationalAvailabilityController: ComputationalAvailabilityController
     private let interactor: PhotoLibraryLoadInteractor
+    private var isProcessing = false
+    private var loadingSubject = CurrentValueSubject<Bool, Never>(false)
     private var cancellables = Set<AnyCancellable>()
+    private var count: Int?
 
-    init(backupController: PhotosBackupController, interactor: PhotoLibraryLoadInteractor) {
+    var isLoading: AnyPublisher<Bool, Never> {
+        loadingSubject.eraseToAnyPublisher()
+    }
+
+    init(backupController: PhotosBackupController, identifiersController: PhotoLibraryIdentifiersController, computationalAvailabilityController: ComputationalAvailabilityController, interactor: PhotoLibraryLoadInteractor) {
         self.backupController = backupController
+        self.identifiersController = identifiersController
+        self.computationalAvailabilityController = computationalAvailabilityController
         self.interactor = interactor
         subscribeToUpdates()
+    }
+
+    func getInitialCount() -> Int? {
+        count
     }
 
     private func subscribeToUpdates() {
         backupController.isAvailable
             .removeDuplicates()
-            .sink { [weak self] isBackupAvailable in
-                self?.handleUpdate(isBackupAvailable: isBackupAvailable)
+            .sink { [weak self] availability in
+                self?.handleUpdate(availability: availability)
+            }
+            .store(in: &cancellables)
+
+        computationalAvailabilityController.availability
+            .sink { [weak self] availability in
+                self?.handleComputationalAvailability(availability)
+            }
+            .store(in: &cancellables)
+
+        interactor.identifiers
+            .sink { [weak self] update in
+                self?.handleIdentifiers(update: update)
             }
             .store(in: &cancellables)
     }
 
-    private func handleUpdate(isBackupAvailable: Bool) {
-        if isBackupAvailable {
+    private func handleIdentifiers(update: PhotoLibraryLoadUpdate) {
+        let identifiers = update.identifiers
+        if !identifiers.isEmpty {
+            identifiersController.add(ids: identifiers)
+        }
+
+        switch update {
+        case .fullLoad:
+            count = identifiers.count
+            loadingSubject.send(false)
+        case .loading:
+            loadingSubject.send(true)
+        case .update:
+            break
+        }
+    }
+
+    private func handleUpdate(availability: PhotosBackupAvailability) {
+        switch availability {
+        case .available:
+            executeInteractor()
+        case .locked:
+            break
+        case .unavailable:
+            cancelInteractor()
+        }
+    }
+
+    private func executeInteractor() {
+        if !isProcessing {
+            isProcessing = true
+            loadingSubject.send(true)
             interactor.execute()
-        } else {
-            interactor.cancel()
+        }
+    }
+
+    private func cancelInteractor() {
+        isProcessing = false
+        loadingSubject.send(false)
+        interactor.cancel()
+    }
+
+    private func handleComputationalAvailability(_ availability: ComputationalAvailability) {
+        switch availability {
+        case .suspended, .extensionTask: // Intentionally suspending in extension, which is shortlived
+            interactor.suspend()
+        case .foreground, .processingTask:
+            interactor.resume()
         }
     }
 }

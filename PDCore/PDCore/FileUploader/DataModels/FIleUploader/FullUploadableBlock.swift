@@ -28,33 +28,6 @@ struct FullUploadableBlock {
     }
 }
 
-extension FullUploadableBlock {
-    init?(block: UploadBlock) {
-        guard let remoteURLString = block.uploadUrl,
-              let remoteURL = URL(string: remoteURLString),
-              let token = block.uploadToken,
-              let uploadableBlock = UploadableBlock(block: block) else {
-            return nil
-        }
-
-        self.remoteURL = remoteURL
-        self.uploadToken = token
-        self.uploadable = uploadableBlock
-    }
-}
-
-extension UploadBlock {
-    var unsafeFullUploadableBlock: FullUploadableBlock? {
-        guard let uploadable = UploadableBlock(block: self),
-              let remoteURLString = uploadUrl,
-              let remoteURL = URL(string: remoteURLString),
-              let token = uploadToken else {
-                  return nil
-              }
-        return FullUploadableBlock(remoteURL: remoteURL, uploadToken: token, uploadable: uploadable)
-    }
-}
-
 extension Block {
     var asUploadBlock: UploadBlock? {
         self as? UploadBlock

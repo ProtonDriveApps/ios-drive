@@ -28,8 +28,12 @@ public extension DriveDependencyContainer {
         let coordinator = makeStartCoordinator(viewController)
 
         viewController.viewModel = viewModel
+        viewController.onLoggingOut = coordinator.onLoggingOut
         viewController.onAuthenticated = coordinator.onAuthenticated
-        viewController.onNonAuthenticated = coordinator.onNonAuthenticated
+        viewController.onNonAuthenticated = { [weak coordinator, weak self] in
+            self?.discardAuthenticatedContainer()
+            coordinator?.onNonAuthenticated()
+        }
 
         return navigationController
     }
@@ -40,7 +44,12 @@ public extension DriveDependencyContainer {
             .map { _ in Void() }
             .setFailureType(to: Never.self)
             .eraseToAnyPublisher()
-        
+
+        let isLoggingOutPublisher = DriveNotification.isLoggingOut.publisher
+            .map { _ in Void() }
+            .setFailureType(to: Never.self)
+            .eraseToAnyPublisher()
+
         let restartAppPublisher = NotificationCenter.default
             .publisher(for: .restartApplication)
             .map { _ in () }
@@ -49,6 +58,7 @@ public extension DriveDependencyContainer {
         return StartViewModel(
             isSignedIn: sessionVault.isSignedIn,
             restartAppPublisher: restartAppPublisher,
+            isLoggingOutInPublisher: isLoggingOutPublisher,
             checkAuthenticationPublisher: authenticationPublisher
         )
     }

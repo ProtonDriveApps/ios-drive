@@ -1,6 +1,7 @@
 {
   "name": "ProtonCore-UIFoundations",
-  "version": "6.1.0",
+  "module_name": "ProtonCoreUIFoundations",
+  "version": "25.0.0",
   "summary": "shared frameworks",
   "description": "ios shared frameworks for all client apps",
   "homepage": "https://github.com/ProtonMail",
@@ -16,11 +17,11 @@
   },
   "source": {
     "git": null,
-    "tag": "6.1.0"
+    "tag": "25.0.0"
   },
   "platforms": {
     "ios": "14.0",
-    "osx": "10.13"
+    "osx": "11.0"
   },
   "swift_versions": [
     "5.6"
@@ -33,46 +34,29 @@
   ],
   "dependencies": {
     "ProtonCore-Log": [
-      "6.1.0"
-    ],
-    "ProtonCore-CoreTranslation": [
-      "6.1.0"
+      "25.0.0"
     ],
     "ProtonCore-Foundations": [
-      "6.1.0"
+      "25.0.0"
     ],
     "ProtonCore-Utilities": [
-      "6.1.0"
+      "25.0.0"
     ]
   },
+  "source_files": "libraries/UIFoundations/Sources/**/*.swift",
+  "preserve_paths": "libraries/UIFoundations/Resources-iOS/LaunchScreenColors/**/*",
   "ios": {
-    "source_files": [
-      "libraries/UIFoundations/Sources/Colors/**/*.swift",
-      "libraries/UIFoundations/Sources/Components/**/*.swift",
-      "libraries/UIFoundations/Sources/Font/**/*.swift",
-      "libraries/UIFoundations/Sources/Icons/**/*.swift",
-      "libraries/UIFoundations/Sources/Utils/**/*.swift"
-    ],
-    "preserve_paths": "libraries/UIFoundations/LaunchScreens/**/*",
     "resource_bundles": {
       "Resources-UIFoundations": [
-        "libraries/UIFoundations/Sources/Assets.xcassets",
-        "libraries/UIFoundations/Sources/**/*.{xib,storyboard,geojson}",
-        "libraries/UIFoundations/LaunchScreens/*.storyboard"
+        "libraries/UIFoundations/Resources-Shared/Assets.xcassets",
+        "libraries/UIFoundations/Resources-iOS/Resources-iOS/**/*.{xib,storyboard,geojson}"
       ]
     }
   },
   "osx": {
-    "source_files": [
-      "libraries/UIFoundations/Sources/Components/PMUIFoundations.swift",
-      "libraries/UIFoundations/Sources/Colors/**/*.swift",
-      "libraries/UIFoundations/Sources/Components/Extension/NSColor+Helper.swift",
-      "libraries/UIFoundations/Sources/Utils/Brand.swift",
-      "libraries/UIFoundations/Sources/Icons/**/*.swift"
-    ],
     "resource_bundles": {
       "Resources-UIFoundations": [
-        "libraries/UIFoundations/Sources/Assets.xcassets"
+        "libraries/UIFoundations/Resources-Shared/Assets.xcassets"
       ]
     }
   },
@@ -82,7 +66,7 @@
       "test_type": "unit",
       "dependencies": {
         "ProtonCore-TestingToolkit/UnitTests/Core": [
-          "6.1.0"
+          "25.0.0"
         ]
       },
       "source_files": "libraries/UIFoundations/Tests/**/*"

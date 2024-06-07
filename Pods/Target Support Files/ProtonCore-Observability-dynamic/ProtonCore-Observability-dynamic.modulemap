@@ -1,4 +1,4 @@
-framework module ProtonCore_Observability {
+framework module ProtonCoreObservability {
   umbrella header "ProtonCore-Observability-dynamic-umbrella.h"
 
   export *

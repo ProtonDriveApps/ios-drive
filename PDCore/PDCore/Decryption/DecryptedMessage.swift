@@ -20,13 +20,22 @@ public enum DecryptedMessage<Content> {
     case unverified(Content, Error)
 }
 
-extension DecryptedMessage {
+public extension DecryptedMessage {
     func decrypted() -> Content {
         switch self {
         case .verified(let content):
             return content
         case .unverified(let content, _):
             return content
+        }
+    }
+
+    var isVerified: Bool {
+        switch self {
+        case .verified:
+            return true
+        case .unverified:
+            return false
         }
     }
 }

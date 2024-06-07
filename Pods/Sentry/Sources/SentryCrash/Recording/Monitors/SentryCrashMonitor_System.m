@@ -1,3 +1,4 @@
+// Adapted from: https://github.com/kstenerud/KSCrash
 //
 //  SentryCrashMonitor_System.m
 //
@@ -36,13 +37,16 @@
 // #define SentryCrashLogger_LocalLevel TRACE
 #import "SentryCrashLogger.h"
 
+#import "SentryDefines.h"
+
 #import <CommonCrypto/CommonDigest.h>
 #import <Foundation/Foundation.h>
-#if SentryCrashCRASH_HAS_UIKIT
-#    import <UIKit/UIKit.h>
-#endif
 #include <mach-o/dyld.h>
 #include <mach/mach.h>
+
+#if SENTRY_HAS_UIKIT
+#    import <UIKit/UIKit.h>
+#endif // SENTRY_HAS_UIKIT
 
 typedef struct {
     const char *systemName;
@@ -71,8 +75,6 @@ typedef struct {
     int parentProcessID;
     const char *deviceAppHash;
     const char *buildType;
-    bytes totalStorageSize;
-    bytes freeStorageSize;
     bytes memorySize;
 } SystemData;
 
@@ -241,7 +243,7 @@ uuidBytesToString(const uint8_t *uuidBytes)
  * @return Executable path.
  */
 static NSString *
-getExecutablePath()
+getExecutablePath(void)
 {
     NSBundle *mainBundle = [NSBundle mainBundle];
     NSDictionary *infoDict = [mainBundle infoDictionary];
@@ -255,7 +257,7 @@ getExecutablePath()
  * @return The UUID.
  */
 static const char *
-getAppUUID()
+getAppUUID(void)
 {
     const char *result = nil;
 
@@ -277,7 +279,7 @@ getAppUUID()
 
 /** Get the current CPU's architecture.
  *
- * @return The current CPU archutecture.
+ * @return The current CPU architecture.
  */
 static const char *
 getCPUArchForCPUType(cpu_type_t cpuType, cpu_subtype_t subType)
@@ -313,7 +315,7 @@ getCPUArchForCPUType(cpu_type_t cpuType, cpu_subtype_t subType)
 }
 
 static const char *
-getCurrentCPUArch()
+getCurrentCPUArch(void)
 {
     const char *result = getCPUArchForCPUType(sentrycrashsysctl_int32ForName("hw.cputype"),
         sentrycrashsysctl_int32ForName("hw.cpusubtype"));
@@ -329,7 +331,7 @@ getCurrentCPUArch()
  * @return YES if the device is jailbroken.
  */
 static bool
-isJailbroken()
+isJailbroken(void)
 {
     return sentrycrashdl_imageNamed("MobileSubstrate", false) != UINT32_MAX;
 }
@@ -339,7 +341,7 @@ isJailbroken()
  * @return YES if the app was built in debug mode.
  */
 static bool
-isDebugBuild()
+isDebugBuild(void)
 {
 #ifdef DEBUG
     return YES;
@@ -353,7 +355,7 @@ isDebugBuild()
  * @return YES if this is a simulator build.
  */
 static bool
-isSimulatorBuild()
+isSimulatorBuild(void)
 {
 #if TARGET_OS_SIMULATOR
     return YES;
@@ -373,7 +375,7 @@ sentrycrash_isSimulatorBuild(void)
  * @return App Store receipt for iOS, nil otherwise.
  */
 static NSString *
-getReceiptUrlPath()
+getReceiptUrlPath(void)
 {
 #if SentryCrashCRASH_HOST_IOS
     return [NSBundle mainBundle].appStoreReceiptURL.path;
@@ -388,16 +390,17 @@ getReceiptUrlPath()
  * @return The stringified hex representation of the hash for this device + app.
  */
 static const char *
-getDeviceAndAppHash()
+getDeviceAndAppHash(void)
 {
     NSMutableData *data = nil;
 
-#if SentryCrashCRASH_HAS_UIDEVICE
-    if ([[UIDevice currentDevice] respondsToSelector:@selector(identifierForVendor)]) {
+#if SENTRY_HAS_UIKIT
+    UIDevice *currentDevice = [UIDevice currentDevice];
+    if ([currentDevice respondsToSelector:@selector(identifierForVendor)]) {
         data = [NSMutableData dataWithLength:16];
-        [[UIDevice currentDevice].identifierForVendor getUUIDBytes:data.mutableBytes];
+        [currentDevice.identifierForVendor getUUIDBytes:data.mutableBytes];
     } else
-#endif
+#endif // SENTRY_HAS_UIKIT
     {
         data = [NSMutableData dataWithLength:6];
         sentrycrashsysctl_getMacAddress("en0", [data mutableBytes]);
@@ -436,7 +439,7 @@ getDeviceAndAppHash()
  * @return YES if this is a testing build.
  */
 static bool
-isTestBuild()
+isTestBuild(void)
 {
     return [getReceiptUrlPath().lastPathComponent isEqualToString:@"sandboxReceipt"];
 }
@@ -447,7 +450,7 @@ isTestBuild()
  * @return YES if there is an app store receipt.
  */
 static bool
-hasAppStoreReceipt()
+hasAppStoreReceipt(void)
 {
     NSString *receiptPath = getReceiptUrlPath();
     if (receiptPath == nil) {
@@ -463,13 +466,13 @@ hasAppStoreReceipt()
  * Check if the app has an embdded.mobileprovision file in the bundle.
  */
 static bool
-hasEmbeddedMobileProvision()
+hasEmbeddedMobileProvision(void)
 {
     return [[NSBundle mainBundle] pathForResource:@"embedded" ofType:@"mobileprovision"] != nil;
 }
 
 static const char *
-getBuildType()
+getBuildType(void)
 {
     if (isSimulatorBuild()) {
         return "simulator";
@@ -489,110 +492,90 @@ getBuildType()
     return "unknown";
 }
 
-static bytes
-getTotalStorageSize()
-{
-    NSNumber *storageSize = [[[NSFileManager defaultManager]
-        attributesOfFileSystemForPath:NSHomeDirectory()
-                                error:nil] objectForKey:NSFileSystemSize];
-    return storageSize.unsignedLongLongValue;
-}
-
-static bytes
-getFreeStorageSize()
-{
-    NSNumber *storageSize = [[[NSFileManager defaultManager]
-        attributesOfFileSystemForPath:NSHomeDirectory()
-                                error:nil] objectForKey:NSFileSystemFreeSize];
-    return storageSize.unsignedLongLongValue;
-}
-
-bytes
-sentrycrashcm_system_freestorage_size(void)
-{
-    return getFreeStorageSize();
-}
-
 // ============================================================================
 #pragma mark - API -
 // ============================================================================
 
 static void
-initialize()
+initialize(void)
 {
     static bool isInitialized = false;
-    if (!isInitialized) {
-        isInitialized = true;
-
-        NSBundle *mainBundle = [NSBundle mainBundle];
-        NSDictionary *infoDict = [mainBundle infoDictionary];
-        const struct mach_header *header = _dyld_get_image_header(0);
-
-#if SentryCrashCRASH_HAS_UIDEVICE
-        g_systemData.systemName = cString([UIDevice currentDevice].systemName);
-        g_systemData.systemVersion = cString([UIDevice currentDevice].systemVersion);
-#else
-#    if SentryCrashCRASH_HOST_MAC
-        g_systemData.systemName = "macOS";
-#    endif
-#    if SentryCrashCRASH_HOST_WATCH
-        g_systemData.systemName = "watchOS";
-#    endif
-        NSOperatingSystemVersion version = { 0, 0, 0 };
-        if (@available(macOS 10.10, *)) {
-            version = [NSProcessInfo processInfo].operatingSystemVersion;
-        }
-        NSString *systemVersion;
-        if (version.patchVersion == 0) {
-            systemVersion = [NSString
-                stringWithFormat:@"%d.%d", (int)version.majorVersion, (int)version.minorVersion];
-        } else {
-            systemVersion = [NSString stringWithFormat:@"%d.%d.%d", (int)version.majorVersion,
-                                      (int)version.minorVersion, (int)version.patchVersion];
-        }
-        g_systemData.systemVersion = cString(systemVersion);
-#endif
-        if (isSimulatorBuild()) {
-            g_systemData.machine
-                = cString([NSProcessInfo processInfo].environment[@"SIMULATOR_MODEL_IDENTIFIER"]);
-            g_systemData.model = "simulator";
-        } else {
-            // TODO: combine this into SentryDevice?
-#if SentryCrashCRASH_HOST_MAC
-            // MacOS has the machine in the model field, and no model
-            g_systemData.machine = stringSysctl("hw.model");
-#else
-            g_systemData.machine = stringSysctl("hw.machine");
-            g_systemData.model = stringSysctl("hw.model");
-#endif
-        }
-
-        g_systemData.kernelVersion = stringSysctl("kern.version");
-        g_systemData.osVersion = stringSysctl("kern.osversion");
-        g_systemData.isJailbroken = isJailbroken();
-        g_systemData.bootTime = dateSysctl("kern.boottime");
-        g_systemData.appStartTime = dateString(time(NULL));
-        g_systemData.executablePath = cString(getExecutablePath());
-        g_systemData.executableName = cString(infoDict[@"CFBundleExecutable"]);
-        g_systemData.bundleID = cString(infoDict[@"CFBundleIdentifier"]);
-        g_systemData.bundleName = cString(infoDict[@"CFBundleName"]);
-        g_systemData.bundleVersion = cString(infoDict[@"CFBundleVersion"]);
-        g_systemData.bundleShortVersion = cString(infoDict[@"CFBundleShortVersionString"]);
-        g_systemData.appID = getAppUUID();
-        g_systemData.cpuArchitecture = getCurrentCPUArch();
-        g_systemData.cpuType = sentrycrashsysctl_int32ForName("hw.cputype");
-        g_systemData.cpuSubType = sentrycrashsysctl_int32ForName("hw.cpusubtype");
-        g_systemData.binaryCPUType = header->cputype;
-        g_systemData.binaryCPUSubType = header->cpusubtype;
-        g_systemData.processName = cString([NSProcessInfo processInfo].processName);
-        g_systemData.processID = [NSProcessInfo processInfo].processIdentifier;
-        g_systemData.parentProcessID = getppid();
-        g_systemData.deviceAppHash = getDeviceAndAppHash();
-        g_systemData.buildType = getBuildType();
-        g_systemData.totalStorageSize = getTotalStorageSize();
-        g_systemData.freeStorageSize = getFreeStorageSize();
-        g_systemData.memorySize = sentrycrashsysctl_uint64ForName("hw.memsize");
+    if (isInitialized) {
+        return;
     }
+
+    isInitialized = true;
+
+    NSBundle *mainBundle = [NSBundle mainBundle];
+    NSDictionary *infoDict = [mainBundle infoDictionary];
+    const struct mach_header *header = _dyld_get_image_header(0);
+
+#if SentryCrashCRASH_HOST_IOS
+    g_systemData.systemName = "iOS";
+#elif SentryCrashCRASH_HOST_TV
+    g_systemData.systemName = "tvOS";
+#elif SentryCrashCRASH_HOST_MAC
+    g_systemData.systemName = "macOS";
+#elif SentryCrashCRASH_HOST_WATCH
+    g_systemData.systemName = "watchOS";
+#elif SentryCrashCRASH_HOST_VISION
+    g_systemData.systemName = "visionOS";
+#else
+    g_systemData.systemName = "unknown";
+#endif
+
+    NSOperatingSystemVersion version = { 0, 0, 0 };
+    if (@available(macOS 10.10, *)) {
+        version = [NSProcessInfo processInfo].operatingSystemVersion;
+    }
+    NSString *systemVersion;
+    if (version.patchVersion == 0) {
+        systemVersion = [NSString
+            stringWithFormat:@"%d.%d", (int)version.majorVersion, (int)version.minorVersion];
+    } else {
+        systemVersion = [NSString stringWithFormat:@"%d.%d.%d", (int)version.majorVersion,
+                                  (int)version.minorVersion, (int)version.patchVersion];
+    }
+    g_systemData.systemVersion = cString(systemVersion);
+
+    if (isSimulatorBuild()) {
+        g_systemData.machine
+            = cString([NSProcessInfo processInfo].environment[@"SIMULATOR_MODEL_IDENTIFIER"]);
+        g_systemData.model = "simulator";
+    } else {
+        // TODO: combine this into SentryDevice?
+#if SentryCrashCRASH_HOST_MAC
+        // MacOS has the machine in the model field, and no model
+        g_systemData.machine = stringSysctl("hw.model");
+#else
+        g_systemData.machine = stringSysctl("hw.machine");
+        g_systemData.model = stringSysctl("hw.model");
+#endif
+    }
+
+    g_systemData.kernelVersion = stringSysctl("kern.version");
+    g_systemData.osVersion = stringSysctl("kern.osversion");
+    g_systemData.isJailbroken = isJailbroken();
+    g_systemData.bootTime = dateSysctl("kern.boottime");
+    g_systemData.appStartTime = dateString(time(NULL));
+    g_systemData.executablePath = cString(getExecutablePath());
+    g_systemData.executableName = cString(infoDict[@"CFBundleExecutable"]);
+    g_systemData.bundleID = cString(infoDict[@"CFBundleIdentifier"]);
+    g_systemData.bundleName = cString(infoDict[@"CFBundleName"]);
+    g_systemData.bundleVersion = cString(infoDict[@"CFBundleVersion"]);
+    g_systemData.bundleShortVersion = cString(infoDict[@"CFBundleShortVersionString"]);
+    g_systemData.appID = getAppUUID();
+    g_systemData.cpuArchitecture = getCurrentCPUArch();
+    g_systemData.cpuType = sentrycrashsysctl_int32ForName("hw.cputype");
+    g_systemData.cpuSubType = sentrycrashsysctl_int32ForName("hw.cpusubtype");
+    g_systemData.binaryCPUType = header->cputype;
+    g_systemData.binaryCPUSubType = header->cpusubtype;
+    g_systemData.processName = cString([NSProcessInfo processInfo].processName);
+    g_systemData.processID = [NSProcessInfo processInfo].processIdentifier;
+    g_systemData.parentProcessID = getppid();
+    g_systemData.deviceAppHash = getDeviceAndAppHash();
+    g_systemData.buildType = getBuildType();
+    g_systemData.memorySize = sentrycrashsysctl_uint64ForName("hw.memsize");
 }
 
 static void
@@ -607,7 +590,7 @@ setEnabled(bool isEnabled)
 }
 
 static bool
-isEnabled()
+isEnabled(void)
 {
     return g_isEnabled;
 }
@@ -643,8 +626,6 @@ addContextualInfoToEvent(SentryCrash_MonitorContext *eventContext)
         COPY_REFERENCE(parentProcessID);
         COPY_REFERENCE(deviceAppHash);
         COPY_REFERENCE(buildType);
-        COPY_REFERENCE(totalStorageSize);
-        COPY_REFERENCE(freeStorageSize);
         COPY_REFERENCE(memorySize);
         eventContext->System.freeMemorySize = freeMemorySize();
         eventContext->System.usableMemorySize = usableMemorySize();
@@ -652,7 +633,7 @@ addContextualInfoToEvent(SentryCrash_MonitorContext *eventContext)
 }
 
 SentryCrashMonitorAPI *
-sentrycrashcm_system_getAPI()
+sentrycrashcm_system_getAPI(void)
 {
     static SentryCrashMonitorAPI api = { .setEnabled = setEnabled,
         .isEnabled = isEnabled,

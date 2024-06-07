@@ -20,8 +20,8 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Log
-import ProtonCore_Utilities
+import ProtonCoreLog
+import ProtonCoreUtilities
 
 struct RuntimeError: Error {
     let message: String
@@ -46,7 +46,12 @@ public enum DoHStatus {
     case auto // mix don't know yet
 }
 
-/// server configuation
+public enum APNEnvironment: Int {
+    case production = 6
+    case development = 16
+}
+
+/// server configuration
 public protocol ServerConfig {
 
     /// enable doh or not default is True. if you don't want to use doh, set this value to false
@@ -61,7 +66,7 @@ public protocol ServerConfig {
     /// captcha response host
     var captchaHost: String { get }
     var humanVerificationV3Host: String { get }
-    
+
     // account host
     var accountHost: String { get }
 
@@ -71,9 +76,13 @@ public protocol ServerConfig {
     /// debug mode vars
     var debugMode: Bool { get }
     var blockList: [String: Int] { get }
-    
+
     /// the doh provider timeout  the default value is 5s
     var timeout: TimeInterval { get }
+    var proxyToken: String? { get }
+
+    /// the APNS Environment to use
+    var apnEnvironment: APNEnvironment { get }
 }
 
 public extension ServerConfig {
@@ -92,9 +101,56 @@ public extension ServerConfig {
     var enableDoh: Bool {
         return true
     }
-    
+
     var timeout: TimeInterval {
         return 20
+    }
+
+    var apnEnvironment: APNEnvironment {
+        .development
+    }
+}
+
+extension DoH {
+    public struct PinningConfigurationEntry {
+        static let catchAllHost = "*"
+
+        let allowSubdomains: Bool
+        let allowIPs: Bool
+
+        public init(allowSubdomains: Bool, allowIPs: Bool) {
+            self.allowIPs = allowIPs
+            self.allowSubdomains = allowSubdomains
+        }
+
+        func allowsHost(_ host: String, for configuredHost: String) -> Bool {
+            let host = host.lowercased()
+            let configuredHost = configuredHost.lowercased().trimmingCharacters(in: .init(charactersIn: "."))
+
+            if host == configuredHost {
+                return true
+            } else if allowSubdomains && host.hasSuffix(".\(configuredHost)") {
+                return true
+            } else if configuredHost == Self.catchAllHost && allowIPs && host.isIp {
+                return true
+            }
+            return false
+        }
+    }
+
+    internal static var pinningConfiguration: [String: PinningConfigurationEntry] = [:]
+
+    public class func setPinningConfiguration(_ configuration: [String: PinningConfigurationEntry]) {
+        pinningConfiguration = configuration
+    }
+
+    public class func hostIsPinned(_ host: String) -> Bool {
+        for (pinnedHost, entry) in pinningConfiguration {
+            if entry.allowsHost(host, for: pinnedHost) {
+                return true
+            }
+        }
+        return false
     }
 }
 
@@ -116,65 +172,66 @@ extension DispatchQueue: DoHWorkExecutor {
 }
 
 public protocol DoHInterface {
-    
+
     func clearCache()
-    
+
+    func getProxyToken() -> String?
     func getCurrentlyUsedHostUrl() -> String
     func getCaptchaHostUrl() -> String
     func getHumanVerificationV3Host() -> String
     func getAccountHost() -> String
-    
+    func getAccountHostForAPI() -> String
+    func getAPNEnvironment() -> APNEnvironment
+
     func getCurrentlyUsedUrlHeaders() -> [String: String]
     func getCaptchaHeaders() -> [String: String]
     func getHumanVerificationV3Headers() -> [String: String]
     func getAccountHeaders() -> [String: String]
-    
+
     func errorIndicatesDoHSolvableProblem(error: Error?) -> Bool
-    
+
     func getSignUpString() -> String
-    
+    var isCurrentlyUsingProxyDomain: Bool { get }
     var status: DoHStatus { get set }
-    
+
     var currentlyUsedCookiesStorage: HTTPCookieStorage? { get }
     func setUpCookieSynchronization(storage: HTTPCookieStorage?)
-    func synchronizeCookies(with response: URLResponse?, requestHeaders: [String: String])
+    func synchronizeCookies(with response: URLResponse?, requestHeaders: [String: String]) async
 
-    // swiftlint:disable function_parameter_count
     func handleErrorResolvingProxyDomainIfNeeded(
         host: String, requestHeaders: [String: String], sessionId: String?, error: Error?,
         callCompletionBlockUsing: CompletionBlockExecutor, completion: @escaping (Bool) -> Void
     )
-    
-    // swiftlint:disable function_parameter_count
+
     func handleErrorResolvingProxyDomainAndSynchronizingCookiesIfNeeded(
         host: String, requestHeaders: [String: String], sessionId: String?, response: URLResponse?, error: Error?,
         callCompletionBlockUsing: CompletionBlockExecutor, completion: @escaping (Bool) -> Void
     )
-    
+
     // MARK: - Deprecated API
-    
+
     @available(*, deprecated, renamed: "clearCache")
     func clearAll()
-    
+
     @available(*, deprecated, message: "Please use errorIndicatesDoHSolvableProblem(error:) instead")
     func codeCheck(code: Int) -> Bool
-    
+
     @available(*, deprecated, message: "Please use getCurrentlyUsedHostUrl() in places you want to synchronously get the host url. Use handleErrorResolvingProxyDomainIfNeeded(host:error:completion:) in places that you handle the errors that should result in switching to proxy domain")
     func getHostUrl() -> String
-    
+
     @available(*, deprecated, message: "Please use handleErrorResolvingProxyDomainIfNeeded(host:error:callCompletionBlockOn:completion:)")
     func handleError(host: String, error: Error?) -> Bool
 }
 
 public extension DoHInterface {
-    
+
     @available(*, deprecated, message: "Please use handleErrorResolvingProxyDomainIfNeeded(host:requestHeaders:sessionId:error:callCompletionBlockUsing:completion:)")
     func handleErrorResolvingProxyDomainIfNeeded(host: String, sessionId: String?, error: Error?,
                                                  completion: @escaping (Bool) -> Void) {
         handleErrorResolvingProxyDomainIfNeeded(host: host, requestHeaders: [:], sessionId: sessionId, error: error,
                                                 callCompletionBlockUsing: .asyncMainExecutor, completion: completion)
     }
-    
+
     @available(*, deprecated, message: "Please use variant taking CompletionBlockExecutor from ProtonCore-Utilities: handleErrorResolvingProxyDomainIfNeeded(host:requestHeaders:error:callCompletionBlockUsing:completion:)")
     func handleErrorResolvingProxyDomainIfNeeded(host: String, error: Error?,
                                                  callCompletionBlockOn: DoHWorkExecutor?, completion: @escaping (Bool) -> Void) {
@@ -187,39 +244,57 @@ public extension DoHInterface {
         handleErrorResolvingProxyDomainIfNeeded(host: host, requestHeaders: [:], sessionId: nil, error: error,
                                                 callCompletionBlockUsing: executor, completion: completion)
     }
-    
+
     @available(*, deprecated, message: "Please use handleErrorResolvingProxyDomainIfNeeded(host:requestHeaders:sessionId:error:callCompletionBlockUsing:completion:)")
     func handleErrorResolvingProxyDomainIfNeeded(host: String, error: Error?,
                                                  callCompletionBlockUsing: CompletionBlockExecutor, completion: @escaping (Bool) -> Void) {
         handleErrorResolvingProxyDomainIfNeeded(host: host, requestHeaders: [:], sessionId: nil, error: error,
                                                 callCompletionBlockUsing: callCompletionBlockUsing, completion: completion)
     }
-    
+
     @available(*, deprecated, message: "Please use handleErrorResolvingProxyDomainIfNeeded(host:requestHeaders:sessionId:error:callCompletionBlockUsing:completion:)")
     func handleErrorResolvingProxyDomainIfNeeded(host: String, sessionId: String?, error: Error?,
                                                  callCompletionBlockUsing: CompletionBlockExecutor, completion: @escaping (Bool) -> Void) {
         handleErrorResolvingProxyDomainIfNeeded(host: host, requestHeaders: [:], sessionId: sessionId, error: error,
                                                 callCompletionBlockUsing: callCompletionBlockUsing, completion: completion)
     }
-    
+
     @available(*, deprecated, message: "Please use handleErrorResolvingProxyDomainAndSynchronizingCookiesIfNeeded(host:requestHeaders:sessionId:response:error:callCompletionBlockUsing:completion:)")
     func handleErrorResolvingProxyDomainAndSynchronizingCookiesIfNeeded(host: String, sessionId: String?, response: URLResponse?, error: Error?,
                                                                         completion: @escaping (Bool) -> Void) {
         handleErrorResolvingProxyDomainAndSynchronizingCookiesIfNeeded(host: host, requestHeaders: [:], sessionId: sessionId, response: response,
                                                                        error: error, callCompletionBlockUsing: .asyncMainExecutor, completion: completion)
     }
-    
+
     @available(*, deprecated, message: "Please use handleErrorResolvingProxyDomainAndSynchronizingCookiesIfNeeded(host:requestHeaders:sessionId:response:error:callCompletionBlockUsing:completion:)")
     func handleErrorResolvingProxyDomainAndSynchronizingCookiesIfNeeded(host: String, response: URLResponse?, error: Error?,
                                                                         callCompletionBlockUsing: CompletionBlockExecutor, completion: @escaping (Bool) -> Void) {
         handleErrorResolvingProxyDomainAndSynchronizingCookiesIfNeeded(host: host, requestHeaders: [:], sessionId: nil, response: response,
                                                                        error: error, callCompletionBlockUsing: .asyncMainExecutor, completion: completion)
     }
-    
+
     @available(*, deprecated, message: "Please use handleErrorResolvingProxyDomainAndSynchronizingCookiesIfNeeded(host:requestHeaders:sessionId:response:error:callCompletionBlockUsing:completion:)")
     func handleErrorResolvingProxyDomainAndSynchronizingCookiesIfNeeded(host: String, sessionId: String?, response: URLResponse?, error: Error?,
                                                                         callCompletionBlockUsing: CompletionBlockExecutor, completion: @escaping (Bool) -> Void) {
         handleErrorResolvingProxyDomainAndSynchronizingCookiesIfNeeded(host: host, requestHeaders: [:], sessionId: sessionId, response: response,
                                                                        error: error, callCompletionBlockUsing: .asyncMainExecutor, completion: completion)
+    }
+
+    @available(*, deprecated, message: "Please use the async variant of this function instead.")
+    func synchronizeCookies(with response: URLResponse?, requestHeaders: [String: String], completion: @escaping () -> Void) {
+        Task {
+            await synchronizeCookies(with: response, requestHeaders: requestHeaders)
+            completion()
+        }
+    }
+}
+
+fileprivate extension String {
+    var isIp: Bool {
+        return withCString { cStringPtr in
+            var addr = in6_addr()
+            return inet_pton(AF_INET, cStringPtr, &addr) == 1 ||
+                   inet_pton(AF_INET6, cStringPtr, &addr) == 1
+        }
     }
 }

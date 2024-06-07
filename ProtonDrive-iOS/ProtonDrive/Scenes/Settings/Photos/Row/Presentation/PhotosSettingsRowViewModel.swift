@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
-import ProtonCore_Settings
+import PMSettings
 
 final class PhotosSettingsRowViewModel: PMDrillDownCellViewModel {
     private let settingsController: PhotoBackupSettingsController

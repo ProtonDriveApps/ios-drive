@@ -19,10 +19,12 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+#if os(iOS)
+
 import Foundation
-import ProtonCore_Challenge
-import ProtonCore_CoreTranslation
-import ProtonCore_Login
+import UIKit
+import ProtonCoreChallenge
+import ProtonCoreLogin
 
 class RecoveryViewModel {
 
@@ -35,12 +37,12 @@ class RecoveryViewModel {
         self.initialCountryCode = initialCountryCode
         self.challenge = challenge
     }
-    
+
     func isValidEmail(email: String) -> Bool {
         guard !email.isEmpty else { return false }
         return email.isValidEmail()
     }
-    
+
     func validateEmailServerSide(email: String, completion: @escaping (Result<Void, SignupError>) -> Void) {
         signupService.validateEmailServerSide(email: email, completion: completion)
     }
@@ -48,15 +50,15 @@ class RecoveryViewModel {
     func isValidPhoneNumber(number: String) -> Bool {
         return !number.isEmpty
     }
-    
+
     func validatePhoneNumberServerSide(number: String, completion: @escaping (Result<Void, SignupError>) -> Void) {
         signupService.validatePhoneNumberServerSide(number: number, completion: completion)
     }
-    
+
     func termsAttributedString(textView: UITextView) -> NSAttributedString {
-        /// Fix me poissble bug: if _su_recovery_t_c_desc translated string doesnt match in _su_recovery_t_c_link translated string. the hyper link could be failed when clicking.
-        var text = CoreString._su_recovery_t_c_desc
-        let linkText = CoreString._su_recovery_t_c_link
+        /// Fix me poissble bug: if _login_recovery_t_c_desc translated string doesnt match in _login_recovery_t_c_link translated string. the hyper link could be failed when clicking.
+        var text = LUITranslation.recovery_t_c_desc.l10n
+        let linkText = LUITranslation.recovery_t_c_link.l10n
         if ProcessInfo.processInfo.arguments.contains("RunningInUITests") {
             // Workaround for UI test automation to detect link in separated line
             let texts = text.components(separatedBy: linkText)
@@ -64,7 +66,9 @@ class RecoveryViewModel {
                 text = texts[0] + "\n" + linkText + texts[1]
             }
         }
-        
+
         return .hyperlink(in: text, as: linkText, path: "", subfont: textView.font)
     }
 }
+
+#endif

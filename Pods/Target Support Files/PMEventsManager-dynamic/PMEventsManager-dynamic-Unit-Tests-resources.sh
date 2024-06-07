@@ -97,20 +97,28 @@ EOM
   esac
 }
 if [[ "$CONFIGURATION" == "Debug" ]]; then
-  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-CoreTranslation-dynamic/Resources-CoreTranslation.bundle"
-  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-FeatureSwitch-dynamic/Resources-FeatureSwitch.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/Sentry-dynamic/Sentry.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Networking-dynamic/Translations-Networking.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Services-dynamic/Translations-Services.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Payments-dynamic/Translations-Payments.bundle"
 fi
 if [[ "$CONFIGURATION" == "Release-External" ]]; then
-  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-CoreTranslation-dynamic/Resources-CoreTranslation.bundle"
-  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-FeatureSwitch-dynamic/Resources-FeatureSwitch.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/Sentry-dynamic/Sentry.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Networking-dynamic/Translations-Networking.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Services-dynamic/Translations-Services.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Payments-dynamic/Translations-Payments.bundle"
 fi
 if [[ "$CONFIGURATION" == "Release-Store" ]]; then
-  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-CoreTranslation-dynamic/Resources-CoreTranslation.bundle"
-  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-FeatureSwitch-dynamic/Resources-FeatureSwitch.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/Sentry-dynamic/Sentry.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Networking-dynamic/Translations-Networking.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Services-dynamic/Translations-Services.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Payments-dynamic/Translations-Payments.bundle"
 fi
 if [[ "$CONFIGURATION" == "Release-QA" ]]; then
-  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-CoreTranslation-dynamic/Resources-CoreTranslation.bundle"
-  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-FeatureSwitch-dynamic/Resources-FeatureSwitch.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/Sentry-dynamic/Sentry.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Networking-dynamic/Translations-Networking.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Services-dynamic/Translations-Services.bundle"
+  install_resource "${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Payments-dynamic/Translations-Payments.bundle"
 fi
 
 mkdir -p "${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"

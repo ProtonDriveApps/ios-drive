@@ -18,7 +18,7 @@
 import Foundation
 import Combine
 import PDCore
-import ProtonCore_Networking
+import ProtonCoreNetworking
 import PDUIComponents
 
 class MoveViewModel: ObservableObject, FinderViewModel, HasRefreshControl, FetchingViewModel, SortingViewModel {

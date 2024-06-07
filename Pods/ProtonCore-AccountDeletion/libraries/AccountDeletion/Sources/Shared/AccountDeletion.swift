@@ -19,31 +19,29 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
-#if canImport(ProtonCore_Authentication)
-import ProtonCore_Authentication
+import Foundation
+
+#if canImport(ProtonCoreAuthentication)
+import ProtonCoreAuthentication
 #else
 import PMAuthentication
 #endif
-#if canImport(ProtonCore_CoreTranslation)
-import ProtonCore_CoreTranslation
-#else
-import PMCoreTranslation
-#endif
-#if canImport(ProtonCore_Networking)
-import ProtonCore_Networking
+#if canImport(ProtonCoreNetworking)
+import ProtonCoreNetworking
 #else
 import PMCommon
 #endif
-#if canImport(ProtonCore_Doh)
-import ProtonCore_Doh
+#if canImport(ProtonCoreDoh)
+import ProtonCoreDoh
 #endif
-#if canImport(ProtonCore_Services)
-import ProtonCore_Services
+#if canImport(ProtonCoreServices)
+import ProtonCoreServices
 #endif
+import ProtonCoreUIFoundations
 
 public typealias AccountDeletionSuccess = Void
 
-#if canImport(ProtonCore_Networking)
+#if canImport(ProtonCoreNetworking)
 public typealias CannotDeleteYourselfReasonError = ResponseError
 #else
 public typealias CannotDeleteYourselfReasonError = Error
@@ -60,10 +58,10 @@ public enum AccountDeletionError: Error {
     case closedByUser
     case deletionFailure(message: String)
     case apiMightBeBlocked(message: String, originalError: Error)
-    
+
     public var userFacingMessageInAccountDeletion: String {
         switch self {
-        case .cannotDeleteYourself(let error): return error.networkResponseMessageForTheUser
+        case .cannotDeleteYourself(let error): return error.localizedDescription
         case .sessionForkingError(let message): return message
         case .closedByUser: return ""
         case .deletionFailure(let message): return message
@@ -74,23 +72,39 @@ public enum AccountDeletionError: Error {
 
 public protocol AccountDeletion {
     associatedtype ViewController
-    
+
     func initiateAccountDeletionProcess(
         over viewController: ViewController,
+        inAppTheme: @escaping () -> InAppTheme,
         performAfterShowingAccountDeletionScreen: @escaping () -> Void,
         performBeforeClosingAccountDeletionScreen: @escaping (@escaping () -> Void) -> Void,
         completion: @escaping (Result<AccountDeletionSuccess, AccountDeletionError>) -> Void
     )
 }
 
-#if canImport(ProtonCore_Services)
+public extension AccountDeletion {
+    func initiateAccountDeletionProcess(
+        over viewController: ViewController,
+        performAfterShowingAccountDeletionScreen: @escaping () -> Void,
+        performBeforeClosingAccountDeletionScreen: @escaping (@escaping () -> Void) -> Void,
+        completion: @escaping (Result<AccountDeletionSuccess, AccountDeletionError>) -> Void
+    ) {
+        initiateAccountDeletionProcess(over: viewController,
+                                       inAppTheme: { .default },
+                                       performAfterShowingAccountDeletionScreen: performAfterShowingAccountDeletionScreen,
+                                       performBeforeClosingAccountDeletionScreen: performBeforeClosingAccountDeletionScreen,
+                                       completion: completion)
+    }
+}
+
+#if canImport(ProtonCoreServices)
 public extension AccountDeletion {
     static var defaultButtonName: String {
-        CoreString._ad_delete_account_button
+        ADTranslation.delete_account_button.l10n
     }
-    
+
     static var defaultExplanationMessage: String {
-        CoreString._ad_delete_account_message
+        ADTranslation.delete_account_message.l10n
     }
 }
 #endif
@@ -104,18 +118,18 @@ final class CanDeleteRequest: Request {
 final class CanDeleteResponse: Response {}
 
 public final class AccountDeletionService {
-    
+
     private let api: APIService
     private let doh: DoHInterface
     private let authenticator: Authenticator
     private let preferredLanguage: String
 
-    #if canImport(ProtonCore_Services)
+    #if canImport(ProtonCoreServices)
     public convenience init(api: APIService, preferredLanguage: String = NSLocale.autoupdatingCurrent.identifier) {
         self.init(api: api, doh: api.dohInterface, preferredLanguage: preferredLanguage)
     }
     #endif
-    
+
     @available(*, deprecated, message: "this will be removed. use initializer with doh: DoHInterface type")
     init(api: APIService, doh: DoHInterface & ServerConfig, preferredLanguage: String = NSLocale.autoupdatingCurrent.identifier) {
         self.api = api
@@ -123,7 +137,7 @@ public final class AccountDeletionService {
         self.preferredLanguage = preferredLanguage
         self.authenticator = Authenticator(api: api)
     }
-    
+
     init(api: APIService, doh: DoHInterface, preferredLanguage: String = NSLocale.autoupdatingCurrent.identifier) {
         self.api = api
         self.doh = doh
@@ -133,6 +147,7 @@ public final class AccountDeletionService {
 
     func initiateAccountDeletionProcess(
         presenter viewController: AccountDeletionViewControllerPresenter,
+        inAppTheme: @escaping () -> InAppTheme = { .default },
         performAfterShowingAccountDeletionScreen: @escaping () -> Void = { },
         performBeforeClosingAccountDeletionScreen: @escaping (@escaping () -> Void) -> Void = { $0() },
         completion: @escaping (Result<AccountDeletionSuccess, AccountDeletionError>) -> Void
@@ -140,24 +155,26 @@ public final class AccountDeletionService {
         api.perform(request: CanDeleteRequest(), response: CanDeleteResponse()) { [self] (_, response: CanDeleteResponse) in
             if let error = response.error {
                 if error.isApiIsBlockedError {
-                    completion(.failure(.apiMightBeBlocked(message: error.networkResponseMessageForTheUser, originalError: error.underlyingError ?? error as NSError)))
+                    completion(.failure(.apiMightBeBlocked(message: error.localizedDescription, originalError: error.underlyingError ?? error as NSError)))
                 } else {
                     completion(.failure(.cannotDeleteYourself(becauseOf: error)))
                 }
             } else {
                 self.forkSession(viewController: viewController,
+                                 inAppTheme: inAppTheme,
                                  performAfterShowingAccountDeletionScreen: performAfterShowingAccountDeletionScreen,
                                  performBeforeClosingAccountDeletionScreen: performBeforeClosingAccountDeletionScreen,
                                  completion: completion)
             }
         }
     }
-    
+
     private func forkSession(viewController: AccountDeletionViewControllerPresenter,
+                             inAppTheme: @escaping () -> InAppTheme,
                              performAfterShowingAccountDeletionScreen: @escaping () -> Void,
                              performBeforeClosingAccountDeletionScreen: @escaping (@escaping () -> Void) -> Void,
                              completion: @escaping (Result<AccountDeletionSuccess, AccountDeletionError>) -> Void) {
-        authenticator.forkSession { [self] result in
+        authenticator.forkSession(useCase: .forAccountDeletion) { [self] result in
             switch result {
             case let .failure(.apiMightBeBlocked(message, originalError)):
                 completion(.failure(.apiMightBeBlocked(message: message, originalError: originalError)))
@@ -167,6 +184,7 @@ public final class AccountDeletionService {
                 handleSuccessfullyForkedSession(
                     selector: response.selector,
                     over: viewController,
+                    inAppTheme: inAppTheme,
                     performAfterShowingAccountDeletionScreen: performAfterShowingAccountDeletionScreen,
                     performBeforeClosingAccountDeletionScreen: performBeforeClosingAccountDeletionScreen,
                     completion: completion
@@ -174,10 +192,11 @@ public final class AccountDeletionService {
             }
         }
     }
-    
+
     private func handleSuccessfullyForkedSession(
         selector: String,
         over: AccountDeletionViewControllerPresenter,
+        inAppTheme: @escaping () -> InAppTheme,
         performAfterShowingAccountDeletionScreen: @escaping () -> Void,
         performBeforeClosingAccountDeletionScreen: @escaping (@escaping () -> Void) -> Void,
         completion: @escaping (Result<AccountDeletionSuccess, AccountDeletionError>) -> Void
@@ -190,6 +209,6 @@ public final class AccountDeletionService {
                                                  completion: completion)
         let viewController = AccountDeletionWebView(viewModel: viewModel)
         viewController.stronglyKeptDelegate = self
-        present(vc: viewController, over: over, completion: performAfterShowingAccountDeletionScreen)
+        present(vc: viewController, over: over, inAppTheme: inAppTheme, completion: performAfterShowingAccountDeletionScreen)
     }
 }

@@ -20,11 +20,11 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Doh
+import ProtonCoreDoh
 
 public protocol VerificationModifiable: AnyObject, ServerConfig {
     var _humanVerificationV3Host: String { get set }
-    func replacingHumanVerificationV3Host(with host:String) -> Self
+    func replacingHumanVerificationV3Host(with host: String) -> Self
 }
 
 extension VerificationModifiable {

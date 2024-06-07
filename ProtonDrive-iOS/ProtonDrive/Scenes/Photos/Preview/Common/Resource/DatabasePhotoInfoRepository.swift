@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import CoreData
 import Combine
 import Foundation
 import PDCore
@@ -22,6 +23,7 @@ import PDCore
 final class DatabasePhotoInfoRepository: PhotoInfoRepository {
     private let storage: StorageManager
     private let photoSubject = PassthroughSubject<PhotoInfo, Never>()
+    private let managedObjectContext: NSManagedObjectContext
 
     var photo: AnyPublisher<PhotoInfo, Never> {
         photoSubject
@@ -31,12 +33,12 @@ final class DatabasePhotoInfoRepository: PhotoInfoRepository {
 
     init(storage: StorageManager) {
         self.storage = storage
+        managedObjectContext = storage.newBackgroundContext()
     }
 
     func execute(with id: PhotoId) {
-        let managedObjectContext = storage.backgroundContext
-        managedObjectContext.perform {
-            guard let photo = try? self.storage.fetchPhoto(id: id, moc: managedObjectContext) else {
+        managedObjectContext.perform { [weak self] in
+            guard let self, let photo = try? self.storage.fetchPhoto(id: id, moc: self.managedObjectContext) else {
                 return
             }
 

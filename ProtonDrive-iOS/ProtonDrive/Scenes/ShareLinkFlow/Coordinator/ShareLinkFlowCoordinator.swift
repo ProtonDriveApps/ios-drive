@@ -34,6 +34,24 @@ final class ShareLinkFlowCoordinator {
     }
 }
 
+enum ShareLinkIdFlowCoordinatorError: Error {
+    case missingNode
+}
+
+final class ShareLinkIdFlowCoordinator {
+    typealias Context = (id: NodeIdentifier, tower: Tower, rootViewModel: RootViewModel)
+
+    @discardableResult
+    func start(_ context: Context) throws -> some View {
+        let tower = context.tower
+        guard let node = tower.storage.fetchNode(id: context.id, moc: tower.storage.mainContext) else {
+            throw ShareLinkIdFlowCoordinatorError.missingNode
+        }
+        return AuxiliaryView(node: node, tower: tower)
+            .environmentObject(context.rootViewModel)
+    }
+}
+
 private struct AuxiliaryView: View {
     let node: Node
     let tower: Tower

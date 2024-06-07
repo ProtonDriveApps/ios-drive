@@ -25,11 +25,22 @@ public struct AvailableHashesParameters: Codable {
     var Hashes: [String]
 }
 
-struct AvailableHashesEndpoint: Endpoint {
-    public struct Response: Codable {
-        var code: Int
-        var availableHashes: [String]
+public struct AvailableHashesResponse: Codable {
+    public struct Photo: Codable {
+        public let hash: String
     }
+
+    public struct PhotosHashes: Codable {
+        public let deletedHashes: [Photo]
+    }
+
+    public let code: Int
+    public let availableHashes: [String]
+    public let photos: PhotosHashes?
+}
+
+struct AvailableHashesEndpoint: Endpoint {
+    typealias Response = AvailableHashesResponse
     
     var request: URLRequest
     

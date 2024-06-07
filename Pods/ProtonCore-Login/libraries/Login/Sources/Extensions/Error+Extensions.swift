@@ -20,8 +20,8 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_Networking
-import ProtonCore_Services
+import ProtonCoreNetworking
+import ProtonCoreServices
 
 extension LoginError {
     public var description: String {
@@ -52,6 +52,8 @@ extension LoginError {
             return ""
         case .missingSubUserConfiguration:
             return ""
+        case .invalid2FAKey:
+            return ""
         }
     }
 }
@@ -62,23 +64,23 @@ public extension AuthErrors {
         switch self {
         case .networkingError(let responseError) where responseError.httpCode == 401:
             return .invalidAccessToken(message: responseError.localizedDescription)
-            
+
         case .networkingError(let responseError) where responseError.responseCode == 8002:
             return in2FAContext
                 ? .invalid2FACode(message: responseError.localizedDescription)
                 : .invalidCredentials(message: responseError.localizedDescription)
-            
+
         case let .apiMightBeBlocked(message, originalError):
             return .apiMightBeBlocked(message: message, originalError: originalError)
-            
+
         case let .externalAccountsNotSupported(message, title, originalError):
             return .externalAccountsNotSupported(message: message, title: title, originalError: originalError)
-            
+
         case .networkingError(let responseError):
-            return .generic(message: responseError.networkResponseMessageForTheUser,
+            return .generic(message: responseError.localizedDescription,
                             code: codeInNetworking,
                             originalError: responseError)
-            
+
         default:
             return .generic(message: userFacingMessageInNetworking,
                             code: codeInNetworking,
@@ -88,7 +90,8 @@ public extension AuthErrors {
 
     func asAvailabilityError() -> AvailabilityError {
         switch self {
-        case .networkingError(let responseError) where responseError.responseCode == 12106:
+        case .networkingError(let responseError)
+            where responseError.responseCode == 2500 || responseError.responseCode == 12106:
             return .notAvailable(message: localizedDescription)
         case let .apiMightBeBlocked(message, originalError):
             return .apiMightBeBlocked(message: message, originalError: originalError)

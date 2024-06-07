@@ -15,8 +15,17 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import CoreData
+
 class PhotoRevisionCommitterOperationFactory: RevisionCommitterOperationFactory {
+    private let finishResource: PhotoUploadFinishResource
+
+    init(cloudRevisionCommitter: CloudRevisionCommitter, uploadedRevisionChecker: UploadedRevisionChecker, signersKitFactory: SignersKitFactoryProtocol, moc: NSManagedObjectContext, finishResource: PhotoUploadFinishResource) {
+        self.finishResource = finishResource
+        super.init(cloudRevisionCommitter: cloudRevisionCommitter, uploadedRevisionChecker: uploadedRevisionChecker, signersKitFactory: signersKitFactory, moc: moc)
+    }
+
     override func makeRevisionCommitter() -> RevisionCommitter {
-        NewPhotoRevisionCommiter(cloudRevisionCommiter: cloudRevisionCommitter, signersKitFactory: signersKitFactory, moc: moc)
+        NewPhotoRevisionCommitter(cloudRevisionCommitter: cloudRevisionCommitter, uploadedRevisionChecker: uploadedRevisionChecker, signersKitFactory: signersKitFactory, moc: moc, finishResource: finishResource)
     }
 }

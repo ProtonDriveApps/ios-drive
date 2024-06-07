@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 public enum ActionBarButtonViewModel: Int {
     case createFolder
@@ -26,6 +26,8 @@ public enum ActionBarButtonViewModel: Int {
     case restoreMultiple
     case moveMultiple
     case offlineAvailableMultiple
+    case share
+    case shareNative
     
     // MARK: - Properties
     
@@ -38,6 +40,8 @@ public enum ActionBarButtonViewModel: Int {
         case .restoreMultiple: return nil
         case .cancel: return nil
         case .deleteMultiple: return nil
+        case .share: return IconProvider.link
+        case .shareNative: return IconProvider.arrowUpFromSquare
         }
     }
     
@@ -50,6 +54,8 @@ public enum ActionBarButtonViewModel: Int {
         case .moveMultiple: return "ActionBar.Button.MoveMultiple"
         case .offlineAvailableMultiple: return "ActionBar.Button.OfflineAvailableMultiple"
         case .deleteMultiple: return "ActionBar.Button.DeleteMultiple"
+        case .share: return "ActionBar.Button.Share"
+        case .shareNative: return "ActionBar.Button.ShareNative"
         }
     }
     
@@ -77,7 +83,7 @@ public enum ActionBarButtonViewModel: Int {
     var isBold: Bool {
         switch self {
         case .trashMultiple, .cancel: return false
-        case .deleteMultiple, .restoreMultiple, .createFolder, .moveMultiple, .offlineAvailableMultiple: return true
+        case .deleteMultiple, .restoreMultiple, .createFolder, .moveMultiple, .offlineAvailableMultiple, .share, .shareNative: return true
         }
     }
 }

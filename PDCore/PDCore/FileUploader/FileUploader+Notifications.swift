@@ -22,6 +22,14 @@ public extension Notification.Name {
         Notification.Name("ch.protonmail.protondrive.uploadFiles")
     }
 
+    static var backgroundPhotosProcessing: Notification.Name {
+        Notification.Name("ch.protonmail.protondrive.photosProcessing")
+    }
+
+    static var didCheckPhotoInGallery: Notification.Name {
+        Notification.Name("ch.protonmail.protondrive.didCheckPhotoInGallery")
+    }
+
     static var didFindIssueOnFileUpload: Notification.Name {
         Notification.Name("ch.protonmail.protondrive.didFindIssueOnFileUpload")
     }
@@ -30,7 +38,39 @@ public extension Notification.Name {
         Notification.Name("ch.protonmail.protondrive.didInterruptOnFileUpload")
     }
 
-    static var restartUploadExpired: Notification.Name {
-        Notification.Name("ch.protonmail.protondrive.restartUploadExpired")
+    static var didFinishStartUploadOperation: Notification.Name {
+        Notification.Name("ch.protonmail.protondrive.didFinishStartUploadOperation")
+    }
+
+    static var didImportPhotos: Notification.Name {
+        Notification.Name("ch.protonmail.protondrive.didImportPhotos")
+    }
+
+    static var uploadPendingPhotos: Notification.Name {
+        Notification.Name("ch.protonmail.protondrive.uploadPendingPhotos")
+    }
+
+    static var didUploadFile: Notification.Name {
+        Notification.Name("ch.protonmail.protondrive.didUploadFile")
+    }
+
+    static var didUploadPhoto: Notification.Name {
+        Notification.Name("ch.protonmail.protondrive.didUploadPhoto")
+    }
+
+    static var operationStart: Notification.Name {
+        Notification.Name("ch.protonmail.protondrive.operationStart")
+    }
+
+    static var operationEnd: Notification.Name {
+        Notification.Name("ch.protonmail.protondrive.operationEnd")
+    }
+
+    static var logCollectionEnabled: Notification.Name {
+        Notification.Name("ch.protonmail.protondrive.logCollectionEnabled")
+    }
+
+    static var logCollectionDisabled: Notification.Name {
+        Notification.Name("ch.protonmail.protondrive.logCollectionDisabled")
     }
 }

@@ -21,56 +21,108 @@ import PDCore
 import UniformTypeIdentifiers
 
 public class NodeItem: NSObject, NSFileProviderItem {
-    
-    public init(node: Node) {
-        if let folder = node as? Folder, folder.isRoot { // root
-            self.itemIdentifier = .rootContainer
-            self.parentItemIdentifier = .rootContainer
-        } else if node.state == .deleted {
-            self.itemIdentifier = .init(node.identifier)
-            self.parentItemIdentifier = .trashContainer
-        } else if node.parentLink?.parentLink == nil { // in root
-            self.itemIdentifier = .init(node.identifier)
-            self.parentItemIdentifier = .rootContainer
-        } else { // in folder
-            self.itemIdentifier = .init(node.identifier)
-            self.parentItemIdentifier = .init(node.parentLink!.identifier)
+
+    public init(node: Node) throws {
+        guard let moc = node.moc else {
+            Log.error("Attempting to create NodeItem when node's moc is nil (node has been deleted)", domain: .fileProvider)
+            fatalError()
         }
-        
+
+        var itemIdentifier: NSFileProviderItemIdentifier!
+        var parentItemIdentifier: NSFileProviderItemIdentifier!
+        var contentType: UTType!
+        var isTrashed: Bool!
+        var isUploaded: Bool!
+        var isDownloaded: Bool!
+        var filename: String!
+        var creationDate: Date!
+        var contentModificationDate: Date!
+        var documentSize: NSNumber!
+        var isShared: Bool!
+        var childItemCount: NSNumber!
+        var capabilities: NSFileProviderItemCapabilities!
+        var contentVersion: Data!
+
+        try moc.performAndWait {
+            filename = try node.decryptName()
+            
+            if let folder = node as? Folder, folder.isRoot { // root
+                itemIdentifier = .rootContainer
+                parentItemIdentifier = .rootContainer
+            } else if node.state == .deleted {
+                itemIdentifier = .init(node.identifier)
+                // this is a workaround so that the deleted items are not visible anywhere
+                // neither in the trash nor in the domain
+                parentItemIdentifier = .init(rawValue: "")
+            } else if node.parentLink?.parentLink == nil { // in root
+                itemIdentifier = .init(node.identifier)
+                parentItemIdentifier = .rootContainer
+            } else { // in folder
+                itemIdentifier = .init(node.identifier)
+                parentItemIdentifier = .init(node.parentLink!.identifier)
+            }
+
+            let uti = UTType(mimeType: node.mimeType) ?? .data
+            contentType = (node is Folder) ? .folder : uti
+
+            isTrashed = node.state == .deleted
+
+            isUploaded = node.state == .active
+            isDownloaded = node.isDownloaded
+            creationDate = node.createdDate
+
+            let activeRevision = (node as? File)?.activeRevision
+            if let activeRevision,
+               let created = try? ISO8601DateFormatter().date(activeRevision.decryptedExtendedAttributes().common?.modificationTime) ?? activeRevision.created {
+                contentModificationDate = created
+            } else {
+                contentModificationDate = node.modifiedDate
+            }
+
+            if let activeRevision,
+               let size = try? activeRevision.decryptedExtendedAttributes().common?.size {
+                documentSize = NSNumber(value: size)
+            } else {
+                documentSize = NSNumber(value: node.size)
+            }
+
+            // Root item should not be a shared item
+            isShared = node.directShares.first(where: \.isMain) == nil ? node.isShared : false
+
+            if let folder = node as? Folder {
+                childItemCount = .init(value: folder.children.count)
+            }
+
+            capabilities = NodeItem.capabilities(node)
+
+            contentVersion = ContentVersion(node: node).encoded()
+        }
+
+        self.itemIdentifier = itemIdentifier
+        self.parentItemIdentifier = parentItemIdentifier
+
         self.capabilities = []
         self.itemVersion = .init()
-        let uti = UTType(mimeType: node.mimeType) ?? .data
-        self.contentType = (node is Folder) ? .folder : uti
+        self.contentType = contentType
 
         #if os(iOS)
-        self.isTrashed = node.state == .deleted
+        self.isTrashed = isTrashed
         #endif
-        
-        self.isUploaded = node.state == .active
-        self.isDownloaded = node.isDownloaded
-        self.filename = node.decryptedName
-        self.creationDate = node.createdDate
-        self.contentModificationDate = node.modifiedDate
-        self.documentSize = .init(value: node.size)
-        // Root item should not be a shared item
-        self.isShared = node.directShares.first(where: \.isMain) == nil ? node.isShared : false
-        
-        if let folder = node as? Folder {
-            self.childItemCount = .init(value: folder.children.count)
-        }
+
+        self.isUploaded = isUploaded
+        self.isDownloaded = isDownloaded
+        self.filename = filename
+        self.creationDate = creationDate
+        self.contentModificationDate = contentModificationDate
+        self.documentSize = documentSize
+        self.isShared = isShared
+        self.childItemCount = childItemCount
+        self.capabilities = capabilities
 
         super.init()
-        
-        self.capabilities = self.capabilities(node)
-        
-        let contentVersion = self.contentVersion(node).encoded()
+
         let metadataVersion = self.metadataVersion().encoded()
         self.itemVersion = .init(contentVersion: contentVersion, metadataVersion: metadataVersion)
-    }
-
-    public convenience init(node: Node, filename: String) {
-        self.init(node: node)
-        self.filename = filename
     }
 
     public init(item: NSFileProviderItem, filename: String) {
@@ -129,12 +181,7 @@ public class NodeItem: NSObject, NSFileProviderItem {
         return MetadataVersion(item: self)
     }
     
-    /// Content version of a file is active revision id
-    private func contentVersion(_ node: Node) -> ContentVersion {
-        return ContentVersion(node: node)
-    }
-    
-    private func capabilities(_ node: Node) -> NSFileProviderItemCapabilities {
+    private static func capabilities(_ node: Node) -> NSFileProviderItemCapabilities {
         // all but writing
         var capabilities: NSFileProviderItemCapabilities = [.allowsReading, .allowsReparenting, .allowsRenaming, .allowsTrashing, .allowsDeleting]
         

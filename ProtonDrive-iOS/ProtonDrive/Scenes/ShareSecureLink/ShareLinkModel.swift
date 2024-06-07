@@ -42,6 +42,17 @@ final class ShareLinkModel {
         self.sharedLink = sharedLinkSubject.value
         self.shareURLID = sharedLinkSubject.value.id
         self.shareID = sharedLinkSubject.value.shareID
+
+        runChecksOnNode(node)
+    }
+
+    func runChecksOnNode(_ node: Node) {
+        guard let moc = node.moc  else { return }
+
+        moc.perform {
+            let share = node.primaryDirectShare
+            _ = try? share?.decryptPassphrase()
+        }
     }
 
     var name: String {

@@ -15,7 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import ProtonCore_Settings
+import PDCore
+import PMSettings
 import SwiftUI
 import UIKit
 
@@ -23,23 +24,30 @@ struct PhotosSettingsFactory {
     func makeSettingsCell(
         settingsController: PhotoBackupSettingsController,
         authorizationController: PhotoLibraryAuthorizationController,
-        bootstrapController: PhotosBootstrapController
+        bootstrapController: PhotosBootstrapController,
+        tower: Tower
     ) -> PMCellSuplier {
         let viewModel = PhotosSettingsRowViewModel(settingsController: settingsController)
         return PMDrillDownConfiguration(viewModel: viewModel) {
-            makeSettingsView(settingsController: settingsController, authorizationController: authorizationController, bootstrapController: bootstrapController)
+            makeSettingsView(settingsController: settingsController, authorizationController: authorizationController, bootstrapController: bootstrapController, tower: tower)
         }
     }
 
     private func makeSettingsView(
         settingsController: PhotoBackupSettingsController,
         authorizationController: PhotoLibraryAuthorizationController,
-        bootstrapController: PhotosBootstrapController
+        bootstrapController: PhotosBootstrapController,
+        tower: Tower
     ) -> UIViewController {
-        let factory = PhotosSettingsFactory()
         let startController = LocalPhotosBackupStartController(settingsController: settingsController, authorizationController: authorizationController, photosBootstrapController: bootstrapController)
         let viewModel = PhotosSettingsViewModel(settingsController: settingsController, startController: startController)
-        let view = PhotosSettingsView(viewModel: viewModel)
+        #if HAS_QA_FEATURES
+        let diagnosticsFactory = PhotosDiagnosticsFactory()
+        let diagnosticView = diagnosticsFactory.makeView(tower: tower, settingsController: settingsController)
+        let view = PhotosSettingsView(viewModel: viewModel, diagnosticsView: diagnosticView)
+        #else
+        let view = PhotosSettingsView(viewModel: viewModel, diagnosticsView: EmptyView())
+        #endif
         return UIHostingController(rootView: view)
     }
 }

@@ -62,12 +62,16 @@ final class URLSessionStreamBlockUploader: URLSessionContentUploader {
         guard !isCancelled else { return }
 
         guard let credential = credentialProvider.clientCredential() else {
-            return completion(.failure(UploaderErrors.noCredentialInCloudSlot))
+            return completion(.failure(FileUploaderError.noCredentialFound))
         }
 
         self.completion = completion
 
         do {
+            guard FileManager.default.fileExists(atPath: localURL.path) else {
+                throw ContentCleanedError(area: .block)
+            }
+
             let endpoint = try UploadBlockFromFileEndpoint(url: remoteURL, data: localURL, chunkSize: Constants.maxBlockChunkSize, credential: credential, service: service)
             reader = try FileHandle(forReadingFrom: endpoint.onDiskUrl)
 
@@ -115,7 +119,7 @@ final class URLSessionStreamBlockUploader: URLSessionContentUploader {
                 guard let self = self,
                       self.canWrite else { return }
 
-                guard let messageData = self.reader?.readData(ofLength: Config.chunkForUploadingStream),
+                guard let messageData = try? self.reader?.read(upToCount: Config.chunkForUploadingStream),
                       case let messageCount = messageData.count,
                       messageCount != 0 else {
                     self.boundStreams.output.close()
@@ -134,7 +138,7 @@ final class URLSessionStreamBlockUploader: URLSessionContentUploader {
 
     private func closeStream() {
         timer?.invalidate()
-        reader?.closeFile()
+        try? reader?.close()
 
         if let preparedDataUrl = self.preparedDataURL {
             try? FileManager.default.removeItem(at: preparedDataUrl)
@@ -216,7 +220,8 @@ extension URLSessionStreamBlockUploader {
     private func saveUploadedBlockState() {
         guard let moc = uploadBlock.moc else { return }
 
-        moc.performAndWait {
+        moc.performAndWait { [weak self] in
+            guard let self, !self.isCancelled else { return }
             do {
                 uploadBlock.isUploaded = true
                 try moc.saveOrRollback()

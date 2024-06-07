@@ -20,33 +20,36 @@ import CoreData
 import PDCore
 
 final class LocalPhotosRepository: PhotosRepository {
-    private let storageManager: StorageManager
-    private let managedObjectContext: NSManagedObjectContext
-    private let observer: FetchedObjectsObserver<Photo>
+    private let observer: FetchedResultsSectionsController<Photo>
+    private let mimeTypeResource: MimeTypeResource
+    private let offlineAvailableResource: OfflineAvailableResource
     private var cancellables = Set<AnyCancellable>()
     private let subject = PassthroughSubject<[PhotosSection], Never>()
     private let backgroundQueue = DispatchQueue(label: "LocalPhotosRepository", qos: .userInteractive)
+
+    private var managedObjectContext: NSManagedObjectContext {
+        observer.managedObjectContext
+    }
 
     var updatePublisher: AnyPublisher<[PhotosSection], Never> {
         subject.eraseToAnyPublisher()
     }
 
-    init(storageManager: StorageManager) {
-        self.storageManager = storageManager
-        managedObjectContext = storageManager.backgroundContext
-        let fetchedController = storageManager.subscriptionToPrimaryUploadedPhotos(moc: managedObjectContext)
-        observer = FetchedObjectsObserver(fetchedController)
+    init(observer: FetchedResultsSectionsController<Photo>, mimeTypeResource: MimeTypeResource, offlineAvailableResource: OfflineAvailableResource) {
+        self.observer = observer
+        self.mimeTypeResource = mimeTypeResource
+        self.offlineAvailableResource = offlineAvailableResource
         subscribeToUpdates()
         observer.start()
     }
 
     private func subscribeToUpdates() {
-        observer.objectWillChange
-            .receive(on: backgroundQueue)
-            .map { [weak self] in
+        Publishers.CombineLatest(observer.objectWillChange, offlineAvailableResource.inProgressIds)
+            .throttle(for: .milliseconds(250), scheduler: backgroundQueue, latest: true)
+            .map { [weak self] update -> [PhotosSection] in
                 guard let self = self else { return [] }
                 let sections = self.observer.getSections()
-                return sections.compactMap { self.makeSection(from: $0) }
+                return sections.compactMap { self.makeSection(from: $0, downloadingIds: update.1) }
             }
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
@@ -56,23 +59,36 @@ final class LocalPhotosRepository: PhotosRepository {
             .store(in: &cancellables)
     }
 
-    private func makeSection(from photos: [Photo]) -> PhotosSection? {
+    private func makeSection(from photos: [Photo], downloadingIds: DownloadingPhotoIds) -> PhotosSection? {
         return managedObjectContext.performAndWait {
-            let models = photos.map(makePhoto)
+            let models = photos.compactMap { makePhoto(from: $0, downloadingIds: downloadingIds) }
             guard !models.isEmpty else {
                 return nil
             }
-            return PhotosSection(month: photos[0].captureTime, photos: models)
+            guard let month = getMonth(from: photos) else {
+                return nil
+            }
+            return PhotosSection(month: month, photos: models)
         }
     }
 
-    private func makePhoto(from photo: Photo) -> PhotosSection.Photo {
-        let duration = makeDuration(from: photo)
-        return PhotosSection.Photo(id: photo.identifier, duration: duration)
+    private func getMonth(from photos: [Photo]) -> Date? {
+        guard let firstPhoto = photos.first(where: { $0.managedObjectContext != nil }) else {
+            return nil
+        }
+        return firstPhoto.captureTime
     }
 
-    private func makeDuration(from photo: Photo) -> UInt? {
-        let duration = try? photo.photoRevision.decryptExtendedAttributes().media?.duration
-        return duration.map { UInt($0) }
+    private func makePhoto(from photo: Photo, downloadingIds: DownloadingPhotoIds) -> PhotosSection.Photo? {
+        guard photo.managedObjectContext != nil else { return nil }
+        let isVideo = mimeTypeResource.isVideo(mimeType: photo.mimeType)
+        return PhotosSection.Photo(
+            id: photo.identifier,
+            isShared: photo.isShared,
+            isVideo: isVideo,
+            captureTime: photo.captureTime,
+            isAvailableOffline: photo.isMarkedOfflineAvailable && photo.isDownloaded,
+            isDownloading: photo.isMarkedOfflineAvailable && downloadingIds.contains(photo.id)
+        )
     }
 }

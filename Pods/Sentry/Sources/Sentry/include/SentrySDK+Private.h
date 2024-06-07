@@ -5,7 +5,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface
-SentrySDK (Private)
+SentrySDK ()
 
 + (void)captureCrashEvent:(SentryEvent *)event;
 
@@ -16,14 +16,20 @@ SentrySDK (Private)
  */
 @property (nonatomic, class) BOOL crashedLastRunCalled;
 
++ (void)setDetectedStartUpCrash:(BOOL)value;
+
 + (void)setAppStartMeasurement:(nullable SentryAppStartMeasurement *)appStartMeasurement;
 
 + (nullable SentryAppStartMeasurement *)getAppStartMeasurement;
 
 @property (nonatomic, class) NSUInteger startInvocations;
+@property (nullable, nonatomic, class) NSDate *startTimestamp;
 
 + (SentryHub *)currentHub;
 
+/**
+ * The option used to start the SDK
+ */
 @property (nonatomic, nullable, readonly, class) SentryOptions *options;
 
 /**
@@ -35,18 +41,6 @@ SentrySDK (Private)
  * Needed by hybrid SDKs as react-native to synchronously capture an envelope.
  */
 + (void)captureEnvelope:(SentryEnvelope *)envelope;
-
-/**
- * Start a transaction with a name and a name source.
- */
-+ (id<SentrySpan>)startTransactionWithName:(NSString *)name
-                                nameSource:(SentryTransactionNameSource)source
-                                 operation:(NSString *)operation;
-
-+ (id<SentrySpan>)startTransactionWithName:(NSString *)name
-                                nameSource:(SentryTransactionNameSource)source
-                                 operation:(NSString *)operation
-                               bindToScope:(BOOL)bindToScope;
 
 @end
 

@@ -19,23 +19,19 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
-import Foundation
-import ProtonCore_Log
-import ProtonCore_Login
+#if os(iOS)
 
-final class TwoFactorViewModel {
+import Foundation
+import ProtonCoreLog
+import ProtonCoreLogin
+
+public final class TwoFactorViewModel: ObservableObject {
     enum Mode {
         case twoFactorCode
         case recoveryCode
     }
 
-    enum TwoFactorResult {
-        case done(LoginData)
-        case mailboxPasswordNeeded
-        case createAddressNeeded(CreateAddressData, String?)
-    }
-
-    // MARK: - Properties
+     // MARK: - Properties
 
     let finished = Publisher<TwoFactorResult>()
     let error = Publisher<LoginError>()
@@ -43,9 +39,13 @@ final class TwoFactorViewModel {
     let mode = Observable<Mode>(.twoFactorCode)
 
     private let login: Login
+    let username: String
+    let password: String
 
-    init(login: Login) {
+    init(login: Login, username: String, password: String) {
         self.login = login
+        self.username = username
+        self.password = password
     }
 
     // MARK: - Actions
@@ -67,24 +67,25 @@ final class TwoFactorViewModel {
                 case let .finished(data):
                     self?.finished.publish(.done(data))
                 case let .chooseInternalUsernameAndCreateInternalAddress(data):
-                    self?.login.checkUsernameFromEmail(email: data.email) { [weak self] result in
-                        switch result {
-                        case .failure(let error):
-                            self?.error.publish(.generic(message: error.messageForTheUser, code: error.bestShotAtReasonableErrorCode, originalError: error))
-                        case .success(let defaultUsername):
-                            self?.finished.publish(.createAddressNeeded(data, defaultUsername))
-                        }
+                    self?.login.availableUsernameForExternalAccountEmail(email: data.email) { [weak self] username in
+                        self?.finished.publish(.createAddressNeeded(data, username))
                         self?.isLoading.value = false
                     }
-                case .ask2FA:
-                    PMLog.error("Asking for 2FA code password after successful 2FA code is an invalid state")
+                case .askTOTP, .askAny2FA, .askFIDO2:
+                    PMLog.error("Asking for 2FA validation after successful 2FA validation is an invalid state", sendToExternal: true)
                     self?.error.publish(.invalidState)
                     self?.isLoading.value = false
                 case .askSecondPassword:
                     self?.finished.publish(.mailboxPasswordNeeded)
+                    self?.isLoading.value = false
+                case .ssoChallenge:
+                    PMLog.error("Receiving SSO challenge after successful 2FA code is an invalid state", sendToExternal: true)
+                    self?.error.publish(.invalidState)
                     self?.isLoading.value = false
                 }
             }
         }
     }
 }
+
+#endif

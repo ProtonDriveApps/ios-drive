@@ -16,25 +16,33 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import ProtonCoreCrypto
 
 extension Revision {
     enum Errors: Error {
-        case noBlocks, noFileMeta, cancelled
+        case noBlocks
+        case noFileMeta
+        case cancelled
         case noManifestSignature
         case noSignatureAddress
     }
     
     public func blocksAreValid() -> Bool {
-        guard !self.blocks.isEmpty else {
+        guard let moc = self.moc else {
             return false
         }
-        for block in self.blocks {
-            guard let localUrl = block.localUrl, FileManager.default.fileExists(atPath: localUrl.path) else {
+        return moc.performAndWait {
+            guard !self.blocks.isEmpty else {
                 return false
             }
+            for block in self.blocks {
+                guard let localUrl = block.localUrl, FileManager.default.fileExists(atPath: localUrl.path) else {
+                    return false
+                }
+            }
+            
+            return true
         }
-        
-        return true
     }
     
     // when we do not care of cancelling
@@ -43,33 +51,47 @@ extension Revision {
         return try self.decryptFile(isCancelled: &isCancelled)
     }
     
-    // when we may want to canel
+    // when we may want to cancel
     public func decryptFile(isCancelled: inout Bool) throws -> URL {
         // For GA we just silently let the decryption pass
         do {
             try checkManifestSignatureForDownloadedRevisions()
         } catch {
-            ConsoleLogger.shared?.log(SignatureError(error, "Revision"))
+            Log.error(SignatureError(error, "Revision", description: "RevisionID: \(id) \nLinkID: \(file.id) \nShareID: \(file.shareID)"), domain: .encryption)
         }
 
         if Constants.runningInExtension {
             do {
                 return try decryptFileInStream(isCancelled: &isCancelled)
             } catch {
-                ConsoleLogger.shared?.log(DecryptionError(error, "Revision - stream"))
+                Log.error(DecryptionError(error, "Revision - stream", description: "RevisionID: \(id) \nLinkID: \(file.id) \nShareID: \(file.shareID)"), domain: .encryption)
                 throw error
             }
         } else {
             do {
                 return try decryptFileInMemory(isCancelled: &isCancelled)
             } catch {
-                ConsoleLogger.shared?.log(DecryptionError(error, "Revision"))
+                Log.error(DecryptionError(error, "Revision", description: "RevisionID: \(id) \nLinkID: \(file.id) \nShareID: \(file.shareID)"), domain: .encryption)
                 throw error
             }
         }
     }
 
-    public func decryptExtendedAttributes() throws -> ExtendedAttributes {
+    public func decryptedExtendedAttributes() throws -> ExtendedAttributes {
+        guard let moc = self.moc else {
+            throw Revision.noMOC()
+        }
+
+        return try moc.performAndWait {
+            return try unsafeDecryptedExtendedAttributes()
+        }
+    }
+
+    public func unsafeDecryptedExtendedAttributes() throws -> ExtendedAttributes {
+        return try clearXAttributes ?? decryptExtendedAttributes()
+    }
+
+    private func decryptExtendedAttributes() throws -> ExtendedAttributes {
         do {
             guard let xAttributes = xAttributes else {
                 throw Errors.noFileMeta
@@ -89,16 +111,18 @@ extension Revision {
             switch decrypted {
             case .verified(let attributes):
                 let xAttr = try JSONDecoder().decode(ExtendedAttributes.self, from: attributes)
+                clearXAttributes = xAttr
                 return xAttr
 
             case .unverified(let attributes, let error):
-                ConsoleLogger.shared?.log(SignatureError(error, "ExtendedAttributes"))
+                Log.error(SignatureError(error, "ExtendedAttributes", description: "RevisionID: \(id) \nLinkID: \(file.id) \nShareID: \(file.shareID)"), domain: .encryption)
                 let xAttr = try JSONDecoder().decode(ExtendedAttributes.self, from: attributes)
+                clearXAttributes = xAttr
                 return xAttr
             }
 
         } catch {
-            ConsoleLogger.shared?.log(DecryptionError(error, "ExtendedAttributes"))
+            Log.error(DecryptionError(error, "ExtendedAttributes", description: "RevisionID: \(id) \nLinkID: \(file.id) \nShareID: \(file.shareID)"), domain: .encryption)
             throw error
         }
     }
@@ -122,17 +146,18 @@ extension Revision {
 
         try blocks.first?.decrypt(with: sessionKey).write(to: clearUrl)
         let fileHandle = try FileHandle(forWritingTo: clearUrl)
-        fileHandle.seekToEndOfFile()
+        defer { try? fileHandle.close() }
+        
+        try fileHandle.seekToEnd()
         
         for block in blocks.dropFirst() {
             guard !isCancelled else { break }
             try autoreleasepool {
                 let blockData = try block.decrypt(with: sessionKey)
-                fileHandle.write(blockData)
+                try fileHandle.write(contentsOf: blockData)
             }
         }
         
-        fileHandle.closeFile()
         if isCancelled {
             try? FileManager.default.removeItem(at: clearUrl)
             throw Errors.cancelled
@@ -146,16 +171,19 @@ extension Revision {
         guard !blocks.isEmpty, !isCancelled else {
             throw Errors.noBlocks
         }
-        
-        var clearBlockUrls: [URL] = []
-        for (index, block) in blocks.enumerated() {
-            guard !isCancelled else { break }
-            let clearBlockUrl = try self.clearURL().appendingPathExtension("\(index)")
-            try block.decrypt(to: clearBlockUrl)
-            clearBlockUrls.append(clearBlockUrl)
-        }
-        
+
         let clearFileUrl = try clearURL()
+        var clearBlockUrls: [URL] = []
+        try autoreleasepool {
+            for (index, block) in blocks.enumerated() {
+                guard !isCancelled else { break }
+                let clearBlockUrl = clearFileUrl.appendingPathExtension("\(index)")
+                try block.decrypt(to: clearBlockUrl)
+                clearBlockUrls.append(clearBlockUrl)
+            }
+            Crypto.freeGolangMem()
+        }
+
         try FileManager.default.merge(files: clearBlockUrls, to: clearFileUrl, chunkSize: Constants.maxBlockChunkSize)
         
         if isCancelled {
@@ -168,7 +196,7 @@ extension Revision {
 
     public func clearURL() throws -> URL {
         let filename = try file.decryptName()
-        return PDFileManager.cleartextCacheDirectory.appendingPathComponent(filename)
+        return PDFileManager.prepareUrlForFile(named: filename)
     }
     
     public func restoreAfterInvalidBlocksFound() {
@@ -185,7 +213,7 @@ extension Revision {
             let oldBlocks = self.blocks
             self.blocks.removeAll()
             oldBlocks.forEach(moc.delete)
-            try? moc.save()
+            try? moc.saveWithParentLinkCheck()
         }
     }
 
@@ -193,10 +221,7 @@ extension Revision {
         guard let signatureAddress = signatureAddress else {
             throw Errors.noSignatureAddress
         }
-        guard case let publicKeys = SessionVault.current.getPublicKeys(for: signatureAddress), !publicKeys.isEmpty else {
-            throw SessionVault.Errors.noRequiredAddressKey
-        }
-        return publicKeys
+        return SessionVault.current.getPublicKeys(for: signatureAddress)
     }
 
     private func sortedBlocks() -> [Block] {
@@ -208,13 +233,14 @@ extension Revision {
 
         let revisionCreatorAddressKeys = try getAddressPublicKeysOfRevisionCreator()
 
-        var contentHashes: [Data] = sortedBlocks().compactMap { $0.sha256 }
-        if let base64ThumbnailHash = thumbnailHash,
-           let thumbnailHash = Data(base64Encoded: base64ThumbnailHash) {
-            contentHashes.insert(thumbnailHash, at: 0)
-        }
+        let contentHashes: [Data] = getThumbnailHashes() + sortedBlocks().compactMap { $0.sha256 }
         let localManifest = Data(contentHashes.joined())
 
         try Decryptor.verifyManifestSignature(localManifest, armoredManifestSignature, verificationKeys: revisionCreatorAddressKeys)
+    }
+
+    private func getThumbnailHashes() -> [Data] {
+        let thumbnails = Array(thumbnails).sorted(by: { $0.type.rawValue < $1.type.rawValue })
+        return thumbnails.compactMap(\.sha256)
     }
 }

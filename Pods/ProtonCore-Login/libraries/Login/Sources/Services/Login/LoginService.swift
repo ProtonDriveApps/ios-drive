@@ -20,15 +20,16 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
-import ProtonCore_APIClient
-import ProtonCore_Authentication
-import ProtonCore_Authentication_KeyGeneration
-import ProtonCore_DataModel
-import ProtonCore_Log
-import ProtonCore_Networking
-import ProtonCore_Services
+import ProtonCoreAPIClient
+import ProtonCoreAuthentication
+import ProtonCoreAuthenticationKeyGeneration
+import ProtonCoreDataModel
+import ProtonCoreLog
+import ProtonCoreNetworking
+import ProtonCoreServices
+import ProtonCoreFeatureFlags
 
-public final class LoginService: Login {
+public final class LoginService {
 
     public typealias AuthenticationManager = AuthenticatorInterface & AuthenticatorKeyGenerationInterface
 
@@ -38,10 +39,13 @@ public final class LoginService: Login {
     var sessionId: String { apiService.sessionUID }
     let clientApp: ClientApp
     let manager: AuthenticationManager
-    var context: TwoFactorContext?
+    var totpContext: TOTPContext?
+    var fido2Context: FIDO2Context?
     var mailboxPassword: String?
     public private(set) var minimumAccountType: AccountType
     var username: String?
+
+    let featureFlagsRepository: FeatureFlagsRepositoryProtocol
 
     var defaultSignUpDomain = "proton.me"
     var updatedSignUpDomains: [String]?
@@ -62,10 +66,19 @@ public final class LoginService: Login {
     public var startGeneratingAddress: (() -> Void)?
     public var startGeneratingKeys: (() -> Void)?
 
-    public init(api: APIService, clientApp: ClientApp, minimumAccountType: AccountType, authenticator: AuthenticationManager? = nil) {
+    public var ssoCallbackScheme: String?
+
+    public init(api: APIService,
+                clientApp: ClientApp,
+                minimumAccountType: AccountType,
+                authenticator: AuthenticationManager? = nil,
+                featureFlagsRepository: FeatureFlagsRepositoryProtocol = FeatureFlagsRepository.shared,
+                ssoCallbackScheme: String? = nil) {
         self.apiService = api
         self.minimumAccountType = minimumAccountType
         self.clientApp = clientApp
+        self.featureFlagsRepository = featureFlagsRepository
+        self.ssoCallbackScheme = ssoCallbackScheme
         manager = authenticator ?? Authenticator(api: api)
     }
 
@@ -95,7 +108,7 @@ public final class LoginService: Login {
         apiService.perform(request: route) { (_, result: Result<AvailableDomainResponse, ResponseError>) in
             switch result {
             case .failure(let error):
-                completion(.failure(LoginError.generic(message: error.networkResponseMessageForTheUser,
+                completion(.failure(LoginError.generic(message: error.localizedDescription,
                                                        code: error.bestShotAtReasonableErrorCode,
                                                        originalError: error)))
             case .success(let response):
@@ -103,7 +116,7 @@ public final class LoginService: Login {
             }
         }
     }
-    
+
     public func refreshCredentials(completion: @escaping (Result<Credential, LoginError>) -> Void) {
         withAuthDelegateAvailable(completion) { authManager in
             guard let old = authManager.credential(sessionUID: self.sessionId) else {
@@ -114,7 +127,7 @@ public final class LoginService: Login {
                 switch result {
                 case .failure(let error):
                     completion(.failure(error.asLoginError()))
-                case .success(.ask2FA):
+                case .success(.askTOTP), .success(.ssoChallenge), .success(.askFIDO2), .success(.askAny2FA):
                     completion(.failure(.invalidState))
                 case .success(.newCredential(let credential, _)), .success(.updatedCredential(let credential)):
                     authManager.onUpdate(credential: credential, sessionUID: self.sessionId)
@@ -124,7 +137,7 @@ public final class LoginService: Login {
             }
         }
     }
-    
+
     public func refreshUserInfo(completion: @escaping (Result<User, LoginError>) -> Void) {
         withAuthDelegateAvailable(completion) { authManager in
             guard let credential = authManager.credential(sessionUID: sessionId) else {
@@ -139,27 +152,50 @@ public final class LoginService: Login {
 
     // MARK: - Data gathering entry point
 
-    func handleValidCredentials(credential: Credential, passwordMode: PasswordMode, mailboxPassword: String, completion: @escaping (Result<LoginStatus, LoginError>) -> Void) {
+    func handleValidCredentials(credential: Credential, passwordMode: PasswordMode, mailboxPassword: String?, isSSO: Bool = false, completion: @escaping (Result<LoginStatus, LoginError>) -> Void) {
         self.mailboxPassword = mailboxPassword
         withAuthDelegateAvailable(completion) { authManager in
             authManager.onSessionObtaining(credential: credential)
             self.apiService.setSessionUID(uid: credential.UID)
 
-            manager.getUserInfo { result in
+            manager.getUserInfo { [weak self] result in
+                guard let self else { return }
                 switch result {
                 case .success(let user):
+                    self.featureFlagsRepository.setApiService(self.apiService)
+
+                    if !user.ID.isEmpty {
+                        self.featureFlagsRepository.setUserId(user.ID)
+                    }
+
+                    Task {
+                        try await self.featureFlagsRepository.fetchFlags()
+                    }
+
+                    if isSSO {
+                        var ssoCredential = credential
+                        ssoCredential.userName = user.name ?? ""
+                        completion(.success(.finished(UserData(credential: .init(ssoCredential), user: user, salts: [], passphrases: [:], addresses: [], scopes: credential.scopes))))
+                        return
+                    }
+
                     // This is because of a bug on the API, where accounts with no keys return PasswordMode = 2.
                     // (according to Android code)
                     if passwordMode == .two && !user.keys.isEmpty && self.minimumAccountType != .username {
                         completion(.success(.askSecondPassword))
                         return
                     }
+
                     PMLog.debug("No mailbox password required, finishing up")
+                    guard let mailboxPassword = mailboxPassword else {
+                        completion(.failure(.invalidState))
+                        return
+                    }
                     self.getAccountDataPerformingAccountMigrationIfNeeded(
                         user: user, mailboxPassword: mailboxPassword, passwordMode: passwordMode, completion: completion
                     )
                 case let .failure(error):
-                    PMLog.debug("Getting user info failed with \(error)")
+                    PMLog.error("Getting user info failed with \(error)", sendToExternal: true)
                     completion(.failure(error.asLoginError()))
                 }
             }

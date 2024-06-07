@@ -18,7 +18,7 @@
 import SwiftUI
 import Combine
 import PDUIComponents
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 struct EditLinkView: View {
     @ObservedObject var vm: EditLinkViewModel
@@ -78,12 +78,10 @@ struct EditLinkView: View {
                     datePicker
                         .padding(.trailing)
                         .background(RoundedRectangle(cornerRadius: 10).foregroundColor(ColorProvider.BackgroundSecondary))
-                        .onTapGesture {
-                            vm.hasExpirationDate = true
-                        }
 
                     Toggle("", isOn: $vm.hasExpirationDate)
                         .toggleStyle(SwitchToggleStyle(tint: ColorProvider.InteractionNorm))
+                        .accessibilityIdentifier("EditLinkView.ExpirationDateToggle")
                         .labelsHidden()
                 }
             }
@@ -156,15 +154,20 @@ struct EditLinkView: View {
             if vm.hasExpirationDate {
                 DatePicker("", selection: $vm.expirationDate, in: vm.dateRange, displayedComponents: .date)
                     .datePickerStyle(CompactDatePickerStyle())
+                    .accessibilityIdentifier("EditLinkView.ExpirationDatePicker")
                     .padding(.horizontal)
                     .labelsHidden()
                     .accentColor(ColorProvider.InteractionNorm)
                     .frame(minHeight: 48, alignment: .leading)
             } else {
                 Text(vm.datePickerPlaceholder)
+                    .accessibilityIdentifier("EditLinkView.ExpirationDatePicker.Text")
                     .foregroundColor(ColorProvider.TextHint)
                     .padding(.leading)
                     .frame(minHeight: 48, alignment: .leading)
+                    .onTapGesture {
+                        vm.hasExpirationDate = true
+                    }
             }
 
             Spacer()

@@ -18,7 +18,7 @@ echo "mkdir -p ${CONFIGURATION_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}"
 mkdir -p "${CONFIGURATION_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}"
 
 COCOAPODS_PARALLEL_CODE_SIGN="${COCOAPODS_PARALLEL_CODE_SIGN:-false}"
-SWIFT_STDLIB_PATH="${DT_TOOLCHAIN_DIR}/usr/lib/swift/${PLATFORM_NAME}"
+SWIFT_STDLIB_PATH="${TOOLCHAIN_DIR}/usr/lib/swift/${PLATFORM_NAME}"
 BCSYMBOLMAP_DIR="BCSymbolMaps"
 
 
@@ -176,16 +176,16 @@ code_sign_if_enabled() {
 }
 
 if [[ "$CONFIGURATION" == "Debug" ]]; then
-  install_framework "${PODS_XCFRAMEWORKS_BUILD_DIR}/ProtonCore-OpenPGP/OpenPGP.framework"
+  install_framework "${PODS_XCFRAMEWORKS_BUILD_DIR}/ProtonCore-VCard/VCard.framework"
 fi
 if [[ "$CONFIGURATION" == "Release-External" ]]; then
-  install_framework "${PODS_XCFRAMEWORKS_BUILD_DIR}/ProtonCore-OpenPGP/OpenPGP.framework"
+  install_framework "${PODS_XCFRAMEWORKS_BUILD_DIR}/ProtonCore-VCard/VCard.framework"
 fi
 if [[ "$CONFIGURATION" == "Release-QA" ]]; then
-  install_framework "${PODS_XCFRAMEWORKS_BUILD_DIR}/ProtonCore-OpenPGP/OpenPGP.framework"
+  install_framework "${PODS_XCFRAMEWORKS_BUILD_DIR}/ProtonCore-VCard/VCard.framework"
 fi
 if [[ "$CONFIGURATION" == "Release-Store" ]]; then
-  install_framework "${PODS_XCFRAMEWORKS_BUILD_DIR}/ProtonCore-OpenPGP/OpenPGP.framework"
+  install_framework "${PODS_XCFRAMEWORKS_BUILD_DIR}/ProtonCore-VCard/VCard.framework"
 fi
 if [ "${COCOAPODS_PARALLEL_CODE_SIGN}" == "true" ]; then
   wait

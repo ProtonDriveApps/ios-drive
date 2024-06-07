@@ -16,12 +16,10 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import CoreData
-import os.log
 import Reachability
 import PDClient
 
-public final class OfflineSaver: NSObject, LogObject {
-    public static let osLog: OSLog = .init(subsystem: "ch.protondrive.PDCore", category: "OfflineSaver")
+public final class OfflineSaver: NSObject {
 
     weak var storage: StorageManager?
     weak var downloader: Downloader?
@@ -53,7 +51,7 @@ public final class OfflineSaver: NSObject, LogObject {
             try reachability?.startNotifier()
         } catch let error {
             assert(false, error.localizedDescription)
-            ConsoleLogger.shared?.log(error, osLogType: OfflineSaver.self)
+            Log.error(error, domain: .networking)
         }
     }
     
@@ -98,7 +96,7 @@ public final class OfflineSaver: NSObject, LogObject {
     
     // Check that all marked nodes are downloaded and up to date
     private func checkMarkedAndInheriting(files: [File]) {
-        ConsoleLogger.shared?.log("Marked for Offline Available files: \(files.count)", osLogType: OfflineSaver.self)
+        Log.info("Marked for Offline Available files: \(files.count)", domain: .downloader)
         
         // already downloaded
         files.filter {
@@ -117,9 +115,9 @@ public final class OfflineSaver: NSObject, LogObject {
                 switch $0 {
                 case .success:
                     self.move(file: file, to: .offlineAvailable)
-                    ConsoleLogger.shared?.log("Offline available 1 file", osLogType: OfflineSaver.self)
+                    Log.info("Offline available 1 file", domain: .downloader)
                 case .failure:
-                    ConsoleLogger.shared?.log("Failed to make offline available 1 file", osLogType: OfflineSaver.self)
+                    Log.error("Failed to make offline available 1 file", domain: .downloader)
                 }
             }
         }.forEach { operation in
@@ -129,7 +127,7 @@ public final class OfflineSaver: NSObject, LogObject {
     }
     
     private func checkMarkedAndInheriting(folders: [Folder]) {
-        ConsoleLogger.shared?.log("Marked for Offline Available folders: \(folders.count)", osLogType: OfflineSaver.self)
+        Log.info("Marked for Offline Available folders: \(folders.count)", domain: .downloader)
         
         // already scanned children - mark inheriting
         folders.forEach { folder in
@@ -148,9 +146,9 @@ public final class OfflineSaver: NSObject, LogObject {
             }, completion: { result in
                 switch result {
                 case .success:
-                    ConsoleLogger.shared?.log("Scanned 1 folder", osLogType: OfflineSaver.self)
+                    Log.info("Scanned 1 folder", domain: .downloader)
                 case .failure:
-                    ConsoleLogger.shared?.log("Failed to complete scan of 1 folder", osLogType: OfflineSaver.self)
+                    Log.error("Failed to complete scan of 1 folder", domain: .downloader)
                 }
             })
         }.forEach { operation in
@@ -160,7 +158,7 @@ public final class OfflineSaver: NSObject, LogObject {
     }
     
     private func uncheckMarked(files: [File]) {
-        ConsoleLogger.shared?.log("Unmarked for Offline Available files: \(files.count)", osLogType: OfflineSaver.self)
+        Log.info("Unmarked for Offline Available files: \(files.count)", domain: .downloader)
         
         files.forEach {
             $0.isInheritingOfflineAvailable = false
@@ -171,7 +169,7 @@ public final class OfflineSaver: NSObject, LogObject {
     }
     
     private func uncheckMarked(folders: [Folder]) {
-        ConsoleLogger.shared?.log("Unmarked for Offline Available folders: \(folders.count)", osLogType: OfflineSaver.self)
+        Log.info("Unmarked for Offline Available folders: \(folders.count)", domain: .downloader)
         
         folders.forEach { parent in
             parent.isInheritingOfflineAvailable = false
@@ -206,7 +204,7 @@ extension OfflineSaver: NSFetchedResultsControllerDelegate {
             try frc.performFetch()
         } catch let error {
             assertionFailure(error.localizedDescription)
-            ConsoleLogger.shared?.log("Failed to fetch nodes marked for Offline Available", osLogType: OfflineSaver.self)
+            Log.error("Failed to fetch nodes marked for Offline Available", domain: .storage)
         }
     }
     
@@ -248,7 +246,7 @@ extension OfflineSaver: NSFetchedResultsControllerDelegate {
         // usage of Progress to trach completion rate of operations is an implementation detail of OfflineSaver,
         // even though higher levels of the app may create their own instances of Progress from this info
         
-        ConsoleLogger.shared?.log("Rebuild progressBlock 🧨", osLogType: OfflineSaver.self)
+        Log.info("Rebuild progressBlock 🧨", domain: .downloader)
         
         self.fractionObservation?.invalidate()
         self.fractionObservation = nil

@@ -17,6 +17,10 @@
 
 import Photos
 
+enum PHAssetResourceError: Error {
+    case invalidName
+}
+
 extension PHAssetResource {
     func isVideo() -> Bool {
         return UTType(uniformTypeIdentifier)?.isSubtype(of: .audiovisualContent) ?? false
@@ -56,5 +60,19 @@ extension PHAssetResource {
 
     func isAdjustedVideo() -> Bool {
         return isVideo() && type == .fullSizeVideo
+    }
+
+    func isPartOfLivePhoto() -> Bool {
+        isOriginalImage() || isOriginalPairedVideo() || isAdjustedImage() || isAdjustedPairedVideo()
+    }
+
+    func getNormalizedFilename() throws -> String {
+        if !originalFilename.isEmpty {
+            return originalFilename
+        } else if let filenameExtension = UTType(uniformTypeIdentifier)?.preferredFilenameExtension {
+            return Constants.photosPlaceholderAssetName + "." + filenameExtension
+        } else {
+            throw PHAssetResourceError.invalidName
+        }
     }
 }

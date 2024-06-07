@@ -64,7 +64,7 @@ class NameClashResolvingFileDraftCreator: FileDraftCreator {
     }
     
     private func uploadDraft(_ draft: FileDraftUploadableDraft, completion: @escaping Completion) {
-        ConsoleLogger.shared?.log("STAGE: 2.1 Create File draft ✍️☁️🍳 attempt: \(attempt)", osLogType: FileUploader.self)
+        Log.info("STAGE: 2.1 Create File draft ✍️☁️🍳 attempt: \(attempt)", domain: .uploader)
         fileDraftCreator.uploadDraft(draft, completion: completion)
     }
     
@@ -100,6 +100,7 @@ class NameClashResolvingFileDraftCreator: FileDraftCreator {
         let newArmoredName = try reencryptFileName(file: draft.file, newName: pair.name, signersKit: signersKit)
 
         return FileDraftUploadableDraft(
+            uploadID: draft.uploadID,
             hash: pair.hash,
             clearName: pair.name,
             armoredName: newArmoredName,
@@ -112,6 +113,7 @@ class NameClashResolvingFileDraftCreator: FileDraftCreator {
             parent: draft.parent,
             parentNodeHashKey: draft.parentNodeHashKey,
             mimeType: draft.mimeType,
+            clientUID: draft.clientUID,
             file: draft.file
         )
     }

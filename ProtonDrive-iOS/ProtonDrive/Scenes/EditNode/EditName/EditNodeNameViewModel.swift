@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import Foundation
 
 final class EditNodeNameViewModel: EditNodeViewModel {
     var onDismiss: (() -> Void)?

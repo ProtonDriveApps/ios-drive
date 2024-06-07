@@ -53,7 +53,7 @@ struct DocumentPicker: UIViewControllerRepresentable {
         root.closeCurrentSheet.send()
     }
 
-    func picker(didFinishPicking items: [Result<URL, Error>]) {
+    func picker(didFinishPicking items: [URLResult]) {
         delegate?.picker(didFinishPicking: items)
         close()
     }
@@ -80,21 +80,26 @@ struct DocumentPicker: UIViewControllerRepresentable {
 
             let coordinator: NSFileCoordinator = NSFileCoordinator(filePresenter: nil)
             var error: NSError?
-            var fileResults: [Result<URL, Error>] = []
+            var fileResults: [URLResult] = []
             let group = DispatchGroup()
 
             for urlFromPicker in urls {
                 group.enter()
 
-                coordinator.coordinate(readingItemAt: urlFromPicker, options: [], error: &error) { _ in
-                    do {
-                        let copyUrl = PDFileManager.prepareUrlForFile(named: urlFromPicker.lastPathComponent)
-                        try FileManager.default.copyItem(at: urlFromPicker, to: copyUrl)
-                        fileResults.append(.success(copyUrl))
-                    } catch {
-                        fileResults.append(.failure(error))
+                if let size = urlFromPicker.fileSize {
+                    coordinator.coordinate(readingItemAt: urlFromPicker, options: [], error: &error) { _ in
+                        do {
+                            let copyUrl = PDFileManager.prepareUrlForFile(named: urlFromPicker.lastPathComponent)
+                            try FileManager.default.copyItem(at: urlFromPicker, to: copyUrl)
+                            let item = URLContent(copyUrl, size)
+                            fileResults.append(.success(item))
+                        } catch {
+                            fileResults.append(.failure(error))
+                        }
+                        group.leave()
                     }
-                    group.leave()
+                } else {
+                    fileResults.append(.failure(URLConsistencyError.noURLSize))
                 }
             }
 

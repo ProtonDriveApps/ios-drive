@@ -17,7 +17,7 @@
 
 import SwiftUI
 import PDCore
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 import PDUIComponents
 
 struct FinderView<ViewModel: ObservableFinderViewModel>: View {
@@ -89,16 +89,16 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
                 if !vm.transientChildren.isEmpty {
                     Section(header: uploadingBar, footer: Spacer(minLength: 30)) {
                         uploadDisclaimer
-                        ForEach(vm.transientChildren) { node in
-                            nodeRow(node, isList: true)
+                        ForEach(vm.transientChildren.indices, id: \.self) { index in
+                            nodeRow(vm.transientChildren[index], isList: true, index: index)
                         }
                     }
                 }
             } contents2: {
                 if !vm.permanentChildren.isEmpty {
                     Section(header: listHeader, footer: listFooter) {
-                        ForEach(vm.permanentChildren) { node in
-                            nodeRow(node, isList: vm.layout == .list)
+                        ForEach(vm.permanentChildren.indices, id: \.self) { index in
+                            nodeRow(vm.permanentChildren[index], isList: vm.layout == .list, index: index)
                         }
                     }
                 }
@@ -131,12 +131,14 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
         if vm.isUploadDisclaimerVisible {
             NotificationBanner(
                 message: "For uninterrupted uploads, keep the app open. Uploads will pause when the app is in the background.",
+                style: .inverted,
+                padding: .vertical,
                 closeBlock: vm.closeUploadDisclaimer
             )
         }
     }
 
-    private func nodeRow(_ node: NodeWrapper, isList: Bool) -> some View {
+    private func nodeRow(_ node: NodeWrapper, isList: Bool, index: Int) -> some View {
         FinderCell<ViewModel>(
             node: node.node,
             finderViewModel: vm,
@@ -144,7 +146,8 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
             presentedModal: presentModal,
             presentedSheet: $presentedSheet,
             menuItem: $menuItem,
-            isList: isList
+            isList: isList,
+            index: index
         )
         .environmentObject(coordinator)
     }
@@ -183,7 +186,7 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
 
         switch menuItem {
         case let .trash(nodeVM, isNavigationMenu):
-            return nodeVM.makeTrashAlert(environment: .init(menuItem: $menuItem, presentationMode: isNavigationMenu ? presentationMode : nil, cancelSelection: (vm as? HasMultipleSelection)?.cancelSelection))
+            return nodeVM.makeTrashAlert(environment: .init(menuItem: $menuItem, presentationMode: isNavigationMenu ? presentationMode : nil, cancelSelection: (vm as? (any HasMultipleSelection))?.cancelSelection))
         }
     }
 
@@ -203,7 +206,7 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
     }
 
     private var multipleSelectionIsSelecting: Bool {
-        guard let vm = vm as? HasMultipleSelection else {
+        guard let vm = vm as? (any HasMultipleSelection) else {
             return false
         }
         return vm.listState.isSelecting
@@ -223,7 +226,7 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
     }
     
     @ViewBuilder private var multipleSelectionActionBar: some View {
-        if let multiselector = vm as? HasMultipleSelection, multiselector.listState.isSelecting {
+        if let multiselector = vm as? (any HasMultipleSelection), multiselector.listState.isSelecting {
             ActionBar(onSelection: { multiselector.actionBarAction($0, sheet: self.$presentedSheet, menuItem: self.$menuItem) },
                       items: multiselector.actionBarItems(), content: {
                 if multiselector.selection.selected.count == 1 {
@@ -241,9 +244,9 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
     }
 
     @ViewBuilder
-    private func contextMenuView(vm: ViewModel, multiselector: HasMultipleSelection) -> some View {
+    private func contextMenuView(vm: ViewModel, multiselector: any HasMultipleSelection) -> some View {
         let editSectionEnvironment = EditSectionEnvironment(menuItem: $menuItem, modal: presentModal, sheet: $presentedSheet, acknowledgedNotEnoughStorage: acknowledgedNotEnoughStorage)
-        let nodes = vm.permanentChildren.filter { multiselector.selection.selected.contains($0.id) }
+        let nodes = vm.permanentChildren.filter { multiselector.selection.selected.contains($0.node.identifier) }
         if let node = nodes.map(\.node).first {
             let nodeRowViewModel = NodeRowActionMenuViewModel(node: node, model: vm)
 

@@ -19,29 +19,31 @@ import Combine
 import PDCore
 
 protocol PhotoLibraryLoadInteractor {
+    var identifiers: AnyPublisher<PhotoLibraryLoadUpdate, Never> { get }
     func execute()
     func cancel()
+    func suspend()
+    func resume()
 }
 
 final class LocalPhotoLibraryLoadInteractor: PhotoLibraryLoadInteractor {
-    private let identifiersInteractor: FilteredPhotoIdentifiersInteractor
-    private let progressRepository: PhotoLibraryLoadProgressRepository
     private let resources: [PhotoLibraryIdentifiersResource]
     private var cancellables = Set<AnyCancellable>()
+    private var subject = PassthroughSubject<PhotoLibraryLoadUpdate, Never>()
 
-    init(identifiersInteractor: FilteredPhotoIdentifiersInteractor, resources: [PhotoLibraryIdentifiersResource], progressRepository: PhotoLibraryLoadProgressRepository) {
-        self.identifiersInteractor = identifiersInteractor
+    var identifiers: AnyPublisher<PhotoLibraryLoadUpdate, Never> {
+        subject.eraseToAnyPublisher()
+    }
+
+    init(resources: [PhotoLibraryIdentifiersResource]) {
         self.resources = resources
-        self.progressRepository = progressRepository
         resources.forEach(subscribe)
     }
 
     private func subscribe(to resource: PhotoLibraryIdentifiersResource) {
         resource.updatePublisher
-            .filter { !$0.isEmpty }
             .sink { [weak self] identifiers in
-                self?.progressRepository.add(identifiers.count)
-                self?.identifiersInteractor.execute(with: identifiers)
+                self?.subject.send(identifiers)
             }
             .store(in: &cancellables)
     }
@@ -52,5 +54,13 @@ final class LocalPhotoLibraryLoadInteractor: PhotoLibraryLoadInteractor {
 
     func cancel() {
         resources.forEach { $0.cancel() }
+    }
+
+    func resume() {
+        resources.forEach { $0.resume() }
+    }
+
+    func suspend() {
+        resources.forEach { $0.suspend() }
     }
 }

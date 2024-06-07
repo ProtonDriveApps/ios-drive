@@ -22,40 +22,58 @@ import CoreData
 public final class PhotosUploadOperationsProviderFactory: FileUploadOperationsProviderFactory {
 
     private let storage: StorageManager
+    private let client: PDClient.Client
     private let cloudSlot: CloudSlot
     private let sessionVault: SessionVault
     private let apiService: APIService
-
-    var moc: NSManagedObjectContext {
-        storage.backgroundContext
-    }
+    private let moc: NSManagedObjectContext
+    private let pagesQueue: OperationQueue
+    private let uploadQueue: OperationQueue
+    private let encryptionQueue: OperationQueue
+    private let verifierFactory: UploadVerifierFactory
+    private let finishResource: PhotoUploadFinishResource
 
     public init(
         storage: StorageManager,
+        client: PDClient.Client,
         cloudSlot: CloudSlot,
         sessionVault: SessionVault,
-        apiService: APIService
+        apiService: APIService,
+        moc: NSManagedObjectContext,
+        pagesQueue: OperationQueue,
+        uploadQueue: OperationQueue,
+        encryptionQueue: OperationQueue,
+        verifierFactory: UploadVerifierFactory,
+        finishResource: PhotoUploadFinishResource
     ) {
         self.storage = storage
+        self.client = client
         self.cloudSlot = cloudSlot
         self.sessionVault = sessionVault
         self.apiService = apiService
+        self.moc = moc
+        self.pagesQueue = pagesQueue
+        self.uploadQueue = uploadQueue
+        self.encryptionQueue = encryptionQueue
+        self.verifierFactory = verifierFactory
+        self.finishResource = finishResource
     }
 
     public func make() -> FileUploadOperationsProvider {
-        let revisionEncryptor = PhotosRevisionEncryptorOperationFactory(signersKitFactory: sessionVault, moc: moc)
-        let fileDraftCreator = PhotoDraftCreatorOperationFactory(hashChecker: cloudSlot, fileDraftCreator: cloudSlot, sessionVault: sessionVault, moc: moc)
+        let revisionEncryptor = PhotosRevisionEncryptorOperationFactory(signersKitFactory: sessionVault, moc: moc, globalQueue: encryptionQueue)
+        let fileDraftCreator = PhotoDraftCreatorOperationFactory(fileDraftCreator: cloudSlot, sessionVault: sessionVault)
         let revisionDraftCreator = PhotoRevisionDraftCreatorOperationFactory()
-        let revisionUploader = DiscreteRevisionUploaderOperationFactory(api: apiService, cloudContentCreator: cloudSlot, credentialProvider: sessionVault, signersKitFactory: sessionVault, moc: moc)
-        let revisionCommitter = PhotoRevisionCommitterOperationFactory(cloudRevisionCommitter: cloudSlot, signersKitFactory: sessionVault, moc: moc)
+        let revisionUploader = DiscreteRevisionUploaderOperationFactory(storage: storage, client: client, api: apiService, cloudContentCreator: cloudSlot, credentialProvider: sessionVault, signersKitFactory: sessionVault, verifierFactory: verifierFactory, moc: moc, globalPagesQueue: pagesQueue, globalUploadQueue: uploadQueue)
+        let revisionCommitter = PhotoRevisionCommitterOperationFactory(cloudRevisionCommitter: cloudSlot, uploadedRevisionChecker: cloudSlot, signersKitFactory: sessionVault, moc: moc, finishResource: finishResource)
 
-        return DefaultFileUploadOperationsProvider(
+        let operationsProvider = PhotosUploadOperationsProvider(
             revisionEncryptorOperationFactory: revisionEncryptor,
             fileDraftCreatorOperationFactory: fileDraftCreator,
             revisionCreatorOperationFactory: revisionDraftCreator,
             revisionUploaderOperationFactory: revisionUploader,
-            revisionSealerOperationFactory: revisionCommitter
+            revisionCommitterOperationFactory: revisionCommitter
         )
+        return operationsProvider
     }
 
 }

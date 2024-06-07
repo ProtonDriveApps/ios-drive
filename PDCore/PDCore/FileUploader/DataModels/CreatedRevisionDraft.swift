@@ -18,6 +18,10 @@
 import Foundation
 
 struct CreatedRevisionDraft: Equatable {
+    let uploadID: UUID
     let localURL: URL
+    let size: Int
     let revision: Revision
+    let isEmpty: Bool
+    let mimetype: MimeType
 }

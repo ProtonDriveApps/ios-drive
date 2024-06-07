@@ -15,12 +15,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import Sentry
+import PDClient
 import PDCore
-import ProtonCore_Keymaker
-import ProtonCore_Authentication
-import ProtonCore_HumanVerification
-import ProtonCore_Services
+import ProtonCoreKeymaker
+import ProtonCoreAuthentication
+import ProtonCoreHumanVerification
+import ProtonCoreFeatureFlags
+import ProtonCorePushNotifications
+import ProtonCoreServices
 
 public class DriveDependencyContainer {
     private let initialServices: InitialServices
@@ -28,25 +30,34 @@ public class DriveDependencyContainer {
     var appGroup: SettingsStorageSuite { Constants.appGroup }
     var authenticatedContainer: AuthenticatedDependencyContainer?
     var windowScene: UIWindowScene!
-    var hvHelper: HumanCheckHelper
+    let hvHelper: HumanCheckHelper
 
     public init() {
         func makeInitialServices() -> InitialServices {
             let config = Constants.clientApiConfig
-            let autolocker = Autolocker(lockTimeProvider: DriveKeychain())
-            let keymaker = Keymaker(autolocker: autolocker, keychain: DriveKeychain())
-            return InitialServices(clientConfig: config, keymaker: keymaker)
+            let autolocker = Autolocker(lockTimeProvider: DriveKeychain.shared)
+            let keymaker = DriveKeymaker(autolocker: autolocker, keychain: DriveKeychain.shared)
+            return InitialServices(userDefault: Constants.appGroup.userDefaults,
+                                   clientConfig: config,
+                                   keymaker: keymaker,
+                                   sessionRelatedCommunicatorFactory: SessionRelatedCommunicatorForMainApp.init)
         }
         initialServices = makeInitialServices()
 
         hvHelper = HumanCheckHelper(
             apiService: initialServices.networkService,
             supportURL: URL(string: "https://protonmail.com/support/knowledge-base/human-verification/")!,
+            inAppTheme: { .matchSystem },
             clientApp: .drive
         )
         // We're replacing the delegate set in the creation of InitialServices, so the HV delegate in iOS will be HumanCheckHelper instead of PMAPIClient, which still will be the HV delegate in macOS
         initialServices.networkService.humanDelegate = hvHelper
 
+    }
+
+    func discardAuthenticatedContainer() {
+        authenticatedContainer = nil
+        initialServices.networkService.humanDelegate = hvHelper
     }
 
     var sessionVault: SessionVault {
@@ -67,5 +78,25 @@ public class DriveDependencyContainer {
 
     var networkService: PMAPIService {
         initialServices.networkService
+    }
+    
+    var sessionCommunicator: SessionRelatedCommunicatorBetweenMainAppAndExtensions {
+        initialServices.sessionRelatedCommunicator
+    }
+
+    var client: Client? {
+        authenticatedContainer?.tower.client
+    }
+
+    var pushNotificationService: PushNotificationServiceProtocol? {
+        initialServices.pushNotificationService
+    }
+
+    var featureFlagRepository: FeatureFlagsRepositoryProtocol {
+        initialServices.featureFlagsRepository
+    }
+
+    var localSettings: LocalSettings {
+        initialServices.localSettings
     }
 }

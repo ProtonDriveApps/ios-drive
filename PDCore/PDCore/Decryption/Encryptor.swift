@@ -16,8 +16,8 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import GoLibs
-import ProtonCore_KeyManager
+import ProtonCoreCryptoGoInterface
+import ProtonCoreKeyManager
 
 public struct RevisionContentKeys {
     public let contentSessionKey: SessionKey
@@ -28,20 +28,20 @@ public struct RevisionContentKeys {
 
 /// ProtonCore_KeyManager framework provides a number of static methods - high-level API to work with Crypto.xcframework
 /// This class gives us space to override that functional
-class Encryptor {
-    
-    typealias CoreEncryptor = ProtonCore_KeyManager.Encryptor
+public class Encryptor {
+
+    typealias CoreEncryptor = ProtonCoreKeyManager.Encryptor
     typealias EncryptedBinary = CoreEncryptor.EncryptedBlock
     typealias Errors = CoreEncryptor.Errors
-    
+
     static func hmac(filename: String, parentHashKey: String) throws -> String {
         try CoreEncryptor.hmac(filename: filename, parentHashKey: parentHashKey)
     }
-    
+
     static func encrypt(_ cleartext: String, key: String) throws -> String {
         try CoreEncryptor.encrypt(cleartext, key: key)
     }
-    
+
     static func encryptAndSign(_ cleartext: String,
                                key: String,
                                addressPassphrase: String,
@@ -49,7 +49,7 @@ class Encryptor {
     {
         try CoreEncryptor.encryptAndSign(cleartext, key: key, addressPassphrase: addressPassphrase, addressPrivateKey: addressPrivateKey)
     }
-    
+
     static func encryptBinary(chunk: Data,
                               contentKeyPacket: Data,
                               nodeKey: String,
@@ -57,14 +57,14 @@ class Encryptor {
     {
         try CoreEncryptor.encryptBinary(chunk: chunk, contentKeyPacket: contentKeyPacket, nodeKey: nodeKey, nodePassphrase: nodePassphrase)
     }
-    
+
     static func sign(list: Data,
                      addressKey: String,
                      addressPassphrase: String) throws -> String
     {
         try CoreEncryptor.sign(list: list, addressKey: addressKey, addressPassphrase: addressPassphrase)
     }
-    
+
     static func signcrypt(plaintext: Data,
                           nodeKey: String,
                           addressKey: String,
@@ -72,19 +72,19 @@ class Encryptor {
     {
         try CoreEncryptor.signcrypt(plaintext: plaintext, nodeKey: nodeKey, addressKey: addressKey, addressPassphrase: addressPassphrase)
     }
-    
+
     static func encryptSessionKey(_ sessionKey: CryptoSessionKey, withKey key: String) throws -> String {
         try CoreEncryptor.encryptSessionKey(sessionKey, withKey: key)
     }
-    
+
     // swiftlint:disable function_parameter_count
     static func encryptAndSignBinary(clearData: Data, contentKeyPacket: Data, privateKey: String, passphrase: String, addressKey: String, addressPassphrase: String) throws -> EncryptedBinary {
         try CoreEncryptor.encryptAndSignBinary(clearData: clearData, contentKeyPacket: contentKeyPacket, privateKey: privateKey, passphrase: passphrase, addressKey: addressKey, addressPassphrase: addressPassphrase)
     }
-    
+
     static func encryptAndSignBinaryWithSessionKey(clearData: Data, sessionKey: SessionKey, signingKeyRing: CryptoKeyRing) throws -> Data {
-        let sessionKey = try unwrap { CryptoNewSessionKeyFromToken(sessionKey, ConstantsAES256) }
-        let plainMessage = try unwrap { CryptoNewPlainMessage(clearData) }
+        let sessionKey = try unwrap { CryptoGo.CryptoNewSessionKeyFromToken(sessionKey, CryptoGo.ConstantsAES256) }
+        let plainMessage = try unwrap { CryptoGo.CryptoNewPlainMessage(clearData) }
         return try sessionKey.encryptAndSign(plainMessage, sign: signingKeyRing)
     }
     // swiftlint:enable function_parameter_count
@@ -115,19 +115,19 @@ class Encryptor {
         _ signingKey: ArmoredKey,
         _ passphrase: String
     ) throws -> (plainMessage: CryptoPlainMessage, encryptionKeyRing: CryptoKeyRing, signingKeyRing: CryptoKeyRing) {
-        let encryptionKey = try executeAndUnwrap { CryptoNewKeyFromArmored(encryptionKey, &$0) }
-        let encryptionKeyRing = try executeAndUnwrap { CryptoNewKeyRing(encryptionKey, &$0) }
+        let encryptionKey = try executeAndUnwrap { CryptoGo.CryptoNewKeyFromArmored(encryptionKey, &$0) }
+        let encryptionKeyRing = try executeAndUnwrap { CryptoGo.CryptoNewKeyRing(encryptionKey, &$0) }
 
-        let signingKey = try executeAndUnwrap { CryptoNewKeyFromArmored(signingKey, &$0) }
+        let signingKey = try executeAndUnwrap { CryptoGo.CryptoNewKeyFromArmored(signingKey, &$0) }
         let unlockedSigningKey = try signingKey.unlock(passphrase.data(using: .utf8))
-        let signingKeyRing = try executeAndUnwrap { CryptoNewKeyRing(unlockedSigningKey, &$0) }
+        let signingKeyRing = try executeAndUnwrap { CryptoGo.CryptoNewKeyRing(unlockedSigningKey, &$0) }
 
-        let plainMessage = CryptoNewPlainMessage(plainData)!
+        let plainMessage = CryptoGo.CryptoNewPlainMessage(plainData)!
         return (plainMessage, encryptionKeyRing, signingKeyRing)
     }
 
     static func getPublicKey(fromPrivateKey privateKey: ArmoredKey) throws -> ArmoredKey {
-        let privateKey = try executeAndUnwrap { CryptoNewKeyFromArmored(privateKey, &$0) }
+        let privateKey = try executeAndUnwrap { CryptoGo.CryptoNewKeyFromArmored(privateKey, &$0) }
         let publicArmoredKey = try executeAndUnwrap { privateKey.getArmoredPublicKey(&$0) }
         return publicArmoredKey
     }
@@ -148,9 +148,38 @@ class Encryptor {
         let encKeyRing = try Decryptor.buildPublicKeyRing(armoredKeys: [newParentKey])
         let newKeyPacket = try encKeyRing.encryptSessionKey(sessionKey)
 
-        let newSplitMessage = CryptoPGPSplitMessage(newKeyPacket, dataPacket: oldSplitMessage.dataPacket)
+        let newSplitMessage = CryptoGo.CryptoPGPSplitMessage(newKeyPacket, dataPacket: oldSplitMessage.dataPacket)
 
         return try executeAndUnwrap { newSplitMessage?.getArmored(&$0) }
+    }
+
+    /// Appends new KeyPacket to a PGPMessage using a new encryption key.
+    ///
+    /// This method takes an encrypted message, the initial encrypting key, the passphrase for
+    /// the initial encrypting key, and the new encrypting key. It decrypts the SessionKey
+    /// using the initial encrypting key and passphrase, then reencrypts the session key
+    /// with the new encrypting key. Then it combines both key packets and returns a new PGP message
+    /// containing both key packets and the original data packet
+    static func encryptPGPMessageToAdditionalKey(
+        _ encryptedMessage: String,
+        oldEncryptingKey: String,
+        oldEncryptingKeyPassphrase: String,
+        newEncryptingKey: String
+    ) throws -> ArmoredMessage {
+        let initialSplitMessage = try Encryptor.splitPGPMessage(encryptedMessage)
+
+        let initialKeyPacket = try unwrap { initialSplitMessage.keyPacket }
+        let initialDataPacket = try unwrap { initialSplitMessage.dataPacket }
+
+        let decKeyRing = try Decryptor.buildPrivateKeyRing(decryptionKeys: [
+            .init(privateKey: oldEncryptingKey, passphrase: oldEncryptingKeyPassphrase)
+        ])
+        let sessionKey = try execute { try decKeyRing.decryptSessionKey(initialKeyPacket) }
+        let newKeyPacket = try executeAndUnwrap { CryptoGo.HelperEncryptSessionKey(newEncryptingKey, sessionKey, &$0) }
+        let composedKeyPacket = newKeyPacket + initialKeyPacket
+        let newSplitMessage = try unwrap { CryptoGo.CryptoPGPSplitMessage(composedKeyPacket, dataPacket: initialDataPacket) }
+
+        return try execute { newSplitMessage.getArmored(&$0) }
     }
 }
 
@@ -162,41 +191,41 @@ extension Encryptor {
         let signature: ArmoredSignature
         let passphraseRaw: Passphrase
     }
-    
+
     struct NodeUpdatedCredentials {
         public var nodePassphrase, signature: String
     }
-    
+
     static func generateNodeKeys(addressPassphrase: String,
                                  addressPrivateKey: String,
                                  parentKey: String) throws -> KeyCredentials
     {
         var error: NSError?
-        
+
         // length is hardcoded in proton-shared/lib/keys/calendarKeys.ts
         let passphraseByteLength = 32
-        let passphraseRaw1 = CryptoRandomToken(passphraseByteLength, &error)
+        let passphraseRaw1 = CryptoGo.CryptoRandomToken(passphraseByteLength, &error)
         guard error == nil else { throw error! }
-        
+
         let passphraseString = passphraseRaw1!.base64EncodedString()
         let passphraseRaw = passphraseString.data(using: .utf8)
-        
+
         // 1. NodeKey
         // all hardcoded values are from proton-shared/lib/keys/driveKeys.ts
         // bits are unused for x25519 type keys
-        let privateKeyArmored = HelperGenerateKey("Drive key", "noreply@protonmail.com", passphraseRaw, "x25519", 0, &error)
+        let privateKeyArmored = CryptoGo.HelperGenerateKey("Drive key", "noreply@protonmail.com", passphraseRaw, "x25519", 0, &error)
         guard error == nil else { throw error! }
-        
+
         // 2. NodePassphrase
         let encryptedAndSignedPassphrase = try updateNodeKeys(passphraseString: passphraseString,
                                                               addressPassphrase: addressPassphrase,
                                                               addressPrivateKey: addressPrivateKey,
                                                               parentKey: parentKey)
         guard error == nil else { throw error! }
-        
+
         let encryptedPassphrase = encryptedAndSignedPassphrase.nodePassphrase
         let signature = encryptedAndSignedPassphrase.signature
-        
+
         return KeyCredentials(
             key: privateKeyArmored,
             passphrase: encryptedPassphrase,
@@ -204,7 +233,7 @@ extension Encryptor {
             passphraseRaw: passphraseString
         )
     }
-    
+
     static func updateNodeKeys(passphraseString: String,
                                addressPassphrase: String,
                                addressPrivateKey: String,
@@ -213,18 +242,18 @@ extension Encryptor {
         var error: NSError?
 
         // 1. NodePassphrase gets encrypted by the parent key
-        let encryptedPassphrase = HelperEncryptMessageArmored(parentKey, passphraseString, &error)
+        let encryptedPassphrase = CryptoGo.HelperEncryptMessageArmored(parentKey, passphraseString, &error)
         guard error == nil else { throw error! }
 
         // 2. NodePassphrase Signature
-        let keyAddress = CryptoNewKeyFromArmored(addressPrivateKey, &error)
+        let keyAddress = CryptoGo.CryptoNewKeyFromArmored(addressPrivateKey, &error)
         guard error == nil else { throw error! }
 
         let unlockedKey = try keyAddress?.unlock(addressPassphrase.data(using: .utf8))
-        let keyRing = CryptoNewKeyRing(unlockedKey, &error)
+        let keyRing = CryptoGo.CryptoNewKeyRing(unlockedKey, &error)
         guard error == nil else { throw error! }
 
-        let message = CryptoPlainMessage(from: passphraseString)
+        let message = CryptoGo.CryptoPlainMessage(from: passphraseString)
         let signature = try keyRing?.signDetached(message).getArmored(&error)
         keyRing?.clearPrivateParams()
 
@@ -233,26 +262,26 @@ extension Encryptor {
     }
 
     static func encrypt(_ plainMessage: String, using sesionKey: CryptoSessionKey, encryptingKeyRing: CryptoKeyRing) throws -> CryptoPGPSplitMessage {
-        let cryptoMessage = CryptoPlainMessage(from: plainMessage)
+        let cryptoMessage = CryptoGo.CryptoPlainMessage(from: plainMessage)
         let dataPacket = try sesionKey.encrypt(cryptoMessage)
         let keyPacket = try encryptingKeyRing.encryptSessionKey(sesionKey)
-        return try execute { CryptoNewPGPSplitMessage(keyPacket, dataPacket) }
+        return try execute { CryptoGo.CryptoNewPGPSplitMessage(keyPacket, dataPacket) }
     }
 
-    static func encryptAndSign(_ plainMessage: String, using sesionKey: CryptoSessionKey, encryptingKeyRing: CryptoKeyRing, signingKeyRing: CryptoKeyRing) throws -> CryptoPGPSplitMessage {
-        let cryptoMessage = CryptoPlainMessage(from: plainMessage)
-        let dataPacket = try sesionKey.encryptAndSign(cryptoMessage, sign: signingKeyRing)
-        let keyPacket = try encryptingKeyRing.encryptSessionKey(sesionKey)
-        return try execute { CryptoNewPGPSplitMessage(keyPacket, dataPacket) }
+    static func encryptAndSign(_ plainMessage: String, using sessionKey: CryptoSessionKey, encryptingKeyRing: CryptoKeyRing, signingKeyRing: CryptoKeyRing) throws -> CryptoPGPSplitMessage {
+        let cryptoMessage = CryptoGo.CryptoPlainMessage(from: plainMessage)
+        let dataPacket = try sessionKey.encryptAndSign(cryptoMessage, sign: signingKeyRing)
+        let keyPacket = try encryptingKeyRing.encryptSessionKey(sessionKey)
+        return try execute { CryptoGo.CryptoNewPGPSplitMessage(keyPacket, dataPacket) }
     }
 
     static func generateNodeHashKey(nodeKey: String, passphrase: String) throws -> String {
         // 1. create hash key
-        let rawHashKey = try executeAndUnwrap { CryptoRandomToken(32, &$0) }
+        let rawHashKey = try executeAndUnwrap { CryptoGo.CryptoRandomToken(32, &$0) }
 
         // 2. Encrypt the rawHashKey with the public nodeKey (private -> public done by the Helper) and sign it
         let nodeHashKey = try execute {
-            HelperEncryptSignMessageArmored(
+            CryptoGo.HelperEncryptSignMessageArmored(
                 nodeKey,
                 nodeKey,
                 passphrase.data(using: .utf8),
@@ -266,7 +295,7 @@ extension Encryptor {
 
     // MARK: - Drive Helpers
     static func splitPGPMessage(_ message: String) throws -> (keyPacket: KeyPacket?, dataPacket: DataPacket?) {
-        let splitMessage = try unwrap { CryptoPGPSplitMessage(fromArmored: message) }
+        let splitMessage = try unwrap { CryptoGo.CryptoPGPSplitMessage(fromArmored: message) }
         return (splitMessage.keyPacket, splitMessage.dataPacket)
     }
 
@@ -275,17 +304,17 @@ extension Encryptor {
         nodePassphrase: Passphrase
     ) throws -> RevisionContentKeys {
 
-        let cryptoContentSessionKey = try executeAndUnwrap { CryptoGenerateSessionKeyAlgo(ConstantsAES256, &$0) }
+        let cryptoContentSessionKey = try executeAndUnwrap { CryptoGo.CryptoGenerateSessionKeyAlgo(CryptoGo.ConstantsAES256, &$0) }
         let contentSessionKey = try unwrap { cryptoContentSessionKey.key }
-        let contentKeyPacket = try executeAndUnwrap { HelperEncryptSessionKey(nodeKey, cryptoContentSessionKey, &$0) }
+        let contentKeyPacket = try executeAndUnwrap { CryptoGo.HelperEncryptSessionKey(nodeKey, cryptoContentSessionKey, &$0) }
         let contentKeyPacketBase64 = contentKeyPacket.base64EncodedString()
 
-        let signingKey = try executeAndUnwrap { CryptoNewKeyFromArmored(nodeKey, &$0) }
+        let signingKey = try executeAndUnwrap { CryptoGo.CryptoNewKeyFromArmored(nodeKey, &$0) }
         let unlockedSigningKey = try signingKey.unlock(nodePassphrase.data(using: .utf8))
-        let signingKeyRing = try executeAndUnwrap { CryptoNewKeyRing(unlockedSigningKey, &$0) }
+        let signingKeyRing = try executeAndUnwrap { CryptoGo.CryptoNewKeyRing(unlockedSigningKey, &$0) }
         defer { signingKeyRing.clearPrivateParams() }
 
-        let message = CryptoNewPlainMessage(contentSessionKey)
+        let message = CryptoGo.CryptoNewPlainMessage(contentSessionKey)
         let cryptoContentKeyPacketSignature = try signingKeyRing.signDetached(message)
         let contentKeyPacketSignature = try executeAndUnwrap { cryptoContentKeyPacketSignature.getArmored(&$0) }
 
@@ -299,5 +328,5 @@ extension Encryptor {
 }
 
 private extension Int64 {
-    static var cryptoTime: Int64 { CryptoGetUnixTime() }
+    static var cryptoTime: Int64 { CryptoGo.CryptoGetUnixTime() }
 }

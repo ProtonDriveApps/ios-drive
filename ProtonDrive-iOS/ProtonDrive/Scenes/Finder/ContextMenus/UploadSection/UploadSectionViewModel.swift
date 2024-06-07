@@ -18,7 +18,7 @@
 import PDCore
 import SwiftUI
 import PDUIComponents
-import ProtonCore_UIFoundations
+import ProtonCoreUIFoundations
 
 final class UploadSectionViewModel {
     let folder: Folder

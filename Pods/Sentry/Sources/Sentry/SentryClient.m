@@ -1,25 +1,25 @@
 #import "SentryClient.h"
-#import "NSDictionary+SentrySanitize.h"
 #import "NSLocale+Sentry.h"
+#import "SentryAppState.h"
+#import "SentryAppStateManager.h"
 #import "SentryAttachment.h"
 #import "SentryClient+Private.h"
 #import "SentryCrashDefaultMachineContextWrapper.h"
 #import "SentryCrashIntegration.h"
 #import "SentryCrashStackEntryMapper.h"
-#import "SentryCrashWrapper.h"
 #import "SentryDebugImageProvider.h"
-#import "SentryDefaultCurrentDateProvider.h"
 #import "SentryDependencyContainer.h"
+#import "SentryDispatchQueueWrapper.h"
 #import "SentryDsn.h"
 #import "SentryEnvelope.h"
 #import "SentryEnvelopeItemType.h"
 #import "SentryEvent.h"
 #import "SentryException.h"
+#import "SentryExtraContextProvider.h"
 #import "SentryFileManager.h"
 #import "SentryGlobalEventProcessor.h"
 #import "SentryHub+Private.h"
 #import "SentryHub.h"
-#import "SentryId.h"
 #import "SentryInAppLogic.h"
 #import "SentryInstallation.h"
 #import "SentryLog.h"
@@ -27,14 +27,16 @@
 #import "SentryMechanismMeta.h"
 #import "SentryMessage.h"
 #import "SentryMeta.h"
+#import "SentryNSDictionarySanitize.h"
 #import "SentryNSError.h"
 #import "SentryOptions+Private.h"
-#import "SentryOutOfMemoryTracker.h"
-#import "SentryPermissionsObserver.h"
+#import "SentryPropagationContext.h"
+#import "SentryRandom.h"
 #import "SentrySDK+Private.h"
 #import "SentryScope+Private.h"
-#import "SentrySdkInfo.h"
+#import "SentrySession.h"
 #import "SentryStacktraceBuilder.h"
+#import "SentrySwift.h"
 #import "SentryThreadInspector.h"
 #import "SentryTraceContext.h"
 #import "SentryTracer.h"
@@ -42,13 +44,10 @@
 #import "SentryTransport.h"
 #import "SentryTransportAdapter.h"
 #import "SentryTransportFactory.h"
-#import "SentryUIDeviceWrapper.h"
+#import "SentryUIApplication.h"
 #import "SentryUser.h"
 #import "SentryUserFeedback.h"
-
-#if SENTRY_HAS_UIKIT
-#    import <UIKit/UIKit.h>
-#endif
+#import "SentryWatchdogTerminationTracker.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -56,73 +55,77 @@ NS_ASSUME_NONNULL_BEGIN
 SentryClient ()
 
 @property (nonatomic, strong) SentryTransportAdapter *transportAdapter;
-@property (nonatomic, strong) SentryFileManager *fileManager;
 @property (nonatomic, strong) SentryDebugImageProvider *debugImageProvider;
-@property (nonatomic, strong) SentryThreadInspector *threadInspector;
 @property (nonatomic, strong) id<SentryRandom> random;
-@property (nonatomic, strong)
-    NSMutableArray<id<SentryClientAttachmentProcessor>> *attachmentProcessors;
-@property (nonatomic, strong) SentryCrashWrapper *crashWrapper;
-@property (nonatomic, strong) SentryPermissionsObserver *permissionsObserver;
-@property (nonatomic, strong) SentryUIDeviceWrapper *deviceWrapper;
 @property (nonatomic, strong) NSLocale *locale;
 @property (nonatomic, strong) NSTimeZone *timezone;
 
 @end
 
 NSString *const DropSessionLogMessage = @"Session has no release name. Won't send it.";
-NSString *const kSentryDefaultEnvironment = @"production";
 
 @implementation SentryClient
 
 - (_Nullable instancetype)initWithOptions:(SentryOptions *)options
 {
     return [self initWithOptions:options
-             permissionsObserver:[[SentryPermissionsObserver alloc] init]];
+                   dispatchQueue:[[SentryDispatchQueueWrapper alloc] init]
+          deleteOldEnvelopeItems:YES];
 }
 
-/** Internal constructors for testing */
-- (_Nullable instancetype)initWithOptions:(SentryOptions *)options
-                      permissionsObserver:(SentryPermissionsObserver *)permissionsObserver
+/** Internal constructor for testing purposes. */
+- (nullable instancetype)initWithOptions:(SentryOptions *)options
+                           dispatchQueue:(SentryDispatchQueueWrapper *)dispatchQueue
+                  deleteOldEnvelopeItems:(BOOL)deleteOldEnvelopeItems
 {
-    NSError *error = nil;
-    SentryFileManager *fileManager =
-        [[SentryFileManager alloc] initWithOptions:options
-                            andCurrentDateProvider:[SentryDefaultCurrentDateProvider sharedInstance]
-                                             error:&error];
-    if (nil != error) {
-        SENTRY_LOG_ERROR(@"%@", error.localizedDescription);
+    NSError *error;
+    SentryFileManager *fileManager = [[SentryFileManager alloc] initWithOptions:options
+                                                           dispatchQueueWrapper:dispatchQueue
+                                                                          error:&error];
+    if (error != nil) {
+        SENTRY_LOG_ERROR(@"Cannot init filesystem.");
         return nil;
     }
+    return [self initWithOptions:options
+                     fileManager:fileManager
+          deleteOldEnvelopeItems:deleteOldEnvelopeItems];
+}
 
-    id<SentryTransport> transport = [SentryTransportFactory initTransport:options
-                                                        sentryFileManager:fileManager];
+/** Internal constructor for testing purposes. */
+- (instancetype)initWithOptions:(SentryOptions *)options
+                    fileManager:(SentryFileManager *)fileManager
+         deleteOldEnvelopeItems:(BOOL)deleteOldEnvelopeItems
+{
+    NSArray<id<SentryTransport>> *transports = [SentryTransportFactory
+             initTransports:options
+          sentryFileManager:fileManager
+        currentDateProvider:SentryDependencyContainer.sharedInstance.dateProvider];
 
     SentryTransportAdapter *transportAdapter =
-        [[SentryTransportAdapter alloc] initWithTransport:transport options:options];
+        [[SentryTransportAdapter alloc] initWithTransports:transports options:options];
 
-    SentryInAppLogic *inAppLogic =
-        [[SentryInAppLogic alloc] initWithInAppIncludes:options.inAppIncludes
-                                          inAppExcludes:options.inAppExcludes];
-    SentryCrashStackEntryMapper *crashStackEntryMapper =
-        [[SentryCrashStackEntryMapper alloc] initWithInAppLogic:inAppLogic];
-    SentryStacktraceBuilder *stacktraceBuilder =
-        [[SentryStacktraceBuilder alloc] initWithCrashStackEntryMapper:crashStackEntryMapper];
-    id<SentryCrashMachineContextWrapper> machineContextWrapper =
-        [[SentryCrashDefaultMachineContextWrapper alloc] init];
+    return [self initWithOptions:options
+                     fileManager:fileManager
+          deleteOldEnvelopeItems:deleteOldEnvelopeItems
+                transportAdapter:transportAdapter];
+}
+
+/** Internal constructor for testing purposes. */
+- (instancetype)initWithOptions:(SentryOptions *)options
+                    fileManager:(SentryFileManager *)fileManager
+         deleteOldEnvelopeItems:(BOOL)deleteOldEnvelopeItems
+               transportAdapter:(SentryTransportAdapter *)transportAdapter
+
+{
     SentryThreadInspector *threadInspector =
-        [[SentryThreadInspector alloc] initWithStacktraceBuilder:stacktraceBuilder
-                                        andMachineContextWrapper:machineContextWrapper];
-    SentryUIDeviceWrapper *deviceWrapper = [[SentryUIDeviceWrapper alloc] init];
+        [[SentryThreadInspector alloc] initWithOptions:options];
 
     return [self initWithOptions:options
                 transportAdapter:transportAdapter
                      fileManager:fileManager
+          deleteOldEnvelopeItems:deleteOldEnvelopeItems
                  threadInspector:threadInspector
                           random:[SentryDependencyContainer sharedInstance].random
-                    crashWrapper:[SentryCrashWrapper sharedInstance]
-             permissionsObserver:permissionsObserver
-                   deviceWrapper:deviceWrapper
                           locale:[NSLocale autoupdatingCurrentLocale]
                         timezone:[NSCalendar autoupdatingCurrentCalendar].timeZone];
 }
@@ -130,34 +133,33 @@ NSString *const kSentryDefaultEnvironment = @"production";
 - (instancetype)initWithOptions:(SentryOptions *)options
                transportAdapter:(SentryTransportAdapter *)transportAdapter
                     fileManager:(SentryFileManager *)fileManager
+         deleteOldEnvelopeItems:(BOOL)deleteOldEnvelopeItems
                 threadInspector:(SentryThreadInspector *)threadInspector
                          random:(id<SentryRandom>)random
-                   crashWrapper:(SentryCrashWrapper *)crashWrapper
-            permissionsObserver:(SentryPermissionsObserver *)permissionsObserver
-                  deviceWrapper:(SentryUIDeviceWrapper *)deviceWrapper
                          locale:(NSLocale *)locale
                        timezone:(NSTimeZone *)timezone
 {
     if (self = [super init]) {
+        _isEnabled = YES;
         self.options = options;
         self.transportAdapter = transportAdapter;
         self.fileManager = fileManager;
         self.threadInspector = threadInspector;
         self.random = random;
-        self.crashWrapper = crashWrapper;
-        self.permissionsObserver = permissionsObserver;
         self.debugImageProvider = [SentryDependencyContainer sharedInstance].debugImageProvider;
         self.locale = locale;
         self.timezone = timezone;
         self.attachmentProcessors = [[NSMutableArray alloc] init];
-        self.deviceWrapper = deviceWrapper;
+
+        // The SDK stores the installationID in a file. The first call requires file IO. To avoid
+        // executing this on the main thread, we cache the installationID async here.
+        [SentryInstallation cacheIDAsyncWithCacheDirectoryPath:options.cacheDirectoryPath];
+
+        if (deleteOldEnvelopeItems) {
+            [fileManager deleteOldEnvelopeItems];
+        }
     }
     return self;
-}
-
-- (SentryFileManager *)fileManager
-{
-    return _fileManager;
 }
 
 - (SentryId *)captureMessage:(NSString *)message
@@ -239,13 +241,54 @@ NSString *const kSentryDefaultEnvironment = @"production";
 {
     SentryEvent *event = [[SentryEvent alloc] initWithError:error];
 
+    // flatten any recursive description of underlying errors into a list, to ultimately report them
+    // as a list of exceptions with error mechanisms, sorted oldest to newest (so, the leaf node
+    // underlying error as oldest, with the root as the newest)
+    NSMutableArray<NSError *> *errors = [NSMutableArray<NSError *> arrayWithObject:error];
+    NSError *underlyingError = error.userInfo[NSUnderlyingErrorKey];
+    while (underlyingError != nil) {
+        [errors addObject:underlyingError];
+        underlyingError = underlyingError.userInfo[NSUnderlyingErrorKey];
+    }
+
+    NSMutableArray<SentryException *> *exceptions = [NSMutableArray<SentryException *> array];
+    [errors enumerateObjectsWithOptions:NSEnumerationReverse
+                             usingBlock:^(NSError *_Nonnull nextError, NSUInteger __unused idx,
+                                 BOOL *_Nonnull __unused stop) {
+                                 [exceptions addObject:[self exceptionForError:nextError]];
+                             }];
+
+    event.exceptions = exceptions;
+
+    // Once the UI displays the mechanism data we can the userInfo from the event.context using only
+    // the root error's userInfo.
+    [self setUserInfo:sentry_sanitize(error.userInfo) withEvent:event];
+
+    return event;
+}
+
+- (SentryException *)exceptionForError:(NSError *)error
+{
     NSString *exceptionValue;
 
     // If the error has a debug description, use that.
     NSString *customExceptionValue = [[error userInfo] valueForKey:NSDebugDescriptionErrorKey];
+
+    NSString *swiftErrorDescription = nil;
+    // SwiftNativeNSError is the subclass of NSError used to represent bridged native Swift errors,
+    // see
+    // https://github.com/apple/swift/blob/067e4ec50147728f2cb990dbc7617d66692c1554/stdlib/public/runtime/ErrorObject.mm#L63-L73
+    NSString *errorClass = NSStringFromClass(error.class);
+    if ([errorClass containsString:@"SwiftNativeNSError"]) {
+        swiftErrorDescription = [SwiftDescriptor getSwiftErrorDescription:error];
+    }
+
     if (customExceptionValue != nil) {
         exceptionValue =
             [NSString stringWithFormat:@"%@ (Code: %ld)", customExceptionValue, (long)error.code];
+    } else if (swiftErrorDescription != nil) {
+        exceptionValue =
+            [NSString stringWithFormat:@"%@ (Code: %ld)", swiftErrorDescription, (long)error.code];
     } else {
         exceptionValue = [NSString stringWithFormat:@"Code: %ld", (long)error.code];
     }
@@ -261,15 +304,11 @@ NSString *const kSentryDefaultEnvironment = @"production";
     // use a simple enum.
     mechanism.desc = error.description;
 
-    NSDictionary<NSString *, id> *userInfo = [error.userInfo sentry_sanitize];
+    NSDictionary<NSString *, id> *userInfo = sentry_sanitize(error.userInfo);
     mechanism.data = userInfo;
     exception.mechanism = mechanism;
-    event.exceptions = @[ exception ];
 
-    // Once the UI displays the mechanism data we can the userInfo from the event.context.
-    [self setUserInfo:userInfo withEvent:event];
-
-    return event;
+    return exception;
 }
 
 - (SentryId *)captureCrashEvent:(SentryEvent *)event withScope:(SentryScope *)scope
@@ -332,10 +371,17 @@ NSString *const kSentryDefaultEnvironment = @"production";
     }
 
     SentryTracer *tracer = [SentryTracer getTracer:span];
-    if (tracer == nil)
-        return nil;
+    if (tracer != nil) {
+        return [[SentryTraceContext alloc] initWithTracer:tracer scope:scope options:_options];
+    }
 
-    return [[SentryTraceContext alloc] initWithTracer:tracer scope:scope options:_options];
+    if (event.error || event.exceptions.count > 0) {
+        return [[SentryTraceContext alloc] initWithTraceId:scope.propagationContext.traceId
+                                                   options:self.options
+                                               userSegment:scope.userObject.segment];
+    }
+
+    return nil;
 }
 
 - (SentryId *)sendEvent:(SentryEvent *)event
@@ -361,27 +407,26 @@ NSString *const kSentryDefaultEnvironment = @"production";
                              alwaysAttachStacktrace:alwaysAttachStacktrace
                                        isCrashEvent:isCrashEvent];
 
-    if (nil != preparedEvent) {
-        SentryTraceContext *traceContext = [self getTraceStateWithEvent:event withScope:scope];
-
-        NSArray *attachments = scope.attachments;
-        if (self.attachmentProcessors.count) {
-            for (id<SentryClientAttachmentProcessor> attachmentProcessor in self
-                     .attachmentProcessors) {
-                attachments = [attachmentProcessor processAttachments:attachments
-                                                             forEvent:preparedEvent];
-            }
-        }
-
-        [self.transportAdapter sendEvent:preparedEvent
-                            traceContext:traceContext
-                             attachments:attachments
-                 additionalEnvelopeItems:additionalEnvelopeItems];
-
-        return preparedEvent.eventId;
+    if (preparedEvent == nil) {
+        return SentryId.empty;
     }
 
-    return SentryId.empty;
+    SentryTraceContext *traceContext = [self getTraceStateWithEvent:event withScope:scope];
+
+    NSArray *attachments = scope.attachments;
+    if (self.attachmentProcessors.count) {
+        for (id<SentryClientAttachmentProcessor> attachmentProcessor in self.attachmentProcessors) {
+            attachments = [attachmentProcessor processAttachments:attachments
+                                                         forEvent:preparedEvent];
+        }
+    }
+
+    [self.transportAdapter sendEvent:preparedEvent
+                        traceContext:traceContext
+                         attachments:attachments
+             additionalEnvelopeItems:additionalEnvelopeItems];
+
+    return preparedEvent.eventId;
 }
 
 - (SentryId *)sendEvent:(SentryEvent *)event
@@ -397,9 +442,9 @@ NSString *const kSentryDefaultEnvironment = @"production";
             }
         }
 
-        if (nil == session.releaseName || [session.releaseName length] == 0) {
-            SentryTraceContext *traceContext = [self getTraceStateWithEvent:event withScope:scope];
+        SentryTraceContext *traceContext = [self getTraceStateWithEvent:event withScope:scope];
 
+        if (nil == session.releaseName || [session.releaseName length] == 0) {
             SENTRY_LOG_DEBUG(DropSessionLogMessage);
 
             [self.transportAdapter sendEvent:event
@@ -408,7 +453,10 @@ NSString *const kSentryDefaultEnvironment = @"production";
             return event.eventId;
         }
 
-        [self.transportAdapter sendEvent:event session:session attachments:attachments];
+        [self.transportAdapter sendEvent:event
+                             withSession:session
+                            traceContext:traceContext
+                             attachments:attachments];
 
         return event.eventId;
     }
@@ -433,8 +481,6 @@ NSString *const kSentryDefaultEnvironment = @"production";
 
 - (void)captureEnvelope:(SentryEnvelope *)envelope
 {
-    // TODO: What is about beforeSend
-
     if ([self isDisabled]) {
         [self logDisabledMessage];
         return;
@@ -483,6 +529,13 @@ NSString *const kSentryDefaultEnvironment = @"production";
     [self.transportAdapter flush:timeout];
 }
 
+- (void)close
+{
+    _isEnabled = NO;
+    [self flush:self.options.shutdownTimeInterval];
+    SENTRY_LOG_DEBUG(@"Closed the Client.");
+}
+
 - (SentryEvent *_Nullable)prepareEvent:(SentryEvent *)event
                              withScope:(SentryScope *)scope
                 alwaysAttachStacktrace:(BOOL)alwaysAttachStacktrace
@@ -527,12 +580,6 @@ NSString *const kSentryDefaultEnvironment = @"production";
         event.dist = dist;
     }
 
-    NSString *environment = self.options.environment;
-    if (nil != environment && nil == event.environment) {
-        // Set the environment from option to the event before Scope is applied
-        event.environment = environment;
-    }
-
     [self setSdk:event];
 
     // We don't want to attach debug meta and stacktraces for transactions;
@@ -546,32 +593,52 @@ NSString *const kSentryDefaultEnvironment = @"production";
             event.threads = [self.threadInspector getCurrentThreads];
         }
 
+#if SENTRY_HAS_UIKIT
+        SentryAppStateManager *manager = [SentryDependencyContainer sharedInstance].appStateManager;
+        SentryAppState *appState = [manager loadPreviousAppState];
+        BOOL inForeground = [appState isActive];
+        if (appState != nil) {
+            NSMutableDictionary *context =
+                [event.context mutableCopy] ?: [NSMutableDictionary dictionary];
+            if (context[@"app"] == nil
+                || ([context[@"app"] isKindOfClass:NSDictionary.self]
+                    && context[@"app"][@"in_foreground"] == nil)) {
+                NSMutableDictionary *app = [(NSDictionary *)context[@"app"] mutableCopy]
+                    ?: [NSMutableDictionary dictionary];
+                context[@"app"] = app;
+
+                app[@"in_foreground"] = @(inForeground);
+                event.context = context;
+            }
+        }
+#endif
+
         BOOL debugMetaNotAttached = !(nil != event.debugMeta && event.debugMeta.count > 0);
         if (!isCrashEvent && shouldAttachStacktrace && debugMetaNotAttached
             && event.threads != nil) {
-            event.debugMeta = [self.debugImageProvider getDebugImagesForThreads:event.threads];
+            event.debugMeta = [self.debugImageProvider getDebugImagesForThreads:event.threads
+                                                                        isCrash:NO];
         }
     }
 
     event = [scope applyToEvent:event maxBreadcrumb:self.options.maxBreadcrumbs];
 
-    if ([self isOOM:event isCrashEvent:isCrashEvent]) {
+    if ([self isWatchdogTermination:event isCrashEvent:isCrashEvent]) {
         // Remove some mutable properties from the device/app contexts which are no longer
         // applicable
         [self removeExtraDeviceContextFromEvent:event];
-    } else {
-        // Store the current free memory, free storage, battery level and more mutable properties,
-        // at the time of this event
+    } else if (!isCrashEvent) {
+        // Store the current free memory battery level and more mutable properties,
+        // at the time of this event, but not for crashes as the current data isn't guaranteed to be
+        // the same as when the app crashed.
         [self applyExtraDeviceContextToEvent:event];
+        [self applyCultureContextToEvent:event];
     }
 
-    [self applyPermissionsToEvent:event];
-    [self applyCultureContextToEvent:event];
-
     // With scope applied, before running callbacks run:
-    if (nil == event.environment) {
+    if (event.environment == nil) {
         // We default to environment 'production' if nothing was set
-        event.environment = kSentryDefaultEnvironment;
+        event.environment = self.options.environment;
     }
 
     // Need to do this after the scope is applied cause this sets the user if there is any
@@ -599,7 +666,8 @@ NSString *const kSentryDefaultEnvironment = @"production";
         }
     }
 
-    if (isCrashEvent && nil != self.options.onCrashedLastRun && !SentrySDK.crashedLastRunCalled) {
+    if (event != nil && isCrashEvent && nil != self.options.onCrashedLastRun
+        && !SentrySDK.crashedLastRunCalled) {
         // We only want to call the callback once. It can occur that multiple crash events are
         // about to be sent.
         SentrySDK.crashedLastRunCalled = YES;
@@ -611,7 +679,7 @@ NSString *const kSentryDefaultEnvironment = @"production";
 
 - (BOOL)isSampled:(NSNumber *)sampleRate
 {
-    if (nil == sampleRate) {
+    if (sampleRate == nil) {
         return NO;
     }
 
@@ -620,7 +688,7 @@ NSString *const kSentryDefaultEnvironment = @"production";
 
 - (BOOL)isDisabled
 {
-    return !self.options.enabled || nil == self.options.parsedDsn;
+    return !_isEnabled || !self.options.enabled || nil == self.options.parsedDsn;
 }
 
 - (void)logDisabledMessage
@@ -634,7 +702,7 @@ NSString *const kSentryDefaultEnvironment = @"production";
 
     for (SentryEventProcessor processor in SentryGlobalEventProcessor.shared.processors) {
         newEvent = processor(newEvent);
-        if (nil == newEvent) {
+        if (newEvent == nil) {
             SENTRY_LOG_DEBUG(@"SentryScope callEventProcessors: An event processor decided to "
                              @"remove this event.");
             break;
@@ -651,25 +719,11 @@ NSString *const kSentryDefaultEnvironment = @"production";
 
     id integrations = event.extra[@"__sentry_sdk_integrations"];
     if (!integrations) {
-        integrations = [NSMutableArray new];
-
-        for (NSString *integration in SentrySDK.currentHub.installedIntegrationNames) {
-            // Every integration starts with "Sentry" and ends with "Integration". To keep the
-            // payload of the event small we remove both.
-            NSString *withoutSentry = [integration stringByReplacingOccurrencesOfString:@"Sentry"
-                                                                             withString:@""];
-            NSString *trimmed = [withoutSentry stringByReplacingOccurrencesOfString:@"Integration"
-                                                                         withString:@""];
-            [integrations addObject:trimmed];
-        }
-
-        if (self.options.stitchAsyncCode) {
-            [integrations addObject:@"StitchAsyncCode"];
-        }
+        integrations = [SentrySDK.currentHub trimmedInstalledIntegrationNames];
 
 #if SENTRY_HAS_UIKIT
-        if (self.options.enablePreWarmedAppStartTracking) {
-            [integrations addObject:@"PreWarmedAppStartTracking"];
+        if (self.options.enablePreWarmedAppStartTracing) {
+            [integrations addObject:@"PreWarmedAppStartTracing"];
         }
 #endif
     }
@@ -685,14 +739,14 @@ NSString *const kSentryDefaultEnvironment = @"production";
 {
     if (nil != event && nil != userInfo && userInfo.count > 0) {
         NSMutableDictionary *context;
-        if (nil == event.context) {
+        if (event.context == nil) {
             context = [[NSMutableDictionary alloc] init];
             event.context = context;
         } else {
             context = [event.context mutableCopy];
         }
 
-        [context setValue:[userInfo sentry_sanitize] forKey:@"user info"];
+        [context setValue:sentry_sanitize(userInfo) forKey:@"user info"];
     }
 }
 
@@ -700,66 +754,26 @@ NSString *const kSentryDefaultEnvironment = @"production";
 {
     // We only want to set the id if the customer didn't set a user so we at least set something to
     // identify the user.
-    if (nil == event.user) {
+    if (event.user == nil) {
         SentryUser *user = [[SentryUser alloc] init];
-        user.userId = [SentryInstallation id];
+        user.userId = [SentryInstallation idWithCacheDirectoryPath:self.options.cacheDirectoryPath];
         event.user = user;
     }
 }
 
-- (BOOL)isOOM:(SentryEvent *)event isCrashEvent:(BOOL)isCrashEvent
+- (BOOL)isWatchdogTermination:(SentryEvent *)event isCrashEvent:(BOOL)isCrashEvent
 {
     if (!isCrashEvent) {
         return NO;
     }
 
-    if (nil == event.exceptions || event.exceptions.count != 1) {
+    if (event.exceptions == nil || event.exceptions.count != 1) {
         return NO;
     }
 
     SentryException *exception = event.exceptions[0];
-    return nil != exception.mechanism &&
-        [exception.mechanism.type isEqualToString:SentryOutOfMemoryMechanismType];
-}
-
-- (void)applyPermissionsToEvent:(SentryEvent *)event
-{
-    [self modifyContext:event
-                    key:@"app"
-                  block:^(NSMutableDictionary *app) {
-                      app[@"permissions"] = @ {
-                          @"push_notifications" :
-                              [self stringForPermissionStatus:self.permissionsObserver
-                                                                  .pushPermissionStatus],
-                          @"location_access" :
-                              [self stringForPermissionStatus:self.permissionsObserver
-                                                                  .locationPermissionStatus],
-                          @"photo_library" :
-                              [self stringForPermissionStatus:self.permissionsObserver
-                                                                  .photoLibraryPermissionStatus],
-                      };
-                  }];
-}
-
-- (NSString *)stringForPermissionStatus:(SentryPermissionStatus)status
-{
-    switch (status) {
-    case kSentryPermissionStatusUnknown:
-        return @"unknown";
-        break;
-
-    case kSentryPermissionStatusGranted:
-        return @"granted";
-        break;
-
-    case kSentryPermissionStatusPartial:
-        return @"partial";
-        break;
-
-    case kSentryPermissionStatusDenied:
-        return @"not_granted";
-        break;
-    }
+    return exception.mechanism != nil &&
+        [exception.mechanism.type isEqualToString:SentryWatchdogTerminationMechanismType];
 }
 
 - (void)applyCultureContextToEvent:(SentryEvent *)event
@@ -783,44 +797,45 @@ NSString *const kSentryDefaultEnvironment = @"production";
             }
 #endif
                       culture[@"locale"] = self.locale.localeIdentifier;
-                      culture[@"is_24_hour_format"] = @(self.locale.sentry_timeIs24HourFormat);
+                      culture[@"is_24_hour_format"] = @([SentryLocale timeIs24HourFormat]);
                       culture[@"timezone"] = self.timezone.name;
                   }];
 }
 
 - (void)applyExtraDeviceContextToEvent:(SentryEvent *)event
 {
-    [self
-        modifyContext:event
-                  key:@"device"
-                block:^(NSMutableDictionary *device) {
-                    device[SentryDeviceContextFreeMemoryKey] = @(self.crashWrapper.freeMemorySize);
-                    device[@"free_storage"] = @(self.crashWrapper.freeStorageSize);
-
-#if TARGET_OS_IOS
-                    if (self.deviceWrapper.orientation != UIDeviceOrientationUnknown) {
-                        device[@"orientation"]
-                            = UIDeviceOrientationIsPortrait(self.deviceWrapper.orientation)
-                            ? @"portrait"
-                            : @"landscape";
-                    }
-
-                    if (self.deviceWrapper.isBatteryMonitoringEnabled) {
-                        device[@"charging"]
-                            = self.deviceWrapper.batteryState == UIDeviceBatteryStateCharging
-                            ? @(YES)
-                            : @(NO);
-                        device[@"battery_level"] = @((int)(self.deviceWrapper.batteryLevel * 100));
-                    }
-#endif
-                }];
+    NSDictionary *extraContext =
+        [SentryDependencyContainer.sharedInstance.extraContextProvider getExtraContext];
+    [self modifyContext:event
+                    key:@"device"
+                  block:^(NSMutableDictionary *device) {
+                      [device addEntriesFromDictionary:extraContext[@"device"]];
+                  }];
 
     [self modifyContext:event
                     key:@"app"
                   block:^(NSMutableDictionary *app) {
-                      app[SentryDeviceContextAppMemoryKey] = @(self.crashWrapper.appMemorySize);
+                      [app addEntriesFromDictionary:extraContext[@"app"]];
+#if SENTRY_HAS_UIKIT
+                      [self addViewNamesToContext:app event:event];
+#endif // SENTRY_HAS_UIKIT
                   }];
 }
+
+#if SENTRY_HAS_UIKIT
+- (void)addViewNamesToContext:(NSMutableDictionary *)appContext event:(SentryEvent *)event
+{
+    if ([event isKindOfClass:[SentryTransaction class]]) {
+        SentryTransaction *transaction = (SentryTransaction *)event;
+        if ([transaction.viewNames count] > 0) {
+            appContext[@"view_names"] = transaction.viewNames;
+        }
+    } else {
+        appContext[@"view_names"] =
+            [SentryDependencyContainer.sharedInstance.application relevantViewControllersNames];
+    }
+}
+#endif // SENTRY_HAS_UIKIT
 
 - (void)removeExtraDeviceContextFromEvent:(SentryEvent *)event
 {
@@ -828,7 +843,6 @@ NSString *const kSentryDefaultEnvironment = @"production";
                     key:@"device"
                   block:^(NSMutableDictionary *device) {
                       [device removeObjectForKey:SentryDeviceContextFreeMemoryKey];
-                      [device removeObjectForKey:@"free_storage"];
                       [device removeObjectForKey:@"orientation"];
                       [device removeObjectForKey:@"charging"];
                       [device removeObjectForKey:@"battery_level"];
@@ -845,7 +859,7 @@ NSString *const kSentryDefaultEnvironment = @"production";
                   key:(NSString *)key
                 block:(void (^)(NSMutableDictionary *))block
 {
-    if (nil == event.context || event.context.count == 0) {
+    if (event.context == nil || event.context.count == 0) {
         return;
     }
 

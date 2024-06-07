@@ -19,15 +19,18 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
-import WebKit
+#if os(iOS)
 
-import ProtonCore_CoreTranslation
-import ProtonCore_Foundations
-import ProtonCore_Networking
-import ProtonCore_Observability
-import ProtonCore_Services
-import ProtonCore_UIFoundations
-import ProtonCore_Utilities
+import WebKit
+import UIKit
+
+import ProtonCoreFoundations
+import ProtonCoreNetworking
+import ProtonCoreObservability
+import ProtonCoreServices
+import ProtonCoreUIFoundations
+import ProtonCoreUtilities
+import ProtonCoreTelemetry
 
 protocol HumanVerifyViewControllerDelegate: AnyObject {
     func didDismissViewController()
@@ -38,41 +41,26 @@ protocol HumanVerifyViewControllerDelegate: AnyObject {
     func emailAddressAlreadyTakenWithError(code: Int, description: String)
 }
 
-// Delete this enum once iOS 11 support is dropped.
-enum UserInterfaceStyle: Int {
-    case unspecified = 0
-    case light = 1
-    case dark = 2
+final class HumanVerifyViewController: UIViewController, AccessibleView, ProductMetricsMeasurable {
+    var productMetrics: ProductMetrics = .init(
+        group: TelemetryMeasurementGroup.signUp.rawValue,
+        flow: TelemetryFlow.signUpFull.rawValue,
+        screen: .hv
+    )
 
-    @available(iOS 12, *)
-    init(value: UIUserInterfaceStyle) {
-        switch value {
-        case .unspecified:
-            self = .unspecified
-        case .light:
-            self = .light
-        case .dark:
-            self = .dark
-        @unknown default:
-            assertionFailure("Unrecognized UIUserInterfaceStyle: \(value)")
-            self = .unspecified
-        }
+    enum MeasureConstants {
+        static let resultFailure = "failure"
+        static let resultSuccess = "success"
+        static let hostAlternative = "alternative"
+        static let hostStandard = "standard"
     }
-
-    @available(iOS 12, *)
-    static func != (lhs: UIUserInterfaceStyle, rhs: UserInterfaceStyle) -> Bool {
-        lhs.rawValue != rhs.rawValue
-    }
-}
-
-final class HumanVerifyViewController: UIViewController, AccessibleView {
 
     // MARK: Outlets
 
     var webView: WKWebView!
     @IBOutlet weak var helpBarButtonItem: UIBarButtonItem! {
         didSet {
-            helpBarButtonItem.title = CoreString._hv_help_button
+            helpBarButtonItem.title = HVTranslation.help_button.l10n
             helpBarButtonItem.tintColor = ColorProvider.BrandNorm
         }
     }
@@ -93,7 +81,8 @@ final class HumanVerifyViewController: UIViewController, AccessibleView {
     var banner: PMBanner?
     var presentsBannerInsteadOfWebView = false
     var dispatchQueue: CompletionBlockExecutor = .asyncMainExecutor
-    private lazy var currentInterfaceStyle: UserInterfaceStyle = .unspecified
+    private var webViewInterfaceStyle: UIUserInterfaceStyle = .unspecified
+    private var firstLoad = true
 
     override var preferredStatusBarStyle: UIStatusBarStyle { darkModeAwarePreferredStatusBarStyle() }
 
@@ -101,7 +90,6 @@ final class HumanVerifyViewController: UIViewController, AccessibleView {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupObservers()
         configureUI()
         loadWebContent()
         generateAccessibilityIdentifiers()
@@ -110,15 +98,18 @@ final class HumanVerifyViewController: UIViewController, AccessibleView {
 
     deinit {
         userContentController.removeAllUserScripts()
-        NotificationCenter.default.removeObserver(self)
     }
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
-        if #available(iOS 12.0, *) {
-            if UIApplication.shared.applicationState == .active {
-                checkInterfaceStyle()
-            }
+        if UIApplication.shared.applicationState != .background,
+            traitCollection.userInterfaceStyle != webViewInterfaceStyle,
+            overrideUserInterfaceStyle == .unspecified {
+            setWebViewInterfaceStyle()
+            // reload webview for new theme
+            loadWebContent()
+        } else {
+            setWebViewInterfaceStyle()
         }
     }
 
@@ -127,25 +118,33 @@ final class HumanVerifyViewController: UIViewController, AccessibleView {
     @IBAction func closeAction(_ sender: Any) {
         ObservabilityEnv.report(.humanVerificationOutcomeTotal(status: .canceled))
         delegate?.didDismissViewController()
+        measureOnViewClosed()
     }
 
     @IBAction func helpAction(_ sender: Any) {
         delegate?.didShowHelpViewController()
+        measureOnViewClicked(item: "help")
     }
 
     // MARK: Private interface
 
     private func configureUI() {
-        title = viewTitle ?? CoreString._hv_title
-        if #available(iOS 12.0, *) {
-            currentInterfaceStyle = .init(value: traitCollection.userInterfaceStyle)
-        }
+        title = viewTitle ?? HVTranslation.title.l10n
         closeBarButtonItem.tintColor = ColorProvider.IconNorm
         closeBarButtonItem.accessibilityLabel = "closeButton"
         updateTitleAttributes()
         view.backgroundColor = ColorProvider.BackgroundNorm
         closeBarButtonItem.image = isModalPresentation ? IconProvider.cross : IconProvider.arrowLeft
         setupWebView()
+        setWebViewInterfaceStyle()
+    }
+
+    private func setWebViewInterfaceStyle() {
+        if overrideUserInterfaceStyle != .unspecified {
+            webViewInterfaceStyle = overrideUserInterfaceStyle
+        } else {
+            webViewInterfaceStyle = traitCollection.userInterfaceStyle
+        }
     }
 
     private func setupWebView() {
@@ -153,9 +152,7 @@ final class HumanVerifyViewController: UIViewController, AccessibleView {
         let webViewConfiguration = WKWebViewConfiguration()
         webViewConfiguration.userContentController = userContentController
         viewModel.setup(webViewConfiguration: webViewConfiguration)
-        if #available(iOS 13.0, *) {
-            webViewConfiguration.defaultWebpagePreferences.preferredContentMode = .mobile
-        }
+        webViewConfiguration.defaultWebpagePreferences.preferredContentMode = .mobile
         webViewConfiguration.websiteDataStore = WKWebsiteDataStore.default()
         webView = WKWebView(frame: .zero, configuration: webViewConfiguration)
         webView.navigationDelegate = self
@@ -175,27 +172,13 @@ final class HumanVerifyViewController: UIViewController, AccessibleView {
     private var lastLoadingURL: String?
 
     private func loadWebContent() {
+        webView.overrideUserInterfaceStyle = webViewInterfaceStyle
         hideWebView(showActivityIndicator: true)
         URLCache.shared.removeAllCachedResponses()
         let requestObj = viewModel.getURLRequest
         lastLoadingURL = requestObj.url?.absoluteString
+        firstLoad = true
         webView.load(requestObj)
-    }
-
-    private func setupObservers() {
-        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            if #available(iOS 12.0, *) {
-                self?.checkInterfaceStyle()
-            }
-        }
-    }
-
-    @available(iOS 12.0, *)
-    private func checkInterfaceStyle() {
-        if traitCollection.userInterfaceStyle != currentInterfaceStyle {
-            loadWebContent()
-            currentInterfaceStyle = .init(value: traitCollection.userInterfaceStyle)
-        }
     }
 
     private func presentErrorWithoutWebView(message: String) {
@@ -214,7 +197,7 @@ final class HumanVerifyViewController: UIViewController, AccessibleView {
     private func presentErrorOverWebView(message: String) {
         self.banner?.dismiss()
         self.banner = PMBanner(message: message, style: PMBannerNewStyle.error, dismissDuration: Double.infinity)
-        self.banner?.addButton(text: CoreString._hv_ok_button) { [weak self] _ in
+        self.banner?.addButton(text: HVTranslation.ok_button.l10n) { [weak self] _ in
             self?.banner?.dismiss()
         }
         self.banner?.show(at: .top, on: self)
@@ -273,6 +256,13 @@ extension HumanVerifyViewController: WKNavigationDelegate {
 
     private func handleFailedRequest(_ error: Error) {
         ObservabilityEnv.report(.humanVerificationScreenLoadTotal(status: .failed))
+        measureOnViewAction(
+            action: .displayed,
+            additionalDimensions: [
+                .result(MeasureConstants.resultFailure),
+                .hostType(viewModel.isCurrentlyUsingProxyDomain ? MeasureConstants.hostAlternative : MeasureConstants.hostStandard)
+            ]
+        )
         guard let loadingUrl = lastLoadingURL else { return }
         viewModel.shouldRetryFailedLoading(host: loadingUrl, error: error) { [weak self] in
             if $0 {
@@ -292,6 +282,19 @@ extension HumanVerifyViewController: WKNavigationDelegate {
             trustKit: PMAPIService.trustKit,
             challengeCompletionHandler: completionHandler
         )
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        if firstLoad {
+            firstLoad = false
+            measureOnViewAction(
+                action: .displayed,
+                additionalDimensions: [
+                    .result(MeasureConstants.resultSuccess),
+                    .hostType(viewModel.isCurrentlyUsingProxyDomain ? MeasureConstants.hostAlternative : MeasureConstants.hostStandard)
+                ]
+            )
+        }
     }
 }
 
@@ -331,8 +334,10 @@ extension HumanVerifyViewController: WKScriptMessageHandler {
                     if let code = error.responseCode {
                         switch code {
                         case APIErrorCode.humanVerificationAddressAlreadyTaken:
+                            ObservabilityEnv.report(.humanVerificationOutcomeTotal(status: .addressAlreadyTaken))
                             self?.delegate?.emailAddressAlreadyTakenWithError(code: code, description: error.localizedDescription)
                         case APIErrorCode.invalidVerificationCode:
+                            ObservabilityEnv.report(.humanVerificationOutcomeTotal(status: .invalidVerificationCode))
                             self?.delegate?.willReopenViewController()
                         default:
                             ObservabilityEnv.report(.humanVerificationOutcomeTotal(status: .failed))
@@ -343,6 +348,7 @@ extension HumanVerifyViewController: WKScriptMessageHandler {
                     ObservabilityEnv.report(.humanVerificationOutcomeTotal(status: .failed))
                     self?.presentErrorWithoutWebView(message: error.localizedDescription)
                 }
+                self?.measureOnViewAction(action: .verify, additionalDimensions: [.result(MeasureConstants.resultFailure)])
             }
         }, completeHandler: { [weak self] method in
             let delay: DispatchTimeInterval = method.predefinedMethod == .captcha ? .seconds(1) : .seconds(0)
@@ -350,6 +356,9 @@ extension HumanVerifyViewController: WKScriptMessageHandler {
             self?.dispatchQueue.execute(after: delay) { [weak self] in
                 self?.delegate?.didFinishViewController()
             }
+            self?.measureOnViewAction(action: .verify, additionalDimensions: [.result(MeasureConstants.resultSuccess)])
         })
     }
 }
+
+#endif

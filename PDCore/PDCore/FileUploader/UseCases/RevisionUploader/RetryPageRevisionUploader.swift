@@ -20,29 +20,46 @@ import Foundation
 class RetryPageRevisionUploader: PageRevisionUploader {
     let decoratee: PageRevisionUploader
     let maximumRetryCount: Int
-    let retryDelay: TimeInterval
+    let uploadID: UUID
+    let page: Int
+    private var isCancelled = false
 
-    private var retryCount = 0
-
-    init(decoratee: PageRevisionUploader, maximumRetryCount: Int, retryDelay: TimeInterval) {
+    init(decoratee: PageRevisionUploader, maximumRetryCount: Int, uploadID: UUID, page: Int) {
         self.decoratee = decoratee
         self.maximumRetryCount = maximumRetryCount
-        self.retryDelay = retryDelay
+        self.uploadID = uploadID
+        self.page = page
     }
 
     func upload(completion: @escaping (Result<Void, Error>) -> Void) {
+        attemptUpload(attemptNumber: 0, completion: completion)
+    }
+
+    private func attemptUpload(attemptNumber: Int, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard !isCancelled else { return }
+
+        guard attemptNumber < maximumRetryCount else {
+            completion(.failure(ResponseError(httpCode: nil, responseCode: RetryPolicy.iOSDriveRetriableCode, userFacingMessage: "Not all blocks or thumbnails were uploaded due to a retryable error", underlyingError: nil)))
+            return
+        }
+
+        Log.info("STAGE: 3 Upload Page \(page) 🏞📦📝☁️ started. Attempt: \(attemptNumber). UUID: \(self.uploadID)", domain: .uploader)
         decoratee.upload { [weak self] result in
-            guard let self = self else { return }
+            guard let self = self, !self.isCancelled else { return }
             switch result {
             case .success:
-                completion(.success(()))
+                completion(.success)
+
             case .failure(let error):
-                if self.retryCount < self.maximumRetryCount {
-                    self.retryCount += 1
-                    DispatchQueue.main.asyncAfter(deadline: .now() + self.retryDelay) {
-                        self.upload(completion: completion)
+                if error is PageFinishedWithRetriableErrors {
+                    let delay = ExponentialBackoffWithJitter.getDelay(attempt: attemptNumber)
+                    Log.info("STAGE: 3 Upload Page \(self.page) 🏞📦📝☁️ finished ⚠️ with errors. Will try again in \(delay) s. UUID: \(self.uploadID)", domain: .uploader)
+                    DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + delay) { [weak self] in
+                        guard let self, !self.isCancelled else { return }
+                        self.attemptUpload(attemptNumber: attemptNumber + 1, completion: completion)
                     }
                 } else {
+                    Log.info("STAGE: 3 Upload Page \(self.page) 🏞📦📝☁️ failed ❌. UUID: \(self.uploadID)", domain: .uploader)
                     completion(.failure(error))
                 }
             }
@@ -50,6 +67,7 @@ class RetryPageRevisionUploader: PageRevisionUploader {
     }
 
     func cancel() {
+        isCancelled = true
         decoratee.cancel()
     }
 }
