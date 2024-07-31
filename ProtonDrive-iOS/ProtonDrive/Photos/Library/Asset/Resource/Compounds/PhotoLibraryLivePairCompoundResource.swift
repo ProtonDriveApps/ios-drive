@@ -52,12 +52,13 @@ final class ConcretePhotoLibraryLivePairCompoundResource: PhotoLibraryLivePairCo
     }
 
     private func getOriginalPair(from resources: [PHAssetResource]) throws -> LivePhotoAssetResourcePair {
+        let containedTypes = resources.map(\.type.rawValue)
         guard let photoResource = resources.first(where: { $0.isOriginalImage() }) else {
-            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources
+            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources(containedTypes)
         }
 
         guard let videoResource = resources.first(where: { $0.isOriginalPairedVideo() }) else {
-            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources
+            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources(containedTypes)
         }
 
         return LivePhotoAssetResourcePair(
@@ -69,12 +70,13 @@ final class ConcretePhotoLibraryLivePairCompoundResource: PhotoLibraryLivePairCo
     }
 
     private func getModifiedPair(from resources: [PHAssetResource]) throws -> LivePhotoAssetResourcePair {
+        let containedTypes = resources.map(\.type.rawValue)
         guard let photoResource = resources.first(where: { $0.isAdjustedImage() }) else {
-            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources
+            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources(containedTypes)
         }
 
         guard let videoResource = resources.first(where: { $0.isAdjustedPairedVideo() }) else {
-            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources
+            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources(containedTypes)
         }
 
         let photoFilename = try nameResource.getPhotoFilename(from: resources)

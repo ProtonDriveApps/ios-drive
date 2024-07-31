@@ -81,7 +81,7 @@ public final class RemoteCreatingPhotosRootDataSource: PhotosShareDataSource {
         return try await moc.perform {
             let creator = signersKit.address.email
 
-            let share: Share = self.storage.new(with: response.share.shareID, by: #keyPath(Share.id), in: moc)
+            let share: Share = self.storage.unique(with: [response.share.shareID], in: moc)[0]
             share.addressID = signersKit.address.addressID
             share.creator = creator
             share.key = shareKeys.key
@@ -89,7 +89,7 @@ public final class RemoteCreatingPhotosRootDataSource: PhotosShareDataSource {
             share.passphraseSignature = shareKeys.signature
             share.type = .photos
 
-            let root: Folder = self.storage.new(with: response.share.linkID, by: #keyPath(Folder.id), in: moc)
+            let root: Folder = self.storage.unique(with: [response.share.linkID], in: moc)[0]
             root.shareID = response.share.shareID
             root.nodeKey = rootKeys.key
             root.nodePassphrase = rootKeys.passphrase

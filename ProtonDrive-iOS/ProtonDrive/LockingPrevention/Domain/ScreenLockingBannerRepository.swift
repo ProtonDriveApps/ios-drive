@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import PDCore
 
 public protocol ScreenLockingBannerRepository {
     var isLockBannerEnabled: AnyPublisher<Bool, Never> { get }
@@ -24,7 +25,14 @@ public protocol ScreenLockingBannerRepository {
 }
 
 final class InMemoryScreenLockingBannerRepository: ScreenLockingBannerRepository {
-    private var isBannerEnabledSubject = CurrentValueSubject<Bool, Never>(true)
+    private let localSettings: LocalSettings
+    private var isBannerEnabledSubject: CurrentValueSubject<Bool, Never>
+    
+    init(localSettings: LocalSettings) {
+        self.localSettings = localSettings
+        let bannerHasDismissed = localSettings.keepScreenAwakeBannerHasDismissed ?? false
+        self.isBannerEnabledSubject = .init(!bannerHasDismissed)
+    }
 
     var isLockBannerEnabled: AnyPublisher<Bool, Never> {
         isBannerEnabledSubject
@@ -34,5 +42,6 @@ final class InMemoryScreenLockingBannerRepository: ScreenLockingBannerRepository
 
     func disableLockBanner() {
         isBannerEnabledSubject.send(false)
+        localSettings.keepScreenAwakeBannerHasDismissed = true
     }
 }

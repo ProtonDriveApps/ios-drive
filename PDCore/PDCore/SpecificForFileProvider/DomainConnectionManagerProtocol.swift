@@ -40,4 +40,5 @@ public protocol DomainConnectionManagerProtocol {
     var cacheCleanupStrategy: CacheCleanupStrategy { get }
     func tearDownDomain() async throws
     func signalEnumerator() async throws
+    func forceDomainRemoval() async throws
 }

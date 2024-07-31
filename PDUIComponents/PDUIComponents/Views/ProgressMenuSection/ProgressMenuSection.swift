@@ -33,6 +33,10 @@ public struct ProgressMenuSectionGeneric<ProgressProviderType>: View where Progr
 
     public var body: some View {
         VStack(alignment: .leading) {
+            // The Rectangle is for padding between this and `MenuCell`
+            Rectangle()
+                .frame(height: 3)
+                .foregroundStyle(Color.clear)
             HStack {
                 ZStack {
                     Image(self.progressObserver.iconName)

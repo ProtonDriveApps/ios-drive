@@ -71,19 +71,6 @@ extension Tower {
             }
         } as Void
     }
-    
-    public func trash(nodes: [Node]) async throws {
-        return try await withCheckedThrowingContinuation { continuation in
-            trash(nodes: nodes) { result in
-                switch result {
-                case .success:
-                    return continuation.resume(with: .success)
-                case .failure(let error):
-                    return continuation.resume(with: .failure(error))
-                }
-            }
-        } as Void
-    }
 
     @available(*, deprecated, message: "Use the NodeIdentifier version")
     public func restoreFromTrash(shareID: String, nodes: [String]) async throws {

@@ -20,7 +20,7 @@ import Combine
 import PDCore
 
 protocol FileContentController {
-    var url: AnyPublisher<URL, Error> { get }
+    var content: AnyPublisher<FileContent, Error> { get }
     func execute(with id: NodeIdentifier)
     func clear()
 }
@@ -28,11 +28,11 @@ protocol FileContentController {
 final class LocalFileContentController: FileContentController {
     private let resource: FileContentResource
     private let storageResource: LocalStorageResource
-    private let subject = PassthroughSubject<URL, Error>()
-    private var lastUrl: URL?
+    private let subject = PassthroughSubject<FileContent, Error>()
+    private var lastFileContent: FileContent?
     private var cancellables = Set<AnyCancellable>()
 
-    var url: AnyPublisher<URL, Error> {
+    var content: AnyPublisher<FileContent, Error> {
         subject.eraseToAnyPublisher()
     }
 
@@ -48,9 +48,9 @@ final class LocalFileContentController: FileContentController {
                 if case let .failure(error) = result {
                     self?.subject.send(completion: .failure(error))
                 }
-            } receiveValue: { [weak self] url in
-                self?.lastUrl = url
-                self?.subject.send(url)
+            } receiveValue: { [weak self] content in
+                self?.lastFileContent = content
+                self?.subject.send(content)
             }
             .store(in: &cancellables)
 
@@ -62,8 +62,8 @@ final class LocalFileContentController: FileContentController {
 
     func clear() {
         resource.cancel()
-        if let url = lastUrl {
-            try? storageResource.delete(at: url)
-        }
+        guard let lastFileContent else { return }
+        try? storageResource.delete(at: lastFileContent.url)
+        lastFileContent.childrenURLs.forEach { try? storageResource.delete(at: $0) }
     }
 }

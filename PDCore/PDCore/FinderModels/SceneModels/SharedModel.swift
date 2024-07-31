@@ -18,7 +18,7 @@
 import Foundation
 import Combine
 
-public final class SharedModel: FinderModel, NodesListing, DownloadsListing, NodesSorting {
+public final class SharedModel: FinderModel, FinderErrorModel, NodesListing, DownloadsListing, NodesSorting {
     // MARK: FinderModel
     public var folder: Folder?
     public func loadFromCache() {
@@ -31,7 +31,10 @@ public final class SharedModel: FinderModel, NodesListing, DownloadsListing, Nod
     @Published public private(set) var sorting: SortPreference
 
     private let volumeID: String
-    
+
+    // MARK: FinderErrorModel
+    public var errorSubject = PassthroughSubject<Error, Never>()
+
     // MARK: NodesSorting
     private var sortingObserver: AnyCancellable!
     public var sortingPublisher: Published<SortPreference>.Publisher {

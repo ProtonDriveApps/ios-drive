@@ -75,4 +75,6 @@ extension PMAutolockSelectionCellConfiguration: PMDrillDownCellViewModel {
     public var preview: String? {
         return autoLocker.autolockerTimeout.title
     }
+    
+    public var accessibilityIdentifier: String { "Auto-Locker" }
 }

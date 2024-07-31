@@ -15,9 +15,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+/// Tracking upload of a single file, mainly its duration plus size in kilobytes and mediaType
+/// Since we want to track only real execution time, isolating from any queue interruptions / suspensions, the upload can be resumed and suspended multiple times. No `start` is implemented due to that, `resume` will either kick off the upload time measurement or will start adding to already tracked duration.
+/// To record additional data we should call `set(kilobytes:mediaType:)` once before succeeding / failing
 public protocol PhotoUploadMeasurementRepository {
     func resume()
     func pause()
-    func succeed(with kilobytes: Double)
-    func fail(with kilobytes: Double)
+    func succeed()
+    func fail()
+    func set(kilobytes: Double, mimeType: MimeType)
 }

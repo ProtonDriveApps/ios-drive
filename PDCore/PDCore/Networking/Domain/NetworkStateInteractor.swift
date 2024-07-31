@@ -23,7 +23,10 @@ public enum NetworkState: Equatable {
 
     public enum Interface: Equatable {
         case cellular
+        case loopback
         case other
+        case wifi
+        case wired
     }
 }
 

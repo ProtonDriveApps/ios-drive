@@ -26,7 +26,7 @@ final class CachingPhotoPreviewDetailShareController: PhotoPreviewDetailShareCon
     private let id: PhotoId
     private let fileContentController: FileContentController
     private let coordinator: PhotoPreviewDetailCoordinator
-    private var url: URL?
+    private var content: FileContent?
     private var isLoading = false
     private var cancellables = Set<AnyCancellable>()
 
@@ -38,29 +38,46 @@ final class CachingPhotoPreviewDetailShareController: PhotoPreviewDetailShareCon
     }
 
     private func subscribeToUpdates() {
-        fileContentController.url
+        fileContentController.content
             .sink { [weak self] _ in
                 self?.isLoading = false
-            } receiveValue: { [weak self] url in
-                self?.handleUpdate(url)
+            } receiveValue: { [weak self] content in
+                self?.handleUpdate(content)
             }
             .store(in: &cancellables)
     }
 
-    private func handleUpdate(_ url: URL) {
-        self.url = url
+    private func handleUpdate(_ content: FileContent) {
+        self.content = content
         if isLoading {
-            coordinator.openShare(url: url)
+            coordinateToShare()
         }
         isLoading = false
     }
 
     func openShare() {
-        if let url = url {
-            coordinator.openShare(url: url)
+        if content?.url != nil {
+            coordinateToShare()
         } else {
             isLoading = true
             fileContentController.execute(with: id)
         }
+    }
+    
+    private func coordinateToShare() {
+        guard 
+            let content,
+            content.couldBeLivePhoto,
+            let videoURL = content.childrenURLs.first
+        else {
+            shareURL()
+            return
+        }
+        coordinator.openShareLivePhoto(imageURL: content.url, videoURL: videoURL)
+    }
+    
+    private func shareURL() {
+        guard let url = content?.url else { return }
+        coordinator.openShare(url: url)
     }
 }

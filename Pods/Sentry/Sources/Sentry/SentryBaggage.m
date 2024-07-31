@@ -3,7 +3,6 @@
 #import "SentryLog.h"
 #import "SentryOptions+Private.h"
 #import "SentryScope+Private.h"
-#import "SentrySerialization.h"
 #import "SentrySwift.h"
 #import "SentryTraceContext.h"
 #import "SentryTracer.h"
@@ -19,6 +18,7 @@
                     userSegment:(nullable NSString *)userSegment
                      sampleRate:(nullable NSString *)sampleRate
                         sampled:(nullable NSString *)sampled
+                       replayId:(nullable NSString *)replayId
 {
 
     if (self = [super init]) {
@@ -30,6 +30,7 @@
         _userSegment = userSegment;
         _sampleRate = sampleRate;
         _sampled = sampled;
+        _replayId = replayId;
     }
 
     return self;
@@ -37,7 +38,7 @@
 
 - (NSString *)toHTTPHeaderWithOriginalBaggage:(NSDictionary *_Nullable)originalBaggage
 {
-    NSMutableDictionary *information
+    NSMutableDictionary<NSString *, NSString *> *information
         = originalBaggage.mutableCopy ?: [[NSMutableDictionary alloc] init];
 
     [information setValue:_traceId.sentryIdString forKey:@"sentry-trace_id"];
@@ -67,7 +68,11 @@
         [information setValue:_sampled forKey:@"sentry-sampled"];
     }
 
-    return [SentrySerialization baggageEncodedDictionary:information];
+    if (_replayId != nil) {
+        [information setValue:_replayId forKey:@"sentry-replay_id"];
+    }
+
+    return [SentryBaggageSerialization encodeDictionary:information];
 }
 
 @end

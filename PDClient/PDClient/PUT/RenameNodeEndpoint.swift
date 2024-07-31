@@ -18,7 +18,7 @@
 import Foundation
 
 public struct RenameNodeParameters: Codable {
-    public init(name: String, hash: String, MIMEType: String, signatureAddress: String) {
+    public init(name: String, hash: String, MIMEType: String?, signatureAddress: String) {
         self.Name = name
         self.Hash = hash
         self.MIMEType = MIMEType
@@ -27,7 +27,7 @@ public struct RenameNodeParameters: Codable {
     
     var Name: String
     var Hash: String
-    var MIMEType: String
+    var MIMEType: String?
     var SignatureAddress: String
 }
 

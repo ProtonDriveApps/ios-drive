@@ -143,8 +143,11 @@ final class LocalPhotoLibraryUpdateResource: NSObject, PhotoLibraryIdentifiersRe
     }
 
     private func updateFetchResult() {
-        let options = optionsFactory.makeOptions()
-        self.fetchResult = PHAsset.fetchAssets(with: options)
+        DispatchQueue.global().async {
+            // FetchAssets could take times, run this on main thread could make app hang
+            let options = self.optionsFactory.makeOptions()
+            self.fetchResult = PHAsset.fetchAssets(with: options)
+        }
     }
 
     private func subscribeToEnqueueUpdate() {

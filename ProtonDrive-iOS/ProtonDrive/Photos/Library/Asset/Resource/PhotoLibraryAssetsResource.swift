@@ -31,6 +31,7 @@ final class LocalPhotoLibraryAssetsResource: PhotoLibraryAssetsResource {
     private let plainResource: PhotoLibraryCompoundResource
     private let livePhotoResource: PhotoLibraryCompoundResource
     private let portraitPhotoResource: PhotoLibraryCompoundResource
+    private let cinematicVideoResource: PhotoLibraryCompoundResource
     private let burstResource: PhotoLibraryCompoundResource
     private let optionsFactory: PHFetchOptionsFactory
     private let mappingResource: PhotoLibraryMappingResource
@@ -39,6 +40,7 @@ final class LocalPhotoLibraryAssetsResource: PhotoLibraryAssetsResource {
         plainResource: PhotoLibraryCompoundResource,
         livePhotoResource: PhotoLibraryCompoundResource,
         portraitPhotoResource: PhotoLibraryCompoundResource,
+        cinematicVideoResource: PhotoLibraryCompoundResource,
         burstResource: PhotoLibraryCompoundResource,
         optionsFactory: PHFetchOptionsFactory,
         mappingResource: PhotoLibraryMappingResource
@@ -46,6 +48,7 @@ final class LocalPhotoLibraryAssetsResource: PhotoLibraryAssetsResource {
         self.plainResource = plainResource
         self.livePhotoResource = livePhotoResource
         self.portraitPhotoResource = portraitPhotoResource
+        self.cinematicVideoResource = cinematicVideoResource
         self.burstResource = burstResource
         self.optionsFactory = optionsFactory
         self.mappingResource = mappingResource
@@ -65,7 +68,7 @@ final class LocalPhotoLibraryAssetsResource: PhotoLibraryAssetsResource {
                 throw PhotoLibraryAssetsResourceError.invalidIdentifier
             }
         }
-        
+
         if asset.representsBurst && asset.burstIdentifier != nil { // Secondary assets that are exported also have `burstIdentifier`, but don't represent bursts
             return try await burstResource.execute(with: identifier, asset: asset)
         } else {
@@ -76,6 +79,10 @@ final class LocalPhotoLibraryAssetsResource: PhotoLibraryAssetsResource {
     private func execute(identifier: PhotoIdentifier, asset: PHAsset) async throws -> [PhotoAssetCompound] {
         if asset.mediaSubtypes.contains(.photoLive) {
             return try await livePhotoResource.execute(with: identifier, asset: asset)
+        } else if asset.mediaSubtypes.contains(.photoDepthEffect) {
+            return try await portraitPhotoResource.execute(with: identifier, asset: asset)
+        } else if asset.mediaSubtypes.contains(.videoCinematic) {
+            return try await cinematicVideoResource.execute(with: identifier, asset: asset)
         } else {
             return try await plainResource.execute(with: identifier, asset: asset)
         }

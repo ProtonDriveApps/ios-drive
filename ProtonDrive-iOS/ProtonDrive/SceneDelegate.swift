@@ -20,6 +20,7 @@ import PDCore
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     private var container = DriveDependencyContainer()
+    private let messageHandler = UserMessageHandler()
 
     var window: UIWindow?
     private lazy var blurringView = UIVisualEffectView.blurred
@@ -63,6 +64,21 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
         Log.info("scene openURLContexts", domain: .application)
+
+        guard let url = URLContexts.first?.url else {
+            return
+        }
+
+        guard let authenticatedContainer = container.authenticatedContainer else {
+            messageHandler.handleError(PlainMessageError("Please authenticate before opening the file."))
+            return
+        }
+
+        let interactor = ProtonDocumentOpeningFactory().makeInteractor(tower: authenticatedContainer.tower)
+        let urlCoordinator = iOSURLCoordinator()
+        let errorViewModel = ProtonDocumentErrorViewModel(messageHandler: messageHandler)
+        let controller = ProtonDocumentOpeningController(interactor: interactor, coordinator: urlCoordinator, errorViewModel: errorViewModel)
+        controller.openPreview(url)
     }
 
     func stateRestorationActivity(for scene: UIScene) -> NSUserActivity? {

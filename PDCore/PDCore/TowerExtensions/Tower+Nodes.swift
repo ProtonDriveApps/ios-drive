@@ -17,6 +17,8 @@
 
 import Foundation
 import CoreData
+import FileProvider
+import PDClient
 
 extension Tower {
     public func rootFolderAvailable() -> Bool {
@@ -27,13 +29,20 @@ extension Tower {
         var rootIdentifier: NodeIdentifier?
         let moc = self.storage.backgroundContext
         moc.performAndWait {
-            let creatorAddresses = self.sessionVault.addressIDs
-            guard let mainShare = self.storage.mainShareOfVolume(by: creatorAddresses, moc: moc),
-                  let root = mainShare.root as? Folder
-            else { return }
+            guard let root = fetchRootFolder(in: moc) else { return }
             rootIdentifier = root.identifier
         }
         return rootIdentifier
+    }
+    
+    func fetchRootFolder(in moc: NSManagedObjectContext) -> Folder? {
+        Self.fetchRootFolder(sessionVault: sessionVault, storage: storage, in: moc)
+    }
+    
+    static func fetchRootFolder(sessionVault: SessionVault, storage: StorageManager, in moc: NSManagedObjectContext) -> Folder? {
+        let creatorAddresses = sessionVault.addressIDs
+        guard let mainShare = storage.mainShareOfVolume(by: creatorAddresses, moc: moc) else { return nil }
+        return moc.performAndWait { mainShare.root as? Folder }
     }
     
     public func folderForNodeIdentifier(_ nodeId: NodeIdentifier) -> Folder? {
@@ -54,14 +63,26 @@ extension Tower {
             }
         }
     }
-
+    
     public func rename(node: NodeIdentifier, cleartextName newName: String, handler: @escaping (Result<Node, Error>) -> Void) {
         Task {
             do {
                 guard let node = storage.fetchNode(id: node, moc: storage.backgroundContext) else {
                     return handler(.failure(NSError(domain: "Failed to find Node", code: 0, userInfo: nil)))
                 }
-                let newMime = node is Folder ? Folder.mimeType : URL(fileURLWithPath: newName).mimeType()
+
+                let newMime: String?
+                if node is Folder {
+                    newMime = Folder.mimeType
+                } else if newName.fileExtension().isEmpty {
+                    // Preserve the previous MIME type in case:
+                    // 1. The user removed it when renaming; or
+                    // 2. It's a Proton Document, which doesn't have an extension on other platforms
+                    newMime = nil
+                } else {
+                    newMime = URL(fileURLWithPath: newName).mimeType()
+                }
+
                 try await cloudSlot.rename(node, to: newName, mimeType: newMime)
                 handler(.success(node))
             } catch {
@@ -69,7 +90,7 @@ extension Tower {
             }
         }
     }
-
+    
     public func setFavourite(_ favorite: Bool, nodes: [Node], handler: @escaping (Result<[Node], Error>) -> Void) {
         // local operation - no need for scratchpad moc as it can't fail
         self.storage.backgroundContext.performAndWait {
@@ -90,12 +111,16 @@ extension Tower {
         // local operation - no need for scratchpad moc as it can't fail
         self.storage.backgroundContext.perform {
             let nodes = nodes.map { $0.in(moc: self.storage.backgroundContext) }
-            nodes.forEach { $0.isMarkedOfflineAvailable = mark }
-            
+            nodes.forEach {
+                $0.isMarkedOfflineAvailable = mark
+                Log.info("Will mark node:\($0.identifier) as offline available", domain: .offlineAvailable)
+            }
+
             do {
                 try self.storage.backgroundContext.saveWithParentLinkCheck()
                 handler(.success(nodes))
-            } catch let error {
+            } catch {
+                Log.error("Failed marking nodes as offline available \(error.localizedDescription)", domain: .offlineAvailable)
                 handler(.failure(error))
             }
         }
@@ -114,7 +139,7 @@ extension Tower {
                 guard newParent.identifier != currentParentID else {
                     return handler(.success(node))
                 }
-
+                
                 let name = try await decryptedName(node, moc, newName)
                 try await cloudSlot.move(node: node, to: newParent, name: name)
                 handler(.success(node))
@@ -123,7 +148,7 @@ extension Tower {
             }
         }
     }
-
+    
     private func decryptedName(_ node: Node, _ moc: NSManagedObjectContext, _ newName: String?) async throws -> String {
         if let newName {
             return newName

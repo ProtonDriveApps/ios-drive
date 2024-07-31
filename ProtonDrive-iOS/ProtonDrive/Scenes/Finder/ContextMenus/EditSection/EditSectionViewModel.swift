@@ -57,7 +57,8 @@ final class EditSectionViewModel: ObservableObject {
     }
     
     private var download: EditSectionItem? {
-        .download(isMarked: node.isMarkedOfflineAvailable)
+        guard node.isDownloadable else { return nil }
+        return .download(isMarked: node.isMarkedOfflineAvailable)
     }
 
     private var shareLink: EditSectionItem? {

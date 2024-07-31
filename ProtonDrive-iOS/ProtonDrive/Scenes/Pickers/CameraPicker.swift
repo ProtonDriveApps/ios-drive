@@ -115,7 +115,7 @@ struct CameraPicker: UIViewControllerRepresentable {
 }
 
 // MARK: - DriveImagePickerController
-fileprivate final class DriveImagePickerController: UIImagePickerController {
+private final class DriveImagePickerController: UIImagePickerController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
 

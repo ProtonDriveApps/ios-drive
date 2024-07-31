@@ -24,8 +24,8 @@
 //
 
 #include "SentryCrashCachedData.h"
+#include "SentryInternalCDefines.h"
 
-// #define SentryCrashLogger_LocalLevel TRACE
 #include "SentryCrashLogger.h"
 
 #include <errno.h>
@@ -54,7 +54,7 @@ static _Atomic(int) g_semaphoreCount;
 static bool g_hasThreadStarted = false;
 
 static void
-updateThreadList(void)
+updateThreadList(void) SENTRY_DISABLE_THREAD_SANITIZER("Known data race to fix")
 {
     const task_t thisTask = mach_task_self();
     int oldThreadsCount = g_allThreadsCount;
@@ -129,6 +129,7 @@ updateThreadList(void)
 
 static void *
 monitorCachedData(__unused void *const userData)
+    SENTRY_DISABLE_THREAD_SANITIZER("Known data race to fix")
 {
     static int quickPollCount = 4;
     usleep(1);
@@ -149,6 +150,7 @@ monitorCachedData(__unused void *const userData)
 
 void
 sentrycrashccd_init(int pollingIntervalInSeconds)
+    SENTRY_DISABLE_THREAD_SANITIZER("Known data race to fix")
 {
     if (g_hasThreadStarted == true) {
         return;
@@ -211,6 +213,7 @@ sentrycrashccd_getAllThreads(int *threadCount)
 
 const char *
 sentrycrashccd_getThreadName(SentryCrashThread thread)
+    SENTRY_DISABLE_THREAD_SANITIZER("Known data race to fix")
 {
     if (g_allThreadNames != NULL) {
         for (int i = 0; i < g_allThreadsCount; i++) {

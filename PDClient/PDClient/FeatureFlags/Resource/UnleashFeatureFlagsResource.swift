@@ -141,10 +141,28 @@ public final class UnleashFeatureFlagsResource: ExternalFeatureFlagsResource {
             return "DriveDomainReconnectionEnabled"
         case .newTrayAppMenuEnabled:
             return "DriveNewTrayAppMenu"
+        case .pushNotificationIsEnabled:
+            return "PushNotifications"
         case .logCollectionEnabled:
             return "DriveiOSLogCollection"
         case .logCollectionDisabled:
             return "DriveiOSLogCollectionDisabled"
+        case .oneDollarPlanUpsellEnabled:
+            return "DriveOneDollarPlanUpsell"
+        case .driveSharingMigration:
+            return "DriveSharingMigration"
+        case .driveSharingDevelopment:
+            return "DriveSharingDevelopment"
+        case .driveSharingInvitations:
+            return "DriveSharingInvitations"
+        case .driveSharingExternalInvitations:
+            return "DriveSharingExternalInvitations"
+        case .driveSharingDisabled:
+            return "DriveSharingDisabled"
+        case .driveSharingExternalInvitationsDisabled:
+            return "DriveSharingExternalInvitationsDisabled"
+        case .driveSharingEditingDisabled:
+            return "DriveSharingEditingDisabled"
         }
     }
 

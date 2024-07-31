@@ -23,4 +23,12 @@
 public protocol PMDrillDownCellViewModel {
     var title: String { get }
     var preview: String? { get }
+    /// accessibility identifier for title label
+    var accessibilityIdentifier: String { get }
+    /// accessibility identifier for preview label
+    var previewAccessibilityIdentifier: String? { get }
+}
+
+public extension PMDrillDownCellViewModel {
+    var previewAccessibilityIdentifier: String? { nil }
 }

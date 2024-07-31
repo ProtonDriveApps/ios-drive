@@ -18,10 +18,19 @@
 import Combine
 import PDCore
 
+enum BootstrapStatus {
+    case photosRootNotReady
+    case bootstrapping
+    case bootstrapped
+    case bootstrapError
+}
+
 final class MonitoringBootstrapController: PhotosBootstrapController {
 
     private let interactor: PhotosBootstrapInteractor
     private let repository: PhotosBootstrapRepository
+    private var status: BootstrapStatus = .photosRootNotReady
+    private let errorSubject = PassthroughSubject<Error, Never>()
 
     private var cancellable: AnyCancellable?
 
@@ -36,11 +45,26 @@ final class MonitoringBootstrapController: PhotosBootstrapController {
     var isReady: AnyPublisher<Bool, Never> {
         repository.isPhotosRootReady
     }
+    
+    var errorPublisher: AnyPublisher<Error, Never> {
+        errorSubject.eraseToAnyPublisher()
+    }
 
     func bootstrap() {
+        guard cancellable == nil else {
+            switch status {
+            case .bootstrapError:
+                bootstrapPhotos()
+            default:
+                break
+            }
+            return
+        }
         cancellable = repository.isPhotosRootReady
+            .removeDuplicates()
             .sink { [weak self] isReady in
                 guard !isReady else { return }
+                self?.status = .bootstrapping
                 self?.bootstrapPhotos()
             }
     }
@@ -49,8 +73,17 @@ final class MonitoringBootstrapController: PhotosBootstrapController {
         Task {
             do {
                 try await interactor.bootstrap()
+                await MainActor.run {
+                    status = .bootstrapped
+                }
+                
             } catch {
+                await MainActor.run {
+                    errorSubject.send(error)
+                    status = .bootstrapError
+                }
                 // Unify errors to be displayed to the user
+                Log.error("Bootstrap photos experienced error: \(error.localizedDescription)", domain: .photosProcessing)
             }
         }
     }

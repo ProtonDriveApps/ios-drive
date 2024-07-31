@@ -23,6 +23,7 @@ class ExternalFeatureFlagsRepository: FeatureFlagsRepository {
     private let externalResource: ExternalFeatureFlagsResource
     private let externalStore: ExternalFeatureFlagsStore
     private var cancellables = Set<AnyCancellable>()
+    private var firstUpdateCancellable: AnyCancellable?
     private var subject = PassthroughSubject<Void, Never>()
 
     var updatePublisher: AnyPublisher<Void, Never> {
@@ -44,6 +45,7 @@ class ExternalFeatureFlagsRepository: FeatureFlagsRepository {
             for externalFlag in ExternalFeatureFlag.allCases {
                 let storageFlag = self.mapExternalFeatureFlagToAvailability(external: externalFlag)
                 let value = self.externalResource.isEnabled(flag: externalFlag)
+                Log.info("⛳️ FeatureFlag: \(storageFlag) value: \(value)", domain: .featureFlags)
                 self.externalStore.setFeatureEnabled(storageFlag, value: value)
             }
             self.subject.send()
@@ -65,11 +67,15 @@ class ExternalFeatureFlagsRepository: FeatureFlagsRepository {
 
     func startAsync() async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+            firstUpdateCancellable = updatePublisher
+                .first()
+                .sink(receiveValue: { _ in
+                    continuation.resume()
+                })
             externalResource.start { error in
                 if let error {
+                    self.firstUpdateCancellable = nil
                     continuation.resume(throwing: error)
-                } else {
-                    continuation.resume()
                 }
             }
         }
@@ -92,8 +98,18 @@ class ExternalFeatureFlagsRepository: FeatureFlagsRepository {
         case .postMigrationJunkFilesCleanup: return .postMigrationJunkFilesCleanup
         case .domainReconnectionEnabled: return .domainReconnectionEnabled
         case .newTrayAppMenuEnabled: return .newTrayAppMenuEnabled
+        case .pushNotificationIsEnabled: return .pushNotificationIsEnabled
         case .logCollectionEnabled: return .logCollectionEnabled
         case .logCollectionDisabled: return .logCollectionDisabled
+        case .oneDollarPlanUpsellEnabled: return .oneDollarPlanUpsellEnabled
+            // Sharing
+        case .driveSharingMigration: return .driveSharingMigration
+        case .driveSharingDevelopment: return .driveSharingDevelopment
+        case .driveSharingInvitations: return .driveSharingInvitations
+        case .driveSharingExternalInvitations: return .driveSharingExternalInvitations
+        case .driveSharingDisabled: return .driveSharingDisabled
+        case .driveSharingExternalInvitationsDisabled: return .driveSharingExternalInvitationsDisabled
+        case .driveSharingEditingDisabled: return .driveSharingEditingDisabled
         }
     }
 }

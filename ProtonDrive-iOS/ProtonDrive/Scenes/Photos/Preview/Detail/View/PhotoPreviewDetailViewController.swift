@@ -19,6 +19,8 @@ import Combine
 import ProtonCoreUIFoundations
 import SwiftUI
 import UIKit
+import Photos
+import enum ProtonCoreUtilities.Either
 
 final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewModelProtocol>: UIViewController, PhotosPreviewItemView {
     private let viewModel: ViewModel
@@ -28,6 +30,9 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
     private weak var interactiveView: InteractiveImageView?
     private var isContentUpdateNeeded = true
     private var gestureRecognizers = [UIGestureRecognizer]()
+    private var displayMode: PhotosPreviewMode = .default {
+        didSet { interactiveView?.updateCurrentDisplayMode(mode: displayMode) }
+    }
 
     init(viewModel: ViewModel) {
         self.viewModel = viewModel
@@ -44,6 +49,7 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
         contentView.fillSuperview()
         subscribeToUpdates()
         viewModel.viewDidLoad()
+        subscribeAppTermination()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -65,6 +71,12 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
             self?.handleUpdate()
         }
         .store(in: &cancellables)
+        
+        viewModel.mode
+            .sink { [weak self] mode in
+                self?.displayMode = mode
+            }
+            .store(in: &cancellables)
     }
 
     private func resetContent() {
@@ -104,9 +116,8 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
         addDefaultGestureRecognizers()
     }
 
-    private func addInteractiveImageView(with data: Data) {
-        let imageView = InteractiveImageView(data: data)
-        imageView.accessibilityIdentifier = "PhotoPreviewDetail.Image"
+    private func addInteractiveImageView(with data: PreviewDataType) {
+        let imageView = InteractiveImageView(data: data, displayMode: displayMode)
         contentView.addSubview(imageView)
         imageView.fillSuperview()
         interactiveView = imageView
@@ -150,16 +161,27 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
     private func addFullPreview(_ preview: PhotoFullPreview) {
         switch preview {
         case let .thumbnail(data):
-            addInteractiveImageView(with: data)
+            addInteractiveImageView(with: .image(data))
         case let .image(url):
             let data = (try? Data(contentsOf: url)) ?? Data()
-            addInteractiveImageView(with: data)
+            addInteractiveImageView(with: .image(data))
+        case let .gif(url):
+            let data = (try? Data(contentsOf: url)) ?? Data()
+            addInteractiveImageView(with: .gif(data))
         case let .video(url):
             addVideoView(with: url)
+        case let .livePhoto(photoURL, videoURL):
+            addInteractiveImageView(with: .livePhoto(photoURL, videoURL))
         }
     }
 
     @objc private func handleTap() {
+        // Long press live photo can play it
+        // Somehow if finger leaves device short enough, tap gesture will be triggered
+        // This will toggle mode introduces bad UX
+        // Use `isAfterLivePhotoPlayed` to debounce 
+        let shouldDebounce = interactiveView?.isAfterLivePhotoPlayed ?? false
+        if shouldDebounce { return }
         viewModel.toggleMode()
     }
 
@@ -172,6 +194,20 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
         let action = UIAlertAction(title: error.button, style: .cancel)
         alertController.addAction(action)
         present(alertController, animated: true)
+    }
+    
+    private func subscribeAppTermination() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appWillTerminate),
+            name: UIApplication.willTerminateNotification,
+            object: nil
+        )
+    }
+    
+    @objc
+    private func appWillTerminate() {
+        viewModel.cleanup()
     }
 
     // MARK: - PhotosPreviewItemView

@@ -24,12 +24,12 @@ final class BackgroundOpenAppReminderSchedulerFactory {
         var submitTask: (BGAppRefreshTaskRequest) throws -> Void = BGTaskScheduler.shared.submit
         var cancelTask: (String) -> Void = BGTaskScheduler.shared.cancelTask
         var dateProvider: () -> Date? = Date.init
-        var hasDefaultScheduleDelay = Constants.hasPhotosReminderStandardDelay
-        var enabledPolicy: TaskSchedulerEnabledPolicy
+        var hasDefaultScheduleDelay: () -> Bool = { Constants.hasPhotosReminderStandardDelay }
+        var enabledPolicy: TaskSchedulerPolicy
     }
 
     func makeTaskScheduler(dependencies: Dependencies) -> BackgroundTaskScheduler {
-        let scheduledDate = dependencies.hasDefaultScheduleDelay ? { dependencies.dateProvider()?.byAdding(.day, value: 2) } : { nil }
+        let scheduledDate = dependencies.hasDefaultScheduleDelay() ? { dependencies.dateProvider() } : { nil }
 
         let scheduler = BackgroundAppRefreshTaskScheduler(
             id: BackgroundModes.checkNewPhotoInGallery.id,

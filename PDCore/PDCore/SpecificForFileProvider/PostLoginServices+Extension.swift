@@ -59,8 +59,20 @@ extension PostLoginServices {
         case getDomainsFailed(_ error: Error)
         case disconnectDomainFailed(_ error: Error)
         case removeDomainFailed(_ error: Error)
-        case reconnectDomainFailed
+        case reconnectDomainFailed(_ error: Error)
         case identifyDomainFailed(_ error: Error)
         case postMigrationStepFailed(_ error: Error?)
+        
+        public var underlyingError: Error? {
+            switch self {
+            case .addDomainFailed(let error): return error
+            case .getDomainsFailed(let error): return error
+            case .disconnectDomainFailed(let error): return error
+            case .removeDomainFailed(let error): return error
+            case .reconnectDomainFailed(let error): return error
+            case .identifyDomainFailed(let error): return error
+            case .postMigrationStepFailed(let error): return error
+            }
+        }
     }
 }

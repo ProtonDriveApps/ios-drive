@@ -20,10 +20,12 @@ import Foundation
 public struct Quota: Equatable {
     public let used: Int
     public let total: Int
+    public let isPaid: Bool
 
-    public init(used: Int, total: Int) {
+    public init(used: Int, total: Int, isPaid: Bool) {
         self.used = used
         self.total = total
+        self.isPaid = isPaid
     }
 
     public var available: Int {

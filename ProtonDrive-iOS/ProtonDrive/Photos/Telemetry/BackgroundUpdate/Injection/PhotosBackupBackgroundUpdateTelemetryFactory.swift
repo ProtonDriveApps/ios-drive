@@ -18,10 +18,16 @@
 import PDCore
 
 struct PhotosBackupBackgroundUpdateTelemetryFactory {
-    func makeController(telemetryController: TelemetryController, taskController: BackgroundTaskStateController, storage: PhotosTelemetryStorage, userInfoResource: UserInfoResource) -> PhotosBackupBackgroundUpdateTelemetryController {
+    // swiftlint:disable:next function_parameter_count
+    func makeController(telemetryController: TelemetryController, taskController: BackgroundTaskStateController, backupStorage: PhotosTelemetryStorage, backgroundUploadStorage: PhotosBackupBackgroundTelemetryStorageProtocol, userInfoResource: UserInfoResource, uploadMeasurementsRepository: BackgroundUploadMeasurementsRepositoryProtocol, networkController: PhotoBackupNetworkControllerProtocol) -> PhotosBackupBackgroundUpdateTelemetryController {
         let userInfoFactory = PhotosTelemetryFactory().makeUserInfoFactory(userInfoResource: userInfoResource)
-        let dataFactory = ConcretePhotosBackupBackgroundUpdateTelemetryDataFactory(userInfoFactory: userInfoFactory, dateResource: PlatformCurrentDateResource(), storage: storage, hourFormatter: FoundationHourValueFormatter())
+        let connectionFactory = PhotosTelemetryConnectionFactory(networkController: networkController)
+        let dataFactory = ConcretePhotosBackupBackgroundUpdateTelemetryDataFactory(userInfoFactory: userInfoFactory, dateResource: PlatformCurrentDateResource(), storage: backupStorage, hourFormatter: FoundationHourValueFormatter(), connectionFactory: connectionFactory)
         let durationMeasurementRepository = TelemetryMeasurementsFactory().makeSerialDurationRepository()
-        return ConcretePhotosBackupBackgroundUpdateTelemetryController(telemetryController: telemetryController, taskController: taskController, durationMeasurementRepository: durationMeasurementRepository, dataFactory: dataFactory)
+        return ConcretePhotosBackupBackgroundUpdateTelemetryController(telemetryController: telemetryController, taskController: taskController, durationMeasurementRepository: durationMeasurementRepository, uploadMeasurementsRepository: uploadMeasurementsRepository, dataFactory: dataFactory, storage: backgroundUploadStorage)
+    }
+
+    func makeBackgroundStorage(suite: SettingsStorageSuite) -> PhotosBackupBackgroundTelemetryStorageProtocol {
+        PhotosBackupBackgroundTelemetryStorage(suite: suite)
     }
 }

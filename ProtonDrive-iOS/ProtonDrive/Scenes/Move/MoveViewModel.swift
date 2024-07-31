@@ -29,6 +29,8 @@ class MoveViewModel: ObservableObject, FinderViewModel, HasRefreshControl, Fetch
     // MARK: FinderViewModel
     let model: MoveModel
     var childrenCancellable: AnyCancellable?
+    var lockedStateCancellable: AnyCancellable?
+    var lockedStateBannerVisibility: LockedStateAlertVisibility = .hidden
     @Published var transientChildren: [NodeWrapper] = []
     @Published var permanentChildren: [NodeWrapper] = []
     let animationDuration: DispatchTimeInterval = .seconds(3)

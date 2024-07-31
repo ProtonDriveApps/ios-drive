@@ -16,7 +16,9 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import Photos
 
 protocol PhotoPreviewDetailCoordinator {
     func openShare(url: URL)
+    func openShareLivePhoto(imageURL: URL, videoURL: URL)
 }

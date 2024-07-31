@@ -142,7 +142,7 @@ extension Tower {
         #endif
     }()
     
-    static func makeCoreEventsSystem(appGroup: SettingsStorageSuite, sessionVault: SessionVault, generalSettings: GeneralSettings, paymentsSecureStorage: PaymentsSecureStorage, network: PMAPIService) -> CoreEventLoopManager {
+    static func makeCoreEventsSystem(appGroup: SettingsStorageSuite, sessionVault: SessionVault, generalSettings: GeneralSettings, paymentsSecureStorage: PaymentsSecureStorage, network: APIService) -> CoreEventLoopManager {
         let processor = GeneralEventsLoopProcessor(sessionVault: sessionVault, generalSettings: generalSettings, paymentsVault: paymentsSecureStorage)
         
         let generalEventsLoop = GeneralEventsLoop(
@@ -164,7 +164,7 @@ extension Tower {
     
     /// Stop active polling and clears local storages used by the polling system.
     /// After calling this method polling needs to be re-started from scratch including fetch of initial event ID.
-    func discardEventsPolling() {
+    static func discardEventsPolling(for coreEventManager: CoreEventLoopManager) {
         coreEventManager.suspend()
         coreEventManager.destroyAnchors()
         coreEventManager.reset()

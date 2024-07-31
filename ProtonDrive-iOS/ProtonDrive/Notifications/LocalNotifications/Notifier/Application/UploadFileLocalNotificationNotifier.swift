@@ -17,6 +17,7 @@
 
 import Foundation
 import Combine
+import PDCore
 
 protocol LocalNotificationNotifier {
     var publisher: AnyPublisher<LocalNotification, Never> { get }
@@ -26,17 +27,22 @@ final class UploadFileLocalNotificationNotifier: LocalNotificationNotifier {
     private var cancellables = Set<AnyCancellable>()
 
     private var isApplicationInBackground = false
-    private var didShowNotificationInSession = false
+    private var didRequestFileNotificationInSession = false
+    private var didRequestPhotosNotificationInSession = false
+    private var localSettings: LocalSettings
     private let subject: PassthroughSubject<LocalNotification, Never>
 
     let publisher: AnyPublisher<LocalNotification, Never>
 
     init(
         didInterruptOnFileUploadPublisher: AnyPublisher<Void, Never>,
+        didInterruptOnPhotoUploadPublisher: AnyPublisher<Void, Never>,
         didFindIssueOnFileUploadPublisher: AnyPublisher<Void, Never>,
         didChangeAppRunningStatePublisher: AnyPublisher<ApplicationRunningState, Never>,
+        localSettings: LocalSettings,
         notificationsResource: LocalNotificationsResource
     ) {
+        self.localSettings = localSettings
         subject = PassthroughSubject<LocalNotification, Never>()
         publisher = subject.eraseToAnyPublisher()
 
@@ -47,7 +53,13 @@ final class UploadFileLocalNotificationNotifier: LocalNotificationNotifier {
         didInterruptOnFileUploadPublisher
             .flatMap { notificationsResource.isAuthorized() }
             .filter { $0 }
-            .sink { [weak self] _ in self?.showInterruptedNotification() }
+            .sink { [weak self] _ in self?.showInterruptedFileNotification() }
+            .store(in: &cancellables)
+
+        didInterruptOnPhotoUploadPublisher
+            .flatMap { notificationsResource.isAuthorized() }
+            .filter { $0 }
+            .sink { [weak self] _ in self?.showInterruptedPhotoNotification() }
             .store(in: &cancellables)
 
         didFindIssueOnFileUploadPublisher
@@ -57,28 +69,54 @@ final class UploadFileLocalNotificationNotifier: LocalNotificationNotifier {
             .store(in: &cancellables)
     }
 
-    private var canShowNotification: Bool {
-        !didShowNotificationInSession && isApplicationInBackground
+    private var canShowFileNotification: Bool {
+        !didRequestFileNotificationInSession && isApplicationInBackground
+    }
+
+    // We only show the photo notification once, when the user is in the background, and if the any of the file notifications have been shown we do not show the photo notification
+    private var canShowPhotosNotification: Bool {
+        isApplicationInBackground && !didRequestFileNotificationInSession && localSettings.didShowPhotosNotification != true
     }
 
     private func onAppStateDidChange(to state: ApplicationRunningState) {
         isApplicationInBackground = state == .background
 
         guard state == .foreground else { return }
-        didShowNotificationInSession = false
+        didRequestFileNotificationInSession = false
+        didRequestPhotosNotificationInSession = false
     }
 
-    private func showInterruptedNotification() {
-        guard canShowNotification else { return }
-
-        subject.send(.interruptedUpload)
-        didShowNotificationInSession = true
+    private func showInterruptedFileNotification() {
+        displayFileNotification(.interruptedFileUpload)
     }
 
     private func showFailedNotification() {
-        guard canShowNotification else { return }
+        displayFileNotification(.failedUpload)
+    }
 
-        subject.send(.failedUpload)
-        didShowNotificationInSession = true
+    private func showInterruptedPhotoNotification() {
+        // We only show the photo notification once, when the user is in the background
+        guard canShowPhotosNotification else { return }
+
+        // We request the notification to be posted
+        subject.send(.interruptedPhotoUpload)
+
+        // We mark that we requested the notification in THIS session
+        didRequestPhotosNotificationInSession = true
+        // We save the state of displayed notification
+        localSettings.didShowPhotosNotification = true
+    }
+
+    private func displayFileNotification(_ localNotification: LocalNotification) {
+        guard canShowFileNotification else { return }
+
+        subject.send(localNotification)
+        didRequestFileNotificationInSession = true
+
+        // If we requested the photo notification in this session, we reset the state of the photos notification, because we override the notification displayed to the user.
+        // We do not show both notifications at the same time. So we need to reset the "shown" state of the photos notification.
+        if didRequestPhotosNotificationInSession {
+            localSettings.didShowPhotosNotification = false
+        }
     }
 }

@@ -22,11 +22,24 @@ import PDUIComponents
 struct NoConnectionFolderView: View {
     @Binding var isUpdating: Bool
     @State private var didAlreadyShow = false
+    let config: EmptyViewConfiguration
     var refresh: () -> Void
+    
+    init(
+        isUpdating: Binding<Bool>,
+        didAlreadyShow: Bool = false,
+        config: EmptyViewConfiguration = .noConnection,
+        refresh: @escaping () -> Void
+    ) {
+        _isUpdating = isUpdating
+        self.didAlreadyShow = didAlreadyShow
+        self.config = config
+        self.refresh = refresh
+    }
     
     var body: some View {
         EmptyFolderView(
-            viewModel: .noConnection,
+            viewModel: config,
             footer: {
                 Group {
                     BlueRectButton(

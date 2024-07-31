@@ -20,6 +20,8 @@ import UniformTypeIdentifiers
 public struct MimeType: Hashable {
     public let value: String
 
+    public static let empty = MimeType(value: "")
+
     /// MimeType is a wrapper around a MIMEType, the String representation of which can be accessed through the value field
     public init(value: String) {
         self.value = value
@@ -61,6 +63,10 @@ public extension MimeType {
 
     var isText: Bool {
         UTI(fromMimeType: value).isText
+    }
+    
+    var isGif: Bool {
+        UTI(fromMimeType: value).isGif
     }
 }
 
@@ -125,4 +131,5 @@ public extension MimeType {
     static let pages = MimeType(value: "application/vnd.apple.pages")
     static let numbers = MimeType(value: "application/vnd.apple.numbers")
     static let keynote = MimeType(value: "application/vnd.apple.keynote")
+    static let protonDocument = MimeType(value: ProtonDocumentConstants.mimeType)
 }

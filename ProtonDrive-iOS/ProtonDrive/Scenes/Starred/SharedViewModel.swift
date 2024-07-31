@@ -30,6 +30,8 @@ class SharedViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, 
     // MARK: FinderViewModel
     let model: SharedModel
     var childrenCancellable: AnyCancellable?
+    var lockedStateCancellable: AnyCancellable?
+    var lockedStateBannerVisibility: LockedStateAlertVisibility = .hidden
     @Published var transientChildren: [NodeWrapper] = []
     @Published var permanentChildren: [NodeWrapper] = []  {
         didSet { selection.updateSelectable(Set(permanentChildren.map(\.node.identifier))) }
@@ -96,6 +98,15 @@ class SharedViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, 
         self.subscribeToChildrenDownloading()
         self.selection.unselectOnEmpty(for: self)
         self.subscribeToLayoutChanges()
+        subscribeToErrors()
+    }
+
+    private func subscribeToErrors() {
+        model.errorSubject
+            .sink { [weak self] error in
+                self?.genericErrors.send(error)
+            }
+            .store(in: &cancellables)
     }
 }
 
@@ -120,7 +131,11 @@ extension SharedViewModel {
     }
 
     func actionBarItems() -> [ActionBarButtonViewModel] {
-        [.trashMultiple, .offlineAvailableMultiple]
+        let isOfflineAvailablePossible = selectedNodes().contains(where: { $0.node.isDownloadable })
+        return [
+            .trashMultiple,
+            isOfflineAvailablePossible ? .offlineAvailableMultiple : nil
+        ].compactMap { $0 }
     }
 }
 

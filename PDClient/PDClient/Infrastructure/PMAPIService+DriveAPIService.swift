@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Foundation
 import ProtonCoreServices
 import ProtonCoreUtilities
 
@@ -22,11 +23,22 @@ import ProtonCoreUtilities
 public var log: ((String) -> Void)?
 
 extension PMAPIService: DriveAPIService {
-
     public func request<E, Response>(from endpoint: E, completionExecutor: CompletionBlockExecutor, completion: @escaping (Result<Response, Error>) -> Void) where E: Endpoint, Response == E.Response {
-        log?(endpoint.prettyDescription)
+        Self.performRequestUsingAPIService(apiService: self, from: endpoint, completionExecutor: completionExecutor, completion: completion)
+    }
+}
 
-        perform(request: endpoint, callCompletionBlockUsing: completionExecutor) { task, result in
+extension DriveAPIService {
+    
+    public static func performRequestUsingAPIService<E, Response>(
+        apiService: ProtonCoreServices.APIService,
+        from endpoint: E,
+        completionExecutor: CompletionBlockExecutor,
+        completion: @escaping (Result<Response, Error>) -> Void
+    ) where E: Endpoint, Response == E.Response {
+        log?(endpoint.prettyDescription)
+        
+        apiService.perform(request: endpoint, callCompletionBlockUsing: completionExecutor) { task, result in
             switch result {
             case .failure(let responseError):
                 log?(endpoint.networkingError(responseError))

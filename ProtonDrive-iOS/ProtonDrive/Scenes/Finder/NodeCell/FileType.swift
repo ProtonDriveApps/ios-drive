@@ -120,7 +120,8 @@ final class FileTypeAsset {
 
         .pages: .pages,
         .numbers: .numbers,
-        .keynote: .keynote
+        .keynote: .keynote,
+        .protonDocument: .protonDocument
     ]
 
     enum FileAssetName: String {
@@ -145,5 +146,6 @@ final class FileTypeAsset {
         case unknown = "ic-file-default"
 
         case calendar = "ic-calendar-event"
+        case protonDocument = "ic-proton-document"
     }
 }

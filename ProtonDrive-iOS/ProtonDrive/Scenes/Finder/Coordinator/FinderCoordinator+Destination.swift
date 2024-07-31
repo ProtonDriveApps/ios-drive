@@ -24,7 +24,8 @@ extension FinderCoordinator {
         case none // no changes to hierarchy
 
         case file(file: File, share: Bool), folder(Folder) // push to navigation controller
-        
+        case protonDocument(file: File) // open in browser
+
         case importPhoto, importDocument, camera // modals
         case nodeDetails(Node)
         case createFolder(parent: Folder), rename(Node), move([Node], parent: Folder?)
@@ -43,10 +44,21 @@ extension FinderCoordinator {
             return .none
 
         case is File where (nextNode as? File)?.activeRevision?.blocksAreValid() == true: // cached file
-            return .file(file: nextNode as! File, share: false)
+            let file = nextNode as! File
+            if file.isProtonDocument {
+                // Proton doc has a separate logic for displaying preview
+                return .protonDocument(file: file)
+            } else {
+                return .file(file: file, share: false)
+            }
 
         case is File: // only metadata is locally available
-            return .none
+            if let file = nextNode as? File, file.isProtonDocument {
+                // Proton doc has an empty revision, we can proceed with presentation
+                return .protonDocument(file: file)
+            } else {
+                return .none
+            }
 
         case is Folder:
             return .folder(nextNode as! Folder)

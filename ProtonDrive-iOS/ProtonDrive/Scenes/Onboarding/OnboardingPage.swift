@@ -27,7 +27,6 @@ struct OnboardingPage: View {
             VStack {
                 Image(vm.imageName)
                     .aspectRatio(contentMode: .fit)
-                    .background(ColorProvider.BackgroundSecondary)
                     .frame(height: geometry.size.height / 2, alignment: .center)
                     .accessibilityIdentifier("OnboardingPage.imageIdentifier")
                 

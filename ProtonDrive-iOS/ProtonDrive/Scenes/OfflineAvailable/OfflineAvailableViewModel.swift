@@ -31,6 +31,8 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
     let sorting: SortPreference
     func subscribeToSort() { }
     var childrenCancellable: AnyCancellable?
+    var lockedStateCancellable: AnyCancellable?
+    var lockedStateBannerVisibility: LockedStateAlertVisibility = .hidden
     @Published var transientChildren: [NodeWrapper] = []
     @Published var permanentChildren: [NodeWrapper] = [] {
         didSet { selection.updateSelectable(Set(permanentChildren.map(\.node.identifier))) }
@@ -87,6 +89,15 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
         self.subscribeToChildrenDownloading()
         self.selection.unselectOnEmpty(for: self)
         self.subscribeToLayoutChanges()
+        subscribeToErrors()
+    }
+
+    private func subscribeToErrors() {
+        model.errorSubject
+            .sink { [weak self] error in
+                self?.genericErrors.send(error)
+            }
+            .store(in: &cancellables)
     }
 
     func actionBarItems() -> [ActionBarButtonViewModel] {

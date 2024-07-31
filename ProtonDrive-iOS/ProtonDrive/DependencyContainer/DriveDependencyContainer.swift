@@ -52,7 +52,7 @@ public class DriveDependencyContainer {
         )
         // We're replacing the delegate set in the creation of InitialServices, so the HV delegate in iOS will be HumanCheckHelper instead of PMAPIClient, which still will be the HV delegate in macOS
         initialServices.networkService.humanDelegate = hvHelper
-
+        setPushNotificationService()
     }
 
     func discardAuthenticatedContainer() {
@@ -98,5 +98,15 @@ public class DriveDependencyContainer {
 
     var localSettings: LocalSettings {
         initialServices.localSettings
+    }
+    
+    private func setPushNotificationService() {
+        guard
+            !Constants.isUITest,
+            !PDCore.Constants.runningInExtension,
+            let pushNotificationService = initialServices.pushNotificationService,
+            var delegate = UIApplication.shared.delegate as? hasPushNotificationService
+        else { return }
+        delegate.pushNotificationService = pushNotificationService
     }
 }

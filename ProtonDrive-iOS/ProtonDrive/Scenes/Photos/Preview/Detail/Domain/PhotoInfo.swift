@@ -19,6 +19,7 @@ struct PhotoInfo: Equatable {
     enum PhotoType {
         case photo
         case video
+        case gif
     }
 
     let id: PhotoId

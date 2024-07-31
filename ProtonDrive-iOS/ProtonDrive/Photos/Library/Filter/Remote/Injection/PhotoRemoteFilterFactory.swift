@@ -19,10 +19,14 @@ import PDCore
 import PDClient
 
 struct PhotoRemoteFilterFactory {
-    func makeRemoteFilterInteractor(tower: Tower, circuitBreaker: CircuitBreakerController) -> PhotoAssetCompoundsConflictInteractor {
+    func makeRemoteFilterInteractor(
+        tower: Tower,
+        circuitBreaker: CircuitBreakerController,
+        photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>
+    ) -> PhotoAssetCompoundsConflictInteractor {
         let observer = FetchedResultsControllerObserver(controller: tower.storage.subscriptionToPhotoShares(moc: tower.storage.backgroundContext))
         let rootDataSource = PhotosRepositoriesFactory().makeEncryptingRepository(tower: tower)
-        let photoShareDataSource = PhotosFactory().makeLocalPhotosRootDataSource(observer: observer)
+        let photoShareDataSource = PhotosFactory().makeLocalPhotosRootDataSource(observer: photoSharesObserver)
         let hashResource = FileStreamHashResource(digestBuilderFactory: { SHA1DigestBuilder() })
         let hashInteractor = LocalPhotoContentHashInteractor(hashResource: hashResource, rootDataSource: rootDataSource, encryptionResource: CoreEncryptionResource())
         let nameConflictsInteractor = RemotePhotoNameConflictsInteractor(

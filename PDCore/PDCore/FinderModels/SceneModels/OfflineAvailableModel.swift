@@ -15,7 +15,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-public final class OfflineAvailableModel: FinderModel, NodesListing, DownloadsListing {
+import Combine
+
+public final class OfflineAvailableModel: FinderModel, FinderErrorModel, NodesListing, DownloadsListing {
     // MARK: FinderModel
     public var folder: Folder?
     public func loadFromCache() {
@@ -26,11 +28,14 @@ public final class OfflineAvailableModel: FinderModel, NodesListing, DownloadsLi
     public var tower: Tower!
     public var childrenObserver: FetchedObjectsObserver<Node>
     public var sorting: SortPreference = .mimeAscending
-    
+
+    // MARK: FinderModel
+    public var errorSubject = PassthroughSubject<Error, Never>()
+
     // MARK: others
     public init(tower: Tower) {
         self.tower = tower
-        
+
         let children = tower.uiSlot!.subscribeToOfflineAvailable()
         self.childrenObserver = FetchedObjectsObserver(children)
     }

@@ -18,5 +18,25 @@
 import Foundation
 import UIKit
 
-let DefaultNameUnwrappingStrategy = { $0 ?? "???" }
-let DefaultImageUnwrappingStrategy = { $0 ?? UIImage(systemName: "eye.slash")!.pngData()! }
+typealias RetryItemNameUnwrappingStrategy = (String?) -> String
+typealias RetryImageUnwrappingStrategy = (Data?) -> Data
+
+struct RetryUnwrappingStrategyFactory {
+    
+    func makeItemNameUnwrappingStrategy() -> RetryItemNameUnwrappingStrategy {
+        var unnamedCount = 0
+        return { name in
+            if let name {
+                return name
+            } else {
+                unnamedCount += 1
+                return "Asset \(unnamedCount)"
+            }
+        }
+    }
+    
+    func makeImageUnwrappingStrategy() -> RetryImageUnwrappingStrategy {
+        { $0 ?? UIImage(systemName: "eye.slash")?.pngData() ?? Data() }
+    }
+    
+}

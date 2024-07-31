@@ -32,9 +32,12 @@ struct PhotosFactory {
         LocalPhotoLibraryAuthorizationController(resource: LocalPhotoLibraryAuthorizationResource())
     }
 
-    func makePhotosBootstrapController(tower: Tower, telemetryContainer: PhotosTelemetryStorageContainer) -> PhotosBootstrapController {
-        let observer = makePhotoSharesObserver(tower: tower)
-        let local = makeLocalPhotosRootDataSource(observer: observer)
+    func makePhotosBootstrapController(
+        tower: Tower,
+        telemetryContainer: PhotosTelemetryStorageContainer,
+        photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>
+    ) -> PhotosBootstrapController {
+        let local = makeLocalPhotosRootDataSource(observer: photoSharesObserver)
         let remoteFetching = RemoteFetchingPhotosRootDataSource(storage: tower.storage, photoShareListing: tower.client)
         let finishResource = telemetryContainer.makeShareCreationFinishResource()
         let remoteCreating = RemoteCreatingPhotosRootDataSource(storage: tower.storage, sessionVault: tower.sessionVault, photoShareCreator: tower.client, finishResource: finishResource)
@@ -48,10 +51,11 @@ struct PhotosFactory {
                 )
             )
         )
-        let repository = FetchResultControllerObserverPhotosBootstrapRepository(observer: observer)
+        let repository = FetchResultControllerObserverPhotosBootstrapRepository(observer: photoSharesObserver)
         return MonitoringBootstrapController(interactor: interactor, repository: repository)
     }
 
+    /// Don't use this function directly, use `PhotosContainer.photoSharesObserver`
     func makePhotoSharesObserver(tower: Tower) -> FetchedResultsControllerObserver<PDCore.Share> {
         FetchedResultsControllerObserver(controller: tower.storage.subscriptionToPhotoShares(moc: tower.storage.backgroundContext))
     }
@@ -88,9 +92,20 @@ struct PhotosFactory {
         return LocalPhotoLibraryLoadController(backupController: backupController, identifiersController: identifiersController, computationalAvailabilityController: computationalAvailabilityController, interactor: interactor)
     }
 
-    func makeNetworkConstraintController(backupController: PhotosBackupController, settingsController: PhotoBackupSettingsController) -> PhotoBackupConstraintController {
-        let networkInteractor = ConnectedNetworkStateInteractor(resource: MonitoringNetworkStateResource())
+    func makeNetworkConstraintController(backupController: PhotosBackupController, settingsController: PhotoBackupSettingsController) -> PhotoBackupNetworkControllerProtocol {
+        let networkInteractor = ConnectedNetworkStateInteractor(resource: makeNetworkStateResource())
         return PhotoBackupNetworkController(backupController: backupController, settingsController: settingsController, interactor: networkInteractor)
+    }
+
+    private func makeNetworkStateResource() -> NetworkStateResource {
+        #if DEBUG
+        if DebugConstants.commandLineContains(flags: [.uiTests, .mockCellularConnection]) {
+            return NetworkStateResourceMock(mockedState: .reachable(.cellular))
+        } else if DebugConstants.commandLineContains(flags: [.uiTests, .mockNoConnection]) {
+            return NetworkStateResourceMock(mockedState: .unreachable)
+        }
+        #endif
+        return MonitoringNetworkStateResource()
     }
 
     func makePhotosBackupUploadAvailableController(backupController: PhotosBackupController, networkConstraintController: PhotoBackupConstraintController, quotaConstraintController: PhotoBackupConstraintController) -> PhotosBackupUploadAvailableController {
@@ -129,7 +144,7 @@ struct PhotosFactory {
     }
 
     // swiftlint:disable:next function_parameter_count
-    func makePhotoUploader(tower: Tower, keymaker: Keymaker, cleanedUploadingStore: DeletedPhotosIdentifierStoreResource, moc: NSManagedObjectContext, telemetryContainer: PhotosTelemetryStorageContainer, photoSkippableCache: PhotosSkippableCache, uploadMeasurementRepository: DurationMeasurementRepository, uploadDoneNotifier: PhotoUploadDoneNotifier) -> PhotoUploader {
+    func makePhotoUploader(tower: Tower, keymaker: Keymaker, cleanedUploadingStore: DeletedPhotosIdentifierStoreResource, moc: NSManagedObjectContext, telemetryContainer: PhotosTelemetryStorageContainer, photoSkippableCache: PhotosSkippableCache, durationMeasurementRepository: DurationMeasurementRepository, uploadDoneNotifier: PhotoUploadDoneNotifier, filesMeasurementRepository: FileUploadFilesMeasurementRepositoryProtocol, blocksMeasurementRepository: FileUploadBlocksMeasurementRepositoryProtocol) -> PhotoUploader {
         // There are 3 heavy operations that run in for each Photo: page upload, blocks/thumbnail upload and encryption.
         // By injecting serial queues, even for multiple Photos uploading, only one of each operations will run at a time. Thus keeping CPU usage at a normal level.
         let pagesQueue = makeSerialOperationQueue()
@@ -146,10 +161,11 @@ struct PhotosFactory {
             uploadQueue: uploadQueue,
             encryptionQueue: encryptionQueue,
             verifierFactory: tower.uploadVerifierFactory,
-            finishResource: telemetryContainer.makeUploadFinishResource()
+            finishResource: telemetryContainer.makeUploadFinishResource(),
+            blocksMeasurementRepository: blocksMeasurementRepository
         )
         let measurementRepositoryFactory = ConcretePhotoUploadMeasurementRepositoryFactory(notifier: uploadDoneNotifier)
-        return PhotoUploader(concurrentOperations: Constants.photosUploaderParallelProcessingCount, fileUploadFactory: photoUploadFactory.make(), featureFlags: tower.featureFlags, deletedPhotosIdentifierStore: cleanedUploadingStore, filecleaner: tower.cloudSlot, moc: moc, skippableCache: photoSkippableCache, dispatchQueue: makeDispatchQueue(), childQueues: [pagesQueue, uploadQueue, encryptionQueue], uploadMeasurementRepository: uploadMeasurementRepository, measurementRepositoryFactory: measurementRepositoryFactory, protectionResource: keymaker)
+        return PhotoUploader(concurrentOperations: Constants.photosUploaderParallelProcessingCount, fileUploadFactory: photoUploadFactory.make(), featureFlags: tower.featureFlags, deletedPhotosIdentifierStore: cleanedUploadingStore, filecleaner: tower.cloudSlot, moc: moc, skippableCache: photoSkippableCache, dispatchQueue: makeDispatchQueue(), childQueues: [pagesQueue, uploadQueue, encryptionQueue], durationMeasurementRepository: durationMeasurementRepository, filesMeasurementRepository: filesMeasurementRepository, measurementRepositoryFactory: measurementRepositoryFactory, protectionResource: keymaker)
     }
 
     private func makeSerialOperationQueue() -> OperationQueue {
@@ -208,7 +224,7 @@ struct PhotosFactory {
     }
 
     // swiftlint:disable:next function_parameter_count
-    func makeBackupStateController(progressController: PhotosBackupProgressController, failuresController: PhotosBackupFailuresController, settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController, networkController: PhotoBackupConstraintController, quotaController: PhotoBackupConstraintController, availableSpaceController: PhotoBackupConstraintController, featureFlagController: PhotoBackupConstraintController, retryTriggerController: PhotoLibraryLoadRetryTriggerController, computationalAvailabilityController: ComputationalAvailabilityController, loadController: PhotoLibraryLoadController) -> LocalPhotosBackupStateController {
+    func makeBackupStateController(progressController: PhotosBackupProgressController, failuresController: PhotosBackupFailuresController, settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController, networkController: PhotoBackupNetworkControllerProtocol, quotaController: PhotoBackupConstraintController, availableSpaceController: PhotoBackupConstraintController, featureFlagController: PhotoBackupConstraintController, retryTriggerController: PhotoLibraryLoadRetryTriggerController, computationalAvailabilityController: ComputationalAvailabilityController, loadController: PhotoLibraryLoadController) -> LocalPhotosBackupStateController {
         let completeController = LocalPhotosBackupCompleteController(progressController: progressController, failuresController: failuresController, retryTriggerController: retryTriggerController, timerFactory: MainQueueTimerFactory())
         let applicationStateController = ApplicationStateBackupConstraintController(availabilityController: computationalAvailabilityController)
         return LocalPhotosBackupStateController(progressController: progressController, failuresController: failuresController, completeController: completeController, settingsController: settingsController, authorizationController: authorizationController, networkController: networkController, quotaController: quotaController, availableSpaceController: availableSpaceController, featureFlagController: featureFlagController, applicationStateController: applicationStateController, loadController: loadController, strategy: PrioritizedPhotosBackupStateStrategy(), throttleResource: MainQueueThrottleResource())
@@ -219,13 +235,21 @@ struct PhotosFactory {
         return ConcreteComputationalAvailabilityController(processId: "photos", extensionController: extensionTaskController, processingController: processingTaskController, applicationStateController: stateController)
     }
 
-    func makeOpenAppReminderChildContainer(tower: Tower, photosEnabledPolicy: TaskSchedulerEnabledPolicy, globalWorker: WorkerState, appStateResource: ApplicationRunningStateResource) -> OpenAppReminderContainer {
+    func makeOpenAppReminderChildContainer(tower: Tower, globalWorker: WorkerState, appStateResource: ApplicationRunningStateResource) -> OpenAppReminderContainer {
+        let photosEnabledPolicy = OpenAppReminderTaskSchedulerPolicy(localSettings: tower.localSettings)
         let coredataLastPhotoRepository = LocalCoredataLastPhotoRepository(moc: tower.storage.photosBackgroundContext, storage: tower.storage)
         let openAppReminderScheduler = BackgroundOpenAppReminderSchedulerFactory().makeTaskScheduler(dependencies: .init(
             enabledPolicy: photosEnabledPolicy))
         let openAppReminderSchedulerController = ScheduleBackgroundTaskController(statePublisher: appStateResource.state, taskScheduler: openAppReminderScheduler)
         let openAppReminderphotoUploadsWorkerState = BackgroundPhotoUploadWorkObserverFactory().makeBackgroundUploadWorkerState(.init(scheduledPhotosUploadWorkerState: globalWorker, coredataLastPhotoRepository: coredataLastPhotoRepository, galleryLastPhotoRepository: GalleryLastPhotoRepository()))
-        let openAppReminderTaskProcessor = BackgroundOpenAppReminderTaskProcessorFactory().makeOpenPhotosNotificationTaskProcessor(.init(photoUploadsWorkerState: openAppReminderphotoUploadsWorkerState, backgroundTaskScheduler: openAppReminderScheduler))
+        let openAppReminderTaskProcessor = BackgroundOpenAppReminderTaskProcessorFactory().makeOpenPhotosNotificationTaskProcessor(.init(photoUploadsWorkerState: openAppReminderphotoUploadsWorkerState, backgroundTaskScheduler: openAppReminderScheduler, backgroundWorkPolicy: photosEnabledPolicy))
         return OpenAppReminderContainer(controller: openAppReminderSchedulerController, processor: openAppReminderTaskProcessor)
+    }
+}
+
+// Adapter
+extension OpenAppReminderTaskSchedulerPolicy: BackgroundWorkPolicy {
+    var canExecute: Bool {
+        canSchedule
     }
 }

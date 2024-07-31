@@ -18,6 +18,7 @@
 import Foundation
 import CoreData
 import PDClient
+import ProtonCoreUtilities
 
 public class CloudSlot {
     public enum Errors: Error, CaseIterable {
@@ -27,6 +28,8 @@ public class CloudSlot {
         
         case couldNotFindMainShareForNewShareCreation, couldNotFindVolumeForNewShareCreation
     }
+    
+    public typealias NoShare = Void
 
     let storage: StorageManager
     let client: Client
@@ -90,18 +93,9 @@ public class CloudSlot {
     public func scanRoots(isPhotosEnabled: Bool = false, onFoundMainShare: @escaping (Result<Share, Error>) -> Void, onMainShareNotFound: @escaping () -> Void) {
         Task {
             do {
-                let volumes = try await client.getVolumes()
-
-                guard let volume = volumes.first(where: { $0.state == .active }) else {
-                    return onMainShareNotFound()
-                }
-
-                let mainShare = try await scanRootShare(volume.share.shareID)
-                if isPhotosEnabled {
-                    do {
-                        let photosShare = try await client.listPhotoShares()
-                        _ = try await scanRootShare(photosShare.shareID)
-                    } catch { }
+                guard let mainShare = try await scanRootsAsync() else {
+                    onMainShareNotFound()
+                    return
                 }
                 await MainActor.run {
                     onFoundMainShare(.success(mainShare))
@@ -112,6 +106,28 @@ public class CloudSlot {
                 }
             }
         }
+    }
+    
+    public func scanRootsAsync(isPhotosEnabled: Bool = false) async throws -> Share? {
+        // we cannot rely on volume state being properly updated before we call for shares first.
+        // call for shares updates the volume state as a hidden side effect. this is a BE quirk.
+        _ = try await client.getShares()
+        
+        let volumes = try await client.getVolumes()
+
+        guard let volume = volumes.first(where: { $0.state == .active }) else {
+            return nil
+        }
+
+        let mainShare = try await scanRootShare(volume.share.shareID)
+        if isPhotosEnabled {
+            do {
+                let photosShare = try await client.listPhotoShares()
+                _ = try await scanRootShare(photosShare.shareID)
+            } catch { }
+        }
+        
+        return mainShare
     }
 
     func scanRootShare(_ shareID: String) async throws -> Share {
@@ -288,6 +304,7 @@ public class CloudSlot {
     }
     
     public func scanNode(_ nodeID: NodeIdentifier,
+                         linkProcessingErrorTransformer: @escaping (Link, Error) -> Error = { $1 },
                          handler: @escaping (Result<Node, Error>) -> Void)
     {
         self.client.getNode(nodeID.shareID, nodeID: nodeID.nodeID, breadcrumbs: .startCollecting()) { result in
@@ -299,7 +316,8 @@ public class CloudSlot {
                     do {
                         try self.moc.saveWithParentLinkCheck()
                     } catch let error {
-                        return handler(.failure(error))
+                        self.moc.rollback()
+                        return handler(.failure(linkProcessingErrorTransformer(linkMeta, error)))
                     }
                     handler(.success(objs.first!))
                 }

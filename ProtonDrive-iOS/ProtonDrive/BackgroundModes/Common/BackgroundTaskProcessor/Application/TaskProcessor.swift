@@ -18,53 +18,60 @@
 import PDCore
 import Combine
 
-public final class TaskProcessor {
+final class TaskProcessor {
     private let backgroundWorkController: BackgroundWorkController
     private let worker: WorkingNotifier
     private let scheduler: BackgroundTaskScheduler
     private var activatorCancellable: AnyCancellable?
     private var disconnectorCancellable: AnyCancellable?
     private var workerCancellable: AnyCancellable?
+    private let resultStateRepository: BackgroundTaskResultStateRepositoryProtocol?
 
     private weak var task: BackgroundTaskResource?
 
-    public init(
+    init(
         activator: AnyPublisher<BackgroundTaskResource, Never>,
         taskDisconnector: AnyPublisher<Void, Never>,
         backgroundWorkController: BackgroundWorkController,
         worker: WorkingNotifier,
-        scheduler: BackgroundTaskScheduler
+        scheduler: BackgroundTaskScheduler,
+        resultStateRepository: BackgroundTaskResultStateRepositoryProtocol?
     ) {
         self.backgroundWorkController = backgroundWorkController
         self.worker = worker
         self.scheduler = scheduler
+        self.resultStateRepository = resultStateRepository
 
         activatorCancellable = activator
             .sink { [weak self] task in
-                self?.checkForNewPhotos(task)
+                self?.startWork(task)
             }
 
         disconnectorCancellable = taskDisconnector
             .sink{ [weak self] in
-                guard let task = self?.task  else { return }
-                task.expirationHandler?()
+                guard let self, let task = task else { return }
+                Log.info("\(task.identifier) interrupted (app moved to foreground)", domain: .backgroundTask)
+                self.resultStateRepository?.setState(.foreground)
+                self.completeWork(for: task, isSuccess: true)
             }
     }
 
-    private func checkForNewPhotos(_ task: BackgroundTaskResource) {
+    private func startWork(_ task: BackgroundTaskResource) {
         task.expirationHandler = { [weak self, weak task] in
             guard let self, let task = task else { return }
             Log.info("\(task.identifier) expired", domain: .backgroundTask)
-            self.completeWork(for: task)
+            self.resultStateRepository?.setState(.expired)
+            self.completeWork(for: task, isSuccess: false)
         }
 
         workerCancellable = worker.isWorkingPublisher
             .sink { [weak self, weak task] isWorking in
                 guard let self, let task = task else { return }
-
                 guard !isWorking else { return }
+
                 Log.info("\(task.identifier) completed, worker finished working", domain: .backgroundTask)
-                self.completeWork(for: task)
+                self.resultStateRepository?.setState(.completed)
+                self.completeWork(for: task, isSuccess: true)
             }
 
         Log.info("\(task.identifier) will start", domain: .backgroundTask)
@@ -72,9 +79,9 @@ public final class TaskProcessor {
         backgroundWorkController.start()
     }
 
-    private func completeWork(for task: BackgroundTaskResource?) {
+    private func completeWork(for task: BackgroundTaskResource?, isSuccess: Bool) {
         scheduler.schedule()
         backgroundWorkController.stop()
-        task?.setTaskCompleted(success: true)
+        task?.setTaskCompleted(success: isSuccess)
     }
 }

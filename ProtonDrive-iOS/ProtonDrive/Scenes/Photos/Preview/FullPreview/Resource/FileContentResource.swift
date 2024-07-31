@@ -21,13 +21,34 @@ import CoreData
 import PDCore
 
 protocol FileContentResource {
-    var result: AnyPublisher<URL, Error> { get }
+    var result: AnyPublisher<FileContent, Error> { get }
     func execute(with id: NodeIdentifier)
     func cancel()
 }
 
 enum FileContentResourceError: Error {
     case cancelled
+    case missingDecryptedURL
+}
+
+struct FileContent {
+    let url: URL
+    let childrenURLs: [URL]
+    
+    /// There is no solid way to check given content is live photo or not
+    /// If the childrenURLs has only one video URL
+    /// The given content has chance to be a live photo
+    var couldBeLivePhoto: Bool {
+        guard
+            childrenURLs.count == 1,
+            let mainMime = MimeType(fromFileExtension: url.pathExtension),
+            mainMime.isImage,
+            let videoURL = childrenURLs.first,
+            let mime = MimeType(fromFileExtension: videoURL.pathExtension),
+            mime.isVideo
+        else { return false }
+        return true
+    }
 }
 
 final class DecryptedFileContentResource: FileContentResource {
@@ -36,12 +57,12 @@ final class DecryptedFileContentResource: FileContentResource {
     private let fetchResource: FileFetchResource
     private let validationResource: FileURLValidationResource
     private let managedObjectContext: NSManagedObjectContext
-    private let subject = PassthroughSubject<URL, Error>()
+    private let subject = PassthroughSubject<FileContent, Error>()
     private var id: NodeIdentifier?
     private var task: Task<Void, Never>?
-    private var capturedContinuation: CheckedContinuation<Void, Error>?
+    private var capturedContinuations: [NodeIdentifier: CheckedContinuation<Void, Error>] = [:]
 
-    var result: AnyPublisher<URL, Error> {
+    var result: AnyPublisher<FileContent, Error> {
         subject
             .receive(on: DispatchQueue.main)
             .eraseToAnyPublisher()
@@ -72,8 +93,8 @@ final class DecryptedFileContentResource: FileContentResource {
 
     func cancel() {
         task?.cancel()
-        capturedContinuation?.resume(throwing: FileContentResourceError.cancelled)
-        capturedContinuation = nil
+        capturedContinuations.values.forEach { $0.resume(throwing: FileContentResourceError.cancelled) }
+        capturedContinuations = [:]
         if let id {
             downloader.cancel(operationsOf: [id])
         }
@@ -81,8 +102,8 @@ final class DecryptedFileContentResource: FileContentResource {
     }
 
     @MainActor
-    private func finish(with url: URL) {
-        subject.send(url)
+    private func finish(with content: FileContent) {
+        subject.send(content)
     }
 
     @MainActor
@@ -93,9 +114,13 @@ final class DecryptedFileContentResource: FileContentResource {
     private func executeInBackground(id: NodeIdentifier) async {
         do {
             let file = try await loadFile(with: id)
-            let url = try loadDecryptedURL(from: file)
-            try await validationResource.validate(file: file, url: url)
-            await finish(with: url)
+            let urls = try await loadAndVerifyDecryptedURL(from: file)
+            guard let mainURL = urls[file.identifier] else {
+                throw FileContentResourceError.missingDecryptedURL
+            }
+            let childrenURLs: [URL] = urls.filter { $0.key != file.identifier }.map(\.value)
+            let content = FileContent(url: mainURL, childrenURLs: childrenURLs)
+            await finish(with: content)
         } catch {
             await finish(with: error)
         }
@@ -103,8 +128,12 @@ final class DecryptedFileContentResource: FileContentResource {
 
     private func loadFile(with id: NodeIdentifier) async throws -> File {
         let file = try fetchFile(with: id)
-        if !isCached(file: file) {
-            try await download(file: file)
+        if let photo = file as? Photo {
+            try await download(photo: photo)
+        } else {
+            if !isCached(file: file) {
+                try await download(file: file)
+            }
         }
         return file
     }
@@ -121,13 +150,13 @@ final class DecryptedFileContentResource: FileContentResource {
 
     private func download(file: File) async throws {
         return try await withCheckedThrowingContinuation { [weak self] continuation in
-            self?.capturedContinuation = continuation
             self?.managedObjectContext.perform {
+                self?.capturedContinuations[file.identifier] = continuation
                 self?.downloader.scheduleDownloadWithBackgroundSupport(cypherdataFor: file) { result in
-                    guard let continuation = self?.capturedContinuation else {
+                    guard let continuation = self?.capturedContinuations[file.identifier] else {
                         return
                     }
-                    self?.capturedContinuation = nil
+                    self?.capturedContinuations[file.identifier] = nil
                     switch result {
                     case .success:
                         continuation.resume()
@@ -150,5 +179,45 @@ final class DecryptedFileContentResource: FileContentResource {
             }
             return try revision.decryptFile()
         }
+    }
+    
+    private func loadAndVerifyDecryptedURL(from file: File) async throws -> [NodeIdentifier: URL] {
+        
+        if let photos = getAllPhotos(from: file), !photos.isEmpty {
+            return try await decryptAndVerifyPhotoURL(from: photos)
+        } else {
+            let url = try loadDecryptedURL(from: file)
+            try await validationResource.validate(file: file, url: url)
+            return [file.identifier: url]
+        }
+    }
+}
+
+extension DecryptedFileContentResource {
+    private func getAllPhotos(from file: File) -> [Photo]? {
+        guard let photo = file as? Photo else { return nil }
+        return managedObjectContext.performAndWait { [photo] + Array(photo.children) }
+    }
+
+    private func download(photo: Photo) async throws {
+        let photosNeedToBeDownloaded = (getAllPhotos(from: photo) ?? []).filter { !isCached(file: $0) }
+        
+        return try await withThrowingTaskGroup(of: Void.self) { [weak self] taskGroup in
+            guard let self else { return }
+            for file in photosNeedToBeDownloaded {
+                taskGroup.addTask { try await self.download(file: file) }
+            }
+            for try await _ in taskGroup {}
+        }
+    }
+    
+    private func decryptAndVerifyPhotoURL(from photos: [Photo]) async throws -> [NodeIdentifier: URL] {
+        var decryptedURL: [NodeIdentifier: URL] = [:]
+        for photo in photos {
+            let url = try loadDecryptedURL(from: photo)
+            try await validationResource.validate(file: photo, url: url)
+            decryptedURL[photo.identifier] = url
+        }
+        return decryptedURL
     }
 }

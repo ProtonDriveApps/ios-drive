@@ -22,7 +22,7 @@ struct PhotosBackupStatesInput: Equatable {
     let isLibraryLoading: Bool
     let isBackupEnabled: Bool
     let permissions: PhotoLibraryPermissions
-    let isNetworkConstrained: Bool
+    let networkConstraint: NetworkConstraint?
     let isQuotaConstrained: Bool
     let isStorageConstrained: Bool
     let isFeatureFlagConstrained: Bool
@@ -47,8 +47,8 @@ final class PrioritizedPhotosBackupStateStrategy: PhotosBackupStateStrategy {
             return .featureFlag
         }
 
-        guard !input.isNetworkConstrained else {
-            return .networkConstrained
+        if let constraint = input.networkConstraint {
+            return .networkConstrained(constraint)
         }
 
         guard !input.isStorageConstrained else {
@@ -73,10 +73,6 @@ final class PrioritizedPhotosBackupStateStrategy: PhotosBackupStateStrategy {
             } else {
                 return .complete
             }
-        }
-
-        guard !input.isComplete else {
-            return .complete
         }
 
         if let progress = input.progress, !progress.isCompleted {

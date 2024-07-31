@@ -30,6 +30,7 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
     let moc: NSManagedObjectContext
     let pagesQueue: OperationQueue
     let uploadQueue: OperationQueue
+    private let blocksMeasurementRepository: FileUploadBlocksMeasurementRepositoryProtocol?
 
     let session = URLSession(configuration: .forUploading)
 
@@ -43,7 +44,8 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
         verifierFactory: UploadVerifierFactory,
         moc: NSManagedObjectContext,
         globalPagesQueue: OperationQueue? = nil,
-        globalUploadQueue: OperationQueue? = nil
+        globalUploadQueue: OperationQueue? = nil,
+        blocksMeasurementRepository: FileUploadBlocksMeasurementRepositoryProtocol? = nil
     ) {
         self.storage = storage
         self.client = client
@@ -57,6 +59,7 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
         pagesQueue.qualityOfService = .userInitiated
         uploadQueue = globalUploadQueue ?? OperationQueue(maxConcurrentOperation: Constants.maxConcurrentPageOperations)
         uploadQueue.qualityOfService = .userInitiated
+        self.blocksMeasurementRepository = blocksMeasurementRepository
     }
 
     func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> any UploadOperation {
@@ -153,6 +156,7 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
             token: fullUploadableBlock.uploadToken,
             progressTracker: blockProgress,
             contentUploader: uploader,
+            measurementRepository: blocksMeasurementRepository,
             onError: onError
         )
     }

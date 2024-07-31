@@ -20,11 +20,21 @@ import Foundation
 public struct NewShare: Codable {
     public var ID: String
     public var linkID: String
+    
+    public init(ID: String, linkID: String) {
+        self.ID = ID
+        self.linkID = linkID
+    }
 }
 
 public struct NewVolume: Codable {
     public var ID: String
     public var share: NewShare
+    
+    public init(ID: String, share: NewShare) {
+        self.ID = ID
+        self.share = share
+    }
 }
 
 public class NewVolumeParameters: Codable {
@@ -66,13 +76,18 @@ public class NewVolumeParameters: Codable {
     var FolderHashKey: String
 }
 
-struct NewVolumeEndpoint: Endpoint {
+public struct NewVolumeEndpoint: Endpoint {
     public struct Response: Codable {
         var code: Int
         var volume: NewVolume
+        
+        public init(code: Int, volume: NewVolume) {
+            self.code = code
+            self.volume = volume
+        }
     }
     
-    var request: URLRequest
+    public var request: URLRequest
     
     init(parameters: NewVolumeParameters, service: APIService, credential: ClientCredential) {
         // url

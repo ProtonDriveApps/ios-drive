@@ -67,10 +67,13 @@ public final class CompoundPhotoCompoundImporter: PhotoCompoundImporter {
             guard let self else { return }
             let folder = folder.in(moc: self.moc)
             
+            var importedCompounds: [ImportedPhoto] = []
             for newCompound in newCompounds {
-                try self.importNewCompound(newCompound, folder: folder, encryptingFolder: encryptingFolder)
+                let importedCompound = try self.importNewCompound(newCompound, folder: folder, encryptingFolder: encryptingFolder)
+                importedCompounds.append(importedCompound)
             }
             try self.moc.saveOrRollback()
+            Log.info("\(Self.self): imported \(newCompounds.count) new compound/s. \(importedCompounds)", domain: .photosProcessing)
             self.notificationCenter.post(name: .uploadPendingPhotos)
         }
         
@@ -86,11 +89,12 @@ public final class CompoundPhotoCompoundImporter: PhotoCompoundImporter {
             }
             
             try self.moc.saveOrRollback()
+            Log.info("\(Self.self): imported missing items of \(existingCompounds.count) partially uploaded compound/s.", domain: .photosProcessing)
             self.notificationCenter.post(name: .uploadPendingPhotos)
         }
     }
 
-    private func importNewCompound(_ compound: PhotoAssetCompound, folder: Folder, encryptingFolder: EncryptingFolder) throws {
+    private func importNewCompound(_ compound: PhotoAssetCompound, folder: Folder, encryptingFolder: EncryptingFolder) throws -> ImportedPhoto {
         let main = try importer.import(compound.primary, folder: folder, encryptingFolder: encryptingFolder)
 
         for secondaryAsset in compound.secondary {
@@ -98,6 +102,9 @@ public final class CompoundPhotoCompoundImporter: PhotoCompoundImporter {
             secondary.parent = main
             main.addToChildren(secondary)
         }
+
+        // Uses the new created upload id, or the id from the BE if already commited
+        return ImportedPhoto(main: main.uploadID?.uuidString ?? main.id, secondary: main.children.map { $0.uploadID?.uuidString ?? $0.id })
     }
     
     private func importExistingCompound(_ compound: ExistingCompound, folder: Folder, encryptingFolder: EncryptingFolder) throws {
@@ -120,5 +127,15 @@ public final class CompoundPhotoCompoundImporter: PhotoCompoundImporter {
         }
         self.encryptingFolder = encryptingFolder
         return encryptingFolder
+    }
+
+    private struct ImportedPhoto: CustomStringConvertible {
+        let main: String
+        let secondary: [String]
+
+        var description: String {
+            let secondaryDescription = secondary.map { $0 }.joined(separator: ", ")
+            return "Photo(main: \(main), secondary: [\(secondaryDescription)])"
+        }
     }
 }

@@ -50,9 +50,9 @@ extension Node {
             }
             
             // children Files - just checks the blocks
-            if nil != folder.children
+            if folder.children
                 .filter({ $0 is File })
-                .first(where: { $0.isDownloaded == false })
+                .contains(where: { !$0.isDownloaded && $0.isDownloadable })
             {
                 return false
             }

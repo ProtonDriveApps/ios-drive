@@ -33,9 +33,10 @@ public final class SuspendableDownloader: Downloader, NetworkConstrained {
 
     public func invalidateOperations() {
         if isNetworkReachable {
+            Log.info("SuspendableDownloader.invalidateOperations, cancel all operations when network is reachable", domain: .downloader)
             cancelAll()
         } else {
-            Log.info("Pause Downloads", domain: .uploader)
+            Log.info("SuspendableDownloader.invalidateOperations, suspend all operations when network is not reachable", domain: .downloader)
             suspendAll()
         }
     }
@@ -44,6 +45,7 @@ public final class SuspendableDownloader: Downloader, NetworkConstrained {
         networkMonitor.state
             .removeDuplicates()
             .sink { [weak self] state in
+                Log.info("SuspendableDownloader.setupNetworkMonitoring, network state became: \(state)", domain: .downloader)
                 switch state {
                 case .reachable:
                     self?.isNetworkReachable = true
@@ -65,15 +67,15 @@ public final class SuspendableDownloader: Downloader, NetworkConstrained {
     }
 
     func suspendAll() {
+        Log.info("suspendAllOperations on downloading queue, isSuspended: \(queue.isSuspended)", domain: .downloader)
         if queue.isSuspended == false {
-            Log.info("suspendAllOperations on downloading queue", domain: .downloader)
             queue.isSuspended = true
         }
     }
 
     func resumeAll() {
+        Log.info("resumeAllOperations on downloading queue, isSuspended: \(queue.isSuspended)", domain: .downloader)
         if queue.isSuspended == true {
-            Log.info("resumeAllOperations on downloading queue", domain: .downloader)
             self.queue.isSuspended = false
         }
     }

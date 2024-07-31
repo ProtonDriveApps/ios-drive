@@ -54,7 +54,7 @@ public final class PMSettingsComposer {
 }
 
 public final class  SettingsSectionComposer {
-    public static func assemble(title: KeyInBundle, sections: [PMCellSuplier]) -> PMSettingsSectionViewModel {
+    public static func assemble(title: String, sections: [PMCellSuplier]) -> PMSettingsSectionViewModel {
         return PMSettingsSectionViewModel(title: title, rows: sections)
     }
 }

@@ -39,7 +39,7 @@ extension CloudSlot {
         }
     }
 
-    public func rename(_ node: Node, to newName: String, mimeType: String) async throws {
+    public func rename(_ node: Node, to newName: String, mimeType: String?) async throws {
         let renamer = NodeRenamer(storage: storage, cloudNodeRenamer: client.renameEntry, signersKitFactory: signersKitFactory, moc: storage.backgroundContext)
 
         return try await renamer.rename(node, to: newName, mimeType: mimeType)

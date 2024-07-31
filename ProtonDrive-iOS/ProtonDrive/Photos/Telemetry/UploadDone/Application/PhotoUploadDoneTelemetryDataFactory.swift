@@ -23,6 +23,7 @@ struct PhotoUploadTelemetryData {
     let duration: Double
     let isInitialBackup: Bool
     let isBackgroundTask: Bool
+    let mediaType: PhotoUploadMediaType
 }
 
 protocol PhotoUploadDoneTelemetryDataFactory {
@@ -31,9 +32,11 @@ protocol PhotoUploadDoneTelemetryDataFactory {
 
 final class ConcretePhotoUploadDoneTelemetryDataFactory: PhotoUploadDoneTelemetryDataFactory {
     private let userInfoFactory: PhotosTelemetryUserInfoFactory
+    private let connectionFactory: PhotosTelemetryConnectionFactoryProtocol
 
-    init(userInfoFactory: PhotosTelemetryUserInfoFactory) {
+    init(userInfoFactory: PhotosTelemetryUserInfoFactory, connectionFactory: PhotosTelemetryConnectionFactoryProtocol) {
         self.userInfoFactory = userInfoFactory
+        self.connectionFactory = connectionFactory
     }
 
     func makeData(with data: PhotoUploadTelemetryData) -> TelemetryData {
@@ -57,6 +60,32 @@ final class ConcretePhotoUploadDoneTelemetryDataFactory: PhotoUploadDoneTelemetr
         dimensions["is_initial_backup"] = data.isInitialBackup ? "yes" : "no"
         dimensions["is_background_task"] = data.isBackgroundTask ? "yes" : "no"
         dimensions["result"] = data.isSuccess ? "completed" : "failed"
+        dimensions["media_type"] = makeMediaType(with: data.mediaType)
+        dimensions.merge(connectionFactory.makeDimensions(), uniquingKeysWith: { current, _ in current })
         return dimensions
+    }
+
+    private func makeMediaType(with type: PhotoUploadMediaType) -> String {
+        switch type {
+        case .photo:
+            return "photo"
+        case .video:
+            return "video"
+        }
+    }
+
+    private func makeConnection(with interface: NetworkState.Interface?) -> String {
+        switch interface {
+        case .cellular:
+            return "cellular"
+        case .wifi:
+            return "wifi"
+        case .wired:
+            return "wired"
+        case .loopback:
+            return "loopback"
+        case .other, nil:
+            return "other"
+        }
     }
 }

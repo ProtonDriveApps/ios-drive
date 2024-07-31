@@ -22,6 +22,8 @@ final class ConcretePhotoUploadMeasurementRepository: PhotoUploadMeasurementRepo
     private let durationRepository: DurationMeasurementRepository
     private let notifier: PhotoUploadDoneNotifier
     private let identifier: String
+    private var kilobytes: Double = 0
+    private var mimeType: MimeType = .empty
 
     init(identifier: String, storage: PhotoUploadMeasurementsStorage, durationRepository: DurationMeasurementRepository, notifier: PhotoUploadDoneNotifier) {
         self.identifier = identifier
@@ -40,24 +42,29 @@ final class ConcretePhotoUploadMeasurementRepository: PhotoUploadMeasurementRepo
         durationRepository.reset()
     }
 
-    func succeed(with kilobytes: Double) {
-        finish(isSuccess: true, kilobytes: kilobytes)
-        storage[identifier] = nil
+    func succeed() {
+        finish(isSuccess: true)
     }
 
-    func fail(with kilobytes: Double) {
-        finish(isSuccess: false, kilobytes: kilobytes)
-        storage[identifier] = nil
+    func fail() {
+        finish(isSuccess: false)
+    }
+
+    func set(kilobytes: Double, mimeType: MimeType) {
+        self.kilobytes = kilobytes
+        self.mimeType = mimeType
     }
 
     private func getCombinedDuration() -> Double {
         return (storage[identifier] ?? 0) + durationRepository.get()
     }
 
-    private func finish(isSuccess: Bool, kilobytes: Double) {
+    private func finish(isSuccess: Bool) {
         durationRepository.stop()
         let duration = getCombinedDuration()
-        let data = PhotoUploadDoneData(isSuccess: isSuccess, kilobytes: kilobytes, duration: duration)
+        let mediaType = mimeType.isVideo ? PhotoUploadMediaType.video : .photo
+        let data = PhotoUploadDoneData(isSuccess: isSuccess, kilobytes: kilobytes, duration: duration, mediaType: mediaType)
         notifier.notify(data)
+        storage[identifier] = nil
     }
 }

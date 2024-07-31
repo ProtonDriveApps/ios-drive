@@ -16,6 +16,19 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
 	<string>Proton Drive</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Proton Doc</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>me.proton.drive.doc</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -43,6 +56,8 @@
 	<key>ITSEncryptionExportComplianceCode</key>
 	<string>41adced7-5863-42ad-bdb3-23d06e43946e</string>
 	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
@@ -114,5 +129,33 @@
 	</array>
 	<key>UPLOADED_PHOTO_NOTIFICATION</key>
 	<false/>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Proton Doc</string>
+			<key>UTTypeIconFiles</key>
+			<array>
+				<string>protondocIcon.png</string>
+			</array>
+			<key>UTTypeIdentifier</key>
+			<string>me.proton.drive.doc</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>protondoc</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.proton.doc</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
 </dict>
 </plist>

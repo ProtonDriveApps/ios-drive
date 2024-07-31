@@ -49,6 +49,7 @@ public extension RecordableOperation where Self: UploadOperation {
     var recordingName: String { "uploading" }
 
     func record() {
+//        Uncomment next line for recording coredata object for tests
 //        PDFileManager.copyMetadata(stage: recordingName)
     }
 }

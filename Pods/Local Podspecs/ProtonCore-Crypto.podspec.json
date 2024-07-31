@@ -16,7 +16,7 @@
     "vjalencas": "victor.jalencas@proton.ch"
   },
   "source": {
-    "git": null,
+    "git": "git@gitlab.protontech.ch:apple/shared/protoncore.git",
     "tag": "25.0.0"
   },
   "platforms": {

@@ -80,7 +80,6 @@ final class PMAcknowledgementsViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        navigationItem.leftBarButtonItem = .back(on: self, action: #selector(backButtonTapped))
         view.addSubview(textView)
         textView.adjustsFontForContentSizeCategory = true
         textView.translatesAutoresizingMaskIntoConstraints = false
@@ -100,9 +99,5 @@ final class PMAcknowledgementsViewController: UIViewController {
         title = viewModel.title
         textView.attributedText = viewModel.load()
         textView.contentOffset = .zero
-    }
-
-    @objc private func backButtonTapped() {
-        navigationController?.popViewController(animated: true)
     }
 }

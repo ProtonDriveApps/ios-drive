@@ -32,6 +32,7 @@ public final class PhotosUploadOperationsProviderFactory: FileUploadOperationsPr
     private let encryptionQueue: OperationQueue
     private let verifierFactory: UploadVerifierFactory
     private let finishResource: PhotoUploadFinishResource
+    private let blocksMeasurementRepository: FileUploadBlocksMeasurementRepositoryProtocol
 
     public init(
         storage: StorageManager,
@@ -44,7 +45,8 @@ public final class PhotosUploadOperationsProviderFactory: FileUploadOperationsPr
         uploadQueue: OperationQueue,
         encryptionQueue: OperationQueue,
         verifierFactory: UploadVerifierFactory,
-        finishResource: PhotoUploadFinishResource
+        finishResource: PhotoUploadFinishResource,
+        blocksMeasurementRepository: FileUploadBlocksMeasurementRepositoryProtocol
     ) {
         self.storage = storage
         self.client = client
@@ -57,13 +59,14 @@ public final class PhotosUploadOperationsProviderFactory: FileUploadOperationsPr
         self.encryptionQueue = encryptionQueue
         self.verifierFactory = verifierFactory
         self.finishResource = finishResource
+        self.blocksMeasurementRepository = blocksMeasurementRepository
     }
 
     public func make() -> FileUploadOperationsProvider {
         let revisionEncryptor = PhotosRevisionEncryptorOperationFactory(signersKitFactory: sessionVault, moc: moc, globalQueue: encryptionQueue)
         let fileDraftCreator = PhotoDraftCreatorOperationFactory(fileDraftCreator: cloudSlot, sessionVault: sessionVault)
         let revisionDraftCreator = PhotoRevisionDraftCreatorOperationFactory()
-        let revisionUploader = DiscreteRevisionUploaderOperationFactory(storage: storage, client: client, api: apiService, cloudContentCreator: cloudSlot, credentialProvider: sessionVault, signersKitFactory: sessionVault, verifierFactory: verifierFactory, moc: moc, globalPagesQueue: pagesQueue, globalUploadQueue: uploadQueue)
+        let revisionUploader = DiscreteRevisionUploaderOperationFactory(storage: storage, client: client, api: apiService, cloudContentCreator: cloudSlot, credentialProvider: sessionVault, signersKitFactory: sessionVault, verifierFactory: verifierFactory, moc: moc, globalPagesQueue: pagesQueue, globalUploadQueue: uploadQueue, blocksMeasurementRepository: blocksMeasurementRepository)
         let revisionCommitter = PhotoRevisionCommitterOperationFactory(cloudRevisionCommitter: cloudSlot, uploadedRevisionChecker: cloudSlot, signersKitFactory: sessionVault, moc: moc, finishResource: finishResource)
 
         let operationsProvider = PhotosUploadOperationsProvider(

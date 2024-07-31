@@ -47,10 +47,10 @@ final class PasswordConfigurationViewController: UIViewController {
         textField.setCaption(viewModel.caption)
         rightButton.isEnabled = false
     }
-
+    
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        viewModel?.viewWillDissapear()
+        viewModel?.viewWillDisappear()
     }
 
     private func setupNavigationBar() {

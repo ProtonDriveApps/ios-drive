@@ -40,8 +40,7 @@ final class GalleryLastPhotoRepository: LastPhotoRepository {
         }
 
         // Create a fetch options
-        let fetchOptions = PHFetchOptions()
-        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        let fetchOptions = PHFetchOptions.defaultPhotosOptions()
         fetchOptions.fetchLimit = 1
 
         // Fetch the assets

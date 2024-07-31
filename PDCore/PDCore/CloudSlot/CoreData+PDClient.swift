@@ -59,7 +59,7 @@ public extension Node {
         self.mimeType = meta.MIMEType
         self.createdDate = Date(timeIntervalSince1970: meta.createTime)
         self.modifiedDate = Date(timeIntervalSince1970: meta.modifyTime)
-        self.isShared = NSNumber(value: meta.shared).boolValue
+        self.isShared = meta.sharingDetails != nil
     }
 }
 public extension File {

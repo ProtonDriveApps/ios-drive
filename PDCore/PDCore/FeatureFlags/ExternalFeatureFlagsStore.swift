@@ -32,11 +32,20 @@ extension LocalSettings: ExternalFeatureFlagsStore {
         case .domainReconnectionEnabled: domainReconnectionEnabled = value
         case .postMigrationJunkFilesCleanup: postMigrationJunkFilesCleanup = value
         case .newTrayAppMenuEnabled: newTrayAppMenuEnabled = value
+        case .pushNotificationIsEnabled: pushNotificationIsEnabled = value
         case .logCollectionEnabled: logCollectionEnabled = value
         case .logCollectionDisabled: logCollectionDisabled = value
+        case .oneDollarPlanUpsellEnabled: oneDollarPlanUpsellEnabled = value
+        case .driveSharingMigration: driveSharingMigration = value
+        case .driveSharingDevelopment: driveSharingDevelopment = value
+        case .driveSharingInvitations: driveSharingInvitations = value
+        case .driveSharingExternalInvitations: driveSharingExternalInvitations = value
+        case .driveSharingDisabled: driveSharingDisabled = value
+        case .driveSharingExternalInvitationsDisabled: driveSharingExternalInvitationsDisabled = value
+        case .driveSharingEditingDisabled: driveSharingEditingDisabled = value
         }
     }
-    
+
     public func isFeatureEnabled(_ flag: FeatureAvailabilityFlag) -> Bool {
         switch flag {
         case .photosEnabled: return photosEnabled
@@ -46,8 +55,17 @@ extension LocalSettings: ExternalFeatureFlagsStore {
         case .domainReconnectionEnabled: return domainReconnectionEnabled
         case .postMigrationJunkFilesCleanup: return postMigrationJunkFilesCleanup
         case .newTrayAppMenuEnabled: return newTrayAppMenuEnabled
+        case .pushNotificationIsEnabled: return pushNotificationIsEnabled
         case .logCollectionEnabled: return logCollectionEnabled
         case .logCollectionDisabled: return logCollectionDisabled
+        case .oneDollarPlanUpsellEnabled: return oneDollarPlanUpsellEnabled
+        case .driveSharingMigration: return driveSharingMigration
+        case .driveSharingDevelopment: return driveSharingDevelopment
+        case .driveSharingInvitations: return driveSharingInvitations
+        case .driveSharingExternalInvitations: return driveSharingExternalInvitations
+        case .driveSharingDisabled: return driveSharingDisabled
+        case .driveSharingExternalInvitationsDisabled: return driveSharingExternalInvitationsDisabled
+        case .driveSharingEditingDisabled: return driveSharingEditingDisabled
         }
     }
 }

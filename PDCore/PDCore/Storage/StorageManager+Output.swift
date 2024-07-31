@@ -134,6 +134,13 @@ public extension StorageManager {
         return node
     }
     
+    func fetchNodesCount(of share: String, moc: NSManagedObjectContext) async throws -> Int {
+        try await moc.perform {
+            let fetchRequest = self.requestNodes(share: share, sorting: .nameAscending, moc: moc)
+            return try moc.count(for: fetchRequest)
+        }
+    }
+    
     func fetchDraft(localID: String, shareID: String, moc: NSManagedObjectContext) -> File? {
         var draft: File?
         moc.performAndWait {
@@ -159,6 +166,18 @@ public extension StorageManager {
             nodes = try? moc.fetch(fetchRequest)
         }
         return nodes ?? []
+    }
+    
+    func fetchDirtyNodes(of shareID: String, moc: NSManagedObjectContext) async throws -> [Node] {
+        try await moc.perform {
+            try moc.fetch(self.requestDirtyNodes(share: shareID, moc: moc))
+        }
+    }
+    
+    func fetchDirtyNodesCount(share shareID: String, moc: NSManagedObjectContext) async throws -> Int {
+        try await moc.perform {
+            try moc.count(for: self.requestDirtyNodes(share: shareID, moc: moc))
+        }
     }
 
     func fetchFilesUploading(moc: NSManagedObjectContext) -> [File] {
@@ -632,6 +651,16 @@ public extension StorageManager {
                                              #keyPath(Node.shareID), shareID,
                                              #keyPath(Node.parentLink)) // this will exclude Root folders from the list
         
+        return fetchRequest
+    }
+    
+    private func requestDirtyNodes(share shareID: String, moc: NSManagedObjectContext) -> NSFetchRequest<Node> {
+        let fetchRequest = NSFetchRequest<Node>()
+        fetchRequest.entity = Node.entity()
+        fetchRequest.sortDescriptors = [.init(key: #keyPath(Node.dirtyIndex), ascending: true)]
+        fetchRequest.predicate = NSPredicate(format: "%K == %@ AND %K != %d",
+                                             #keyPath(Node.shareID), shareID,
+                                             #keyPath(Node.dirtyIndex), 0)
         return fetchRequest
     }
     

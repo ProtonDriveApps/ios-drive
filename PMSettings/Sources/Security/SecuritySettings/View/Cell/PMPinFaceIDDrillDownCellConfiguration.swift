@@ -58,6 +58,8 @@ extension PMPinFaceIDDrillDownCellConfiguration: PMDrillDownCellViewModel {
     public var preview: String? {
         lockReader.isProtectionEnabled() ? "On" : "Off"
     }
+    
+    public var accessibilityIdentifier: String { "PIN" }
 }
 
 private extension LockReader {

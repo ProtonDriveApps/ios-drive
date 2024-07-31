@@ -17,8 +17,11 @@
 
 import Combine
 import Foundation
+import PDCore
 
 protocol TabsViewModel {
+    var defaultHomeTabTagPreferences: [Int] { get }
+    
     func start()
 }
 
@@ -26,10 +29,20 @@ final class ConcreteTabsViewModel: TabsViewModel {
     private let photosTabController: PhotosTabVisibleController
     private let coordinator: TabBarCoordinator
     private var cancellables = Set<AnyCancellable>()
+    private let localSettings: LocalSettings
+    
+    var defaultHomeTabTagPreferences: [Int] {
+        [localSettings.defaultHomeTabTag, TabBarItem.photos.tag, TabBarItem.files.tag]
+    }
 
-    init(photosTabController: PhotosTabVisibleController, coordinator: TabBarCoordinator) {
+    init(
+        photosTabController: PhotosTabVisibleController,
+        coordinator: TabBarCoordinator,
+        localSettings: LocalSettings
+    ) {
         self.photosTabController = photosTabController
         self.coordinator = coordinator
+        self.localSettings = localSettings
     }
 
     func start() {
@@ -47,5 +60,7 @@ final class ConcreteTabsViewModel: TabsViewModel {
 }
 
 final class BlankTabsViewModel: TabsViewModel {
+    var defaultHomeTabTagPreferences: [Int] { [TabBarItem.files.tag] }
+    
     func start() {}
 }

@@ -25,6 +25,17 @@ public struct ShareShort: Codable {
     
     public var linkID: Link.LinkID
     public var creator: String
+    
+    public init(shareID: Share.ShareID,
+                volumeID: Volume.VolumeID,
+                flags: Share.Flags,
+                linkID: Link.LinkID, creator: String) {
+        self.shareID = shareID
+        self.volumeID = volumeID
+        self.flags = flags
+        self.linkID = linkID
+        self.creator = creator
+    }
 }
 
 public struct Share: Codable {

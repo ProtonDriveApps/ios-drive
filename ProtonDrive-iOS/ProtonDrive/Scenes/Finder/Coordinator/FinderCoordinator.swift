@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Combine
 import Foundation
 import SwiftUI
 import UIKit
@@ -37,6 +38,8 @@ class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
     private(set) var model: FinderModel? // Previously we had it weak but iOS 14 was mysteriously nullifying it after some Move manipulations - see DRVIOS-581
     private(set) weak var previousFolderCoordinator: FinderCoordinator?
     private(set) weak var nextFolderCoordinator: FinderCoordinator?
+    weak var rootViewController: UIViewController?
+    private var fileCoordinator: FileCoordinator?
     
     // Binding observed by FinderView's NavigationView
     @Published private var _drilldownTo: Node.ID?
@@ -50,8 +53,16 @@ class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
     @Published private var _presentedModal: Destination?
     lazy var presentModal: Binding<Destination?> = .init {  [weak self] in
         self?._presentedModal
-    } set: {  [weak self] in
-        self?._presentedModal = $0
+    } set: {  [weak self] destination in
+        guard let self else { return }
+        if case let .file(file: file, share: share) = destination {
+            self.openFilePreview(file: file, share: share)
+        } else if case let .protonDocument(file) = destination {
+            // Don't use SwiftUI modal for Proton Docs.
+            self.openProtonDocument(with: file)
+        } else {
+            self._presentedModal = destination
+        }
     }
 
     init(tower: Tower, parent: FinderCoordinator? = nil, deeplink: Deeplink? = nil, photoPickerCoordinator: PhotosPickerCoordinator? = nil) {
@@ -59,6 +70,7 @@ class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
         self.deeplink = deeplink
         self.previousFolderCoordinator = parent
         self.photoPickerCoordinator = photoPickerCoordinator
+        self.rootViewController = parent?.rootViewController
     }
 }
 
@@ -90,7 +102,7 @@ extension FinderCoordinator {
         case .offlineAvailable:
             self.startOfflineAvailable()
 
-        case let .shared:
+        case .shared:
             if let volume = tower.uiSlot.getVolume() {
                 self.startShared(volumeID: volume.id)
             } else {
@@ -152,9 +164,13 @@ extension FinderCoordinator {
                 TechnicalErrorPlaceholderView(message: "Called Go-Move with insufficient context")
             }
 
-        case let .file(file, share):
-            // this one should not be cached as we do not want to keep cleartext file longer than needed
-            FileCoordinator(tower: tower, parent: self).start((file, share))
+        case .file:
+            // Use UIKit to present file preview rather than SwiftUI, check FileCoordinator
+            EmptyView()
+
+        case .protonDocument:
+            // Should be opened directly
+            EmptyView()
 
         case .importDocument where model is PickerDelegate:
             DocumentPicker(delegate: model as! PickerDelegate)
@@ -214,7 +230,25 @@ extension FinderCoordinator {
         let coordinator = FinderCoordinator(tower: tower, deeplink: nil) // no connection to parent (current one) as new one is a root of new chain
         return RootMoveView(coordinator: coordinator, nodes: nodeIds, root: rootId, parent: parentId)
     }
-    
+
+    private func openProtonDocument(with file: File) {
+        let interactor = ProtonDocumentOpeningFactory().makeInteractor(tower: tower)
+        let urlCoordinator = iOSURLCoordinator()
+        let errorViewModel = ProtonDocumentErrorViewModel(messageHandler: UserMessageHandler())
+        let controller = ProtonDocumentOpeningController(interactor: interactor, coordinator: urlCoordinator, errorViewModel: errorViewModel)
+        controller.openPreview(file.identifier)
+    }
+
+    private func openFilePreview(file: File, share: Bool) {
+        fileCoordinator = FileCoordinator(
+            tower: tower,
+            rootViewController: rootViewController,
+            dismissHandler: { [weak self] in
+                self?.fileCoordinator = nil
+            }
+        )
+        fileCoordinator?.openFilePreview(file: file, share: share)
+    }
 }
 
 extension FinderCoordinator: UINavigationControllerDelegate {

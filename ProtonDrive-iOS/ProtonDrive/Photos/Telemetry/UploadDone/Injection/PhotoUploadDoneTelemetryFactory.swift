@@ -18,9 +18,11 @@
 import PDCore
 
 struct PhotoUploadDoneTelemetryFactory {
-    func makeController(telemetryController: TelemetryController, computationalAvailabilityController: ComputationalAvailabilityController, storage: PhotosTelemetryStorage, userInfoResource: UserInfoResource, notifier: PhotoUploadDoneNotifier) -> PhotoUploadDoneTelemetryController {
+    // swiftlint:disable:next function_parameter_count
+    func makeController(telemetryController: TelemetryController, computationalAvailabilityController: ComputationalAvailabilityController, storage: PhotosTelemetryStorage, userInfoResource: UserInfoResource, notifier: PhotoUploadDoneNotifier, networkController: PhotoBackupNetworkControllerProtocol) -> PhotoUploadDoneTelemetryController {
         let userInfoFactory = PhotosTelemetryFactory().makeUserInfoFactory(userInfoResource: userInfoResource)
-        let dataFactory = ConcretePhotoUploadDoneTelemetryDataFactory(userInfoFactory: userInfoFactory)
+        let connectionFactory = PhotosTelemetryConnectionFactory(networkController: networkController)
+        let dataFactory = ConcretePhotoUploadDoneTelemetryDataFactory(userInfoFactory: userInfoFactory, connectionFactory: connectionFactory)
         return ConcretePhotoUploadDoneTelemetryController(telemetryController: telemetryController, computationAvailabilityController: computationalAvailabilityController, notifier: notifier, storage: storage, userInfoResource: userInfoResource, dataFactory: dataFactory)
     }
 }

@@ -18,25 +18,34 @@
 import UIKit
 import PDCore
 
-final class PopulateCoordinator {
+protocol PopulateCoordinatorProtocol {
+    func showPopulated(root: NodeIdentifier)
+}
+
+final class PopulateCoordinator: PopulateCoordinatorProtocol {
     private(set) unowned var viewController: PopulateViewController
     private let populatedViewControllerFactory: (NodeIdentifier) -> UIViewController
     private let onboardingViewControllerFactory: () -> UIViewController?
+    private let upsellFactory: () -> UIViewController?
 
     public init(
         viewController: PopulateViewController,
         populatedViewControllerFactory: @escaping (NodeIdentifier) -> UIViewController,
-        onboardingViewControllerFactory: @escaping () -> UIViewController?
+        onboardingViewControllerFactory: @escaping () -> UIViewController?,
+        upsellFactory: @escaping () -> UIViewController?
     ) {
         self.viewController = viewController
         self.populatedViewControllerFactory = populatedViewControllerFactory
         self.onboardingViewControllerFactory = onboardingViewControllerFactory
+        self.upsellFactory = upsellFactory
     }
 
     func showPopulated(root: NodeIdentifier) {
         let populated = populatedViewControllerFactory(root)
         viewController.navigationController?.pushViewController(populated, animated: false)
         if let modal = onboardingViewControllerFactory() {
+            viewController.present(modal, animated: true)
+        } else if let modal = upsellFactory() {
             viewController.present(modal, animated: true)
         }
     }

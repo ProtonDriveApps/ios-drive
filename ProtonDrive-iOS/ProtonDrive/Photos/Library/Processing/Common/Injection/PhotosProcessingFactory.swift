@@ -19,42 +19,40 @@ import Foundation
 import PDCore
 
 struct PhotosProcessingFactory {
-    // swiftlint:disable:next function_parameter_count
-    func makeProcessingController(tower: Tower, identifiersController: PhotoLibraryIdentifiersController, backupController: PhotosBackupController, constraintsController: PhotoBackupConstraintsController, progressRepository: PhotoLibraryLoadProgressRepository, failedIdentifiersResource: DeletedPhotosIdentifierStoreResource, photoSkippableCache: PhotosSkippableCache, settingsController: PhotoBackupSettingsController, computationalAvailabilityController: ComputationalAvailabilityController, circuitBreaker: CircuitBreakerController, duplicatesMeasurementRepository: DurationMeasurementRepository, scanningMeasurementRepository: DurationMeasurementRepository) -> PhotosProcessingController {
-        let factory = makeOperationsFactory(tower: tower, progressRepository: progressRepository, failedIdentifiersResource: failedIdentifiersResource, photoSkippableCache: photoSkippableCache, settingsController: settingsController, circuitBreaker: circuitBreaker, duplicatesMeasurementRepository: duplicatesMeasurementRepository, scanningMeasurementRepository: scanningMeasurementRepository)
+    func makeProcessingController(dependencies: PhotosProcessingContainer.Dependencies) -> PhotosProcessingController {
+        let factory = makeOperationsFactory(dependencies: dependencies)
         let processingResource = ConcretePhotosProcessingQueueResource(factory: factory)
-        let managedObjectContext = tower.storage.newBackgroundContext()
-        let observer = FetchedResultsControllerObserver(controller: tower.storage.subscriptionToPrimaryUploadingPhotos(moc: managedObjectContext))
+        let managedObjectContext = dependencies.tower.storage.newBackgroundContext()
+        let observer = FetchedResultsControllerObserver(controller: dependencies.tower.storage.subscriptionToPrimaryUploadingPhotos(moc: managedObjectContext))
         let repository = CoreDataPhotosUploadingCountRepository(observer: observer)
         let batchAvailableController = ConcretePhotosProcessingBatchAvailableController(repository: repository)
         let availableController = ConcretePhotosProcessingAvailableController(
-            backupController: backupController,
-            constraintsController: constraintsController,
-            computationalAvailabilityController: computationalAvailabilityController
+            backupController: dependencies.backupController,
+            constraintsController: dependencies.constraintsController,
+            computationalAvailabilityController: dependencies.computationalAvailabilityController
         )
         return ConcretePhotosProcessingController(
-            identifiersController: identifiersController,
-            backupController: backupController,
+            identifiersController: dependencies.identifiersController,
+            backupController: dependencies.backupController,
             availableController: availableController,
             processingResource: processingResource,
             batchAvailableController: batchAvailableController,
-            cleanUpController: tower.cleanUpController
+            cleanUpController: dependencies.tower.cleanUpController
         )
     }
 
-    // swiftlint:disable:next function_parameter_count
-    private func makeOperationsFactory(tower: Tower, progressRepository: PhotoLibraryLoadProgressRepository, failedIdentifiersResource: DeletedPhotosIdentifierStoreResource, photoSkippableCache: PhotosSkippableCache, settingsController: PhotoBackupSettingsController, circuitBreaker: CircuitBreakerController, duplicatesMeasurementRepository: DurationMeasurementRepository, scanningMeasurementRepository: DurationMeasurementRepository) -> PhotosProcessingOperationsFactory {
+    private func makeOperationsFactory(dependencies: PhotosProcessingContainer.Dependencies) -> PhotosProcessingOperationsFactory {
         return ConcretePhotosProcessingOperationsFactory(
-            filterByIdResource: DatabasePhotosFilterByIdResource(storage: tower.storage, policy: PhotoIdentifiersFilterPolicy()),
-            assetsResource: makeAssetsResource(settingsController: settingsController),
-            conflictInteractor: PhotoRemoteFilterFactory().makeRemoteFilterInteractor(tower: tower, circuitBreaker: circuitBreaker),
-            photosImporter: PhotoImportFactory().makeImporter(tower: tower),
-            progressRepository: progressRepository, 
-            failedIdentifiersResource: failedIdentifiersResource,
-            photoSkippableCache: photoSkippableCache,
+            filterByIdResource: DatabasePhotosFilterByIdResource(storage: dependencies.tower.storage, policy: PhotoIdentifiersFilterPolicy()),
+            assetsResource: makeAssetsResource(settingsController: dependencies.settingsController),
+            conflictInteractor: PhotoRemoteFilterFactory().makeRemoteFilterInteractor(tower: dependencies.tower, circuitBreaker: dependencies.circuitBreaker, photoSharesObserver: dependencies.photoSharesObserver),
+            photosImporter: PhotoImportFactory().makeImporter(tower: dependencies.tower),
+            progressRepository: dependencies.progressRepository,
+            failedIdentifiersResource: dependencies.failedItemsResource,
+            photoSkippableCache: dependencies.photoSkippableCache,
             storageSizeLimit: Constants.photosAssetsMaximalFolderSize,
-            duplicatesMeasurementRepository: duplicatesMeasurementRepository,
-            scanningMeasurementRepository: scanningMeasurementRepository
+            duplicatesMeasurementRepository: dependencies.duplicatesMeasurementRepository,
+            scanningMeasurementRepository: dependencies.scanningMeasurementRepository
         )
     }
 
@@ -69,9 +67,10 @@ struct PhotosProcessingFactory {
         let liveCompoundResource = ConcretePhotoLibraryLivePairCompoundResource(assetResource: assetResource, nameResource: nameResource)
         let livePhotoResource = PhotoLibraryLivePhotoCompoundResource(liveCompoundResource: liveCompoundResource)
         let plainCompoundResource = PhotoLibraryPlainCompoundResource(livePhotoResource: livePhotoResource, assetResource: assetResource, nameResource: nameResource)
-        let portraitCompoundResource = PhotoLibraryPortraitCompoundResource(assetResource: assetResource, nameResource: nameResource)
+        let portraitCompoundResource = PhotoLibraryPortraitCompoundResource(assetResource: assetResource, nameResource: nameResource, plainResource: plainCompoundResource)
+        let cinematicVideoCompoundResource = PhotoLibraryCinematicVideoCompoundResource(assetResource: assetResource, nameResource: nameResource, plainResource: plainCompoundResource)
         let burstResource = PhotoLibraryBurstCompoundResource(assetResource: assetResource, nameResource: nameResource)
         let optionsFactory = PHFetchOptionsFactory(supportedMediaTypes: settingsController.supportedMediaTypes, notOlderThan: settingsController.notOlderThan)
-        return LocalPhotoLibraryAssetsResource(plainResource: plainCompoundResource, livePhotoResource: livePhotoResource, portraitPhotoResource: portraitCompoundResource, burstResource: burstResource, optionsFactory: optionsFactory, mappingResource: LocalPhotoLibraryMappingResource())
+        return LocalPhotoLibraryAssetsResource(plainResource: plainCompoundResource, livePhotoResource: livePhotoResource, portraitPhotoResource: portraitCompoundResource, cinematicVideoResource: cinematicVideoCompoundResource, burstResource: burstResource, optionsFactory: optionsFactory, mappingResource: LocalPhotoLibraryMappingResource())
     }
 }

@@ -34,5 +34,5 @@ protocol PasswordConfigurationViewModel {
     func advance()
     func withdrawFromScreen()
     func userInputDidChange(to text: String)
-    func viewWillDissapear()
+    func viewWillDisappear()
 }

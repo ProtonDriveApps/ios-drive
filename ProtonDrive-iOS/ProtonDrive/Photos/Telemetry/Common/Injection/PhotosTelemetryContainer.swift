@@ -32,6 +32,10 @@ final class PhotosTelemetryContainer {
         let computationalAvailabilityController: ComputationalAvailabilityController
         let uploadDoneNotifier: PhotoUploadDoneNotifier
         let processingTaskController: BackgroundTaskStateController
+        let backgroundUploadMeasurementsRepository: BackgroundUploadMeasurementsRepositoryProtocol
+        let backgroundTaskResultStateRepository: BackgroundTaskResultStateRepositoryProtocol
+        let failedPhotosResource: DeletedPhotosIdentifierStoreResource
+        let networkController: PhotoBackupNetworkControllerProtocol
     }
 
     private let dependencies: Dependencies
@@ -41,18 +45,23 @@ final class PhotosTelemetryContainer {
     private let updateController: PhotosBackupUpdateTelemetryController
     private let uploadDoneController: PhotoUploadDoneTelemetryController
     private let backgroundUpdateController: PhotosBackupBackgroundUpdateTelemetryController
+    private let backgroundStartController: PhotosBackupBackgroundStartTelemetryController
 
     init(dependencies: Dependencies) {
         self.dependencies = dependencies
         telemetryController = TelemetryFactory().makeController(tower: dependencies.tower)
         let factory = PhotosTelemetryFactory()
         settingController = factory.makeSettingController(tower: dependencies.tower, settingsController: dependencies.settingsController, telemetryController: telemetryController)
-        stopController = factory.makeStopController(tower: dependencies.tower, stateController: dependencies.stateController, telemetryController: telemetryController, storage: dependencies.storage, loadController: dependencies.loadController)
+        stopController = factory.makeStopController(tower: dependencies.tower, stateController: dependencies.stateController, telemetryController: telemetryController, storage: dependencies.storage, loadController: dependencies.loadController, failedPhotosResource: dependencies.failedPhotosResource)
         let updateFactory = PhotosBackupUpdateTelemetryFactory()
-        updateController = updateFactory.makeController(telemetryController: telemetryController, stateController: dependencies.stateController, storage: dependencies.storage, userInfoResource: dependencies.tower.sessionVault, uploadRepository: dependencies.uploadRepository, scanningRepository: dependencies.scanningRepository, duplicatesRepository: dependencies.duplicatesRepository, throttlingRepository: dependencies.throttlingRepository)
+        updateController = updateFactory.makeController(telemetryController: telemetryController, stateController: dependencies.stateController, storage: dependencies.storage, userInfoResource: dependencies.tower.sessionVault, uploadRepository: dependencies.uploadRepository, scanningRepository: dependencies.scanningRepository, duplicatesRepository: dependencies.duplicatesRepository, throttlingRepository: dependencies.throttlingRepository, networkController: dependencies.networkController)
         let uploadDoneFactory = PhotoUploadDoneTelemetryFactory()
-        uploadDoneController = uploadDoneFactory.makeController(telemetryController: telemetryController, computationalAvailabilityController: dependencies.computationalAvailabilityController, storage: dependencies.storage, userInfoResource: dependencies.tower.sessionVault, notifier: dependencies.uploadDoneNotifier)
+        uploadDoneController = uploadDoneFactory.makeController(telemetryController: telemetryController, computationalAvailabilityController: dependencies.computationalAvailabilityController, storage: dependencies.storage, userInfoResource: dependencies.tower.sessionVault, notifier: dependencies.uploadDoneNotifier, networkController: dependencies.networkController)
         let backgroundUpdateFactory = PhotosBackupBackgroundUpdateTelemetryFactory()
-        backgroundUpdateController = backgroundUpdateFactory.makeController(telemetryController: telemetryController, taskController: dependencies.processingTaskController, storage: dependencies.storage, userInfoResource: dependencies.tower.sessionVault)
+        let backgroundUploadStorage = backgroundUpdateFactory.makeBackgroundStorage(suite: dependencies.settingsSuite)
+        backgroundUpdateController = backgroundUpdateFactory.makeController(telemetryController: telemetryController, taskController: dependencies.processingTaskController, backupStorage: dependencies.storage, backgroundUploadStorage: backgroundUploadStorage, userInfoResource: dependencies.tower.sessionVault, uploadMeasurementsRepository: dependencies.backgroundUploadMeasurementsRepository, networkController: dependencies.networkController)
+        let backgroundStartFactory = PhotosBackupBackgroundStartTelemetryFactory()
+        backgroundStartController = backgroundStartFactory.makeController(telemetryController: telemetryController, availabilityController: dependencies.computationalAvailabilityController, backupStorage: dependencies.storage, userInfoResource: dependencies.tower.sessionVault, backgroundUploadStorage: backgroundUploadStorage, networkController: dependencies.networkController)
+
     }
 }

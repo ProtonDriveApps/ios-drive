@@ -50,8 +50,8 @@ final class InitialPasswordConfigurationViewModel: PasswordConfigurationViewMode
         couldFinishStepSuccessfully = true
         router.advance()
     }
-
-    func viewWillDissapear() {
+    
+    func viewWillDisappear() {
         guard !couldFinishStepSuccessfully else { return }
         router.finishWithSuccess(false)
     }

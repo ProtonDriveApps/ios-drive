@@ -24,8 +24,8 @@ final class PhotosRetryViewModel: ObservableObject {
     @Published private(set) var failedToPreview = 0
     
     private let interactor: PhotosRetryInteractorProtocol
-    private let nameUnwrappingStrategy: (String?) -> String
-    private let imageUnwrappingStrategy: (Data?) -> Data
+    private let nameUnwrappingStrategy: RetryItemNameUnwrappingStrategy
+    private let imageUnwrappingStrategy: RetryImageUnwrappingStrategy
     
     let fallbackSystemImage = "eye.slash"
     let title = "Backup issues"
@@ -43,8 +43,8 @@ final class PhotosRetryViewModel: ObservableObject {
     
     init(
         interactor: PhotosRetryInteractorProtocol,
-        nameUnwrappingStrategy: @escaping (String?) -> String = DefaultNameUnwrappingStrategy,
-        imageUnwrappingStrategy: @escaping (Data?) -> Data = DefaultImageUnwrappingStrategy
+        nameUnwrappingStrategy: @escaping RetryItemNameUnwrappingStrategy,
+        imageUnwrappingStrategy: @escaping RetryImageUnwrappingStrategy
     ) {
         self.interactor = interactor
         self.nameUnwrappingStrategy = nameUnwrappingStrategy

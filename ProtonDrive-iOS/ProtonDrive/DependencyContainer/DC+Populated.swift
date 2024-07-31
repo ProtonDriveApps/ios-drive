@@ -27,7 +27,10 @@ import PMSideMenu
 
 extension AuthenticatedDependencyContainer {
     func makeHomeViewController(root: NodeIdentifier) -> UIViewController {
-        makeSlidingViewController(root: root)
+        #if DEBUG
+        updateLocalSettingForUITest()
+        #endif
+        return makeSlidingViewController(root: root)
     }
 
     func makeSlidingViewController(root: NodeIdentifier) -> UIViewController {
@@ -93,7 +96,9 @@ extension AuthenticatedDependencyContainer {
         let coordinator = FinderCoordinator(tower: tower, photoPickerCoordinator: pickersContainer.getPhotoCoordinator())
         let rootFolderView = RootFolderView(nodeID: root, coordinator: coordinator).any()
         let rootView = RootView(vm: RootViewModel(), activeArea: { rootFolderView })
-        return UIHostingController(rootView: rootView)
+        let viewController = UIHostingController(rootView: rootView)
+        coordinator.rootViewController = viewController
+        return viewController
     }
     
     private func makeSharedViewController(root: NodeIdentifier) -> UIViewController {
@@ -135,3 +140,14 @@ extension AuthenticatedDependencyContainer {
         return SettingsAssembler.assemble(apiService: networkService, tower: tower, keymaker: keymaker, photosContainer: photos)
     }
 }
+
+#if DEBUG
+extension AuthenticatedDependencyContainer {
+    func updateLocalSettingForUITest() {
+        guard DebugConstants.commandLineContains(flags: [.uiTests, .filesAsDefaultTab]) else {
+            return
+        }
+        localSettings.defaultHomeTabTag = TabBarItem.files.tag
+    }
+}
+#endif

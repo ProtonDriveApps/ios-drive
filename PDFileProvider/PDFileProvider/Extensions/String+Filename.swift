@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDCore
 
 extension String {
 
@@ -25,5 +26,28 @@ extension String {
 
     var fileExtension: String {
         URL(fileURLWithPath: self).pathExtension
+    }
+
+    func appendingExtension(_ pathExtension: String) -> String {
+        URL(fileURLWithPath: self).appendingPathExtension(pathExtension).lastPathComponent
+    }
+
+    func filenameNormalizedForFilesystem(basedOn mimeType: String) -> String {
+        switch mimeType {
+        case ProtonDocumentConstants.mimeType:
+            return self.appendingExtension(ProtonDocumentConstants.fileExtension)
+        default:
+            return self
+        }
+    }
+
+    /// Removes the .protondoc file extension from files before pushing changes to remote
+    func filenameNormalizedForRemote() -> String {
+        switch self.fileExtension {
+        case ProtonDocumentConstants.fileExtension:
+            return self.nameExcludingExtension
+        default:
+            return self
+        }
     }
 }

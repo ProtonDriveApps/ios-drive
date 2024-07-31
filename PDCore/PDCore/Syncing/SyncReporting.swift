@@ -18,6 +18,7 @@
 import Foundation
 
 public protocol SyncReporting: ItemReporting {
-    func update(item: ReportableSyncItem) async
+    func update(item: ReportableSyncItem)
     func cleanSyncItems(olderThan date: Date) throws
+    func cleanSyncingItems()
 }

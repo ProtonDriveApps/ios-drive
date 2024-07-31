@@ -21,27 +21,15 @@
 
 import Foundation
 
-public typealias KeyInBundle = (key: String, bundle: Bundle)
-
 public final class PMSettingsSectionViewModel {
     let rows: [PMCellSuplier]
-    fileprivate let titleRaw: KeyInBundle?
-    fileprivate let footerRaw: KeyInBundle?
+    public let title: String?
+    public let footer: String?
 
-    public init(title: KeyInBundle?, rows: [PMCellSuplier], footer: KeyInBundle? = nil) {
-        self.titleRaw = title
-        self.footerRaw = footer
+    public init(title: String?, rows: [PMCellSuplier], footer: String? = nil) {
+        self.title = title
+        self.footer = footer
         self.rows = rows
-    }
-
-    public var title: String? {
-        guard let title = titleRaw else { return nil }
-        return title.key.localized(in: title.bundle)
-    }
-
-    public var footer: String? {
-        guard let footer = footerRaw else { return nil }
-        return footer.key.localized(in: footer.bundle)
     }
 
     public func amending() -> PMSettingsSectionViewModelAmendor {
@@ -51,24 +39,24 @@ public final class PMSettingsSectionViewModel {
 
 public final class PMSettingsSectionViewModelAmendor {
     private var rows: [PMCellSuplier]
-    private var title: KeyInBundle?
-    private var footer: KeyInBundle?
+    private var title: String?
+    private var footer: String?
     private var prepends: [PMCellSuplier] = []
     private var appends: [PMCellSuplier] = []
 
     // swiftlint:disable identifier_name
     internal init(of vm: PMSettingsSectionViewModel) {
         self.rows = vm.rows
-        self.title = vm.titleRaw
-        self.footer = vm.footerRaw
+        self.title = vm.title
+        self.footer = vm.footer
     }
 
-    public func title(_ title: KeyInBundle?) -> PMSettingsSectionViewModelAmendor {
+    public func title(_ title: String?) -> PMSettingsSectionViewModelAmendor {
         self.title = title
         return self
     }
 
-    public func footer(_ footer: KeyInBundle?) -> PMSettingsSectionViewModelAmendor {
+    public func footer(_ footer: String?) -> PMSettingsSectionViewModelAmendor {
         self.footer = footer
         return self
     }

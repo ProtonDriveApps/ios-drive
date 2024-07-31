@@ -27,22 +27,26 @@ final class TaskStatusNotificatingBackgroundWorkController: BackgroundWorkContro
     }
 
     func start() {
+        #if HAS_QA_FEATURES
         userNotificator.notify(.backgroundUploadLaunched)
+        #endif
         decoratee.start()
     }
 
     func stop() {
+        #if HAS_QA_FEATURES
         userNotificator.notify(.backgroundUploadFinished)
+        #endif
         decoratee.stop()
     }
 }
 
 private extension LocalNotification {
     static var backgroundUploadLaunched: LocalNotification {
-        LocalNotification(id: UUID(), title: "Proton Drive", body: "Background upload launched ✅", thread: "ch.protondrive.usernotification.photosBackground", delay: .leastNonzeroMagnitude)
+        LocalNotification(id: UUID().uuidString, title: "Proton Drive", body: "Background upload launched ✅", thread: "ch.protondrive.usernotification.photosBackground", delay: .leastNonzeroMagnitude)
     }
 
     static var backgroundUploadFinished: LocalNotification {
-        LocalNotification(id: UUID(), title: "Proton Drive", body: "Background upload ended ❌", thread: "ch.protondrive.usernotification.photosBackground", delay: .leastNonzeroMagnitude)
+        LocalNotification(id: UUID().uuidString, title: "Proton Drive", body: "Background upload ended ❌", thread: "ch.protondrive.usernotification.photosBackground", delay: .leastNonzeroMagnitude)
     }
 }

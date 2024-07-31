@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="19574" systemVersion="21D62" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22757" systemVersion="23E224" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
     <entity name="Block" representedClassName="Block" isAbstract="YES" syncable="YES">
         <attribute name="encSignature" optional="YES" attributeType="String"/>
         <attribute name="index" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
@@ -109,16 +109,4 @@
         <attribute name="usedSpace" attributeType="Integer 64" defaultValueString="0.0" usesScalarValueType="YES"/>
         <relationship name="shares" toMany="YES" deletionRule="Nullify" destinationEntity="Share" inverseName="volume" inverseEntity="Share"/>
     </entity>
-    <elements>
-        <element name="Block" positionX="-27" positionY="135" width="128" height="118"/>
-        <element name="DownloadBlock" positionX="-18" positionY="144" width="128" height="58"/>
-        <element name="File" positionX="0" positionY="45" width="128" height="103"/>
-        <element name="Folder" positionX="-18" positionY="27" width="128" height="74"/>
-        <element name="Node" positionX="-36" positionY="9" width="128" height="433"/>
-        <element name="Revision" positionX="18" positionY="63" width="128" height="163"/>
-        <element name="Share" positionX="-54" positionY="-9" width="128" height="253"/>
-        <element name="ShareURL" positionX="-27" positionY="135" width="128" height="314"/>
-        <element name="UploadBlock" positionX="-27" positionY="135" width="128" height="104"/>
-        <element name="Volume" positionX="-63" positionY="-18" width="128" height="103"/>
-    </elements>
 </model>

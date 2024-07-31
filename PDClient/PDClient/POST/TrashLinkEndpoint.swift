@@ -29,25 +29,10 @@ public struct TrashLinksParameters {
     }
 }
 
-public struct TrashLinksResponse: Codable {
-    public struct Item: Codable {
-        public let linkID: String
-        public let response: Response
-    }
-
-    public struct Response: Codable {
-        public let code: Int
-        public let error: String?
-    }
-
-    public let code: Int
-    public let responses: [Item]
-}
-
 /// Trash Children
 /// /shares/{enc_shareID}/folders/{enc_linkID}/trash_multiple
 struct TrashLinkEndpoint: Endpoint {
-    typealias Response = TrashLinksResponse
+    typealias Response = MultipleLinkResponse
 
     struct Body: Encodable {
         let linkIDs: [Link.LinkID]
@@ -89,4 +74,19 @@ struct TrashLinkEndpoint: Endpoint {
 
         self.request = request
     }
+}
+
+public struct MultipleLinkResponse: Codable {
+    public struct Item: Codable {
+        public let linkID: String
+        public let response: Response
+    }
+
+    public struct Response: Codable {
+        public let code: Int
+        public let error: String?
+    }
+
+    public let code: Int
+    public let responses: [Item]
 }

@@ -17,10 +17,10 @@
 
 import Foundation
 
-struct ShareEndpoint: Endpoint {
-    typealias Response = Share // missing Code field
+public struct ShareEndpoint: Endpoint {
+    public typealias Response = Share // missing Code field
     
-    var request: URLRequest
+    public var request: URLRequest
     
     init(shareID: Share.ShareID, service: APIService, credential: ClientCredential) {
         // url

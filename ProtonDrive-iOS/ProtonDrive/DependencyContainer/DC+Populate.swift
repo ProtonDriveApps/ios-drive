@@ -18,10 +18,13 @@
 import UIKit
 import PDCore
 import Combine
+import ProtonCoreFeatureFlags
 import ProtonCoreHumanVerification
 import ProtonCoreKeymaker
 import ProtonCoreServices
 import UserNotifications
+import SwiftUI
+import PDUIComponents
 
 final class AuthenticatedDependencyContainer {
     let tower: Tower
@@ -105,20 +108,18 @@ final class AuthenticatedDependencyContainer {
         
         // Child containers
         childContainers = [
-            LocalNotificationsContainer(),
+            LocalNotificationsContainer(tower: tower),
             MyFilesNotificationsPermissionsContainer(tower: tower, windowScene: windowScene),
             ForegroundTransitionContainer(tower: tower, pickerResource: pickersContainer.photoPickerResource, photosInteractor: photosInteractor),
             quotaUpdatesContainer,
         ]
     }
 
-    func makePopulateViewController() -> UIViewController {
+    func makePopulateViewController(lockedStateController: LockedStateControllerProtocol) -> UIViewController {
         let viewController = PopulateViewController()
-        let viewModel = makePopulateViewModel()
         let coordinator = makePopulateCoordinator(viewController)
-
+        let viewModel = makePopulateViewModel(lockedStateController: lockedStateController, coordinator: coordinator)
         viewController.viewModel = viewModel
-        viewController.onPopulated = coordinator.showPopulated
 
         let navigationController = UINavigationController(rootViewController: viewController)
         navigationController.navigationBar.isHidden = true
@@ -127,19 +128,38 @@ final class AuthenticatedDependencyContainer {
         return navigationController
     }
 
-    private func makePopulateViewModel() -> PopulateViewModel {
-        PopulateViewModel(populator: tower, eventsStarter: tower)
+    private func makePopulateViewModel(lockedStateController: LockedStateControllerProtocol, coordinator: PopulateCoordinatorProtocol) -> PopulateViewModel {
+        let populatedStateController = PopulatedStateController(populator: tower)
+        let onboardingObserver = OnboardingObserver(
+            localSettings: localSettings,
+            notificationServiceOwner: UIApplication.shared.delegate as? hasPushNotificationService,
+            userId: tower.sessionVault.getCoreUserInfo()?.userId
+        )
+        return PopulateViewModel(lockedStateController: lockedStateController, populatedStateController: populatedStateController, populator: tower, eventsStarter: tower, onboardingObserver: onboardingObserver, coordinator: coordinator)
     }
 
-    private func makePopulateCoordinator(_ viewController: PopulateViewController) -> PopulateCoordinator {
-        PopulateCoordinator(
+    private func makePopulateCoordinator(_ viewController: PopulateViewController) -> PopulateCoordinatorProtocol {
+        let subscriptionsContainer = SubscriptionsContainer(
+            dependencies: SubscriptionsContainer.Dependencies(tower: tower, keymaker: keymaker, networkService: networkService)
+        )
+        let upsellController = OneDollarUpsellFlowController(
+            featureFlagEnabled: tower.featureFlags.isEnabled(flag: .oneDollarPlanUpsellEnabled),
+            isPayedUser: tower.sessionVault.getUserInfo()?.isPaid == true,
+            isOnboarded: localSettings.isOnboarded,
+            isUpsellShown: localSettings.isUpsellShown
+        )
+        return PopulateCoordinator(
             viewController: viewController,
             populatedViewControllerFactory: makeHomeViewController,
             onboardingViewControllerFactory: { [localSettings] in
-                localSettings.isOnboarded ? nil : OnboardingFlowFactory().make(settings: localSettings)
+                OnboardingFlowFactory().makeIfNeeded(settings: localSettings)
+            },
+            upsellFactory: { [localSettings] in 
+                OneDollarUpsellFlowFactory().makeIfNeeded(controller: upsellController, settings: localSettings, container: subscriptionsContainer)
             }
         )
     }
+    
 }
 
 protocol DrivePopulator {
@@ -190,16 +210,11 @@ extension Tower: SignOutManager {
 
 protocol LockManager {
     func onLock()
-    func onUnlock()
 }
 
 extension Tower: LockManager {
     func onLock() {
         stop()
-    }
-
-    func onUnlock() {
-        startEventsSystem()
     }
 }
 

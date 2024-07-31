@@ -68,14 +68,25 @@ public class APIService {
 
 public extension APIService {
     struct Configuration {
+        private static let apiPrefix = "drive-api."
+
         public let environment: Environment
         public let clientVersion: String
+        /// API host path
         public let host: String
-        
+        /// Base host path (without API prefix)
+        public let baseHost: String
+
         public init(environment: Environment, clientVersion: String) {
             self.environment = environment
             self.clientVersion = clientVersion
             self.host = environment.doh.defaultHost
+
+            if host.contains(Configuration.apiPrefix) {
+                baseHost = host.replacingOccurrences(of: Configuration.apiPrefix, with: "")
+            } else {
+                baseHost = host
+            }
         }
     }
 }

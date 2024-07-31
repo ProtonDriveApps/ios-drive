@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import PDCore
 
 protocol PhotosStateViewModelProtocol: ObservableObject {
     var viewData: PhotosStateViewData? { get }
@@ -23,25 +24,47 @@ protocol PhotosStateViewModelProtocol: ObservableObject {
 }
 
 enum PhotosStateButton {
-    case retry, turnOn
-    
+    case retry
+    case turnOn
+    case settings
+    case useCellular
+
     var title: String {
         switch self {
         case .retry:
             return "Retry"
         case .turnOn:
             return "Turn on"
+        case .settings:
+            return "Settings"
+        case .useCellular:
+            return "Use Cellular"
         }
     }
 }
 
 struct PhotosStateViewData: Equatable {
+    enum StateType {
+        case inProgress
+        case complete
+        case completeWithFailures
+        case disabled
+        case restrictedPermissions
+        case noConnection
+        case noWifi
+        case storageConstrained
+        case featureFlag
+        case libraryLoading
+    }
+
+    let type: StateType
     let titles: [PhotosStateTitle]
     let rightText: String?
     let progress: Float?
     let button: PhotosStateButton?
 
-    init(titles: [PhotosStateTitle], rightText: String? = nil, progress: Float? = nil, needsButton button: PhotosStateButton? = nil) {
+    init(type: StateType, titles: [PhotosStateTitle], rightText: String? = nil, progress: Float? = nil, needsButton button: PhotosStateButton? = nil) {
+        self.type = type
         self.titles = titles
         self.rightText = rightText
         self.progress = progress
@@ -70,6 +93,8 @@ final class PhotosStateViewModel: PhotosStateViewModelProtocol {
     private let remainingItemsStrategy: PhotosRemainingItemsStrategy
     private let numberFormatter: NumberFormatterResource
     private let backupStartController: PhotosBackupStartController
+    private let settingsController: PhotoBackupSettingsController
+    private let messageHandler: UserMessageHandlerProtocol
     private var cancellables = Set<AnyCancellable>()
 
     @Published var viewData: PhotosStateViewData?
@@ -79,13 +104,17 @@ final class PhotosStateViewModel: PhotosStateViewModelProtocol {
         coordinator: PhotosStateCoordinator,
         remainingItemsStrategy: PhotosRemainingItemsStrategy,
         numberFormatter: NumberFormatterResource,
-        backupStartController: PhotosBackupStartController
+        backupStartController: PhotosBackupStartController,
+        settingsController: PhotoBackupSettingsController,
+        messageHandler: UserMessageHandlerProtocol
     ) {
         self.controller = controller
         self.coordinator = coordinator
         self.remainingItemsStrategy = remainingItemsStrategy
         self.numberFormatter = numberFormatter
         self.backupStartController = backupStartController
+        self.settingsController = settingsController
+        self.messageHandler = messageHandler
         subscribeToUpdates()
     }
     
@@ -95,6 +124,11 @@ final class PhotosStateViewModel: PhotosStateViewModelProtocol {
             coordinator.openRetryScreen()
         case .turnOn:
             backupStartController.start()
+        case .settings:
+            coordinator.openSystemSettingPage()
+        case .useCellular:
+            settingsController.setNetworkConnectionConstrained(false)
+            messageHandler.handleSuccess("Photos backup is now allowed also on mobile data")
         }
         
     }
@@ -121,21 +155,26 @@ final class PhotosStateViewModel: PhotosStateViewModelProtocol {
         case let .inProgress(progress):
             return makeData(from: progress)
         case .complete:
-            return PhotosStateViewData(titles: [.init(title: "Backup complete", icon: .complete)])
+            return PhotosStateViewData(type: .complete, titles: [.init(title: "Backup complete", icon: .complete)])
         case .completeWithFailures:
-            return PhotosStateViewData(titles: [.init(title: "Backup: issues detected", icon: .completeWithFailures)], needsButton: .retry)
+            return PhotosStateViewData(type: .completeWithFailures, titles: [.init(title: "Backup: issues detected", icon: .completeWithFailures)], needsButton: .retry)
         case .restrictedPermissions:
-            return PhotosStateViewData(titles: [.init(title: "Permission required for backup", icon: .failure)])
+            return PhotosStateViewData(type: .restrictedPermissions, titles: [.init(title: "Permission required for backup", icon: .failure)], needsButton: .settings)
         case .disabled:
-            return PhotosStateViewData(titles: [.init(title: "Backup is disabled", icon: .disabled)], needsButton: .turnOn)
-        case .networkConstrained:
-            return PhotosStateViewData(titles: [.init(title: "Waiting for WiFi", icon: .noConnection)])
+            return PhotosStateViewData(type: .disabled, titles: [.init(title: "Backup is disabled", icon: .disabled)], needsButton: .turnOn)
+        case let .networkConstrained(constraint):
+            switch constraint {
+            case .noConnection:
+                return PhotosStateViewData(type: .noConnection, titles: [.init(title: "No internet connection", icon: .noConnection)])
+            case .noWifi:
+                return PhotosStateViewData(type: .noWifi, titles: [.init(title: "Wi-Fi needed for backup", icon: .noConnection)], needsButton: .useCellular)
+            }
         case .storageConstrained:
-            return PhotosStateViewData(titles: [.init(title: "Device storage full", icon: .failure)])
+            return PhotosStateViewData(type: .storageConstrained, titles: [.init(title: "Device storage full", icon: .failure)])
         case .featureFlag:
-            return PhotosStateViewData(titles: [.init(title: "The upload of photos is temporarily unavailable", icon: .failure)])
+            return PhotosStateViewData(type: .featureFlag, titles: [.init(title: "The upload of photos is temporarily unavailable", icon: .failure)])
         case .libraryLoading:
-            return PhotosStateViewData(titles: [.init(title: "Getting ready to back up", icon: .progress)])
+            return PhotosStateViewData(type: .libraryLoading, titles: [.init(title: "Getting ready to back up", icon: .progress)])
         }
     }
 
@@ -143,6 +182,7 @@ final class PhotosStateViewModel: PhotosStateViewModelProtocol {
         let progressValue = Float(progress.total - progress.inProgress) / Float(progress.total)
         let normalizedProgressValue = min(1, max(0, progressValue))
         return PhotosStateViewData(
+            type: .inProgress,
             titles: makeInProgressTitles(),
             rightText: makeProgressRightText(from: progress.inProgress),
             progress: normalizedProgressValue

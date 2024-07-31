@@ -43,7 +43,7 @@ public class FileSystemSlot {
     public let baseURL: URL
     public let storage: StorageManager
     public let syncStorage: SyncStorageManager?
-    private var moc: NSManagedObjectContext {
+    public var moc: NSManagedObjectContext {
         self.storage.backgroundContext
     }
     

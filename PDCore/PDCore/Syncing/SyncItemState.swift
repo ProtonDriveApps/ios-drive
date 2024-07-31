@@ -18,8 +18,8 @@
 import Foundation
 
 public enum SyncItemState: Int, Codable {
-    case undefined
     case inProgress
-    case finished
     case errored
+    case finished
+    case undefined
 }

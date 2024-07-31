@@ -32,8 +32,8 @@
 #include "SentryCrashStackCursor_MachineContext.h"
 #include "SentryCrashSystemCapabilities.h"
 #include "SentryCrashThread.h"
+#include "SentryInternalCDefines.h"
 
-// #define SentryCrashLogger_LocalLevel TRACE
 #include "SentryCrashLogger.h"
 
 #if SentryCrashCRASH_HAS_MACH
@@ -409,7 +409,7 @@ handleExceptions(void *const userData)
 // ============================================================================
 
 static void
-uninstallExceptionHandler(void)
+uninstallExceptionHandler(void) SENTRY_DISABLE_THREAD_SANITIZER("Known data race to fix")
 {
     SentryCrashLOG_DEBUG("Uninstalling mach exception handler.");
 

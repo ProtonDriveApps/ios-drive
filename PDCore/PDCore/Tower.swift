@@ -36,6 +36,7 @@ public class Tower: NSObject {
     public let revisionImporter: RevisionImporter
     public let uploadVerifierFactory: UploadVerifierFactory
     public let downloader: Downloader!
+    public let refresher: RefreshingNodesService
     public let uiSlot: UISlot!
     public let cloudSlot: CloudSlot!
     public let fileSystemSlot: FileSystemSlot!
@@ -181,11 +182,64 @@ public class Tower: NSObject {
         #endif
 
         cleanUpStartController = CleanUpController()
+        
+        refresher = RefreshingNodesService(downloader: downloader, coreEventManager: coreEventManager, storage: storage, sessionVault: sessionVault)
 
         super.init()
         
         NotificationCenter.default.addObserver(self, selector: #selector(reloadCache), name: .nukeCache, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(reloadCacheExcludingEvents), name: .nukeCacheExcludingEvents, object: nil)
+    }
+    
+    public func cleanUpLockedVolumeIfNeeded(using domainManager: DomainConnectionManagerProtocol) async throws {
+        try await Self.cleanUpLockedVolumeIfNeeded(coreEventManager: coreEventManager,
+                                                   storage: storage,
+                                                   cloudSlot: cloudSlot,
+                                                   sessionVault: sessionVault,
+                                                   domainManager: domainManager)
+    }
+    
+    static func cleanUpLockedVolumeIfNeeded(coreEventManager: CoreEventLoopManager,
+                                            storage: StorageManager,
+                                            cloudSlot: CloudSlot,
+                                            sessionVault: SessionVault,
+                                            domainManager: DomainConnectionManagerProtocol) async throws {
+        func onVolumeBeingLocked() async throws {
+            try await domainManager.forceDomainRemoval()
+            await Self.cleanUpEventsAndMetadata(cleanupStrategy: .cleanEverything, coreEventManager: coreEventManager, storage: storage)
+        }
+        
+        // How we identify the volume we have in the DB is locked on BE:
+        // 1. There is a root in the DB — if there's no root, we will bootstrap later and learn whether the volume is locked or not this way
+        // 2. There is root is impossible to decrypt — this is an indicator there was a password reset.
+        //    We double-check it by fetching volumes, shares and root from the BE.
+        // If there is no share, no root or no volume on BE, we need to clean up the local state.
+        // Alternatively, if the root returned by BE is different than our local DB root, we must clean up the local state as well. 
+        // We'll fetch it later, during bootstrap.
+        let moc = cloudSlot.moc
+        guard let root = Self.fetchRootFolder(sessionVault: sessionVault, storage: storage, in: moc) else { return }
+        do {
+            _ = try await moc.perform { try root.decryptName() }
+        } catch {
+            guard let mainShare = try await cloudSlot.scanRootsAsync() else {
+                // no volume, no main share returned from BE
+                try await onVolumeBeingLocked()
+                return
+            }
+            
+            var volumeIsLocked: Bool = false
+            await cloudSlot.moc.perform {
+                if let fetchedRoot = mainShare.root,
+                   let volume = mainShare.volume,
+                   fetchedRoot.identifierWithinManagedObjectContext == root.identifierWithinManagedObjectContext {
+                    volumeIsLocked = volume.state == .locked
+                } else {
+                    volumeIsLocked = true
+                }
+            }
+            guard volumeIsLocked else { return }
+            try await onVolumeBeingLocked()
+        }
     }
 
     public func bootstrap() async throws {
@@ -200,8 +254,14 @@ public class Tower: NSObject {
     }
     
     public func cleanUpEventsAndMetadata(cleanupStrategy: CacheCleanupStrategy) async {
+        await Self.cleanUpEventsAndMetadata(cleanupStrategy: cleanupStrategy, coreEventManager: coreEventManager, storage: storage)
+    }
+    
+    static func cleanUpEventsAndMetadata(
+        cleanupStrategy: CacheCleanupStrategy, coreEventManager: CoreEventLoopManager, storage: StorageManager
+    ) async {
         if cleanupStrategy.shouldCleanEvents {
-            discardEventsPolling()
+            discardEventsPolling(for: coreEventManager)
         }
         if cleanupStrategy.shouldCleanMetadata {
             await storage.clearUp()
@@ -229,7 +289,7 @@ public class Tower: NSObject {
         fileUploader.cancelAllOperations()
 
         if cacheCleanupStrategy.shouldCleanEvents {
-            discardEventsPolling()
+            Self.discardEventsPolling(for: coreEventManager)
         }
 
         /// The clean up follows a certain order. Right now any subscriber of `cleanUpController` will execute their work before any other cleanup (storage, vault, etc).
@@ -283,16 +343,16 @@ public class Tower: NSObject {
     /// Clears local cache without clearing the user session
     @objc private func reloadCache() {
         Task {
-            Log.info("Tower - nukeCache", domain: .application)
             await destroyCache(strategy: .cleanEverything)
+            Log.info("Tower - nuked Cache", domain: .application)
             NotificationCenter.default.post(name: .restartApplication, object: nil)
         }
     }
 
     @objc private func reloadCacheExcludingEvents() {
         Task {
-            Log.info("Tower - nukeCacheExcludingEvent", domain: .application)
             await destroyCache(strategy: .cleanMetadataDBButDoNotCleanEvents)
+            Log.info("Tower - nuked CacheExcludingEvent", domain: .application)
             NotificationCenter.default.post(name: .restartApplication, object: nil)
         }
     }

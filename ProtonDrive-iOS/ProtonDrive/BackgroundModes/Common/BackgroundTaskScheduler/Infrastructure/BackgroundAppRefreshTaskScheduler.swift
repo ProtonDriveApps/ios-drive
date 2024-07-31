@@ -25,6 +25,8 @@ public final class BackgroundAppRefreshTaskScheduler: BackgroundTaskScheduler {
     private let cancelTask: (TaskIdentifier) -> Void
     private let date: () -> Date?
 
+    private var iteration = 1
+
     public init(
         id: String,
         submitTask: @escaping (BGAppRefreshTaskRequest) throws -> Void,
@@ -39,18 +41,24 @@ public final class BackgroundAppRefreshTaskScheduler: BackgroundTaskScheduler {
 
     public func schedule() {
         let request = BGAppRefreshTaskRequest(identifier: id)
-        request.earliestBeginDate = date()
+        request.earliestBeginDate = date()?.byAdding(.day, value: calculate(2, power: iteration))
 
         do {
             try submitTask(request)
+            iteration += 1
             Log.info("1️⃣🗓️ Did schedule \(id) BG task.", domain: .backgroundTask)
         } catch {
             Log.error("1️⃣🗓️ Could not schedule \(id) BG task: \(error).", domain: .backgroundTask)
         }
     }
 
+    private func calculate(_ base: Int, power exponent: Int) -> Int {
+        Int(pow(Double(base), Double(exponent)))
+    }
+
     public func cancel() {
         Log.info("1️⃣🗓️🚫 did cancel \(id) BG task", domain: .backgroundTask)
         cancelTask(id)
+        iteration = 1
     }
 }

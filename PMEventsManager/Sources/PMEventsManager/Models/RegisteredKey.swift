@@ -19,10 +19,10 @@ import Foundation
 
 public struct RegisteredKey: Codable, Equatable {
     public let attestationFormat: String
-    public let credentialID: [String?]
+    public let credentialID: Data
     public let name: String
     
-    public init(attestationFormat: String, credentialID: [String?], name: String) {
+    public init(attestationFormat: String, credentialID: Data, name: String) {
         self.attestationFormat = attestationFormat
         self.credentialID = credentialID
         self.name = name

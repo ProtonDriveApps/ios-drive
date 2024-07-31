@@ -139,7 +139,7 @@ final class ConcretePhotosProcessingContext: PhotosProcessingContext {
     }
 
     func completeCompoundsValidation(result: FilteredPhotoCompoundsResult) {
-        Log.info("\(Self.self).completeCompoundsValidation, validCompounds: \(result.validCompounds.count), invalidCompounds: \(result.invalidCompounds.count), failedCompounds: \(result.failedCompounds.count)", domain: .photosProcessing)
+        Log.info("\(Self.self).completeCompoundsValidation, validCompounds: \(result.validCompounds.count), validPartialCompounds: \(result.validPartialCompounds.count), invalidCompounds: \(result.invalidCompounds.count), failedCompounds: \(result.failedCompounds.count)", domain: .photosProcessing)
         var validIdentifiers = Set<PhotoIdentifier>()
         result.validCompounds.forEach { compound in
             guard let pair = createdCompoundPairs.first(where: { $0.compound == compound }) else { return }

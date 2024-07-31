@@ -84,7 +84,7 @@ final class GeneralEventsLoopProcessor: EventLoopProcessor {
     
     func process(_ usedSpace: Double) {
         guard let present = userVault.userInfo, present.usedSpace != Int64(usedSpace) else { return }
-                let updated = User(ID: present.ID, name: present.name, usedSpace: Int64(usedSpace), usedBaseSpace: present.usedBaseSpace, usedDriveSpace: present.usedDriveSpace, currency: present.currency, credit: present.credit, maxSpace: present.maxSpace, maxBaseSpace: present.maxBaseSpace, maxDriveSpace: present.maxDriveSpace, maxUpload: present.maxUpload, role: present.role, private: present.private, subscribed: present.subscribed, services: present.services, delinquent: present.delinquent, orgPrivateKey: present.orgPrivateKey, email: present.email, displayName: present.displayName, keys: present.keys)
+        let updated = User(ID: present.ID, name: present.name, usedSpace: Int64(usedSpace), usedBaseSpace: present.usedBaseSpace, usedDriveSpace: present.usedDriveSpace, currency: present.currency, credit: present.credit, maxSpace: present.maxSpace, maxBaseSpace: present.maxBaseSpace, maxDriveSpace: present.maxDriveSpace, maxUpload: present.maxUpload, role: present.role, private: present.private, subscribed: present.subscribed, services: present.services, delinquent: present.delinquent, orgPrivateKey: present.orgPrivateKey, email: present.email, displayName: present.displayName, keys: present.keys, lockedFlags: present.lockedFlags)
         userVault.storeUser(updated)
     }
     

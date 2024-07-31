@@ -112,6 +112,17 @@ extension Errors {
             return NSFileProviderError(.noSuchItem)
             #endif
             
+        case .some(let responseError as ResponseError) where responseError.responseCode == 200701:
+            #if os(macOS)
+            return NSFileProviderError(.excludedFromSync)
+            #else
+            if #available(iOS 16.0, *) {
+                return NSFileProviderError(.excludedFromSync)
+            } else {
+                return NSFileProviderError(.noSuchItem)
+            }
+            #endif
+            
         case .some(is ResponseError):
             return NSFileProviderError(.serverUnreachable)
             

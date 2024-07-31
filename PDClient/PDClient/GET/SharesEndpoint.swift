@@ -17,13 +17,18 @@
 
 import Foundation
 
-struct SharesEndpoint: Endpoint {
+public struct SharesEndpoint: Endpoint {
     public struct Response: Codable {
         var code: Int
         var shares: [ShareShort]
+        
+        public init(code: Int, shares: [ShareShort]) {
+            self.code = code
+            self.shares = shares
+        }
     }
     
-    var request: URLRequest
+    public var request: URLRequest
     
     init(service: APIService, credential: ClientCredential) {
         // url

@@ -19,7 +19,12 @@ import Foundation
 import PDCore
 
 protocol PhotosBackupBackgroundUpdateTelemetryDataFactory {
-    func makeData(with duration: Double) -> TelemetryData
+    func makeData(with data: BackupBackgroundUpdateTelemetryData) -> TelemetryData
+}
+
+struct BackupBackgroundUpdateTelemetryData {
+    let duration: Double
+    let uploadMeasurements: BackgroundUploadMeasurements
 }
 
 final class ConcretePhotosBackupBackgroundUpdateTelemetryDataFactory: PhotosBackupBackgroundUpdateTelemetryDataFactory {
@@ -27,27 +32,33 @@ final class ConcretePhotosBackupBackgroundUpdateTelemetryDataFactory: PhotosBack
     private let dateResource: DateResource
     private let storage: PhotosTelemetryStorage
     private let hourFormatter: HourValueFormatter
+    private let connectionFactory: PhotosTelemetryConnectionFactoryProtocol
 
-    init(userInfoFactory: PhotosTelemetryUserInfoFactory, dateResource: DateResource, storage: PhotosTelemetryStorage, hourFormatter: HourValueFormatter) {
+    init(userInfoFactory: PhotosTelemetryUserInfoFactory, dateResource: DateResource, storage: PhotosTelemetryStorage, hourFormatter: HourValueFormatter, connectionFactory: PhotosTelemetryConnectionFactoryProtocol) {
         self.userInfoFactory = userInfoFactory
         self.dateResource = dateResource
         self.storage = storage
         self.hourFormatter = hourFormatter
+        self.connectionFactory = connectionFactory
     }
 
-    func makeData(with duration: Double) -> TelemetryData {
+    func makeData(with data: BackupBackgroundUpdateTelemetryData) -> TelemetryData {
         return TelemetryData(
             group: .photos,
             event: .backupBackgroundUpdate,
-            values: makeValues(duration: duration),
-            dimensions: makeDimensions()
+            values: makeValues(with: data),
+            dimensions: makeDimensions(with: data)
         )
     }
 
-    private func makeValues(duration: Double) -> [String: Double] {
+    private func makeValues(with data: BackupBackgroundUpdateTelemetryData) -> [String: Double] {
         return [
             "hour": getHour(),
-            "duration_seconds": duration,
+            "duration_seconds": data.duration,
+            "files_started": Double(data.uploadMeasurements.startedFilesCount),
+            "files_finished": Double(data.uploadMeasurements.succeededFilesCount),
+            "files_failed": Double(data.uploadMeasurements.failedFilesCount),
+            "blocks_uploaded": Double(data.uploadMeasurements.succeededBlocksCount)
         ]
     }
 
@@ -57,9 +68,22 @@ final class ConcretePhotosBackupBackgroundUpdateTelemetryDataFactory: PhotosBack
         return Double(hour)
     }
 
-    private func makeDimensions() -> [String: String] {
+    private func makeDimensions(with data: BackupBackgroundUpdateTelemetryData) -> [String: String] {
         var dimensions = userInfoFactory.makeDimensions()
         dimensions["is_initial_backup"] = storage.isInitialBackup ? "yes" : "no"
+        dimensions["result_state"] = data.uploadMeasurements.state.map(makeState)
+        dimensions.merge(connectionFactory.makeDimensions(), uniquingKeysWith: { current, _ in current })
         return dimensions
+    }
+
+    private func makeState(from state: BackgroundTaskResultState) -> String {
+        switch state {
+        case .expired:
+            return "expired"
+        case .completed:
+            return "completed"
+        case .foreground:
+            return "foreground"
+        }
     }
 }

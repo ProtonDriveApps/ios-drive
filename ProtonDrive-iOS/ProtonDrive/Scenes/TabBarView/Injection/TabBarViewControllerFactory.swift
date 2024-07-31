@@ -20,16 +20,13 @@ import UIKit
 import ProtonCoreUIFoundations
 
 final class TabBarViewControllerFactory {
-    static let filesTabTag = 0
-    static let photosTabTag = 1
-    static let sharedTabTag = 3
-    
+
     func configureFilesTab(in controller: UIViewController) {
         controller.tabBarItem.title = "Files"
         controller.tabBarItem.image = IconProvider.folder
         controller.tabBarItem.selectedImage = IconProvider.folder
         controller.tabBarItem.accessibilityIdentifier = "TabBarViewControllerFactory.tabBarItem.Files"
-        controller.tabBarItem.tag = Self.filesTabTag
+        controller.tabBarItem.tag = TabBarItem.files.tag
     }
 
     func configureSharedTab(in controller: UIViewController) {
@@ -37,7 +34,7 @@ final class TabBarViewControllerFactory {
         controller.tabBarItem.image = IconProvider.link
         controller.tabBarItem.selectedImage = IconProvider.link
         controller.tabBarItem.accessibilityIdentifier = "TabBarViewControllerFactory.tabBarItem.Shared"
-        controller.tabBarItem.tag = Self.sharedTabTag
+        controller.tabBarItem.tag = TabBarItem.shared.tag
     }
 
     func configurePhotosTab(in controller: UIViewController) {
@@ -45,14 +42,18 @@ final class TabBarViewControllerFactory {
         controller.tabBarItem.image = IconProvider.image
         controller.tabBarItem.selectedImage = IconProvider.image
         controller.tabBarItem.accessibilityIdentifier = "TabBarViewControllerFactory.tabBarItem.Photos"
-        controller.tabBarItem.tag = Self.photosTabTag
+        controller.tabBarItem.tag = TabBarItem.photos.tag
     }
     
     func makeTabBarController(container: AuthenticatedDependencyContainer, children: [UIViewController]) -> UITabBarController {
         #if HAS_PHOTOS
         let coordinator = ConcreteTabBarCoordinator(photosContainer: container.photosContainer)
         let photosTabController = ConcretePhotosTabVisibleController(resource: container.tower.featureFlags)
-        let viewModel = ConcreteTabsViewModel(photosTabController: photosTabController, coordinator: coordinator)
+        let viewModel = ConcreteTabsViewModel(
+            photosTabController: photosTabController,
+            coordinator: coordinator,
+            localSettings: container.tower.localSettings
+        )
         let tabBarController = HidableTabBarController(viewModel: viewModel, children: children)
         coordinator.tabBarController = tabBarController
         #else

@@ -18,9 +18,11 @@
 import Combine
 
 enum PhotosRootState {
+    case loading
     case onboarding
     case permissions
     case gallery
+    case disconnection
 }
 
 struct PhotosRootNavigation {
@@ -42,6 +44,7 @@ protocol PhotosRootViewModelProtocol: ObservableObject {
     var navigation: PhotosRootNavigation { get }
     func handle(item: PhotosRootNavigation.Item)
     func close()
+    func refreshIfNeeded()
 }
 
 final class PhotosRootViewModel: PhotosRootViewModelProtocol {
@@ -51,27 +54,37 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
     private let galleryController: PhotosGalleryController
     private let selectionController: PhotosSelectionController
     private var cancellables = Set<AnyCancellable>()
+    private let photosPagingLoadController: PhotosPagingLoadController
 
-    @Published var state: PhotosRootState = .onboarding
+    @Published var state: PhotosRootState = .loading
     @Published var navigation: PhotosRootNavigation = .default
 
-    init(coordinator: PhotosRootCoordinator, settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController, galleryController: PhotosGalleryController, selectionController: PhotosSelectionController) {
+    init(
+        coordinator: PhotosRootCoordinator,
+        settingsController: PhotoBackupSettingsController,
+        authorizationController: PhotoLibraryAuthorizationController,
+        galleryController: PhotosGalleryController,
+        selectionController: PhotosSelectionController,
+        photosPagingLoadController: PhotosPagingLoadController
+    ) {
         self.coordinator = coordinator
         self.settingsController = settingsController
         self.authorizationController = authorizationController
         self.galleryController = galleryController
         self.selectionController = selectionController
+        self.photosPagingLoadController = photosPagingLoadController
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
-        Publishers.CombineLatest3(
+        Publishers.CombineLatest4(
             authorizationController.permissions,
             settingsController.isEnabled,
-            galleryController.sections
+            galleryController.sections,
+            photosPagingLoadController.loadStatus
         )
-        .compactMap { [weak self] permissions, isBackupEnabled, sections in
-            self?.map(permissions: permissions, isBackupEnabled: isBackupEnabled, hasPhotos: !sections.isEmpty)
+        .compactMap { [weak self] permissions, isBackupEnabled, sections, photoLoadStatus in
+            self?.map(permissions: permissions, isBackupEnabled: isBackupEnabled, hasPhotos: !sections.isEmpty, photoLoadStatus: photoLoadStatus)
         }
         .removeDuplicates()
         .assign(to: &$state)
@@ -83,8 +96,19 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
             .store(in: &cancellables)
     }
 
-    private func map(permissions: PhotoLibraryPermissions, isBackupEnabled: Bool, hasPhotos: Bool) -> PhotosRootState {
-        if hasPhotos || (permissions == .full && isBackupEnabled) {
+    private func map(
+        permissions: PhotoLibraryPermissions,
+        isBackupEnabled: Bool,
+        hasPhotos: Bool,
+        photoLoadStatus: RemotePhotoLoadStatus
+    ) -> PhotosRootState {
+        if case .undetermined = photoLoadStatus, !hasPhotos {
+            return .loading
+        }
+        
+        if case .disconnected = photoLoadStatus, !hasPhotos {
+            return .disconnection
+        } else if hasPhotos || (permissions == .full && isBackupEnabled) || photoLoadStatus.hasBackedUpPhoto {
             return .gallery
         } else if permissions == .restricted {
             return .permissions
@@ -110,6 +134,11 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
 
     func close() {
         coordinator.close()
+    }
+    
+    func refreshIfNeeded() {
+        guard state == .disconnection else { return }
+        photosPagingLoadController.loadNext()
     }
 
     private func isFullSelection() -> Bool {

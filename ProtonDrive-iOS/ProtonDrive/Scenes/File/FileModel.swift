@@ -47,6 +47,13 @@ class FileModel: NSObject, QLPreviewControllerDataSource, QLPreviewControllerDel
     func decrypt() {
         guard self.cleartextUrl == nil, let revision = self.revision else { return }
         
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(cleanup),
+            name: UIApplication.willTerminateNotification,
+            object: nil
+        )
+        
         self.tower.uiSlot?.performInBackground { moc in
             do {
                 let revision = revision.in(moc: moc)
@@ -56,7 +63,7 @@ class FileModel: NSObject, QLPreviewControllerDataSource, QLPreviewControllerDel
                 }
             } catch let error where !self.isCancelled {
                 DispatchQueue.main.async {
-                    self.eventsSubject.send(.error(error.messageForTheUser))
+                    self.eventsSubject.send(.error(error.localizedDescription))
                 }
             } catch {
                 DispatchQueue.main.async {
@@ -96,6 +103,7 @@ class FileModel: NSObject, QLPreviewControllerDataSource, QLPreviewControllerDel
         }
     }
     
+    @objc
     func cleanup() {
         if let url = self.cleartextUrl {
             try? FileManager.default.removeItemIncludingUniqueDirectory(at: url)

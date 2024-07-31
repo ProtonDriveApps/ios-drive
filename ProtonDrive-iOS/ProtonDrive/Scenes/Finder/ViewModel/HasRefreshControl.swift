@@ -56,9 +56,7 @@ extension TrashViewModel: HasRefreshControl { }
 extension HasRefreshControl where Self: TrashViewModel {
     var refreshControlSubtitle: NSAttributedString { .init(string: "") }
     func refreshControlAction() {
-        Task {
-            await fetchAllPages()
-        }
+        fetchAllPages()
     }
 }
 

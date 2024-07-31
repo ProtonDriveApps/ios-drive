@@ -40,15 +40,19 @@ final class PhotosScenesContainer {
         let quotaConstraintController: PhotoBackupConstraintController
         let availableSpaceController: PhotoBackupConstraintController
         let featureFlagController: PhotoBackupConstraintController
-        let repository: ScreenLockingBannerRepository
+        let lockBannerRepository: ScreenLockingBannerRepository
         let failedPhotosResource: DeletedPhotosIdentifierStoreResource
         let backupStateController: LocalPhotosBackupStateController
         let retryTriggerController: PhotoLibraryLoadRetryTriggerController
         let constraintsController: PhotoBackupConstraintsController
+        let photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>
     }
     private let dependencies: Dependencies
     private let rootViewModel: RootViewModel
-    private lazy var thumbnailsContainer = ThumbnailsControllersContainer(tower: dependencies.tower)
+    private lazy var thumbnailsContainer = ThumbnailsControllersContainer(
+        tower: dependencies.tower,
+        photoSharesObserver: dependencies.photoSharesObserver
+    )
 
     // We need to share same reference for multiple constructed scenes, but want them released when all screens are dismissed.
     private weak var galleryController: PhotosGalleryController?
@@ -65,17 +69,27 @@ final class PhotosScenesContainer {
         let factory = PhotosScenesFactory()
         let coordinator = factory.makeCoordinator(container: self)
         let selectionController = factory.makeSelectionController()
+        let photosPagingLoadController = getLoadController()
+
+        let photosRootVM = factory.makeRootViewModel(
+            coordinator: coordinator,
+            settingsController: dependencies.settingsController,
+            authorizationController: dependencies.authorizationController,
+            galleryController: getGalleryController(),
+            selectionController: selectionController,
+            photosPagingLoadController: photosPagingLoadController
+        )
         return factory.makeRootPhotosViewController(
             coordinator: coordinator,
             rootViewModel: rootViewModel,
-            viewModel: factory.makeRootViewModel(coordinator: coordinator, settingsController: dependencies.settingsController, authorizationController: dependencies.authorizationController, galleryController: getGalleryController(), selectionController: selectionController),
+            viewModel: photosRootVM,
             onboardingView: { [unowned self] in
                 makeOnboardingView()
             },
             permissionsView: {
                 factory.makePermissionsView(coordinator: coordinator)
             },
-            galleryView: makeGalleryView(coordinator: coordinator, selectionController: selectionController, backupStateController: dependencies.backupStateController)
+            galleryView: makeGalleryView(coordinator: coordinator, selectionController: selectionController, photosPagingLoadController: photosPagingLoadController)
         )
     }
 
@@ -84,7 +98,11 @@ final class PhotosScenesContainer {
         return factory.makeOnboardingView(settingsController: dependencies.settingsController, authorizationController: dependencies.authorizationController, bootstrapController: dependencies.bootstrapController)
     }
 
-    private func makeGalleryView(coordinator: PhotosCoordinator, selectionController: PhotosSelectionController, backupStateController: LocalPhotosBackupStateController) -> some View {
+    private func makeGalleryView(
+        coordinator: PhotosCoordinator,
+        selectionController: PhotosSelectionController,
+        photosPagingLoadController: PhotosPagingLoadController
+    ) -> some View {
         let factory = PhotosScenesFactory()
         let backupStartController = LocalPhotosBackupStartController(
             settingsController: dependencies.settingsController,
@@ -92,22 +110,24 @@ final class PhotosScenesContainer {
             photosBootstrapController: dependencies.bootstrapController
         )
         let stateView = factory.makeStateView(
-            controller: backupStateController,
+            controller: dependencies.backupStateController,
             coordinator: coordinator,
             constraintsController: dependencies.constraintsController,
-            backupStartController: backupStartController
+            backupStartController: backupStartController,
+            settingsController: dependencies.settingsController
         )
-        let lockingBannerView = factory.makeLockingBannerView(notifier: backupStateController, repository: dependencies.repository)
+        let lockingBannerView = factory.makeLockingBannerView(notifier: dependencies.backupStateController, repository: dependencies.lockBannerRepository)
         return factory.makeGalleryView(
             tower: dependencies.tower,
             coordinator: coordinator,
             galleryController: getGalleryController(),
             thumbnailsContainer: thumbnailsContainer,
             settingsController: dependencies.settingsController,
-            loadController: getLoadController(),
+            loadController: photosPagingLoadController,
             errorControllers: [dependencies.processingController, dependencies.uploader],
             selectionController: selectionController,
-            photosObserver: getUploadedPhotosObserver(),
+            photosObserver: getUploadedPhotosObserver(), 
+            photoSharesObserver: dependencies.photoSharesObserver,
             stateView: stateView,
             lockingBannerView: lockingBannerView,
             storageView: factory.makeStorageView(quotaStateController: dependencies.quotaStateController, progressController: dependencies.backupProgressController, coordinator: coordinator)
@@ -160,7 +180,8 @@ final class PhotosScenesContainer {
         let loadController = loadController ?? PhotosScenesFactory().makePagingLoadController(
             tower: dependencies.tower,
             bootstrapController: dependencies.bootstrapController,
-            networkConstraintController: dependencies.networkConstraintController
+            networkConstraintController: dependencies.networkConstraintController,
+            photoSharesObserver: dependencies.photoSharesObserver
         )
         self.loadController = loadController
         return loadController

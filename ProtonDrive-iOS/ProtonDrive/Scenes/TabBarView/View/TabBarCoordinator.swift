@@ -48,7 +48,7 @@ final class ConcreteTabBarCoordinator: TabBarCoordinator {
     func hidePhotosTab() {
         var children = tabBarController?.viewControllers ?? []
 
-        guard let index = children.firstIndex(where: { $0.tabBarItem.tag == TabBarViewControllerFactory.photosTabTag }) else {
+        guard let index = children.firstIndex(where: { $0.tabBarItem.tag == TabBarItem.photos.tag }) else {
             return
         }
         

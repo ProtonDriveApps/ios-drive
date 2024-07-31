@@ -19,5 +19,7 @@ import Combine
 
 protocol PhotosBootstrapController {
     var isReady: AnyPublisher<Bool, Never> { get }
+    var errorPublisher: AnyPublisher<Error, Never> { get }
+
     func bootstrap()
 }

@@ -25,7 +25,8 @@ public final class PhotoUploader: MyFilesFileUploader {
     private let deletedPhotosIdentifierStore: DeletedPhotosIdentifierStoreResource
     private let skippableCache: PhotosSkippableCache
     private let childQueues: [OperationQueue]
-    private let uploadMeasurementRepository: DurationMeasurementRepository
+    private let durationMeasurementRepository: DurationMeasurementRepository
+    private let filesMeasurementRepository: FileUploadFilesMeasurementRepositoryProtocol
     private let measurementRepositoryFactory: PhotoUploadMeasurementRepositoryFactory
     private let protectionResource: ProtectionResource
     private let measurementsQueue = DispatchQueue(label: "PhotoUploader.measurementsQueue")
@@ -42,7 +43,8 @@ public final class PhotoUploader: MyFilesFileUploader {
         skippableCache: PhotosSkippableCache,
         dispatchQueue: DispatchQueue,
         childQueues: [OperationQueue],
-        uploadMeasurementRepository: DurationMeasurementRepository,
+        durationMeasurementRepository: DurationMeasurementRepository,
+        filesMeasurementRepository: FileUploadFilesMeasurementRepositoryProtocol,
         measurementRepositoryFactory: PhotoUploadMeasurementRepositoryFactory,
         protectionResource: ProtectionResource
     ) {
@@ -50,7 +52,8 @@ public final class PhotoUploader: MyFilesFileUploader {
         self.childQueues = childQueues
         self.featureFlags = featureFlags
         self.skippableCache = skippableCache
-        self.uploadMeasurementRepository = uploadMeasurementRepository
+        self.durationMeasurementRepository = durationMeasurementRepository
+        self.filesMeasurementRepository = filesMeasurementRepository
         self.measurementRepositoryFactory = measurementRepositoryFactory
         self.protectionResource = protectionResource
         super.init(concurrentOperations: concurrentOperations, fileUploadFactory: fileUploadFactory, filecleaner: filecleaner, moc: moc, dispatchQueue: dispatchQueue)
@@ -93,7 +96,7 @@ public final class PhotoUploader: MyFilesFileUploader {
 
     override func handleGlobalSuccess(fileDraft: FileDraft, completion: @escaping OnUploadCompletion) {
         markUploadingFileAsSkippable(fileDraft.file)
-        measureSuccess(of: fileDraft.uri, kilobytes: fileDraft.roundedKilobytes)
+        measureSuccess(of: fileDraft)
         super.handleGlobalSuccess(fileDraft: fileDraft, completion: completion)
     }
 
@@ -123,14 +126,14 @@ public final class PhotoUploader: MyFilesFileUploader {
                 cancelOperation(id: uploadID)
                 deleteUploadingFile(file)
                 handleDefaultError(error, completion: completion)
-                measureFailure(of: fileDraft.uri, kilobytes: fileDraft.roundedKilobytes)
+                measureFailure(of: fileDraft)
             }
 
         } else if error is NSManagedObject.InvalidState {
             cancelOperation(id: uploadID)
             deleteUploadingFile(file)
             handleDefaultError(error, completion: completion)
-            measureFailure(of: fileDraft.uri, kilobytes: fileDraft.roundedKilobytes)
+            measureFailure(of: fileDraft)
         } else if error is AlreadyCommittedFileError {
             cancelOperation(id: uploadID)
         } else {
@@ -143,7 +146,14 @@ public final class PhotoUploader: MyFilesFileUploader {
             cancelOperation(id: uploadID)
             deleteUploadingFile(file)
             handleDefaultError(error, completion: completion)
-            measureFailure(of: fileDraft.uri, kilobytes: fileDraft.roundedKilobytes)
+            measureFailure(of: fileDraft)
+        }
+    }
+
+    override public func pauseAllUploads() {
+        NotificationCenter.default.post(name: .didInterruptOnPhotoUpload, object: nil)
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self?.getAllScheduledOperations().forEach { $0.interrupt() }
         }
     }
 
@@ -165,6 +175,7 @@ public final class PhotoUploader: MyFilesFileUploader {
 
     override public func deleteUploadingFile(_ file: File) {
         guard let photo = file as? Photo else {
+            Log.error(file.invalidState("The File should be a Photo."), domain: .uploader)
             assert(false, "The File should be a Photo.")
             return
         }
@@ -175,6 +186,7 @@ public final class PhotoUploader: MyFilesFileUploader {
     
     public func markUploadingFileAsSkippable(_ file: File) {
         guard let photo = file as? Photo else {
+            Log.error(file.invalidState("The File should be a Photo."), domain: .uploader)
             assert(false, "The File should be a Photo.")
             return
         }
@@ -211,13 +223,13 @@ public final class PhotoUploader: MyFilesFileUploader {
     private func handleQueueState(isOperating: Bool) {
         if isOperating {
             Log.debug("PhotoUploader start upload measuring", domain: .telemetry)
-            uploadMeasurementRepository.start()
+            durationMeasurementRepository.start()
             measurementRepositories.values.forEach { repository in
                 repository.resume()
             }
         } else {
             Log.debug("PhotoUploader pause upload measuring", domain: .telemetry)
-            uploadMeasurementRepository.stop()
+            durationMeasurementRepository.stop()
             measurementRepositories.values.forEach { repository in
                 repository.pause()
             }
@@ -236,17 +248,18 @@ public final class PhotoUploader: MyFilesFileUploader {
             .eraseToAnyPublisher()
     }
 
-    override func measureStart(of item: String) {
+    func measureStart(of item: String) {
         measurementsQueue.async { [weak self] in
             guard let self else { return }
             Log.debug("Measure photo start, \(item)", domain: .telemetry)
             let repository = measurementRepositories[item] ?? measurementRepositoryFactory.makeMeasurementRepository(for: item)
             measurementRepositories[item] = repository
             repository.resume()
+            filesMeasurementRepository.trackFileUploadStart(id: item)
         }
     }
 
-    override func measurePause(of item: String) {
+    func measurePause(of item: String) {
         measurementsQueue.async { [weak self] in
             guard let self else { return }
             Log.debug("Measure photo pause, \(item)", domain: .telemetry)
@@ -254,21 +267,29 @@ public final class PhotoUploader: MyFilesFileUploader {
         }
     }
 
-    override func measureSuccess(of item: String, kilobytes: Double) {
+    func measureSuccess(of fileDraft: FileDraft) {
         measurementsQueue.async { [weak self] in
             guard let self else { return }
+            let item = fileDraft.uri
             Log.debug("Measure photo success, \(item)", domain: .telemetry)
-            measurementRepositories[item]?.succeed(with: kilobytes)
+            let repository = measurementRepositories[item]
+            repository?.set(kilobytes: fileDraft.roundedKilobytes, mimeType: fileDraft.mimeType)
+            repository?.succeed()
             measurementRepositories[item] = nil
+            filesMeasurementRepository.trackFileSuccess()
         }
     }
 
-    override func measureFailure(of item: String, kilobytes: Double) {
+    func measureFailure(of fileDraft: FileDraft) {
         measurementsQueue.async { [weak self] in
             guard let self else { return }
+            let item = fileDraft.uri
             Log.debug("Measure photo failure, \(item)", domain: .telemetry)
-            measurementRepositories[item]?.fail(with: kilobytes)
+            let repository = measurementRepositories[item]
+            repository?.set(kilobytes: fileDraft.roundedKilobytes, mimeType: fileDraft.mimeType)
+            repository?.fail()
             measurementRepositories[item] = nil
+            filesMeasurementRepository.trackFileFailure()
         }
     }
 }

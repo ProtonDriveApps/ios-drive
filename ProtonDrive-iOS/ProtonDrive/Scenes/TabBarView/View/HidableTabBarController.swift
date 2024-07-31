@@ -45,6 +45,17 @@ final class HidableTabBarController: UITabBarController {
         setTabBarHidden(isHidden)
     }
 
+    override func setViewControllers(_ viewControllers: [UIViewController]?, animated: Bool) {
+        super.setViewControllers(viewControllers, animated: animated)
+        
+        for tag in viewModel.defaultHomeTabTagPreferences {
+            guard let vc = viewControllers?.first(where: { $0.tabBarItem.tag == tag }) else {
+                continue
+            }
+            selectedViewController = vc
+            break
+        }
+    }
 }
 
 extension HidableTabBarController {

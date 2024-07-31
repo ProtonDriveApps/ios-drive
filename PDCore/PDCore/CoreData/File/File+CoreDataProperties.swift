@@ -74,3 +74,9 @@ extension File {
         return MimeType(value: mimeType).isImage
     }
 }
+
+public extension File {
+    var isProtonDocument: Bool {
+        return MimeType(value: mimeType) == .protonDocument
+    }
+}

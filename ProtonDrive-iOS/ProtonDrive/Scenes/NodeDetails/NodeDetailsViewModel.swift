@@ -76,24 +76,31 @@ class NodeDetailsViewModel: ObservableObject {
     }()
     
     lazy var details: [NodeDetailViewModel] = {
-        switch self.node {
-        case is File:   return self.detailsFile
-        case is Folder: return self.detailsFolder
-        default:
+        if let file = node as? File {
+            return makeFileDetails(with: file)
+        } else if node is Folder {
+            return detailsFolder
+        } else {
             assert(false, "Undefined node type")
             return []
         }
     }()
     
-    lazy var detailsFile: [NodeDetailViewModel] = {
+    private func makeFileDetails(with file: File) -> [NodeDetailViewModel] {
         var details = self.detailsFolder
         details.append(contentsOf: [
-            .init(id: "Extension", value: self.fileExtension ?? "－"),
-            .init(id: "Size", value: ByteCountFormatter.storageSizeString(forByteCount: Int64(node.size))),
-            .init(id: "Shared", value: self.node.isShared ? "Yes" : "No")
+            .init(id: "Extension", value: self.fileExtension ?? "－")
+        ])
+        if !file.isProtonDocument {
+            details.append(contentsOf: [
+                .init(id: "Size", value: ByteCountFormatter.storageSizeString(forByteCount: Int64(file.size)))
+            ])
+        }
+        details.append(contentsOf: [
+            .init(id: "Shared", value: file.isShared ? "Yes" : "No")
         ])
         return details
-    }()
+    }
     
     lazy var detailsFolder: [NodeDetailViewModel] = [
         .init(id: "Name", value: node.decryptedName),

@@ -19,19 +19,33 @@ import SwiftUI
 import ProtonCoreUIFoundations
 
 struct SeparatedModifier: ViewModifier {
+    let hasPadding: Bool
+
     func body(content: Content) -> some View {
         VStack(spacing: 0) {
             content
 
-            Divider()
-                .foregroundColor(ColorProvider.SeparatorNorm)
-                .padding(.top)
+            if hasPadding {
+                divider
+                    .padding(.top)
+            } else {
+                divider
+            }
         }
+    }
+
+    private var divider: some View {
+        Divider()
+            .foregroundColor(ColorProvider.SeparatorNorm)
     }
 }
 
 public extension View {
     func separated() -> some View {
-        modifier(SeparatedModifier())
+        modifier(SeparatedModifier(hasPadding: true))
+    }
+
+    func separatedWithoutPadding() -> some View {
+        modifier(SeparatedModifier(hasPadding: false))
     }
 }

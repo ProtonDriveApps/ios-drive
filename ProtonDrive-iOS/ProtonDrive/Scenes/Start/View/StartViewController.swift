@@ -19,6 +19,7 @@ import Combine
 import ProtonCoreUIFoundations
 import SwiftUI
 import PDUIComponents
+import PDCore
 
 public final class StartViewController: UIViewController {
     private var cancellables: Set<AnyCancellable> = []
@@ -51,6 +52,7 @@ public final class StartViewController: UIViewController {
         viewModel.restartAppPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
+                Log.info("Receive restart app event, is self nil? \(self == nil)", domain: .application)
                 self?.performAuthenticated()
             }
             .store(in: &cancellables)

@@ -23,6 +23,10 @@ struct PhotosGridView<ViewModel: PhotosGridViewModelProtocol, ActionView: View, 
     @ObservedObject private var viewModel: ViewModel
     private let actionView: ActionView
     private let item: (PhotoGridViewItem, String) -> ItemView
+    
+    private let itemAspectRatio: CGFloat = 1 / 1.4
+    private let minimumNumberOfColumns: CGFloat = 3
+    private let preferableItemWidth: CGFloat = 128
     private let spacing: CGFloat = 1.5
 
     init(viewModel: ViewModel, actionView: ActionView, item: @escaping (PhotoGridViewItem, String) -> ItemView) {
@@ -33,11 +37,10 @@ struct PhotosGridView<ViewModel: PhotosGridViewModelProtocol, ActionView: View, 
 
     var body: some View {
         GeometryReader { geometry in
-            let height = (geometry.size.width / 3) * 1.4
             ScrollView {
-                LazyVGrid(columns: columns, alignment: .leading, spacing: spacing) {
+                LazyVGrid(columns: columns(width: geometry.size.width), alignment: .leading, spacing: spacing) {
                     ForEach(viewModel.sections) {
-                        view(from: $0, height: height)
+                        view(from: $0)
                     }
                 }
                 Spacer(minLength: 32)
@@ -54,15 +57,20 @@ struct PhotosGridView<ViewModel: PhotosGridViewModelProtocol, ActionView: View, 
         }
     }
 
-    private var columns: [GridItem] {
-        Array(repeating: .init(.flexible(), spacing: spacing), count: 3)
+    private func columns(width: CGFloat) -> [GridItem] {
+        let widthForExtraColumns = preferableItemWidth * (minimumNumberOfColumns + 1) + spacing * (minimumNumberOfColumns - 1)
+        if width >= widthForExtraColumns {
+            return [GridItem(.adaptive(minimum: preferableItemWidth, maximum: .infinity))]
+        } else {
+            return Array(repeating: .init(.flexible(), spacing: spacing), count: 3)
+        }
     }
 
-    private func view(from section: PhotosGridViewSection, height: CGFloat) -> some View {
+    private func view(from section: PhotosGridViewSection) -> some View {
         Section(content: {
             ForEach(Array(section.items.enumerated()), id: \.element.id) {
                 item($0.element, "\(section.title)_\($0.offset)")
-                    .frame(height: height)
+                    .aspectRatio(itemAspectRatio, contentMode: .fit)
             }
         }, header: {
             Text(section.title)

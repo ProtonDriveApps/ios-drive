@@ -139,4 +139,5 @@ extension EmptyViewConfiguration {
     static let trash = EmptyViewConfiguration(image: .emptyTrash, title: "No files or folders in trash", message: "\n")
 
     static let noConnection = EmptyViewConfiguration(image: .genericError, title: "Your device has no connection", message: "We cannot read contents of this folder")
+    static let noConnectionInPhoto = EmptyViewConfiguration(image: .genericError, title: "Your device has no connection", message: "")
 }

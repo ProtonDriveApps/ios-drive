@@ -139,6 +139,8 @@
 		31964E202B04FAA2006A9C1D /* CoreDataLinksUpdateRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31964E1E2B04F6F6006A9C1D /* CoreDataLinksUpdateRepository.swift */; };
 		31993B642AAF06E300E91AA9 /* BlockVerification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31993B632AAF06E300E91AA9 /* BlockVerification.swift */; };
 		31993B652AAF070C00E91AA9 /* BlockVerification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31993B632AAF06E300E91AA9 /* BlockVerification.swift */; };
+		319F3E082C1C6863004A9078 /* ProtonDocumentConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 319F3E072C1C6863004A9078 /* ProtonDocumentConstants.swift */; };
+		319F3E092C1C6902004A9078 /* ProtonDocumentConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 319F3E072C1C6863004A9078 /* ProtonDocumentConstants.swift */; };
 		31A126212AC2F2860019D996 /* AsynchronousExecutionOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A126202AC2F2860019D996 /* AsynchronousExecutionOperation.swift */; };
 		31A126222AC2F2860019D996 /* AsynchronousExecutionOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A126202AC2F2860019D996 /* AsynchronousExecutionOperation.swift */; };
 		31A629D229E595F60036BCE9 /* Sequence+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A629D129E595F60036BCE9 /* Sequence+Extensions.swift */; };
@@ -195,6 +197,10 @@
 		31DCD3E62B73B2310000D23B /* ThrowingAsynchronousStateInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DCD3E42B73B2310000D23B /* ThrowingAsynchronousStateInteractor.swift */; };
 		31DCD3E82B73B2520000D23B /* ThrowingAsynchronousStateFacade.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DCD3E72B73B2520000D23B /* ThrowingAsynchronousStateFacade.swift */; };
 		31DCD3E92B73B2520000D23B /* ThrowingAsynchronousStateFacade.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DCD3E72B73B2520000D23B /* ThrowingAsynchronousStateFacade.swift */; };
+		31E98B212C048DC9009C01C0 /* FileUploadFilesMeasurementRepositoryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E98B202C048DC9009C01C0 /* FileUploadFilesMeasurementRepositoryProtocol.swift */; };
+		31E98B232C048FB8009C01C0 /* FileUploadFilesMeasurementRepositoryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E98B202C048DC9009C01C0 /* FileUploadFilesMeasurementRepositoryProtocol.swift */; };
+		31E98B252C049EA8009C01C0 /* FileUploadBlocksMeasurementRepositoryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E98B242C049EA8009C01C0 /* FileUploadBlocksMeasurementRepositoryProtocol.swift */; };
+		31E98B262C04A001009C01C0 /* FileUploadBlocksMeasurementRepositoryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E98B242C049EA8009C01C0 /* FileUploadBlocksMeasurementRepositoryProtocol.swift */; };
 		31F0444D2A9F300A0000F563 /* UserInfoResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31F0444C2A9F300A0000F563 /* UserInfoResource.swift */; };
 		31F0444E2A9F32270000F563 /* UserInfoResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31F0444C2A9F300A0000F563 /* UserInfoResource.swift */; };
 		31F044512A9F32E40000F563 /* UserInfoController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31F044502A9F32E40000F563 /* UserInfoController.swift */; };
@@ -221,6 +227,8 @@
 		6615F3742BC7D80A0009CEEE /* AssertionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6615F3722BC7D80A0009CEEE /* AssertionProvider.swift */; };
 		66196E6A2BA4694800363D89 /* DomainConnectionManagerProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66196E692BA4694800363D89 /* DomainConnectionManagerProtocol.swift */; };
 		66196E6B2BA4694800363D89 /* DomainConnectionManagerProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66196E692BA4694800363D89 /* DomainConnectionManagerProtocol.swift */; };
+		661C54762BF4EA0E0067F413 /* RefreshingNodesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 661C54752BF4EA0E0067F413 /* RefreshingNodesService.swift */; };
+		661C54782BF4EADD0067F413 /* RefreshingNodesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 661C54752BF4EA0E0067F413 /* RefreshingNodesService.swift */; };
 		666249462B0A019100676181 /* SessionRelatedCommunication.swift in Sources */ = {isa = PBXBuildFile; fileRef = 666249442B0A019100676181 /* SessionRelatedCommunication.swift */; };
 		666249472B0A019100676181 /* SessionRelatedCommunication.swift in Sources */ = {isa = PBXBuildFile; fileRef = 666249442B0A019100676181 /* SessionRelatedCommunication.swift */; };
 		666249482B0A019100676181 /* UserDefaultsObservationCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 666249452B0A019100676181 /* UserDefaultsObservationCenter.swift */; };
@@ -747,6 +755,26 @@
 		CF6450CF1680FE7DB0C387E5 /* Pods_PDCoreMac.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6B0516C1198C907043B1533E /* Pods_PDCoreMac.framework */; };
 		D40A5FD72A38A2EE002BA232 /* RevisionDecryptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40A5FD62A38A2EE002BA232 /* RevisionDecryptor.swift */; };
 		D40A5FD82A38A2EE002BA232 /* RevisionDecryptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40A5FD62A38A2EE002BA232 /* RevisionDecryptor.swift */; };
+		D40E5C6E2C2F636A00BB50DA /* ProtonDocumentIdentifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C5E2C2F636A00BB50DA /* ProtonDocumentIdentifier.swift */; };
+		D40E5C6F2C2F636A00BB50DA /* ProtonDocumentIdentifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C5E2C2F636A00BB50DA /* ProtonDocumentIdentifier.swift */; };
+		D40E5C702C2F636A00BB50DA /* ProtonDocumentIdentifierRepositoryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C5F2C2F636A00BB50DA /* ProtonDocumentIdentifierRepositoryProtocol.swift */; };
+		D40E5C712C2F636A00BB50DA /* ProtonDocumentIdentifierRepositoryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C5F2C2F636A00BB50DA /* ProtonDocumentIdentifierRepositoryProtocol.swift */; };
+		D40E5C722C2F636A00BB50DA /* ProtonDocumentOpeningError.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C602C2F636A00BB50DA /* ProtonDocumentOpeningError.swift */; };
+		D40E5C732C2F636A00BB50DA /* ProtonDocumentOpeningError.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C602C2F636A00BB50DA /* ProtonDocumentOpeningError.swift */; };
+		D40E5C742C2F636A00BB50DA /* ProtonDocumentOpeningURLInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C612C2F636A00BB50DA /* ProtonDocumentOpeningURLInteractor.swift */; };
+		D40E5C752C2F636A00BB50DA /* ProtonDocumentOpeningURLInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C612C2F636A00BB50DA /* ProtonDocumentOpeningURLInteractor.swift */; };
+		D40E5C762C2F636A00BB50DA /* ProtonDocumentOpeningFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C632C2F636A00BB50DA /* ProtonDocumentOpeningFactory.swift */; };
+		D40E5C772C2F636A00BB50DA /* ProtonDocumentOpeningFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C632C2F636A00BB50DA /* ProtonDocumentOpeningFactory.swift */; };
+		D40E5C782C2F636A00BB50DA /* ProtonDocumentIdentifierRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C652C2F636A00BB50DA /* ProtonDocumentIdentifierRepository.swift */; };
+		D40E5C792C2F636A00BB50DA /* ProtonDocumentIdentifierRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C652C2F636A00BB50DA /* ProtonDocumentIdentifierRepository.swift */; };
+		D40E5C7A2C2F636A00BB50DA /* ProtonDocumentIncomingURLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C662C2F636A00BB50DA /* ProtonDocumentIncomingURLParser.swift */; };
+		D40E5C7B2C2F636A00BB50DA /* ProtonDocumentIncomingURLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C662C2F636A00BB50DA /* ProtonDocumentIncomingURLParser.swift */; };
+		D40E5C7C2C2F636A00BB50DA /* ProtonDocumentURLFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C672C2F636A00BB50DA /* ProtonDocumentURLFactory.swift */; };
+		D40E5C7D2C2F636A00BB50DA /* ProtonDocumentURLFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C672C2F636A00BB50DA /* ProtonDocumentURLFactory.swift */; };
+		D40E5C7E2C2F636A00BB50DA /* ProtonDocumentErrorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C6A2C2F636A00BB50DA /* ProtonDocumentErrorViewModel.swift */; };
+		D40E5C7F2C2F636A00BB50DA /* ProtonDocumentErrorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C6A2C2F636A00BB50DA /* ProtonDocumentErrorViewModel.swift */; };
+		D40E5C802C2F636A00BB50DA /* URLCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C6C2C2F636A00BB50DA /* URLCoordinator.swift */; };
+		D40E5C812C2F636A00BB50DA /* URLCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40E5C6C2C2F636A00BB50DA /* URLCoordinator.swift */; };
 		D42985102AF7D9D7002DA9B9 /* NameHasher.swift in Sources */ = {isa = PBXBuildFile; fileRef = D429850F2AF7D9D7002DA9B9 /* NameHasher.swift */; };
 		D42985112AF7D9D7002DA9B9 /* NameHasher.swift in Sources */ = {isa = PBXBuildFile; fileRef = D429850F2AF7D9D7002DA9B9 /* NameHasher.swift */; };
 		D45B6D372AC6AC390038B423 /* MacOSCommitterOperationFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = D45B6D362AC6AC390038B423 /* MacOSCommitterOperationFactory.swift */; };
@@ -766,6 +794,8 @@
 		D4B41F942AE7F850000E552F /* ResponseError+linkIDOfPreviousFailedUploadFromCurrentClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4B41F932AE7F850000E552F /* ResponseError+linkIDOfPreviousFailedUploadFromCurrentClient.swift */; };
 		D4B41F952AE7F850000E552F /* ResponseError+linkIDOfPreviousFailedUploadFromCurrentClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4B41F932AE7F850000E552F /* ResponseError+linkIDOfPreviousFailedUploadFromCurrentClient.swift */; };
 		D4BC4BAE286E17B600CE3335 /* UserDefaults+notificationExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4BC4BAC286E171B00CE3335 /* UserDefaults+notificationExtension.swift */; };
+		D4D84DD02C315456007079B4 /* UserMessageHandlerProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4D84DCE2C315455007079B4 /* UserMessageHandlerProtocol.swift */; };
+		D4D84DD12C315456007079B4 /* UserMessageHandlerProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4D84DCE2C315455007079B4 /* UserMessageHandlerProtocol.swift */; };
 		D802197F2B59201C000FF0A2 /* CloudNodeProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D802197E2B59201C000FF0A2 /* CloudNodeProvider.swift */; };
 		D80219802B59201C000FF0A2 /* CloudNodeProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D802197E2B59201C000FF0A2 /* CloudNodeProvider.swift */; };
 		D80219822B59448B000FF0A2 /* CloudNodeDecryptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80219812B59448B000FF0A2 /* CloudNodeDecryptor.swift */; };
@@ -1253,6 +1283,7 @@
 		318E16C929B8E2880056860F /* Data+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data+Extensions.swift"; sourceTree = "<group>"; };
 		31964E1E2B04F6F6006A9C1D /* CoreDataLinksUpdateRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDataLinksUpdateRepository.swift; sourceTree = "<group>"; };
 		31993B632AAF06E300E91AA9 /* BlockVerification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockVerification.swift; sourceTree = "<group>"; };
+		319F3E072C1C6863004A9078 /* ProtonDocumentConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtonDocumentConstants.swift; sourceTree = "<group>"; };
 		31A126202AC2F2860019D996 /* AsynchronousExecutionOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsynchronousExecutionOperation.swift; sourceTree = "<group>"; };
 		31A629D129E595F60036BCE9 /* Sequence+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sequence+Extensions.swift"; sourceTree = "<group>"; };
 		31A9B8DA2AA1F32F003585B1 /* Collection+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Collection+Extensions.swift"; sourceTree = "<group>"; };
@@ -1281,6 +1312,8 @@
 		31D9039F2B726460001EC80D /* CloudDecryptorFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudDecryptorFactory.swift; sourceTree = "<group>"; };
 		31DCD3E42B73B2310000D23B /* ThrowingAsynchronousStateInteractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThrowingAsynchronousStateInteractor.swift; sourceTree = "<group>"; };
 		31DCD3E72B73B2520000D23B /* ThrowingAsynchronousStateFacade.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThrowingAsynchronousStateFacade.swift; sourceTree = "<group>"; };
+		31E98B202C048DC9009C01C0 /* FileUploadFilesMeasurementRepositoryProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileUploadFilesMeasurementRepositoryProtocol.swift; sourceTree = "<group>"; };
+		31E98B242C049EA8009C01C0 /* FileUploadBlocksMeasurementRepositoryProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileUploadBlocksMeasurementRepositoryProtocol.swift; sourceTree = "<group>"; };
 		31F0444C2A9F300A0000F563 /* UserInfoResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserInfoResource.swift; sourceTree = "<group>"; };
 		31F044502A9F32E40000F563 /* UserInfoController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserInfoController.swift; sourceTree = "<group>"; };
 		31F044542A9F338D0000F563 /* UserInfoControllerFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserInfoControllerFactory.swift; sourceTree = "<group>"; };
@@ -1292,8 +1325,10 @@
 		31FCD2F62A385E4C00AFE673 /* DefaultThumbnailTypeStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultThumbnailTypeStrategy.swift; sourceTree = "<group>"; };
 		31FEE9302A459AF000F4EF37 /* ErrorController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorController.swift; sourceTree = "<group>"; };
 		31FEE9332A459C8900F4EF37 /* CompoundErrorController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompoundErrorController.swift; sourceTree = "<group>"; };
+		660345852BEBA19200A2464F /* Metadata v1.32.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "Metadata v1.32.xcdatamodel"; sourceTree = "<group>"; };
 		6615F3722BC7D80A0009CEEE /* AssertionProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssertionProvider.swift; sourceTree = "<group>"; };
 		66196E692BA4694800363D89 /* DomainConnectionManagerProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DomainConnectionManagerProtocol.swift; sourceTree = "<group>"; };
+		661C54752BF4EA0E0067F413 /* RefreshingNodesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefreshingNodesService.swift; sourceTree = "<group>"; };
 		666249442B0A019100676181 /* SessionRelatedCommunication.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SessionRelatedCommunication.swift; sourceTree = "<group>"; };
 		666249452B0A019100676181 /* UserDefaultsObservationCenter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UserDefaultsObservationCenter.swift; sourceTree = "<group>"; };
 		66786E702B7A561700CB46EA /* RetainCycleBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetainCycleBox.swift; sourceTree = "<group>"; };
@@ -1518,6 +1553,16 @@
 		C5AA62F11CA514DC1D712A76 /* Pods-PDCoreIntegrationTests.release-store.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDCoreIntegrationTests.release-store.xcconfig"; path = "Target Support Files/Pods-PDCoreIntegrationTests/Pods-PDCoreIntegrationTests.release-store.xcconfig"; sourceTree = "<group>"; };
 		D2FC9F0597B2F2BB7882780A /* Pods-PDCoreMac.release-qa.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDCoreMac.release-qa.xcconfig"; path = "Target Support Files/Pods-PDCoreMac/Pods-PDCoreMac.release-qa.xcconfig"; sourceTree = "<group>"; };
 		D40A5FD62A38A2EE002BA232 /* RevisionDecryptor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevisionDecryptor.swift; sourceTree = "<group>"; };
+		D40E5C5E2C2F636A00BB50DA /* ProtonDocumentIdentifier.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ProtonDocumentIdentifier.swift; sourceTree = "<group>"; };
+		D40E5C5F2C2F636A00BB50DA /* ProtonDocumentIdentifierRepositoryProtocol.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ProtonDocumentIdentifierRepositoryProtocol.swift; sourceTree = "<group>"; };
+		D40E5C602C2F636A00BB50DA /* ProtonDocumentOpeningError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ProtonDocumentOpeningError.swift; sourceTree = "<group>"; };
+		D40E5C612C2F636A00BB50DA /* ProtonDocumentOpeningURLInteractor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ProtonDocumentOpeningURLInteractor.swift; sourceTree = "<group>"; };
+		D40E5C632C2F636A00BB50DA /* ProtonDocumentOpeningFactory.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ProtonDocumentOpeningFactory.swift; sourceTree = "<group>"; };
+		D40E5C652C2F636A00BB50DA /* ProtonDocumentIdentifierRepository.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ProtonDocumentIdentifierRepository.swift; sourceTree = "<group>"; };
+		D40E5C662C2F636A00BB50DA /* ProtonDocumentIncomingURLParser.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ProtonDocumentIncomingURLParser.swift; sourceTree = "<group>"; };
+		D40E5C672C2F636A00BB50DA /* ProtonDocumentURLFactory.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ProtonDocumentURLFactory.swift; sourceTree = "<group>"; };
+		D40E5C6A2C2F636A00BB50DA /* ProtonDocumentErrorViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ProtonDocumentErrorViewModel.swift; sourceTree = "<group>"; };
+		D40E5C6C2C2F636A00BB50DA /* URLCoordinator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = URLCoordinator.swift; sourceTree = "<group>"; };
 		D429850F2AF7D9D7002DA9B9 /* NameHasher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NameHasher.swift; sourceTree = "<group>"; };
 		D45B6D362AC6AC390038B423 /* MacOSCommitterOperationFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacOSCommitterOperationFactory.swift; sourceTree = "<group>"; };
 		D45B6D392AC6ACF50038B423 /* MacOSRevisionCommitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacOSRevisionCommitter.swift; sourceTree = "<group>"; };
@@ -1527,6 +1572,7 @@
 		D4B4090E2A5C0E5100EE8252 /* Events to Events v1.17.xcmappingmodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcmappingmodel; path = "Events to Events v1.17.xcmappingmodel"; sourceTree = "<group>"; };
 		D4B41F932AE7F850000E552F /* ResponseError+linkIDOfPreviousFailedUploadFromCurrentClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ResponseError+linkIDOfPreviousFailedUploadFromCurrentClient.swift"; sourceTree = "<group>"; };
 		D4BC4BAC286E171B00CE3335 /* UserDefaults+notificationExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserDefaults+notificationExtension.swift"; sourceTree = "<group>"; };
+		D4D84DCE2C315455007079B4 /* UserMessageHandlerProtocol.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UserMessageHandlerProtocol.swift; sourceTree = "<group>"; };
 		D802197E2B59201C000FF0A2 /* CloudNodeProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudNodeProvider.swift; sourceTree = "<group>"; };
 		D80219812B59448B000FF0A2 /* CloudNodeDecryptor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudNodeDecryptor.swift; sourceTree = "<group>"; };
 		D80219842B594508000FF0A2 /* CloudHierarchyDumper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudHierarchyDumper.swift; sourceTree = "<group>"; };
@@ -2409,6 +2455,25 @@
 			path = Digests;
 			sourceTree = "<group>";
 		};
+		319F3E052C1C684D004A9078 /* ProtonDocument */ = {
+			isa = PBXGroup;
+			children = (
+				D40E5C6D2C2F636A00BB50DA /* Application */,
+				D40E5C692C2F636A00BB50DA /* Common */,
+				D40E5C6B2C2F636A00BB50DA /* Presentation */,
+				319F3E062C1C6857004A9078 /* Constants */,
+			);
+			path = ProtonDocument;
+			sourceTree = "<group>";
+		};
+		319F3E062C1C6857004A9078 /* Constants */ = {
+			isa = PBXGroup;
+			children = (
+				319F3E072C1C6863004A9078 /* ProtonDocumentConstants.swift */,
+			);
+			path = Constants;
+			sourceTree = "<group>";
+		};
 		31AC3DC12A20A4DB0090097A /* Resource */ = {
 			isa = PBXGroup;
 			children = (
@@ -2572,6 +2637,23 @@
 			path = Injection;
 			sourceTree = "<group>";
 		};
+		31E98B1E2C04891D009C01C0 /* Common */ = {
+			isa = PBXGroup;
+			children = (
+				31E98B1F2C048929009C01C0 /* Domain */,
+			);
+			path = Common;
+			sourceTree = "<group>";
+		};
+		31E98B1F2C048929009C01C0 /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				31E98B242C049EA8009C01C0 /* FileUploadBlocksMeasurementRepositoryProtocol.swift */,
+				31E98B202C048DC9009C01C0 /* FileUploadFilesMeasurementRepositoryProtocol.swift */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
 		31F0444A2A9F2FFF0000F563 /* UserInfo */ = {
 			isa = PBXGroup;
 			children = (
@@ -2624,6 +2706,7 @@
 		31F498982AE6719600833F3B /* PhotoUploadTelemetry */ = {
 			isa = PBXGroup;
 			children = (
+				31E98B1E2C04891D009C01C0 /* Common */,
 				314EBF522BAAC54B00385DB0 /* Upload */,
 				314EBF532BAAC55200385DB0 /* UploadDone */,
 			);
@@ -2688,6 +2771,14 @@
 			);
 			name = Pods;
 			path = ../Pods;
+			sourceTree = "<group>";
+		};
+		661C54742BF4E9F30067F413 /* RefreshingNodesService */ = {
+			isa = PBXGroup;
+			children = (
+				661C54752BF4EA0E0067F413 /* RefreshingNodesService.swift */,
+			);
+			path = RefreshingNodesService;
 			sourceTree = "<group>";
 		};
 		762F0F9D2AF41611007A18F4 /* Domain */ = {
@@ -2929,6 +3020,7 @@
 		AB2DB710240FDDAA00FEF29E /* PDCore */ = {
 			isa = PBXGroup;
 			children = (
+				661C54742BF4E9F30067F413 /* RefreshingNodesService */,
 				3171B26B2BC00823000F6E22 /* Constants */,
 				D9AA45902BBEA9F200B7D695 /* BackgroundModes */,
 				76800EBD2B8E1D0C001BC81F /* IPCommunicationServices */,
@@ -2977,7 +3069,9 @@
 				18C5D9EA25B1A89C00F187E7 /* Validator */,
 				31C0337D2A84E028009689A8 /* Telemetry */,
 				31D87EB42BB5B3EE008F0A7B /* Memory */,
+				D40E5C822C2F63FE00BB50DA /* MessageHandler */,
 				31347BC32BD937E100575852 /* Protection */,
+				319F3E052C1C684D004A9078 /* ProtonDocument */,
 			);
 			path = PDCore;
 			sourceTree = "<group>";
@@ -3309,6 +3403,77 @@
 				ABAB666A26A0608100B8B0DD /* CrossProcessErrorExchange.swift */,
 			);
 			path = InterprocessMainKeyExchange;
+			sourceTree = "<group>";
+		};
+		D40E5C622C2F636A00BB50DA /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				D40E5C5E2C2F636A00BB50DA /* ProtonDocumentIdentifier.swift */,
+				D40E5C5F2C2F636A00BB50DA /* ProtonDocumentIdentifierRepositoryProtocol.swift */,
+				D40E5C602C2F636A00BB50DA /* ProtonDocumentOpeningError.swift */,
+				D40E5C612C2F636A00BB50DA /* ProtonDocumentOpeningURLInteractor.swift */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		D40E5C642C2F636A00BB50DA /* Injection */ = {
+			isa = PBXGroup;
+			children = (
+				D40E5C632C2F636A00BB50DA /* ProtonDocumentOpeningFactory.swift */,
+			);
+			path = Injection;
+			sourceTree = "<group>";
+		};
+		D40E5C682C2F636A00BB50DA /* Resource */ = {
+			isa = PBXGroup;
+			children = (
+				D40E5C652C2F636A00BB50DA /* ProtonDocumentIdentifierRepository.swift */,
+				D40E5C662C2F636A00BB50DA /* ProtonDocumentIncomingURLParser.swift */,
+				D40E5C672C2F636A00BB50DA /* ProtonDocumentURLFactory.swift */,
+			);
+			path = Resource;
+			sourceTree = "<group>";
+		};
+		D40E5C692C2F636A00BB50DA /* Common */ = {
+			isa = PBXGroup;
+			children = (
+				D40E5C622C2F636A00BB50DA /* Domain */,
+				D40E5C642C2F636A00BB50DA /* Injection */,
+				D40E5C682C2F636A00BB50DA /* Resource */,
+			);
+			path = Common;
+			sourceTree = "<group>";
+		};
+		D40E5C6B2C2F636A00BB50DA /* Presentation */ = {
+			isa = PBXGroup;
+			children = (
+				D40E5C6A2C2F636A00BB50DA /* ProtonDocumentErrorViewModel.swift */,
+			);
+			path = Presentation;
+			sourceTree = "<group>";
+		};
+		D40E5C6D2C2F636A00BB50DA /* Application */ = {
+			isa = PBXGroup;
+			children = (
+				D40E5C6C2C2F636A00BB50DA /* URLCoordinator.swift */,
+			);
+			path = Application;
+			sourceTree = "<group>";
+		};
+		D40E5C822C2F63FE00BB50DA /* MessageHandler */ = {
+			isa = PBXGroup;
+			children = (
+				D4D84DCF2C315455007079B4 /* Presentation */,
+			);
+			path = MessageHandler;
+			sourceTree = "<group>";
+		};
+		D4D84DCF2C315455007079B4 /* Presentation */ = {
+			isa = PBXGroup;
+			children = (
+				D4D84DCE2C315455007079B4 /* UserMessageHandlerProtocol.swift */,
+			);
+			path = Presentation;
 			sourceTree = "<group>";
 		};
 		D80219872B59450F000FF0A2 /* Cloud */ = {
@@ -4433,6 +4598,7 @@
 				D4827A102A12651200B66E9C /* DefaultFileDraftCreator.swift in Sources */,
 				ABCD3BB32991251D00432FE6 /* DownloadBlock+CoreDataProperties.swift in Sources */,
 				ABCD3B90299124FE00432FE6 /* ThumbnailProvider.swift in Sources */,
+				D4D84DD12C315456007079B4 /* UserMessageHandlerProtocol.swift in Sources */,
 				D9E224F7299A46FD00DD3243 /* NSManagedObject+newWithValue.swift in Sources */,
 				D93FE1AE2A0131FA009CBB24 /* PhotoUploader.swift in Sources */,
 				ABCD3B0E2991247700432FE6 /* PMAPIClient.swift in Sources */,
@@ -4471,6 +4637,7 @@
 				D9A6296C2A3AF10B001FDC9C /* ResponseError+asFileUploaderError.swift in Sources */,
 				D9410DD629F915750073B4D0 /* PhotoIdentifier.swift in Sources */,
 				ABCD3ADE2991244200432FE6 /* CrossProcessMainKeyExchange.swift in Sources */,
+				D40E5C7B2C2F636A00BB50DA /* ProtonDocumentIncomingURLParser.swift in Sources */,
 				ABCD3B312991249000432FE6 /* Encryptor.swift in Sources */,
 				D979212E2A1237940034CD03 /* PhotosBootstrapInteractor.swift in Sources */,
 				766FB1772A4EEE39001A7836 /* FileManager+SortDate.swift in Sources */,
@@ -4490,6 +4657,7 @@
 				669A392B2B5FC50100F2078A /* PDFileManager+Compression.swift in Sources */,
 				937F19EB2A3094EB006B70AD /* OperationProcessor.swift in Sources */,
 				D92775762AD0483800BBF180 /* ContentCleanedError.swift in Sources */,
+				D40E5C7F2C2F636A00BB50DA /* ProtonDocumentErrorViewModel.swift in Sources */,
 				ABCD3AD32991243F00432FE6 /* Key+Extension.swift in Sources */,
 				D952CC3B299A64CC0066871B /* ExtendedAttributesRevisionEncryptor.swift in Sources */,
 				D961B9AB29B07B280029FE32 /* NameHashPair.swift in Sources */,
@@ -4509,6 +4677,7 @@
 				ABCD3B4A299124A300432FE6 /* FileUploader+Notifications.swift in Sources */,
 				31A629D329E595F60036BCE9 /* Sequence+Extensions.swift in Sources */,
 				ABCD3B92299124FE00432FE6 /* PDFThumbnailProvider.swift in Sources */,
+				319F3E092C1C6902004A9078 /* ProtonDocumentConstants.swift in Sources */,
 				ABCD3B8A299124F000432FE6 /* DiscreteRevisionUploaderOperationFactory.swift in Sources */,
 				ABCD3BB72991251D00432FE6 /* ShareURL+CoreDataProperties.swift in Sources */,
 				D9CC7D6C2BF379A60031C5B0 /* Archiver.swift in Sources */,
@@ -4619,6 +4788,7 @@
 				D957A68E2BEA273F0012307C /* CompressingFileRotator.swift in Sources */,
 				31AC3DC02A20A4CF0090097A /* ThrowingAsynchronousFacade.swift in Sources */,
 				31A126222AC2F2860019D996 /* AsynchronousExecutionOperation.swift in Sources */,
+				661C54782BF4EADD0067F413 /* RefreshingNodesService.swift in Sources */,
 				ABCD3AFD2991246200432FE6 /* Tower+ShareURL.swift in Sources */,
 				ABCD3B442991249700432FE6 /* CloudSlot+Scan.swift in Sources */,
 				3160FC282A1BA73C00FCE676 /* ThumbnailLoaderFactory.swift in Sources */,
@@ -4673,6 +4843,7 @@
 				ABCD3B4D299124A700432FE6 /* FileDraft.swift in Sources */,
 				ABCD3BBB2991251D00432FE6 /* Block+CoreDataClass.swift in Sources */,
 				ABCD3B342991249000432FE6 /* ShareURL+Decryption.swift in Sources */,
+				D40E5C812C2F636A00BB50DA /* URLCoordinator.swift in Sources */,
 				ABCD3BC22991252200432FE6 /* Thumbnail+CoreDataProperties.swift in Sources */,
 				31A9B8DC2AA1F32F003585B1 /* Collection+Extensions.swift in Sources */,
 				ABCD3B352991249000432FE6 /* Thumbnail+Decryption.swift in Sources */,
@@ -4716,12 +4887,15 @@
 				3119DBCA2BA833900036968B /* TelemetryMeasurementsFactory.swift in Sources */,
 				AB5AC7882AAF307400558013 /* ThumbnailBlob+CoreDataClass.swift in Sources */,
 				31C033912A84FB90009689A8 /* TelemetrySendEventsInteractor.swift in Sources */,
+				D40E5C712C2F636A00BB50DA /* ProtonDocumentIdentifierRepositoryProtocol.swift in Sources */,
 				31F044562A9F338D0000F563 /* UserInfoControllerFactory.swift in Sources */,
 				ABCD3B9A2991250800432FE6 /* ScanNodeOperation.swift in Sources */,
 				ABCD3B112991247A00432FE6 /* OfflineSaver+Reachability.swift in Sources */,
 				ABCD3B152991247D00432FE6 /* GenericEvent.swift in Sources */,
 				3119DBCD2BA84B640036968B /* ReentrantDurationMeasurementRepositoryDecorator.swift in Sources */,
+				D40E5C772C2F636A00BB50DA /* ProtonDocumentOpeningFactory.swift in Sources */,
 				D9994C9B2A1BAAF600B2D3A5 /* PhotosExtendedAttributesRevisionEncryptor.swift in Sources */,
+				D40E5C752C2F636A00BB50DA /* ProtonDocumentOpeningURLInteractor.swift in Sources */,
 				76E57F862B8F098600493740 /* CommunicationService.swift in Sources */,
 				311BE4482A96071C0004010F /* PhotosRepositoriesFactory.swift in Sources */,
 				ABCD3B7C299124DA00432FE6 /* RevisionCommitterOperation.swift in Sources */,
@@ -4733,6 +4907,7 @@
 				D9424CD429BE6AFA00362261 /* PageRevisionUploaderOperation.swift in Sources */,
 				ABCD3B202991248400432FE6 /* SessionVault.swift in Sources */,
 				D480704E2AE6811000B6C914 /* UploadClientUIDProvider.swift in Sources */,
+				31E98B232C048FB8009C01C0 /* FileUploadFilesMeasurementRepositoryProtocol.swift in Sources */,
 				93EAF3222B0E292500D12A81 /* PhotoRepository.swift in Sources */,
 				ABCD3AFF2991246200432FE6 /* Tower+Events.swift in Sources */,
 				ABCD3AEB2991245000432FE6 /* ActivityModel.swift in Sources */,
@@ -4764,6 +4939,7 @@
 				ABCD3B9B2991250800432FE6 /* DownloadBinaryOperation.swift in Sources */,
 				D829A27D2AD025F700D4E779 /* ExternalFeatureFlagsRepository.swift in Sources */,
 				ABCD3AD72991243F00432FE6 /* Combine+Extensions.swift in Sources */,
+				D40E5C732C2F636A00BB50DA /* ProtonDocumentOpeningError.swift in Sources */,
 				3130A0892BD13B1C0097E8F3 /* TelemetrySettingRepository.swift in Sources */,
 				7652544C2BBC0A3A00E5A4B1 /* SyncReporting.swift in Sources */,
 				ABCD3B052991246900432FE6 /* ThumbnailIdentifiableOperation.swift in Sources */,
@@ -4772,6 +4948,7 @@
 				3129AC702AA89CF50034EB7D /* EncryptionMetadata.swift in Sources */,
 				D9410DDD29F9165F0073B4D0 /* PhotoCompound.swift in Sources */,
 				ABCD3BA52991251500432FE6 /* MimeType.swift in Sources */,
+				D40E5C7D2C2F636A00BB50DA /* ProtonDocumentURLFactory.swift in Sources */,
 				ABCD3B59299124AB00432FE6 /* MyFilesFileUploadOperationsProvider.swift in Sources */,
 				ABCD3BC82991252500432FE6 /* ConsoleLogger.swift in Sources */,
 				76AC03CC2BE2A1940046A7F4 /* ErrorReporting.swift in Sources */,
@@ -4829,10 +5006,12 @@
 				D8A958CB2ADEA9A300EC9449 /* PhotosUploadDisabledFeatureFlagStore.swift in Sources */,
 				D9C859CF2A179E5000315865 /* LocalPhotosRootFolderDatasource.swift in Sources */,
 				ABCD3BA72991251500432FE6 /* String+Extension.swift in Sources */,
+				D40E5C792C2F636A00BB50DA /* ProtonDocumentIdentifierRepository.swift in Sources */,
 				31CB983F2ACC3CFA005C3222 /* OperationsContainer.swift in Sources */,
 				ABCD3ADC2991243F00432FE6 /* Int+splitByDivisor.swift in Sources */,
 				316BD9342B6D274D0053F6F8 /* TreeRepository.swift in Sources */,
 				768055E72B8E4A2500B475CE /* Collection+ NSPersistentHistoryTransaction.swift in Sources */,
+				31E98B262C04A001009C01C0 /* FileUploadBlocksMeasurementRepositoryProtocol.swift in Sources */,
 				D829A27A2AD0140B00D4E779 /* FeatureFlagsRepositoryFactory.swift in Sources */,
 				66786E722B7A561700CB46EA /* RetainCycleBox.swift in Sources */,
 				ABCD3B3F2991249700432FE6 /* CloudSlot+EventProvider.swift in Sources */,
@@ -4934,6 +5113,7 @@
 				D961B99E29B04ABD0029FE32 /* DiscreteFileUploadOperationsProviderFactory.swift in Sources */,
 				D97FA82D2A3A185A00F0E9D5 /* ReuploadingModels.swift in Sources */,
 				ABCD3B5D299124B100432FE6 /* NameClashResolvingFileDraftCreator.swift in Sources */,
+				D40E5C6F2C2F636A00BB50DA /* ProtonDocumentIdentifier.swift in Sources */,
 				ABCD3B72299124C600432FE6 /* URLSessionThumbnailUploader.swift in Sources */,
 				ABCD3B8E299124FA00432FE6 /* UploaderErrors.swift in Sources */,
 				3130A08C2BD13B350097E8F3 /* LocalTelemetrySettingRepository.swift in Sources */,
@@ -6516,6 +6696,7 @@
 		D9C463882B3059CA005F4792 /* Metadata.xcdatamodeld */ = {
 			isa = XCVersionGroup;
 			children = (
+				660345852BEBA19200A2464F /* Metadata v1.32.xcdatamodel */,
 				7669DCCC2BCEDE6500CF8F1C /* Metadata v1.31.xcdatamodel */,
 				D83912152B67ABE9000D6EA5 /* Metadata v1.26.xcdatamodel */,
 				310413C12B5167AD00470E12 /* Metadata v1.24.xcdatamodel */,
@@ -6538,7 +6719,7 @@
 				D9C463992B3059CA005F4792 /* Metadata v1.15.xcdatamodel */,
 				D9C4639A2B3059CA005F4792 /* Metadata v1.5.xcdatamodel */,
 			);
-			currentVersion = 7669DCCC2BCEDE6500CF8F1C /* Metadata v1.31.xcdatamodel */;
+			currentVersion = 660345852BEBA19200A2464F /* Metadata v1.32.xcdatamodel */;
 			path = Metadata.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;

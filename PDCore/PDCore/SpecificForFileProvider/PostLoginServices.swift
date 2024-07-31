@@ -77,8 +77,12 @@ public class PostLoginServices {
     }
     
     public func resetMOCs() {
-        self.storage.mainContext.reset()
-        self.storage.backgroundContext.reset()
+        storage.mainContext.performAndWait {
+            storage.mainContext.reset()
+        }
+        storage.backgroundContext.performAndWait {
+            storage.backgroundContext.reset()
+        }
     }
     
     #if os(macOS)

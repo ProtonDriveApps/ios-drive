@@ -25,6 +25,7 @@ public struct TelemetryData: Equatable {
         case settingEnabled
         case settingDisabled
         case backupUpdate
+        case backupBackgroundStart
         case backupBackgroundUpdate
         case uploadDone
     }

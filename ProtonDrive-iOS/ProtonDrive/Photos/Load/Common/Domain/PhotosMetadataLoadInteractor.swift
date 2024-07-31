@@ -23,36 +23,43 @@ final class PhotosMetadataLoadInteractor: ThrowingAsynchronousInteractor {
     private let shareIdDataSource: PhotoShareIdDataSource
     private let listing: PhotosListing
     private let updateRepository: LinksUpdateRepository
-    private let oldestPhotoIdRepository: OldestPhotoIdRepository
 
-    init(shareIdDataSource: PhotoShareIdDataSource, listing: PhotosListing, updateRepository: LinksUpdateRepository, oldestPhotoIdRepository: OldestPhotoIdRepository) {
+    init(shareIdDataSource: PhotoShareIdDataSource, listing: PhotosListing, updateRepository: LinksUpdateRepository) {
         self.shareIdDataSource = shareIdDataSource
         self.listing = listing
         self.updateRepository = updateRepository
-        self.oldestPhotoIdRepository = oldestPhotoIdRepository
     }
 
     func execute(with list: PhotosList) async throws -> PhotosLoadResponse {
         let shareId = try await shareIdDataSource.getShareId()
         try await updateLocalLinks(with: list, shareId: shareId)
         guard let lastPhoto = list.photos.last else {
-            return PhotosLoadResponse(lastItem: nil)
+            return PhotosLoadResponse(lastItem: nil, captureTimeThreshold: nil)
         }
 
         let lastId = lastPhoto.linkID
-        let localLastId = try? oldestPhotoIdRepository.getOldestPhotoId()
         let item = PhotosLoadResponse.Item(
             id: lastId,
-            captureTime: Date(timeIntervalSince1970: TimeInterval(lastPhoto.captureTime)),
-            isLastLocally: localLastId == lastId
+            captureTime: Date(timeIntervalSince1970: TimeInterval(lastPhoto.captureTime))
         )
-        return PhotosLoadResponse(lastItem: item)
+        
+        let fetchBar = 70
+        let startIdx = list.photos.count - fetchBar
+        let time = startIdx <= 0 ? nil : Date(timeIntervalSince1970: TimeInterval(list.photos[startIdx].captureTime))
+
+        return PhotosLoadResponse(lastItem: item, captureTimeThreshold: time)
     }
 
     private func updateLocalLinks(with list: PhotosList, shareId: String) async throws {
-        let linkIds = list.photos.map { $0.linkID }
-        let parameters = LinksMetadataParameters(shareId: shareId, linkIds: linkIds)
-        let links = try await listing.getLinksMetadata(with: parameters).links
-        try updateRepository.update(links: links, shareId: shareId)
+        let linkIds = list.photos.flatMap { [$0.linkID] + $0.relatedPhotos.map(\.linkID) }
+        let chunks = linkIds.splitInGroups(of: 150)
+        var allLinks: [Link] = []
+        for chunk in chunks {
+            let parameters = LinksMetadataParameters(shareId: shareId, linkIds: chunk)
+            let links = try await listing.getLinksMetadata(with: parameters).links
+            allLinks.append(contentsOf: links)
+        }
+        
+        try updateRepository.update(links: allLinks, shareId: shareId)
     }
 }

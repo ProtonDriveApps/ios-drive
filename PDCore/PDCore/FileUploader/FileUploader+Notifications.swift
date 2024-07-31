@@ -38,6 +38,10 @@ public extension Notification.Name {
         Notification.Name("ch.protonmail.protondrive.didInterruptOnFileUpload")
     }
 
+    static var didInterruptOnPhotoUpload: Notification.Name {
+        Notification.Name("ch.protonmail.protondrive.didInterruptOnPhotoUpload")
+    }
+
     static var didFinishStartUploadOperation: Notification.Name {
         Notification.Name("ch.protonmail.protondrive.didFinishStartUploadOperation")
     }

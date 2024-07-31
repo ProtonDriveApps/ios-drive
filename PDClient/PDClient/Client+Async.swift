@@ -60,7 +60,7 @@ extension Client {
     }
 
     @discardableResult
-    public func trashNodes(parameters: TrashLinksParameters, breadcrumbs: Breadcrumbs) async throws -> TrashLinksResponse {
+    public func trashNodes(parameters: TrashLinksParameters, breadcrumbs: Breadcrumbs) async throws -> MultipleLinkResponse {
         guard let credential = self.credentialProvider.clientCredential() else {
             throw Errors.couldNotObtainCredential
         }
@@ -83,7 +83,13 @@ extension Client {
         let endpoint = VolumesEndpoint(service: self.service, credential: credential)
         return try await request(endpoint).volumes
     }
-    
+
+    public func getShares() async throws -> [ShareShort] {
+        let credential = try credential()
+        let endpoint = SharesEndpoint(service: service, credential: credential)
+        return try await request(endpoint, completionExecutor: .asyncExecutor(dispatchQueue: backgroundQueue)).shares
+    }
+
     public func getShare(_ id: ShareID) async throws -> Share {
         let credential = try credential()
         let endpoint = ShareEndpoint(shareID: id, service: service, credential: credential)

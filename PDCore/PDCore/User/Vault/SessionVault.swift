@@ -481,7 +481,11 @@ extension SessionVault {
         let canonicalForm = email.canonicalForm
         return self.addresses?.first(where: { $0.email.canonicalForm == canonicalForm })
     }
-    
+
+    public func getEmail(addressId: String) -> String? {
+        return addresses?.first(where: { $0.addressID == addressId })?.email
+    }
+
     public func getPublicKeys(for email: String) -> [PublicKey] {
         guard let cachedPublicKeys = publicKeys else {
             // fallback for legacy users who logged in before publicKeys caching was introduced
@@ -513,7 +517,7 @@ extension SessionVault {
         guard let info = self.userInfo else {
             return nil
         }
-        return .init(usedSpace: Double(info.usedSpace), maxSpace: Double(info.maxSpace), invoiceState: InvoiceUserState(rawValue: info.delinquent) ?? .onTime, isPaid: info.hasAnySubscription)
+        return .init(usedSpace: Double(info.usedSpace), maxSpace: Double(info.maxSpace), invoiceState: InvoiceUserState(rawValue: info.delinquent) ?? .onTime, isPaid: info.hasAnySubscription, lockedFlags: info.lockedFlags)
     }
 
     public func getCoreUserInfo() -> ProtonCoreDataModel.UserInfo? {
@@ -565,7 +569,7 @@ extension SessionVault: QuotaResource {
         guard let info = getUserInfo() else {
             return nil
         }
-        return Quota(used: Int(info.usedSpace), total: Int(info.maxSpace))
+        return Quota(used: Int(info.usedSpace), total: Int(info.maxSpace), isPaid: info.isPaid)
     }
 
     public var availableQuotaPublisher: AnyPublisher<Quota, Never> {
@@ -631,12 +635,14 @@ public struct UserInfo: Equatable {
     public let maxSpace: Double
     public let invoiceState: InvoiceUserState
     public let isPaid: Bool
+    public let lockedFlags: LockedFlags?
 
-    public init(usedSpace: Double, maxSpace: Double, invoiceState: InvoiceUserState, isPaid: Bool) {
+    public init(usedSpace: Double, maxSpace: Double, invoiceState: InvoiceUserState, isPaid: Bool, lockedFlags: LockedFlags? = nil) {
         self.usedSpace = usedSpace
         self.maxSpace = maxSpace
         self.invoiceState = invoiceState
         self.isPaid = isPaid
+        self.lockedFlags = lockedFlags
     }
 
     public var availableStorage: Int {

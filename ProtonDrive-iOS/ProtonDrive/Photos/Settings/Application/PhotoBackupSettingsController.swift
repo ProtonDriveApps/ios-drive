@@ -28,10 +28,10 @@ protocol PhotoBackupSettingsController {
     func setImageEnabled(_ isEnabled: Bool)
     func setVideoEnabled(_ isEnabled: Bool)
     func setNotOlderThan(_ date: Date)
+    func setNetworkConnectionConstrained(_ isConstrained: Bool)
 }
 
 final class LocalPhotoBackupSettingsController: PhotoBackupSettingsController {
-    
     private let localSettings: LocalSettings
     private let isEnabledSubject: CurrentValueSubject<Bool, Never>
     private let isConstrainedSubject: CurrentValueSubject<Bool, Never>
@@ -114,5 +114,9 @@ final class LocalPhotoBackupSettingsController: PhotoBackupSettingsController {
     
     func setNotOlderThan(_ date: Date) {
         localSettings.photosBackupNotOlderThan = date
+    }
+
+    func setNetworkConnectionConstrained(_ isConstrained: Bool) {
+        localSettings.isPhotosBackupConnectionConstrained = isConstrained
     }
 }

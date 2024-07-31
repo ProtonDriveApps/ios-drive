@@ -31,6 +31,9 @@ struct MoreSectionViewModel {
 
 extension MoreSectionViewModel {
     private var shareIn: MoreSectionItem? {
+        guard file.isDownloadable else {
+            return nil
+        }
         guard let validBlocks = file.activeRevision?.blocksAreValid(),
         validBlocks else { return nil }
         return .shareIn

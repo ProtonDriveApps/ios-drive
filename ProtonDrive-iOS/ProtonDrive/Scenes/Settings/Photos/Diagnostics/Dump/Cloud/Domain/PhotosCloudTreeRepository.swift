@@ -32,6 +32,6 @@ final class PhotosCloudTreeRepository: TreeRepository {
         let response = try await metadataRepository.load()
         Log.debug("Mapping BE photos to a tree structure", domain: .diagnostics)
         let nodes = try mappingInteractor.map(response: response)
-        return Tree(root: Tree.Node(title: "root", descendants: nodes))
+        return Tree(root: Tree.Node(nodeTitle: "root", descendants: nodes))
     }
 }

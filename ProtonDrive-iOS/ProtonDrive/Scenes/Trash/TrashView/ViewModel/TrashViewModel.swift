@@ -29,6 +29,8 @@ final class TrashViewModel: ObservableObject, FinderViewModel, SortingViewModel,
     // MARK: FinderViewModel
     let model: TrashModel
     var childrenCancellable: AnyCancellable?
+    var lockedStateCancellable: AnyCancellable?
+    var lockedStateBannerVisibility: LockedStateAlertVisibility = .hidden
     @Published var transientChildren: [NodeWrapper] = []
     @Published var permanentChildren: [NodeWrapper] = []  {
         didSet { selection.updateSelectable(Set(permanentChildren.map(\.node.identifier))) }

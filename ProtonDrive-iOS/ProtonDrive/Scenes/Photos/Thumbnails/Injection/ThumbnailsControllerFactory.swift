@@ -47,10 +47,13 @@ struct ThumbnailsControllerFactory {
         tower.storage.backgroundContext
     }
 
-    func makeUrlsController(tower: Tower, type: ThumbnailType) -> ThumbnailURLsController {
+    func makeUrlsController(
+        tower: Tower,
+        type: ThumbnailType,
+        photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>
+    ) -> ThumbnailURLsController {
         let managedObjectContext = getManagedObjectContext(tower: tower)
-        let observer = FetchedResultsControllerObserver(controller: tower.storage.subscriptionToPhotoShares(moc: managedObjectContext))
-        let photoShareDataSource = PhotosFactory().makeLocalPhotosRootDataSource(observer: observer)
+        let photoShareDataSource = PhotosFactory().makeLocalPhotosRootDataSource(observer: photoSharesObserver)
         let volumeIdDataSource = DatabasePhotosVolumeIdDataSource(photoShareDataSource: photoShareDataSource)
         let idsDataSource = LocalPhotoThumbnailIdsRepository(managedObjectContext: managedObjectContext, storageManager: tower.storage)
         let listInteractor = ThumbnailsListFactory().makeInteractor(client: tower.client)

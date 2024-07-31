@@ -183,7 +183,7 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
 
         // Handle create new revision when avaiable
         if file.isCreatingFileDraft() || file.isEncryptingRevision() {
-            Log.info("\(type(of: self)).deleteUploadingFile: deleting local File/Photo state:encryptingRevision", domain: .uploader)
+            Log.info("\(type(of: self)).deleteUploadingFile: deleting local File/Photo state:encryptingRevision, UUID: \(uploadID)", domain: .uploader)
             file.delete()
         } else if file.isUploadingRevision() || file.isCommitingRevision() {
             if file is Photo {
@@ -192,21 +192,21 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
                 let shareID = file.shareID
                 Task {
                     do {
-                        Log.info("\(type(of: self)).deleteUploadingFile: deleting remote Photo state: .creatingFileDraft, .uploadingRevision, .commitingRevision", domain: .uploader)
+                        Log.info("\(type(of: self)).deleteUploadingFile: deleting remote Photo state: .creatingFileDraft, .uploadingRevision, .commitingRevision, UUID: \(uploadID)", domain: .uploader)
                         try await self.filecleaner.deleteUploadingFile(shareId: shareID, parentId: parentID, linkId: fileID)
                         file.delete()
                     } catch let responseError as ResponseError {
-                        Log.error(responseError, domain: .uploader)
+                        Log.error("\(String(describing: responseError.errorDescription)), UUID: \(uploadID)", domain: .uploader)
                         file.delete()
                     } catch CloudFileCleanerError.fileIsNotADraft {
-                        Log.error(CloudFileCleanerError.fileIsNotADraft, domain: .uploader)
+                        Log.error("\(CloudFileCleanerError.fileIsNotADraft)), UUID: \(uploadID)", domain: .uploader)
                     } catch {
+                        Log.error("\(String(describing: error.localizedDescription)), UUID: \(uploadID)", domain: .uploader)
                         file.delete()
-                        Log.error(error, domain: .uploader)
                     }
                 }
             } else {
-                Log.info("\(type(of: self)).deleteUploadingFile: deleting remote File state: .creatingFileDraft, .uploadingRevision, .commitingRevision", domain: .uploader)
+                Log.info("\(type(of: self)).deleteUploadingFile: deleting remote File state: .creatingFileDraft, .uploadingRevision, .commitingRevision, UUID: \(uploadID)", domain: .uploader)
                 self.filecleaner.deleteUploadingFile(linkId: file.id, parentId: parentId, shareId: file.shareID, completion: { _ in
                     // The result is ignored because deleting file draft is not strictly required.
                     // * the file draft will be cleared after 4 hours by backend's collector,
@@ -216,7 +216,7 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
                 file.delete()
             }
         } else {
-            Log.info("\(type(of: self)).deleteUploadingFile: unknown state ❌", domain: .uploader)
+            Log.info("\(type(of: self)).deleteUploadingFile: unknown state ❌, UUID: \(uploadID)", domain: .uploader)
         }
     }
 

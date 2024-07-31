@@ -47,7 +47,12 @@ public class StorageManager: NSObject, ManagedStorage {
         let storeDirectoryUrl = suiteUrl ?? NSPersistentContainer.defaultDirectoryURL()
         let storeFileUrl = storeDirectoryUrl.appendingPathComponent(databaseName + ".sqlite")
         
-        MigrationDetector().checkIfRequiresPostMigrationCleanup(storeAt: storeFileUrl, for: managedObjectModel)
+        do {
+            try MigrationDetector().checkIfRequiresPostMigrationCleanup(storeAt: storeFileUrl, for: managedObjectModel)
+        } catch { 
+            Log.error("Migration requirement check failed due to error: \(error.localizedDescription)",
+                      domain: .storage)
+        }
         
         let storeDescription = NSPersistentStoreDescription(url: storeFileUrl)
         storeDescription.shouldMigrateStoreAutomatically = true // Lightweight migration is enabled. Standard migrations from previous versions are to be handled below.
@@ -68,13 +73,17 @@ public class StorageManager: NSObject, ManagedStorage {
         }
         
         if let loadError = loadError as NSError? {
+            let hashDigest = (try? MigrationDetector().hashDigest(storeAt: storeFileUrl)) ?? "UNREADABLE"
+            Log.error("Persistent coordinator creation failed with \(loadError.localizedDescription). Hash digest on disk: \(hashDigest)", domain: .storage)
+            
             switch loadError.code {
             case NSInferredMappingModelError, NSMigrationMissingMappingModelError: // Lightweight migration not possible.
                 fallthrough
             case NSPersistentStoreIncompatibleVersionHashError:
-                do {
+                #if os(iOS)
                     // Delete any stored files, as their references will be lost with the persistent store being reset
-                    try container.persistentStoreCoordinator.destroyPersistentStore(at: storeFileUrl, ofType: NSSQLiteStoreType, options: nil)
+                    // Delete `Metadata.sqlite`
+                    deleteSQLite(storeDirectoryUrl: storeDirectoryUrl)
                     PDFileManager.destroyPermanents()
                     PDFileManager.destroyCaches()
 
@@ -82,9 +91,22 @@ public class StorageManager: NSObject, ManagedStorage {
                     PDFileManager.initializeIntermediateFolders()
                     
                     container = StorageManager.defaultPersistentContainer(suiteUrl: suiteUrl)
-                } catch {
-                    fatalError("Failed to destroy persistent store: \(error)")
-                }
+                #else
+                    do {
+                        // Delete any stored files, as their references will be lost with the persistent store being reset
+                        try container.persistentStoreCoordinator.destroyPersistentStore(at: storeFileUrl, ofType: NSSQLiteStoreType, options: nil)
+                        PDFileManager.destroyPermanents()
+                        PDFileManager.destroyCaches()
+
+                        // Recreate directories
+                        PDFileManager.initializeIntermediateFolders()
+                        
+                        container = StorageManager.defaultPersistentContainer(suiteUrl: suiteUrl)
+                    } catch {
+                        Log.error("Persistent coordinator destroying failed with \(loadError.localizedDescription)", domain: .storage)
+                        fatalError("Failed to destroy persistent store: \(error)")
+                    }
+                #endif
             default:
                 /*
                  Typical reasons for an error here include:
@@ -98,6 +120,24 @@ public class StorageManager: NSObject, ManagedStorage {
         }
         
         return container
+    }
+    
+    private static func deleteSQLite(storeDirectoryUrl: URL, databaseName: String = "Metadata") {
+        let exts = ["sqlite", "sqlite-shm", "sqlite-wal"]
+        var destroyErrors: [Error] = []
+        for ext in exts {
+            let storeFileUrl = storeDirectoryUrl.appendingPathComponent("\(databaseName).\(ext)")
+            do {
+                try FileManager.default.removeItem(at: storeFileUrl)
+            } catch {
+                destroyErrors.append(error)
+            }
+        }
+        if !destroyErrors.isEmpty {
+            let description = destroyErrors.map(\.localizedDescription).joined(separator: ", ")
+            Log.error("Persistent coordinator destroying failed with \(description)", domain: .storage)
+            fatalError("Failed to destroy persistent store: \(destroyErrors[0])")
+        }
     }
 
     internal static func inMemoryPersistantContainer() -> NSPersistentContainer {
@@ -258,13 +298,31 @@ public class StorageManager: NSObject, ManagedStorage {
         await self.backgroundContext.perform {
             self.backgroundContext.reset()
             
-            [Node.self, Block.self, Revision.self, Volume.self, Share.self, Thumbnail.self, ShareURL.self, Photo.self, Device.self, PhotoRevision.self, ThumbnailBlob.self].forEach { entity in
-                let request = NSBatchDeleteRequest(fetchRequest: NSFetchRequest<NSFetchRequestResult>(entityName: String(describing: entity)))
-                request.resultType = .resultTypeObjectIDs
-                do {
-                    _ = try self.persistentContainer.persistentStoreCoordinator.execute(request, with: self.backgroundContext)
-                } catch {
-                    assert(false, "Could not perform batch deletion after logout")
+            let hasInMemoryStore = self.persistentContainer.persistentStoreCoordinator.persistentStores.contains { store in
+                store.type == NSPersistentStore.StoreType.inMemory.rawValue
+            }
+            
+            // in memory stores do not support the NSBatchDeleteRequest
+            if hasInMemoryStore {
+                [Node.self, Block.self, Revision.self, Volume.self, Share.self, Thumbnail.self, ShareURL.self, Photo.self, Device.self, PhotoRevision.self, ThumbnailBlob.self].forEach { entity in
+                    let request = NSFetchRequest<NSManagedObject>(entityName: String(describing: entity))
+                    do {
+                        let result = try self.backgroundContext.fetch(request)
+                        result.forEach { self.backgroundContext.delete($0) }
+                        try self.backgroundContext.save()
+                    } catch {
+                        assert(false, "Could not perform one-by-one deletion after logout")
+                    }
+                }
+            } else {
+                [Node.self, Block.self, Revision.self, Volume.self, Share.self, Thumbnail.self, ShareURL.self, Photo.self, Device.self, PhotoRevision.self, ThumbnailBlob.self].forEach { entity in
+                    let request = NSBatchDeleteRequest(fetchRequest: NSFetchRequest<NSFetchRequestResult>(entityName: String(describing: entity)))
+                    request.resultType = .resultTypeObjectIDs
+                    do {
+                        _ = try self.persistentContainer.persistentStoreCoordinator.execute(request, with: self.backgroundContext)
+                    } catch {
+                        assert(false, "Could not perform batch deletion after logout")
+                    }
                 }
             }
         }

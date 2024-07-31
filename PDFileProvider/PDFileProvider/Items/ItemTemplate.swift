@@ -35,10 +35,10 @@ public class ItemTemplate: NSObject, NSFileProviderItem {
         self.typeIdentifier = type
         #endif
         
-        super.init()
-
-        let metadataVersion = MetadataVersion(item: self).encoded()
+        let metadataVersion = MetadataVersion(parentItemIdentifier: parentId, filename: filename).encoded()
         self.itemVersion = .init(contentVersion: Data(), metadataVersion: metadataVersion)
+
+        super.init()
     }
 
     public init(item: NodeItem) {

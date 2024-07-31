@@ -83,7 +83,7 @@ extension UNNotificationRequest {
         )
 
         self.init(
-            identifier: localNotification.id.uuidString,
+            identifier: localNotification.id,
             content: content,
             trigger: trigger
         )

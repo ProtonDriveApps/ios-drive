@@ -45,12 +45,12 @@ final class PhotosDatabaseTreeRepository: TreeRepository {
                 try self.makeListNode(identifier: identifier, photos: photos)
             }
         }
-        return Tree(root: Tree.Node(title: "root", descendants: items))
+        return Tree(root: Tree.Node(nodeTitle: "root", descendants: items))
     }
 
     private func makeListNode(identifier: String, photos: [Photo]) throws -> Tree.Node {
         return Tree.Node(
-            title: identifier,
+            nodeTitle: identifier,
             descendants: try photos.map(makePhotoNode)
         )
     }
@@ -58,6 +58,6 @@ final class PhotosDatabaseTreeRepository: TreeRepository {
     private func makePhotoNode(from photo: Photo) throws -> Tree.Node {
         let title = try photo.decryptName()
         let descendants = try photo.children.map(makePhotoNode)
-        return Tree.Node(title: title, descendants: descendants)
+        return Tree.Node(nodeTitle: title, descendants: descendants)
     }
 }

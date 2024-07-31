@@ -26,6 +26,17 @@ public enum FeatureAvailabilityFlag: CaseIterable {
     case domainReconnectionEnabled
     case postMigrationJunkFilesCleanup
     case newTrayAppMenuEnabled
+    case pushNotificationIsEnabled
     case logCollectionEnabled
     case logCollectionDisabled
+    case oneDollarPlanUpsellEnabled
+
+    // Sharing
+    case driveSharingMigration
+    case driveSharingDevelopment
+    case driveSharingInvitations
+    case driveSharingExternalInvitations
+    case driveSharingDisabled
+    case driveSharingExternalInvitationsDisabled
+    case driveSharingEditingDisabled
 }

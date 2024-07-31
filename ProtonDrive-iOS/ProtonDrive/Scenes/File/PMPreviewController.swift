@@ -46,8 +46,21 @@ final class PMPreviewController: QLPreviewController {
     }
 
     private func share(_ item: QLPreviewItem) {
-        let vc = UIActivityViewController(activityItems: [item], applicationActivities: nil)
-        vc.popoverPresentationController?.sourceView = self.view
-        present(vc, animated: true, completion: nil)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            let vc = UIActivityViewController(activityItems: [item], applicationActivities: nil)
+            vc.popoverPresentationController?.sourceView = self.view
+            present(vc, animated: true, completion: nil)
+        } else {
+            // In iPad if wants to use UIActivityViewController, needs to assign `sourceItem`
+            // But there is no way to access share button from QLPreviewController
+            // Use this hacky way to trigger share button 
+            guard let nav = children.first as? UINavigationController else { return }
+            let barSubViews = nav.navigationBar.subviews
+            guard
+                let contentView = barSubViews.first(where: { $0.description.contains("UINavigationBarContentView") }),
+                let stackView = contentView.subviews.first(where: { $0.description.contains("UIButtonBarStackView") })
+            else { return }
+            stackView.subviews.first?.gestureRecognizers?.first?.state = .ended
+        }
     }
 }

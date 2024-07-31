@@ -66,17 +66,23 @@ extension AuthenticatedDependencyContainer {
     @MainActor
     func makeProtectViewController() async -> UIViewController {
         let viewController = ProtectViewController()
-        let viewModel = makeProtectViewModel()
-        let coordinator = makeProtectCoordinator(viewController)
-
+        let lockedStateController = makeLockedStateController()
+        let coordinator = makeProtectCoordinator(controller: lockedStateController, viewController: viewController)
+        let viewModel = makeProtectViewModel(controller: lockedStateController, coordinator: coordinator)
         viewController.viewModel = viewModel
-        viewController.onLocked = coordinator.onLocked
-        viewController.onUnlocked = coordinator.onUnlocked
-
         return viewController
     }
 
-    private func makeProtectViewModel() -> ProtectViewModel {
+    private func makeProtectViewModel(controller: LockedStateControllerProtocol, coordinator: ProtectCoordinatorProtocol) -> ProtectViewModel {
+        return ProtectViewModel(
+            controller: controller,
+            lockManager: tower,
+            signoutManager: tower,
+            coordinator: coordinator
+        )
+    }
+
+    private func makeLockedStateController() -> LockedStateControllerProtocol {
         let removedMainKeyPublisher = NotificationCenter.default.publisher(for: Keymaker.Const.removedMainKeyFromMemory)
             .merge(with: NotificationCenter.default.publisher(for: Keymaker.Const.requestMainKey))
             .filter { _ in self.keymaker.isProtected() == true }
@@ -88,17 +94,14 @@ extension AuthenticatedDependencyContainer {
             .map { _ in Void() }
             .receive(on: DispatchQueue.main)
             .eraseToAnyPublisher()
-
-        return ProtectViewModel(
-            lockManager: tower,
-            signoutManager: tower,
+        return LockedStateController(
             isLocked: keymaker.isLocked,
             removedMainKeyPublisher: removedMainKeyPublisher,
             obtainedMainKeyPublisher: obtainedMainKeyPublisher
         )
     }
 
-    private func makeProtectCoordinator(_ viewController: ProtectViewController) -> ProtectCoordinator {
+    private func makeProtectCoordinator(controller: LockedStateControllerProtocol, viewController: ProtectViewController) -> ProtectCoordinatorProtocol {
         let humanHelper = makeHumanVerificationHelper(networkService)
         humanCheckHelper = humanHelper
         return ProtectCoordinator(
@@ -106,7 +109,9 @@ extension AuthenticatedDependencyContainer {
             viewController: viewController,
             humanVerificationHelper: humanHelper,
             lockedViewControllerFactory: makeLockViewController,
-            unlockedViewControllerFactory: makePopulateViewController
+            unlockedViewControllerFactory: { [unowned self] in
+                self.makePopulateViewController(lockedStateController: controller)
+            }
         )
     }
 

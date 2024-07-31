@@ -24,23 +24,23 @@ import UIKit
 @available(iOSApplicationExtension, unavailable)
 public extension PMSettingsSectionViewModel {
     static var systemSettings: PMSettingsSectionViewModel {
-        PMSettingsSectionBuilder(bundle: PMSettings.bundle)
-            .title("pmsettings-settings-system-settings-section")
+        PMSettingsSectionBuilder()
+            .title("pmsettings-settings-system-settings-section".localized(in: PMSettings.bundle))
             .appendRow(PMSystemSettingConfiguration.language)
             .appendRow(PMSystemSettingConfiguration.notifications)
             .build()
     }
 
-    static func appSettings(with locker: Locker) -> PMSettingsSectionViewModel {
-        PMSettingsSectionBuilder(bundle: PMSettings.bundle)
-            .title("pmsettings-settings-app-settings-section")
-            .appendRow(PMPinFaceIDDrillDownCellConfiguration.security(locker: locker))
+    static func appSettings(with locker: Locker, isPhotosEnabled: @escaping () -> Bool) -> PMSettingsSectionViewModel {
+        PMSettingsSectionBuilder()
+            .title("pmsettings-settings-app-settings-section".localized(in: PMSettings.bundle))
+            .appendRow(PMPinFaceIDDrillDownCellConfiguration.security(locker: locker, isPhotosEnabled: isPhotosEnabled))
             .build()
     }
 
     static var about: PMSettingsSectionViewModel {
-        PMSettingsSectionBuilder(bundle: PMSettings.bundle)
-            .title("pmsettings-settings-about-section")
+        PMSettingsSectionBuilder()
+            .title("pmsettings-settings-about-section".localized(in: PMSettings.bundle))
             .appendRow(PMAboutConfiguration.privacy)
             .appendRow(PMAboutConfiguration.terms)
             .build()
@@ -48,7 +48,7 @@ public extension PMSettingsSectionViewModel {
     
     @available(iOS 13.0, *)
     static func telemetry(delegate: TelemetrySettingsDelegate, telemetrySettingsService: TelemetrySettingsServiceProtocol) -> PMSettingsSectionViewModel {
-        PMSettingsSectionBuilder(bundle: PMSettings.bundle)
+        PMSettingsSectionBuilder()
             .title("Telemetry")
             .appendRow(PMSwitchSecurityCellConfiguration.telemetry(
                 delegate: delegate,
@@ -59,9 +59,9 @@ public extension PMSettingsSectionViewModel {
 }
 
 public extension PMPinFaceIDDrillDownCellConfiguration {
-    static func security(locker: Locker) -> PMPinFaceIDDrillDownCellConfiguration {
+    static func security(locker: Locker, isPhotosEnabled: @escaping () -> Bool) -> PMPinFaceIDDrillDownCellConfiguration {
         let vcProvider = {
-            SecuritySettingsAssembler.assemble(locker: locker)
+            SecuritySettingsAssembler.assemble(locker: locker, isPhotosEnabled: isPhotosEnabled)
         }
         return PMPinFaceIDDrillDownCellConfiguration(
             lockReader: locker,

@@ -21,17 +21,20 @@ import PDCore
 class OpenPhotosNotificatingBackgroundWorkController: BackgroundWorkController {
     let photosUploadWorker: WorkerState
     let userNotificator: UserNotificator
+    let backgroundWorkPolicy: BackgroundWorkPolicy
 
     init(
         photosUploadWorker: WorkerState,
-        userNotificator: UserNotificator
+        userNotificator: UserNotificator,
+        backgroundWorkPolicy: BackgroundWorkPolicy
     ) {
         self.photosUploadWorker = photosUploadWorker
         self.userNotificator = userNotificator
+        self.backgroundWorkPolicy = backgroundWorkPolicy
     }
 
     func start() {
-        if photosUploadWorker.isWorking {
+        if backgroundWorkPolicy.canExecute && photosUploadWorker.isWorking {
             userNotificator.notify(.remindOpenApp)
         }
     }
@@ -43,6 +46,6 @@ class OpenPhotosNotificatingBackgroundWorkController: BackgroundWorkController {
 
 extension LocalNotification {
     static var remindOpenApp: LocalNotification {
-        LocalNotification(id: UUID(), title: "Proton Drive", body: "Check in with Proton Drive to confirm your photos are backed up and secure.", thread: "ch.protondrive.usernotification.photosUploadReminder", delay: .leastNonzeroMagnitude)
+        LocalNotification(id: UUID().uuidString, title: "Proton Drive", body: "Check in with Proton Drive to confirm your photos are backed up and secure.", thread: "ch.protondrive.usernotification.photosUploadReminder", delay: .leastNonzeroMagnitude)
     }
 }

@@ -48,7 +48,6 @@
 #include "SentryCrashUUIDConversion.h"
 #include "SentryScopeSyncC.h"
 
-// #define SentryCrashLogger_LocalLevel TRACE
 #include "SentryCrashLogger.h"
 
 #include <errno.h>
@@ -1550,8 +1549,6 @@ writeSystemInfo(const SentryCrashReportWriter *const writer, const char *const k
             writer, SentryCrashField_OSVersion, monitorContext->System.osVersion);
         writer->addBooleanElement(
             writer, SentryCrashField_Jailbroken, monitorContext->System.isJailbroken);
-        writer->addStringElement(
-            writer, SentryCrashField_BootTime, monitorContext->System.bootTime);
         writer->addStringElement(
             writer, SentryCrashField_AppStartTime, monitorContext->System.appStartTime);
         writer->addStringElement(

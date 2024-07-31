@@ -17,43 +17,78 @@
 
 import Combine
 import Foundation
+import PDCore
 
 final class PopulateViewModel: LogoutRequesting {
-    public let populatedPublisher: AnyPublisher<PopulatedState, Never>
-
-    private let populatedSubject: CurrentValueSubject<PopulatedState, Never>
+    private let lockedStateController: LockedStateControllerProtocol
+    private let populatedStateController: PopulatedStateControllerProtocol
     private let populator: DrivePopulator
     private let eventsStarter: EventsSystemStarter
+    private let onboardingObserver: OnboardingObserverProtocol
+    private let coordinator: PopulateCoordinatorProtocol
+    private var cancellables = Set<AnyCancellable>()
 
     public init(
+        lockedStateController: LockedStateControllerProtocol,
+        populatedStateController: PopulatedStateControllerProtocol,
         populator: DrivePopulator,
-        eventsStarter: EventsSystemStarter
+        eventsStarter: EventsSystemStarter,
+        onboardingObserver: OnboardingObserverProtocol,
+        coordinator: PopulateCoordinatorProtocol
     ) {
-        let subject: CurrentValueSubject<PopulatedState, Never> = CurrentValueSubject(populator.state)
-
+        self.lockedStateController = lockedStateController
+        self.populatedStateController = populatedStateController
         self.populator = populator
         self.eventsStarter = eventsStarter
-        self.populatedSubject = subject
-        self.populatedPublisher = subject
-            .removeDuplicates()
-            .eraseToAnyPublisher()
+        self.onboardingObserver = onboardingObserver
+        self.coordinator = coordinator
     }
 
-    public func populate() {
-        populator.populate { [weak self] result in
-            if let self {
-                switch result {
-                case .success:
-                    self.populatedSubject.send(self.populator.state)
-                    
-                case .failure:
-                    self.requestLogout()
+    func viewDidLoad() {
+        // It's necessary to subscribe after the view is loaded.
+        // Any updates can be triggered immediately for logged in user and for continuing we need existing view stack.
+        populatedStateController.state
+            .sink { [weak self] state in
+                self?.handleState(state)
+            }
+            .store(in: &cancellables)
+
+        Publishers.CombineLatest(populatedStateController.state, lockedStateController.isLocked)
+            .map { populateState, isLocked in
+                populateState.isPopulated && !isLocked
+            }
+            .removeDuplicates()
+            .sink { [weak self] isReady in
+                // To start events we need both populated state and unlocked app.
+                // Populated state should be set as soon as shares are fetched.
+                // Unlocked state should be set if the user doesn't use 'applock' or when they enter correct one.
+                if isReady {
+                    self?.eventsStarter.startEventsSystem()
                 }
             }
+            .store(in: &cancellables)
+    }
+
+    private func handleState(_ state: PopulatedState) {
+        Log.info("Populated state is changed to \(state.description)", domain: .application)
+        switch state {
+        case let .populated(with: id):
+            coordinator.showPopulated(root: id)
+            onboardingObserver.startToObserveIsOnboardedStatus()
+        case .unpopulated:
+            populate()
         }
     }
 
-    public func startEventsSystem() {
-        eventsStarter.startEventsSystem()
+    private func populate() {
+        populator.populate { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success:
+                self.populatedStateController.setState(self.populator.state)
+            case .failure:
+                self.requestLogout()
+            }
+        }
     }
 }

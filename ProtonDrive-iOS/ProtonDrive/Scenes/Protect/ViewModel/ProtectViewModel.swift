@@ -20,38 +20,47 @@ import Foundation
 import PDCore
 
 final class ProtectViewModel: LogoutRequesting {
+    private let controller: LockedStateControllerProtocol
+    private let lockManager: LockManager
+    private let coordinator: ProtectCoordinatorProtocol
     private var cancellables = Set<AnyCancellable>()
-
-    let isLockedPublisher: AnyPublisher<Bool, Never>
+    private var lockCancellable: AnyCancellable?
 
     init(
+        controller: LockedStateControllerProtocol,
         lockManager: LockManager,
         signoutManager: SignOutManager,
-        isLocked: @escaping () -> Bool,
-        removedMainKeyPublisher: AnyPublisher<Void, Never>,
-        obtainedMainKeyPublisher: AnyPublisher<Void, Never>
+        coordinator: ProtectCoordinatorProtocol
     ) {
-        let initialStatus = isLocked()
-        let subject: CurrentValueSubject<Bool, Never> = .init(initialStatus)
+        self.controller = controller
+        self.lockManager = lockManager
+        self.coordinator = coordinator
+        subscribeToSignOut(signoutManager: signoutManager)
+    }
 
-        removedMainKeyPublisher
-            .sink { subject.send(true) }
-            .store(in: &cancellables)
-
-        obtainedMainKeyPublisher
-            .sink { subject.send(false) }
-            .store(in: &cancellables)
-
-        isLockedPublisher = subject
-            .removeDuplicates()
-            .eraseToAnyPublisher()
-
-        isLockedPublisher
-            .sink { isLocked in
-                isLocked ? lockManager.onLock() : lockManager.onUnlock()
+    func viewDidLoad() {
+        lockCancellable = controller.isLocked
+            .sink { [weak self] isLocked in
+                self?.handleLockChange(isLocked)
             }
-            .store(in: &cancellables)
+    }
 
+    func reset() {
+        Log.info("ProtectVM reset", domain: .application)
+        lockCancellable?.cancel()
+        lockCancellable = nil
+    }
+
+    private func handleLockChange(_ isLocked: Bool) {
+        if isLocked {
+            lockManager.onLock()
+            coordinator.onLocked()
+        } else {
+            coordinator.onUnlocked()
+        }
+    }
+
+    private func subscribeToSignOut(signoutManager: SignOutManager) {
         DriveNotification.signOut.publisher
             .sink { _ in
                 Task {
@@ -64,5 +73,3 @@ final class ProtectViewModel: LogoutRequesting {
             .store(in: &cancellables)
     }
 }
-
-struct DriveLogout: Error { }

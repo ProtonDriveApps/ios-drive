@@ -24,10 +24,12 @@ protocol PhotosBackupUpdateTelemetryDataFactory {
 final class ConcretePhotosBackupUpdateTelemetryDataFactory: PhotosBackupUpdateTelemetryDataFactory {
     private let repository: PhotosBackupUpdateValuesRepository
     private let userInfoFactory: PhotosTelemetryUserInfoFactory
+    private let connectionFactory: PhotosTelemetryConnectionFactoryProtocol
 
-    init(repository: PhotosBackupUpdateValuesRepository, userInfoFactory: PhotosTelemetryUserInfoFactory) {
+    init(repository: PhotosBackupUpdateValuesRepository, userInfoFactory: PhotosTelemetryUserInfoFactory, connectionFactory: PhotosTelemetryConnectionFactoryProtocol) {
         self.repository = repository
         self.userInfoFactory = userInfoFactory
+        self.connectionFactory = connectionFactory
     }
 
     func makeData() -> TelemetryData {
@@ -55,6 +57,7 @@ final class ConcretePhotosBackupUpdateTelemetryDataFactory: PhotosBackupUpdateTe
     private func makeDimensions(from values: PhotosBackupUpdateValues) -> [String: String] {
         var dimensions = userInfoFactory.makeDimensions()
         dimensions["is_initial_backup"] = values.isInitialBackup ? "yes" : "no"
+        dimensions.merge(connectionFactory.makeDimensions(), uniquingKeysWith: { current, _ in current })
         return dimensions
     }
 }

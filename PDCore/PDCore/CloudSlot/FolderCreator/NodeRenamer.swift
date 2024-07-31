@@ -39,7 +39,7 @@ public final class NodeRenamer {
         self.cloudNodeRenamer = cloudNodeRenamer
     }
 
-    public func rename(_ node: Node, to newName: String, mimeType: String) async throws {
+    public func rename(_ node: Node, to newName: String, mimeType: String?) async throws {
         let signersKit = try signersKitFactory.make(forSigner: .main)
         let validatedNewName = try newName.validateNodeName(validator: NameValidations.iosName)
 
@@ -80,7 +80,13 @@ public final class NodeRenamer {
             let node = node.in(moc: self.moc)
             node.name = newEncryptedName
             node.nodeHash = newNameHash
-            node.mimeType = mimeType
+
+            // MIME type should remain unchanged if the rename either removed
+            // the file extension, or it's Proton Doc, which doesn't have an
+            // extension on other platform.
+            if let mimeType {
+                node.mimeType = mimeType
+            }
 
             try self.moc.saveOrRollback()
         }

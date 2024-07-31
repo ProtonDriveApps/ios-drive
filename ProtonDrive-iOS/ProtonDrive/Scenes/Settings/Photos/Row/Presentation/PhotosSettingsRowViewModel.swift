@@ -44,4 +44,6 @@ final class PhotosSettingsRowViewModel: PMDrillDownCellViewModel {
     var title: String {
         "Photos backup"
     }
+    
+    var accessibilityIdentifier: String { "Photos backup" }
 }

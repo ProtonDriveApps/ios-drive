@@ -28,20 +28,6 @@ public extension Tower {
         cloudSlot?.scanTrashed(shareID: shareID, page: page, pageSize: size, handler: handler)
     }
 
-    func trash(nodes: [Node], completion: @escaping (Result<Void, Error>) -> Void)  {
-        guard let moc = nodes.first?.moc else { return }
-        moc.performAndWait {
-            guard let parent = nodes.first?.parentLink else { return }
-            let groups = nodes.map(\.id).splitInGroups(of: 150)
-
-            groups.forEach { linkGroup in
-                cloudSlot?.trash(shareID: parent.shareID, parentLinkID: parent.id, linkIDs: linkGroup, breadcrumbs: .startCollecting()) { [unowned self] result in
-                    completion(result.map { self.trashNodeLocally(linkGroup) })
-                }
-            }
-        }
-    }
-
     @available(*, deprecated, message: "Use the NodeIdentifier version")
     func delete(nodes: [String], shareID: String, completion: @escaping (Result<Void, Error>) -> Void) {
         let groups = nodes.splitInGroups(of: 150)
@@ -100,6 +86,22 @@ public extension Tower {
         }
     }
 
+    /// ⚠️ A local node only exists in the user's device. There is no point to mark the Node as trash because this state should not be representable. Delete directly.
+    func trashLocalNode(_ ids: [String]) {
+        guard !ids.isEmpty else { return }
+        Log.info("Will delete local node", domain: .storage)
+        let moc = storage.backgroundContext
+        moc.performAndWait {
+            do {
+                let newNodes = storage.fetchNodes(ids: ids, moc: moc)
+                newNodes.forEach { $0.state = .deleted }
+                try moc.saveWithParentLinkCheck()
+            } catch {
+                Log.error(error.localizedDescription, domain: .storage)
+            }
+        }
+    }
+
     private func setToBeDeleted(_ ids: [String]) {
         // should happen on a main context because changes a transient property relevant to main context only
         // moc.saveWithSpecialCheck() is not needed by same reason
@@ -124,7 +126,33 @@ public extension Tower {
 
 // MARK: - New APIs with NodeIdentifier
 public extension Tower {
-    
+    func trash(_ nodes: [TrashingNodeIdentifier], completion: @escaping (Result<Void, Error>) -> Void) {
+        Task { [weak self] in
+            var requestError: Error?
+
+            do {
+                for group in nodes.splitIntoChunks() {
+                    guard let self = self else { return }
+
+                    try await self.trash(shareID: group.share, parentID: group.parent, linkIDs: group.links)
+                }
+            } catch {
+                requestError = error
+            }
+
+            if let requestError = requestError {
+                completion(.failure(requestError))
+            } else {
+                completion(.success)
+            }
+        }
+    }
+
+    func trash(shareID: String, parentID: String, linkIDs: [String]) async throws {
+        try await cloudSlot.trash(shareID: shareID, parentID: parentID, linkIDs: linkIDs)
+        self.trashNodeLocally(linkIDs)
+    }
+
     func delete(_ nodes: [NodeIdentifier], completion: @escaping (Result<Void, Error>) -> Void) {
         Task { [weak self] in
             var requestError: (any Error)?
@@ -210,5 +238,33 @@ public extension Tower {
 private extension Tower {
     func restoreLocally(_ ids: Set<String>) {
         self.restoreLocally(Array(ids))
+    }
+}
+
+public struct TrashingNodeIdentifier: Equatable, Hashable {
+    public let shareID: String
+    public let parentID: String
+    public let nodeID: String
+
+    public init(nodeID: String, shareID: String, parentID: String) {
+        self.nodeID = nodeID
+        self.shareID = shareID
+        self.parentID = parentID
+    }
+}
+
+public extension Node {
+    var isLocalFile: Bool {
+        if self is Folder {
+            return false
+        }
+
+        guard let file = self as? File,
+              UUID(uuidString: file.id) != nil,
+              let revisionDraft = file.activeRevisionDraft,
+              revisionDraft.uploadState == .created, revisionDraft.uploadState == .encrypted  else {
+            return false
+        }
+        return true
     }
 }

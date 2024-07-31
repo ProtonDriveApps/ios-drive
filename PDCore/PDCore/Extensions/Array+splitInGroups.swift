@@ -21,6 +21,19 @@ extension Array {
             Array(self[$0 ..< Swift.min($0 + size, count)])
         }
     }
+
+    public func partitioned(by predicate: (Element) -> Bool) -> (trueElements: [Element], falseElements: [Element]) {
+        var trueElements: [Element] = []
+        var falseElements: [Element] = []
+        for element in self {
+            if predicate(element) {
+                trueElements.append(element)
+            } else {
+                falseElements.append(element)
+            }
+        }
+        return (trueElements, falseElements)
+    }
 }
 
 extension Array where Element == NodeIdentifier {
@@ -42,5 +55,30 @@ extension Array where Element == NodeIdentifier {
 
         return result
     }
+}
 
+extension Array where Element == TrashingNodeIdentifier {
+    func splitIntoChunks() -> [(share: String, parent: String, links: [String])] {
+        // Group TrashingNodeIdentifiers by shareID and parentID using a hashable struct
+        let groupedById = Dictionary(grouping: self) { Parent(shareID: $0.shareID, parentID: $0.parentID) }
+
+        // Transform TrashingNodeIdentifier to nodeID
+        let transformedGroup: [Parent: [String]] = groupedById.mapValues { $0.map { $0.nodeID } }
+
+        // Split each group into chunks of maximum size 150
+        var result: [(share: String, parent: String, links: [String])] = []
+        for (key, nodeIDs) in transformedGroup {
+            let chunks = nodeIDs.splitInGroups(of: 150)
+            for chunk in chunks {
+                result.append((key.shareID, key.parentID, chunk))
+            }
+        }
+
+        return result.sorted(by: { $0.share < $1.share }, { $0.parent < $1.parent })
+    }
+
+    private struct Parent: Hashable {
+        let shareID: String
+        let parentID: String
+    }
 }

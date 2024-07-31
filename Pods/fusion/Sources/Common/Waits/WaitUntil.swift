@@ -3,7 +3,7 @@
 //  fusion
 //
 //  Created by Mateusz Szklarek on 03.04.23.
-// 
+//
 //  The MIT License
 //
 //  Copyright (c) 2020 Proton Technologies AG
@@ -50,36 +50,41 @@ private enum RunLoop {
     /// - https://pspdfkit.com/blog/2016/running-ui-tests-with-ludicrous-speed/
     /// - https://bou.io/CTTRunLoopRunUntil.html
     static func runUntil(timeout: TimeInterval, condition: @escaping () -> Bool) -> Bool {
-        var fulfilled: Bool = false
+        var fulfilled = false
+        let startTime = CFAbsoluteTimeGetCurrent()
+        let endTime = startTime + timeout
+        let checkInterval: TimeInterval = 0.1
 
         let beforeWaiting: (CFRunLoopObserver?, CFRunLoopActivity) -> Void = { _, _ in
+            let currentTime = CFAbsoluteTimeGetCurrent()
+
             if fulfilled {
                 return
             }
 
             fulfilled = condition()
 
-            if fulfilled {
+            if fulfilled || currentTime >= endTime {
                 CFRunLoopStop(CFRunLoopGetCurrent())
             }
         }
+
         let observer = CFRunLoopObserverCreateWithHandler(
-            nil,
+            kCFAllocatorDefault,
             CFRunLoopActivity.beforeWaiting.rawValue,
             true,
             0,
             beforeWaiting
-        )
+        ).unsafelyUnwrapped
 
         CFRunLoopAddObserver(CFRunLoopGetCurrent(), observer, .defaultMode)
-        CFRunLoopRunInMode(.defaultMode, timeout, false)
+
+        while !fulfilled && CFAbsoluteTimeGetCurrent() < endTime {
+            CFRunLoopRunInMode(.defaultMode, checkInterval, false)
+        }
+
         CFRunLoopRemoveObserver(CFRunLoopGetCurrent(), observer, .defaultMode)
 
-        /*
-         If we haven't fulfilled the condition yet, test one more time before returning. This avoids
-         that we fail the test just because we somehow failed to properly poll the condition, e.g. if
-         the run loop didn't wake up.
-         */
         if !fulfilled {
             fulfilled = condition()
         }

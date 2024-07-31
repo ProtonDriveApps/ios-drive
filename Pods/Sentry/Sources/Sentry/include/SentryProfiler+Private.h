@@ -2,12 +2,15 @@
 
 #if SENTRY_TARGET_PROFILING_SUPPORTED
 
-#    import "SentryCompiler.h"
-#    import "SentrySpan.h"
+#    import "SentryDefines.h"
+#    import "SentryProfilerDefines.h"
 #    import <Foundation/Foundation.h>
 
 @class SentryEnvelopeItem;
 @class SentryHub;
+@class SentryId;
+@class SentryMetricProfiler;
+@class SentryOptions;
 @class SentryProfilerState;
 @class SentryTransaction;
 
@@ -16,31 +19,14 @@
 @class SentryScreenFrames;
 #    endif // SENTRY_HAS_UIKIT
 
-typedef NS_ENUM(NSUInteger, SentryProfilerTruncationReason) {
-    SentryProfilerTruncationReasonNormal,
-    SentryProfilerTruncationReasonTimeout,
-    SentryProfilerTruncationReasonAppMovedToBackground,
-};
-
 NS_ASSUME_NONNULL_BEGIN
 
-SENTRY_EXTERN const int kSentryProfilerFrequencyHz;
-
-SENTRY_EXTERN NSString *const kSentryProfilerSerializationKeySlowFrameRenders;
-SENTRY_EXTERN NSString *const kSentryProfilerSerializationKeyFrozenFrameRenders;
-SENTRY_EXTERN NSString *const kSentryProfilerSerializationKeyFrameRates;
-
-SENTRY_EXTERN_C_BEGIN
-
 /**
- * Disable profiling when running with TSAN because it produces a TSAN false positive, similar to
- * the situation described here: https://github.com/envoyproxy/envoy/issues/2561
+ * Perform necessary profiler tasks that should take place when the SDK starts: configure the next
+ * launch's profiling, stop tracer profiling if no automatic performance transaction is running,
+ * start the continuous profiler if enabled and not profiling from launch.
  */
-BOOL threadSanitizerIsPresent(void);
-
-NSString *profilerTruncationReasonName(SentryProfilerTruncationReason reason);
-
-SENTRY_EXTERN_C_END
+SENTRY_EXTERN void sentry_manageTraceProfilerOnStartSDK(SentryOptions *options, SentryHub *hub);
 
 /**
  * A wrapper around the low-level components used to gather sampled backtrace profiles.
@@ -50,17 +36,23 @@ SENTRY_EXTERN_C_END
 @interface SentryProfiler : NSObject
 
 @property (strong, nonatomic) SentryId *profilerId;
-
-@property (strong, nonatomic) SentryProfilerState *_state;
+@property (strong, nonatomic) SentryProfilerState *state;
+@property (assign, nonatomic) SentryProfilerTruncationReason truncationReason;
+@property (strong, nonatomic) SentryMetricProfiler *metricProfiler;
 
 #    if SENTRY_HAS_UIKIT
-@property (strong, nonatomic) SentryScreenFrames *_screenFrameData;
+/**
+ * @note This property is only needed for trace profiling, to store the appropriate GPU data per
+ * profiler instance when there might be multiple profiler instances all waiting for their linked
+ * transactions to finish. Once we move to continuous profiling only, this won't be needed as the
+ * data can be directly marshaled to the serialization function.
+ */
+@property (strong, nonatomic) SentryScreenFrames *screenFrameData;
 #    endif // SENTRY_HAS_UIKIT
 
-/**
- * Start a profiler, if one isn't already running.
- */
-+ (BOOL)startWithTracer:(SentryId *)traceId;
+SENTRY_NO_INIT
+
+- (instancetype)initWithMode:(SentryProfilerMode)mode;
 
 /**
  * Stop the profiler if it is running.
@@ -73,34 +65,6 @@ SENTRY_EXTERN_C_END
  * can query for its profile data. */
 - (BOOL)isRunning;
 
-/**
- * Whether there is any profiler that is currently running. A convenience method to query for this
- * information from other SDK components that don't have access to specific @c SentryProfiler
- * instances.
- */
-+ (BOOL)isCurrentlyProfiling;
-
-/**
- * Immediately record a sample of profiling metrics. Helps get full coverage of concurrent spans
- * when they're ended.
- */
-+ (void)recordMetrics;
-
-/**
- * Given a transaction, return an envelope item containing any corresponding profile data to be
- * attached to the transaction envelope.
- * */
-+ (nullable SentryEnvelopeItem *)createProfilingEnvelopeItemForTransaction:
-                                     (SentryTransaction *)transaction
-                                                            startTimestamp:startTimestamp;
-
-/**
- * Collect profile data corresponding with the given traceId and time period.
- * */
-+ (nullable NSMutableDictionary<NSString *, id> *)collectProfileBetween:(uint64_t)startSystemTime
-                                                                    and:(uint64_t)endSystemTime
-                                                               forTrace:(SentryId *)traceId
-                                                                  onHub:(SentryHub *)hub;
 @end
 
 NS_ASSUME_NONNULL_END

@@ -25,4 +25,13 @@ enum PopulatedState: Equatable {
         guard case .unpopulated = self else { return true }
         return false
     }
+    
+    var description: String {
+        switch self {
+        case .populated(let id):
+            return "Populated, \(id.nodeID)"
+        case .unpopulated:
+            return "Unpopulated"
+        }
+    }
 }

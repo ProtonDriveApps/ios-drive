@@ -67,9 +67,9 @@ final class PhotosActionViewModel: PhotosActionViewModelProtocol {
             }
             .store(in: &cancellables)
 
-        fileContentController.url
-            .sink(receiveCompletion: { _ in }, receiveValue: { [weak self] url in
-                self?.handleFileUpdate(url)
+        fileContentController.content
+            .sink(receiveCompletion: { _ in }, receiveValue: { [weak self] content in
+                self?.handleFileUpdate(content)
             })
             .store(in: &cancellables)
     }
@@ -82,15 +82,6 @@ final class PhotosActionViewModel: PhotosActionViewModelProtocol {
         coordinator.updateTabBar(isHidden: isSelecting)
         isVisible = isSelecting && !selectionController.getIds().isEmpty
         actions = makeActions()
-    }
-
-    private func handleFileUpdate(_ url: URL?) {
-        guard let url = url else {
-            return
-        }
-        coordinator.openNativeShare(url: url) { [weak self] in
-            self?.fileContentController.clear()
-        }
     }
 
     private func makeActions() -> [PhotosAction] {
@@ -121,12 +112,6 @@ final class PhotosActionViewModel: PhotosActionViewModelProtocol {
     private func share() {
         if let id = getSingleId() {
             coordinator.openShare(id: id)
-        }
-    }
-
-    private func shareNative() {
-        if let id = getSingleId() {
-            fileContentController.execute(with: id)
         }
     }
 
@@ -164,6 +149,35 @@ final class PhotosActionViewModel: PhotosActionViewModelProtocol {
             return "Remove item"
         } else {
             return "Remove \(count) items"
+        }
+    }
+}
+
+// MARK: - Native share
+extension PhotosActionViewModel {
+    private func shareNative() {
+        if let id = getSingleId() {
+            fileContentController.execute(with: id)
+        }
+    }
+
+    private func handleFileUpdate(_ content: FileContent?) {
+        guard let content else { return }
+        guard
+            content.couldBeLivePhoto,
+            let videoURL = content.childrenURLs.first
+        else {
+            share(url: content.url)
+            return
+        }
+        coordinator.openNativeShareForLivePhoto(imageURL: content.url, videoURL: videoURL) { [weak self] in
+            self?.fileContentController.clear()
+        }
+    }
+
+    private func share(url: URL) {
+        coordinator.openNativeShare(url: url) { [weak self] in
+            self?.fileContentController.clear()
         }
     }
 }

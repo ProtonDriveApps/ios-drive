@@ -19,4 +19,5 @@ import Foundation
 
 protocol PhotosStateCoordinator {
     func openRetryScreen()
+    func openSystemSettingPage()
 }

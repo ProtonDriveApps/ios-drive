@@ -28,7 +28,7 @@ public final class FetchResultControllerObserverPhotosBootstrapRepository: Photo
 
     public var isPhotosRootReady: AnyPublisher<Bool, Never> {
         observer.getPublisher().map { shares in
-            return shares.count == 1
+            return shares.count >= 1
         }
         .receive(on: DispatchQueue.main)
         .eraseToAnyPublisher()

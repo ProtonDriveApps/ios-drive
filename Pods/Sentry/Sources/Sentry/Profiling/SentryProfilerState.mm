@@ -1,9 +1,11 @@
 #import "SentryProfilerState.h"
 #if SENTRY_TARGET_PROFILING_SUPPORTED
 #    import "SentryBacktrace.hpp"
+#    import "SentryDependencyContainer.h"
 #    import "SentryFormatter.h"
 #    import "SentryProfileTimeseries.h"
 #    import "SentrySample.h"
+#    import "SentrySwift.h"
 #    import "SentryThreadWrapper.h"
 #    import <mach/mach_types.h>
 #    import <mach/port.h>
@@ -76,6 +78,12 @@ parseBacktraceSymbolsFunctionName(const char *symbol)
     block(_mutableState);
 }
 
+- (void)clear
+{
+    std::lock_guard<std::mutex> l(_lock);
+    _mutableState = [[SentryProfilerMutableState alloc] init];
+}
+
 - (void)cacheMainThreadID
 {
     std::lock_guard<std::mutex> l(_lock);
@@ -141,6 +149,8 @@ parseBacktraceSymbolsFunctionName(const char *symbol)
 
         const auto sample = [[SentrySample alloc] init];
         sample.absoluteTimestamp = backtrace.absoluteTimestamp;
+        sample.absoluteNSDateInterval
+            = SentryDependencyContainer.sharedInstance.dateProvider.date.timeIntervalSince1970;
         sample.threadID = backtrace.threadMetadata.threadID;
 
         const auto stackKey = [stack componentsJoinedByString:@"|"];

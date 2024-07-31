@@ -55,7 +55,7 @@ final class PhotoLibraryBurstCompoundResource: PhotoLibraryCompoundResource {
     }
 
     private func fetchSecondaryResources(for asset: PHAsset) -> [AssetResources] {
-        let fetchOptions = PHFetchOptions()
+        let fetchOptions = PHFetchOptions.defaultPhotosOptions()
         fetchOptions.includeAllBurstAssets = true
         let secondaryAssets = PHAsset.fetchAssets(withBurstIdentifier: asset.burstIdentifier ?? "", options: fetchOptions)
         var secondaryResources = [AssetResources]()

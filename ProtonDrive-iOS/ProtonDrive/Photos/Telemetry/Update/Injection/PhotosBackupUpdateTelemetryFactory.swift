@@ -19,10 +19,12 @@ import PDCore
 
 struct PhotosBackupUpdateTelemetryFactory {
     // swiftlint:disable:next function_parameter_count
-    func makeController(telemetryController: TelemetryController, stateController: PhotosBackupStateController, storage: PhotosTelemetryStorage, userInfoResource: UserInfoResource, uploadRepository: DurationMeasurementRepository, scanningRepository: DurationMeasurementRepository, duplicatesRepository: DurationMeasurementRepository, throttlingRepository: DurationMeasurementRepository) -> PhotosBackupUpdateTelemetryController {
+    func makeController(telemetryController: TelemetryController, stateController: PhotosBackupStateController, storage: PhotosTelemetryStorage, userInfoResource: UserInfoResource, uploadRepository: DurationMeasurementRepository, scanningRepository: DurationMeasurementRepository, duplicatesRepository: DurationMeasurementRepository, throttlingRepository: DurationMeasurementRepository, networkController: PhotoBackupNetworkControllerProtocol) -> PhotosBackupUpdateTelemetryController {
         let duration = Constants.Metrics.photosBackupHeartbeatInterval
         let valuesRepository = ConcretePhotosBackupUpdateValuesRepository(uploadRepository: uploadRepository, scanningRepository: scanningRepository, duplicatesRepository: duplicatesRepository, throttlingRepository: throttlingRepository, storage: storage, duration: duration)
         let userInfoFactory = PhotosTelemetryFactory().makeUserInfoFactory(userInfoResource: userInfoResource)
-        return ConcretePhotosBackupUpdateTelemetryController(telemetryController: telemetryController, stateController: stateController, valuesRepository: valuesRepository, timerResource: CommonRunLoopPausableTimerResource(duration: duration), dataFactory: ConcretePhotosBackupUpdateTelemetryDataFactory(repository: valuesRepository, userInfoFactory: userInfoFactory))
+        let connectionFactory = PhotosTelemetryConnectionFactory(networkController: networkController)
+        let dataFactory = ConcretePhotosBackupUpdateTelemetryDataFactory(repository: valuesRepository, userInfoFactory: userInfoFactory, connectionFactory: connectionFactory)
+        return ConcretePhotosBackupUpdateTelemetryController(telemetryController: telemetryController, stateController: stateController, valuesRepository: valuesRepository, timerResource: CommonRunLoopPausableTimerResource(duration: duration), dataFactory: dataFactory)
     }
 }

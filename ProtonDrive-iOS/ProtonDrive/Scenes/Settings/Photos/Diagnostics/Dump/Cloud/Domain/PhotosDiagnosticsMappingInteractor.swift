@@ -62,7 +62,7 @@ final class PhotosDiagnosticsMappingInteractor {
 
     private func makeNode(identifier: String, photos: [PhotosDiagnosticsResponse.Photo], decryptor: CloudNodeDecryptor) throws -> Tree.Node {
         return Tree.Node(
-            title: identifier,
+            nodeTitle: identifier,
             descendants: try photos.map { try makePhotoNode(from: $0, decryptor: decryptor) }
         )
     }
@@ -72,6 +72,6 @@ final class PhotosDiagnosticsMappingInteractor {
         let descendants = try photo.secondary.map { link in
             try decryptor.decryptName(link)
         }
-        return Tree.Node(title: decryptedName, descendants: descendants)
+        return Tree.Node(nodeTitle: decryptedName, descendants: descendants)
     }
 }

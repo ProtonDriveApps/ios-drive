@@ -23,7 +23,12 @@ extension UITestsFlag {
     static let clearAllPreference = UITestsFlag(content: "--clear_all_preference")
     static let skipNotificationPermissions = UITestsFlag(content: "--skip_notifications_permissions")
     static let skipOnboarding = UITestsFlag(content: "--skip_onboarding")
+    static let skipUpsell = UITestsFlag(content: "--skip_upsell")
     static let defaultOnboarding = UITestsFlag(content: "--default_onboarding")
+    static let defaultUpsell = UITestsFlag(content: "--default_upsell")
+    static let mockCellularConnection = UITestsFlag(content: "--mock_cellular_connection")
+    static let mockNoConnection = UITestsFlag(content: "--mock_no_connection")
+    static let filesAsDefaultTab = UITestsFlag(content: "--files_as_default_tab")
 }
 
 #endif

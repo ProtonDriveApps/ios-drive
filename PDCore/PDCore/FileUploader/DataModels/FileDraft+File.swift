@@ -33,10 +33,11 @@ extension FileDraft {
         }
         let uri = file.objectID.uriRepresentation().absoluteString
         let size = file.size
+        let mimeType = MimeType(value: file.mimeType)
 
         // If the main photo is already commited we produce an empty filedraft that will be interpreted as a parent that has children that need to be uploaded.
         if let photo = file as? Photo, photo.state == .active {
-            return FileDraft(uploadID: uploadID, file: file, state: .none, numberOfBlocks: 0, isEmpty: false, uri: uri, size: size)
+            return FileDraft(uploadID: uploadID, file: file, state: .none, numberOfBlocks: 0, isEmpty: false, uri: uri, size: size, mimeType: mimeType)
         }
 
         guard let revision = file.activeRevisionDraft else {
@@ -46,15 +47,15 @@ extension FileDraft {
         if state == .encryptingRevision || state == .encryptingNewRevision {
             if let size = try sizeForExistingFile(revision.normalizedUploadableResourceURL) {
                 let blocks = Int(ceil(Double(size) / Double(Constants.maxBlockSize)))
-                return FileDraft(uploadID: uploadID, file: file, state: state, numberOfBlocks: blocks, isEmpty: blocks == .zero, uri: uri, size: size)
+                return FileDraft(uploadID: uploadID, file: file, state: state, numberOfBlocks: blocks, isEmpty: blocks == .zero, uri: uri, size: size, mimeType: mimeType)
             } else {
                 return FileDraft.invalid(withFile: file)
             }
         } else if state == .creatingFileDraft || state == .creatingNewRevision || state == .uploadingRevision || state == .commitingRevision {
             let blocks = revision.blocks.count
-            return FileDraft(uploadID: uploadID, file: file, state: state, numberOfBlocks: blocks, isEmpty: blocks == .zero, uri: uri, size: size)
+            return FileDraft(uploadID: uploadID, file: file, state: state, numberOfBlocks: blocks, isEmpty: blocks == .zero, uri: uri, size: size, mimeType: mimeType)
         } else {
-            return FileDraft(uploadID: UUID(), file: file, state: .none, numberOfBlocks: 0, isEmpty: true, uri: uri, size: size)
+            return FileDraft(uploadID: UUID(), file: file, state: .none, numberOfBlocks: 0, isEmpty: true, uri: uri, size: size, mimeType: mimeType)
         }
     }
 
@@ -103,7 +104,7 @@ extension FileDraft {
     }
 
     static func invalid(withFile file: File) -> FileDraft {
-        return FileDraft(uploadID: UUID(), file: file, state: .none, numberOfBlocks: 0, isEmpty: true, uri: "", size: 1)
+        return FileDraft(uploadID: UUID(), file: file, state: .none, numberOfBlocks: 0, isEmpty: true, uri: "", size: 1, mimeType: .empty)
     }
 
     public enum State: Equatable {

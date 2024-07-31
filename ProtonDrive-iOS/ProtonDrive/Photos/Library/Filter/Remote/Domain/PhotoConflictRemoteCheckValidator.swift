@@ -59,14 +59,17 @@ final class ConcretePhotoConflictRemoteCheckValidator: PhotoConflictRemoteCheckV
             // TODO: Will not happen because we're filtering out drafts above
             Log.debug("Duplicate check: draft primary: \(primaryLocalHash.nameHash)", domain: .photosProcessing)
             return .skip
-        case .active, .trashed:
-            return try validateActiveOrTrashed(primaryItem: primaryRemoteItem, primaryLocalHash: primaryLocalHash, localItem: localItem, remoteItems: remoteItems)
+        case .trashed:
+            Log.info("Duplicate check: trashed primary: \(primaryLocalHash.nameHash). Skipping.", domain: .photosProcessing)
+            return .skip
+        case .active:
+            return try validateActive(primaryItem: primaryRemoteItem, primaryLocalHash: primaryLocalHash, localItem: localItem, remoteItems: remoteItems)
         case nil:
             return try validateNilPrimary(primaryLocalHash: primaryLocalHash, localItem: localItem)
         }
     }
 
-    private func validateActiveOrTrashed(primaryItem: PhotoRemoteDuplicateCheckItem, primaryLocalHash: PhotoHashes, localItem: PhotosFilterItem, remoteItems: [PhotoRemoteDuplicateCheckItem]) throws -> PhotoConflictRemoteCheckResult {
+    private func validateActive(primaryItem: PhotoRemoteDuplicateCheckItem, primaryLocalHash: PhotoHashes, localItem: PhotosFilterItem, remoteItems: [PhotoRemoteDuplicateCheckItem]) throws -> PhotoConflictRemoteCheckResult {
         guard let primaryLinkId = primaryItem.linkID else {
             // Inconsistent data (missing primary link id). Skipping compound.
             Log.error(DriveError("Duplicate check: missing primary link id: \(primaryLocalHash.nameHash)"), domain: .photosProcessing)

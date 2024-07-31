@@ -21,6 +21,7 @@ import Combine
 import PDCore
 import PDUIComponents
 import ProtonCoreNetworking
+import ProtonCoreDataModel
 
 typealias ListState = TrashViewModel.ListState
 typealias ObservableFinderViewModel = FinderViewModel & ObservableObject
@@ -77,6 +78,8 @@ protocol FinderViewModel: NodeEditionViewModel, FlatNavigationBarDelegate {
     func applyAction(completion: @escaping ApplyActionCompletion)
     
     var isUploadDisclaimerVisible: Bool { get }
+    var lockedStateCancellable: AnyCancellable? { get set }
+    var lockedStateBannerVisibility: LockedStateAlertVisibility { get set }
     func closeUploadDisclaimer()
 }
 
@@ -84,7 +87,11 @@ extension FinderViewModel {
     var node: Folder? {
         self.model.folder
     }
-    
+
+    var lockedFlags: LockedFlags? {
+        return self.model.tower.sessionVault.getUserInfo()?.lockedFlags
+    }
+
     func subscribeToChildren() {
         self.childrenCancellable?.cancel()
         self.childrenCancellable = self.model.children()
@@ -151,11 +158,12 @@ extension FinderViewModel {
 
 }
 
+typealias FinderViewModelWithSelection = any FinderViewModel & HasMultipleSelection
 extension FinderViewModel where Self: HasMultipleSelection {
 
     func actionBarAction(_ tapped: ActionBarButtonViewModel?, sheet: Binding<FinderCoordinator.Destination?>, menuItem: Binding<FinderMenu?>) {
-        let nodes = self.permanentChildren.filter { self.selection.selected.contains($0.node.identifier) }
-        
+        let nodes = selectedNodes()
+
         switch tapped {
         case .trashMultiple:
             let vm = NodeRowActionMultipleMenuViewModel(nodes: nodes.map(\.node), model: self)
@@ -165,10 +173,17 @@ extension FinderViewModel where Self: HasMultipleSelection {
             sheet.wrappedValue = .move(nodes.map(\.node), parent: self.node ?? nodes.map(\.node).first!.parentLink)
             
         case .offlineAvailableMultiple:
+            // Only downloadable nodes should be considered for offline available functionality
+            // (Proton docs should be excluded)
+            let nodes = nodes.filter { $0.node.isDownloadable }
             self.markOfflineAvailable(!nodes.map(\.node).allSatisfy(\.isMarkedOfflineAvailable), nodes: nodes.map(\.node))
             
         default: break
         }
+    }
+
+    func selectedNodes() -> [NodeWrapper] {
+        permanentChildren.filter { selection.selected.contains($0.node.identifier) }
     }
 }
 
@@ -315,12 +330,49 @@ extension FinderViewModel where Self.Model: NodesListing {
     }
 
     func sendToTrash(_ currentNodes: [Node], completion: @escaping (Result<Void, Error>) -> Void) {
-        model.tower.trash(nodes: currentNodes, completion: completion)
+        guard let moc = currentNodes.first?.moc else {
+            completion(.failure(Node.noMOC()))
+            return
+        }
+
+        moc.perform { [weak self] in
+            guard let self else { return }
+
+            let (localNodes, remoteNodes) = currentNodes.partitioned { $0.isLocalFile }
+
+            model.tower.trashLocalNode(localNodes.map(\.id))
+
+            let trashingNodes = remoteNodes.compactMap { (node: Node) -> TrashingNodeIdentifier? in
+                guard let parent = node.parentLink else { return nil }
+                return TrashingNodeIdentifier(nodeID: node.id, shareID: node.shareID, parentID: parent.id)
+            }
+
+            model.tower.trash(trashingNodes, completion: completion)
+        }
     }
 
     func sendError(_ error: Error) {
         let error: Error = (error as? ResponseError)?.underlyingError ?? error
         genericErrors.send(error)
+    }
+}
+
+extension FinderViewModel {
+    func setupLockedStateBannerVisibility() {
+        if let lockedFlags {
+            self.lockedStateBannerVisibility = LockedStateAlertVisibility(lockedFlags: lockedFlags)
+        }
+    }
+
+    func subscribeToUserInfoUpdates() {
+        lockedStateCancellable?.cancel()
+        lockedStateCancellable = self.model.tower.sessionVault.userInfoPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] userInfo in
+                if let lockedFlags = userInfo.lockedFlags {
+                    self?.lockedStateBannerVisibility = LockedStateAlertVisibility(lockedFlags: lockedFlags)
+                }
+            }
     }
 }
 

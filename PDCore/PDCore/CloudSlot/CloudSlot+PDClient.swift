@@ -167,30 +167,20 @@ extension CloudSlot {
                 if let parent = link.parentLinkID {
                     affectedIds.folders.insert(parent)
                 }
-                link.shareIDs.forEach { affectedIds.shares.insert($0) }
+                if let shareID = link.sharingDetails?.shareID { affectedIds.shares.insert(shareID) }
                 switch link.type {
                 case .file:
                     let photo = link.fileProperties?.activeRevision?.photo
                     let isPhoto = photo != nil
                     if isPhoto {
-                        // TODO: needs new API where children are nested inside parent.
-                        // For now it's enough to save parent photos (those with nil mainPhotoLinkId). For children we don't have enough data.
-//                        affectedIds.photos.insert(link.linkID)
-//                        affectedIds.photos.formUnion([photo?.mainPhotoLinkID].compactMap { $0 })
-                        if photo?.mainPhotoLinkID == nil {
-                            affectedIds.photos.insert(link.linkID)
-                        }
+                        affectedIds.photos.insert(link.linkID)
+                        affectedIds.photos.formUnion([photo?.mainPhotoLinkID].compactMap { $0 })
                     } else {
                         affectedIds.files.insert(link.linkID)
                     }
                     guard let revision = link.fileProperties?.activeRevision else { return }
                     if isPhoto {
-                        // TODO: needs new API where children are nested inside parent.
-                        // For now it's enough to save parent photos (those with nil mainPhotoLinkId). For children we don't have enough data.
-//                        affectedIds.photoRevisions.insert(revision.ID)
-                        if photo?.mainPhotoLinkID == nil {
-                            affectedIds.photoRevisions.insert(revision.ID)
-                        }
+                        affectedIds.photoRevisions.insert(revision.ID)
                     } else {
                         affectedIds.revisions.insert(revision.ID)
                     }
@@ -213,7 +203,7 @@ extension CloudSlot {
             result = links.compactMap { link in
                 let nodeObj: NodeObj? = uniqueFiles.first { $0.id == link.linkID } ?? uniqueFolders.first { $0.id == link.linkID } ?? uniquePhotos.first { $0.id == link.linkID }
                 let parentLinkObj = uniqueFolders.first { $0.id == link.parentLinkID }
-                let directShares = uniqueShares.filter { link.shareIDs.contains($0.id) }
+                let directShares = uniqueShares.filter { link.sharingDetails?.shareID == $0.id }
                 parentLinkObj?.setValue(shareID, forKey: #keyPath(NodeObj.shareID))
 
                 if let photo = nodeObj as? Photo,
@@ -454,7 +444,10 @@ extension CloudSlot {
 }
 
 extension CloudSlot {
-    
+    func trash(shareID: Client.ShareID, parentID: Client.LinkID, linkIDs: [Client.LinkID]) async throws {
+        try await client.trash(shareID: shareID, parentID: parentID, linkIDs: linkIDs)
+    }
+
     func delete(shareID: Client.ShareID, linkIDs: [Client.LinkID]) async throws {
         try await client.deletePermanently(shareID: shareID, linkIDs: linkIDs)
     }

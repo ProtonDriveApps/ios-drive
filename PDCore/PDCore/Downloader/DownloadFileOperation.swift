@@ -43,43 +43,41 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
     override func start() {
         super.start()
         guard !self.isCancelled else { return }
-        Log.info("Start operation", domain: .downloader)
-        
-        Log.info("Fetch full file details", domain: .downloader)
-        self.cloudSlot.scanNode(fileIdentifier) { resultFile in
+        Log.info("DownloadFileOperation.start, will fetch full file details, file: \(fileIdentifier)", domain: .downloader)
+        self.cloudSlot.scanNode(fileIdentifier) { [fileIdentifier] resultFile in
             guard !self.isCancelled else { return }
             switch resultFile {
             case .failure(let error):
-                Log.error(error, domain: .downloader)
+                Log.error("DownloadFileOperation.start could not fetch file details, file: \(fileIdentifier), \(error.localizedDescription)", domain: .downloader)
                 self.completion?(.failure(error))
                 self.cancel()
 
             case .success(let node):
                 guard let file = node as? File, let revision = file.activeRevision else {
-                    Log.error(Errors.errorReadingMetadata, domain: .downloader)
+                    Log.error("DownloadFileOperation.start invalid state, file: \(fileIdentifier), \(Errors.errorReadingMetadata)", domain: .downloader)
                     self.completion?(.failure(Errors.errorReadingMetadata))
                     self.cancel()
                     return
                 }
 
-                Log.info("Fetch full revision details", domain: .downloader)
-                self.cloudSlot.scanRevision(revision.identifier) { resultRevision in
+                Log.info("DownloadFileOperation.start, fetch full revision details, file: \(fileIdentifier)", domain: .downloader)
+                self.cloudSlot.scanRevision(revision.identifier) { [revisionIdentifier = revision.identifier] resultRevision in
                     guard !self.isCancelled else { return }
                     switch resultRevision {
                     case .failure(let error):
-                        Log.error(error, domain: .downloader)
+                        Log.error("DownloadFileOperation.start could not scan revision, revision: \(revisionIdentifier), \(error.localizedDescription)", domain: .downloader)
                         self.completion?(.failure(error))
                         self.cancel()
 
                     case .success(let updatedRevision) where updatedRevision.blocks.isEmpty:
-                        Log.info("The revision is an empty file, creating empty file locally", domain: .downloader)
+                        Log.info("DownloadFileOperation.start, the revision is an empty file, creating empty file locally, revision: \(revisionIdentifier)", domain: .downloader)
                         self.createEmptyFile(in: updatedRevision) // will call completion
                         self.state = .finished
 
                     case .success(let updatedRevision):
                         var blocks = updatedRevision.blocks.compactMap { $0 as? DownloadBlock }
                         guard !blocks.isEmpty else {
-                            Log.error(Errors.blockListNotAvailable, domain: .downloader)
+                            Log.error("DownloadFileOperation.start, revision does not contain DownloadBlocks, revision: \(revisionIdentifier), \(Errors.blockListNotAvailable)", domain: .downloader)
                             self.completion?(.failure(Errors.blockListNotAvailable))
                             self.cancel()
                             return
@@ -87,7 +85,7 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
 
                         blocks.sort(by: { $0.index < $1.index })
 
-                        Log.info("Configure blocks download operations: \(blocks.count)", domain: .downloader)
+                        Log.info("DownloadFileOperation.start, configure blocks download operations: \(blocks.count), file: \(fileIdentifier)", domain: .downloader)
                         let operations = blocks.map { self.createOperationFor($0) }
                         let finishOperation = BlockOperation { [weak self] in
                             guard let self = self, !self.isCancelled else { return }
@@ -95,7 +93,7 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
                             // this may happen if the app is locked during download
                             guard let moc = updatedRevision.managedObjectContext else {
                                 let error = Errors.mocDestroyedTooEarly
-                                Log.error(error, domain: .storage)
+                                Log.error("DownloadFileOperation.start, revision does not contain DownloadBlocks, revision: \(revisionIdentifier), \(error.localizedDescription)", domain: .downloader)
                                 self.completion?(.failure(error))
                                 self.cancel()
                                 return
@@ -104,10 +102,10 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
                             moc.performAndWait {
                                 do {
                                     try moc.saveWithParentLinkCheck()
-                                    Log.info("Connected blocks to revision, revision to file", domain: .downloader)
+                                    Log.info("DownloadFileOperation.start, connected blocks to revision, revision to file, file: \(fileIdentifier)", domain: .downloader)
                                     self.completion?(.success(updatedRevision.file))
-                                } catch let error {
-                                    Log.error(error, domain: .storage)
+                                } catch {
+                                    Log.error("DownloadFileOperation.start, failed saving to coredata, revision: \(revisionIdentifier), \(error.localizedDescription)", domain: .downloader)
                                     self.completion?(.failure(error))
                                     self.cancel()
                                 }
@@ -131,7 +129,7 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
     }
     
     override func cancel() {
-        Log.info("Cancel operation", domain: .downloader)
+        Log.info("DownloadFileOperation.cancel, Cancel operation, file: \(fileIdentifier)", domain: .downloader)
         self.internalQueue.cancelAllOperations()
         self.completion = nil
         if !self.progress.isIndeterminate {
@@ -160,7 +158,7 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
         }
         
         if let revision = file.activeRevision, !revision.blocksAreValid() {
-            Log.warning("Invalid blocks are connected to revision, cleaning up", domain: .downloader)
+            Log.warning("DownloadFileOperation.init, Invalid blocks are connected to revision, cleaning up, file: \(fileIdentifier)", domain: .downloader)
             file.activeRevision?.restoreAfterInvalidBlocksFound()
         }
     }
@@ -171,19 +169,19 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
             guard !self.isCancelled else { return }
             switch result {
             case .success(let intermediateUrl):
-                Log.info("Downloaded block", domain: .downloader)
-                                
-                block.managedObjectContext?.performAndWait {
+
+                block.managedObjectContext?.performAndWait { [fileIdentifier] in
                     do {
                         _ = try block.store(cypherfileFrom: intermediateUrl)
+                        Log.info("DownloadFileOperation.createDownloaded created block, file: \(fileIdentifier)", domain: .downloader)
                     } catch let error {
-                        Log.error(error, domain: .storage)
+                        Log.error("DownloadFileOperation.createDownloaded storage, file: \(fileIdentifier), \(error.localizedDescription)", domain: .downloader)
                         self.completion?(.failure(error))
                         self.cancel()
                     }
                 }
             case .failure(let error):
-                Log.error(error, domain: .downloader)
+                Log.error("DownloadFileOperation.createDownloaded error, file: \(fileIdentifier), \(error.localizedDescription)", domain: .downloader)
                 self.completion?(.failure(error))
                 self.cancel()
             }

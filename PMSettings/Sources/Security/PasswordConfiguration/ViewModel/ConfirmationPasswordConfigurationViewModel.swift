@@ -67,8 +67,8 @@ final class ConfirmationPasswordConfigurationViewModel: PasswordConfigurationVie
             rightNavigationButtonEnabled?(false)
         }
     }
-
-    func viewWillDissapear() {
+    
+    func viewWillDisappear() {
         router.finishWithSuccess(didEnablePassword)
     }
 

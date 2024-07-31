@@ -23,6 +23,7 @@ final class SideMenuCoordinator {
 
     weak var delegate: PMSlidingContainer!
     weak var viewController: SideMenuViewController!
+    private weak var settingsVC: UIViewController?
 
     private let myFilesFactory: () -> UIViewController
     private let trashFactory: () -> UIViewController
@@ -47,6 +48,13 @@ final class SideMenuCoordinator {
         self.settingsFactory = settingsFactory
         self.accountFactory = accountFactory
         self.plansFactory = plansFactory
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(orientationDidChange),
+            name: UIDevice.orientationDidChangeNotification,
+            object: nil
+        )
     }
 
     func go(to destination: Destination) {
@@ -93,7 +101,9 @@ private extension SideMenuCoordinator {
     }
 
     func showSettings() {
-        delegate.sideMenu(viewController, didSelectViewController: settingsFactory())
+        let newVC = settingsFactory()
+        settingsVC = newVC
+        delegate.sideMenu(viewController, didSelectViewController: newVC)
     }
 
     func showAvailableOffline() {
@@ -121,6 +131,18 @@ private extension SideMenuCoordinator {
         optionMenu.popoverPresentationController?.sourceView = viewController.view
         optionMenu.popoverPresentationController?.sourceRect = viewController.view.frame
         viewController.present(optionMenu, animated: true, completion: nil)
+    }
+    
+    @objc
+    func orientationDidChange() {
+        guard 
+            settingsVC != nil, // Make sure setting view is presented
+            let topVC = UIApplication.shared.topViewController(),
+            let popover = topVC.presentationController as? UIPopoverPresentationController,
+            let screenSize = topVC.view.realScreenSize()
+        else { return }
+        let point = CGPoint(x: screenSize.width / 2, y: screenSize.height / 2)
+        popover.sourceRect = CGRect(origin: point, size: .zero)
     }
 }
 

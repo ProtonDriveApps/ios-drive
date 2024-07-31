@@ -19,16 +19,26 @@ import PDCore
 
 final class ThumbnailsControllersContainer {
     private let tower: Tower
+    private let photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>
     private let factory = ThumbnailsControllerFactory()
-    private lazy var smallThumbnailsUrlsController = factory.makeUrlsController(tower: tower, type: .default)
-    private lazy var bigThumbnailsUrlsController = factory.makeUrlsController(tower: tower, type: .photos)
+    private lazy var smallThumbnailsUrlsController = factory.makeUrlsController(
+        tower: tower,
+        type: .default,
+        photoSharesObserver: photoSharesObserver
+    )
+    private lazy var bigThumbnailsUrlsController = factory.makeUrlsController(
+        tower: tower,
+        type: .photos,
+        photoSharesObserver: photoSharesObserver
+    )
     private lazy var smallThumbnailsRepository = makeSynchronousRepository()
     private lazy var bigThumbnailsRepository = makeSynchronousRepository()
     lazy var smallThumbnailsController = factory.makeSmallThumbnailsController(tower: tower)
     lazy var bigThumbnailsController = factory.makeBigThumbnailsController(tower: tower)
 
-    init(tower: Tower) {
+    init(tower: Tower, photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>) {
         self.tower = tower
+        self.photoSharesObserver = photoSharesObserver
     }
 
     func makeSmallThumbnailController(id: PhotoId) -> ThumbnailController {

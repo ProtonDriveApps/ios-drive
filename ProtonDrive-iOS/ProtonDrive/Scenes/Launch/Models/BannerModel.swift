@@ -39,7 +39,7 @@ final class BannerModel {
     }
 
     static func failure(_ error: Error, delay: Delay = .immediate) -> BannerModel {
-        BannerModel(message: error.messageForTheUser, style: .error, delay: delay)
+        BannerModel(message: error.localizedDescription, style: .error, delay: delay)
     }
 
     static func warning(_ message: String) -> BannerModel {

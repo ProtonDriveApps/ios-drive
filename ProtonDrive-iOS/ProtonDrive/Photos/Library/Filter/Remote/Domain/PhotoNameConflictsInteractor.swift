@@ -80,7 +80,7 @@ final class RemotePhotoNameConflictsInteractor: PhotoNameConflictsInteractor {
                 let item = try identifiersInteractor.getIdentifiers(from: compound)
                 validItems.append(item)
             } catch {
-                Log.error(DriveError(withDomainAndCode: error, message: "\(self.self)"), domain: .photosProcessing)
+                Log.error(DriveError(withDomainAndCode: error, message: error.localizedDescription), domain: .photosProcessing)
                 failedCompounds.append(compound)
             }
         }

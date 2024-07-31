@@ -27,11 +27,17 @@ struct PhotosRootView<
 >: View {
     @EnvironmentObject var root: RootViewModel
     @ObservedObject private var viewModel: ViewModel
+    @State private var isVisible: Bool = true
     private let onboarding: () -> OnboardingView
     private let permissions: () -> PermissionsView
     private let galleryView: GalleryView
 
-    init(viewModel: ViewModel, onboarding: @escaping () -> OnboardingView, permissions: @escaping () -> PermissionsView, galleryView: GalleryView) {
+    init(
+        viewModel: ViewModel,
+        onboarding: @escaping () -> OnboardingView,
+        permissions: @escaping () -> PermissionsView,
+        galleryView: GalleryView
+    ) {
         self.viewModel = viewModel
         self.onboarding = onboarding
         self.permissions = permissions
@@ -50,11 +56,28 @@ struct PhotosRootView<
         .onReceive(root.closeCurrentSheet) { _ in
             viewModel.close()
         }
+        .onAppear {
+            isVisible = true
+            viewModel.refreshIfNeeded()
+        }
+        .onDisappear(perform: {
+            isVisible = false
+        })
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            guard isVisible else { return }
+            viewModel.refreshIfNeeded()
+        }
     }
 
     @ViewBuilder
     private var content: some View {
         switch viewModel.state {
+        case .disconnection:
+            NoConnectionFolderView(isUpdating: .constant(false), config: .noConnectionInPhoto) { [weak viewModel] in
+                viewModel?.refreshIfNeeded()
+            }
+        case .loading:
+            ProtonSpinner(size: .medium, style: .regular)
         case .onboarding:
             onboarding()
         case .permissions:

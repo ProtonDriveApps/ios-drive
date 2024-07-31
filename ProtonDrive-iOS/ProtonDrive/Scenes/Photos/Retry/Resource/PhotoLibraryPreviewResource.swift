@@ -69,9 +69,7 @@ extension PhotoLibraryPreviewResource where AssetType == PHAsset {
     static func makeApplePhotosPreviewResource() -> PhotoLibraryPreviewResource {
         let imageManager = PHImageManager.default()
         
-        let fetchOptions = PHFetchOptions()
-        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-        fetchOptions.includeAssetSourceTypes = [.typeCloudShared, .typeUserLibrary, .typeiTunesSynced]
+        let fetchOptions = PHFetchOptions.defaultPhotosOptions()
         
         let requestOptions = PHImageRequestOptions()
         requestOptions.deliveryMode = .fastFormat

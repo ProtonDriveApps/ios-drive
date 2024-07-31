@@ -22,6 +22,7 @@ public typealias ItemReporting = ClientErrorReporting & FileProviderErrorReporti
 public protocol DefaultItemReporting {
     func report(item: ReportableSyncItem) throws
     func resolve(item: ReportableSyncItem) throws
+    func resolveTrash(id: String) throws
 }
 
 public protocol ClientErrorReporting: DefaultItemReporting {}

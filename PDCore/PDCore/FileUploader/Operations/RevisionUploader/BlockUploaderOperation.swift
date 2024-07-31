@@ -26,6 +26,7 @@ final class BlockUploaderOperation: AsynchronousOperation, OperationWithProgress
     private let index: Int
     private let contentUploader: ContentUploader
     private let onError: OnUploadError
+    private let measurementRepository: FileUploadBlocksMeasurementRepositoryProtocol?
 
     init(
         id: UUID,
@@ -33,6 +34,7 @@ final class BlockUploaderOperation: AsynchronousOperation, OperationWithProgress
         token: String,
         progressTracker: Progress,
         contentUploader: ContentUploader,
+        measurementRepository: FileUploadBlocksMeasurementRepositoryProtocol?,
         onError: @escaping OnUploadError
     ) {
         self.id = id
@@ -40,6 +42,7 @@ final class BlockUploaderOperation: AsynchronousOperation, OperationWithProgress
         self.progress = progressTracker
         self.index = index
         self.contentUploader = contentUploader
+        self.measurementRepository = measurementRepository
         self.onError = onError
         super.init()
     }
@@ -55,6 +58,7 @@ final class BlockUploaderOperation: AsynchronousOperation, OperationWithProgress
             case .success:
                 Log.info("STAGE: 3.2 Block \(self.index) upload 📦☁️ finished ✅. UUID: \(self.id.uuidString) Token: \(self.token)", domain: .uploader)
                 self.progress.complete()
+                self.measurementRepository?.trackBlockUploadSuccess()
                 self.state = .finished
 
             case .failure(let error as ResponseError) where error.isRetryable:

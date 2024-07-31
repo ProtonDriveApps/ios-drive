@@ -25,7 +25,7 @@ enum PhotosBackupState: Equatable {
     case completeWithFailures(Int)
     case disabled
     case restrictedPermissions
-    case networkConstrained
+    case networkConstrained(NetworkConstraint)
     case storageConstrained
     case quotaConstrained
     case featureFlag
@@ -43,7 +43,7 @@ final class LocalPhotosBackupStateController: PhotosBackupStateController {
     private let completeController: PhotosBackupCompleteController
     private let settingsController: PhotoBackupSettingsController
     private let authorizationController: PhotoLibraryAuthorizationController
-    private let networkController: PhotoBackupConstraintController
+    private let networkController: PhotoBackupNetworkControllerProtocol
     private let quotaController: PhotoBackupConstraintController
     private let availableSpaceController: PhotoBackupConstraintController
     private let featureFlagController: PhotoBackupConstraintController
@@ -58,7 +58,7 @@ final class LocalPhotosBackupStateController: PhotosBackupStateController {
         subject.eraseToAnyPublisher()
     }
 
-    init(progressController: PhotosBackupProgressController, failuresController: PhotosBackupFailuresController, completeController: PhotosBackupCompleteController, settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController, networkController: PhotoBackupConstraintController, quotaController: PhotoBackupConstraintController, availableSpaceController: PhotoBackupConstraintController, featureFlagController: PhotoBackupConstraintController, applicationStateController: PhotoBackupConstraintController, loadController: PhotoLibraryLoadController, strategy: PhotosBackupStateStrategy, throttleResource: ThrottleResource) {
+    init(progressController: PhotosBackupProgressController, failuresController: PhotosBackupFailuresController, completeController: PhotosBackupCompleteController, settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController, networkController: PhotoBackupNetworkControllerProtocol, quotaController: PhotoBackupConstraintController, availableSpaceController: PhotoBackupConstraintController, featureFlagController: PhotoBackupConstraintController, applicationStateController: PhotoBackupConstraintController, loadController: PhotoLibraryLoadController, strategy: PhotosBackupStateStrategy, throttleResource: ThrottleResource) {
         self.progressController = progressController
         self.failuresController = failuresController
         self.completeController = completeController
@@ -89,7 +89,7 @@ final class LocalPhotosBackupStateController: PhotosBackupStateController {
         let progressPublisher = Publishers.CombineLatest4(progressController.progress, completeController.isComplete, failuresController.count, loadController.isLoading).eraseToAnyPublisher()
         let throttledProgressPublisher = throttleResource.throttle(publisher: progressPublisher, milliseconds: 1000)
         let cloudPublisher = Publishers.CombineLatest(quotaController.constraint, featureFlagController.constraint)
-        let availabilityPublisher = Publishers.CombineLatest4(settingsController.isEnabled, authorizationController.permissions, networkController.constraint, applicationStateController.constraint)
+        let availabilityPublisher = Publishers.CombineLatest4(settingsController.isEnabled, authorizationController.permissions, networkController.specificConstraint, applicationStateController.constraint)
 
         return Publishers.CombineLatest4(throttledProgressPublisher, availabilityPublisher, cloudPublisher, availableSpaceController.constraint)
             .map { (progresses, availabilities, cloud, isStorageConstrained) in
@@ -100,7 +100,7 @@ final class LocalPhotosBackupStateController: PhotosBackupStateController {
                     isLibraryLoading: progresses.3,
                     isBackupEnabled: availabilities.0,
                     permissions: availabilities.1,
-                    isNetworkConstrained: availabilities.2,
+                    networkConstraint: availabilities.2,
                     isQuotaConstrained: cloud.0,
                     isStorageConstrained: isStorageConstrained,
                     isFeatureFlagConstrained: cloud.1,

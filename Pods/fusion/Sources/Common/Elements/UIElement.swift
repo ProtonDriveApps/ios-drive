@@ -36,7 +36,6 @@ import XCTest
 @available(*, deprecated, message: "`UiElement` has been renamed to `UIElement`.")
 typealias UiElement = UIElement
 
-// swiftlint:disable type_body_length
 open class UIElement {
 
     init(_ query: XCUIElementQuery, _ elementType: XCUIElement.ElementType) {

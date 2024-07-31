@@ -20,10 +20,12 @@ import Foundation
 
 protocol PhotoPreviewDetailViewModelProtocol: ObservableObject {
     var state: PhotoPreviewDetailState? { get }
+    var mode: AnyPublisher<PhotosPreviewMode, Never> { get }
     func viewDidLoad()
     func toggleMode()
     func setActive()
     func share()
+    func cleanup()
 }
 
 enum PhotoPreviewDetailState: Equatable {
@@ -47,7 +49,7 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
     private let id: PhotoId
     private let coordinator: PhotoPreviewDetailCoordinator
     private var cancellables = Set<AnyCancellable>()
-
+    var mode: AnyPublisher<PhotosPreviewMode, Never> { modeController.mode }
     @Published var state: PhotoPreviewDetailState?
 
     init(thumbnailController: ThumbnailController, modeController: PhotosPreviewModeController, previewController: PhotosPreviewController, detailController: PhotoPreviewDetailController, fullPreviewController: PhotoFullPreviewController, shareController: PhotoPreviewDetailShareController, id: PhotoId, coordinator: PhotoPreviewDetailCoordinator) {
@@ -63,8 +65,7 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
     }
 
     deinit {
-        fullPreviewController.clear()
-        thumbnailController.cancel()
+        cleanup()
     }
 
     func viewDidLoad() {
@@ -120,5 +121,10 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
         } else {
             return .loading(text: "Loading...", thumbnail: thumbnailController.getImage())
         }
+    }
+    
+    func cleanup() {
+        fullPreviewController.clear()
+        thumbnailController.cancel()
     }
 }

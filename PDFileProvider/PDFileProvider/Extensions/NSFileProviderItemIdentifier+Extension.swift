@@ -31,14 +31,27 @@ public extension NSFileProviderItemIdentifier {
     }
     
     /// URL contains some metadata of the file in order to simplify lookups: `.../ShareID/NodeID/filename`
-    func makeUrl(filename: String) -> URL? {
+    func makeUrl(item: NSFileProviderItem) -> URL? {
         guard let nodeIdentifier = NodeIdentifier(self) else {
             return nil
         }
         var url = NSFileProviderManager.default.documentStorageURL
         url.appendPathComponent(nodeIdentifier.shareID, isDirectory: true)
         url.appendPathComponent(nodeIdentifier.nodeID, isDirectory: true)
+        let filename = makeFilename(item: item)
         url.appendPathComponent(filename, isDirectory: false)
         return url
     }
+
+    private func makeFilename(item: NSFileProviderItem) -> String {
+            let filename = item.filename
+            guard let contentType = item.contentType, UTI(value: contentType.identifier).isProtonDocument else {
+                return filename
+            }
+            // This url is used by OS to determine if the file should be opened in place or transferred.
+            // Unless we add the extension, it won't be recognized.
+            // Also it can be used to validate incoming URL in the main app to quickly verify that a proton doc is being requested.
+            // Adding an extension shouldn't be a problem since the inverse function (`NSFileProviderItemIdentifier.init(_ url: URL)`) doesn't use it.
+            return filename + "." + ProtonDocumentConstants.fileExtension
+        }
 }

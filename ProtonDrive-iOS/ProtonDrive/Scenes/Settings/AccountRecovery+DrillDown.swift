@@ -25,6 +25,7 @@ import ProtonCoreDataModel
 class AccountRecoverySettingsItem: PMDrillDownCellViewModel {
     var preview: String? { accountRecovery?.valueForSettingsItem }
     var title: String { AccountRecoveryModule.settingsItem }
+    var accessibilityIdentifier: String { "Password reset" }
     let apiService: APIService
     var accountRecovery: AccountRecovery?
 

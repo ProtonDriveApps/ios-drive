@@ -22,10 +22,10 @@ struct PhotosLoadResponse: Equatable {
     struct Item: Equatable {
         let id: PhotoListId
         let captureTime: Date
-        let isLastLocally: Bool
     }
 
     let lastItem: Item?
+    let captureTimeThreshold: Date?
 }
 
 typealias PhotoListId = String
@@ -70,7 +70,7 @@ final class RemotePhotosFullLoadInteractor: PhotosFullLoadInteractor {
         switch result {
         case let .success(list):
             if list.photos.isEmpty {
-                let response = PhotosLoadResponse(lastItem: nil)
+                let response = PhotosLoadResponse(lastItem: nil, captureTimeThreshold: nil)
                 subject.send(.success(response))
             } else {
                 metadataInteractor.execute(with: list)

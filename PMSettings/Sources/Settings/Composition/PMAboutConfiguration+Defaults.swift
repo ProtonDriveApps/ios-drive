@@ -27,14 +27,18 @@ extension PMAboutConfiguration {
         PMAboutConfiguration(
             title: "pmsettings-settings-about-privacy",
             action: .perform(openPrivacyPolicy),
-            bundle: PMSettings.bundle)
+            bundle: PMSettings.bundle,
+            accessibilityIdentifier: "privacy_policy"
+        )
     }
 
     public static var terms: PMAboutConfiguration {
         PMAboutConfiguration(
             title: "pmsettings-settings-about-terms",
             action: .perform(openTermsOfService),
-            bundle: PMSettings.bundle)
+            bundle: PMSettings.bundle,
+            accessibilityIdentifier: "terms_of_service"
+        )
     }
 
     private static func openPrivacyPolicy() {
@@ -57,7 +61,9 @@ extension PMAcknowledgementsConfiguration {
         PMAcknowledgementsConfiguration(
             title: "pmsettings-settings-about-acknowledgements",
             url: url,
-            bundle: PMSettings.bundle)
+            bundle: PMSettings.bundle,
+            accessibilityIdentifier: "acknowledgements"
+        )
     }
 
     static func assembleAcknowledgmentsScreen(title: String?, url: URL) -> UIViewController {

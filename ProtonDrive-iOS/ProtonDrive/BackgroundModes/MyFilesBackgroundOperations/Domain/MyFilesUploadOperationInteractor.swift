@@ -63,6 +63,7 @@ final class MyFilesUploadOperationInteractor: OperationInteractor {
     }
     
     func cancel() {
+        guard isInProgress else { return }
         interactor.pauseAllUploads()
     }
 }

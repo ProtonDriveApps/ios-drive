@@ -43,9 +43,12 @@ struct PhotosStateView<ViewModel: PhotosStateViewModelProtocol, TitleView: View>
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     title(data.titles)
-                    Spacer()
+                        .accessibilityIdentifier(makeAccessibilityIdentifier(for: data.type))
+                    Spacer(minLength: 0)
                     if let button = data.button {
-                        makeButton({ viewModel.didTapButton(button: button) }, with: button.title)
+                        makeButton(with: button) {
+                            viewModel.didTapButton(button: button)
+                        }
                     } else {
                         data.rightText.map(makeRightText)
                     }
@@ -64,15 +67,15 @@ struct PhotosStateView<ViewModel: PhotosStateViewModelProtocol, TitleView: View>
         .padding(.bottom, 10)
     }
     
-    private func makeButton(_ action: @escaping () -> Void, with title: String) -> some View {
+    private func makeButton(with button: PhotosStateButton, action: @escaping () -> Void) -> some View {
         Button(action: action,
            label: {
-            Text(title)
+            Text(button.title)
                 .foregroundColor(ColorProvider.TextAccent)
                 .font(.body.bold())
                 .frame(minWidth: 54, minHeight: 48)
         })
-        .accessibility(identifier: "PhotosStateView.Retry_button")
+        .accessibility(identifier: makeAccessibilityIdentifier(for: button))
         .buttonStyle(PlainButtonStyle())
     }
 
@@ -93,7 +96,49 @@ struct PhotosStateView<ViewModel: PhotosStateViewModelProtocol, TitleView: View>
                 .cornerRadius(.medium)
         }
         .accessibilityHidden(false)
-        .accessibilityIdentifier("PhotosGallery.State.progressBar")
+        .accessibilityIdentifier(makeAccessibilityIdentifier(with: "ProgressBar"))
         .accessibilityValue("\(Int(progress * 100)) percent")
+    }
+
+    private func makeAccessibilityIdentifier(for button: PhotosStateButton) -> String {
+        switch button {
+        case .retry:
+            return makeAccessibilityIdentifier(with: "RetryButton")
+        case .turnOn:
+            return makeAccessibilityIdentifier(with: "TurnOnButton")
+        case .settings:
+            return makeAccessibilityIdentifier(with: "SettingsButton")
+        case .useCellular:
+            return makeAccessibilityIdentifier(with: "UseCellularButton")
+        }
+    }
+
+    private func makeAccessibilityIdentifier(for state: PhotosStateViewData.StateType) -> String {
+        switch state {
+        case .inProgress:
+            return makeAccessibilityIdentifier(with: "InProgressBanner")
+        case .complete:
+            return makeAccessibilityIdentifier(with: "CompleteBanner")
+        case .completeWithFailures:
+            return makeAccessibilityIdentifier(with: "CompleteWithFailuresBanner")
+        case .disabled:
+            return makeAccessibilityIdentifier(with: "DisabledBanner")
+        case .restrictedPermissions:
+            return makeAccessibilityIdentifier(with: "RestrictedPermissionsBanner")
+        case .noConnection:
+            return makeAccessibilityIdentifier(with: "NoConnectionBanner")
+        case .noWifi:
+            return makeAccessibilityIdentifier(with: "NoWifiBanner")
+        case .storageConstrained:
+            return makeAccessibilityIdentifier(with: "StorageConstrainedBanner")
+        case .featureFlag:
+            return makeAccessibilityIdentifier(with: "FeatureFlagBanner")
+        case .libraryLoading:
+            return makeAccessibilityIdentifier(with: "LibraryLoadingBanner")
+        }
+    }
+
+    private func makeAccessibilityIdentifier(with suffix: String) -> String {
+        "PhotosStateView." + suffix
     }
 }

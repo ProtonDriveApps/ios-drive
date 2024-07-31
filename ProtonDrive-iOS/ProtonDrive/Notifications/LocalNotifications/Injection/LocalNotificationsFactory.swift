@@ -16,15 +16,17 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import UIKit
+import PDCore
 
 struct LocalNotificationsFactory {
-    func makeNotificationsController() -> LocalNotificationsController {
+    func makeNotificationsController(tower: Tower) -> LocalNotificationsController {
         let applicationRunningResource = ApplicationRunningStateResourceImpl()
         let notificationsResource = UNUserNotificationsResource()
         let notifier = UploadFileLocalNotificationNotifier(
             didInterruptOnFileUploadPublisher: NotificationCenter.default.mappedPublisher(for: .didInterruptOnFileUpload),
+            didInterruptOnPhotoUploadPublisher: NotificationCenter.default.mappedPublisher(for: .didInterruptOnPhotoUpload),
             didFindIssueOnFileUploadPublisher: NotificationCenter.default.mappedPublisher(for: .didFindIssueOnFileUpload),
-            didChangeAppRunningStatePublisher: applicationRunningResource.state,
+            didChangeAppRunningStatePublisher: applicationRunningResource.state, localSettings: tower.localSettings,
             notificationsResource: notificationsResource
         )
         return LocalNotificationsController(notificationsResource, notifier)

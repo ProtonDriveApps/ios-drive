@@ -52,11 +52,13 @@ final class BackgroundModesRegistry {
 
     static func registerBackgroundTask(_ backgroundMode: BackgroundModes) {
         Log.info("Will register \(backgroundMode)", domain: .backgroundTask)
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: backgroundMode.id, using: nil) {
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: backgroundMode.id, using: nil) { task in
             Log.info("Start processing BG task \(backgroundMode) 🚦", domain: .backgroundTask)
-            let task = CompleteRegisteringBackgroundTask(task: $0)
-            appendTask(task)
-            NotificationCenter.default.post(name: backgroundMode.notification, object: task)
+            let task = CompleteRegisteringBackgroundTask(task: task)
+            DispatchQueue.main.async {
+                appendTask(task)
+                NotificationCenter.default.post(name: backgroundMode.notification, object: task)
+            }
         }
     }
 

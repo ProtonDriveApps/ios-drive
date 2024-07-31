@@ -28,10 +28,19 @@ final class PHFetchOptionsFactory {
     }
 
     func makeOptions() -> PHFetchOptions {
+        let options = PHFetchOptions.defaultPhotosOptions()
+        options.predicate = NSPredicate(format: "mediaType IN %@ AND creationDate >= %@", supportedMediaTypes.value.map(\.asAssetType.rawValue), notOlderThan.value as NSDate)
+        return options
+    }
+}
+
+// FIXME: Use and inject `PHFetchOptionsFactory` instead of this.
+// Move implementation below to `PHFetchOptionsFactory` after.
+extension PHFetchOptions {
+    static func defaultPhotosOptions() -> PHFetchOptions {
         let options = PHFetchOptions()
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-        options.predicate = NSPredicate(format: "mediaType IN %@ AND creationDate >= %@", supportedMediaTypes.value.map(\.asAssetType.rawValue), notOlderThan.value as NSDate)
-        options.includeAssetSourceTypes = [.typeCloudShared, .typeUserLibrary, .typeiTunesSynced]
+        options.includeAssetSourceTypes = [.typeUserLibrary, .typeiTunesSynced]
         return options
     }
 }

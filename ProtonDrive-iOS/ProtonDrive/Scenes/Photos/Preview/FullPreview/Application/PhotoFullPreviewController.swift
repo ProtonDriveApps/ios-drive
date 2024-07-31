@@ -23,6 +23,9 @@ enum PhotoFullPreview: Equatable {
     case thumbnail(Data)
     case image(URL)
     case video(URL)
+    case gif(URL)
+    /// PhotoURL, VideoURL
+    case livePhoto(URL, URL)
 }
 
 protocol PhotoFullPreviewController: ErrorController {
@@ -70,13 +73,13 @@ final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
         smallThumbnailController.bootstrap()
         
         let detailPublisher = detailController.photo.setFailureType(to: Error.self)
-        Publishers.CombineLatest(detailPublisher, contentController.url)
+        Publishers.CombineLatest(detailPublisher, contentController.content)
             .sink(receiveCompletion: { [weak self] completion in
                 if case .failure = completion {
                     self?.fallBackToThumbnails()
                 }
-            }, receiveValue: { [weak self] info, url in
-                self?.handle(info: info, url: url)
+            }, receiveValue: { [weak self] info, content in
+                self?.tryUpdateLivePhoto(info: info, content: content)
             })
             .store(in: &cancellables)
     }
@@ -106,11 +109,25 @@ final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
 
     private func handle(info: PhotoInfo, url: URL) {
         switch info.type {
+        case .gif:
+            update(with: .gif(url))
         case .photo:
             update(with: .image(url))
         case .video:
             update(with: .video(url))
         }
+    }
+    
+    private func tryUpdateLivePhoto(info: PhotoInfo, content: FileContent) {
+        guard
+            content.couldBeLivePhoto,
+            let videoURL = content.childrenURLs.first
+        else {
+            handle(info: info, url: content.url)
+            return
+        }
+
+        update(with: .livePhoto(content.url, videoURL))
     }
 
     private func handleThumbnailUpdate() {
@@ -119,7 +136,7 @@ final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
             if let data = fullThumbnailController.getImage() ?? smallThumbnailController.getImage() {
                 update(with: .thumbnail(data))
             }
-        case .video, .image:
+        case .video, .image, .livePhoto, .gif:
             break
         }
     }

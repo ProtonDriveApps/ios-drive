@@ -42,7 +42,9 @@ public class FileDraft: Equatable {
         round(Double(size) / 1024)
     }
 
-    public init(uploadID: UUID, file: File, state: FileDraft.State, numberOfBlocks: Int, isEmpty: Bool, uri: String, size: Int) {
+    let mimeType: MimeType
+
+    public init(uploadID: UUID, file: File, state: FileDraft.State, numberOfBlocks: Int, isEmpty: Bool, uri: String, size: Int, mimeType: MimeType) {
         self.uploadID = uploadID
         self.file = file
         self.state = state
@@ -50,6 +52,7 @@ public class FileDraft: Equatable {
         self.isEmpty = isEmpty
         self.uri = uri
         self.size = size
+        self.mimeType = mimeType
     }
 
     public let isEmpty: Bool

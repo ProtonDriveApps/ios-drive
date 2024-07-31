@@ -41,15 +41,17 @@ struct SharingManager {
 // MARK: - Create ShareURL
 extension SharingManager {
     public func getSecureLink(for node: Node, completion: @escaping (Result<ShareURL, Error>) -> Void) {
+        Log.info("SharingManager.getSecureLink, open secure link for \(node.identifier)", domain: .sharing)
         guard node.isShared, let directShare = node.primaryDirectShare else {
-            return createSecureLink(node, completion) // The Node is not shared yet => we share it
+
+            return createSecureLink(node, node.identifier, completion) // The Node is not shared yet => we share it
         }
 
         // The Node is shared but there is no shareUrl metadata in db
-        scanShareURL(directShare, completion)
+        scanShareURL(directShare, node.identifier, completion)
     }
 
-    private func scanShareURL(_ directShare: Share, _ completion: @escaping (Result<ShareURL, Error>) -> Void) {
+    private func scanShareURL(_ directShare: Share, _ identifier: NodeIdentifier, _ completion: @escaping (Result<ShareURL, Error>) -> Void) {
         cloudSlot.scanShare(shareID: directShare.id) { scanShareResult in
             switch scanShareResult {
             case let .success(share):
@@ -60,35 +62,37 @@ extension SharingManager {
                             link.clearPassword = nil
                             completion(.success(link))
                         } else {
-                            self.onObtainedShare(share, completion)
+                            self.onObtainedShare(share, identifier, completion)
                         }
 
                     case let .failure(error):
-                        Log.error(DriveError(error), domain: .networking)
+                        Log.info("SharingManager.scanShareURL, link: \(identifier) sharingShare: \(directShare.id), error: \(DriveError(error))", domain: .sharing)
                         completion(.failure(error))
                     }
                 }
             case let .failure(error):
-                Log.error(DriveError(error), domain: .networking)
+                Log.error("SharingManager.scanShareURL, link: \(identifier) sharingShare: \(directShare.id), error: \(DriveError(error))", domain: .sharing)
                 completion(.failure(error))
             }
         }
     }
 
-    private func createSecureLink(_ node: Node, _ completion: @escaping (Result<ShareURL, Error>) -> Void) {
+    private func createSecureLink(_ node: Node, _ identifier: NodeIdentifier, _ completion: @escaping (Result<ShareURL, Error>) -> Void) {
+        Log.info("SharingManager.createSecureLink, will create a new share and secure link for \(identifier)", domain: .sharing)
         cloudSlot.createShare(node: node) { shareResult in
             switch shareResult {
             case let .success(share):
-                self.onObtainedShare(share, completion)
+                self.onObtainedShare(share, identifier, completion)
 
             case let .failure(error):
-                Log.error(DriveError(error), domain: .networking)
+                Log.error("SharingManager.createSecureLink, link: \(identifier), error: \(DriveError(error))", domain: .sharing)
                 completion(.failure(error))
             }
         }
     }
 
-    private func onObtainedShare(_ share: Share, _ completion: @escaping (Result<ShareURL, Error>) -> Void) {
+    private func onObtainedShare(_ share: Share, _ identifier: NodeIdentifier, _ completion: @escaping (Result<ShareURL, Error>) -> Void) {
+        Log.info("SharingManager.onObtainedShare, will create a new shareURL for \(identifier)", domain: .sharing)
         createShareURL(share: share) { shareUrlResult in
             switch shareUrlResult {
             case let .success(shareUrlMeta):
@@ -98,15 +102,16 @@ extension SharingManager {
                         share.root?.isShared = true
                         let shareUrl = try self.shareUrlFromMeta(shareUrlMeta, moc: moc!)
                         try moc?.saveWithParentLinkCheck()
+                        Log.info("SharingManager.onObtainedShare, did create a new shareURL for \(identifier), share: \(share.id), shareURL: \(shareUrlMeta.shareURLID)", domain: .sharing)
                         completion(.success(shareUrl))
                     } catch {
-                        Log.error(DriveError(error), domain: .networking)
+                        Log.error("SharingManager.onObtainedShare, link: \(identifier) sharingShare: \(share.id), shareURL: \(shareUrlMeta.shareURLID), error: \(DriveError(error))", domain: .sharing)
                         completion(.failure(error))
                     }
                 }
 
             case let .failure(error):
-                Log.error(DriveError(error), domain: .networking)
+                Log.error("SharingManager.onObtainedShare, link: \(identifier) sharingShare: \(share.id), error: \(DriveError(error))", domain: .sharing)
                 completion(.failure(error))
             }
         }
@@ -139,7 +144,7 @@ extension SharingManager {
         self.cloudSlot.update(meta, in: moc)
     }
 
-    func getNewShareURLParameters(
+    private func getNewShareURLParameters(
         share: Share,
         modulus: String,
         modulusID: String,
@@ -187,6 +192,7 @@ extension SharingManager {
         address: AddressManager.Address,
         completion: @escaping (Result<ShareURL, Error>) -> Void
     ) {
+        Log.info("SharingManager.updateSecureLink, will update a secure link details \(node)", domain: .sharing)
         updateShareURL(shareURL: shareURL, node: node, details: details) { result in
             switch result {
             case let .success(shareUrlMeta):
@@ -199,13 +205,13 @@ extension SharingManager {
                         completion(.success(shareUrl))
 
                     } catch {
-                        Log.error(DriveError(error), domain: .networking)
+                        Log.error("SharingManager.updateShareURL, update locally secure link failed, link: \(node), error: \(DriveError(error))", domain: .sharing)
                         completion(.failure(error))
                     }
                 }
 
             case let .failure(error):
-                Log.error(DriveError(error), domain: .networking)
+                Log.error("SharingManager.updateShareURL, update secure link failed, link: \(node), error: \(DriveError(error))", domain: .sharing)
                 completion(.failure(error))
             }
         }
@@ -331,7 +337,10 @@ extension SharingManager {
         modulus: String,
         modulusID: String
     ) throws -> EditShareURLPassword {
-        let currentAddressKey = try signersKitFactory.make().addressKey.publicKey
+        guard let creator = share.creator else {
+            throw share.invalidState("Share does not have share creator")
+        }
+        let currentAddressKey = try signersKitFactory.make(signatureAddress: creator).addressKey.publicKey
         let encryptedPassword = try Encryptor.encrypt(urlPassword, key: currentAddressKey)
 
         let srpRandomPassword = try Decryptor.srpForPassword(urlPassword, modulus: modulus)

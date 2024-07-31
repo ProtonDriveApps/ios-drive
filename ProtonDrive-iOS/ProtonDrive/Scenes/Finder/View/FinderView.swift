@@ -43,11 +43,17 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
 
     var body: some View {
         ZStack {
-            finderView
-                .flatNavigationBar(vm.nodeName,
-                                   delegate: vm,
-                                   leading: leadingBarButtons(vm.leadingNavBarItems),
-                                   trailing: trailingBarButtons(vm.trailingNavBarItems))
+            VStack {
+                if vm.lockedStateBannerVisibility != .hidden {
+                    lockedStateBannerView
+                }
+                
+                finderView
+            }
+            .flatNavigationBar(vm.nodeName,
+                               delegate: vm,
+                               leading: leadingBarButtons(vm.leadingNavBarItems),
+                               trailing: trailingBarButtons(vm.trailingNavBarItems))
         }
         .navigationBarBackButtonHidden(multipleSelectionIsSelecting)
         .background(ColorProvider.BackgroundNorm.edgesIgnoringSafeArea(.all))
@@ -124,6 +130,13 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
             if multipleSelectionIsSelecting {
                 multipleSelectionActionBar
             }
+        }
+    }
+    
+    @ViewBuilder var lockedStateBannerView: some View {
+        if vm.lockedStateBannerVisibility != .hidden {
+            let lockedStateVM = LockedStateTopBannerViewModel(lockedStateBannerVisibiliy: vm.lockedStateBannerVisibility)
+            LockedStateTopBannerView(viewModel: lockedStateVM)
         }
     }
     
@@ -226,27 +239,29 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
     }
     
     @ViewBuilder private var multipleSelectionActionBar: some View {
-        if let multiselector = vm as? (any HasMultipleSelection), multiselector.listState.isSelecting {
-            ActionBar(onSelection: { multiselector.actionBarAction($0, sheet: self.$presentedSheet, menuItem: self.$menuItem) },
-                      items: multiselector.actionBarItems(), content: {
-                if multiselector.selection.selected.count == 1 {
-                    contextMenuView(vm: vm, multiselector: multiselector)
-                } else {
-                    EmptyView()
+        if let selectionViewModel = vm as? FinderViewModelWithSelection, selectionViewModel.listState.isSelecting {
+            ActionBar(
+                onSelection: { selectionViewModel.actionBarAction($0, sheet: self.$presentedSheet, menuItem: self.$menuItem) },
+                items: selectionViewModel.actionBarItems(),
+                content: {
+                    if selectionViewModel.selection.selected.count == 1 {
+                        contextMenuView(selectionViewModel: selectionViewModel)
+                    } else {
+                        EmptyView()
+                    }
                 }
-            })
+            )
             .animation(.default)
-            .opacity(multiselector.selection.selected.isEmpty ? 0 : 1)
-
+            .opacity(selectionViewModel.selection.selected.isEmpty ? 0 : 1)
         } else {
             EmptyView()
         }
     }
 
     @ViewBuilder
-    private func contextMenuView(vm: ViewModel, multiselector: any HasMultipleSelection) -> some View {
+    private func contextMenuView(selectionViewModel: FinderViewModelWithSelection) -> some View {
         let editSectionEnvironment = EditSectionEnvironment(menuItem: $menuItem, modal: presentModal, sheet: $presentedSheet, acknowledgedNotEnoughStorage: acknowledgedNotEnoughStorage)
-        let nodes = vm.permanentChildren.filter { multiselector.selection.selected.contains($0.node.identifier) }
+        let nodes = selectionViewModel.selectedNodes()
         if let node = nodes.map(\.node).first {
             let nodeRowViewModel = NodeRowActionMenuViewModel(node: node, model: vm)
 

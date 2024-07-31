@@ -22,14 +22,11 @@
 import Foundation
 
 public final class PMSettingsSectionBuilder {
-    let bundle: Bundle
     private var title: String?
     private var footer: String?
     private var rows: [PMCellSuplier] = []
 
-    public init(bundle: Bundle) {
-        self.bundle = bundle
-    }
+    public init() { }
 
     public func title(_ title: String?) -> PMSettingsSectionBuilder {
         self.title = title
@@ -53,17 +50,6 @@ public final class PMSettingsSectionBuilder {
     }
 
     public func build() -> PMSettingsSectionViewModel {
-        PMSettingsSectionViewModel(
-            title: keyInBundle(for: title),
-            rows: rows,
-            footer: keyInBundle(for: footer))
-    }
-
-    private func keyInBundle(for key: String?) -> KeyInBundle? {
-        var keyInBundle: KeyInBundle?
-        if let key = key {
-            keyInBundle = (key, bundle)
-        }
-        return keyInBundle
+        PMSettingsSectionViewModel(title: title, rows: rows, footer: footer)
     }
 }

@@ -63,7 +63,14 @@ public final class ItemActionsOutlet {
                     throw Errors.nodeNotFound
                 }
 
-                try await tower.trash(nodes: [node])
+                guard let moc = node.moc else { throw Node.noMOC() }
+
+                let parentID = try moc.performAndWait {
+                    guard let parent = node.parentLink else { throw Errors.parentNotFound }
+                    return parent.id
+                }
+
+                try await tower.trash(shareID: nodeID.shareID, parentID: parentID, linkIDs: [nodeID.nodeID])
                 #endif
             }
         } catch Errors.itemDeleted {
@@ -160,6 +167,11 @@ public final class ItemActionsOutlet {
             if let existingDraft = tower.draft(for: itemTemplate) {
                 existingDraft.delete()
             }
+            
+            // we cannot create the proton docs file from macos client, so we exclude from sync
+            if itemTemplate.contentType?.identifier == ProtonDocumentConstants.uti {
+                throw Errors.excludeFromSync
+            }
 
             let file = try await createFile(tower: tower, item: itemTemplate, with: url, under: parent)
             
@@ -223,7 +235,21 @@ public final class ItemActionsOutlet {
         guard let node = tower.node(itemIdentifier: item.itemIdentifier) else {
             throw Errors.nodeNotFound
         }
-        try await tower.trash(nodes: [node])
+
+        guard let moc = node.moc else {
+            throw Node.noMOC()
+        }
+
+        let (shareID, parentID, linkID, isLocalFile) = try moc.performAndWait {
+            guard let parent = node.parentLink else { throw node.invalidState("Trashing node should not be a root node.") }
+            return (node.shareID, parent.id, node.id, node.isLocalFile)
+        }
+
+        if isLocalFile {
+            tower.trashLocalNode([node.id])
+        } else {
+            try await tower.trash(shareID: shareID, parentID: parentID, linkIDs: [linkID])
+        }
         let nodeItem = try NodeItem(node: node)
         return (nodeItem, [], false)
         #else
@@ -284,7 +310,7 @@ public final class ItemActionsOutlet {
         guard let nodeID = NodeIdentifier(item.itemIdentifier) else {
             throw Errors.nodeNotFound
         }
-        guard let parent = tower.parentFolder(of: item) else {
+        guard tower.parentFolder(of: item) != nil else {
             throw Errors.parentNotFound
         }
 
@@ -296,7 +322,7 @@ public final class ItemActionsOutlet {
         if let updatedItem = try await findAndResolveConflictIfNeeded(tower: tower, item: item, changeType: actionChangeType, fields: changedFields, contentsURL: contents) {
             return (updatedItem, pendingFields, false)
         } else {
-            let node = try await tower.rename(node: nodeID, cleartextName: item.filename)
+            let node = try await tower.rename(node: nodeID, cleartextName: item.filename.filenameNormalizedForRemote())
             return (try NodeItem(node: node), pendingFields, false)
         }
     }
@@ -315,7 +341,16 @@ public final class ItemActionsOutlet {
         #endif
         
         if let updatedItem = try await findAndResolveConflictIfNeeded(tower: tower, item: item, changeType: .modifyContents(version: version, contents: newContents), fields: changedFields, contentsURL: newContents) {
+
+            #if os(iOS)
             return (updatedItem, pendingFields, false)
+            #else
+            // Fetch content if the versions differ (as described in the code
+            // comment of NSFileProviderReplicatedExtension's modifyItem
+            // function.
+            let shouldFetchContent = version.contentVersion != updatedItem.itemVersion?.contentVersion
+            return (updatedItem, pendingFields, shouldFetchContent)
+            #endif
         } else {
             guard let file = tower.node(itemIdentifier: item.itemIdentifier) as? File else {
                 Log.error("File not found despite no conflict being found", domain: .fileProvider)
@@ -358,13 +393,15 @@ extension ItemActionsOutlet {
         #if os(iOS)
         return nil
         #else
-        guard let (action, conflictingNode) = try identifyConflict(tower: tower, basedOn: item, changeType: changeType, fields: fields) else {
+        let itemWithNormalizedFilename = NodeItem(item: item, filename: item.filename.filenameNormalizedForRemote())
+
+        guard let (action, conflictingNode) = try identifyConflict(tower: tower, basedOn: itemWithNormalizedFilename, changeType: changeType, fields: fields) else {
             Log.info("No conflict identified", domain: .fileProvider)
             return nil // no conflict found
         }
 
         Log.info("Conflict identified: \(action)", domain: .fileProvider)
-        return try await resolveConflict(tower: tower, between: item, with: contentsURL, and: conflictingNode, applying: action)
+        return try await resolveConflict(tower: tower, between: itemWithNormalizedFilename, with: contentsURL, and: conflictingNode, applying: action)
         #endif
     }
 

@@ -18,15 +18,33 @@
 import Combine
 import PDCore
 
-final class PhotoBackupNetworkController: PhotoBackupConstraintController {
+enum NetworkConstraint: Equatable {
+    case noWifi
+    case noConnection
+}
+
+protocol PhotoBackupNetworkControllerProtocol: PhotoBackupConstraintController {
+    var specificConstraint: AnyPublisher<NetworkConstraint?, Never> { get }
+    func getInterface() -> NetworkState.Interface?
+}
+
+final class PhotoBackupNetworkController: PhotoBackupNetworkControllerProtocol {
     private let backupController: PhotosBackupController
     private let settingsController: PhotoBackupSettingsController
     private let interactor: NetworkStateInteractor
-    private var constraintSubject = CurrentValueSubject<Bool, Never>(false)
+    private var constraintSubject = CurrentValueSubject<NetworkConstraint?, Never>(nil)
     private var cancellables = Set<AnyCancellable>()
+    private var lastInterface: NetworkState.Interface?
+
+    var specificConstraint: AnyPublisher<NetworkConstraint?, Never> {
+        constraintSubject.eraseToAnyPublisher()
+    }
 
     var constraint: AnyPublisher<Bool, Never> {
-        constraintSubject.eraseToAnyPublisher()
+        specificConstraint
+            .map { $0 != nil }
+            .removeDuplicates()
+            .eraseToAnyPublisher()
     }
 
     init(backupController: PhotosBackupController, settingsController: PhotoBackupSettingsController, interactor: NetworkStateInteractor) {
@@ -34,6 +52,10 @@ final class PhotoBackupNetworkController: PhotoBackupConstraintController {
         self.settingsController = settingsController
         self.interactor = interactor
         subscribeToUpdates()
+    }
+
+    func getInterface() -> NetworkState.Interface? {
+        lastInterface
     }
 
     private func subscribeToUpdates() {
@@ -45,19 +67,37 @@ final class PhotoBackupNetworkController: PhotoBackupConstraintController {
             .store(in: &cancellables)
         
         Publishers.CombineLatest(settingsController.isNetworkConstrained, interactor.state)
-            .map { isConstrained, state -> Bool in
-                Log.debug("PhotoBackupNetworkController network state: \(state)", domain: .photosProcessing)
+            .map { isConstrainedToWifi, state -> NetworkConstraint? in
+                Log.debug("PhotoBackupNetworkController network state: \(state), isConstrainedToWifi: \(isConstrainedToWifi)", domain: .photosProcessing)
                 switch state {
                 case .unreachable:
-                    return true
+                    return .noConnection
                 case let .reachable(interface):
-                    return isConstrained && interface == .cellular
+                    if isConstrainedToWifi && interface == .cellular {
+                        return .noWifi
+                    } else {
+                        return nil
+                    }
                 }
             }
             .removeDuplicates()
-            .sink { [weak self] isConstrained in
-                Log.debug("PhotoBackupNetworkController isConstrained: \(isConstrained)", domain: .photosProcessing)
-                self?.constraintSubject.send(isConstrained)
+            .sink { [weak self] constraint in
+                Log.debug("PhotoBackupNetworkController constraint: \(String(describing: constraint))", domain: .photosProcessing)
+                self?.constraintSubject.send(constraint)
+            }
+            .store(in: &cancellables)
+
+        interactor.state
+            .map { state -> NetworkState.Interface? in
+                switch state {
+                case let .reachable(interface):
+                    return interface
+                case .unreachable:
+                    return nil
+                }
+            }
+            .sink { [weak self] interface in
+                self?.lastInterface = interface
             }
             .store(in: &cancellables)
     }

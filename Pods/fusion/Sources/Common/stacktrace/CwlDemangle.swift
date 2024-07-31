@@ -5114,3 +5114,4 @@ fileprivate extension Array {
         }
     }
 }
+// swiftlint:enable all

@@ -176,13 +176,12 @@ NS_ASSUME_NONNULL_BEGIN
     [deviceData setValue:systemInfo[@"freeMemorySize"] forKey:SentryDeviceContextFreeMemoryKey];
     [deviceData setValue:systemInfo[@"usableMemorySize"] forKey:@"usable_memory"];
     [deviceData setValue:systemInfo[@"memorySize"] forKey:@"memory_size"];
-    [deviceData setValue:systemInfo[@"bootTime"] forKey:@"boot_time"];
 
     NSString *locale = [[NSLocale autoupdatingCurrentLocale] objectForKey:NSLocaleIdentifier];
     [deviceData setValue:locale forKey:LOCALE_KEY];
 
 // The UIWindowScene is unavailable on visionOS
-#if SENTRY_HAS_UIKIT && !TARGET_OS_VISION
+#if SENTRY_TARGET_REPLAY_SUPPORTED
 
     NSArray<UIWindow *> *appWindows = SentryDependencyContainer.sharedInstance.application.windows;
     if ([appWindows count] > 0) {

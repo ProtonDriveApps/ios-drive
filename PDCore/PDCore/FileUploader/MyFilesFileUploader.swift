@@ -66,8 +66,7 @@ public class MyFilesFileUploader: FileUploader {
                     self.handleGlobalSuccess(fileDraft: draft, completion: completion)
 
                 case .failure(let error):
-                    Log.info("2️⃣❌ file upload failure, retry: \(retryCount), UUID: \(uploadID)", domain: .uploader)
-                    Log.error(error.localizedDescription, domain: .uploader)
+                    Log.error("2️⃣❌ file upload failure. Error: \(error.localizedDescription), retry: \(retryCount), UUID: \(uploadID)", domain: .uploader)
                     self.handleGlobalError(error, fileDraft: draft, retryCount: retryCount, completion: completion)
                 }
             }
@@ -165,22 +164,6 @@ public class MyFilesFileUploader: FileUploader {
     // MARK: Telemetry
     
     func initializeMeasurement(of item: String) {
-        // Used by descendants
-    }
-
-    func measureStart(of item: String) {
-        // Used by descendants
-    }
-
-    func measurePause(of item: String) {
-        // Used by descendants
-    }
-
-    func measureSuccess(of item: String, kilobytes: Double) {
-        // Used by descendants
-    }
-
-    func measureFailure(of item: String, kilobytes: Double) {
         // Used by descendants
     }
 }

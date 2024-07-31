@@ -52,10 +52,12 @@ public class Downloader: NSObject, ProgressTrackerProvider {
     }
     
     public func cancelAll() {
+        Log.info("Downloader.cancelAll, will cancell all downloads", domain: .downloader)
         self.queue.cancelAllOperations()
     }
     
     public func cancel(operationsOf identifiers: [NodeIdentifier]) {
+        Log.info("Downloader.cancel(operationsOf:), will cancell downloads of \(identifiers)", domain: .downloader)
         self.queue.operations
             .compactMap { $0 as? DownloadFileOperation }
             .filter { operation in

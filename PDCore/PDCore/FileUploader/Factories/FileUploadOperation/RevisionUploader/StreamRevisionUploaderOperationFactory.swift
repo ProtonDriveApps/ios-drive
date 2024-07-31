@@ -130,6 +130,7 @@ class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
             token: fullUploadableBlock.uploadToken,
             progressTracker: blockProgress,
             contentUploader: uploader,
+            measurementRepository: nil, // Right now we don't have any need for tracking stream upload of blocks
             onError: onError
         )
     }

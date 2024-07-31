@@ -38,19 +38,19 @@ public final class UserDefaultsObservationCenter {
         self.store = userDefaults
         self.additionalLogging = additionalLogging
         if additionalLogging {
-            Log.info("UserDefaultsObservationCenter init: \(instanceIdentifier.uuidString)", domain: .syncing)
+            Log.debug("UserDefaultsObservationCenter init: \(instanceIdentifier.uuidString)", domain: .syncing)
         }
     }
 
     deinit {
         observations.forEach { observation in
             if additionalLogging {
-                Log.info("UserDefaultsObservationCenter \(instanceIdentifier.uuidString): removing observation \(observation)", domain: .syncing)
+                Log.debug("UserDefaultsObservationCenter \(instanceIdentifier.uuidString): removing observation \(observation)", domain: .syncing)
             }
             observation.keyValueObservation.invalidate()
         }
         if additionalLogging {
-            Log.info("UserDefaultsObservationCenter deinit: \(instanceIdentifier.uuidString)", domain: .syncing)
+            Log.debug("UserDefaultsObservationCenter deinit: \(instanceIdentifier.uuidString)", domain: .syncing)
         }
     }
 
@@ -59,14 +59,14 @@ public final class UserDefaultsObservationCenter {
         let instanceIdentifier = self.instanceIdentifier
         let keyValueObservation = store.observe(key, options: [.new]) { _, change in
             if additionalLogging {
-                Log.info("UserDefaultsObservationCenter \(instanceIdentifier.uuidString): change handler, value \(String(describing: change.newValue))", domain: .syncing)
+                Log.debug("UserDefaultsObservationCenter \(instanceIdentifier.uuidString): change handler, value \(String(describing: change.newValue))", domain: .syncing)
             }
             handler(change.newValue)
         }
         let observation = Observation(observer: observer, keyValueObservation: keyValueObservation)
         self.observations.append(observation)
         if additionalLogging {
-            Log.info("UserDefaultsObservationCenter \(instanceIdentifier.uuidString): adding observation \(observation)", domain: .syncing)
+            Log.debug("UserDefaultsObservationCenter \(instanceIdentifier.uuidString): adding observation \(observation)", domain: .syncing)
         }
     }
 
@@ -76,7 +76,7 @@ public final class UserDefaultsObservationCenter {
             if observation.observer == nil || observer === observation.observer {
                 observation.keyValueObservation.invalidate()
                 if additionalLogging {
-                    Log.info("UserDefaultsObservationCenter \(instanceIdentifier.uuidString): removing observation \(observation)", domain: .syncing)
+                    Log.debug("UserDefaultsObservationCenter \(instanceIdentifier.uuidString): removing observation \(observation)", domain: .syncing)
                 }
                 return false
             }

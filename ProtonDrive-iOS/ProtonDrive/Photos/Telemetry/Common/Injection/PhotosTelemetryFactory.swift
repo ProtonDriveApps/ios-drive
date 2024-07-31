@@ -23,10 +23,11 @@ struct PhotosTelemetryFactory {
         return ConcretePhotosTelemetrySettingController(telemetryController: telemetryController, settingsController: settingsController, userInfoFactory: userInfoFactory)
     }
 
-    func makeStopController(tower: Tower, stateController: PhotosBackupStateController, telemetryController: TelemetryController, storage: PhotosTelemetryStorage, loadController: PhotoLibraryLoadController) -> PhotosBackupStopTelemetryController {
+    // swiftlint:disable:next function_parameter_count
+    func makeStopController(tower: Tower, stateController: PhotosBackupStateController, telemetryController: TelemetryController, storage: PhotosTelemetryStorage, loadController: PhotoLibraryLoadController, failedPhotosResource: DeletedPhotosIdentifierStoreResource) -> PhotosBackupStopTelemetryController {
         let durationController = makeDurationController(backupStateController: stateController, storage: storage)
         let userInfoFactory = makeUserInfoFactory(userInfoResource: tower.sessionVault)
-        let dataFactory = ConcretePhotosBackupStopTelemetryDataFactory(storage: storage, userInfoFactory: userInfoFactory)
+        let dataFactory = ConcretePhotosBackupStopTelemetryDataFactory(storage: storage, userInfoFactory: userInfoFactory, failedPhotosResource: failedPhotosResource)
         return ConcretePhotosBackupStopTelemetryController(stateController: stateController, telemetryController: telemetryController, durationController: durationController, dataFactory: dataFactory, storage: storage, loadController: loadController)
     }
 

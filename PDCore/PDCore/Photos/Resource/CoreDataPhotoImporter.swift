@@ -94,6 +94,8 @@ public class CoreDataPhotoImporter: PhotoImporter {
         coreDataPhoto.activeRevisionDraft = coreDataPhotoRevision
         coreDataPhoto.parentLink = root
 
+        Log.info("\(type(of: self)) will create Photo with uploadID: \(uuid).", domain: .photosProcessing)
+
         return coreDataPhoto
     }
 
@@ -111,7 +113,6 @@ public class CoreDataPhotoImporter: PhotoImporter {
     }
 
     private func makeCameraMetadata(from metadata: PhotoAssetMetadata.Camera) -> ExtendedAttributes.Camera {
-        let formatter = ISO8601DateFormatter()
         return ExtendedAttributes.Camera(
             captureTime: ISO8601DateFormatter().string(metadata.captureTime),
             device: metadata.device,

@@ -56,21 +56,58 @@ public final class MonitoringNetworkStateResource: NetworkStateResource {
 
     private func handleUpdate(_ path: NWPath) {
         guard path.status == .satisfied else {
+            Log.info("\(Self.self) update: is unreachable", domain: .networking)
             stateSubject.send(.unreachable)
             return
         }
 
         #if os(macOS)
+        Log.info("\(Self.self) update: is reachable", domain: .networking)
         stateSubject.send(.reachable(.other))
         #else
+
+        logReachableUpdate(with: path)
         if path.usesInterfaceType(.cellular) {
             stateSubject.send(.reachable(.cellular))
-        } else if path.usesInterfaceType(.wifi) || path.usesInterfaceType(.wiredEthernet) || path.usesInterfaceType(.loopback) {
-            stateSubject.send(.reachable(.other))
+        } else if path.usesInterfaceType(.wifi) {
+            stateSubject.send(.reachable(.wifi))
+        } else if path.usesInterfaceType(.wiredEthernet) {
+            stateSubject.send(.reachable(.wired))
+        } else if path.usesInterfaceType(.loopback) {
+            stateSubject.send(.reachable(.loopback))
         } else {
             // Otherwise we don't know the state
             stateSubject.send(.unreachable)
         }
         #endif
     }
+
+    private func logReachableUpdate(with path: NWPath) {
+        let interfaces = path.availableInterfaces.map { makeInterfaceLog(path: path, interface: $0) }
+        let interfacesString = interfaces.joined(separator: ", ")
+        Log.info("\(Self.self) update: is reachable. Available interfaces: \(interfacesString)", domain: .networking)
+    }
+
+    private func makeInterfaceLog(path: NWPath, interface: NWInterface) -> String {
+        let type = interface.type
+        return "(\(type), is used: \(path.usesInterfaceType(type)))"
+    }
 }
+
+#if DEBUG
+public final class NetworkStateResourceMock: NetworkStateResource {
+    private let stateSubject: CurrentValueSubject<NetworkState, Never>
+
+    public var state: AnyPublisher<NetworkState, Never> {
+        stateSubject.eraseToAnyPublisher()
+    }
+
+    public init(mockedState: NetworkState) {
+        stateSubject = .init(mockedState)
+    }
+
+    public func execute() {}
+
+    public func cancel() {}
+}
+#endif

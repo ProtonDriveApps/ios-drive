@@ -18,17 +18,27 @@
 import Foundation
 
 struct LocalNotification: Equatable {
-    let id: UUID
+    let id: String
     let title: String
     let body: String
     let thread: String
     let delay: TimeInterval
 
-    static var interruptedUpload: LocalNotification {
+    static var interruptedPhotoUpload: LocalNotification {
         LocalNotification(
-            id: UUID(),
+            id: "ch.protondrive.usernotification.uploadIncomplete",
             title: "Proton Drive",
-            body: "Keep the app open for faster uploads.",
+            body: "Photo backup is slower in the background. Open the app for quicker uploads.",
+            thread: "ch.protondrive.usernotification.uploadIncomplete",
+            delay: 10.0
+        )
+    }
+
+    static var interruptedFileUpload: LocalNotification {
+        LocalNotification(
+            id: "ch.protondrive.usernotification.uploadIncomplete",
+            title: "Proton Drive",
+            body: "File upload paused. Open the app to resume.",
             thread: "ch.protondrive.usernotification.uploadIncomplete",
             delay: 1.0
         )
@@ -36,7 +46,7 @@ struct LocalNotification: Equatable {
 
     static var failedUpload: LocalNotification {
         LocalNotification(
-            id: UUID(),
+            id: "ch.protondrive.usernotification.uploadFailure",
             title: "Proton Drive",
             body: "Some files didn’t upload. Try uploading them again.",
             thread: "ch.protondrive.usernotification.uploadFailure",

@@ -25,6 +25,7 @@ final class BackgroundOpenAppReminderTaskProcessorFactory {
     struct Dependencies {
         var photoUploadsWorkerState: WorkerState
         var backgroundTaskScheduler: BackgroundTaskScheduler
+        var backgroundWorkPolicy: BackgroundWorkPolicy
         var activator = BackgroundModes.checkNewPhotoInGallery.publisher
         var postLocalNotification = UNUserNotificationCenter.current().post
     }
@@ -39,11 +40,11 @@ final class BackgroundOpenAppReminderTaskProcessorFactory {
         // UserNotificator is used to post a notification when there is a non-backed up photo in the gallery
         let userNotificator = UNLocalNotificationUserNotificator(notificationPoster: dependencies.postLocalNotification)
         // NotifyingController is used to show the user a local notification when there is a non-backed up photo in the gallery
-        let notifyingController = OpenPhotosNotificatingBackgroundWorkController(photosUploadWorker: dependencies.photoUploadsWorkerState, userNotificator: userNotificator)
+        let notifyingController = OpenPhotosNotificatingBackgroundWorkController(photosUploadWorker: dependencies.photoUploadsWorkerState, userNotificator: userNotificator, backgroundWorkPolicy: dependencies.backgroundWorkPolicy)
         // EarlyExitingController is used to stop the background task once we post the local notification
         let earlyExitingController = EarlyExitPublishingBackgroundWorkController(decoratee: notifyingController, workStatusController: workStatusController)
         // TaskProcessor coordinates the work during background task
-        return TaskProcessor(activator: dependencies.activator, taskDisconnector: disconnector, backgroundWorkController: earlyExitingController, worker: workStatusController, scheduler: dependencies.backgroundTaskScheduler)
+        return TaskProcessor(activator: dependencies.activator, taskDisconnector: disconnector, backgroundWorkController: earlyExitingController, worker: workStatusController, scheduler: dependencies.backgroundTaskScheduler, resultStateRepository: nil)
     }
 }
 

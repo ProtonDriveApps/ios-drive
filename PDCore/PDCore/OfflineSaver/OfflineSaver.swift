@@ -18,6 +18,7 @@
 import CoreData
 import Reachability
 import PDClient
+import Combine
 
 public final class OfflineSaver: NSObject {
 
@@ -26,12 +27,15 @@ public final class OfflineSaver: NSObject {
     var reachability: Reachability?
     
     private var progress = Progress()
-    private var rebuildProgressesBlock: DispatchWorkItem?
     private var fractionObservation: NSKeyValueObservation?
     @objc public dynamic var fractionCompleted: Double = 0
     
     var frc: NSFetchedResultsController<Node>!
-    
+
+    let rebuildProgressSubject = PassthroughSubject<Void, Never>()
+    private var cancelables: Set<AnyCancellable> = []
+    private var isCleaningUp = false
+
     init(clientConfig: APIService.Configuration, storage: StorageManager, downloader: Downloader) {
         self.storage = storage
         self.downloader = downloader
@@ -40,9 +44,26 @@ public final class OfflineSaver: NSObject {
         super.init()
         
         self.trackReachability(toHost: clientConfig.host)
+
+        // Progress rebuilding is dangerous task because of KVO and subscriptions involved.
+        // We want to make is as seldom as possible, so we wait a couple of seconds after last request
+        rebuildProgressSubject
+            .throttle(for: .seconds(2), scheduler: DispatchQueue.main, latest: true)
+            .handleEvents(receiveOutput: { [weak self] in
+                // Clear the old process with references to the children progresses as soon as possible
+                self?.progress = Progress()
+                Log.info("Did clear old Progress tracking", domain: .downloader)
+            })
+            .delay(for: .seconds(1), scheduler: DispatchQueue.main)
+            .sink { [weak self] in
+                guard let self, !self.isCleaningUp else { return }
+                self.rebuildProgress()
+            }
+            .store(in: &cancelables)
     }
         
     func start() {
+        isCleaningUp = false
         storage?.backgroundContext.perform {
             self.subscribeToUpdates()
         }
@@ -56,17 +77,16 @@ public final class OfflineSaver: NSObject {
     }
     
     func cleanUp() {
+        self.isCleaningUp = true
+
         self.reachability?.stopNotifier()
         self.reachability?.whenReachable = nil
         self.reachability?.whenUnreachable = nil
         self.reachability = nil
-        
-        self.rebuildProgressesBlock?.cancel()
-        self.rebuildProgressesBlock = nil
 
         self.fractionObservation?.invalidate()
         self.fractionObservation = nil
-        
+
         self.frc?.delegate = nil
         self.frc = nil
     }
@@ -132,7 +152,7 @@ public final class OfflineSaver: NSObject {
         // already scanned children - mark inheriting
         folders.forEach { folder in
             folder.children.forEach { child in
-                child.isInheritingOfflineAvailable = true
+                child.setIsInheritingOfflineAvailable(true)
             }
         }
 
@@ -142,7 +162,7 @@ public final class OfflineSaver: NSObject {
         }.compactMap { folder in
             self.downloader?.scanChildren(of: folder,
              enumeration: { node in
-                node.isInheritingOfflineAvailable = true
+                node.setIsInheritingOfflineAvailable(true)
             }, completion: { result in
                 switch result {
                 case .success:
@@ -161,7 +181,7 @@ public final class OfflineSaver: NSObject {
         Log.info("Unmarked for Offline Available files: \(files.count)", domain: .downloader)
         
         files.forEach {
-            $0.isInheritingOfflineAvailable = false
+            $0.setIsInheritingOfflineAvailable(false)
             self.move(file: $0, to: .temporary)
         }
         
@@ -172,7 +192,7 @@ public final class OfflineSaver: NSObject {
         Log.info("Unmarked for Offline Available folders: \(folders.count)", domain: .downloader)
         
         folders.forEach { parent in
-            parent.isInheritingOfflineAvailable = false
+            parent.setIsInheritingOfflineAvailable(false)
             
             let files = parent.children.compactMap { $0 as? File }
             self.uncheckMarked(files: files)
@@ -229,15 +249,8 @@ extension OfflineSaver: NSFetchedResultsControllerDelegate {
         default: return // no need to rebuld progresses block for other cases of updates
         }
         
-        self.requestProgressBlockUpdate()
-    }
-    
-    internal func requestProgressBlockUpdate() {
-        // Progress rebuilding is dangerous task because of KVO and subscriptions involved.
-        // We want to make is as seldom as possible, so we wait a couple of seconds after last request
-        self.rebuildProgressesBlock?.cancel()
-        self.rebuildProgressesBlock = DispatchWorkItem(block: self.rebuildProgress)
-        DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(3), execute: self.rebuildProgressesBlock!)
+        Log.info("Offline available state did change. Attemot rebuild progress.", domain: .downloader)
+        self.rebuildProgressSubject.send()
     }
     
     private func rebuildProgress() {

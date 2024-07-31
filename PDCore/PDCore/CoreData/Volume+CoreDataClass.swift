@@ -30,4 +30,11 @@ public class Volume: NSManagedObject {
 
     @ManagedEnum(raw: #keyPath(restoreStatusRaw)) public var restoreStatus: RestoreStatus?
     @ManagedEnum(raw: #keyPath(stateRaw)) public var state: State?
+    
+    // dangerous, see https://developer.apple.com/documentation/coredata/nsmanagedobject
+    override public init(entity: NSEntityDescription, insertInto context: NSManagedObjectContext?) {
+        super.init(entity: entity, insertInto: context)
+        self._restoreStatus.configure(with: self)
+        self._state.configure(with: self)
+    }
 }

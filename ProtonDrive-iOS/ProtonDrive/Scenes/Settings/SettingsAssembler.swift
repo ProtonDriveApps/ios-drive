@@ -34,13 +34,16 @@ final class SettingsAssembler {
 
     @MainActor
     static func assemble(apiService: APIService, tower: Tower, keymaker: Keymaker, photosContainer: PhotosSettingsContainer?) -> UIViewController {
-        var appSettings = PMSettingsSectionViewModel.appSettings(with: keymaker)
+        var appSettings = PMSettingsSectionViewModel.appSettings(with: keymaker, isPhotosEnabled: {
+            tower.localSettings.photosBackgroundSyncEnabled == true && tower.localSettings.photosEnabledValue == true && !(tower.localSettings.photosUploadDisabledValue == true)
+        })
         let accountRecovery = tower.sessionVault.getAccountInfo()?.accountRecovery
 
         if let photosContainer = photosContainer {
             appSettings = appSettings
                 .amending()
                 .append(row: photosContainer.makeSettingsCell())
+                .append(row: DefaultHomeTabFactory.defaultHomeTabRow(tower: tower))
                 .amend()
         }
         let about = PMSettingsSectionViewModel.about
@@ -48,22 +51,25 @@ final class SettingsAssembler {
             .prepend(row: PMAcknowledgementsConfiguration.acknowledgements(url: Self.url))
             .amend()
 
-        let changePassword = PMSettingsSectionBuilder(bundle: PMSettings.bundle)
-            .title("pmsettings-settings-account-settings-section")
+        let accountSettings = PMSettingsSectionBuilder()
+            .title("pmsettings-settings-account-settings-section".localized(in: PMSettings.bundle))
             .appendRowIfAvailable(
                 changePasswordRow(isLoginPassword: true, tower: tower, apiService: apiService)
             )
             .appendRowIfAvailable(
                 changePasswordRow(isLoginPassword: false, tower: tower, apiService: apiService)
             )
+            .appendRowIfAvailable(
+                securityKeysRow(apiService: apiService)
+            )
             .build()
 
-        let localOptions = PMSettingsSectionBuilder(bundle: PMSettings.bundle)
+        let localOptions = PMSettingsSectionBuilder()
             .appendRowIfAvailable(exportLogsButton(tower.localSettings))
             .appendRow(clearCacheButton)
             .build()
 
-        let accountSettings = PMSettingsSectionBuilder(bundle: PMSettings.bundle)
+        let accountManagementSettings = PMSettingsSectionBuilder()
             .title(accountRecovery?.title)
             .footer(ADTranslation.delete_account_message.l10n)
             .appendRowIfAvailable(
@@ -76,10 +82,10 @@ final class SettingsAssembler {
             .build()
 
         var sections: [PMSettingsSectionViewModel]
-        if isChangePasswordEnabled(coreCredential: tower.sessionVault.sessionCredential) {
-            sections = [appSettings, about, localOptions, changePassword, accountSettings]
+        if showAccountSection(coreCredential: tower.sessionVault.sessionCredential) {
+            sections = [appSettings, about, localOptions, accountSettings, accountManagementSettings]
         } else {
-            sections = [appSettings, about, localOptions, accountSettings]
+            sections = [appSettings, about, localOptions, accountManagementSettings]
         }
 
         return PMSettingsComposer.assemble(
@@ -94,10 +100,6 @@ final class SettingsAssembler {
     static func makeDeleteAccountViewController(apiService: APIService, signoutManager: SignOutManager) -> DeleteAccountViewController {
         let accountViewModel = DeleteAccountViewModel(apiService: apiService, signoutManager: signoutManager)
         return DeleteAccountViewController(viewModel: accountViewModel)
-    }
-
-    static func securityCell(with keymaker: Keymaker) -> PMCellSuplier {
-        PMPinFaceIDDrillDownCellConfiguration.security(locker: makeLockManager(with: keymaker))
     }
 
     static func makeLockManager(with keymaker: Keymaker) -> KeymakerLockManager {
@@ -115,7 +117,7 @@ final class SettingsAssembler {
     static func exportLogsButton(_ featureFlags: LocalSettings) -> PMCellSuplier? {
         guard featureFlags.driveiOSLogCollection == true && featureFlags.driveiOSLogCollectionDisabled == false else { return nil }
         let configuration = PMLoadingLabelConfiguration(
-            text: "Export Logs",
+            text: "Export logs",
             action: {
                 let logsURL = await LogExporter().export()
                 await presentShareViewController(logs: logsURL)
@@ -129,16 +131,30 @@ final class SettingsAssembler {
     static func presentShareViewController(logs: URL) {
         let shareActivity = UIActivityViewController(activityItems: [logs], applicationActivities: nil)
         shareActivity.completionWithItemsHandler = { _, _, _, _ in
-            try? FileManager.default.removeItem(at: PDFileManager.logsExportDirectory)
+            DispatchQueue.main.async {
+                try? FileManager.default.removeItem(at: PDFileManager.logsExportDirectory)
+            }
         }
-
-        UIApplication.shared.topViewController()?.present(shareActivity, animated: true)
+        guard let topVC = UIApplication.shared.topViewController()  else { return }
+        if let popover = shareActivity.popoverPresentationController,
+           let screenSize = topVC.view.realScreenSize() {
+            // popover position will be updated after orientation change
+            // check SideMenuCoordinator.orientationDidChange
+            popover.sourceView = topVC.view
+            popover.permittedArrowDirections = []
+            let point = CGPoint(x: screenSize.width / 2, y: screenSize.height / 2)
+            popover.sourceRect = CGRect(origin: point, size: .zero)
+        }
+        topVC.present(shareActivity, animated: true)
     }
 
     static var clearCacheButton: PMAboutConfiguration {
-        PMAboutConfiguration(title: "Clear local cache", action: .perform({
-            NotificationCenter.default.post(name: .nukeCache, object: nil)
-        }), bundle: .main)
+        PMAboutConfiguration(
+            title: "Clear local cache",
+            action: .perform({ NotificationCenter.default.post(name: .nukeCache, object: nil) }),
+            bundle: .main,
+            accessibilityIdentifier: "Clear local cache"
+        )
     }
 
     /// Provides the Account Recovery row for the settings, provided the FF is enabled
@@ -153,10 +169,26 @@ final class SettingsAssembler {
         return PMDrillDownConfiguration(viewModel: item,
                                         viewControllerFactory: { item.controller })
     }
+
+    /// Provides the Account Recovery row for the settings, provided the FF is enabled
+    static func securityKeysRow(apiService: APIService) -> PMDrillDownConfiguration? {
+        guard FeatureFlagsRepository.shared.isEnabled(
+            CoreFeatureFlagType.fidoKeys
+        ) else { return nil }
+
+        let item = SecurityKeysSettingsItem(apiService: apiService)
+        return PMDrillDownConfiguration(viewModel: item,
+                                        viewControllerFactory: { item.controller })
+    }
 }
 
 // MARK: - Password Change
 extension SettingsAssembler {
+    static func showAccountSection(coreCredential: CoreCredential?) -> Bool {
+        isChangePasswordEnabled(coreCredential: coreCredential)
+        || FeatureFlagsRepository.shared.isEnabled(CoreFeatureFlagType.fidoKeys, reloadValue: true)
+    }
+
     static func isChangePasswordEnabled(coreCredential: CoreCredential?) -> Bool {
         guard let coreCredential,
               !coreCredential.mailboxPassword.isEmpty else {

@@ -47,7 +47,7 @@ final class UserQuotaStateController: QuotaStateController {
 
     private func subscribeToUpdates() {
         resource.availableQuotaPublisher
-            .compactMap { [weak self] quota in
+            .map { [weak self] quota in
                 self?.mapQuota(quota)
             }
             .removeDuplicates()
@@ -63,7 +63,8 @@ final class UserQuotaStateController: QuotaStateController {
             return QuotaState.full
         } else if ratio > 0.8 {
             return QuotaState.eightyPercentFull
-        } else if ratio >= 0.5 {
+        } else if ratio >= 0.5 && !quota.isPaid {
+            // Show fifty percent only to free users
             return QuotaState.fiftyPercentFull
         } else {
             return nil

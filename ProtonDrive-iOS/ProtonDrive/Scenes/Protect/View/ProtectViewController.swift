@@ -21,32 +21,16 @@ import PDCore
 import ProtonCoreUIFoundations
 
 final class ProtectViewController: UIViewController {
-    private var cancellable: Cancellable?
-
     var viewModel: ProtectViewModel!
-    var onLocked: (() -> Void)?
-    var onUnlocked: (() -> Void)?
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = ColorProvider.BackgroundSecondary
-
-        cancellable = viewModel
-            .isLockedPublisher
-            .removeDuplicates()
-            .sink { [weak self] in self?.handleLockStatusChange($0) }
-
+        viewModel.viewDidLoad()
+        
         #if DEBUG
         logOutInTestsIfNeeded()
         #endif
-    }
-
-    private func handleLockStatusChange(_ isLocked: Bool) {
-        if isLocked {
-            onLocked?()
-        } else {
-            onUnlocked?()
-        }
     }
 }
 
@@ -58,10 +42,9 @@ extension ProtectViewController {
             return
         }
 
-        cancellable?.cancel()
-        cancellable = nil
-
+        viewModel.reset()
         DebugConstants.removeCommandLine(flags: [.clearAllPreference])
+        
         viewModel.requestLogout()
     }
 }

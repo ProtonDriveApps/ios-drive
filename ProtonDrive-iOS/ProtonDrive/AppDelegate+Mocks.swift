@@ -51,6 +51,7 @@ extension AppDelegate {
         }
         
         OnboardingFlowTestsManager.skipOnboardingInTestsIfNeeded()
+        OneDollarUpsellFlowTestsManager.skipUpsellInTestsIfNeeded()
     }
 }
 #endif

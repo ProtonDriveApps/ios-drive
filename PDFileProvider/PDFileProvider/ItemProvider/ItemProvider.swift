@@ -49,7 +49,7 @@ public final class ItemProvider {
     public func item(for identifier: NSFileProviderItemIdentifier, creatorAddresses: Set<String>, slot: FileSystemSlot) -> (NSFileProviderItem?, Error?) {
         switch identifier {
         case .rootContainer:
-            guard !creatorAddresses.isEmpty, let mainShare = slot.getMainShare(of: creatorAddresses), let root = mainShare.root else {
+            guard !creatorAddresses.isEmpty, let mainShare = slot.getMainShare(of: creatorAddresses), let root = slot.moc.performAndWait({ mainShare.root }) else {
                 Log.error(Errors.noMainShare.localizedDescription, domain: .fileProvider)
                 return (nil, Errors.noMainShare)
             }
@@ -165,13 +165,14 @@ public final class ItemProvider {
                         Log.info("Prepared cleartext content of \(~file) at temp location", domain: .fileProvider)
                         let item = try NodeItem(node: file)
 
-                        #if os(macOS)
                         moc.performAndWait {
+                        #if os(macOS)
                             file.activeRevision?.removeOldBlocks(in: moc)
                             try? moc.saveOrRollback()
-                        }
+                        #else
+                            moc.reset()
                         #endif
-                        moc.reset()
+                        }
                         completionHandler(url, item, nil)
                     } catch {
                         Log.error(error.localizedDescription, domain: .fileProvider)

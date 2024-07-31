@@ -36,9 +36,28 @@ extension ShareURL {
 
             return clearPassword
         } catch {
-            Log.error(DecryptionError(error, "ShareURL", description: "ShareURLID: \(id), ShareID: \(share.id)"), domain: .encryption)
-            throw error
+            Log.error(DecryptionError(error, "ShareURL - (initial)", description: "ShareURLID: \(id), ShareID: \(share.id)"), domain: .encryption)
+            do {
+                let keys = try getAllKeys()
+                let decryptionKeys = keys.map(\.decryptionKey)
+
+                let clearPassword = try Decryptor.decrypt(decryptionKeys: decryptionKeys, value: password)
+                self.clearPassword = clearPassword
+
+                return clearPassword
+            } catch {
+                Log.error(DecryptionError(error, "ShareURL", description: "ShareURLID: \(id), ShareID: \(share.id)"), domain: .encryption)
+                throw error
+            }
         }
+    }
+
+    private func getAllKeys() throws -> [KeyPair] {
+        guard let addressKeys = SessionVault.current.addresses?.compactMap({ $0 }).flatMap(\.activeKeys) else {
+            throw SessionVault.Errors.noRequiredAddressKey
+        }
+
+        return addressKeys.compactMap(KeyPair.init)
     }
 
     private func getAddressKeys() throws -> [KeyPair] {

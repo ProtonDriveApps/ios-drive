@@ -19,7 +19,17 @@ import PDCore
 import Photos
 
 enum PhotoLibraryLivePhotoFilesResourceError: Error {
-    case invalidResources
+    // Int: Contained resource type
+    case invalidResources([Int])
+}
+
+extension PhotoLibraryLivePhotoFilesResourceError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .invalidResources(let types):
+            return "PhotoLibraryLivePhotoFilesResourceError \(types)"
+        }
+    }
 }
 
 final class PhotoLibraryLivePhotoCompoundResource: PhotoLibraryCompoundResource {

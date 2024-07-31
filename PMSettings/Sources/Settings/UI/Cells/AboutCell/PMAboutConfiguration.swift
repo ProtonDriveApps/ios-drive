@@ -25,12 +25,14 @@ public struct PMAboutConfiguration: PMCellSuplier, PMDrillDownCellViewModel {
     let titleKey: String
     let action: PMSettingsAction
     let bundle: Bundle
+    public let accessibilityIdentifier: String
     public let preview: String? = nil
 
-    public init(title: String, action: PMSettingsAction, bundle: Bundle) {
+    public init(title: String, action: PMSettingsAction, bundle: Bundle, accessibilityIdentifier: String) {
         self.titleKey = title
         self.action = action
         self.bundle = bundle
+        self.accessibilityIdentifier = accessibilityIdentifier
     }
 
     public func cell(at indexPath: IndexPath, for tableView: UITableView, in parent: UIViewController) -> UITableViewCell {
@@ -58,12 +60,14 @@ public struct PMAcknowledgementsConfiguration: PMCellSuplier, PMDrillDownCellVie
     let titleKey: String
     let url: URL
     let bundle: Bundle
+    public let accessibilityIdentifier: String
     public let preview: String? = nil
 
-    public init(title: String, url: URL, bundle: Bundle) {
+    public init(title: String, url: URL, bundle: Bundle, accessibilityIdentifier: String) {
         self.titleKey = title
         self.url = url
         self.bundle = bundle
+        self.accessibilityIdentifier = accessibilityIdentifier
     }
 
     public func cell(at indexPath: IndexPath, for tableView: UITableView, in parent: UIViewController) -> UITableViewCell {

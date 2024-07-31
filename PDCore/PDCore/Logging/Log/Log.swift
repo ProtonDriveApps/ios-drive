@@ -71,9 +71,12 @@ public struct LogDomain: Equatable, Hashable {
     public static let updater = LogDomain(name: "uploader")
     public static let forceRefresh = LogDomain(name: "forceRefresh")
     public static let sessionManagement = LogDomain(name: "sessionManagement")
+    public static let sharing = LogDomain(name: "sharing")
+    public static let offlineAvailable = LogDomain(name: "offlineAvailable")
     public static let diagnostics = LogDomain(name: "diagnostics")
     public static let ipc = LogDomain(name: "ipc")
     public static let logs = LogDomain(name: "logs")
+    public static let protonDocs = LogDomain(name: "protonDocs")
 
     public static let `default`: Set<LogDomain> = [
         .application,
@@ -90,9 +93,12 @@ public struct LogDomain: Equatable, Hashable {
         .updater,
         .forceRefresh,
         .sessionManagement,
+        .sharing,
+        .offlineAvailable,
         .diagnostics,
         .ipc,
-        .logs
+        .logs,
+        .protonDocs
     ]
 }
 

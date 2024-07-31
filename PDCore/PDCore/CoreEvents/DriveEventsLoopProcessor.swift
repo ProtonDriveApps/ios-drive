@@ -110,7 +110,7 @@ extension DriveEventsLoopProcessor {
             let nodes = cloudSlot.update([event.link], of: shareId, in: moc)
             nodes.forEach { node in
                 guard let parent = node.parentLink else { return }
-                node.isInheritingOfflineAvailable = parent.isInheritingOfflineAvailable || parent.isMarkedOfflineAvailable
+                node.setIsInheritingOfflineAvailable(parent.isInheritingOfflineAvailable || parent.isMarkedOfflineAvailable)
             }
             var affectedNodes = nodes.compactMap(\.parentLink).map(\.identifier)
             affectedNodes.append(contentsOf: nodes.map(\.identifier))

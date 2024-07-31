@@ -40,6 +40,5 @@ final class ConfirmationPasswordConfigurationRouter: SecurityPasswordRouter {
 
     func finishWithSuccess(_ success: Bool) {
         onSuccess(success)
-        view?.dismiss(animated: true, completion: nil)
     }
 }

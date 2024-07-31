@@ -33,10 +33,12 @@ protocol PhotosBackupStopTelemetryDataFactory {
 final class ConcretePhotosBackupStopTelemetryDataFactory: PhotosBackupStopTelemetryDataFactory {
     private let storage: PhotosTelemetryStorage
     private let userInfoFactory: PhotosTelemetryUserInfoFactory
+    private let failedPhotosResource: DeletedPhotosIdentifierStoreResource
 
-    init(storage: PhotosTelemetryStorage, userInfoFactory: PhotosTelemetryUserInfoFactory) {
+    init(storage: PhotosTelemetryStorage, userInfoFactory: PhotosTelemetryUserInfoFactory, failedPhotosResource: DeletedPhotosIdentifierStoreResource) {
         self.storage = storage
         self.userInfoFactory = userInfoFactory
+        self.failedPhotosResource = failedPhotosResource
     }
 
     func makeData(with data: PhotosBackupStopTelemetryData) throws -> TelemetryData {
@@ -52,6 +54,7 @@ final class ConcretePhotosBackupStopTelemetryDataFactory: PhotosBackupStopTeleme
         var values = [
             "duration_seconds": storage.backupDuration,
             "files_uploaded": storage.uploadedFilesCount,
+            "files_failed": Double(failedPhotosResource.getCount()),
             "bytes_uploaded": storage.uploadedBytesCount,
         ]
         values["number_of_local_items"] = data.localItemsCount.map { Double($0) }

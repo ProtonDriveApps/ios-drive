@@ -23,9 +23,9 @@ struct MetadataVersion: Codable {
     let parentIdentifierHash: Data
     let filenameHash: Data
 
-    init(item: NSFileProviderItem) {
-        self.parentIdentifierHash = ItemVersionHasher.hash(for: item.parentItemIdentifier)
-        self.filenameHash = ItemVersionHasher.hash(for: item.filename)
+    init(parentItemIdentifier: NSFileProviderItemIdentifier, filename: String) {
+        self.parentIdentifierHash = ItemVersionHasher.hash(for: parentItemIdentifier)
+        self.filenameHash = ItemVersionHasher.hash(for: filename)
     }
     
     init?(from data: Data) {

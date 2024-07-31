@@ -73,16 +73,22 @@ public class CoreDataCommunicationService<Entity: NSManagedObject>: Communicatio
     }
 
     private func startObservingCoreDataChanges() {
-        updatesTask = Task {
-            self.historyObserver.startObserving()
-            for await transactions in self.historyObserver.transactions {
-                await moc.perform {
+        let historyObserver = historyObserver
+        updatesTask = Task { [weak self] in
+            historyObserver.startObserving()
+            for await transactions in historyObserver.transactions {
+                guard !Task.isCancelled else { return }
+                await self?.moc.perform { [weak self] in
                     for transaction in transactions {
-                        self.processTransaction(transaction)
+                        self?.processTransaction(transaction)
                     }
                 }
             }
         }
+    }
+
+    deinit {
+        updatesTask?.cancel()
     }
 
     private func processTransaction(_ transaction: NSPersistentHistoryTransaction) {

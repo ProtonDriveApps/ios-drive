@@ -38,7 +38,7 @@ extension OfflineSaver {
         case .cellular, .wifi:
             Log.info("Became reachable via \(reachability.connection.description)", domain: .networking)
             
-            self.requestProgressBlockUpdate()
+            self.rebuildProgressSubject.send()
             self.storage?.backgroundContext.perform {
                 self.checkEverything()
             }

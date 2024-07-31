@@ -38,7 +38,7 @@ public final class RemoteFetchingPhotosRootDataSource: PhotosShareDataSource {
         let response = try await photoShareListing.getPhotosRoot()
 
         return try await moc.perform {
-            let share: Share = self.storage.new(with: response.share.shareID, by: #keyPath(Share.id), in: moc)
+            let share: Share = self.storage.unique(with: [response.share.shareID], in: moc)[0]
             share.addressID = response.share.addressID
             share.creator = response.share.creator
             share.key = response.share.key
@@ -46,7 +46,7 @@ public final class RemoteFetchingPhotosRootDataSource: PhotosShareDataSource {
             share.passphraseSignature = response.share.passphraseSignature
             share.type = .photos
 
-            let root: Folder = self.storage.new(with: response.link.linkID, by: #keyPath(Folder.id), in: moc)
+            let root: Folder = self.storage.unique(with: [response.link.linkID], in: moc)[0]
             root.shareID = response.share.shareID
             root.nodeKey = response.link.nodeKey
             root.nodePassphrase = response.link.nodePassphrase

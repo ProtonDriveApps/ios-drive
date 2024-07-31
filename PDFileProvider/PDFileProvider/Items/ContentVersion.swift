@@ -30,8 +30,15 @@ struct ContentVersion: Codable {
             self.versionHash = Data()
             return
         }
-        
-        // otherwise we can just use activeRevision ID to distinguish from previous revisions
+
+        guard MimeType(value: node.mimeType) != .protonDocument else {
+            // Overwrites local edits with empty content, since the filesystem
+            // only updates it's content if the content version changes
+            self.versionHash = ItemVersionHasher.hash(for: UUID().uuidString)
+            return
+        }
+
+        // Otherwise we can just use activeRevision ID to distinguish from previous revisions
         self.versionHash = ItemVersionHasher.hash(for: activeRevision.id)
     }
     

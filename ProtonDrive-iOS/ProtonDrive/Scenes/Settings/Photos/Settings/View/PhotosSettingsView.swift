@@ -32,7 +32,7 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
     var body: some View {
         ZStack {
             content
-                .flatNavigationBar(viewModel.title, leading: EmptyView(), trailing: EmptyView())
+                .flatNavigationBar(viewModel.backupTitle, leading: EmptyView(), trailing: EmptyView())
         }
         .background(ColorProvider.BackgroundNorm.edgesIgnoringSafeArea(.all))
     }
@@ -40,25 +40,24 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
     @ViewBuilder
     private var content: some View {
         VStack {
-            HStack {
-                settingsRow
+            VStack(spacing: 0) {
+                backupEnabledRow
+                    .separatedWithoutPadding()
+                mobileDataRow
             }
-            .padding(.vertical, 12)
             
             #if HAS_QA_FEATURES
-            VStack {
+            VStack(spacing: 0) {
                 qaSectionTitleRow
-            
                 settingsImageRow
-            
+                    .separatedWithoutPadding()
                 settingsVideoRow
-                
+                    .separatedWithoutPadding()
                 HStack {
                     settingsDateRow
-                    
                     settingsDatePicker
                 }
-
+                .separatedWithoutPadding()
                 diagnosticsRow
             }
             .padding(.vertical, 12)
@@ -66,7 +65,6 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
             
             Spacer()
         }
-        .padding(.horizontal, 16)
     }
     
     @ViewBuilder
@@ -75,18 +73,29 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
             .font(.subheadline)
             .foregroundColor(ColorProvider.TextWeak)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
     }
 
     @ViewBuilder
-    private var settingsRow: some View {
-        PhotosSettingsToggle(viewModel.title, isOn: .init(get: {
+    private var backupEnabledRow: some View {
+        PhotosSettingsToggle(viewModel.backupTitle, isOn: .init(get: {
             viewModel.isEnabled
         }, set: { value in
             viewModel.setEnabled(value)
         }))
         .accessibilityIdentifier("PhotosBackupSettings.Switch")
     }
-    
+
+    @ViewBuilder
+    private var mobileDataRow: some View {
+        PhotosSettingsToggle(viewModel.mobileDataTitle, isOn: .init(get: {
+            viewModel.isMobileDataEnabled
+        }, set: { value in
+            viewModel.setMobileDataEnabled(value)
+        }))
+        .accessibilityIdentifier("PhotosBackupSettings.MobileDataSwitch")
+    }
+
     @ViewBuilder
     private var settingsImageRow: some View {
         PhotosSettingsToggle(viewModel.imageTitle, isOn: .init(get: {
@@ -117,7 +126,7 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
             viewModel.setIsNotOlderThanEnabled(value)
         }))
         .disabled(viewModel.isEnabled)
-        .accessibilityIdentifier("PhotosBackupSettings.VideoSwitch")
+        .accessibilityIdentifier("PhotosBackupSettings.DateSwitch")
     }
     
     @ViewBuilder
@@ -127,6 +136,7 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
         }, set: { value in
             viewModel.setNotOlderThan(value)
         }), displayedComponents: .date)
+        .padding(.horizontal, 16)
         .datePickerStyle(.compact)
         .disabled(viewModel.isEnabled)
         .disabled(!viewModel.isNotOlderThanEnabled)
@@ -140,7 +150,8 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
             Text(viewModel.diagnosticsTitle)
         })
         .foregroundColor(ColorProvider.BrandNorm)
-        .padding(12)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
         .accessibilityIdentifier("PhotosBackupSettings.OpenDiagnosticsButton")
         .sheet(isPresented: $isDiagnosticsPresented) {
             diagnosticsView
@@ -161,6 +172,8 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
             .toggleStyle(SwitchToggleStyle(tint: ColorProvider.InteractionNorm))
             .font(.body)
             .foregroundColor(ColorProvider.TextNorm)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
         }
     }
 }

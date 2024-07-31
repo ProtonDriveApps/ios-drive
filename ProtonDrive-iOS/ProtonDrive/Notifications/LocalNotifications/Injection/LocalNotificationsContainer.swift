@@ -22,7 +22,7 @@ final class LocalNotificationsContainer {
     private let factory = LocalNotificationsFactory()
     private let localNotificationsController: LocalNotificationsController
     
-    init() {
-        localNotificationsController = factory.makeNotificationsController()
+    init(tower: Tower) {
+        localNotificationsController = factory.makeNotificationsController(tower: tower)
     }
 }

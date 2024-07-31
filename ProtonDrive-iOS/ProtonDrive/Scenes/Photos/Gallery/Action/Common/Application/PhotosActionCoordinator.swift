@@ -21,4 +21,5 @@ protocol PhotosActionCoordinator {
     func updateTabBar(isHidden: Bool)
     func openShare(id: PhotoId)
     func openNativeShare(url: URL, completion: @escaping () -> Void)
+    func openNativeShareForLivePhoto(imageURL: URL, videoURL: URL, completion: @escaping () -> Void)
 }

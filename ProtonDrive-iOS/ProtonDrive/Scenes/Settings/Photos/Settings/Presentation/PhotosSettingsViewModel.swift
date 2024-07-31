@@ -19,15 +19,18 @@ import Combine
 import Foundation
 
 protocol PhotosSettingsViewModelProtocol: ObservableObject {
-    var title: String { get }
+    var backupTitle: String { get }
+    var mobileDataTitle: String { get }
     var imageTitle: String { get }
     var videoTitle: String { get }
     var isEnabled: Bool { get }
+    var isMobileDataEnabled: Bool { get }
     var isNotOlderThanEnabled: Bool { get }
     var notOlderThanTitle: String { get }
     var notOlderThan: Date { get }
     var diagnosticsTitle: String { get }
     func setEnabled(_ isEnabled: Bool)
+    func setMobileDataEnabled(_ isEnabled: Bool)
     var isVideoEnabled: Bool { get }
     func setVideoEnabled(_ isEnabled: Bool)
     var isImageEnabled: Bool { get }
@@ -40,12 +43,14 @@ final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
     private let settingsController: PhotoBackupSettingsController
     private let startController: PhotosBackupStartController
 
-    let title = "Photos backup"
+    let backupTitle = "Photos backup"
+    let mobileDataTitle = "Use mobile data to backup photos"
     let imageTitle = "Backup Images"
     let videoTitle = "Backup Videos"
     let notOlderThanTitle = "Items since"
     let diagnosticsTitle = "Open diagnostics"
     @Published var isEnabled = false
+    @Published var isMobileDataEnabled = false
     @Published var isImageEnabled = false
     @Published var isVideoEnabled = false
     @Published var notOlderThan = Date.distantPast
@@ -63,6 +68,9 @@ final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
     private func subscribeToUpdates() {
         settingsController.isEnabled
             .assign(to: &$isEnabled)
+        settingsController.isNetworkConstrained
+            .map { !$0 }
+            .assign(to: &$isMobileDataEnabled)
         settingsController.supportedMediaTypes
             .map { $0.contains(.image) }
             .assign(to: &$isImageEnabled)
@@ -80,7 +88,12 @@ final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
             settingsController.setEnabled(isEnabled)
         }
     }
-    
+
+    func setMobileDataEnabled(_ isEnabled: Bool) {
+        let isConstrained = !isEnabled
+        settingsController.setNetworkConnectionConstrained(isConstrained)
+    }
+
     func setImageEnabled(_ isEnabled: Bool) {
         settingsController.setImageEnabled(isEnabled)
     }

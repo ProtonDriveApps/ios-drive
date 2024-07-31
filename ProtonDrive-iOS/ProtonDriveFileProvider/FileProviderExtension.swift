@@ -40,7 +40,6 @@ class FileProviderExtension: NSFileProviderExtension {
     override init() {
         injectDefaultCryptoImplementation()
         PDFileManager.configure(with: Constants.appGroup)
-        injectDefaultCryptoImplementation()
 
         self.keymaker = DriveKeymaker(autolocker: nil, keychain: DriveKeychain.shared)
         self.itemProvider = ItemProvider()
@@ -239,7 +238,7 @@ extension FileProviderExtension {
             Log.error("Failed to provide url for \(identifier)", domain: .fileProvider)
             return nil
         }
-        return identifier.makeUrl(filename: item.filename)
+        return identifier.makeUrl(item: item)
     }
 
     override func persistentIdentifierForItem(at url: URL) -> NSFileProviderItemIdentifier? {

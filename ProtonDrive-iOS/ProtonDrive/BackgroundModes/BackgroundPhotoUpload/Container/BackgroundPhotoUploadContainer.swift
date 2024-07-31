@@ -33,6 +33,7 @@ final class BackgroundPhotoUploadContainer {
         let settingsProvider: SettingsProvider
         var postLocalNotification = UNUserNotificationCenter.current().post
         let keymaker: Keymaker
+        let backgroundTaskResultStateRepository: BackgroundTaskResultStateRepositoryProtocol
     }
 
     let workerState: WorkerState
@@ -46,8 +47,15 @@ final class BackgroundPhotoUploadContainer {
     init(dependencies: Dependencies) {
 
         func makeTaskScheduler(_ workerState: WorkerState) -> BackgroundTaskScheduler {
+            let postponedDateProvider: () -> Date
+            if Constants.isUITest {
+                postponedDateProvider = { Date().byAdding(.minute, value: 15) }
+            } else {
+                postponedDateProvider = { Date().byAdding(.day, value: 1) }
+            }
+            
             let ts1 = BackgroundProcessingTaskScheduler(id: Notification.Name.backgroundPhotosProcessing.rawValue, submitTask: BGTaskScheduler.shared.submit, cancelTask: BGTaskScheduler.shared.cancelTask, date: { nil })
-            let ts2 = BackgroundProcessingTaskScheduler(id: Notification.Name.backgroundPhotosProcessing.rawValue, submitTask: BGTaskScheduler.shared.submit, cancelTask: BGTaskScheduler.shared.cancelTask, date: { Date().byAdding(.day, value: 1) })
+            let ts2 = BackgroundProcessingTaskScheduler(id: Notification.Name.backgroundPhotosProcessing.rawValue, submitTask: BGTaskScheduler.shared.submit, cancelTask: BGTaskScheduler.shared.cancelTask, date: postponedDateProvider)
             let lockPolicy = TimeoutLockProtectionEnabledPolicy(settingsProvider: dependencies.settingsProvider, protectionResource: dependencies.keymaker)
             let policy = PhotosTaskSchedulerEnabledPolicy(
                 lockPolicy: lockPolicy,
@@ -75,7 +83,7 @@ final class BackgroundPhotoUploadContainer {
             let backgroundWorkController = TaskStateBackgroundWorkControllerAdapter(stateController: dependencies.backgroundTaskStateController)
             let notifyingWorkController = TaskStatusNotificatingBackgroundWorkController(userNotificator: userNotificator, decoratee: backgroundWorkController)
 
-            return TaskProcessor(activator: activator, taskDisconnector: disconnector, backgroundWorkController: notifyingWorkController, worker: worker, scheduler: taskScheduler)
+            return TaskProcessor(activator: activator, taskDisconnector: disconnector, backgroundWorkController: notifyingWorkController, worker: worker, scheduler: taskScheduler, resultStateRepository: dependencies.backgroundTaskResultStateRepository)
         }
 
         func makeWorkingNotifier(dependencies: Dependencies) -> WorkingNotifier {

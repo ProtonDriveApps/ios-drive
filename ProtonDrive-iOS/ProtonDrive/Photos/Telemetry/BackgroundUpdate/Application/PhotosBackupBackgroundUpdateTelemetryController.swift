@@ -24,15 +24,19 @@ final class ConcretePhotosBackupBackgroundUpdateTelemetryController: PhotosBacku
     private let telemetryController: TelemetryController
     private let taskController: BackgroundTaskStateController
     private let durationMeasurementRepository: DurationMeasurementRepository
+    private let uploadMeasurementsRepository: BackgroundUploadMeasurementsRepositoryProtocol
     private let dataFactory: PhotosBackupBackgroundUpdateTelemetryDataFactory
+    private let storage: PhotosBackupBackgroundTelemetryStorageProtocol
     private var isMeasuring = false
     private var cancellables = Set<AnyCancellable>()
 
-    init(telemetryController: TelemetryController, taskController: BackgroundTaskStateController, durationMeasurementRepository: DurationMeasurementRepository, dataFactory: PhotosBackupBackgroundUpdateTelemetryDataFactory) {
+    init(telemetryController: TelemetryController, taskController: BackgroundTaskStateController, durationMeasurementRepository: DurationMeasurementRepository, uploadMeasurementsRepository: BackgroundUploadMeasurementsRepositoryProtocol, dataFactory: PhotosBackupBackgroundUpdateTelemetryDataFactory, storage: PhotosBackupBackgroundTelemetryStorageProtocol) {
         self.telemetryController = telemetryController
         self.taskController = taskController
         self.durationMeasurementRepository = durationMeasurementRepository
+        self.uploadMeasurementsRepository = uploadMeasurementsRepository
         self.dataFactory = dataFactory
+        self.storage = storage
         subscribeToUpdates()
     }
 
@@ -53,19 +57,25 @@ final class ConcretePhotosBackupBackgroundUpdateTelemetryController: PhotosBacku
 
         if isTaskRunning {
             durationMeasurementRepository.start()
-            Log.debug("Handle task controller update: started measurement", domain: .telemetry)
+            uploadMeasurementsRepository.reset() // Reset measurements since they can contain entries from FG backup
+            Log.debug("Handle background task update: started measurement", domain: .telemetry)
         } else if !isTaskRunning {
             durationMeasurementRepository.stop()
-            sendTelemetry()
+            processMeasurements()
             durationMeasurementRepository.reset()
-            Log.debug("Handle task controller update: stopped measurement", domain: .telemetry)
+            Log.debug("Handle background task update: stopped measurement", domain: .telemetry)
         }
         isMeasuring = isTaskRunning
     }
 
-    private func sendTelemetry() {
-        let duration = durationMeasurementRepository.get()
-        let telemetryData = dataFactory.makeData(with: duration)
+    private func processMeasurements() {
+        let measurements = uploadMeasurementsRepository.getMeasurements()
+        let data = BackupBackgroundUpdateTelemetryData(
+            duration: durationMeasurementRepository.get(),
+            uploadMeasurements: measurements
+        )
+        let telemetryData = dataFactory.makeData(with: data)
         telemetryController.send(data: telemetryData)
+        storage.resultState = measurements.state
     }
 }

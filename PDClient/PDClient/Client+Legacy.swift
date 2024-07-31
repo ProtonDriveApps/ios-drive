@@ -386,7 +386,12 @@ extension Client {
 }
 
 extension Client {
-    
+    public func trash(shareID: ShareID, parentID: LinkID, linkIDs: [LinkID]) async throws {
+        let parameters = TrashLinksParameters(shareId: shareID, parentLinkId: parentID, linkIds: linkIDs)
+        let endpoint = try TrashLinkEndpoint(parameters: parameters, service: service, credential: try credential(), breadcrumbs: .startCollecting())
+        _ = try await request(endpoint)
+    }
+
     public func deletePermanently(shareID: ShareID, linkIDs: [LinkID]) async throws {
         let parameters = DeleteLinkEndpoint.Parameters(shareID: shareID, linkIDs: linkIDs)
         let endpoint = DeleteLinkEndpoint(parameters: parameters, service: service, credential: try credential())

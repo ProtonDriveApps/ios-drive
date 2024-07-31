@@ -23,7 +23,7 @@ public class LocalSettings: NSObject {
     @SettingsStorage("layoutPreferenceCache") private var layoutPreferenceCache: LayoutPreference.RawValue?
     @SettingsStorage("isUploadingDisclaimerActiveValue") private var isUploadingDisclaimerActiveValue: Bool?
     @SettingsStorage("isOnboarded") private var isOnboardedValue: Bool?
-
+    @SettingsStorage("upsellShownValue") private var isUpsellShownValue: Bool?
     @SettingsStorage("optOutFromTelemetry") var optOutFromTelemetry: Bool?
     @SettingsStorage("optOutFromCrashReports") var optOutFromCrashReports: Bool?
     @SettingsStorage("isNoticationPermissionsSkipped") public var isNoticationPermissionsSkipped: Bool?
@@ -33,6 +33,9 @@ public class LocalSettings: NSObject {
     @SettingsStorage("isPhotosMediaTypeImageSupportedValue") private(set) var isPhotosMediaTypeImageSupportedValue: Bool?
     @SettingsStorage("isPhotosMediaTypeVideoSupportedValue") private(set) var isPhotosMediaTypeVideoSupportedValue: Bool?
     @SettingsStorage("photosBackupNotOlderThanValue") private(set) var photosBackupNotOlderThanValue: Date?
+    @SettingsStorage("pushNotificationIsEnabled") private(set) var pushNotificationIsEnabledValue: Bool?
+    @SettingsStorage("defaultHomeTabIndex") private(set) var defaultHomeTabTagValue: Int?
+    @SettingsStorage("didShowPhotosNotification") public var didShowPhotosNotification: Bool?
 
     @SettingsStorage("photosEnabled") public var photosEnabledValue: Bool?
     @SettingsStorage("photosUploadDisabled") public var photosUploadDisabledValue: Bool?
@@ -41,18 +44,29 @@ public class LocalSettings: NSObject {
     @SettingsStorage("domainReconnectionEnabledValue") public var domainReconnectionEnabledValue: Bool?
     @SettingsStorage("postMigrationJunkFilesCleanupValue") public var postMigrationJunkFilesCleanupValue: Bool?
     @SettingsStorage("newTrayAppMenuEnabledValue") public var newTrayAppMenuEnabledValue: Bool?
+    @SettingsStorage("oneDollarPlanUpsellEnabledValue") public var oneDollarPlanUpsellEnabledValue: Bool?
 
     @SettingsStorage("DriveiOSLogCollection") public var driveiOSLogCollection: Bool?
     @SettingsStorage("DriveiOSLogCollectionDisabled") public var driveiOSLogCollectionDisabled: Bool?
+    @SettingsStorage("keepScreenAwakeBannerHasDismissed") public var keepScreenAwakeBannerHasDismissed: Bool?
+
+    // Sharing flags
+    @SettingsStorage("DriveSharingMigration") public var driveSharingMigrationValue: Bool?
+    @SettingsStorage("DriveSharingDevelopment") public var driveSharingDevelopmentValue: Bool?
+    @SettingsStorage("DriveSharingInvitations") public var driveSharingInvitationsValue: Bool?
+    @SettingsStorage("DriveSharingExternalInvitations") public var driveSharingExternalInvitationsValue: Bool?
+    @SettingsStorage("DriveSharingDisabled") public var driveSharingDisabledValue: Bool?
+    @SettingsStorage("DriveSharingExternalInvitationsDisabled") public var driveSharingExternalInvitationsDisabledValue: Bool?
+    @SettingsStorage("DriveSharingEditingDisabled") public var driveSharingEditingDisabledValue: Bool?
 
     public init(suite: SettingsStorageSuite) {
         super.init()
-
         self._sortPreferenceCache.configure(with: suite)
         self._layoutPreferenceCache.configure(with: suite)
         self._optOutFromTelemetry.configure(with: suite)
         self._optOutFromCrashReports.configure(with: suite)
         self._isOnboardedValue.configure(with: suite)
+        self._isUpsellShownValue.configure(with: suite)
         self._isUploadingDisclaimerActiveValue.configure(with: suite)
         self._isNoticationPermissionsSkipped.configure(with: suite)
         self._isPhotosBackupEnabledValue.configure(with: suite)
@@ -70,9 +84,20 @@ public class LocalSettings: NSObject {
         self._domainReconnectionEnabledValue.configure(with: suite)
         self._postMigrationJunkFilesCleanupValue.configure(with: suite)
         self._newTrayAppMenuEnabledValue.configure(with: suite)
+        self._pushNotificationIsEnabledValue.configure(with: suite)
+        self._defaultHomeTabTagValue.configure(with: suite)
+        self._oneDollarPlanUpsellEnabledValue.configure(with: suite)
 
-        self._driveiOSLogCollection.configure(with: suite)
-        self._driveiOSLogCollectionDisabled.configure(with: suite)
+        self._keepScreenAwakeBannerHasDismissed.configure(with: suite)
+
+        // Sharing
+        self._driveSharingMigrationValue.configure(with: suite)
+        self._driveSharingDevelopmentValue.configure(with: suite)
+        self._driveSharingInvitationsValue.configure(with: suite)
+        self._driveSharingExternalInvitationsValue.configure(with: suite)
+        self._driveSharingDisabledValue.configure(with: suite)
+        self._driveSharingExternalInvitationsDisabledValue.configure(with: suite)
+        self._driveSharingEditingDisabledValue.configure(with: suite)
 
         if let sortPreferenceCache = self.sortPreferenceCache {
             nodesSortPreference = SortPreference(rawValue: sortPreferenceCache) ?? SortPreference.default
@@ -101,6 +126,17 @@ public class LocalSettings: NSObject {
         domainReconnectionEnabled = domainReconnectionEnabledValue ?? false
         postMigrationJunkFilesCleanup = postMigrationJunkFilesCleanupValue ?? false
         newTrayAppMenuEnabled = newTrayAppMenuEnabledValue ?? false
+        oneDollarPlanUpsellEnabled = oneDollarPlanUpsellEnabledValue ?? false
+        isOnboarded = isOnboardedValue ?? false
+        pushNotificationIsEnabled = pushNotificationIsEnabledValue ?? false
+        defaultHomeTabTag = defaultHomeTabTagValue ?? 1
+        driveSharingMigration = driveSharingMigrationValue ?? false
+        driveSharingDevelopment = driveSharingDevelopmentValue ?? false
+        driveSharingInvitations = driveSharingInvitationsValue ?? false
+        driveSharingExternalInvitations = driveSharingExternalInvitationsValue ?? false
+        driveSharingDisabled = driveSharingDisabledValue ?? false
+        driveSharingExternalInvitationsDisabled = driveSharingExternalInvitationsDisabledValue ?? false
+        driveSharingEditingDisabled = driveSharingEditingDisabledValue ?? false
     }
 
     public func cleanUp() {
@@ -109,6 +145,7 @@ public class LocalSettings: NSObject {
         self.optOutFromTelemetry = nil
         self.optOutFromCrashReports = nil
         // self.isOnboardedValue needs no clean up - we only show it for first login ever
+        // self.isUpsellShownValue needs no clean up - we only show it once
         self.isUploadingDisclaimerActiveValue = nil
         self.isNoticationPermissionsSkipped = nil
         self.isPhotosBackupEnabledValue = nil
@@ -123,6 +160,10 @@ public class LocalSettings: NSObject {
         self.domainReconnectionEnabledValue = nil
         self.postMigrationJunkFilesCleanupValue = nil
         self.newTrayAppMenuEnabledValue = nil
+        self.pushNotificationIsEnabledValue = nil
+        self.keepScreenAwakeBannerHasDismissed = nil
+        self.defaultHomeTabTagValue = nil
+        self.didShowPhotosNotification = nil
         setDynamicVariables()
     }
 
@@ -216,6 +257,24 @@ public class LocalSettings: NSObject {
         }
     }
 
+    @objc public dynamic var oneDollarPlanUpsellEnabled: Bool = false {
+        willSet {
+            oneDollarPlanUpsellEnabledValue = newValue
+        }
+    }
+
+    @objc public dynamic var isOnboarded: Bool = false {
+        willSet {
+            isOnboardedValue = newValue ? true : nil
+        }
+    }
+
+    @objc public dynamic var pushNotificationIsEnabled: Bool = false {
+        willSet {
+            pushNotificationIsEnabledValue = newValue
+        }
+    }
+
     @objc public dynamic var logCollectionEnabled: Bool = false {
         willSet {
             driveiOSLogCollection = newValue
@@ -227,10 +286,45 @@ public class LocalSettings: NSObject {
             driveiOSLogCollectionDisabled = newValue
         }
     }
+    
+    @objc public dynamic var defaultHomeTabTag: Int = 1 {
+        willSet {
+            defaultHomeTabTagValue = newValue
+        }
+    }
 
-    public var isOnboarded: Bool {
-        get { isOnboardedValue == true }
-        set { isOnboardedValue = (newValue ? true : nil) }
+    public var isUpsellShown: Bool {
+        get { isUpsellShownValue == true }
+        set { isUpsellShownValue = (newValue ? true : nil) }
+    }
+
+    // MARK: - Sharing
+    @objc public dynamic var driveSharingMigration: Bool = false {
+        willSet { driveSharingMigrationValue = newValue }
+    }
+
+    @objc public dynamic var driveSharingDevelopment: Bool = false {
+        willSet { driveSharingDevelopmentValue = newValue }
+    }
+
+    @objc public dynamic var driveSharingInvitations: Bool = false {
+        willSet { driveSharingInvitationsValue = newValue }
+    }
+
+    @objc public dynamic var driveSharingExternalInvitations: Bool = false {
+        willSet { driveSharingExternalInvitationsValue = newValue }
+    }
+
+    @objc public dynamic var driveSharingDisabled: Bool = false {
+        willSet { driveSharingDisabledValue = newValue }
+    }
+
+    @objc public dynamic var driveSharingExternalInvitationsDisabled: Bool = false {
+        willSet { driveSharingExternalInvitationsDisabledValue = newValue }
+    }
+
+    @objc public dynamic var driveSharingEditingDisabled: Bool = false {
+        willSet { driveSharingEditingDisabledValue = newValue }
     }
 }
 

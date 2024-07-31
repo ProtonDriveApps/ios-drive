@@ -26,25 +26,21 @@ public class SecuritySettingsViewController: UITableViewController {
     var viewModel: SecuritySettingsViewModel!
     var router: SettingsSecurityRouter!
 
+    var contentInsetAdjustmentBehavior: UIScrollView.ContentInsetAdjustmentBehavior = .automatic
+
     override public func viewDidLoad() {
         super.viewDidLoad()
         viewModel.onLoadFinished = { [weak self] in
             self?.tableView.reloadData()
         }
-        addNavigationBarButton()
+
         tableView = UITableView(frame: CGRect.zero, style: .grouped)
         tableView.separatorStyle = .none
         tableView.backgroundColor = ColorProvider.BackgroundNorm
+        tableView.contentInsetAdjustmentBehavior = contentInsetAdjustmentBehavior
+        navigationController?.navigationBar.isTranslucent = false
         tableView.rowHeight = UITableView.automaticDimension
         registerTableViewCells()
-    }
-
-    private func addNavigationBarButton() {
-        navigationItem.leftBarButtonItem = .back(on: self, action: #selector(dissmissViewController))
-    }
-
-    @objc private func dissmissViewController() {
-        router.popView()
     }
 
     private func registerTableViewCells() {
@@ -59,6 +55,10 @@ public class SecuritySettingsViewController: UITableViewController {
 
     override public func numberOfSections(in tableView: UITableView) -> Int {
         return viewModel.sections.count
+    }
+
+    public override func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        return viewModel.sections[section].title == nil ? .zero : UITableView.automaticDimension
     }
 
     override public func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {

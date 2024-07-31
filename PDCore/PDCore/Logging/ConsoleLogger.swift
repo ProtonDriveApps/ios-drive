@@ -198,3 +198,17 @@ public class DomainCodeError: NSError {
         super.init(coder: coder)
     }
 }
+
+/// Error structure just for holding displayable error message.
+/// Helpful for passing error messages to the UI.
+public struct PlainMessageError: LocalizedError {
+    private let message: String
+
+    public init(_ message: String) {
+        self.message = message
+    }
+
+    public var errorDescription: String? {
+        message
+    }
+}

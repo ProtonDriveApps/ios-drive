@@ -56,3 +56,4 @@ final class LocalPhotoLibraryLoadProgressActionRepository: PhotoLibraryLoadProgr
         }
     }
 }
+// swiftlint:enable empty_count

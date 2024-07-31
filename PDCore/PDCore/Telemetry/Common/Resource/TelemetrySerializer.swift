@@ -48,6 +48,8 @@ final class DriveTelemetrySerializer: TelemetrySerializer {
             return "setting.disabled"
         case .backupUpdate:
             return "backup.update"
+        case .backupBackgroundStart:
+            return "backup.background.start"
         case .backupBackgroundUpdate:
             return "backup.background.update"
         case .uploadDone:

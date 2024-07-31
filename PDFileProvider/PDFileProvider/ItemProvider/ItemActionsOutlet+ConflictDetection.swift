@@ -236,6 +236,15 @@ extension ItemActionsOutlet: ConflictDetection {
             return (.recreate, nil)
         }
 
+        // Edit-ProtonDoc
+        guard let mimeType = remoteNode.moc?.performAndWait({ remoteNode.mimeType }),
+              MimeType(value: mimeType) != .protonDocument else {
+            // the Drive API doesn't support new revisions of Proton Doc files
+            // (the Docs API must be used for this purpose if our native clients
+            // ever support Proton Doc editing in the future)
+            return (.ignore, remoteNode)
+        }
+
         var remoteNodeState: Node.State!
         var remoteContentVersion: Data!
         remoteNode.moc!.performAndWait {

@@ -20,18 +20,6 @@ import PDCore
 import Combine
 
 public final class TrashEnumerator: NSObject, NSFileProviderEnumerator {
-    private var _model: TrashModelLegacy! // backing property
-    internal private(set) var model: TrashModelLegacy! {
-        get {
-            if _model == nil {
-                _model = TrashModelLegacy(tower: tower)
-            }
-            return _model
-        }
-        set {
-            _model = newValue
-        }
-    }
     private weak var tower: Tower!
     private var cancellables: [AnyCancellable] = []
 
@@ -45,7 +33,6 @@ public final class TrashEnumerator: NSObject, NSFileProviderEnumerator {
     
     public func invalidate() {
         self.cancellables.forEach { $0.cancel() }
-        self.model = nil
     }
     
     // MARK: Enumeration
@@ -66,7 +53,7 @@ public final class TrashEnumerator: NSObject, NSFileProviderEnumerator {
 }
 
 extension TrashEnumerator: EnumeratorWithChanges {
-    internal var shareID: String { self.model.shareID }
+    internal var shareID: String { self.tower.rootFolderIdentifier()!.shareID }
     internal var eventsManager: EventsSystemManager { self.tower }
     internal var fileSystemSlot: FileSystemSlot { self.tower.fileSystemSlot! }
     internal var cloudSlot: CloudSlot { self.tower.cloudSlot! }

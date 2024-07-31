@@ -19,18 +19,18 @@ import PDCore
 
 public final class ConstrainedTaskSchedulerDecorator: BackgroundTaskScheduler {
     private let scheduler: BackgroundTaskScheduler
-    private let policy: TaskSchedulerEnabledPolicy
+    private let policy: TaskSchedulerPolicy
 
     init(
         scheduler: BackgroundTaskScheduler,
-        policy: TaskSchedulerEnabledPolicy
+        policy: TaskSchedulerPolicy
     ) {
         self.scheduler = scheduler
         self.policy = policy
     }
 
     public func schedule() {
-        guard policy.isEnabled() else {
+        guard policy.canSchedule else {
             return handleBackgroundUploadsDisabled(isSchedule: true)
         }
         scheduler.schedule()

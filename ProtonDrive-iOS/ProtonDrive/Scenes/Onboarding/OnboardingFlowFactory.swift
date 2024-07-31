@@ -20,16 +20,18 @@ import PDCore
 
 struct OnboardingFlowFactory {
     let pageViewModels: [OnboardingPageViewModel] = [
-        .init(imageName: "onboarding-welcome", title: "Welcome to Proton Drive", text: "The creators of Proton Mail bring you end-to-end encrypted cloud storage from Switzerland."),
-        
+        .init(imageName: "onboarding-photo", title: "Automatic photo backups", text: "Ensure your memories are kept safe, private, and in their original quality for years to come."),
+    
         .init(imageName: "onboarding-files", title: "All files at your fingertips", text: "Upload and view your files on the go. Zero-access technology guarantees only you have access."),
         
         .init(imageName: "onboarding-share", title: "Secure sharing", text: "Add password protection to make your shared files even more secure."),
-    
-        .init(imageName: "onboarding-privacy", title: "Enjoy your private space", text: "Make your cloud storage your own. Add personal photos, ID cards, and anything that needs to stay private."),
     ]
     
-    func make(settings: LocalSettings) -> UIViewController {
+    func makeIfNeeded(settings: LocalSettings) -> UIViewController? {
+        settings.isOnboarded ? nil : make(settings: settings)
+    }
+    
+    private func make(settings: LocalSettings) -> UIViewController {
         let flow = OnboardingFlow(settings: settings, pages: pageViewModels)
         let vc = UIHostingController(rootView: flow)
         vc.modalPresentationStyle = .fullScreen

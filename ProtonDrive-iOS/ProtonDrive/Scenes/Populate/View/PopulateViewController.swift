@@ -23,34 +23,21 @@ import PDUIComponents
 import SwiftUI
 
 final class PopulateViewController: UIViewController {
-    private var cancellable: Cancellable?
-
     private lazy var spinner = ViewHosting {
         SpinnerTextView(text: "Getting things ready...")
     }
 
     var viewModel: PopulateViewModel!
-    var onPopulated: ((NodeIdentifier) -> Void)?
 
     override public func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = ColorProvider.BackgroundNorm
         view.addSubview(spinner)
         spinner.fillSuperview()
+        viewModel.viewDidLoad()
 
-        cancellable = viewModel.populatedPublisher
-            .sink { [weak self] state in
-                switch state {
-                case let .populated(with: id):
-                    self?.onPopulated?(id)
-                case .unpopulated:
-                    self?.viewModel.populate()
-                }
-                self?.viewModel.startEventsSystem()
-            }
-        
         #if DEBUG
-        modifyOnboardingFlowInTests()
+        modifyModalFlowsInTests()
         #endif
     }
 }
@@ -58,8 +45,10 @@ final class PopulateViewController: UIViewController {
 #if DEBUG
 extension PopulateViewController {
     
-    func modifyOnboardingFlowInTests() {
+    func modifyModalFlowsInTests() {
         OnboardingFlowTestsManager.defaultOnboardingInTestsIfNeeded()
+        OneDollarUpsellFlowTestsManager.defaultUpsellInTestsIfNeeded()
     }
+
 }
 #endif

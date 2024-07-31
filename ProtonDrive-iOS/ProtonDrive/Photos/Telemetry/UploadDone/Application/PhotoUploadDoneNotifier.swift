@@ -21,6 +21,12 @@ struct PhotoUploadDoneData {
     let isSuccess: Bool
     let kilobytes: Double
     let duration: Double
+    let mediaType: PhotoUploadMediaType
+}
+
+enum PhotoUploadMediaType {
+    case photo
+    case video
 }
 
 protocol PhotoUploadDoneNotifier {

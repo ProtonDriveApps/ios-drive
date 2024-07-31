@@ -29,6 +29,8 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
     let model: FolderModel
     var cancellables = Set<AnyCancellable>()
     var childrenCancellable: AnyCancellable?
+    var lockedStateCancellable: AnyCancellable?
+    var lockedStateBannerVisibility: LockedStateAlertVisibility = .hidden
     @Published var transientChildren: [NodeWrapper] = []
     @Published var permanentChildren: [NodeWrapper] = []
 
@@ -129,6 +131,8 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
         self.subscribeToChildrenDownloading()
         self.selection.unselectOnEmpty(for: self)
         self.subscribeToLayoutChanges()
+        self.subscribeToUserInfoUpdates()
+        setupLockedStateBannerVisibility()
         setupUploadBannerVisibility()
 
         $permanentChildren
@@ -163,7 +167,12 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
     }
 
     func actionBarItems() -> [ActionBarButtonViewModel] {
-        [.trashMultiple, .moveMultiple, .offlineAvailableMultiple]
+        let isOfflineAvailablePossible = selectedNodes().contains(where: { $0.node.isDownloadable })
+        return [
+            .trashMultiple,
+            .moveMultiple,
+            isOfflineAvailablePossible ? .offlineAvailableMultiple : nil
+        ].compactMap { $0 }
     }
 }
 

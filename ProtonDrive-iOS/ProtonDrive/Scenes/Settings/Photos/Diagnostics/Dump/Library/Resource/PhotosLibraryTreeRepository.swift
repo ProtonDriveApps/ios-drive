@@ -34,7 +34,7 @@ final class PhotosLibraryTreeRepository: TreeRepository {
         Log.debug("Fetching all photos from Photos Library", domain: .diagnostics)
         let assets = getAssets()
         let items = try assets.map(makeNode)
-        return Tree(root: Tree.Node(title: "root", descendants: items))
+        return Tree(root: Tree.Node(nodeTitle: "root", descendants: items))
     }
 
     private struct IdentifiableAsset {
@@ -67,7 +67,7 @@ final class PhotosLibraryTreeRepository: TreeRepository {
 
     private func makeNode(identifiableAsset: IdentifiableAsset) throws -> Tree.Node {
         return Tree.Node(
-            title: identifiableAsset.id,
+            nodeTitle: identifiableAsset.id,
             descendants: try makePhotos(asset: identifiableAsset.asset)
         )
     }
@@ -96,7 +96,7 @@ final class PhotosLibraryTreeRepository: TreeRepository {
     }
 
     private func makeBurstPhotos(asset: PHAsset, burstIdentifier: String) throws -> [Tree.Node] {
-        let fetchOptions = PHFetchOptions()
+        let fetchOptions = PHFetchOptions.defaultPhotosOptions()
         fetchOptions.includeAllBurstAssets = true
         let secondaryAssets = PHAsset.fetchAssets(withBurstIdentifier: burstIdentifier, options: fetchOptions)
         var secondaryResources = [[PHAssetResource]]()
@@ -109,7 +109,7 @@ final class PhotosLibraryTreeRepository: TreeRepository {
         // Original photos set is grouped into one photo compound (primary + secondary)
         let originalResources = PHAssetResource.assetResources(for: asset)
         let original = Tree.Node(
-            title: try nameResource.getFilename(from: originalResources),
+            nodeTitle: try nameResource.getFilename(from: originalResources),
             descendants: try secondaryResources.map { try nameResource.getFilename(from: $0) }
         )
 
@@ -121,7 +121,7 @@ final class PhotosLibraryTreeRepository: TreeRepository {
             let originalName = try nameResource.getFilename(from: resources)
             modifiedResources.forEach { resource in
                 let name = filenameStrategy.makeModifiedFilename(originalFilename: originalName, filenameExtension: resource.originalFilename.fileExtension())
-                let photo = Tree.Node(title: name)
+                let photo = Tree.Node(nodeTitle: name)
                 modifications.append(photo)
             }
         }
@@ -137,7 +137,7 @@ final class PhotosLibraryTreeRepository: TreeRepository {
         // Try to find original live photo pair
         if let originalPhoto = resources.first(where: { $0.isOriginalImage() }), let originalPairedVideo = resources.first(where: { $0.isOriginalPairedVideo() }) {
             let photo = Tree.Node(
-                title: try originalPhoto.getNormalizedFilename(),
+                nodeTitle: try originalPhoto.getNormalizedFilename(),
                 descendants: [try originalPairedVideo.getNormalizedFilename()]
             )
             photos.append(photo)
@@ -149,11 +149,55 @@ final class PhotosLibraryTreeRepository: TreeRepository {
             let photoFilename = try nameResource.getPhotoFilename(from: allResources)
             let videoFilename = try nameResource.getPairedVideoFilename(from: allResources)
             let photo = Tree.Node(
-                title: filenameStrategy.makeModifiedFilename(originalFilename: photoFilename, filenameExtension: modifiedPhoto.originalFilename.fileExtension()),
+                nodeTitle: filenameStrategy.makeModifiedFilename(originalFilename: photoFilename, filenameExtension: photoFilename.fileExtension()),
                 descendants: [filenameStrategy.makeModifiedFilename(originalFilename: videoFilename, filenameExtension: modifiedPairedVideo.originalFilename.fileExtension())]
             )
             photos.append(photo)
             resources = resources.filter { $0 != modifiedPhoto && $0 != modifiedPairedVideo }
+        }
+
+        // Try to find cinematic videos
+        if asset.mediaSubtypes.contains(.videoCinematic),
+           let originalVideo = resources.first(where: { $0.isOriginalVideo() }) {
+            let modifiedVideos = resources.filter({ $0.isAdjustedVideo() })
+
+            let originalVideoFilename = try nameResource.getFilename(from: [originalVideo])
+
+            if modifiedVideos.isEmpty {
+                let photo = Tree.Node(nodeTitle: originalVideoFilename)
+                photos.append(photo)
+                return photos
+            }
+
+            try modifiedVideos.forEach { modifiedVideo in
+                let modifiedVideoFilename = try nameResource.getFilename(from: [modifiedVideo])
+                let videoFilename = filenameStrategy.makeModifiedFilename(originalFilename: originalVideoFilename, filenameExtension: modifiedVideoFilename.fileExtension())
+                let photo = Tree.Node(nodeTitle: videoFilename)
+                photos.append(photo)
+            }
+            return photos
+        }
+
+        // Try to find portrait photos
+        if asset.mediaSubtypes.contains(.photoDepthEffect),
+           let originalPhoto = resources.first(where: { $0.isOriginalImage() }) {
+            let modifiedPhotos = resources.filter({ $0.isAdjustedImage() })
+
+            let originalPhotoFilename = try nameResource.getFilename(from: [originalPhoto])
+
+            if modifiedPhotos.isEmpty {
+                let photo = Tree.Node(nodeTitle: originalPhotoFilename)
+                photos.append(photo)
+                return photos
+            }
+
+            try modifiedPhotos.forEach { modifiedPhoto in
+                let modifiedPhotoFilename = try nameResource.getFilename(from: [modifiedPhoto])
+                let photoFilename = filenameStrategy.makeModifiedFilename(originalFilename: originalPhotoFilename, filenameExtension: modifiedPhotoFilename.fileExtension())
+                let photo = Tree.Node(nodeTitle: photoFilename)
+                photos.append(photo)
+            }
+            return photos
         }
 
         // All other files are considered to be a standalone photos.
@@ -161,12 +205,12 @@ final class PhotosLibraryTreeRepository: TreeRepository {
         resources.filter { $0.isImage() || $0.isVideo() }.forEach { resource in
             if resource.isOriginalImage() || resource.isOriginalVideo() {
                 // If the resource represents original file, the name is retained as is
-                let photo = Tree.Node(title: originalFilename)
+                let photo = Tree.Node(nodeTitle: originalFilename)
                 photos.append(photo)
             } else {
                 // Otherwise we adjust the name to distinguish the original from modification
                 let name = filenameStrategy.makeModifiedFilename(originalFilename: originalFilename, filenameExtension: resource.originalFilename.fileExtension())
-                let photo = Tree.Node(title: name)
+                let photo = Tree.Node(nodeTitle: name)
                 photos.append(photo)
             }
         }

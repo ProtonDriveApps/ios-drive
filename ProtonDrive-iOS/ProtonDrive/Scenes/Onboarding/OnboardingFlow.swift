@@ -47,7 +47,6 @@ struct OnboardingFlow: View {
                         .padding(.horizontal, horizontalPadding)
                 }
             }
-            .background(ColorProvider.BackgroundSecondary)
         }
         .padding(.bottom, bottomPadding)
         .tabViewStyle(.page)
@@ -76,12 +75,14 @@ struct OnboardingFlow: View {
                 BlueRectButton(title: "Get started") {
                     dismiss()
                 }
+                .cornerRadius(8)
             } else {
                 BlueRectButton(title: "Next") {
                     withAnimation {
                         currentPage += 1
                     }
                 }
+                .cornerRadius(8)
             }
         }
         .accessibilityIdentifier("OnboardingPage.nextButton")

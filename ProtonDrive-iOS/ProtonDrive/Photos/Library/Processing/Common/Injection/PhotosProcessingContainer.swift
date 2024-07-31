@@ -32,25 +32,13 @@ final class PhotosProcessingContainer {
         let circuitBreaker: CircuitBreakerController
         let scanningMeasurementRepository: DurationMeasurementRepository
         let duplicatesMeasurementRepository: DurationMeasurementRepository
+        let photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>
     }
 
     let processingController: PhotosProcessingController
 
     init(dependencies: Dependencies) {
         let factory = PhotosProcessingFactory()
-        processingController = factory.makeProcessingController(
-            tower: dependencies.tower,
-            identifiersController: dependencies.identifiersController,
-            backupController: dependencies.backupController,
-            constraintsController: dependencies.constraintsController,
-            progressRepository: dependencies.progressRepository,
-            failedIdentifiersResource: dependencies.failedItemsResource,
-            photoSkippableCache: dependencies.photoSkippableCache,
-            settingsController: dependencies.settingsController,
-            computationalAvailabilityController: dependencies.computationalAvailabilityController,
-            circuitBreaker: dependencies.circuitBreaker,
-            duplicatesMeasurementRepository: dependencies.duplicatesMeasurementRepository,
-            scanningMeasurementRepository: dependencies.scanningMeasurementRepository
-        )
+        processingController = factory.makeProcessingController(dependencies: dependencies)
     }
 }

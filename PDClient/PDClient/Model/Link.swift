@@ -40,8 +40,7 @@ public struct Link: Codable {
     public let createTime: TimeInterval
     public let modifyTime: TimeInterval
     public let trashed: TimeInterval?
-    public let shared: Int
-    public let shareIDs: [Share.ShareID]
+    public let sharingDetails: SharingDetails?
     public let nbUrls: Int
     public let activeUrls: Int
     public let urlsExpired: Int
@@ -54,7 +53,7 @@ public struct Link: Codable {
                 size: Int, MIMEType: String, attributes: AttriburesMask, permissions: PermissionMask,
                 nodeKey: String, nodePassphrase: String, nodePassphraseSignature: String,
                 signatureEmail: String, createTime: TimeInterval, modifyTime: TimeInterval,
-                trashed: TimeInterval?, shared: Int, shareIDs: [Share.ShareID], nbUrls: Int, activeUrls: Int,
+                trashed: TimeInterval?, sharingDetails: SharingDetails?, nbUrls: Int, activeUrls: Int,
                 urlsExpired: Int, XAttr: String?, fileProperties: FileProperties?, folderProperties: FolderProperties?) {
         self.linkID = linkID
         self.parentLinkID = parentLinkID
@@ -75,8 +74,7 @@ public struct Link: Codable {
         self.createTime = createTime
         self.modifyTime = modifyTime
         self.trashed = trashed
-        self.shared = shared
-        self.shareIDs = shareIDs
+        self.sharingDetails = sharingDetails
         self.nbUrls = nbUrls
         self.activeUrls = activeUrls
         self.urlsExpired = urlsExpired
@@ -108,8 +106,7 @@ public extension Link {
             createTime: 0,
             modifyTime: 0,
             trashed: .zero,
-            shared: .zero,
-            shareIDs: [],
+            sharingDetails: nil,
             nbUrls: 0,
             activeUrls: 0,
             urlsExpired: 0,
@@ -152,4 +149,22 @@ public struct FileProperties: Codable {
 }
 public struct FolderProperties: Codable {
     public var nodeHashKey: String
+}
+
+public struct SharingDetails: Codable {
+    public let shareID: String
+    public let shareUrl: ShareURL? // can be null if no link is available
+    
+    public init(shareID: String, shareUrl: ShareURL?) {
+        self.shareID = shareID
+        self.shareUrl = shareUrl
+    }
+}
+
+public struct ShareURL: Codable {
+    public let shareURLID: String
+    public let token: String? // not always provided, according to docs
+    public let expirationTime: Int?
+    public let createTime: Int
+    public let numAccesses: Int
 }

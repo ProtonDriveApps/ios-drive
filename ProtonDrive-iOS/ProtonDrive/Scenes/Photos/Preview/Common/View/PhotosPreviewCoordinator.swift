@@ -16,13 +16,21 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import UIKit
+import Photos
 
 final class PhotosPreviewCoordinator: PhotosPreviewListCoordinator, PhotosPreviewDetailFactory, PhotoPreviewDetailCoordinator {
     let container: PhotosPreviewContainer
     weak var rootViewController: UIViewController?
+    private weak var activityVC: UIActivityViewController?
 
     init(container: PhotosPreviewContainer) {
         self.container = container
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(orientationDidChange),
+            name: UIDevice.orientationDidChangeNotification,
+            object: nil
+        )
     }
 
     // MARK: - PhotosPreviewListCoordinator
@@ -40,12 +48,76 @@ final class PhotosPreviewCoordinator: PhotosPreviewListCoordinator, PhotosPrevie
     // MARK: - PhotoPreviewDetailCoordinator
 
     func openShare(url: URL) {
-        guard let rootViewController = rootViewController else {
-            return
+        openShareActivity(items: [url])
+    }
+    
+    func openShareLivePhoto(imageURL: URL, videoURL: URL) {
+        Task {
+            let livePhoto = await PHLivePhoto.load(resources: [imageURL, videoURL])
+            await MainActor.run {
+                if livePhoto == nil {
+                    openShare(url: imageURL)
+                } else {
+                    var activities: [UIActivity] = []
+                    if PHPhotoLibrary.authorizationStatus(for: .addOnly) != .denied {
+                        activities.append(SaveLivePhotoActivity(imageURL: imageURL, videoURL: videoURL))
+                        
+                    }
+                    openShareActivity(
+                        items: [imageURL],
+                        activities: activities,
+                        excludedActivities: [.saveToCameraRoll]
+                    )
+                }
+            }
         }
+    }
+    
+    private func openShareActivity(
+        items: [Any],
+        activities: [UIActivity]? = nil,
+        excludedActivities: [UIActivity.ActivityType]? = nil
+    ) {
+        guard
+            let rootViewController = rootViewController,
+            let view = rootViewController.view,
+            let item = sourceItemForActivity()
+        else { return }
 
-        let viewController = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-        viewController.popoverPresentationController?.sourceView = rootViewController.view
+        let viewController = UIActivityViewController(activityItems: items, applicationActivities: activities)
+        viewController.excludedActivityTypes = excludedActivities
+        if #available(iOS 16.0, *) {
+            viewController.popoverPresentationController?.sourceItem = item
+        } else {
+            viewController.popoverPresentationController?.barButtonItem = item
+        }
+        viewController.popoverPresentationController?.sourceView = view
+        activityVC = viewController
         rootViewController.present(viewController, animated: true, completion: nil)
+    }
+    
+    @objc
+    private func orientationDidChange() {
+        // Add a small delay to waiting for navigation item setup
+        DispatchQueue.main.asyncAfter(wallDeadline: .now() + 0.1) {
+            guard
+                let popover = self.activityVC?.popoverPresentationController,
+                let item = self.sourceItemForActivity()
+            else { return }
+            if #available(iOS 16.0, *) {
+                popover.sourceItem = item
+            } else {
+                popover.barButtonItem = item
+            }
+        }
+    }
+    
+    private func sourceItemForActivity() -> UIBarButtonItem? {
+        guard let scene = rootViewController?.view.window?.windowScene else { return nil }
+        if scene.interfaceOrientation.isPortrait {
+            return rootViewController?.toolbarItems?.first
+        } else {
+            return rootViewController?.navigationItem.rightBarButtonItem
+        }
     }
 }

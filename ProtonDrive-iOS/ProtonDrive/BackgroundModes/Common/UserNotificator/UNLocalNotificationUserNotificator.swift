@@ -31,7 +31,7 @@ final class UNLocalNotificationUserNotificator: UserNotificator {
         content.body = localNotification.body
         content.threadIdentifier = localNotification.thread
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: localNotification.delay, repeats: false)
-        let request = UNNotificationRequest(identifier: localNotification.id.uuidString, content: content, trigger: trigger)
+        let request = UNNotificationRequest(identifier: localNotification.id, content: content, trigger: trigger)
         notificationPoster(request)
     }
 }

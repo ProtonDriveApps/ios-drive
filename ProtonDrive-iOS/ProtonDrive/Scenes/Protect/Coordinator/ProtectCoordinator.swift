@@ -21,7 +21,12 @@ import PDCore
 import ProtonCoreHumanVerification
 import SwiftUI
 
-final class ProtectCoordinator {
+protocol ProtectCoordinatorProtocol {
+    func onLocked()
+    func onUnlocked()
+}
+
+final class ProtectCoordinator: ProtectCoordinatorProtocol {
     private(set) unowned var viewController: ProtectViewController
 
     private var unlockedViewController: UIViewController?
@@ -33,7 +38,7 @@ final class ProtectCoordinator {
     private var auxiliaryWindow: UIWindow?
     private var scene: UIWindowScene
 
-    public init(
+    init(
         windowScene: UIWindowScene,
         viewController: ProtectViewController,
         humanVerificationHelper: HumanCheckHelper,

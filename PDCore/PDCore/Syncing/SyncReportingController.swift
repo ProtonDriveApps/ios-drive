@@ -39,16 +39,16 @@ public class SyncReportingController: SyncReporting, CommunicationServiceReporte
 
     // MARK: CommunicationServiceReporter
 
-    public func post(update: ReportableSyncItem) async throws {
+    public func post(update: ReportableSyncItem) throws {
         let moc = storage.mainContext
-        try await storage.upsert(update, in: moc)
+        try storage.upsert(update, in: moc)
     }
 
     // MARK: - SyncReporting
 
-    public func update(item: ReportableSyncItem) async {
+    public func update(item: ReportableSyncItem) {
         do {
-            try await post(update: item)
+            try post(update: item)
         } catch {
             Log.error("Error when updating item: \(error.localizedDescription)",
                       domain: .ipc)
@@ -58,27 +58,33 @@ public class SyncReportingController: SyncReporting, CommunicationServiceReporte
     // MARK: FileProviderErrorReporting
 
     public func report(item: ReportableSyncItem) {
-        Task {
-            do {
-                let moc = storage.mainContext
-                try await post(update: item)
-                self.syncErrorDBUpdate = Date().timeIntervalSince1970
-                let count = storage.syncErrorsCount(in: moc)
-                Log.debug("Total count of errors: \(count)", domain: .syncing)
-            } catch {
-                Log.error(error.localizedDescription, domain: .ipc)
-            }
+        do {
+            let moc = storage.mainContext
+            try post(update: item)
+            self.syncErrorDBUpdate = Date().timeIntervalSince1970
+            let count = storage.syncErrorsCount(in: moc)
+            Log.debug("Total count of errors: \(count)", domain: .syncing)
+        } catch {
+            Log.error(error.localizedDescription, domain: .ipc)
         }
     }
 
     public func resolve(item: ReportableSyncItem) {
-        Task {
-            do {
-                try await post(update: item)
-                self.syncErrorDBUpdate = Date().timeIntervalSince1970
-            } catch {
-                Log.error("Fail to resolve item: \(error.localizedDescription)", domain: .syncing)
-            }
+        do {
+            try post(update: item)
+            self.syncErrorDBUpdate = Date().timeIntervalSince1970
+        } catch {
+            Log.error("Fail to resolve item: \(error.localizedDescription)", domain: .syncing)
+        }
+    }
+
+    public func resolveTrash(id: String) throws {
+        do {
+            let moc = storage.mainContext
+            try storage.updateTrashState(identifier: id, state: .finished, in: moc)
+            self.syncErrorDBUpdate = Date().timeIntervalSince1970
+        } catch {
+            Log.error("Fail to update state for item in trash", domain: .syncing)
         }
     }
 
@@ -86,15 +92,8 @@ public class SyncReportingController: SyncReporting, CommunicationServiceReporte
         try storage.deleteSyncItems(olderThan: date, in: storage.mainContext)
     }
 
-}
-
-public extension ReportableSyncItem {
-
-    var shouldBeDiscarded: Bool {
-        #if os(macOS)
-        return (self.id == NSFileProviderItemIdentifier.trashContainer.rawValue || self.id == NSFileProviderItemIdentifier.rootContainer.rawValue)
-        #else
-        return false
-        #endif
+    public func cleanSyncingItems() {
+        try? storage.cleanUpSyncingItems(in: storage.mainContext)
     }
+
 }

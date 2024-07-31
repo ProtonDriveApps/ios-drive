@@ -66,7 +66,8 @@ final class ConcretePhotoUploadDoneTelemetryController: PhotoUploadDoneTelemetry
             kilobytes: data.kilobytes,
             duration: data.duration,
             isInitialBackup: storage.isInitialBackup,
-            isBackgroundTask: isBackgroundTask
+            isBackgroundTask: isBackgroundTask,
+            mediaType: data.mediaType
         )
         let telemetryData = dataFactory.makeData(with: data)
         telemetryController.send(data: telemetryData)

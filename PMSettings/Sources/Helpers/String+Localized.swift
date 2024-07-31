@@ -21,7 +21,7 @@
 
 import Foundation
 
-extension String {
+public extension String {
     var localized: String {
         NSLocalizedString(self, bundle: PMSettings.bundle, comment: "Localized string for key: \(self) in PMSettings bundle")
     }

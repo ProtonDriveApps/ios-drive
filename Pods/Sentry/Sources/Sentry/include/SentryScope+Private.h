@@ -23,6 +23,10 @@ SentryScope ()
 
 @property (atomic, strong) SentryPropagationContext *propagationContext;
 
+@property (nonatomic, nullable, copy) NSString *currentScreen;
+
+- (NSArray<SentryBreadcrumb *> *)breadcrumbs;
+
 /**
  * used to add values in event context.
  */

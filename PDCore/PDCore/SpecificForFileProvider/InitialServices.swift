@@ -138,6 +138,9 @@ public class InitialServices {
 
         let featureFlagsRepository = ProtonCoreFeatureFlags.FeatureFlagsRepository.shared
         featureFlagsRepository.setApiService(networking)
+        Task {
+            try? await featureFlagsRepository.fetchFlags()
+        }
         
 #if DEBUG
         let isRunningUITests = DebugConstants.commandLineContains(flags: [.uiTests])
@@ -148,14 +151,7 @@ public class InitialServices {
 #if os(iOS)
         if !PDCore.Constants.runningInExtension, !isRunningUITests {
             let pushNotificationService = PushNotificationService(apiService: networking)
-            Task {
-                try? await featureFlagsRepository.fetchFlags()
-                if featureFlagsRepository.isEnabled(CoreFeatureFlagType.pushNotifications) {
-                    guard var delegate = await UIApplication.shared.delegate as? hasPushNotificationService else { return }
-                    delegate.pushNotificationService = pushNotificationService
-                    pushNotificationService.setup()
-                }
-            }
+            pushNotificationService.setup()
         }
 #endif
         let pushNotificationService: PushNotificationServiceProtocol? = nil

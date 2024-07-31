@@ -24,10 +24,10 @@ public typealias UserSettings = PMEventsManager.UserSettings
 
 public final class GeneralSettings {
     @SecureStorage(label: "userSettings") private(set) var userSettings: UserSettings?
-    private let network: PMAPIService
+    private let network: ProtonCoreServices.APIService
     private let localSettings: LocalSettings
     
-    init(mainKeyProvider: MainKeyProvider, network: PMAPIService, localSettings: LocalSettings) {
+    init(mainKeyProvider: MainKeyProvider, network: ProtonCoreServices.APIService, localSettings: LocalSettings) {
         self.network = network
         self.localSettings = localSettings
         self._userSettings.configure(with: mainKeyProvider)

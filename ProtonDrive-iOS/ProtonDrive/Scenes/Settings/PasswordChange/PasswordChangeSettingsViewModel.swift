@@ -30,6 +30,7 @@ class PasswordChangeSettingsViewModel: PMDrillDownCellViewModel {
         "Change mailbox password" :
         "Change password"
     }
+    var accessibilityIdentifier: String { "Change password" }
 
     var parentViewController: UIViewController?
 

@@ -60,6 +60,9 @@ enum Constants: LogObject {
     static let forceUpgradeLearnMoreURL = URL(string: "https://protonmail.com/support/knowledge-base/update-required") ?? reportBugURL
     
     // MARK: - IAP (StoreKit Product IDs)
+    static let oneDollarPlanDefaultPrice = "$0.99"
+    static let oneDollarPlanID = "iosdrive_drivelite2024_1_usd_auto_renewing"
+    
     static let drivePlanIDs: Set<String> = [
         "iosdrive_drive2022_12_usd_non_renewing",
         "iosdrive_bundle2022_12_usd_non_renewing",
@@ -96,12 +99,13 @@ enum Constants: LogObject {
 
 extension Constants {
     
+    /// Conforms to https://semver.org/#backusnaur-form-grammar-for-valid-semver-versions
     /// Configuration            App                                                         FileProvider
     ///
     /// Debug                  |    ios-drive@1.3.2-dev               |    ios-drive-fileprovider@1.3.2-dev
-    /// Release-QA         |    ios-drive@1.3.2.4379-dev    |    ios-drive-fileprovider@1.3.2.4379-dev
-    /// Release-External |    ios-drive@1.3.2.4379-beta  |    ios-drive-fileprovider@1.3.2.4379-beta
-    /// Release-Store      |    ios-drive@1.3.2.4379             |    ios-drive-fileprovider@1.3.2.4379
+    /// Release-QA         |    ios-drive@1.3.2-dev+4379    |    ios-drive-fileprovider@1.3.2-dev+4379
+    /// Release-External |    ios-drive@1.3.2-beta+4379  |    ios-drive-fileprovider@1.3.2-beta+4379
+    /// Release-Store      |    ios-drive@1.3.2+4379             |    ios-drive-fileprovider@1.3.2+4379
     ///
     private static let clientVersion: String = {
         guard let info = Bundle.main.infoDictionary else {
@@ -116,20 +120,20 @@ extension Constants {
         // MAJOR.MINOR.PATCH, all digits
         let version = (info["CFBundleShortVersionString"] as! String)
         appVersion += "@" + version
-        
-        // Debug or NUMBER.CONFIG, all digits
-        let build = info["CFBundleVersion"] as! String
-        if build.lowercased() != "debug" {
-            let buildWithoutSuffix = build.components(separatedBy: ".").first ?? ""
-            appVersion += ".\(buildWithoutSuffix)"
-        }
-        
+
         // dev, alpha, beta, etc
         let identifier = loadSettingValue(for: .appVersionIdentifier)
         if !identifier.isEmpty {
             appVersion += "-\(identifier)"
         }
-        
+
+        // Debug or NUMBER.CONFIG, all digits
+        let build = info["CFBundleVersion"] as! String
+        if build.lowercased() != "debug" {
+            let buildWithoutSuffix = build.components(separatedBy: ".").first ?? ""
+            appVersion += "+\(buildWithoutSuffix)"
+        }
+
         return appVersion
     }()
     

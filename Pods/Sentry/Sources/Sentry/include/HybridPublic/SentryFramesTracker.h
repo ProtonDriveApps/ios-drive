@@ -4,9 +4,11 @@
 
 #    import "SentryProfilingConditionals.h"
 
-@class SentryOptions, SentryDisplayLinkWrapper, SentryScreenFrames;
+@class SentryDisplayLinkWrapper;
 @class SentryCurrentDateProvider;
 @class SentryDispatchQueueWrapper;
+@class SentryNSNotificationCenterWrapper;
+@class SentryScreenFrames;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -20,15 +22,22 @@ NS_ASSUME_NONNULL_BEGIN
 
 /**
  * Tracks total, frozen and slow frames for iOS, tvOS, and Mac Catalyst.
+ *
+ * @discussion This class ignores a couple of methods for the thread sanitizer. We intentionally
+ * accept several data races in this class, a decision that is driven by the fact that the code
+ * always writes on the main thread. This approach, while it may not provide 100% correct frame
+ * statistic for background spans, significantly reduces the overhead of synchronization, thereby
+ * enhancing performance.
  */
 @interface SentryFramesTracker : NSObject
 
 - (instancetype)initWithDisplayLinkWrapper:(SentryDisplayLinkWrapper *)displayLinkWrapper
                               dateProvider:(SentryCurrentDateProvider *)dateProvider
                       dispatchQueueWrapper:(SentryDispatchQueueWrapper *)dispatchQueueWrapper
+                        notificationCenter:(SentryNSNotificationCenterWrapper *)notificationCenter
                  keepDelayedFramesDuration:(CFTimeInterval)keepDelayedFramesDuration;
 
-@property (nonatomic, assign, readonly) SentryScreenFrames *currentFrames;
+- (SentryScreenFrames *)currentFrames;
 @property (nonatomic, assign, readonly) BOOL isRunning;
 
 #    if SENTRY_TARGET_PROFILING_SUPPORTED

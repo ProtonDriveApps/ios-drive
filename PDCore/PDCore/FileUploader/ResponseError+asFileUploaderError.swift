@@ -19,7 +19,7 @@ import ProtonCoreServices
 
 extension ResponseError {
     var isNoSpaceOnCloudError: Bool { code == 200002 }
-    var isExpiredResource: Bool { httpCode == 422 && code == 2501 }
+    var isExpiredResource: Bool { (httpCode == 422 && code == 2501) || (httpCode == 404 && code == 2501) }
     var isFeatureDisabled: Bool { httpCode == 424 && code == 2032 }
 
     var isRetryable: Bool {

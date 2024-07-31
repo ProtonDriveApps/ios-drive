@@ -3,7 +3,9 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class SentryDsn, SentryMeasurementValue, SentryHttpStatusCodeRange, SentryScope;
+@class SentryDsn, SentryMeasurementValue, SentryHttpStatusCodeRange, SentryScope,
+    SentryReplayOptions;
+@class SentryExperimentalOptions;
 
 NS_SWIFT_NAME(Options)
 @interface SentryOptions : NSObject
@@ -72,6 +74,23 @@ NS_SWIFT_NAME(Options)
  */
 @property (nonatomic, assign) BOOL enableCrashHandler;
 
+#if !TARGET_OS_WATCH
+
+/**
+ * When enabled, the SDK reports SIGTERM signals to Sentry.
+ *
+ * It's crucial for developers to understand that the OS sends a SIGTERM to their app as a prelude
+ * to a graceful shutdown, before resorting to a SIGKILL. This SIGKILL, which your app can't catch
+ * or ignore, is a direct order to terminate your app's process immediately. Developers should be
+ * aware that their app can receive a SIGTERM in various scenarios, such as  CPU or disk overuse,
+ * watchdog terminations, or when the OS updates your app.
+ *
+ * @note The default value is @c NO.
+ */
+@property (nonatomic, assign) BOOL enableSigtermReporting;
+
+#endif // !TARGET_OS_WATCH
+
 /**
  * How many breadcrumbs do you want to keep in memory?
  * @note Default is @c 100 .
@@ -99,9 +118,22 @@ NS_SWIFT_NAME(Options)
 @property (nullable, nonatomic, copy) SentryBeforeSendEventCallback beforeSend;
 
 /**
+ * Use this callback to drop or modify a span before the SDK sends it to Sentry. Return @c nil to
+ * drop the span.
+ */
+@property (nullable, nonatomic, copy) SentryBeforeSendSpanCallback beforeSendSpan;
+
+/**
  * This block can be used to modify the event before it will be serialized and sent.
  */
 @property (nullable, nonatomic, copy) SentryBeforeBreadcrumbCallback beforeBreadcrumb;
+
+/**
+ * You can use this callback to decide if the SDK should capture a screenshot or not. Return @c true
+ * if the SDK should capture a screenshot, return @c false if not. This callback doesn't work for
+ * crashes.
+ */
+@property (nullable, nonatomic, copy) SentryBeforeCaptureScreenshotCallback beforeCaptureScreenshot;
 
 /**
  * A block called shortly after the initialization of the SDK when the last program execution
@@ -139,6 +171,12 @@ NS_SWIFT_NAME(Options)
  * @note Default is @c YES.
  */
 @property (nonatomic, assign) BOOL enableAutoSessionTracking;
+
+/**
+ * Whether to attach the top level `operationName` node of HTTP json requests to HTTP breadcrumbs
+ * @note Default is @c NO.
+ */
+@property (nonatomic, assign) BOOL enableGraphQLOperationTracking;
 
 /**
  * Whether to enable Watchdog Termination tracking or not.
@@ -269,6 +307,7 @@ NS_SWIFT_NAME(Options)
  * @note Default value is @c NO .
  */
 @property (nonatomic, assign) BOOL enablePreWarmedAppStartTracing;
+
 #endif // SENTRY_UIKIT_AVAILABLE
 
 /**
@@ -355,8 +394,21 @@ NS_SWIFT_NAME(Options)
 /**
  * Set as delegate on the @c NSURLSession used for all network data-transfer tasks performed by
  * Sentry.
+ *
+ * @discussion The SDK ignores this option when using @c urlSession.
  */
 @property (nullable, nonatomic, weak) id<NSURLSessionDelegate> urlSessionDelegate;
+
+/**
+ * Use this property, so the transport uses this  @c NSURLSession with your configuration for
+ * sending requests to Sentry.
+ *
+ * If not set, the SDK will create a new @c NSURLSession with @c [NSURLSessionConfiguration
+ * ephemeralSessionConfiguration].
+ *
+ * @note Default is @c nil.
+ */
+@property (nullable, nonatomic, strong) NSURLSession *urlSession;
 
 /**
  * Wether the SDK should use swizzling or not.
@@ -410,7 +462,17 @@ NS_SWIFT_NAME(Options)
  * the SDK sets it to the default of @c 0.
  * This property is dependent on @c tracesSampleRate -- if @c tracesSampleRate is @c 0 (default),
  * no profiles will be collected no matter what this property is set to. This property is
- * used to undersample profiles *relative to* @c tracesSampleRate
+ * used to undersample profiles *relative to* @c tracesSampleRate .
+ * @note Setting this value to @c nil enables an experimental new profiling mode, called continuous
+ * profiling. This allows you to start and stop a profiler any time with @c SentrySDK.startProfiler
+ * and @c SentrySDK.stopProfiler, which can run with no time limit, periodically uploading profiling
+ * data. You can also set @c SentryOptions.enableAppLaunchProfiling to have the profiler start on
+ * app launch; there is no automatic stop, you must stop it manually at some later time if you
+ * choose to do so. Sampling rates do not apply to continuous profiles, including those
+ * automatically started for app launches. If you wish to sample them, you must do so at the
+ * callsites where you use the API or configure launch profiling. Continuous profiling is not
+ * automatically started for performance transactions as was the previous version of profiling.
+ * @warning The new continuous profiling mode is experimental and may still contain bugs.
  */
 @property (nullable, nonatomic, strong) NSNumber *profilesSampleRate;
 
@@ -428,8 +490,11 @@ NS_SWIFT_NAME(Options)
 /**
  * If profiling should be enabled or not.
  * @note Profiling is not supported on watchOS or tvOS.
- * @returns @c YES if either a profilesSampleRate > @c 0 and \<= @c 1 or a profilesSampler is set,
- * otherwise @c NO.
+ * @note This only returns whether or not trace-based profiling is enabled. If it is not, then
+ * continuous profiling is effectively enabled, and calling SentrySDK.startProfiler will
+ * successfully start a continuous profile.
+ * @returns @c YES if either @c profilesSampleRate > @c 0 and \<= @c 1 , or @c profilesSampler is
+ * set, otherwise @c NO.
  */
 @property (nonatomic, assign, readonly) BOOL isProfilingEnabled;
 
@@ -525,6 +590,15 @@ NS_SWIFT_NAME(Options)
 @property (nonatomic, assign) BOOL enableMetricKit API_AVAILABLE(
     ios(15.0), macos(12.0), macCatalyst(15.0)) API_UNAVAILABLE(tvos, watchos);
 
+/**
+ * When enabled, the SDK adds the raw MXDiagnosticPayloads as an attachment to the converted
+ * SentryEvent. You need to enable @c enableMetricKit for this flag to work.
+ *
+ * @note Default value is @c NO.
+ */
+@property (nonatomic, assign) BOOL enableMetricKitRawPayload API_AVAILABLE(
+    ios(15.0), macos(12.0), macCatalyst(15.0)) API_UNAVAILABLE(tvos, watchos);
+
 #endif // SENTRY_HAS_METRIC_KIT
 
 /**
@@ -603,6 +677,12 @@ NS_SWIFT_NAME(Options)
  * This block can be used to modify the event before it will be serialized and sent.
  */
 @property (nullable, nonatomic, copy) SentryBeforeEmitMetricCallback beforeEmitMetric;
+
+/**
+ * This aggregates options for experimental features.
+ * Be aware that the options available for experimental can change at any time.
+ */
+@property (nonatomic, readonly) SentryExperimentalOptions *experimental;
 
 @end
 

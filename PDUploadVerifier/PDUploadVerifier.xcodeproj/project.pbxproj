@@ -110,6 +110,7 @@
 		31CDDFB32A9F267700FB8285 /* DecryptingVerificationInfoRepository.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DecryptingVerificationInfoRepository.swift; sourceTree = "<group>"; };
 		392E2EC68D1D0208D6B6FA7F /* Pods-PDUploadVerifierTests.release-external.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDUploadVerifierTests.release-external.xcconfig"; path = "Target Support Files/Pods-PDUploadVerifierTests/Pods-PDUploadVerifierTests.release-external.xcconfig"; sourceTree = "<group>"; };
 		3F7EE43B2FC9E1F0E8CCF572 /* Pods-PDUploadVerifierTests.release-store.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PDUploadVerifierTests.release-store.xcconfig"; path = "Target Support Files/Pods-PDUploadVerifierTests/Pods-PDUploadVerifierTests.release-store.xcconfig"; sourceTree = "<group>"; };
+		660345852BEBA19200A2464F /* Metadata v1.32.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "Metadata v1.32.xcdatamodel"; sourceTree = "<group>"; };
 		7669DCCE2BCEE1EC00CF8F1C /* Metadata v1.12.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "Metadata v1.12.xcdatamodel"; sourceTree = "<group>"; };
 		7669DCCF2BCEE1EC00CF8F1C /* Metadata v1.2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "Metadata v1.2.xcdatamodel"; sourceTree = "<group>"; };
 		7669DCD02BCEE1EC00CF8F1C /* Metadata v1.17.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "Metadata v1.17.xcdatamodel"; sourceTree = "<group>"; };
@@ -1511,6 +1512,7 @@
 		7669DCCD2BCEE1EC00CF8F1C /* Metadata.xcdatamodeld */ = {
 			isa = XCVersionGroup;
 			children = (
+				660345852BEBA19200A2464F /* Metadata v1.32.xcdatamodel */,
 				7669DCCE2BCEE1EC00CF8F1C /* Metadata v1.12.xcdatamodel */,
 				7669DCCF2BCEE1EC00CF8F1C /* Metadata v1.2.xcdatamodel */,
 				7669DCD02BCEE1EC00CF8F1C /* Metadata v1.17.xcdatamodel */,
@@ -1533,7 +1535,7 @@
 				7669DCE12BCEE1EC00CF8F1C /* Metadata v1.15.xcdatamodel */,
 				7669DCE22BCEE1EC00CF8F1C /* Metadata v1.5.xcdatamodel */,
 			);
-			currentVersion = 7669DCD82BCEE1EC00CF8F1C /* Metadata v1.31.xcdatamodel */;
+			currentVersion = 660345852BEBA19200A2464F /* Metadata v1.32.xcdatamodel */;
 			name = Metadata.xcdatamodeld;
 			path = ../PDCore/PDCore/CoreData/Metadata.xcdatamodeld;
 			sourceTree = "<group>";

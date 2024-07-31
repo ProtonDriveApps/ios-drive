@@ -110,6 +110,7 @@ struct ShareCreator {
             root.directShares.insert(share)
 
             try self.moc.saveOrRollback()
+            Log.info("New share was created with id: \(shareID), root: \(root.identifier)", domain: .storage)
 
             return share
         }

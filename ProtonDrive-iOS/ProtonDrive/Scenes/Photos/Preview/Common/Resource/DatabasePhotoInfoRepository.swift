@@ -43,7 +43,14 @@ final class DatabasePhotoInfoRepository: PhotoInfoRepository {
             }
 
             let mimeType = MimeType(value: photo.mimeType)
-            let type: PhotoInfo.PhotoType = mimeType.isVideo ? .video : .photo
+            let type: PhotoInfo.PhotoType
+            if mimeType.isVideo {
+                type = .video
+            } else if mimeType.isGif {
+                type = .gif
+            } else {
+                type = .photo
+            }
             let photoInfo = PhotoInfo(id: id, name: photo.decryptedName, type: type)
             self.photoSubject.send(photoInfo)
         }

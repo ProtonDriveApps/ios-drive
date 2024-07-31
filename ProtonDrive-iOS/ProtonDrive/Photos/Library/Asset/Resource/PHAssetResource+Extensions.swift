@@ -67,9 +67,12 @@ extension PHAssetResource {
     }
 
     func getNormalizedFilename() throws -> String {
-        if !originalFilename.isEmpty {
-            return originalFilename
-        } else if let filenameExtension = UTType(uniformTypeIdentifier)?.preferredFilenameExtension {
+        let name = originalFilename.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard name.isEmpty else {
+            return String(name.suffix(255))
+        }
+
+        if let filenameExtension = UTType(uniformTypeIdentifier)?.preferredFilenameExtension {
             return Constants.photosPlaceholderAssetName + "." + filenameExtension
         } else {
             throw PHAssetResourceError.invalidName

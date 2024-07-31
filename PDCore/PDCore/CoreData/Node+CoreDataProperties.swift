@@ -26,6 +26,7 @@ extension Node {
  
     @NSManaged public var name: String? // encrypted value, makes no sense in the higher level, use .decryptedName instead
     @NSManaged public var attributesMaskRaw: Int
+    @NSManaged public var dirtyIndex: Int64
     @NSManaged public var id: String
     @NSManaged public var isFavorite: Bool
     @NSManaged public var isInheritingOfflineAvailable: Bool
@@ -91,5 +92,21 @@ public extension Node {
     var acceptsThumbnail: Bool {
         guard let file = self as? File else { return false }
         return file.supportsThumbnail
+    }
+
+    var isDownloadable: Bool {
+        guard let file = self as? File else { return true }
+        return !file.isProtonDocument
+    }
+
+    func setIsInheritingOfflineAvailable(_ value: Bool) {
+        // Only inherit `true` if is actually downloadable
+        isInheritingOfflineAvailable = value && isDownloadable
+    }
+}
+
+public extension Node {
+    var isDirty: Bool {
+        dirtyIndex != 0
     }
 }

@@ -48,8 +48,12 @@ public extension Node {
         }
 
         return moc.performAndWait {
-            NodeIdentifier(self.id, self.shareID)
+            self.identifierWithinManagedObjectContext
         }
+    }
+    
+    var identifierWithinManagedObjectContext: NodeIdentifier {
+        NodeIdentifier(self.id, self.shareID)
     }
 }
 

@@ -41,6 +41,9 @@ struct RootMoveView: View {
         .presentView(item: $createFolderIn, style: .sheet) {
             coordinator.go(to: .createFolder(parent: $0)).environmentObject(internalRoot)
         }
+        .onReceive(internalRoot.closeCurrentSheet) { _ in
+            createFolderIn = nil
+        }
     }
     
     func actionBarAction(_ selected: ActionBarButtonViewModel?) {
