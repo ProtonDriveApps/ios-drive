@@ -177,11 +177,19 @@ extension Tower: DrivePopulator {
     }
 
     func populate(onCompletion: @escaping (Result<Void, Error>) -> Void) {
-        #if HAS_PHOTOS
-        self.onFirstBoot(isPhotosEnabled: true, onCompletion)
-        #else
-        self.onFirstBoot(isPhotosEnabled: false, onCompletion)
-        #endif
+        Task {
+            do {
+                let config: FirstBootConfiguration = .init(isPhotoEnabled: true, isTabSettingsRequested: true)
+                try await onFirstBoot(config: config)
+                await MainActor.run {
+                    onCompletion(.success(Void()))
+                }
+            } catch {
+                await MainActor.run {
+                    onCompletion(.failure(error))
+                }
+            }
+        }
     }
 }
 

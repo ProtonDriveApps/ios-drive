@@ -30,6 +30,7 @@ public enum FeatureAvailabilityFlag: CaseIterable {
     case logCollectionEnabled
     case logCollectionDisabled
     case oneDollarPlanUpsellEnabled
+    case driveDisablePhotosForB2B
 
     // Sharing
     case driveSharingMigration

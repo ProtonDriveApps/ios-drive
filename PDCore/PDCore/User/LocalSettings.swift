@@ -58,7 +58,13 @@ public class LocalSettings: NSObject {
     @SettingsStorage("DriveSharingDisabled") public var driveSharingDisabledValue: Bool?
     @SettingsStorage("DriveSharingExternalInvitationsDisabled") public var driveSharingExternalInvitationsDisabledValue: Bool?
     @SettingsStorage("DriveSharingEditingDisabled") public var driveSharingEditingDisabledValue: Bool?
-
+    // Photo tab for b2b user
+    @SettingsStorage("IsB2BUser") public var isB2BUser: Bool?
+    /// Would the user like to turn off the photo backup feature locally?
+    @SettingsStorage("IsPhotoBackupFeatureDisabled") public var isPhotoBackupFeatureDisabledValue: Bool?
+    /// Remote feature flag - DriveDisablePhotosForB2B
+    @SettingsStorage("DriveDisablePhotosForB2B") public var driveDisablePhotosForB2BValue: Bool?
+    
     public init(suite: SettingsStorageSuite) {
         super.init()
         self._sortPreferenceCache.configure(with: suite)
@@ -98,6 +104,10 @@ public class LocalSettings: NSObject {
         self._driveSharingDisabledValue.configure(with: suite)
         self._driveSharingExternalInvitationsDisabledValue.configure(with: suite)
         self._driveSharingEditingDisabledValue.configure(with: suite)
+        // Photo tab for b2b user
+        self._isB2BUser.configure(with: suite)
+        self._isPhotoBackupFeatureDisabledValue.configure(with: suite)
+        self._driveDisablePhotosForB2BValue.configure(with: suite)
 
         if let sortPreferenceCache = self.sortPreferenceCache {
             nodesSortPreference = SortPreference(rawValue: sortPreferenceCache) ?? SortPreference.default
@@ -137,6 +147,7 @@ public class LocalSettings: NSObject {
         driveSharingDisabled = driveSharingDisabledValue ?? false
         driveSharingExternalInvitationsDisabled = driveSharingExternalInvitationsDisabledValue ?? false
         driveSharingEditingDisabled = driveSharingEditingDisabledValue ?? false
+        driveDisablePhotosForB2B = driveDisablePhotosForB2BValue ?? false
     }
 
     public func cleanUp() {
@@ -164,6 +175,9 @@ public class LocalSettings: NSObject {
         self.keepScreenAwakeBannerHasDismissed = nil
         self.defaultHomeTabTagValue = nil
         self.didShowPhotosNotification = nil
+        self.isB2BUser = nil
+        self.isPhotoBackupFeatureDisabledValue = nil
+        self.driveDisablePhotosForB2BValue = nil
         setDynamicVariables()
     }
 
@@ -325,6 +339,15 @@ public class LocalSettings: NSObject {
 
     @objc public dynamic var driveSharingEditingDisabled: Bool = false {
         willSet { driveSharingEditingDisabledValue = newValue }
+    }
+
+    @objc public dynamic var isPhotoBackupFeatureDisabled: Bool {
+        get { isPhotoBackupFeatureDisabledValue ?? false }
+        set { isPhotoBackupFeatureDisabledValue = newValue }
+    }
+    
+    @objc public dynamic var driveDisablePhotosForB2B: Bool = false {
+        willSet { driveDisablePhotosForB2BValue = newValue }
     }
 }
 

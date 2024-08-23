@@ -102,6 +102,7 @@ class ExternalFeatureFlagsRepository: FeatureFlagsRepository {
         case .logCollectionEnabled: return .logCollectionEnabled
         case .logCollectionDisabled: return .logCollectionDisabled
         case .oneDollarPlanUpsellEnabled: return .oneDollarPlanUpsellEnabled
+        case .driveDisablePhotosForB2B: return .driveDisablePhotosForB2B
             // Sharing
         case .driveSharingMigration: return .driveSharingMigration
         case .driveSharingDevelopment: return .driveSharingDevelopment

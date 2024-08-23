@@ -129,15 +129,12 @@ extension AuthenticatedDependencyContainer {
 
     @MainActor
     private func makeSettingsViewController() -> UIViewController {
-        var photos: PhotosSettingsContainer?
-        #if HAS_PHOTOS
-            if tower.featureFlags.isEnabled(flag: .photosEnabled) {
-                photos = photosContainer.settingsContainer
-            }
-        #else
-            photos = nil
-        #endif
-        return SettingsAssembler.assemble(apiService: networkService, tower: tower, keymaker: keymaker, photosContainer: photos)
+        return SettingsAssembler.assemble(
+            apiService: networkService,
+            tower: tower,
+            keymaker: keymaker,
+            photosContainer: photosContainer.settingsContainer
+        )
     }
 }
 

@@ -31,13 +31,6 @@ public extension PMSettingsSectionViewModel {
             .build()
     }
 
-    static func appSettings(with locker: Locker, isPhotosEnabled: @escaping () -> Bool) -> PMSettingsSectionViewModel {
-        PMSettingsSectionBuilder()
-            .title("pmsettings-settings-app-settings-section".localized(in: PMSettings.bundle))
-            .appendRow(PMPinFaceIDDrillDownCellConfiguration.security(locker: locker, isPhotosEnabled: isPhotosEnabled))
-            .build()
-    }
-
     static var about: PMSettingsSectionViewModel {
         PMSettingsSectionBuilder()
             .title("pmsettings-settings-about-section".localized(in: PMSettings.bundle))

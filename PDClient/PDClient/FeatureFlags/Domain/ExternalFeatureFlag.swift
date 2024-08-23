@@ -27,6 +27,7 @@ public enum ExternalFeatureFlag: CaseIterable {
     case logCollectionEnabled
     case logCollectionDisabled
     case oneDollarPlanUpsellEnabled
+    case driveDisablePhotosForB2B
 
     // MARK: - Sharing 
     case driveSharingMigration

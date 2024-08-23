@@ -65,6 +65,19 @@ public class AddressManager {
             }
         }
     }
+    
+    func fetchAddressesAsync() async throws -> [Address] {
+        try await withCheckedThrowingContinuation { continuation in
+            fetchAddresses { result in
+                switch result {
+                case .success(let addresses):
+                    continuation.resume(returning: addresses)
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
 
     func fetchUserInfo(_ handler: @escaping (Result<User, Error>) -> Void) {
         guard self.sessionVault.sessionCredential != nil else {

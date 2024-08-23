@@ -43,6 +43,9 @@ final class GeneralEventsLoopProcessor: EventLoopProcessor {
     }
     
     func process(response: Response, loopID: String) {
+        let isIntegrityCheckNeeded = response.user != nil || response.addresses != nil
+        let isAddressMissingBeforeUpdate = isIntegrityCheckNeeded && isAddressMissingInVault()
+
         if let subscription = response.subscription {
             process(subscription)
         }
@@ -58,6 +61,11 @@ final class GeneralEventsLoopProcessor: EventLoopProcessor {
         if let userSettings = response.userSettings {
             process(userSettings)
         }
+
+        if isIntegrityCheckNeeded && !isAddressMissingBeforeUpdate && isAddressMissingInVault() {
+            logMissingIntegrity(response: response)
+        }
+
         /* Currently not used in the app:
         process(response.organization)
         process(response.invoices)
@@ -111,7 +119,37 @@ final class GeneralEventsLoopProcessor: EventLoopProcessor {
     func nukeCache() async {
         NotificationCenter.default.post(name: .nukeCache, object: nil)
     }
-    
+
+    private func isAddressMissingInVault() -> Bool {
+        guard let email = userVault.userInfo?.email?.toNilIfEmpty, let addresses = addressVault.addresses else {
+            return true
+        }
+        let isAddressPresent = isContainingAddress(email: email, addresses: addresses)
+        return !isAddressPresent
+    }
+
+    private func logMissingIntegrity(response: Response) {
+        // Verify that user update has email filled in
+        if let user = response.user, user.email == nil {
+            Log.error("Received a user update with nil email", domain: .events)
+            return
+        }
+
+        // Verify that addresses updates contain user's email
+        guard let email = userVault.userInfo?.email, let updates = response.addresses else {
+            return
+        }
+
+        let addresses = updates.compactMap(\.address)
+        if !isContainingAddress(email: email, addresses: addresses) {
+            Log.error("Received a user update with non matching addresses. Updates count: \(updates.count), addresses count: \(addresses.count)", domain: .events)
+        }
+    }
+
+    private func isContainingAddress(email: String, addresses: [Address]) -> Bool {
+        let email = email.canonicalEmailForm
+        return addresses.contains { $0.email.canonicalEmailForm == email }
+    }
 }
 
 // MARK: - Glue code

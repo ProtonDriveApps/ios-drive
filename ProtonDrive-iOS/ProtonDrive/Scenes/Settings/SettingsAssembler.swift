@@ -33,19 +33,9 @@ final class SettingsAssembler {
     private init() { }
 
     @MainActor
-    static func assemble(apiService: APIService, tower: Tower, keymaker: Keymaker, photosContainer: PhotosSettingsContainer?) -> UIViewController {
-        var appSettings = PMSettingsSectionViewModel.appSettings(with: keymaker, isPhotosEnabled: {
-            tower.localSettings.photosBackgroundSyncEnabled == true && tower.localSettings.photosEnabledValue == true && !(tower.localSettings.photosUploadDisabledValue == true)
-        })
-        let accountRecovery = tower.sessionVault.getAccountInfo()?.accountRecovery
+    static func assemble(apiService: APIService, tower: Tower, keymaker: Keymaker, photosContainer: PhotosSettingsContainer) -> UIViewController {
+        let appSettings = makeAppSettings(tower: tower, keymaker: keymaker, photosContainer: photosContainer)
 
-        if let photosContainer = photosContainer {
-            appSettings = appSettings
-                .amending()
-                .append(row: photosContainer.makeSettingsCell())
-                .append(row: DefaultHomeTabFactory.defaultHomeTabRow(tower: tower))
-                .amend()
-        }
         let about = PMSettingsSectionViewModel.about
             .amending()
             .prepend(row: PMAcknowledgementsConfiguration.acknowledgements(url: Self.url))
@@ -69,6 +59,7 @@ final class SettingsAssembler {
             .appendRow(clearCacheButton)
             .build()
 
+        let accountRecovery = tower.sessionVault.getAccountInfo()?.accountRecovery
         let accountManagementSettings = PMSettingsSectionBuilder()
             .title(accountRecovery?.title)
             .footer(ADTranslation.delete_account_message.l10n)
@@ -179,6 +170,32 @@ final class SettingsAssembler {
         let item = SecurityKeysSettingsItem(apiService: apiService)
         return PMDrillDownConfiguration(viewModel: item,
                                         viewControllerFactory: { item.controller })
+    }
+}
+
+// MARK: - App Settings
+extension SettingsAssembler {
+    @MainActor
+    private static func makeAppSettings(
+        tower: Tower,
+        keymaker: Keymaker,
+        photosContainer: PhotosSettingsContainer
+    ) -> PMSettingsSectionViewModel {
+        
+        return PMSettingsSectionBuilder()
+            .title("pmsettings-settings-app-settings-section".localized(in: PMSettings.bundle))
+            .appendRow(makePinButton(tower: tower, keymaker: keymaker))
+            .appendRow(photosContainer.makeSettingsCell())
+            .appendRow(DefaultHomeTabFactory.defaultHomeTabRow(tower: tower))
+            .build()
+    }
+    
+    private static func makePinButton(tower: Tower, keymaker: Keymaker) -> PMCellSuplier {
+        PMPinFaceIDDrillDownCellConfiguration.security(
+            locker: keymaker
+        ) {
+            !(tower.localSettings.photosUploadDisabledValue == true)
+        }
     }
 }
 

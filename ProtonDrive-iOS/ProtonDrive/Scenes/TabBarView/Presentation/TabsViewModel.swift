@@ -47,6 +47,9 @@ final class ConcreteTabsViewModel: TabsViewModel {
 
     func start() {
         photosTabController.isEnabled
+            .map { isEnabled in
+                return isEnabled
+            }
             .removeDuplicates()
             .sink { [weak self] isEnabled in
                 if isEnabled {

@@ -43,6 +43,7 @@ extension LocalSettings: ExternalFeatureFlagsStore {
         case .driveSharingDisabled: driveSharingDisabled = value
         case .driveSharingExternalInvitationsDisabled: driveSharingExternalInvitationsDisabled = value
         case .driveSharingEditingDisabled: driveSharingEditingDisabled = value
+        case .driveDisablePhotosForB2B: driveDisablePhotosForB2B = value
         }
     }
 
@@ -66,6 +67,7 @@ extension LocalSettings: ExternalFeatureFlagsStore {
         case .driveSharingDisabled: return driveSharingDisabled
         case .driveSharingExternalInvitationsDisabled: return driveSharingExternalInvitationsDisabled
         case .driveSharingEditingDisabled: return driveSharingEditingDisabled
+        case .driveDisablePhotosForB2B: return driveDisablePhotosForB2B
         }
     }
 }

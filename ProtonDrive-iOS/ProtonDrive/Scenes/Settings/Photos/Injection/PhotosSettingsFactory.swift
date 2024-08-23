@@ -40,7 +40,7 @@ struct PhotosSettingsFactory {
         tower: Tower
     ) -> UIViewController {
         let startController = LocalPhotosBackupStartController(settingsController: settingsController, authorizationController: authorizationController, photosBootstrapController: bootstrapController)
-        let viewModel = PhotosSettingsViewModel(settingsController: settingsController, startController: startController)
+        let viewModel = PhotosSettingsViewModel(settingsController: settingsController, startController: startController, localSettings: tower.localSettings)
         #if HAS_QA_FEATURES
         let diagnosticsFactory = PhotosDiagnosticsFactory()
         let diagnosticView = diagnosticsFactory.makeView(tower: tower, settingsController: settingsController)

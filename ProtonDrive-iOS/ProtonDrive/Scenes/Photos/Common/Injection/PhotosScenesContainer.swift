@@ -95,7 +95,11 @@ final class PhotosScenesContainer {
 
     private func makeOnboardingView() -> some View {
         let factory = PhotosScenesFactory()
-        return factory.makeOnboardingView(settingsController: dependencies.settingsController, authorizationController: dependencies.authorizationController, bootstrapController: dependencies.bootstrapController)
+        return factory.makeOnboardingView(
+            settingsController: dependencies.settingsController,
+            authorizationController: dependencies.authorizationController,
+            bootstrapController: dependencies.bootstrapController
+        )
     }
 
     private func makeGalleryView(

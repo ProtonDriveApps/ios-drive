@@ -40,6 +40,7 @@ struct PhotosOnboardingViewData {
 
 protocol PhotosOnboardingViewModelProtocol {
     var data: PhotosOnboardingViewData { get }
+    
     func enableBackup()
 }
 

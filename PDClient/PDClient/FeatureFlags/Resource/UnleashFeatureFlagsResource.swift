@@ -163,6 +163,8 @@ public final class UnleashFeatureFlagsResource: ExternalFeatureFlagsResource {
             return "DriveSharingExternalInvitationsDisabled"
         case .driveSharingEditingDisabled:
             return "DriveSharingEditingDisabled"
+        case .driveDisablePhotosForB2B:
+            return "DriveDisablePhotosForB2B"
         }
     }
 

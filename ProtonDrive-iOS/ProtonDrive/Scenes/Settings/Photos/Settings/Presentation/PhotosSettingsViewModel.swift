@@ -17,12 +17,21 @@
 
 import Combine
 import Foundation
+import PDCore
 
 protocol PhotosSettingsViewModelProtocol: ObservableObject {
     var backupTitle: String { get }
     var mobileDataTitle: String { get }
     var imageTitle: String { get }
     var videoTitle: String { get }
+    var shouldShowPhotoFeatureOption: Bool { get }
+    var photoFeatureTitle: String { get }
+    var photoFeatureAccessibilityID: String { get }
+    var photoFeatureAlertMessage: String { get }
+    var photoFeatureAlertButtonTitle: String { get }
+    var photoFeatureAlertCancelTitle: String { get }
+    var photoFeatureExplanation: String { get }
+    var isPhotoFeatureDisabled: Bool { get }
     var isEnabled: Bool { get }
     var isMobileDataEnabled: Bool { get }
     var isNotOlderThanEnabled: Bool { get }
@@ -37,11 +46,13 @@ protocol PhotosSettingsViewModelProtocol: ObservableObject {
     func setImageEnabled(_ isEnabled: Bool)
     func setIsNotOlderThanEnabled(_ isEnabled: Bool)
     func setNotOlderThan(_ date: Date)
+    func togglePhotoFeatureEnableStatus()
 }
 
 final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
     private let settingsController: PhotoBackupSettingsController
     private let startController: PhotosBackupStartController
+    private let localSettings: LocalSettings
 
     let backupTitle = "Photos backup"
     let mobileDataTitle = "Use mobile data to backup photos"
@@ -49,15 +60,53 @@ final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
     let videoTitle = "Backup Videos"
     let notOlderThanTitle = "Items since"
     let diagnosticsTitle = "Open diagnostics"
+    let shouldShowPhotoFeatureOption: Bool
+    var photoFeatureTitle: String {
+        if isPhotoFeatureDisabled {
+            return "Enable photo backup feature"
+        } else {
+            return "Disable photo backup feature"
+        }
+    }
+    var photoFeatureAccessibilityID: String {
+        if isPhotoFeatureDisabled {
+            return "PhotosBackupSettings.PhotoFeature.disabled"
+        } else {
+            return "PhotosBackupSettings.PhotoFeature.enabled"
+        }
+    }
+    var photoFeatureAlertMessage: String {
+        if isPhotoFeatureDisabled {
+            return "Are you sure you want to enable this feature? The photo backup will be activated and displayed again."
+        } else {
+            return "Are you sure you want to disable this feature? You can re-enable it later in settings if needed."
+        }
+    }
+    var photoFeatureAlertButtonTitle: String {
+        if isPhotoFeatureDisabled {
+            return "Enable"
+        } else {
+            return "Disable"
+        }
+    }
+    let photoFeatureAlertCancelTitle = "Cancel"
+    let photoFeatureExplanation = "This will enable photo backup feature on this device. The Photos tab and feature settings will be displayed."
+    @Published var isPhotoFeatureDisabled = false
     @Published var isEnabled = false
     @Published var isMobileDataEnabled = false
     @Published var isImageEnabled = false
     @Published var isVideoEnabled = false
     @Published var notOlderThan = Date.distantPast
 
-    init(settingsController: PhotoBackupSettingsController, startController: PhotosBackupStartController) {
+    init(
+        settingsController: PhotoBackupSettingsController,
+        startController: PhotosBackupStartController,
+        localSettings: LocalSettings
+    ) {
         self.settingsController = settingsController
         self.startController = startController
+        self.localSettings = localSettings
+        self.shouldShowPhotoFeatureOption = localSettings.isB2BUser ?? false
         subscribeToUpdates()
     }
     
@@ -79,6 +128,8 @@ final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
             .assign(to: &$isVideoEnabled)
         settingsController.notOlderThan
             .assign(to: &$notOlderThan)
+        localSettings.publisher(for: \.isPhotoBackupFeatureDisabled)
+            .assign(to: &$isPhotoFeatureDisabled)
     }
 
     func setEnabled(_ isEnabled: Bool) {
@@ -108,5 +159,13 @@ final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
     
     func setNotOlderThan(_ date: Date) {
         settingsController.setNotOlderThan(date)
+    }
+    
+    func togglePhotoFeatureEnableStatus() {
+        let newStatus = !localSettings.isPhotoBackupFeatureDisabled
+        localSettings.isPhotoBackupFeatureDisabled = newStatus
+        if newStatus == true {
+            setEnabled(false)
+        }
     }
 }

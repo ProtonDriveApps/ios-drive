@@ -37,9 +37,10 @@ public extension Quark {
             withDevice ? "--device=\(withDevice)" : nil,
         ].compactMap { $0 }
 
-        let request = try route(drivePopulate)
+        var request = try route(drivePopulate)
             .args(args)
             .build()
+        request.timeoutInterval = 120
 
         return try executeQuarkRequest(request)
     }

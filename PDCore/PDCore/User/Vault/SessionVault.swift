@@ -318,7 +318,7 @@ extension SessionVault: SessionStore {
         self.addresses = addresses
         var keys = [String: [PublicKey]]()
         for address in addresses {
-            keys[address.email.canonicalForm] = address.activePublicKeys
+            keys[address.email.canonicalEmailForm] = address.activePublicKeys
         }
         self.publicKeys = keys
     }
@@ -466,11 +466,26 @@ extension SessionVault {
     }
 
     public func currentAddress() -> Address? {
-        guard let email = self.userInfo?.email else {
+        guard let userInfo else {
             assert(false, "Drive can not work with accounts without emails - they are needed for cryptography")
+            Log.error("User info is nil", domain: .sessionManagement)
             return nil
         }
-        return self.getAddress(for: email)
+        guard let email = userInfo.email else {
+            assert(false, "Drive can not work with accounts without emails - they are needed for cryptography")
+            Log.error("User info doesn't have an email", domain: .sessionManagement)
+            return nil
+        }
+        if email.isEmpty {
+            // There was never such check in place, so post a warning, but continue with the address retrieval
+            Log.warning("User info email is is empty", domain: .sessionManagement)
+        }
+
+        let address = getAddress(for: email)
+        if address == nil {
+            Log.error("Address not found based on user's email. Number of addresses: \(String(describing: addresses?.count))", domain: .sessionManagement)
+        }
+        return address
     }
     
     public func currentCreator() -> String? {
@@ -478,8 +493,8 @@ extension SessionVault {
     }
 
     public func getAddress(for email: String) -> Address? {
-        let canonicalForm = email.canonicalForm
-        return self.addresses?.first(where: { $0.email.canonicalForm == canonicalForm })
+        let canonicalForm = email.canonicalEmailForm
+        return self.addresses?.first(where: { $0.email.canonicalEmailForm == canonicalForm })
     }
 
     public func getEmail(addressId: String) -> String? {
@@ -491,7 +506,7 @@ extension SessionVault {
             // fallback for legacy users who logged in before publicKeys caching was introduced
             return getAddress(for: email)?.activePublicKeys ?? []
         }
-        return cachedPublicKeys[email.canonicalForm] ?? []
+        return cachedPublicKeys[email.canonicalEmailForm] ?? []
     }
     
     public var allAddresses: [String] {
@@ -602,17 +617,6 @@ extension SessionVault: UserInfoResource {
             }
             .removeDuplicates()
             .eraseToAnyPublisher()
-    }
-}
-
-private extension String {
-    var canonicalForm: String {
-        self.replacingOccurrences(of: "[-_.]", with: "", options: [.regularExpression])
-            .lowercased()
-    }
-    
-    var toNilIfEmpty: String? {
-        isEmpty ? nil : self
     }
 }
 

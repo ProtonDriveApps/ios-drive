@@ -166,4 +166,18 @@ extension CloudSlot {
             }
         }
     }
+    
+    internal func createVolumeAsync(signersKit: SignersKit) async throws -> Share {
+        return try await withCheckedThrowingContinuation { continuation in
+            createVolume(signersKit: signersKit) { result in
+                switch result {
+                case .success(let share):
+                    continuation.resume(returning: share)
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
 }

@@ -74,7 +74,8 @@ struct PhotosScenesFactory {
         bootstrapController: PhotosBootstrapController
     ) -> some View {
         let startController = LocalPhotosBackupStartController(settingsController: settingsController, authorizationController: authorizationController, photosBootstrapController: bootstrapController)
-        return PhotosOnboardingView(viewModel: PhotosOnboardingViewModel(startController: startController))
+        let viewModel = PhotosOnboardingViewModel(startController: startController)
+        return PhotosOnboardingView(viewModel: viewModel)
     }
 
     func makePermissionsView(coordinator: PhotosPermissionsCoordinator) -> some View {

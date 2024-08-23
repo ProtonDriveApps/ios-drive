@@ -25,6 +25,7 @@ import ProtonCoreKeymaker
 import ProtonCoreNetworking
 import ProtonCoreDataModel
 import ProtonCoreFeatureFlags
+import ProtonCorePayments
 
 typealias ResponseError = ProtonCoreNetworking.ResponseError
 
@@ -243,9 +244,8 @@ public class Tower: NSObject {
     }
 
     public func bootstrap() async throws {
-        try await withCheckedThrowingContinuation { continuation in
-            onFirstBoot(continuation.resume(with:))
-        }
+        let config: FirstBootConfiguration = .init(isPhotoEnabled: false, isTabSettingsRequested: false)
+        try await onFirstBoot(config: config)
     }
     
     public func bootstrapIfNeeded() async throws {
@@ -356,57 +356,6 @@ public class Tower: NSObject {
             NotificationCenter.default.post(name: .restartApplication, object: nil)
         }
     }
-
-    // things we need to do once
-    public func onFirstBoot(isPhotosEnabled: Bool = false, _ completion: @escaping (Result<Void, Error>) -> Void) {
-        if let addresses = sessionVault.addresses, sessionVault.userInfo != nil {
-            firstBoot(isPhotosEnabled: isPhotosEnabled, with: addresses, completion)
-        } else {
-            self.addressManager.fetchAddresses { [weak self] in
-                guard case Result.success(let addresses) = $0 else {
-                    return completion( $0.flatMap { _ in .success(Void()) })
-                }
-                self?.firstBoot(isPhotosEnabled: isPhotosEnabled, with: addresses, completion)
-            }
-        }
-    }
-
-    private func firstBoot(isPhotosEnabled: Bool, with addresses: [Address], _ completion: @escaping (Result<Void, Error>) -> Void) {
-        let activeAddresses = addresses.filter({ !$0.keys.isEmpty })
-        guard let primaryAddress = activeAddresses.first else {
-            return completion(.failure(AddressManager.Errors.noPrimaryAddress))
-        }
-
-        guard let signersKit = try? SignersKit(address: primaryAddress, sessionVault: self.sessionVault) else {
-            return completion(.failure(SignersKit.Errors.noAddressWithRequestedSignature))
-        }
-        
-        featureFlags.start { _ in } // initial fetching during login, error is ignored, we will use cache or defaults
-        self.generalSettings.fetchUserSettings() // opportunistic, no need to abort the boot if this call fails
-        
-        let withMainShare: (Result<Share, Error>) -> Void = { sharesResult in
-            switch sharesResult {
-            case let .failure(error):
-                completion(.failure(error))
-            case .success:
-                completion(.success(Void()))
-            }
-        }
-        
-        self.cloudSlot.scanRoots(isPhotosEnabled: isPhotosEnabled, onFoundMainShare: withMainShare, onMainShareNotFound: {
-            // if there are no main shares - try to create a Volume, but only once
-            self.cloudSlot.createVolume(signersKit: signersKit) { createVolumeResult in
-                switch createVolumeResult {
-                case .failure(let error):
-                    withMainShare(.failure(error))
-                case .success:
-                    self.cloudSlot?.scanRoots(isPhotosEnabled: isPhotosEnabled, onFoundMainShare: withMainShare, onMainShareNotFound: {
-                        completion(.failure(CloudSlot.Errors.noSharesAvailable))
-                    })
-                }
-            }
-        })
-    }
     
     // things we need to do on every start
     public func start(runEventsProcessor: Bool) {
@@ -458,5 +407,81 @@ public class Tower: NSObject {
 
     public func moveToMainContext<T: NSManagedObject>(_ object: T) -> T {
         storage.moveToMainContext(object)
+    }
+}
+
+// MARK: - things we need to do once
+extension Tower {
+    public func onFirstBoot(config: FirstBootConfiguration) async throws {
+        let addresses = try await getAddress()
+        
+        let signersKit = try makeSignersKit(addresses: addresses)
+        // initial fetching during login, error is ignored, we will use cache or defaults
+        try? await featureFlags.startAsync()
+        self.generalSettings.fetchUserSettings() // opportunistic, no need to abort the boot if this call fails
+        
+        let share = try await prepareShare(isPhotosEnabled: config.isPhotoEnabled, signersKit: signersKit)
+        if config.isTabSettingsRequested {
+            let updater = TabbarSettingUpdater(
+                client: client,
+                cloudSlot: cloudSlot,
+                featureFlags: featureFlags,
+                localSettings: localSettings,
+                networking: networking
+            )
+            await updater.updateTabSettingBasedOnUserPlan(share: share)
+        }
+    }
+    
+    func getAddress() async throws -> [Address] {
+        if let addresses = sessionVault.addresses, sessionVault.userInfo != nil {
+            return addresses
+        } else {
+            let addresses = try await self.addressManager.fetchAddressesAsync()
+            return addresses
+        }
+    }
+    
+    private func makeSignersKit(addresses: [Address]) throws -> SignersKit {
+        let activeAddresses = addresses.filter({ !$0.keys.isEmpty })
+        guard let primaryAddress = activeAddresses.first else {
+            throw AddressManager.Errors.noPrimaryAddress
+        }
+        
+        guard let addressKey = primaryAddress.keys.first else {
+            throw SignersKit.Errors.addressHasNoKeys
+        }
+
+        guard let addressPassphrase = try? sessionVault.addressPassphrase(for: addressKey) else {
+            throw SignersKit.Errors.noAddressWithRequestedSignature
+        }
+        return SignersKit(address: primaryAddress, addressKey: addressKey, addressPassphrase: addressPassphrase)
+    }
+    
+    private func prepareShare(
+        isPhotosEnabled: Bool,
+        signersKit: SignersKit, 
+        canScanAgain: Bool = true
+    ) async throws -> Share {
+        if let share = try await cloudSlot.scanRootsAsync(isPhotosEnabled: isPhotosEnabled) {
+            return share
+        }
+
+        if canScanAgain {
+            _ = try await cloudSlot.createVolumeAsync(signersKit: signersKit)
+            return try await prepareShare(isPhotosEnabled: isPhotosEnabled, signersKit: signersKit, canScanAgain: false)
+        } else {
+            throw CloudSlot.Errors.noSharesAvailable
+        }
+    }
+}
+
+public struct FirstBootConfiguration {
+    let isPhotoEnabled: Bool
+    let isTabSettingsRequested: Bool
+    
+    public init(isPhotoEnabled: Bool, isTabSettingsRequested: Bool) {
+        self.isPhotoEnabled = isPhotoEnabled
+        self.isTabSettingsRequested = isTabSettingsRequested
     }
 }

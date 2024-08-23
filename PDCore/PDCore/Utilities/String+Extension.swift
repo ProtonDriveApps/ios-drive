@@ -70,3 +70,14 @@ public extension Array where Element == String {
         return elements.joined(separator: separator)
     }
 }
+
+extension String {
+    var canonicalEmailForm: String {
+        self.replacingOccurrences(of: "[-_.]", with: "", options: [.regularExpression])
+            .lowercased()
+    }
+
+    var toNilIfEmpty: String? {
+        isEmpty ? nil : self
+    }
+}

@@ -51,7 +51,9 @@ struct DefaultHomeTabFactory {
         )
 
         var items: [PMActionSheetItem] = []
-        for option in TabBarItem.allCases {
+        let tabs = availableTab(localSettings: localSettings)
+
+        for option in tabs {
             let item = PMActionSheetItem(
                 style: .default(option.icon, option.title),
                 userInfo: ["tag": option.tag],
@@ -76,5 +78,9 @@ struct DefaultHomeTabFactory {
         
         guard let topVC = UIApplication.shared.topViewController() else { return }
         sheet?.presentAt(topVC, hasTopConstant: false, animated: true)
+    }
+    
+    private static func availableTab(localSettings: LocalSettings) -> [TabBarItem] {
+        [.files, .photos, .shared]
     }
 }

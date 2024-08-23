@@ -23,6 +23,7 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
     @ObservedObject private var viewModel: ViewModel
     @ViewBuilder var diagnosticsView: DiagnosticView
     @State private var isDiagnosticsPresented: Bool = false
+    @State private var isPhotoFeatureAlertPresented = false
 
     init(viewModel: ViewModel, diagnosticsView: DiagnosticView) {
         self.viewModel = viewModel
@@ -64,6 +65,9 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
             #endif
             
             Spacer()
+//            if viewModel.shouldShowPhotoFeatureOption {
+//                photoFeatureRow
+//            }
         }
     }
     
@@ -78,54 +82,66 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
 
     @ViewBuilder
     private var backupEnabledRow: some View {
-        PhotosSettingsToggle(viewModel.backupTitle, isOn: .init(get: {
-            viewModel.isEnabled
-        }, set: { value in
-            viewModel.setEnabled(value)
-        }))
+        PhotosSettingsToggle(
+            viewModel.backupTitle,
+            isOn: .init(
+                get: { viewModel.isEnabled },
+                set: { value in viewModel.setEnabled(value) }
+            ),
+            isDisabled: viewModel.isPhotoFeatureDisabled
+        )
         .accessibilityIdentifier("PhotosBackupSettings.Switch")
     }
 
     @ViewBuilder
     private var mobileDataRow: some View {
-        PhotosSettingsToggle(viewModel.mobileDataTitle, isOn: .init(get: {
-            viewModel.isMobileDataEnabled
-        }, set: { value in
-            viewModel.setMobileDataEnabled(value)
-        }))
+        PhotosSettingsToggle(
+            viewModel.mobileDataTitle,
+            isOn: .init(
+                get: { viewModel.isMobileDataEnabled },
+                set: { value in viewModel.setMobileDataEnabled(value) }
+            ),
+            isDisabled: viewModel.isPhotoFeatureDisabled
+        )
         .accessibilityIdentifier("PhotosBackupSettings.MobileDataSwitch")
     }
 
     @ViewBuilder
     private var settingsImageRow: some View {
-        PhotosSettingsToggle(viewModel.imageTitle, isOn: .init(get: {
-            viewModel.isImageEnabled
-        }, set: { value in
-            viewModel.setImageEnabled(value)
-        }))
-        .disabled(viewModel.isEnabled)
+        PhotosSettingsToggle(
+            viewModel.imageTitle,
+            isOn: .init(
+                get: { viewModel.isImageEnabled },
+                set: { value in viewModel.setImageEnabled(value) }
+            ),
+            isDisabled: viewModel.isEnabled || viewModel.isPhotoFeatureDisabled
+        )
         .accessibilityIdentifier("PhotosBackupSettings.ImageSwitch")
     }
     
     @ViewBuilder
     private var settingsVideoRow: some View {
-        PhotosSettingsToggle(viewModel.videoTitle, isOn: .init(get: {
-            viewModel.isVideoEnabled
-        }, set: { value in
-            viewModel.setVideoEnabled(value)
-        }))
-        .disabled(viewModel.isEnabled)
+        PhotosSettingsToggle(
+            viewModel.videoTitle,
+            isOn: .init(
+                get: { viewModel.isVideoEnabled },
+                set: { value in viewModel.setVideoEnabled(value) }
+            ),
+            isDisabled: viewModel.isEnabled || viewModel.isPhotoFeatureDisabled
+        )
         .accessibilityIdentifier("PhotosBackupSettings.VideoSwitch")
     }
     
     @ViewBuilder
     private var settingsDateRow: some View {
-        PhotosSettingsToggle(viewModel.notOlderThanTitle, isOn: .init(get: {
-            viewModel.isNotOlderThanEnabled
-        }, set: { value in
-            viewModel.setIsNotOlderThanEnabled(value)
-        }))
-        .disabled(viewModel.isEnabled)
+        PhotosSettingsToggle(
+            viewModel.notOlderThanTitle,
+            isOn: .init(
+                get: { viewModel.isNotOlderThanEnabled },
+                set: { value in viewModel.setIsNotOlderThanEnabled(value) }
+            ),
+            isDisabled: viewModel.isEnabled || viewModel.isPhotoFeatureDisabled
+        )
         .accessibilityIdentifier("PhotosBackupSettings.DateSwitch")
     }
     
@@ -138,7 +154,7 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
         }), displayedComponents: .date)
         .padding(.horizontal, 16)
         .datePickerStyle(.compact)
-        .disabled(viewModel.isEnabled)
+        .disabled(viewModel.isEnabled || viewModel.isPhotoFeatureDisabled)
         .disabled(!viewModel.isNotOlderThanEnabled)
     }
 
@@ -157,23 +173,71 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
             diagnosticsView
         }
     }
+    
+    @ViewBuilder
+    private var photoFeatureRow: some View {
+        VStack(spacing: 0) {
+            Rectangle()
+                .foregroundStyle(Color.clear)
+                .frame(height: 0.1)
+                .separatedWithoutPadding()
+
+            photoFeatureButton
+                .separatedWithoutPadding()
+  
+            Text(viewModel.photoFeatureExplanation)
+                .foregroundStyle(ColorProvider.TextHint)
+                .font(.system(size: 13))
+                .padding(.top, 10)
+                .padding(.bottom, 44)
+                .padding(.horizontal, 16)
+                .accessibilityIdentifier("PhotosBackupSettings.PhotoFeatureExplanation")
+        }
+    }
+    
+    @ViewBuilder
+    private var photoFeatureButton: some View {
+        Button {
+            isPhotoFeatureAlertPresented = true
+        } label: {
+            Text(viewModel.photoFeatureTitle)
+        }
+        .foregroundColor(viewModel.isPhotoFeatureDisabled ? ColorProvider.BrandNorm : ColorProvider.NotificationError)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .accessibilityIdentifier(viewModel.photoFeatureAccessibilityID)
+        .alert(
+            viewModel.photoFeatureTitle,
+            isPresented: $isPhotoFeatureAlertPresented
+        ) {
+            Button(viewModel.photoFeatureAlertCancelTitle, action: { })
+            Button(viewModel.photoFeatureAlertButtonTitle, action: {
+                viewModel.togglePhotoFeatureEnableStatus()
+            })
+        } message: {
+            Text(viewModel.photoFeatureAlertMessage)
+        }
+    }
 
     struct PhotosSettingsToggle: View {
         var title: String
         var isOn: Binding<Bool>
+        var isDisabled: Bool
         
-        init(_ title: String, isOn: Binding<Bool>) {
+        init(_ title: String, isOn: Binding<Bool>, isDisabled: Bool) {
             self.title = title
             self.isOn = isOn
+            self.isDisabled = isDisabled
         }
         
         var body: some View {
             Toggle(title, isOn: isOn)
             .toggleStyle(SwitchToggleStyle(tint: ColorProvider.InteractionNorm))
             .font(.body)
-            .foregroundColor(ColorProvider.TextNorm)
+            .foregroundColor(isDisabled ? ColorProvider.TextDisabled : ColorProvider.TextNorm)
             .padding(.vertical, 12)
             .padding(.horizontal, 16)
+            .disabled(isDisabled)
         }
     }
 }

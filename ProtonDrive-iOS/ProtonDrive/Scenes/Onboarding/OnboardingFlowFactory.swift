@@ -28,7 +28,13 @@ struct OnboardingFlowFactory {
     ]
     
     func makeIfNeeded(settings: LocalSettings) -> UIViewController? {
-        settings.isOnboarded ? nil : make(settings: settings)
+        guard !settings.isOnboarded else {
+            return nil
+        }
+        guard settings.isB2BUser != true else {
+            return nil
+        }
+        return make(settings: settings)
     }
     
     private func make(settings: LocalSettings) -> UIViewController {

@@ -77,6 +77,15 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
     }
 
     private func subscribeToUpdates() {
+        galleryController.sections
+            .sink { [weak self] sections in
+                let hasPhotos = !sections.isEmpty
+                if hasPhotos {
+                    self?.state = .gallery
+                }
+            }
+            .store(in: &cancellables)
+        
         Publishers.CombineLatest4(
             authorizationController.permissions,
             settingsController.isEnabled,
@@ -102,7 +111,7 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
         hasPhotos: Bool,
         photoLoadStatus: RemotePhotoLoadStatus
     ) -> PhotosRootState {
-        if case .undetermined = photoLoadStatus, !hasPhotos {
+        if case .undetermined = photoLoadStatus, !hasPhotos, state == .loading {
             return .loading
         }
         
