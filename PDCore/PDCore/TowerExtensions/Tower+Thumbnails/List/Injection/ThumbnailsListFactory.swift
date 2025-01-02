@@ -25,7 +25,7 @@ public struct ThumbnailsListFactory {
         RemoteThumbnailsListInteractor(repository: client)
     }
 
-    func makeRemoteURLFetchInteractor(client: PDClient.Client, cloudSlot: CloudSlot) -> ThumbnailURLFetchInteractor {
+    func makeRemoteURLFetchInteractor(client: PDClient.Client, cloudSlot: CloudSlotProtocol) -> ThumbnailURLFetchInteractor {
         let listInteractor = makeInteractor(client: client)
         return RemoteThumbnailURLFetchInteractor(listInteractor: listInteractor, updateRepository: cloudSlot)
     }

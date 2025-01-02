@@ -32,6 +32,14 @@ public final class SyncStorageManager: NSObject, ManagedStorage {
         {
             return model
         }
+        
+        #if RESOURCES_ARE_IMPORTED_BY_SPM
+        if let bundle = Bundle.module.url(forResource: databaseName, withExtension: "momd"),
+           let model = NSManagedObjectModel(contentsOf: bundle)
+        {
+            return model
+        }
+        #endif
 
         fatalError("Error loading SyncModel from bundle")
     }()

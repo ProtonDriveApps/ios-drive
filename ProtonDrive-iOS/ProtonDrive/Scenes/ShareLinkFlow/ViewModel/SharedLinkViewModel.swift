@@ -17,6 +17,7 @@
 
 import Combine
 import Foundation
+import PDLocalization
 
 class SharedLinkViewModel: ObservableObject {
     private let link: SharedLink
@@ -52,10 +53,10 @@ class SharedLinkViewModel: ObservableObject {
     func perform(_ action: LinkActionsSection.ActionType) {
         switch action {
         case .copyLink:
-            NotificationCenter.default.postBanner(.info("Link copied"))
+            NotificationCenter.default.postBanner(.info(Localization.general_link_copied))
             onCopyToClipboard(model.linkModel.link)
         case .copyPassword:
-            NotificationCenter.default.postBanner(.info("Password copied"))
+            NotificationCenter.default.postBanner(.info(Localization.general_password_copied))
             onCopyToClipboard(model.linkModel.customPassword)
         case .share:
             shareLink = true
@@ -69,15 +70,15 @@ class SharedLinkViewModel: ObservableObject {
     }
 
     var stopSharingAlertTitle: String {
-        "Stop sharing"
+        Localization.share_stop_sharing
     }
 
     var stopSharingAlertMessage: String {
-        "This will delete the link and remove access to your file or folder for anyone with the link. You can’t undo this action."
+        Localization.share_stop_sharing_alert_message
     }
 
     var stopSharingButton: String {
-        "Stop sharing"
+        Localization.share_stop_sharing
     }
 
     func deleteLink() {
@@ -97,8 +98,8 @@ class SharedLinkViewModel: ObservableObject {
 
 struct SharedLinkMapper {
     func map(_ link: SharedLink, _ name: String) -> SharingLinkViewState {
-        let defaultPasswordMessage = "Anyone with this link can access your file/folder "
-        let customPasswordMessage = "Anyone with the link and password can access the file/folder "
+        let defaultPasswordMessage = Localization.share_via_default_password_message
+        let customPasswordMessage = Localization.share_via_custom_password_message
         let message = link.isCustom ? customPasswordMessage : defaultPasswordMessage
 
         return SharingLinkViewState(

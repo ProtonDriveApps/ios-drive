@@ -32,7 +32,7 @@ final class DatabaseThumbnailRepository: ThumbnailRepository {
 
     func getThumbnail() throws -> Thumbnail {
         let managedObjectContext = storage.backgroundContext
-        guard let thumbnail = storage.fetchThumbnail(id: id.thumbnailId, moc: managedObjectContext) else {
+        guard let thumbnail = Thumbnail.fetch(identifier: AnyVolumeIdentifier(id: id.thumbnailId, volumeID: id.volumeId), in: managedObjectContext) else {
             throw DatabaseThumbnailRepositoryError.invalidStorageState
         }
         return thumbnail

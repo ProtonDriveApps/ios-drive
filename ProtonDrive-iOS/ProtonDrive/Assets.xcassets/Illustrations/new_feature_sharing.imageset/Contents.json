@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "new_feature_sharing.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

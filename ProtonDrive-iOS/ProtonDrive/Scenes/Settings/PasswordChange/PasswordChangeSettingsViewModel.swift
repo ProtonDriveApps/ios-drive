@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import UIKit
 import Foundation
 import PMSettings
 import PDCore
@@ -22,13 +23,14 @@ import ProtonCoreDataModel
 import ProtonCoreNetworking
 import ProtonCorePasswordChange
 import ProtonCoreServices
+import PDLocalization
 
 class PasswordChangeSettingsViewModel: PMDrillDownCellViewModel {
     var preview: String? { nil }
     var title: String {
         mode == .mailboxPassword ?
-        "Change mailbox password" :
-        "Change password"
+        Localization.password_change_mailbox_password_title :
+        Localization.password_change_title
     }
     var accessibilityIdentifier: String { "Change password" }
 
@@ -72,10 +74,9 @@ class PasswordChangeSettingsViewModel: PMDrillDownCellViewModel {
 
     func processPasswordChangeSuccess(authCredential: AuthCredential, newUserInfo: ProtonCoreDataModel.UserInfo) {
         let newCredential = Credential(authCredential, scopes: coreCredential.scope)
-        sessionCommunicator.fetchNewChildSession(parentSessionCredential: newCredential) { [weak self] result in
-            guard let self else { return }
-            switch result {
-            case .success:
+        Task {
+            do {
+                try await sessionCommunicator.fetchNewChildSession(parentSessionCredential: newCredential)
                 do {
                     self.sessionVault.storeCredential(CoreCredential(newCredential))
                     self.sessionVault.storeAddresses(newUserInfo.userAddresses)
@@ -88,17 +89,16 @@ class PasswordChangeSettingsViewModel: PMDrillDownCellViewModel {
                         for: newUserInfo.userKeys.filter { $0.isUpdated },
                         mailboxPassphrase: newCredential.mailboxPassword
                     )
-
-                    Task { @MainActor [weak self] in
+                    await MainActor.run { [weak self] in
                         self?.parentViewController?.navigationController?.popToRootViewController(animated: true)
-                        NotificationCenter.default.post(name: .banner, object: BannerModel.info("Password changed successfully"))
+                        NotificationCenter.default.post(name: .banner, object: BannerModel.info(Localization.password_change_success_text))
                     }
-                    sessionCommunicator.onChildSessionReady()
+                    await sessionCommunicator.onChildSessionReady()
                 } catch {
                     Log.error(error.localizedDescription, domain: .application)
                     NotificationCenter.default.post(.signOut)
                 }
-            case .failure(let error):
+            } catch {
                 Log.error(error.localizedDescription, domain: .sessionManagement)
             }
         }

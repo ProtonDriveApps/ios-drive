@@ -24,6 +24,12 @@ public protocol Endpoint: EndpointWithRawResponse {
     associatedtype Response: Codable
 }
 
+extension Endpoint {
+    var decoder: JSONDecoder {
+        JSONDecoder(strategy: .driveImplementationOfDecapitaliseFirstLetter)
+    }
+}
+
 public protocol EndpointWithRawResponse: Request {
     var request: URLRequest { get }
     var parameters: [String: Any]? { get }

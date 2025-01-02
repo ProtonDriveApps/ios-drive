@@ -16,7 +16,9 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 #if DEBUG
+import Foundation
 import OHHTTPStubs
+import OHHTTPStubsSwift
 
 final class HumanVerification {
 
@@ -49,9 +51,6 @@ extension AppDelegate {
         if ProcessInfo.processInfo.arguments.contains("--human_verification") {
             HumanVerification.setupUITestsMocks()
         }
-        
-        OnboardingFlowTestsManager.skipOnboardingInTestsIfNeeded()
-        OneDollarUpsellFlowTestsManager.skipUpsellInTestsIfNeeded()
     }
 }
 #endif

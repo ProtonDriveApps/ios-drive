@@ -20,13 +20,13 @@ import PDClient
 
 final class LoadThumbnailOperationsFactory: ThumbnailOperationsFactory {
     let store: StorageManager
-    let cloud: CloudSlot
+    let cloud: CloudSlotProtocol
     let client: PDClient.Client
-    let session = URLSession(configuration: .forDownloading)
+    let session = URLSession.forUploading()
     private let thumbnailRepository: NodeThumbnailRepository
     private let typeStrategy: ThumbnailTypeStrategy
 
-    init(store: StorageManager, cloud: CloudSlot, client: PDClient.Client, thumbnailRepository: NodeThumbnailRepository, typeStrategy: ThumbnailTypeStrategy) {
+    init(store: StorageManager, cloud: CloudSlotProtocol, client: PDClient.Client, thumbnailRepository: NodeThumbnailRepository, typeStrategy: ThumbnailTypeStrategy) {
         self.store = store
         self.cloud = cloud
         self.client = client
@@ -107,8 +107,8 @@ final class LoadThumbnailOperationsFactory: ThumbnailOperationsFactory {
     }
 
     private func makeThumbnailIdentififer(from thumbnail: Thumbnail) -> ThumbnailIdentifier? {
-        if let thumbnailId = thumbnail.id, let volumeId = thumbnail.revision.file.parentsChain().last?.primaryDirectShare?.volume?.id {
-            return ThumbnailIdentifier(thumbnailId: thumbnailId, volumeId: volumeId, nodeIdentifier: thumbnail.revision.identifier.nodeIdentifier)
+        if !thumbnail.volumeID.isEmpty {
+            return ThumbnailIdentifier(thumbnailId: thumbnail.id, volumeId: thumbnail.volumeID, nodeIdentifier: thumbnail.revision.identifier.nodeIdentifier)
         } else {
             return nil
         }

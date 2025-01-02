@@ -136,7 +136,7 @@ extension FileDraft {
                 throw Revision.InvalidState(message: "Invalid Revision, it should have a url that points to the local resource")
             }
 
-            return CreatedRevisionDraft(uploadID: uploadID, localURL: url, size: revision.uploadSize, revision: revision, isEmpty: isEmpty, mimetype: MimeType(value: file.mimeType))
+            return CreatedRevisionDraft(volumeID: revision.volumeID, uploadID: uploadID, localURL: url, size: revision.uploadSize, revision: revision, isEmpty: isEmpty, mimetype: MimeType(value: file.mimeType))
         }
     }
 
@@ -247,7 +247,7 @@ extension FileDraft {
                 throw file.invalidState("The file doesn't have a revision draft")
             }
 
-            return UploadingFileIdentifier(nodeId: file.id, shareId: file.shareID, revisionId: revision.id)
+            return UploadingFileIdentifier(nodeId: file.id, shareId: file.shareId, revisionId: revision.id, volumeId: file.volumeID)
         }
     }
 }

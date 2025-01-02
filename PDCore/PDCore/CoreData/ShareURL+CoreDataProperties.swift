@@ -18,7 +18,7 @@
 import Foundation
 import CoreData
 
-extension ShareURL {
+extension ShareURL: GloballyUnique {
 
     @nonobjc public class func fetchRequest() -> NSFetchRequest<ShareURL> {
         return NSFetchRequest<ShareURL>(entityName: "ShareURL")
@@ -50,4 +50,14 @@ extension ShareURL {
 
     // MARK: - Derived properties
     public var shareID: String { share.id }
+}
+
+extension ShareURL {
+    public var identifier: PublicLinkIdentifier {
+        PublicLinkIdentifier(id: id, shareID: share.id, volumeID: share.volumeID)
+    }
+
+    public func clearCachedPassword() {
+        clearPassword = nil
+    }
 }

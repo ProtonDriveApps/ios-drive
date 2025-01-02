@@ -41,24 +41,24 @@ final class ConcretePhotoLibraryLivePairCompoundResource: PhotoLibraryLivePairCo
 
     func getOriginal(with identifier: PhotoIdentifier, asset: PHAsset) async throws -> PhotoAssetCompound {
         let resources = PHAssetResource.assetResources(for: asset)
-        let originalPair = try getOriginalPair(from: resources)
+        let originalPair = try getOriginalPair(from: resources, assetInfo: asset.debugInfo)
         return try await loadLivePair(identifier: identifier, asset: asset, resources: originalPair, isOriginal: true)
     }
 
     func getModified(with identifier: PhotoIdentifier, asset: PHAsset) async throws -> PhotoAssetCompound {
         let resources = PHAssetResource.assetResources(for: asset)
-        let originalPair = try getModifiedPair(from: resources)
+        let originalPair = try getModifiedPair(from: resources, assetInfo: asset.debugInfo)
         return try await loadLivePair(identifier: identifier, asset: asset, resources: originalPair, isOriginal: false)
     }
 
-    private func getOriginalPair(from resources: [PHAssetResource]) throws -> LivePhotoAssetResourcePair {
+    private func getOriginalPair(from resources: [PHAssetResource], assetInfo: String) throws -> LivePhotoAssetResourcePair {
         let containedTypes = resources.map(\.type.rawValue)
         guard let photoResource = resources.first(where: { $0.isOriginalImage() }) else {
-            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources(containedTypes)
+            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources(containedTypes, assetInfo)
         }
 
         guard let videoResource = resources.first(where: { $0.isOriginalPairedVideo() }) else {
-            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources(containedTypes)
+            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources(containedTypes, assetInfo)
         }
 
         return LivePhotoAssetResourcePair(
@@ -69,14 +69,14 @@ final class ConcretePhotoLibraryLivePairCompoundResource: PhotoLibraryLivePairCo
         )
     }
 
-    private func getModifiedPair(from resources: [PHAssetResource]) throws -> LivePhotoAssetResourcePair {
+    private func getModifiedPair(from resources: [PHAssetResource], assetInfo: String) throws -> LivePhotoAssetResourcePair {
         let containedTypes = resources.map(\.type.rawValue)
         guard let photoResource = resources.first(where: { $0.isAdjustedImage() }) else {
-            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources(containedTypes)
+            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources(containedTypes, assetInfo)
         }
 
         guard let videoResource = resources.first(where: { $0.isAdjustedPairedVideo() }) else {
-            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources(containedTypes)
+            throw PhotoLibraryLivePhotoFilesResourceError.invalidResources(containedTypes, assetInfo)
         }
 
         let photoFilename = try nameResource.getPhotoFilename(from: resources)
@@ -90,5 +90,23 @@ final class ConcretePhotoLibraryLivePairCompoundResource: PhotoLibraryLivePairCo
         let photoAsset = try await assetResource.executePhoto(with: photoData)
         let videoAsset = try await assetResource.executeVideo(with: videoData)
         return PhotoAssetCompound(primary: photoAsset, secondary: [videoAsset])
+    }
+}
+
+private extension PHAsset {
+    var debugInfo: String {
+        let source: String
+        switch sourceType {
+        case .typeCloudShared:
+            source = "cloud shared"
+        case .typeUserLibrary:
+            source = "user library"
+        case .typeiTunesSynced:
+            source = "iTunes synced"
+        default:
+            source = "unknown source"
+        }
+
+        return "Source: \(source), isHidden: \(isHidden), isFavorite: \(isFavorite), mediaSubType \(mediaSubtypes.rawValue)"
     }
 }

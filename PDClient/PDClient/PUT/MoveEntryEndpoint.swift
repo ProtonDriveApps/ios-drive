@@ -19,13 +19,15 @@ import Foundation
 
 public struct MoveEntryEndpoint: Endpoint {
     public struct Parameters: Codable {
-        let Name: String
-        let NodePassphrase: String
-        let Hash: String
-        let ParentLinkID: String
-        let NameSignatureEmail: String
-        let OriginalHash: String
-        let NewShareID: String?
+        public let Name: String
+        public let NodePassphrase: String
+        public let Hash: String
+        public let ParentLinkID: String
+        public let NameSignatureEmail: String
+        public let OriginalHash: String
+        public let NewShareID: String?
+        public let NodePassphraseSignature: String?
+        public let SignatureEmail: String?
 
         public init(
             name: String,
@@ -34,15 +36,19 @@ public struct MoveEntryEndpoint: Endpoint {
             parentLinkID: String,
             nameSignatureEmail: String,
             originalHash: String,
-            newShareID: String?
+            newShareID: String?,
+            nodePassphraseSignature: String? = nil,
+            signatureEmail: String? = nil
         ) {
             self.Name = name
             self.NodePassphrase = nodePassphrase
+            self.NodePassphraseSignature = nodePassphraseSignature
             self.Hash = hash
             self.ParentLinkID = parentLinkID
             self.NameSignatureEmail = nameSignatureEmail
             self.OriginalHash = originalHash
             self.NewShareID = newShareID
+            self.SignatureEmail = signatureEmail
         }
     }
 

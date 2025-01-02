@@ -37,9 +37,9 @@ public final class GeneralSettings {
         userSettings
     }
 
-    func fetchUserSettings() {
+    public func fetchUserSettings() {
         let route = UserSettingsAPIRoutes.Router.getGeneralSettings
-        network.exec(route: route) { (task: URLSessionDataTask?, result: Result<GetGeneralSettingsResponse, ResponseError>) in
+        network.perform(request: route) { (_, result: Result<GetGeneralSettingsResponse, ResponseError>) in
             switch result {
             case let .success(response):
                 self.storeUserSettings(response.userSettings)
@@ -49,14 +49,14 @@ public final class GeneralSettings {
         }
     }
     
-    func storeUserSettings(_ userSettings: UserSettings) {
+    public func storeUserSettings(_ userSettings: UserSettings) {
         self.userSettings = userSettings
         
         self.localSettings.optOutFromTelemetry = userSettings.optOutFromTelementry
         self.localSettings.optOutFromCrashReports = userSettings.optOutFromCrashReports
     }
 
-    func cleanUp() {
+    public func cleanUp() {
         try? _userSettings.wipeValue()
     }
 

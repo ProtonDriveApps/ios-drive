@@ -38,16 +38,9 @@ public final class RemoteCreatingPhotosRootDataSource: PhotosShareDataSource {
         let RootName = "PhotosRoot"
         let moc = storage.newBackgroundContext()
 
-        guard let volume = storage.volumes(moc: moc).first else {
-            throw Volume.InvalidState(message: "No volume found while trying to create photos share.")
-        }
-
-        guard let mainShare = storage.mainShareOfVolume(by: sessionVault.addressIDs, moc: moc) else {
-            throw Share.InvalidState(message: "No main share found in volume.")
-        }
-
-        let (volumeID, mainShareCreator) = await moc.perform {
-            (volume.id, mainShare.creator)
+        let (volumeID, mainShareCreator, volume) = try await moc.perform {
+            let (mainShare, volume) = try self.storage.getMainShareAndVolume(in: moc)
+            return (volume.id, mainShare.creator, volume)
         }
 
         guard let mainShareCreator = mainShareCreator else {
@@ -56,6 +49,7 @@ public final class RemoteCreatingPhotosRootDataSource: PhotosShareDataSource {
 
         let signersKit = try sessionVault.make(forSigner: .address(mainShareCreator))
         let addressID = signersKit.address.addressID
+        let addressKeyID = signersKit.addressKey.keyID
         let shareKeys = try Encryptor.generateNodeKeys(addressPassphrase: signersKit.addressPassphrase, addressPrivateKey: signersKit.addressKey.privateKey, parentKey: signersKit.addressKey.privateKey)
         let rootKeys = try Encryptor.generateNodeKeys(addressPassphrase: signersKit.addressPassphrase, addressPrivateKey: signersKit.addressKey.privateKey, parentKey: shareKeys.key)
         let rootHashKey = try Encryptor.generateNodeHashKey(nodeKey: rootKeys.key, passphrase: rootKeys.passphraseRaw)
@@ -63,6 +57,7 @@ public final class RemoteCreatingPhotosRootDataSource: PhotosShareDataSource {
 
         let photosShare = NewPhotoShare(
             addressID: addressID,
+            addressKeyID: addressKeyID,
             volumeID: volumeID,
             shareName: shareName,
             shareKey: shareKeys.key,
@@ -79,32 +74,40 @@ public final class RemoteCreatingPhotosRootDataSource: PhotosShareDataSource {
         finishResource.execute()
 
         return try await moc.perform {
-            let creator = signersKit.address.email
+            let address = signersKit.address
+            let addressKey = signersKit.addressKey
 
-            let share: Share = self.storage.unique(with: [response.share.shareID], in: moc)[0]
+            let share: Share = Share.fetchOrCreate(id: response.share.shareID, in: moc)
+            share.volumeID = volumeID
+            share.creator = address.email
             share.addressID = signersKit.address.addressID
-            share.creator = creator
+            share.addressKeyID = addressKey.keyID
             share.key = shareKeys.key
             share.passphrase = shareKeys.passphrase
             share.passphraseSignature = shareKeys.signature
             share.type = .photos
 
-            let root: Folder = self.storage.unique(with: [response.share.linkID], in: moc)[0]
-            root.shareID = response.share.shareID
+            volume.shares.insert(share)
+
+            let identifier = NodeIdentifier(response.share.linkID, response.share.shareID, volumeID)
+            let root: Folder = Folder.fetchOrCreate(identifier: identifier, in: moc)
+            root.setShareID(response.share.shareID)
+            root.signatureEmail = address.email
+            root.directShares.insert(share)
+            root.name = rootName
+
             root.nodeKey = rootKeys.key
             root.nodePassphrase = rootKeys.passphrase
             root.nodePassphraseSignature = rootKeys.signature
-            root.signatureEmail = creator
-            root.name = rootName
-            root.nameSignatureEmail = creator
+
             root.nodeHashKey = rootHashKey
+
             root.nodeHash = ""
+            root.mimeType = ""
+            root.nameSignatureEmail = ""
             root.mimeType = Folder.mimeType
             root.createdDate = Date()
             root.modifiedDate = Date()
-
-            share.volume = volume
-            share.root = root
 
             try moc.saveOrRollback()
 

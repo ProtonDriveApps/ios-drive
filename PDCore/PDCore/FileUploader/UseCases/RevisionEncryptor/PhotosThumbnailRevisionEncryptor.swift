@@ -56,7 +56,7 @@ final class PhotosThumbnailRevisionEncryptor: ThumbnailRevisionEncryptor {
             let revision = draft.revision.in(moc: moc)
             revision.removeOldThumbnails(in: moc)
 
-            let thumbnails = Set(encryptedThumbnails.map { self.makeThumbnail(from: $0.data, type: $0.type) })
+            let thumbnails = Set(encryptedThumbnails.map { self.makeThumbnail(from: $0.data, type: $0.type, volumeID: draft.volumeID) })
             revision.addToThumbnails(thumbnails)
 
             if isCancelled {

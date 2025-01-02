@@ -20,6 +20,7 @@ import ProtonCoreUIFoundations
 import SwiftUI
 import PDUIComponents
 import PDCore
+import PDLocalization
 
 public final class StartViewController: UIViewController {
     private var cancellables: Set<AnyCancellable> = []
@@ -27,7 +28,7 @@ public final class StartViewController: UIViewController {
     let launchView = UILaunchView()
 
     private lazy var spinner: UIView = ViewHosting {
-        SpinnerTextView(text: "Signing out...")
+        SpinnerTextView(text: Localization.general_signing_out)
     }
 
     private let loggingOutLabel = UILabel()

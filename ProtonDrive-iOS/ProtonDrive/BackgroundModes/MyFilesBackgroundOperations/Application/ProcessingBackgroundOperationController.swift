@@ -70,10 +70,10 @@ final class ProcessingBackgroundOperationController: BackgroundOperationControll
     private func expireTask() {
         isRunning = false
         if operationInteractor.state == .idle {
-            ConsoleLogger.shared?.logAndNotify(title: "✅ task finished", message: "", osLogType: Constants.self)
+            Log.logInfoAndNotify(title: "✅ task finished")
             taskResource.completeTask(success: true)
         } else {
-            ConsoleLogger.shared?.logAndNotify(title: "⚠️ task expired", message: "", osLogType: Constants.self)
+            Log.logInfoAndNotify(title: "⚠️ task expired")
             operationInteractor.cancel()
             scheduleTask()
             taskResource.completeTask(success: false)

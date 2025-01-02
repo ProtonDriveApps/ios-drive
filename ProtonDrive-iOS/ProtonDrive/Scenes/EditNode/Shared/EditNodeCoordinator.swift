@@ -19,24 +19,27 @@ import UIKit
 import SwiftUI
 import PDCore
 import ProtonCoreUIFoundations
+import PDUIComponents
 
 final class EditNodeCoordinator: SwiftUICoordinator {
-    typealias Context = (tower: Tower, parent: Folder, intention: Intention)
-    func go(to destination: Never) -> Never { }
-    
+    typealias Context = (tower: Tower, intention: Intention)
+
     enum Intention {
-        case create, rename(Node)
+        case create(parent: Folder)
+        case rename(node: Node)
     }
-    
+
+    func go(to destination: Never) -> Never { }
+
     func start(_ context: Context) -> EditNodeUIKitView {
-        let model = EditNodeModel(tower: context.tower, parent: context.parent)
+        let model = EditNodeModel(tower: context.tower)
         let validator = NameValidations.userSelectedName
         let nameAttributes = EditNodeViewController.nameAttributes
         let extAttributes = EditNodeViewController.nameAttributes
         
         switch context.intention {
-        case .create:
-            let vm = CreateFolderViewModel(folderCreator: model, validator: validator)
+        case let .create(parent):
+            let vm = CreateFolderViewModel(folderCreator: model, validator: validator, parent: parent)
             let nfvm = FormattingFolderViewModel(initialName: nil, attributes: nameAttributes)
             return EditNodeUIKitView(vm: vm, nfvm: nfvm)
         case .rename(let node):

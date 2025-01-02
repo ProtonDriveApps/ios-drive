@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import CoreData
 import PDCore
 import UIKit
 
@@ -44,11 +45,17 @@ struct PhotosPreviewFactory {
         thumbnailsContainer: ThumbnailsControllersContainer,
         modeController: PhotosPreviewModeController,
         previewController: PhotosPreviewController,
-        detailController: PhotoPreviewDetailController
+        detailController: PhotoPreviewDetailController,
+        photosManagedObjectContext: NSManagedObjectContext,
+        photoUploadedNotifier: PhotoUploadedNotifier
     ) -> UIViewController {
         let smallThumbnailController = thumbnailsContainer.makeSmallThumbnailController(id: id)
         let fullThumbnailController = thumbnailsContainer.makeBigThumbnailController(id: id)
-        let fileContentController = PhotosScenesFactory().makeFileContentController(tower: tower)
+        let fileContentController = PhotosScenesFactory().makeFileContentController(
+            tower: tower,
+            moc: photosManagedObjectContext,
+            photoUploadedNotifier: photoUploadedNotifier
+        )
         let fullPreviewController = LocalPhotoFullPreviewController(id: id, detailController: detailController, fullThumbnailController: fullThumbnailController, smallThumbnailController: smallThumbnailController, contentController: fileContentController)
         let shareController = CachingPhotoPreviewDetailShareController(fileContentController: fileContentController, coordinator: coordinator, id: id)
         let viewModel = PhotoPreviewDetailViewModel(thumbnailController: smallThumbnailController, modeController: modeController, previewController: previewController, detailController: detailController, fullPreviewController: fullPreviewController, shareController: shareController, id: id, coordinator: coordinator)

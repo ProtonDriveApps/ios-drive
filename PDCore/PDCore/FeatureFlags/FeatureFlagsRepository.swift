@@ -18,12 +18,18 @@
 import Combine
 import Foundation
 
-public protocol FeatureFlagsRepository {
-    var updatePublisher: AnyPublisher<Void, Never> { get }
+public protocol FeatureFlagsRepository: FeatureFlagsStartingRepository, FeatureFlagsUpdateRepository {
     func isEnabled(flag: FeatureAvailabilityFlag) -> Bool
     func enable(flag: FeatureAvailabilityFlag)
     func disable(flag: FeatureAvailabilityFlag)
     func start(completionHandler: @escaping (Error?) -> Void)
-    func startAsync() async throws // the async variant of the above
     func stop()
+}
+
+public protocol FeatureFlagsUpdateRepository {
+    var updatePublisher: AnyPublisher<Void, Never> { get }
+}
+
+public protocol FeatureFlagsStartingRepository {
+    func startAsync() async throws
 }

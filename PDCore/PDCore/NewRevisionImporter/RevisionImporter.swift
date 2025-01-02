@@ -36,7 +36,12 @@ public class CoreDataRevisionImporter: RevisionImporter {
 
         return try moc.performAndWait {
             let coreDataFile = file.in(moc: moc)
+#if os(macOS)
             let signersKit = try signersKitFactory.make(forSigner: .main)
+#else
+            let addressID = try file.getContextShareAddressID()
+            let signersKit = try signersKitFactory.make(forAddressID: addressID)
+#endif
 
             guard coreDataFile.isUploaded() else { throw File.InvalidState(message: "The file should be already uploaded") }
 
@@ -45,7 +50,7 @@ public class CoreDataRevisionImporter: RevisionImporter {
             // Create new Revision
             coreDataFile.uploadID = uploadID
             coreDataFile.clientUID = uploadClientUIDProvider.getUploadClientUID()
-            let coreDataRevision = Revision.`import`(id: uploadID.uuidString, url: url, size: fileSize, creatorEmail: signersKit.address.email, moc: moc)
+            let coreDataRevision = Revision.`import`(id: uploadID.uuidString, volumeID: coreDataFile.volumeID, url: url, size: fileSize, creatorEmail: signersKit.address.email, moc: moc)
 
             // Relationships
             coreDataRevision.file = coreDataFile // This adds the current coreDataRevision to File's revisions

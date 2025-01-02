@@ -17,7 +17,7 @@
 
 import Foundation
 import CoreData
-import ProtonCoreCryptoGoImplementation
+import ProtonCoreCryptoGoInterface
 
 @available(iOS, unavailable)
 public final class MigrationPerformer {
@@ -78,7 +78,8 @@ public final class MigrationPerformer {
 extension MigrationPerformer {
     
     private func validateMainKey() throws {
-        if keymaker.mainKey == nil {
+        let mainKey = try? keymaker.mainKeyOrError
+        if mainKey == nil {
             assertionFailure("MainKey should be accessible in order to perform migration")
             Log.error(MainKeyDecryptionError.decryption(Errors.noMainKeyAvailable), domain: .encryption)
             throw Errors.noMainKeyAvailable

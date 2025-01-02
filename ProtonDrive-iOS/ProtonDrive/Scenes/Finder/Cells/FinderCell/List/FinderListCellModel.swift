@@ -43,19 +43,17 @@ extension NodeCellConfiguration {
         } else {
             var badges: [Badge] = []
 
-            if !isDownloaded && nodeType == .file {
-                badges.append(.cloud)
-            }
-
             if isFavorite {
                 badges.append(.favorite)
             }
 
-            if isSavedForOffline {
-                badges.append(.offline(downloaded: isDownloaded))
+            if isAvailableOffline {
+                badges.append(.offline)
             }
 
-            if isShared {
+            if isSharedCollaboratively && hasSharing {
+                badges.append(.sharedCollaboratively)
+            } else if isShared || (hasDirectShare && hasSharing) {
                 badges.append(.shared)
             }
 

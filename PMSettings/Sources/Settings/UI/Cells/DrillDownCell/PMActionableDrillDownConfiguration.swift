@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import UIKit
 
 final public class PMActionableDrillDownConfiguration: PMCellSuplier {
     let viewModel: PMDrillDownCellViewModel

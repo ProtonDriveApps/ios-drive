@@ -16,9 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 public enum ExternalFeatureFlag: CaseIterable {
-    case photosEnabled
     case photosUploadDisabled
-    case photosBackgroundSyncEnabled
     case logsCompressionDisabled
     case domainReconnectionEnabled
     case postMigrationJunkFilesCleanup
@@ -28,13 +26,24 @@ public enum ExternalFeatureFlag: CaseIterable {
     case logCollectionDisabled
     case oneDollarPlanUpsellEnabled
     case driveDisablePhotosForB2B
+    case driveDDKEnabled
 
-    // MARK: - Sharing 
+    // Sharing 
     case driveSharingMigration
+    case driveiOSSharing
     case driveSharingDevelopment
     case driveSharingInvitations
     case driveSharingExternalInvitations
     case driveSharingDisabled
     case driveSharingExternalInvitationsDisabled
     case driveSharingEditingDisabled
+    case drivePublicShareEditMode
+    case drivePublicShareEditModeDisabled
+
+    // ProtonDoc
+    case driveDocsWebView
+    case driveDocsDisabled
+    
+    // Entitlement
+    case driveDynamicEntitlementConfiguration
 }

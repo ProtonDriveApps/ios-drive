@@ -34,7 +34,23 @@ final class PhotosImportInteractor: AsynchronousExecution {
             try await importer.import(compounds)
             context.completeImport()
         } catch {
-            context.failProcessing(compounds: compounds, error: error)
+            let driveError = DriveError(withDomainAndCode: error)
+            Log.error(driveError, domain: .photosProcessing)
+            
+            let userError = mapToUserError(error: error)
+            context.failProcessing(compounds: compounds, error: userError)
+        }
+    }
+    
+    // There are three possible error types: loading error, validation error, and any errors during encryption.
+    // Simplify by using EncryptionError
+    private func mapToUserError(error: Error) -> PhotosFailureUserError {
+        if error is URLConsistencyError {
+            return .loadResourceFailed
+        } else if error is ValidationError<String> {
+            return .nameValidationError
+        } else {
+            return .encryptionFailed
         }
     }
 }

@@ -67,7 +67,12 @@ struct TrashView: View {
                     ForEach(vm.permanentChildren) { nodeWrapper in
                         let svm = vm.prepareSelectionModel()
                         let nodeRowViewModel = NodeRowActionMenuViewModel(node: nodeWrapper.node, model: vm)
-                        let nodeVM = TrashCellViewModel(node: nodeWrapper.node, selectionModel: svm, nodeRowActionMenuViewModel: nodeRowViewModel)
+                        let nodeVM = TrashCellViewModel(
+                            node: nodeWrapper.node,
+                            selectionModel: svm,
+                            nodeRowActionMenuViewModel: nodeRowViewModel,
+                            featureFlagsController: vm.featureFlagsController
+                        )
                         let cvm = addAction(to: nodeVM, menuItem: $menuItem)
 
                         Button(action: {}, label: {

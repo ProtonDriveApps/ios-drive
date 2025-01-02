@@ -18,6 +18,7 @@
 import UIKit
 import PDCore
 import Combine
+import ProtonCoreAuthentication
 import ProtonCoreFeatureFlags
 import ProtonCoreHumanVerification
 import ProtonCoreKeymaker
@@ -25,6 +26,8 @@ import ProtonCoreServices
 import UserNotifications
 import SwiftUI
 import PDUIComponents
+import PDContacts
+import PMEventsManager
 
 final class AuthenticatedDependencyContainer {
     let tower: Tower
@@ -33,20 +36,33 @@ final class AuthenticatedDependencyContainer {
     let localSettings: LocalSettings
     let applicationStateController: ApplicationStateOperationsController
     let windowScene: UIWindowScene
-    let factory = TabBarViewControllerFactory()
     let childContainers: [Any]
     var humanCheckHelper: HumanCheckHelper?
     let pickersContainer: PickersContainer
-    #if HAS_PHOTOS
     let photosContainer: PhotosContainer
-    #endif
+    let protonDocumentContainer: ProtonDocumentPreviewContainer
+    let featureFlagsController: FeatureFlagsController
+    let authenticator: Authenticator
+    let contactsManager: ContactsManagerProtocol
+    let sharedVolumesEventsContainer: SharedVolumesEventsContainer
+    let populatedStateController: PopulatedStateControllerProtocol
+    let contactEventBridge: ContactUpdateDelegate
 
-    init(tower: Tower, keymaker: Keymaker, networkService: PMAPIService, localSettings: LocalSettings, windowScene: UIWindowScene, settingsSuite: SettingsStorageSuite) {
+    init(tower: Tower, keymaker: Keymaker, networkService: PMAPIService, localSettings: LocalSettings, windowScene: UIWindowScene, settingsSuite: SettingsStorageSuite, authenticator: Authenticator, populatedStateController: PopulatedStateControllerProtocol) {
         self.tower = tower
         self.keymaker = keymaker
         self.networkService = networkService
         self.localSettings = localSettings
         self.windowScene = windowScene
+        self.authenticator = authenticator
+        self.contactsManager = ContactsManager(
+            service: networkService,
+            log: { desc in Log.info(desc, domain: .contact) },
+            error: { desc in Log.error(desc, domain: .contact) }
+        )
+        self.populatedStateController = populatedStateController
+        contactEventBridge = ContactEventBridge(contactsManager: contactsManager)
+        tower.contactAdapter.delegate = contactEventBridge
 
         let myFilesUploadOperationInteractor = MyFilesUploadOperationInteractor(storage: tower.storage, interactor: tower.fileUploader)
         pickersContainer = PickersContainer()
@@ -57,24 +73,28 @@ final class AuthenticatedDependencyContainer {
         ]
 
         let extensionStateController = ConcreteBackgroundTaskStateController()
-        var photosInteractor: CommandInteractor?
-        
-        #if OPTIMIZED_PHOTO_UPLOADS
-        let photoSkippableCache = ConcretePhotosSkippableCache(storage: UserDefaultsPhotosSkippableStorage())
-        #else
-        let photoSkippableCache = BlankPhotosSkippableCache()
-        #endif
 
-        #if HAS_PHOTOS
-        let dependencies = PhotosContainer.Dependencies(tower: tower, windowScene: windowScene, keymaker: keymaker, networkService: networkService, settingsSuite: settingsSuite, extensionStateController: extensionStateController, photoSkippableCache: photoSkippableCache)
+        let photoSkippableCache = ConcretePhotosSkippableCache(storage: UserDefaultsPhotosSkippableStorage())
+        featureFlagsController = FeatureFlagsController(buildType: Constants.buildType, featureFlagsStore: localSettings, updateRepository: tower.featureFlags)
+        let notificationFlowController = NotificationsPermissionsFactory().makeFlowController()
+        let dependencies = PhotosContainer.Dependencies(
+            tower: tower,
+            windowScene: windowScene,
+            keymaker: keymaker,
+            networkService: networkService,
+            settingsSuite: settingsSuite,
+            extensionStateController: extensionStateController,
+            photoSkippableCache: photoSkippableCache,
+            notificationsPermissionsFlowController: notificationFlowController,
+            contacstsManager: contactsManager,
+            featureFlagsController: featureFlagsController,
+            populatedStateController: populatedStateController
+        )
         photosContainer = PhotosContainer(dependencies: dependencies)
-        photosInteractor = PhotosInterruptedUploadsInteractor(uploadingFiles: photosContainer.uploadingPhotosRepository.getPhotos, uploader: photosContainer.uploader)
 
         let photosUploadOperationInteractor = PhotosUploadOperationInteractor(uploadingFiles: photosContainer.uploadingPhotosRepository.getPhotos, interactor: photosContainer.uploader)
         operationInteractors.append(photosUploadOperationInteractor)
-        #endif
 
-        let applicationRunningResource = ApplicationRunningStateResourceImpl()
         let operationsInteractor = AggregatedOperationInteractor(interactors: operationInteractors)
         #if SUPPORTS_BACKGROUND_UPLOADS
         let processingController = ProcessingBackgroundOperationController(
@@ -96,29 +116,37 @@ final class AuthenticatedDependencyContainer {
         #endif
 
         applicationStateController = ApplicationStateOperationsController(
-            applicationStateResource: applicationRunningResource,
+            applicationStateResource: iOSApplicationRunningStateResource(),
             backgroundOperationController: backgroundOperationController
         )
 
-        #if HAS_PHOTOS
-        let quotaUpdatesContainer = QuotaUpdatesContainer(tower: tower, photoUploader: photosContainer.uploader)
-        #else
-        let quotaUpdatesContainer = QuotaUpdatesContainer(tower: tower)
-        #endif
-        
         // Child containers
         childContainers = [
             LocalNotificationsContainer(tower: tower),
-            MyFilesNotificationsPermissionsContainer(tower: tower, windowScene: windowScene),
-            ForegroundTransitionContainer(tower: tower, pickerResource: pickersContainer.photoPickerResource, photosInteractor: photosInteractor),
-            quotaUpdatesContainer,
+            MyFilesNotificationsPermissionsContainer(tower: tower, windowScene: windowScene, flowController: notificationFlowController),
+            ForegroundTransitionContainer(tower: tower, pickerResource: pickersContainer.photoPickerResource, populatedStateController: populatedStateController),
+            QuotaUpdatesContainer(tower: tower, photoUploader: photosContainer.uploader),
         ]
+
+        protonDocumentContainer = ProtonDocumentPreviewContainer(
+            dependencies: .init(
+                tower: tower,
+                featureFlagsController: featureFlagsController,
+                apiService: networkService,
+                authenticator: authenticator
+            )
+        )
+        sharedVolumesEventsContainer = SharedVolumesEventsContainer(tower: tower, featureFlagsController: featureFlagsController)
     }
 
     func makePopulateViewController(lockedStateController: LockedStateControllerProtocol) -> UIViewController {
         let viewController = PopulateViewController()
         let coordinator = makePopulateCoordinator(viewController)
-        let viewModel = makePopulateViewModel(lockedStateController: lockedStateController, coordinator: coordinator)
+        var viewModel = makePopulateViewModel(lockedStateController: lockedStateController, coordinator: coordinator)
+        #if DEBUG
+        viewModel = UITestsPopulatedViewModelDecorator(viewModel: viewModel, localSettings: localSettings)
+        #endif
+
         viewController.viewModel = viewModel
 
         let navigationController = UINavigationController(rootViewController: viewController)
@@ -128,14 +156,43 @@ final class AuthenticatedDependencyContainer {
         return navigationController
     }
 
-    private func makePopulateViewModel(lockedStateController: LockedStateControllerProtocol, coordinator: PopulateCoordinatorProtocol) -> PopulateViewModel {
-        let populatedStateController = PopulatedStateController(populator: tower)
+    /// During the migration to volume DB, this method should be used wrap the feature flag controlled view model, after the migration, this should should be included as a dependency to make things clearer,
+    ///  right now it's not included in order not to modify directly the legacy class.
+    func makePopulateViewModel(lockedStateController: LockedStateControllerProtocol, coordinator: PopulateCoordinatorProtocol) -> PopulateViewModelProtocol {
+        return FeatureFlagsAwarePopulateViewModelDecorator(
+            localSettings: localSettings,
+            viewModel: makeAppBootstrappingPopulateViewModel(coordinator: coordinator),
+            featureFlagsRepository: tower.featureFlags,
+            entitlementsManager: tower.entitlementsManager
+        )
+    }
+
+    func makeAppBootstrappingPopulateViewModel(coordinator: PopulateCoordinatorProtocol) -> PopulateViewModelProtocol {
+        let bootstrapper = makeAppBootstrapper()
+        let onboardingObserver = makeOnboardingObserver()
+        return BootstrappinggPopulateViewModel(bootstrapper: bootstrapper, coordinator: coordinator, onboardingObserver: onboardingObserver, populatedStateController: populatedStateController)
+    }
+
+    func makeAppBootstrapper() -> AppBootstrapper {
+        let addressStarter = AddressBootstrapStarter(localAddressProvider: self.tower.sessionVault, remoteAddressProvider: self.tower.addressManager)
+        let localRootShareStarter = LocalRootSharesBootstrapStarter(storage: tower.storage)
+        let remoteRootShareStarter = CachingRootSharesBootstrapStarter(listShares: tower.client.listShares, bootstrapRoot: tower.client.bootstrapRoot, storage: tower.storage)
+        let volumeCreator = VolumeCreator(sessionVault: tower.sessionVault, storage: tower.storage, client: tower.client)
+        let creatingRootShareStarter = CreatingMainShareStarter(volumeCreator: volumeCreator, remoteRootsBootstrapper: remoteRootShareStarter)
+        let rootShareStarter = RootSharesBootstrapStarter(localStore: localRootShareStarter, remote: remoteRootShareStarter, creating: creatingRootShareStarter)
+        let eventsStarter = EventsBootstrapStarter(eventsStarter: tower, mainVolumeIdDataSource: MainVolumeIdDataSource(storage: tower.storage, context: tower.storage.backgroundContext), eventsStorageManager: tower.eventStorageManager, eventsManagedObjectContext: tower.eventStorageManager.makeNewBackgroundContext(), eventSerializer: ClientEventSerializer())
+        let settingsUpdater = TabbarSettingUpdater(client: tower.client, featureFlags: tower.featureFlags, localSettings: tower.localSettings, networking: tower.networking, storageManager: tower.storage)
+        let settingsStarter = AditionalSettingsStarter(generalSettings: tower.generalSettings, storage: tower.storage, settingsUpdater: settingsUpdater)
+        return DriveBootstrapStarter(addressBootstrapper: addressStarter, sharesBootstrapper: rootShareStarter, eventsBootstrapper: eventsStarter, settingsBootstrapper: settingsStarter)
+    }
+
+    func makeOnboardingObserver() -> OnboardingObserverProtocol {
         let onboardingObserver = OnboardingObserver(
             localSettings: localSettings,
             notificationServiceOwner: UIApplication.shared.delegate as? hasPushNotificationService,
             userId: tower.sessionVault.getCoreUserInfo()?.userId
         )
-        return PopulateViewModel(lockedStateController: lockedStateController, populatedStateController: populatedStateController, populator: tower, eventsStarter: tower, onboardingObserver: onboardingObserver, coordinator: coordinator)
+        return onboardingObserver
     }
 
     private func makePopulateCoordinator(_ viewController: PopulateViewController) -> PopulateCoordinatorProtocol {
@@ -154,42 +211,22 @@ final class AuthenticatedDependencyContainer {
             onboardingViewControllerFactory: { [localSettings] in
                 OnboardingFlowFactory().makeIfNeeded(settings: localSettings)
             },
-            upsellFactory: { [localSettings] in 
+            upsellFactory: { [localSettings] in
                 OneDollarUpsellFlowFactory().makeIfNeeded(controller: upsellController, settings: localSettings, container: subscriptionsContainer)
+            },
+            newFeaturePromoteFactory: { [weak self] in
+                guard let self else { return nil }
+                let newFeatureFactory = NewFeaturePromoteFactory()
+                let newFeaturePromoteController = newFeatureFactory.makeController(
+                    localSettings: self.localSettings,
+                    featureFlagsController: self.featureFlagsController
+                )
+                guard newFeaturePromoteController.isAvailable() else {
+                    return nil
+                }
+                return newFeatureFactory.makeViewController(controller: newFeaturePromoteController)
             }
         )
-    }
-    
-}
-
-protocol DrivePopulator {
-    var state: PopulatedState { get }
-    func populate(onCompletion: @escaping (Result<Void, Error>) -> Void)
-}
-
-extension Tower: DrivePopulator {
-    var state: PopulatedState {
-        if let root = rootFolderIdentifier() {
-            return .populated(with: root)
-        } else {
-            return .unpopulated
-        }
-    }
-
-    func populate(onCompletion: @escaping (Result<Void, Error>) -> Void) {
-        Task {
-            do {
-                let config: FirstBootConfiguration = .init(isPhotoEnabled: true, isTabSettingsRequested: true)
-                try await onFirstBoot(config: config)
-                await MainActor.run {
-                    onCompletion(.success(Void()))
-                }
-            } catch {
-                await MainActor.run {
-                    onCompletion(.failure(error))
-                }
-            }
-        }
     }
 }
 
@@ -199,7 +236,7 @@ protocol EventsSystemStarter {
 
 extension Tower: EventsSystemStarter {
     func startEventsSystem() {
-        start(runEventsProcessor: true)
+        start(options: [.runEventsProcessor, .initializeSharedVolumes])
     }
 }
 

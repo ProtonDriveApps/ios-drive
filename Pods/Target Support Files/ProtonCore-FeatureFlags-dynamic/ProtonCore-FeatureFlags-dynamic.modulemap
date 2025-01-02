@@ -1,6 +1,0 @@
-framework module ProtonCoreFeatureFlags {
-  umbrella header "ProtonCore-FeatureFlags-dynamic-umbrella.h"
-
-  export *
-  module * { export * }
-}

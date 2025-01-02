@@ -24,13 +24,13 @@ public class GeneralEventsLoop<Processor: EventLoopProcessor>: EventsLoop where 
     public typealias Response = GeneralLoopResponse
     public typealias LogHandler = (Error) -> Void
     private typealias Router = EventAPIRoutes.Router
-    
+
     @UserDefaultsStore("\(GeneralEventsLoop.self)") var generalLoopEventID: String?
-    
+
     private let apiService: APIService
     private let processor: Processor
     private let logError: LogHandler?
-    
+
     public init(apiService: APIService,
                 processor: Processor,
                 userDefaults: UserDefaults,
@@ -41,14 +41,20 @@ public class GeneralEventsLoop<Processor: EventLoopProcessor>: EventsLoop where 
         self.logError = logError
         self.$generalLoopEventID.store = userDefaults
     }
-    
+
     // MARK: - Initnial event
-    
+
     public var latestLoopEventId: String? {
         get { generalLoopEventID }
         set { generalLoopEventID = newValue }
     }
-    
+
+    // Unique loop identifier
+    public var loopId: String {
+        return "GeneralEventsLoop"
+    }
+
+    /// Fetches the latest event ID from the server and stores it in the user defaults, do this if the initial event ID is not cached
     public func initialEventUnknown() async {
         do {
             let request: Router = .getLatestEventID
@@ -58,9 +64,9 @@ public class GeneralEventsLoop<Processor: EventLoopProcessor>: EventsLoop where 
             onError(error)
         }
     }
-    
+
     // MARK: - Event paging
-    
+
     public func poll(since loopEventID: String) async throws -> Response {
         let request: Router = .getEvent(eventID: loopEventID)
         let response: GeneralLoopResponse = try await apiService.exec(route: request)
@@ -68,7 +74,7 @@ public class GeneralEventsLoop<Processor: EventLoopProcessor>: EventsLoop where 
     }
 
     // MARK: - Relay to Processor
-    
+
     public func process(_ response: Response) async throws {
         processor.process(response: response, loopID: String(describing: Self.self))
     }

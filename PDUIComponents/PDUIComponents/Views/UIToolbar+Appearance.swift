@@ -15,9 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import UIKit
 import ProtonCoreUIFoundations
+#if canImport(UIKit)
+import UIKit
+#endif
 
+#if os(iOS)
 extension UIToolbar {
     public static func setupApparance() {
         let globalAppearance = UIToolbar.appearance()
@@ -43,3 +46,4 @@ extension UIToolbar {
         return appearance
     }
 }
+#endif

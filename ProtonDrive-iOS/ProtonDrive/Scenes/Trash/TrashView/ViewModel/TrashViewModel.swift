@@ -20,6 +20,7 @@ import Combine
 import PDCore
 import ProtonCoreNetworking
 import PDUIComponents
+import PDLocalization
 
 final class TrashViewModel: ObservableObject, FinderViewModel, SortingViewModel, HasMultipleSelection {
     typealias Identifier = NodeIdentifier
@@ -38,11 +39,15 @@ final class TrashViewModel: ObservableObject, FinderViewModel, SortingViewModel,
     var isVisible: Bool = true
     let genericErrors = ErrorRegulator()
     @Published var isUpdating = false
-    
+
+    var isSharedWithMe: Bool { false }
+    let hasPlusFunctionality = false
+
     var nodeName: String {
-        listState == .selecting ? "\(selection.selected.count) selected" : "Trash"
+        let selectedText = Localization.general_selected(num: selection.selected.count)
+        return listState == .selecting ? selectedText : Localization.menu_text_trash
     }
-    
+
     var leadingNavBarItems: [NavigationBarButton] {
         listState == .selecting ? [.apply(title: selection.selectAllText, disabled: permanentChildren.isEmpty)] : [.menu]
     }
@@ -50,23 +55,24 @@ final class TrashViewModel: ObservableObject, FinderViewModel, SortingViewModel,
     var trailingNavBarItems: [NavigationBarButton] {
         listState == .selecting ? [.cancel] : [.action]
     }
-    
+
     let lastUpdated: Date = .distantFuture // not relevant
     let supportsSortingSwitch: Bool = true
     var permanentChildrenSectionTitle: String { self.sorting.title }
-    
+
     let supportsLayoutSwitch = true
-    
+    let featureFlagsController: FeatureFlagsControllerProtocol
+
     func refreshOnAppear() {
         model.loadFromCache()
         fetchAllPages()
     }
 
     func didScrollToBottom() { }
-    
+
     // MARK: SortingViewModel
     @Published var sorting: SortPreference
-    
+
     func onSortingChanged() {
         /* nothing, as this screen does not support per-page fetching */
     }
@@ -78,20 +84,19 @@ final class TrashViewModel: ObservableObject, FinderViewModel, SortingViewModel,
 
     private var deleteRequest: AnyCancellable?
 
-    init(model: TrashModel) {
+    init(model: TrashModel, featureFlagsController: FeatureFlagsControllerProtocol) {
         defer { self.model.loadFromCache() }
         self.model = model
         self.sorting = model.sorting
-        
         self.layout = Layout(preference: model.layout)
-        
+        self.featureFlagsController = featureFlagsController
+
         self.subscribeToSort()
         self.subscribeToChildren()
         self.selection.unselectOnEmpty(for: self)
         self.subscribeToLayoutChanges()
-
     }
-    
+
     func subscribeToSort() {
         self.model.sortingPublisher
             .receive(on: DispatchQueue.main)
@@ -104,7 +109,7 @@ final class TrashViewModel: ObservableObject, FinderViewModel, SortingViewModel,
             }
             .store(in: &cancellables)
     }
-    
+
     func subscribeToChildren() {
         self.childrenCancellable?.cancel()
         self.childrenCancellable = self.model.childrenTrash()
@@ -116,7 +121,7 @@ final class TrashViewModel: ObservableObject, FinderViewModel, SortingViewModel,
                 self.permanentChildren = trash.map(NodeWrapper.init)
             }
     }
-    
+
     func subscribeToLayoutChanges() { }
     func changeLayout() { }
 
@@ -140,57 +145,59 @@ final class TrashViewModel: ObservableObject, FinderViewModel, SortingViewModel,
 
     func restore(nodes: [NodeIdentifier], completion: @escaping () -> Void) {
         loading = true
-        model.restoreFromTrash(nodes: nodes)
-            .receive(on: DispatchQueue.main)
-            .sink(
-                receiveCompletion: { [weak self] result in
-                    self?.loading = false
-                    switch result {
-                    case .finished:
-                        completion()
-                    case .failure(let error):
-                        completion()
-                        let error: Error = (error as? ResponseError)?.underlyingError ?? error
-                        self?.genericErrors.send(error)
-                    }
-                },
-                receiveValue: { _ in })
-            .store(in: &cancellables)
+
+        Task { [weak self] in
+            do {
+                try await self?.model.restoreTrashed(nodes)
+                await self?.handleSuccess(completion: completion)
+            } catch {
+                Log.error(error.localizedDescription, domain: .networking)
+                await self?.handleFailure(error: error, completion: completion)
+            }
+        }
     }
 
     func delete(nodes: [NodeIdentifier], completion: @escaping () -> Void) {
+        Log.info("Delete - Nodes", domain: .networking)
         loading = true
-        model.delete(nodes: nodes)
-            .receive(on: DispatchQueue.main)
-            .sink(receiveCompletion: { [weak self] result in
-                self?.loading = false
-                switch result {
-                case .finished: completion()
-                case .failure(let error):
-                    completion()
-                    let error: Error = (error as? ResponseError)?.underlyingError ?? error
-                    self?.genericErrors.send(error)
-                }
-            }, receiveValue: { _ in })
-            .store(in: &cancellables)
+
+        Task { [weak self] in
+            do {
+                try await self?.model.deleteTrashed(nodes: nodes)
+                await self?.handleSuccess(completion: completion)
+            } catch {
+                Log.error(error.localizedDescription, domain: .networking)
+                await self?.handleFailure(error: error, completion: completion)
+            }
+        }
     }
 
     func emptyTrash(nodes: [NodeIdentifier], completion: @escaping () -> Void) {
         loading = true
-        model.emptyTrash(nodes: nodes)
-            .receive(on: DispatchQueue.main)
-            .sink(
-                receiveCompletion: { [weak self] result in
-                    self?.loading = false
-                    switch result {
-                    case .finished:
-                        completion()
-                    case .failure(let error):
-                        self?.genericErrors.send(error)
-                    }
-                },
-                receiveValue: { _ in })
-            .store(in: &cancellables)
+
+        Task { [weak self] in
+            do {
+                try await self?.model.emptyTrash(nodes: nodes)
+                await self?.handleSuccess(completion: completion)
+            } catch {
+                Log.error(error.localizedDescription, domain: .networking)
+                await self?.handleFailure(error: error, completion: completion)
+            }
+        }
+    }
+
+    @MainActor
+    private func handleSuccess(completion: @escaping () -> Void) {
+        loading = false
+        completion()
+    }
+
+    @MainActor
+    private func handleFailure(error: Error, completion: @escaping () -> Void) {
+        loading = false
+        completion()
+        let error: Error = (error as? ResponseError)?.underlyingError ?? error
+        genericErrors.send(error)
     }
 
     func findNodesType(isAll: Bool) -> NodeType? {

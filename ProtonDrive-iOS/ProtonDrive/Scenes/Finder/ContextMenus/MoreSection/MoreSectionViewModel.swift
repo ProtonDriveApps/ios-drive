@@ -20,6 +20,7 @@ import PDCore
 import SwiftUI
 import PDUIComponents
 import ProtonCoreUIFoundations
+import PDLocalization
 
 struct MoreSectionViewModel {
     let file: File
@@ -47,7 +48,7 @@ extension MoreSectionViewModel {
         var text: String {
             let name: String
             switch self {
-            case .shareIn: name = "Open in..."
+            case .shareIn: name = Localization.more_action_open_in
             }
             return name
         }

@@ -88,7 +88,7 @@ class NewFileRevisionCommitter: RevisionCommitter {
                         let file = draft.file
                         let filePassphrase = try file.decryptPassphrase()
                         let nodeDecryptionKey = DecryptionKey(privateKey: file.nodeKey, passphrase: filePassphrase)
-                        let addressKeys = try file.activeRevisionDraft?.getAddressPublicKeysOfRevisionCreator() ?? []
+                        let addressKeys = try file.activeRevisionDraft?.getAddressPublicKeysOfRevision() ?? []
 
                         let decryptedRemote = try Decryptor.decryptAndVerifyXAttributes(
                             xAttributesRemote,
@@ -134,7 +134,12 @@ class NewFileRevisionCommitter: RevisionCommitter {
                 throw revision.invalidState("Active revision draft is not uploaded")
             }
 
+#if os(macOS)
             let signersKit = try signersKitFactory.make(forSigner: .address(email))
+#else
+            let addressID = try file.getContextShareAddressID()
+            let signersKit = try signersKitFactory.make(forAddressID: addressID)
+#endif
             let addressKey = signersKit.addressKey.privateKey
             let addressPassphrase = signersKit.addressPassphrase
             let signatureAddress = signersKit.address.email
@@ -171,10 +176,11 @@ class NewFileRevisionCommitter: RevisionCommitter {
                 }
             }
 
-            let photo = try getPhotoIfNeeded(revision: revision)
+            let photo = try self.getPhotoIfNeeded(revision: revision)
 
             let commitableRevision = CommitableRevision(
-                shareID: revision.file.shareID,
+                volumeID: revision.file.volumeID,
+                shareID: revision.file.shareId,
                 fileID: revision.file.id,
                 revisionID: revision.id,
                 blockList: uploadedBlocks.map { CommitableBlock(index: $0.index, token: $0.token) },
@@ -183,7 +189,7 @@ class NewFileRevisionCommitter: RevisionCommitter {
                 xAttributes: revision.xAttributes,
                 photo: photo
             )
-            let identifier = RevisionIdentifier(share: commitableRevision.shareID, file: commitableRevision.fileID, revision: commitableRevision.revisionID)
+            let identifier = RevisionIdentifier(share: commitableRevision.shareID, file: commitableRevision.fileID, revision: commitableRevision.revisionID, volume: commitableRevision.volumeID)
             let sha1 = try? revision.decryptedExtendedAttributes().common?.digests?.sha1
 
             return RevisionAndDigest(commitableRevision: commitableRevision, identifier: identifier, sha1: sha1)

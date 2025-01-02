@@ -17,6 +17,7 @@
 
 import SwiftUI
 import ProtonCoreUIFoundations
+import PDLocalization
 
 public struct StorageMenuSection: View {
     public init(usedPercent: Binding<Double>, usedBreakdown: Binding<String>, highStorageUsageRatio: Double, isStoreKitReady: Bool) {
@@ -46,7 +47,7 @@ public struct StorageMenuSection: View {
                     .frame(width: iconSize, height: iconSize)
                     .foregroundColor(Color.IconWeak)
                 
-                Text("Total usage")
+                Text(Localization.menu_text_total_usage)
                     .font(.body)
                 
                 Spacer()

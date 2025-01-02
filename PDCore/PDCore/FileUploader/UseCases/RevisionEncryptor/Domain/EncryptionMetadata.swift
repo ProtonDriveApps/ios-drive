@@ -22,4 +22,5 @@ struct EncryptionMetadata {
     let contentKeyPacket: Data
     let passphrase: String
     let signatureEmail: String
+    let signersKit: SignersKit
 }

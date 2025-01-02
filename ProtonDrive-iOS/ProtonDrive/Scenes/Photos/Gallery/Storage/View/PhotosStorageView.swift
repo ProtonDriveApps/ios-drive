@@ -55,7 +55,7 @@ struct PhotosStorageView<ViewModel: PhotosStorageViewModelProtocol>: View {
             WarningBadgeView(severance: data.severance)
                 .frame(width: 20, height: 20)
             Text(makeString(text: data.title, color: ColorProvider.TextNorm))
-                .accessibilityIdentifier("StorageView.title")
+                .accessibilityIdentifier(data.accessibilityIdentifier)
             Spacer()
             makeRightText(with: data)
         }

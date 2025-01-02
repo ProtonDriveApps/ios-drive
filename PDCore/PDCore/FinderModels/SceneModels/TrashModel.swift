@@ -17,6 +17,7 @@
 
 import Combine
 import Foundation
+import CoreData
 
 // MARK: - New trash APIs
 public protocol TrashListing: AnyObject {
@@ -48,15 +49,26 @@ public final class TrashModel: FinderModel, TrashListing, NodesListing, Thumbnai
     
     public let shareID: String
     private let volumeID: String
-    
+    private let restorer: TrashedNodeRestorer
+    private let deleter: TrashedNodeDeleter
+    private let trashCleaner: TrashCleaner
+
     @Published public private(set) var sorting: SortPreference
 
-    public init(tower: Tower) {
+    public init(
+        tower: Tower,
+        restorer: TrashedNodeRestorer,
+        deleter: TrashedNodeDeleter,
+        trashCleaner: TrashCleaner
+    ) {
         self.tower = tower
-        self.volumeID = tower.uiSlot.getVolume()!.id // A volume must always exist
+        self.restorer = restorer
+        self.deleter = deleter
+        self.trashCleaner = trashCleaner
+        self.volumeID = tower.uiSlot.getVolumeId()! // A volume must always exist
         self.shareID = tower.rootFolderIdentifier()!.shareID
-        
-        let children = tower.uiSlot!.subscribeToTrash()
+
+        let children = tower.uiSlot!.subscribeToTrash(volumeID: volumeID)
         self.childrenObserver = FetchedObjectsObserver(children)
         
         self.sorting = self.tower.localSettings.nodesSortPreference
@@ -66,7 +78,7 @@ public final class TrashModel: FinderModel, TrashListing, NodesListing, Thumbnai
             .sink { [weak self] sort in
                 guard let self = self else { return }
                 self.sorting = sort
-                let children = tower.uiSlot!.subscribeToTrash()
+                let children = tower.uiSlot!.subscribeToTrash(volumeID: volumeID)
                 self.childrenObserver.inject(fetchedResultsController: children)
             }
     }
@@ -96,37 +108,16 @@ public final class TrashModel: FinderModel, TrashListing, NodesListing, Thumbnai
         self.didFetchAllTrash = true
     }
 
-    public func delete(nodes: [NodeIdentifier]) -> AnyPublisher<Void, Error> {
-        Future<Void, Error> { [weak self] promise in
-            guard let self = self else { return }
-            Log.info("Delete - Nodes", domain: .networking)
-            self.tower.delete(nodes) {
-                promise($0)
-            }
-        }
-        .eraseToAnyPublisher()
+    public func deleteTrashed(nodes: [NodeIdentifier]) async throws {
+        try await deleter.delete(nodes)
     }
 
-    public func emptyTrash(nodes: [NodeIdentifier]) -> AnyPublisher<Void, Error> {
-        Future<Void, Error> { [weak self] promise in
-            guard let self = self else { return }
-            Log.info("Empty Trash", domain: .networking)
-            self.tower.emptyTrash(nodes) {
-                promise($0)
-            }
-        }
-        .eraseToAnyPublisher()
+    public func emptyTrash(nodes: [NodeIdentifier]) async throws {
+        try await trashCleaner.emptyTrash(nodes)
     }
 
-    public func restoreFromTrash(nodes: [NodeIdentifier]) -> AnyPublisher<Void, Error> {
-        Future<Void, Error> { [weak self] promise in
-            guard let self = self else { return }
-            Log.info("Restore from Trash", domain: .networking)
-            self.tower.restore(nodes) {
-                promise($0)
-            }
-        }
-        .eraseToAnyPublisher()
+    public func restoreTrashed(_ nodes: [NodeIdentifier]) async throws {
+        try await restorer.restore(nodes)
     }
 }
 

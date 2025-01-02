@@ -18,6 +18,7 @@
 import SwiftUI
 import Combine
 import ProtonCoreUIFoundations
+import PDLocalization
 
 public struct ErrorToastModifier: ViewModifier {
     public typealias Stream = PassthroughSubject<Error?, Never>
@@ -119,7 +120,7 @@ extension View {
             Button(action: {
                 errors.send(nil)
             }, label: {
-                Text("OK")
+                Text(Localization.general_ok)
                     .foregroundColor(.white)
                     .background(
                         Rectangle()
@@ -144,7 +145,7 @@ extension View {
                 action()
                 errors.send(nil)
             }, label: {
-                Text("Retry")
+                Text(Localization.general_retry)
                     .foregroundColor(.white)
                     .background(
                         Rectangle()

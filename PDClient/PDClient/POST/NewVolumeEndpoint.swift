@@ -38,41 +38,39 @@ public struct NewVolume: Codable {
 }
 
 public class NewVolumeParameters: Codable {
-    public init(addressID: String,
-                volumeName: String,
-                shareName: String,
-                folderName: String,
-                sharePassphrase: String,
-                sharePassphraseSignature: String,
-                shareKey: String,
-                folderPassphrase: String,
-                folderPassphraseSignature: String,
-                folderKey: String,
-                folderHashKey: String)
-    {
+    public init(
+        addressID: String,
+        addressKeyID: String,
+        shareKey: String,
+        sharePassphrase: String,
+        sharePassphraseSignature: String,
+        folderName: String,
+        folderKey: String,
+        folderPassphrase: String,
+        folderPassphraseSignature: String,
+        folderHashKey: String
+    ){
         self.AddressID = addressID
-        self.VolumeName = volumeName
-        self.ShareName = shareName
-        self.FolderName = folderName
+        self.AddressKeyID = addressKeyID
+        self.ShareKey = shareKey
         self.SharePassphrase = sharePassphrase
         self.SharePassphraseSignature = sharePassphraseSignature
-        self.ShareKey = shareKey
+        self.FolderName = folderName
+        self.FolderKey = folderKey
         self.FolderPassphrase = folderPassphrase
         self.FolderPassphraseSignature = folderPassphraseSignature
-        self.FolderKey = folderKey
         self.FolderHashKey = folderHashKey
     }
-    
+
     var AddressID: String
-    var VolumeName: String
-    var ShareName: String
-    var FolderName: String
+    var AddressKeyID: String
+    var ShareKey: String
     var SharePassphrase: String
     var SharePassphraseSignature: String
-    var ShareKey: String
+    var FolderName: String
+    var FolderKey: String
     var FolderPassphrase: String
     var FolderPassphraseSignature: String
-    var FolderKey: String
     var FolderHashKey: String
 }
 

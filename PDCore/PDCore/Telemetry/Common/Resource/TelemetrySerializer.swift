@@ -54,6 +54,8 @@ final class DriveTelemetrySerializer: TelemetrySerializer {
             return "backup.background.update"
         case .uploadDone:
             return "upload.done"
+        case .upsellPhotos:
+            return "upsell_photos"
         }
     }
 }

@@ -26,7 +26,7 @@ extension UploadManagementMenuViewModel {
         let items = self.items.map { item in
             uploadManagementRows(for: item, file: file)
         }
-        return ContextMenuItemGroup(items: items)
+        return ContextMenuItemGroup(id: "uploadManagementSection", items: items)
     }
 
     private func uploadManagementRows(for type: UploadManagementItem, file: File) -> ContextMenuItem {

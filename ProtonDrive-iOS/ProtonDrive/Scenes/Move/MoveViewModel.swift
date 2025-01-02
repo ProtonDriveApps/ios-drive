@@ -15,11 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import Foundation
 import Combine
+import Foundation
 import PDCore
-import ProtonCoreNetworking
+import PDLocalization
 import PDUIComponents
+import ProtonCoreNetworking
 
 class MoveViewModel: ObservableObject, FinderViewModel, HasRefreshControl, FetchingViewModel, SortingViewModel {
 
@@ -36,48 +37,52 @@ class MoveViewModel: ObservableObject, FinderViewModel, HasRefreshControl, Fetch
     let animationDuration: DispatchTimeInterval = .seconds(3)
     var isVisible: Bool = true // otherwise changes in onAppear will break deeplinking
     let genericErrors = ErrorRegulator()
-    
+    let featureFlagsController: FeatureFlagsControllerProtocol
+
+    let isSharedWithMe = false
+    let hasPlusFunctionality = false
+
     var nodeName: String {
         guard let node = node else {
             return NodeCellWithProgressConfiguration.unknownNamePlaceholder
         }
-        return node.isRoot ? "My files" : node.decryptedName
+        return node.isRoot ? Localization.menu_text_my_files : node.decryptedName
     }
-    
+
     lazy var trailingNavBarItems: [NavigationBarButton] = [
-        .apply(title: "Move here", disabled: self.model.node.identifier.nodeID == self.model.nodeToMoveParentId.nodeID)
+        .apply(title: Localization.move_action_move_here, disabled: self.model.node.identifier.nodeID == self.model.nodeToMoveParentId.nodeID)
     ]
-    
+
     lazy var leadingNavBarItems: [NavigationBarButton] = [.apply(title: "", disabled: true)]
     @Published var lastUpdated = Date.distantPast
     var supportsSortingSwitch: Bool { false }
     var permanentChildrenSectionTitle = ""
 
     var supportsLayoutSwitch: Bool { false }
-    
+
     func refreshOnAppear() {
         self.model.loadFromCache()
         self.fetchPages()
     }
-    
+
     func didScrollToBottom() {
         if self.refreshMode == .fetchPageByRequest {
             self.fetchNextPageFromAPI()
         }
     }
     func selected(file: File) { }
-    
+
     func childViewModel(for node: Node) -> NodeCellConfiguration {
         let shouldDisable = node is File || self.model.nodeIdsToMove.contains(node.identifier)
-        return NodeCellSimpleConfiguration(from: node, disabled: shouldDisable, loader: model)
+        return NodeCellSimpleConfiguration(from: node, disabled: shouldDisable, loader: model, featureFlagsController: featureFlagsController)
     }
-    
+
     func applyAction(completion: @escaping () -> Void) {
         self.isUpdating = true
         self.model.moveHere { result in
             DispatchQueue.main.async {
                 self.isUpdating = false
-                
+
                 switch result {
                 case let .failure(error):
                     let error: Error = (error as? ResponseError)?.underlyingError ?? error
@@ -88,21 +93,22 @@ class MoveViewModel: ObservableObject, FinderViewModel, HasRefreshControl, Fetch
             }
         }
     }
-    
+
     // MARK: FetchingViewModel
     @Published var isUpdating = false
     var fetchFromAPICancellable: AnyCancellable?
-    
+
     // MARK: SortingViewModel
     @Published var sorting: SortPreference
 
     // MARK: others
-    init(model: MoveModel, node: Folder) {
+    init(model: MoveModel, node: Folder, featureFlagsController: FeatureFlagsControllerProtocol) {
         defer { self.model.loadFromCache() }
         self.model = model
         self.sorting = model.sorting
         self.layout = Layout(preference: model.layout)
-        
+        self.featureFlagsController = featureFlagsController
+
         self.subscribeToSort()
         self.subscribeToChildren()
         self.subscribeToLayoutChanges()

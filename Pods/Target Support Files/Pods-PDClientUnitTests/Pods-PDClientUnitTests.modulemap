@@ -1,6 +1,0 @@
-framework module Pods_PDClientUnitTests {
-  umbrella header "Pods-PDClientUnitTests-umbrella.h"
-
-  export *
-  module * { export * }
-}

@@ -89,8 +89,17 @@ extension EnvironmentValues {
 
 @available(*, deprecated, message: "Refactor this out: used only in this file")
 private struct InitialServicesKey: EnvironmentKey {
-    static var defaultValue = InitialServices(userDefault: Constants.appGroup.userDefaults,
-                                              clientConfig: Constants.clientApiConfig,
-                                              keymaker: Environment(\.keymaker).wrappedValue,
-                                              sessionRelatedCommunicatorFactory: SessionRelatedCommunicatorForMainApp.init)
+    static var defaultValue = InitialServices(
+        userDefault: Constants.appGroup.userDefaults,
+        clientConfig: Constants.clientApiConfig,
+        keymaker: Environment(\.keymaker).wrappedValue,
+        sessionRelatedCommunicatorFactory: { sessionStore, authenticator, _ in
+            SessionRelatedCommunicatorForMainApp(
+                userDefaultsConfiguration: .forFileProviderExtension(userDefaults: Constants.appGroup.userDefaults),
+                sessionStorage: sessionStore,
+                childSessionKind: .fileProviderExtension,
+                authenticator: authenticator
+            )
+        }
+    )
 }

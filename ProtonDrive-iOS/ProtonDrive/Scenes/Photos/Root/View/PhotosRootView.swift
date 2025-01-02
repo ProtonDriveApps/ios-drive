@@ -57,14 +57,14 @@ struct PhotosRootView<
             viewModel.close()
         }
         .onAppear {
-            isVisible = true
+            viewModel.updateVisibleStatus(isVisible: true)
             viewModel.refreshIfNeeded()
         }
         .onDisappear(perform: {
-            isVisible = false
+            viewModel.updateVisibleStatus(isVisible: false)
         })
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-            guard isVisible else { return }
+            guard viewModel.isVisible else { return }
             viewModel.refreshIfNeeded()
         }
     }

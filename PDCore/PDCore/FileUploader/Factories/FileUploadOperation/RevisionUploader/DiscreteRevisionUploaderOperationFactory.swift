@@ -20,6 +20,7 @@ import CoreData
 import PDClient
 
 class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
+
     let storage: StorageManager
     let client: PDClient.Client
     let api: APIService
@@ -28,11 +29,11 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
     let signersKitFactory: SignersKitFactoryProtocol
     let verifierFactory: UploadVerifierFactory
     let moc: NSManagedObjectContext
+    let parallelEncryption: Bool
     let pagesQueue: OperationQueue
     let uploadQueue: OperationQueue
     private let blocksMeasurementRepository: FileUploadBlocksMeasurementRepositoryProtocol?
-
-    let session = URLSession(configuration: .forUploading)
+    let session = URLSession.forUploading()
 
     init(
         storage: StorageManager,
@@ -43,6 +44,7 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
         signersKitFactory: SignersKitFactoryProtocol,
         verifierFactory: UploadVerifierFactory,
         moc: NSManagedObjectContext,
+        parallelEncryption: Bool,
         globalPagesQueue: OperationQueue? = nil,
         globalUploadQueue: OperationQueue? = nil,
         blocksMeasurementRepository: FileUploadBlocksMeasurementRepositoryProtocol? = nil
@@ -55,6 +57,7 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
         self.signersKitFactory = signersKitFactory
         self.verifierFactory = verifierFactory
         self.moc = moc
+        self.parallelEncryption = parallelEncryption
         pagesQueue = globalPagesQueue ?? OperationQueue(maxConcurrentOperation: Constants.discreteMaxConcurrentContentUploadOperations)
         pagesQueue.qualityOfService = .userInitiated
         uploadQueue = globalUploadQueue ?? OperationQueue(maxConcurrentOperation: Constants.maxConcurrentPageOperations)
@@ -64,7 +67,13 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
 
     func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> any UploadOperation {
         let numberOfThumbnails = 1 // We aassume that the existence of a thumbnail will not affect the upload
+        #if os(iOS)
         let parentProgress = Progress(unitsOfWork: draft.numberOfBlocks + numberOfThumbnails)
+        #else
+        let parentProgress = Progress(unitsOfWork: draft.file.size)
+        parentProgress.kind = .file
+        parentProgress.fileOperationKind = .uploading
+        #endif
 
         let onError: OnUploadError = { error in
             parentProgress.cancel()
@@ -83,7 +92,8 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
             },
             signersKitFactory: signersKitFactory,
             queue: uploadQueue,
-            moc: moc
+            moc: moc,
+            parallelEncryption: parallelEncryption
         )
 
         return PaginatedRevisionUploaderOperation(
@@ -137,7 +147,11 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
         _ parentProgress: Progress,
         _ onError: @escaping OnUploadError
     ) -> Operation {
+        #if os(iOS)
         let blockProgress = parentProgress.child(pending: 1)
+        #else
+        let blockProgress = parentProgress
+        #endif
 
         let uploader = URLSessionDiscreteBlocksUploader(
             uploadBlock: block,
@@ -168,7 +182,11 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
         _ parentProgress: Progress,
         _ onError: @escaping OnUploadError
     ) -> Operation {
+        #if os(iOS)
         let thumbnailProgress = parentProgress.child(pending: 1)
+        #else
+        let thumbnailProgress = Progress(unitsOfWork: 1)
+        #endif
 
         let uploader = URLSessionThumbnailUploader(
             thumbnail: thumbnail,

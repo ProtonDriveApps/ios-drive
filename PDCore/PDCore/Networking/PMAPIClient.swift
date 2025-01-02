@@ -147,15 +147,17 @@ extension PMAPIClient: AuthDelegate {
     }
 
     public func onAuthenticatedSessionInvalidated(sessionUID: String) {
+        sessionStore.removeAuthenticatedCredential()
+        apiService.setSessionUID(uid: "")
+        Task {
+            await sessionRelatedCommunicator.askMainAppToProvideNewChildSession()
+        }
         if Constants.runningInExtension {
             Log.info("""
                      Authenticated session invalidated in the extension.
                      Clears the child session storage and asks the main app for the new session.
                      """,
                      domain: .networking)
-            sessionStore.removeAuthenticatedCredential()
-            apiService.setSessionUID(uid: "")
-            sessionRelatedCommunicator.askMainAppToProvideNewChildSession()
             self.currentActivity = Activity.childSessionExpired
         } else {
             Log.info("Authenticated session invalidated in the main app. Logout!", domain: .networking)

@@ -16,70 +16,83 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import CoreData
+import ProtonCoreUtilities
+import os
 
 final class DiscreteBlocksRevisionEncryptor: RevisionEncryptor {
-
     private let signersKitFactory: SignersKitFactoryProtocol
     private let maxBlockSize: Int
     private let progress: Progress
     private let moc: NSManagedObjectContext
     private let digestBuilder: DigestBuilder
+    private let parallelEncryption: Bool
 
     private var isCancelled = false
     private var isExecuting = false
 
-    private var localURLs: [URL] = []
+    private var localURLs = Atomic<[URL]>([])
 
     init(
         signersKitFactory: SignersKitFactoryProtocol,
         maxBlockSize: Int,
         progress: Progress,
         moc: NSManagedObjectContext,
-        digestBuilder: DigestBuilder
+        digestBuilder: DigestBuilder,
+        parallelEncryption: Bool
     ) {
         self.signersKitFactory = signersKitFactory
         self.maxBlockSize = maxBlockSize
         self.progress = progress
         self.moc = moc
         self.digestBuilder = digestBuilder
+        self.parallelEncryption = parallelEncryption
     }
 
     func encrypt(_ draft: CreatedRevisionDraft, completion: @escaping Completion) {
         guard !isCancelled, !isExecuting else { return }
         isExecuting = true
 
-        Log.info("STAGE: 1.2 Encrypt blocks 📦📦 started", domain: .uploader)
-        do {
-            try encryptThrowing(draft)
-            Log.info("STAGE: 1.2 Encrypt blocks 📦📦 finished ✅", domain: .uploader)
-            self.progress.complete()
-            completion(.success)
-        } catch BlockGenerationError.cancelled {
-            onCancelBlocksCleanUp()
-        } catch {
-            Log.info("STAGE: 1.2 Encrypt blocks 📦📦 finished ❌", domain: .uploader)
-            completion(.failure(error))
+        Task {
+            Log.info("STAGE: 1.2 Encrypt blocks 📦📦 started", domain: .uploader)
+            do {
+                try await encryptThrowing(draft)
+                Log.info("STAGE: 1.2 Encrypt blocks 📦📦 finished ✅", domain: .uploader)
+                self.progress.complete()
+                completion(.success)
+            } catch BlockGenerationError.cancelled {
+                onCancelBlocksCleanUp()
+                // why wasn't the completion block called before?
+                completion(.failure(BlockGenerationError.cancelled))
+            } catch {
+                Log.info("STAGE: 1.2 Encrypt blocks 📦📦 finished ❌", domain: .uploader)
+                let userError = mapToUserError(error: error)
+                completion(.failure(userError))
+            }
         }
     }
 
-    private func encryptThrowing(_ draft: CreatedRevisionDraft) throws {
-        let (encryptionMetadata, signersKit) = try moc.performAndWait { [weak self] in
+    private func encryptThrowing(_ draft: CreatedRevisionDraft) async throws {
+        let encryptionMetadata = try moc.performAndWait { [weak self] in
             guard let self, !self.isCancelled else { throw BlockGenerationError.cancelled }
             
             let revision = draft.revision.in(moc: moc)
             let signersKit = try getSignersKit(for: revision)
-            let encryptionMetadata = try getEncryptionMetadata(for: revision.file)
-            return (encryptionMetadata, signersKit)
+            let encryptionMetadata = try getEncryptionMetadata(for: revision.file, signersKit: signersKit)
+            return encryptionMetadata
         }
-
-        let blocksMetadata = try encryptBlocks(draft, encryptionMetadata: encryptionMetadata, signersKit: signersKit)
+        let blocksMetadata: [UploadBlockMetadata]
+        if parallelEncryption {
+            blocksMetadata = try await encryptBlocksInParallel(draft, encryptionMetadata: encryptionMetadata, signersKit: encryptionMetadata.signersKit)
+        } else {
+            blocksMetadata = try await encryptBlocks(draft, encryptionMetadata: encryptionMetadata, signersKit: encryptionMetadata.signersKit)
+        }
 
         try moc.performAndWait { [weak self] in
             guard let self, !self.isCancelled else { throw BlockGenerationError.cancelled }
             
             let revision = draft.revision.in(moc: moc)
             revision.removeOldBlocks(in: moc)
-            try populateRevision(blocksMetadata, revision: revision, signersKit: signersKit)
+            try populateRevision(blocksMetadata, revision: revision, signersKit: encryptionMetadata.signersKit)
             try moc.saveOrRollback()
         }
     }
@@ -90,9 +103,17 @@ final class DiscreteBlocksRevisionEncryptor: RevisionEncryptor {
     }
 
     func onCancelBlocksCleanUp() {
-        for url in localURLs {
+        for url in localURLs.value {
             try? FileManager.default.removeItem(at: url)
         }
+    }
+    
+    private func mapToUserError(error: Error) -> PhotosFailureUserError {
+        let nsError = error as NSError
+        if nsError.domain == "NSCocoaErrorDomain" {
+            return .loadResourceFailed
+        }
+        return .encryptionFailed
     }
 }
 
@@ -100,14 +121,18 @@ extension DiscreteBlocksRevisionEncryptor {
 
     private func getSignersKit(for revision: Revision) throws -> SignersKit {
         guard !isCancelled else { throw BlockGenerationError.cancelled }
-        
+#if os(macOS)
         guard let signatureAddress = revision.signatureAddress else {
             throw RevisionEncryptorError.noSignatureEmailInRevision
         }
         return try signersKitFactory.make(forSigner: .address(signatureAddress))
+#else
+        let addressID = try revision.file.getContextShareAddressID()
+        return try signersKitFactory.make(forAddressID: addressID)
+#endif
     }
 
-    private func getEncryptionMetadata(for file: File) throws -> EncryptionMetadata {
+    private func getEncryptionMetadata(for file: File, signersKit: SignersKit) throws -> EncryptionMetadata {
         guard !isCancelled else { throw BlockGenerationError.cancelled }
         
         guard let rawContentKeyPacket = file.contentKeyPacket,
@@ -122,11 +147,13 @@ extension DiscreteBlocksRevisionEncryptor {
             nodeKey: file.nodeKey,
             contentKeyPacket: contentKeyPacket,
             passphrase: nodePassphrase,
-            signatureEmail: signatureEmail
+            signatureEmail: signatureEmail,
+            signersKit: signersKit
         )
     }
 
     private struct UploadBlockMetadata {
+        let volumeID: String
         let localPath: String
         let index: Int
         let sha256: Data
@@ -137,7 +164,7 @@ extension DiscreteBlocksRevisionEncryptor {
     }
 
     /// Breaks cleartext file into a number of Blocks
-    private func encryptBlocks(_ draft: CreatedRevisionDraft, encryptionMetadata: EncryptionMetadata, signersKit: SignersKit) throws -> [UploadBlockMetadata] {
+    private func encryptBlocks(_ draft: CreatedRevisionDraft, encryptionMetadata: EncryptionMetadata, signersKit: SignersKit) async throws -> [UploadBlockMetadata] {
         // preparations
         let reader = try FileHandle(forReadingFrom: draft.localURL)
         defer { try? reader.close() }
@@ -153,10 +180,10 @@ extension DiscreteBlocksRevisionEncryptor {
 
                 let pack = NewBlockDataCleartext(index: index, cleardata: data)
                 digestBuilder.add(data)
-                let encryptedBlock = try encryptBlock(pack, encryptionMetadata: encryptionMetadata)
-                let encSignature = try encryptSignature(data, encryptionMetadata: encryptionMetadata, signersKit: signersKit)
-                let block = try createBlockMetadata(encSignature, signersKit.address.email, encryptedBlock, pack)
-                try writeEncryptedData(encryptedBlock.cypherdata, for: block)
+                let encryptedBlock = try Self.encryptBlock(pack, encryptionMetadata: encryptionMetadata)
+                let encSignature = try Self.encryptSignature(data, encryptionMetadata: encryptionMetadata, signersKit: signersKit)
+                let block = try Self.createBlockMetadata(draft.volumeID, encSignature, signersKit.address.email, encryptedBlock, pack)
+                try Self.writeEncryptedData(encryptedBlock.cypherdata, for: block, localURLs: self.localURLs)
 
                 // A safeguard to ensure the expected number of blocks read
                 guard block.clearSize == expectedBlockSizes[safe: index - 1] else {
@@ -178,10 +205,89 @@ extension DiscreteBlocksRevisionEncryptor {
 
         return blocks
     }
+    
+    private func encryptBlocksInParallel(_ draft: CreatedRevisionDraft, encryptionMetadata: EncryptionMetadata, signersKit: SignersKit) async throws -> [UploadBlockMetadata] {
+        // preparations
+        let reader = try FileHandle(forReadingFrom: draft.localURL)
+        defer { try? reader.close() }
+        let expectedBlockSizes = draft.size.split(divisor: maxBlockSize)
+        var blocks: [UploadBlockMetadata] = []
+        
+        let blocksPerJob = 1
+        let numberOfConcurrentJobs = ProcessInfo.processInfo.activeProcessorCount
+        let numberOfBlocksPerGroup = blocksPerJob * numberOfConcurrentJobs
+        
+        var index = 0
+        var unencryptedBlocks: [(Data, Int)] = try (0..<numberOfBlocksPerGroup).compactMap { _ in
+            guard let block = try reader.read(upToCount: maxBlockSize) else { return nil }
+            index += 1 // BE starts numeration of blocks from 1
+            self.digestBuilder.add(block)
+            return (block, index)
+        }
+        
+        while !unencryptedBlocks.isEmpty, !self.isCancelled {
+            
+            let encryptedBlocks = try await withThrowingTaskGroup(of: [UploadBlockMetadata].self) { group -> [UploadBlockMetadata] in
+                
+                let blocksBatches = unencryptedBlocks.splitInGroups(of: blocksPerJob)
+                
+                for batch in blocksBatches where !batch.isEmpty && !self.isCancelled {
+                    
+                    _ = group.addTaskUnlessCancelled {
+                        
+                        var encryptedBlocks: [UploadBlockMetadata] = []
+                    
+                        for (data, index) in batch where !data.isEmpty && !self.isCancelled {
+                            
+                            Log.info("STAGE: 1.2 Encrypting block \(index) 🚧, UUID: \(draft.uploadID)", domain: .uploader)
+                            
+                            let pack = NewBlockDataCleartext(index: index, cleardata: data)
+                            let encryptedBlock = try Self.encryptBlock(pack, encryptionMetadata: encryptionMetadata)
+                            let encSignature = try Self.encryptSignature(data, encryptionMetadata: encryptionMetadata, signersKit: signersKit)
+                            let block = try Self.createBlockMetadata(draft.volumeID, encSignature, signersKit.address.email, encryptedBlock, pack)
+                            try Self.writeEncryptedData(encryptedBlock.cypherdata, for: block, localURLs: self.localURLs)
+                            
+                            // A safeguard to ensure the expected number of blocks read
+                            guard block.clearSize == expectedBlockSizes[safe: index - 1] else {
+                                throw UploadedRevisionCheckerError.blockUploadSizeIncorrect
+                            }
+                            
+                            // A safeguard to ensure the next data read isn't empty when blocks are still expected
+                            guard !data.isEmpty || (data.isEmpty && index > expectedBlockSizes.count) else {
+                                throw UploadedRevisionCheckerError.blockUploadSizeIncorrect
+                            }
+                            
+                            encryptedBlocks.append(block)
+                        }
+                        
+                        return encryptedBlocks
+                    }
+                }
+             
+                var encryptedBlocks = [UploadBlockMetadata]()
+                for try await encryptedBlock in group {
+                    encryptedBlocks.append(contentsOf: encryptedBlock)
+                }
+                self.progress.complete(units: encryptedBlocks.count)
+                return encryptedBlocks
+            }
+            
+            blocks.append(contentsOf: encryptedBlocks)
+            
+            unencryptedBlocks = try (0..<numberOfBlocksPerGroup).compactMap { _ in
+                guard let block = try reader.read(upToCount: maxBlockSize) else { return nil }
+                index += 1
+                self.digestBuilder.add(block)
+                return (block, index)
+            }
+        }
+        return blocks
+    }
 
-    private func createBlockMetadata(_ signature: String, _ signatureEmail: String, _ encrypted: NewBlockDataCyphertext, _ cleartext: NewBlockDataCleartext) throws -> UploadBlockMetadata {
+    private static func createBlockMetadata(_ volumeID: String, _ signature: String, _ signatureEmail: String, _ encrypted: NewBlockDataCyphertext, _ cleartext: NewBlockDataCleartext) throws -> UploadBlockMetadata {
         // we'll use these blocks later when we'll need to restore Operations
         return UploadBlockMetadata(
+            volumeID: volumeID,
             localPath: UUID().uuidString,
             index: encrypted.index,
             sha256: encrypted.hash,
@@ -192,13 +298,15 @@ extension DiscreteBlocksRevisionEncryptor {
         )
     }
 
-    private func writeEncryptedData(_ data: Data, for block: UploadBlockMetadata) throws {
+    private static func writeEncryptedData(_ data: Data, for block: UploadBlockMetadata, localURLs: Atomic<[URL]>) throws {
         let localUrl = PDFileManager.cypherBlocksCacheDirectory.appendingPathComponent(block.localPath)
-        localURLs.append(localUrl)
+        localURLs.mutate {
+            $0.append(localUrl)
+        }
         try data.write(to: localUrl)
     }
 
-    private func encryptBlock(_ block: NewBlockDataCleartext, encryptionMetadata: EncryptionMetadata) throws -> NewBlockDataCyphertext {
+    private static func encryptBlock(_ block: NewBlockDataCleartext, encryptionMetadata: EncryptionMetadata) throws -> NewBlockDataCyphertext {
         let encrypted = try Encryptor.encryptBinary(chunk: block.cleardata,
                                                     contentKeyPacket: encryptionMetadata.contentKeyPacket,
                                                     nodeKey: encryptionMetadata.nodeKey,
@@ -206,7 +314,7 @@ extension DiscreteBlocksRevisionEncryptor {
         return .init(index: block.index, cypherdata: encrypted.data, hash: encrypted.hash)
     }
 
-    private func encryptSignature(_ cleartextChunk: Data, encryptionMetadata: EncryptionMetadata, signersKit: SignersKit) throws -> String {
+    private static func encryptSignature(_ cleartextChunk: Data, encryptionMetadata: EncryptionMetadata, signersKit: SignersKit) throws -> String {
         let encSignature = try Encryptor.signcrypt(plaintext: cleartextChunk,
                                                    nodeKey: encryptionMetadata.nodeKey,
                                                    addressKey: signersKit.addressKey.privateKey,
@@ -236,6 +344,7 @@ extension DiscreteBlocksRevisionEncryptor {
 
     private func createUploadBlock(with blockMetadata: UploadBlockMetadata) -> UploadBlock {
         let block = UploadBlock(context: self.moc)
+        block.volumeID = blockMetadata.volumeID
         block.index = blockMetadata.index
         block.sha256 = blockMetadata.sha256
         block.size = blockMetadata.size

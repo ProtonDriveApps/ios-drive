@@ -16,14 +16,12 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import os.log
 import PDClient
 import PDCore
 import FileProvider
 import ProtonCoreEnvironment
 
-enum Constants: LogObject {
-    static var osLog: OSLog = OSLog(subsystem: "ch.protondrive", category: "AppLevel")
+enum Constants {
     
     // MARK: - Environments
     enum SettingsBundleKeys: String {
@@ -87,14 +85,20 @@ enum Constants: LogObject {
     static let photosLibraryProcessingBatchSize = 20
     static let photosUploaderParallelProcessingCount = 2
     static let photosAssetsMaximalFolderSize = 200_000_000 // bytes count
-    static let minimalSpaceForAllowingUpload = 25 * 1024 * 1024 // bytes count
     static let photosNecessaryFreeStorage = 2_000_000_000 // Space needed to proceed with photos backup. Bytes count. Arbitrary number.
     static let photosPlaceholderAssetName = "emptyName" // Name seems to be empty for assets coming from `PHAssetSourceType.typeiTunesSynced`. We need to return some name, otherwise the process fails.
+    enum Photos {
+        static let minimalSpaceForAllowingUpload = 25 * 1024 * 1024 // bytes count (25 MB)
+        static let maximalSpaceForShowingQuotaWarning = 100 * 1024 * 1024 * 1024 // bytes count (100 GB)
+    }
 
     // MARK: - Telemetry constants
     enum Metrics {
         static let photosBackupHeartbeatInterval: Double = 15 * 60 // 15 minutes
     }
+
+    // MARK: - Build type
+    static let buildType = getBuildType()
 }
 
 extension Constants {
@@ -171,7 +175,16 @@ extension Constants {
     }
 
     private static func loadConfiguration() -> APIService.Configuration {
-        #if DEBUG
+        #if LOAD_TESTING
+        let domain = dynamicDomain ?? "https://localhost"
+        let environment: Environment
+        if domain.hasPrefix("http://") {
+            environment = Environment.customHttp(domain.replacingOccurrences(of: "http://", with: ""))
+        } else {
+            environment = Environment.custom(domain.replacingOccurrences(of: "https://", with: ""))
+        }
+        return Configuration(environment: environment, clientVersion: clientVersion)
+        #elseif DEBUG
         if let dynamicDomain = dynamicDomain, isUITest {
             return Configuration(environment: .custom(dynamicDomain), clientVersion: clientVersion)
         } else {
@@ -258,5 +271,17 @@ extension Constants {
         
         let sharedUserDefaults = UserDefaults(suiteName: "group.ch.protonmail.protondrive")
         sharedUserDefaults?.set(domain, forKey: SettingsBundleKeys.host.rawValue)
+    }
+
+    private static func getBuildType() -> BuildType {
+        #if DEBUG
+        return .dev
+        #elseif HAS_QA_FEATURES
+        return .qa
+        #elseif HAS_BETA_FEATURES
+        return .alphaOrBeta
+        #else
+        return .prod
+        #endif
     }
 }

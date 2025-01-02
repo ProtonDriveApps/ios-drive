@@ -17,41 +17,57 @@
 
 import Foundation
 import PDCore
+import PDLocalization
 
 final class ShareLinkCreatorViewModel {
     var onErrorSharing: (() -> Void)?
     var onSharedLinkObtained: ((ShareURL) -> Void)?
 
-    private let node: Node
+    private let node: NodeIdentifier
     private let sharedLinkRepository: SharedLinkRepository
+    private let storage: StorageManager
 
     init(
-        node: Node,
-        sharedLinkRepository: SharedLinkRepository
+        node: NodeIdentifier,
+        sharedLinkRepository: SharedLinkRepository,
+        storage: StorageManager
     ) {
         self.node = node
+        self.storage = storage
         self.sharedLinkRepository = sharedLinkRepository
     }
 
     var title: String {
-        "Share via link"
+        Localization.edit_section_share_via_link
     }
 
     var loadingMessage: String {
-        "Preparing secure link"
+        Localization.share_via_prepare_secure_link
     }
 
     func getSharedLink() {
-        sharedLinkRepository.getSecureLink(for: node) { [weak self] result in
-            guard let self = self else { return }
-            switch result {
-            case .success(let link):
-                self.onSharedLinkObtained?(link)
-
-            case .failure(let error):
-                NotificationCenter.default.postBanner(.failure(error, delay: .delayed))
-                self.onErrorSharing?()
+        Task {
+            do {
+                let publicLink = try await sharedLinkRepository.getPublicLink(for: node, permissions: .read)
+                try await handleSuccess(publicLink)
+            } catch {
+                await handleError(error)
             }
         }
+    }
+
+    @MainActor
+    func handleSuccess(_ identifier: PublicLinkIdentifier) async throws {
+        let context = storage.mainContext
+        guard let shareURL = ShareURL.fetch(id: identifier.id, in: context) else {
+            throw DriveError("Missing public link.")
+        }
+        self.onSharedLinkObtained?(shareURL)
+    }
+
+    @MainActor
+    func handleError(_ error: Error) {
+        NotificationCenter.default.postBanner(.failure(error, delay: .delayed))
+        self.onErrorSharing?()
     }
 }

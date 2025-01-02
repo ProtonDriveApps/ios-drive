@@ -20,6 +20,7 @@ import PDCore
 import SwiftUI
 import ProtonCoreNetworking
 import PDUIComponents
+import PDLocalization
 
 class SharedViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, SortingViewModel, HasMultipleSelection, HasRefreshControl {
     typealias Identifier = NodeIdentifier
@@ -39,60 +40,71 @@ class SharedViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, 
     var isVisible: Bool = true
     let genericErrors = ErrorRegulator()
     @Published var isUpdating: Bool = false
-    
+    private var isFetching = false
+    private var isLoadingIndicatorNeeded = true
+
+    let isSharedWithMe: Bool = false
+    let hasPlusFunctionality = false
+
     var nodeName: String {
-        self.listState.isSelecting ? self.titleDuringSelection() : "Shared"
+        self.listState.isSelecting ? self.titleDuringSelection() : screenName
     }
-    
+
+    var screenName: String {
+        Localization.shared_screen_title
+    }
+
     var trailingNavBarItems: [NavigationBarButton] {
         self.listState.isSelecting ? [.cancel] : [.apply(title: "", disabled: true)]
     }
-    
+
     var leadingNavBarItems: [NavigationBarButton] {
         self.listState.isSelecting ? [.apply(title: selection.selectAllText, disabled: false)] : [.menu]
     }
-    
-    let lastUpdated: Date = .distantFuture // not relevant
+
+    public private(set) var lastUpdated: Date = .distantFuture
     let supportsSortingSwitch: Bool = true
     var permanentChildrenSectionTitle: String { self.sorting.title }
 
     let supportsLayoutSwitch = true
-    
+    let featureFlagsController: FeatureFlagsControllerProtocol
+
     func refreshControlAction() {
-        fetchAllPages()
+        fetchAllPages(isManualAction: true)
     }
-    
+
     func refreshOnAppear() {
         model.loadFromCache()
         if !model.tower.didFetchAllShareURLs {
-            fetchAllPages()
+            fetchAllPages(isManualAction: false)
         }
     }
-    
+
     func didScrollToBottom() { }
-    
+
     // MARK: DownloadingViewModel
     var childrenDownloadCancellable: AnyCancellable?
     @Published var downloadProgresses: [ProgressTracker] = []
-    
+
     // MARK: SortingViewModel
     @Published var sorting: SortPreference
-    
+
     func onSortingChanged() {
         /* nothing, as this screen does not support per-page fetching */
     }
-    
+
     // MARK: HasMultipleSelection
     lazy var selection = MultipleSelectionModel(selectable: Set<NodeIdentifier>())
     @Published var listState: ListState = .active
-    
+
     // MARK: others
-    init(model: SharedModel) {
+    init(model: SharedModel, featureFlagsController: FeatureFlagsControllerProtocol) {
         defer { self.model.loadFromCache() }
         self.model = model
         self.sorting = model.sorting
         self.layout = Layout(preference: model.layout)
-        
+        self.featureFlagsController = featureFlagsController
+
         self.subscribeToSort()
         self.subscribeToChildren()
         self.subscribeToChildrenDownloading()
@@ -112,19 +124,31 @@ class SharedViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, 
 
 extension SharedViewModel {
     func fetchAllPages() {
-        guard !isUpdating else { return }
-        isUpdating = true
+        fetchAllPages(isManualAction: true)
+    }
+
+    private func fetchAllPages(isManualAction: Bool) {
+        guard !isFetching else { return }
+        isFetching = true
+
+        if isManualAction || isLoadingIndicatorNeeded {
+            isUpdating = true
+        }
 
         Task {
             do {
                 try await model.fetchSharedByUrl()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     self.isUpdating = false
+                    self.lastUpdated = Date()
+                    self.isFetching = false
+                    self.isLoadingIndicatorNeeded = false
                 }
             } catch {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                     self.genericErrors.send(error)
                     self.isUpdating = false
+                    self.isFetching = false
                 }
             }
         }

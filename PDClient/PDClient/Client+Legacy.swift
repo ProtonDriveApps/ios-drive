@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDLoadTesting
 import ProtonCoreUtilities
 
 extension Client {
@@ -25,7 +26,7 @@ extension Client {
             completion( result.flatMap { .success(.init(modulus: $0.modulus, modulusID: $0.modulusID)) })
         }
     }
-    
+
     public func getVolumes(_ completion: @escaping (Result<[Volume], Error>) -> Void) {
         guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
@@ -35,7 +36,7 @@ extension Client {
             completion( result.flatMap { .success($0.volumes) })
         }
     }
-    
+
     func getShares(_ completion: @escaping (Result<[ShareShort], Error>) -> Void) {
         guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
@@ -45,7 +46,7 @@ extension Client {
             completion( result.flatMap { .success($0.shares) })
         }
     }
-    
+
     public func getShare(_ id: ShareID, completion: @escaping (Result<Share, Error>) -> Void) {
         guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
@@ -53,7 +54,7 @@ extension Client {
         let endpoint = ShareEndpoint(shareID: id, service: self.service, credential: credential)
         request(endpoint, completion: completion)
     }
-    
+
     public func getShareUrl(_ id: ShareID, completion: @escaping (Result<[ShareURLMeta], Error>) -> Void) {
         guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
@@ -63,12 +64,12 @@ extension Client {
             completion( $0.flatMap { .success($0.shareURLs) })
         }
     }
-    
+
     public func getShareUrlRecursively(_ id: ShareID, page: Int = 0, pageSize size: Int = 0, completion: @escaping (Result<([Link], [ShareURLMeta]), Error>) -> Void) {
         guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
-        
+
         let endpoint = ShareURLEndpoint(shareID: id, parameters: [.recursive, .page(page), .pageSize(size)], service: self.service, credential: credential)
         request(endpoint) {
             completion( $0.flatMap {
@@ -78,17 +79,17 @@ extension Client {
             })
         }
     }
-    
+
     public func getFolderChildren(_ shareID: ShareID, folderID: FolderID, parameters: [FolderChildrenEndpointParameters]? = nil, completion: @escaping (Result<[Link], Error>) -> Void) {
         guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
         let endpoint = FolderChildrenEndpoint(shareID: shareID, folderID: folderID, parameters: parameters, service: self.service, credential: credential)
-        request(endpoint) {
+        request(endpoint, completionExecutor: .asyncExecutor(dispatchQueue: backgroundQueue)) {
             completion( $0.flatMap { .success($0.links) })
         }
     }
-    
+
     public func getNode(_ shareID: ShareID, nodeID: FolderID, breadcrumbs: Breadcrumbs, completion: @escaping (Result<Link, Error>) -> Void) {
         guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
@@ -103,15 +104,15 @@ extension Client {
             completion(.failure(error))
         }
     }
-    
+
     public func getFolder(_ shareID: ShareID, folderID: FolderID, breadcrumbs: Breadcrumbs, completion: @escaping (Result<Link, Error>) -> Void) {
         self.getNode(shareID, nodeID: folderID, breadcrumbs: breadcrumbs.collect(), completion: completion)
     }
-    
+
     public func getFile(_ shareID: ShareID, fileID: FileID, breadcrumbs: Breadcrumbs, completion: @escaping (Result<Link, Error>) -> Void) {
         self.getNode(shareID, nodeID: fileID, breadcrumbs: breadcrumbs.collect(), completion: completion)
     }
-    
+
     public func getRevisions(_ shareID: ShareID, fileID: FileID, completion: @escaping (Result<[RevisionShort], Error>) -> Void) {
         guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
@@ -121,7 +122,7 @@ extension Client {
             completion( $0.flatMap { .success($0.revisions) })
         }
     }
-    
+
     public func getRevision(_ shareID: ShareID, fileID: FileID, revisionID: RevisionID, completion: @escaping (Result<Revision, Error>) -> Void) {
         guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
@@ -179,7 +180,32 @@ extension Client {
         }
         let endpoint = NewBlocksEndpoint(parameters: parameters, service: service, credential: credential)
         request(endpoint) { result in
-            completion( result.flatMap { .success((blocks: $0.uploadLinks, thumbnails: $0.thumbnailLinks ?? [])) })
+            completion(result.flatMap {
+                if LoadTesting.isEnabled {
+                    return .success((
+                        blocks: Self.fixUploadLinks(requestURL: endpoint.request.url, links: $0.uploadLinks),
+                        thumbnails: Self.fixUploadLinks(requestURL: endpoint.request.url, links: $0.thumbnailLinks)
+                    ))
+                } else {
+                    return .success((blocks: $0.uploadLinks, thumbnails: $0.thumbnailLinks ?? []))
+                }
+            })
+        }
+    }
+
+    private static func fixUploadLinks(requestURL: URL?, links: [ContentUploadLink]?) -> [ContentUploadLink] {
+        guard LoadTesting.isEnabled else {
+            assertionFailure("This method should only be called when load testing is enabled")
+            return links ?? []
+        }
+        guard let apiURL = requestURL?.absoluteString, let links else { return links ?? [] }
+        return links.map { link in
+            guard apiURL.hasPrefix("http://") && link.URL.hasPrefix("https://") else {
+                return link
+            }
+            let host = apiURL.replacingOccurrences(of: "drive/blocks", with: "")
+            let fixedURL = host + link.URL.replacingOccurrences(of: "https:\\/\\/\\w+\\/", with: "", options: .regularExpression)
+            return ContentUploadLink(token: link.token, URL: fixedURL)
         }
     }
 
@@ -217,7 +243,7 @@ extension Client {
         guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
         }
-        let endpoint = DeleteShareEndpoint(shareID: id, service: self.service, credential: credential)
+        let endpoint = DeleteShareEndpoint(shareID: id, force: false, service: self.service, credential: credential)
         request(endpoint) {
             completion( $0.flatMap { _ in .success })
         }
@@ -386,10 +412,12 @@ extension Client {
 }
 
 extension Client {
-    public func trash(shareID: ShareID, parentID: LinkID, linkIDs: [LinkID]) async throws {
+    @discardableResult
+    public func trash(shareID: ShareID, parentID: LinkID, linkIDs: [LinkID]) async throws -> [PartialFailure]  {
         let parameters = TrashLinksParameters(shareId: shareID, parentLinkId: parentID, linkIds: linkIDs)
         let endpoint = try TrashLinkEndpoint(parameters: parameters, service: service, credential: try credential(), breadcrumbs: .startCollecting())
-        _ = try await request(endpoint)
+        let response = try await request(endpoint)
+        return response.responses.compactMap(PartialFailure.init)
     }
 
     public func deletePermanently(shareID: ShareID, linkIDs: [LinkID]) async throws {
@@ -397,7 +425,7 @@ extension Client {
         let endpoint = DeleteLinkEndpoint(parameters: parameters, service: service, credential: try credential())
         _ = try await request(endpoint)
     }
-    
+
     public func emptyTrash(shareID: ShareID) async throws {
         let endpoint = EmptyTrashEndpoint(shareID: shareID, service: service, credential: try credential())
         _ = try await request(endpoint)
@@ -408,6 +436,21 @@ extension Client {
         let endpoint = RestoreLinkEndpoint(parameters: parameters, service: service, credential: try credential())
         let response = try await request(endpoint)
         return response.responses.compactMap(PartialFailure.init)
+    }
+
+    public func deleteTrashed(shareID: ShareID, linkIDs: [LinkID]) async throws -> [PartialFailure] {
+        let parameters = DeleteLinkEndpoint.Parameters(shareID: shareID, linkIDs: linkIDs)
+        let endpoint = DeleteLinkEndpoint(parameters: parameters, service: service, credential: try credential())
+        let response = try await request(endpoint)
+        return response.responses.compactMap(PartialFailure.init)
+    }
+}
+
+extension Client {
+    public func getSharedWithMeLinks(lastPageId: String?) async throws -> SharedWithMeEndpoint.Response {
+        let endpoint = SharedWithMeEndpoint(service: service, credential: try credential(), parameters: .init(anchorID: lastPageId))
+        let response = try await request(endpoint)
+        return response
     }
 }
 
@@ -420,7 +463,7 @@ public struct PartialFailure {
               let code = response.response?.code,
               let error = response.response?.error
         else { return nil }
-        
+
         var description = error
         if let errorMessage = response.response?.errorDescription, !errorMessage.isEmpty {
             description = errorMessage
@@ -428,6 +471,12 @@ public struct PartialFailure {
 
         self.id = id
         self.error = NSError(domain: error, code: code, localizedDescription: description)
+    }
+
+    init?(_ linkReponse: MultipleLinkResponse.LinkResponse) {
+        guard let error = linkReponse.response.error else { return nil }
+        self.id = linkReponse.linkID
+        self.error = NSError(domain: error, code: linkReponse.response.code)
     }
 }
 

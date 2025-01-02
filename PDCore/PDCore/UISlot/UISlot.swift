@@ -36,8 +36,8 @@ public class UISlot {
 
     // MARK: - GET FROM DB
     
-    public func getVolume() -> Volume? {
-        self.storage.volumes(moc: self.moc).first
+    public func getVolumeId() -> String? {
+        try? self.storage.getVolumeIDs(in: moc).myVolume
     }
     
     public func getRoots(handler: @escaping (Result<[Share], Error>) -> Void) {
@@ -75,15 +75,15 @@ public class UISlot {
     }
     
     public func subscribeToChildren(of parentID: NodeIdentifier, sorting: SortPreference) -> NSFetchedResultsController<Node> {
-        self.storage.subscriptionToChildren(node: parentID.nodeID, share: parentID.shareID, sorting: sorting, moc: self.moc)
+        self.storage.subscriptionToChildren(ofNode: parentID, sorting: sorting, moc: self.moc)
     }
     
     public func subscribeToNode(_ node: NodeIdentifier) -> Node? {
         self.storage.fetchNode(id: node, moc: self.moc)
     }
 
-    public func subscribeToTrash() -> NSFetchedResultsController<Node> {
-        storage.subscriptionToTrash(moc: moc)
+    public func subscribeToTrash(volumeID: String) -> NSFetchedResultsController<Node> {
+        storage.subscriptionToTrash(volumeID: volumeID, moc: moc)
     }
     
     public func subscribeToOfflineAvailable() -> NSFetchedResultsController<Node> {
@@ -94,8 +94,15 @@ public class UISlot {
         storage.subscriptionToStarred(share: shareID, sorting: sorting, moc: moc)
     }
     
-    public func subscribeToShared(sorting: SortPreference) -> NSFetchedResultsController<Node> {
-        storage.subscriptionToShared(sorting: sorting, moc: moc)
+    public func subscribeToShared(volumeID: String, sorting: SortPreference) -> NSFetchedResultsController<Node> {
+        storage.subscriptionToShared(volumeID: volumeID, sorting: sorting, moc: moc)
     }
-    
+
+    public func subscribeToPublicLinkShared(sorting: SortPreference) -> NSFetchedResultsController<Node> {
+        storage.subscriptionToPublicLinkShared(sorting: sorting, moc: moc)
+    }
+
+    public func subscribeToSharedWithMe(sorting: SortPreference) -> NSFetchedResultsController<Node> {
+        storage.subscriptionToSharedWithMe(sorting: sorting, moc: moc)
+    }
 }

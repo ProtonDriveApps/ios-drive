@@ -91,11 +91,16 @@ class MyFilesFileUploadOperationsProvider: FileUploadOperationsProvider {
         ])
 
         let mainFileUploaderProgress = mainFileUploadOperation.progress
+        #if os(iOS)
         mainFileUploaderProgress.totalUnitsOfWork = total
         mainFileUploaderProgress.addChild(revisionEncryptorOperation.progress, pending: revisionEncryptionUOW)
         mainFileUploaderProgress.addChild(fileDraftCreatorOperation.progress, pending: draftUploadUOW)
         mainFileUploaderProgress.addChild(revisionUploaderOperation.progress, pending: revisionUploaderUOW)
         mainFileUploaderProgress.addChild(revisionCommitterOperation.progress, pending: revisionSealerUOW)
+        #else
+        mainFileUploaderProgress.totalUnitsOfWork = file.file.size
+        mainFileUploaderProgress.addChild(revisionUploaderOperation.progress, pending: file.file.size)
+        #endif
 
         return mainFileUploadOperation
     }
@@ -125,11 +130,16 @@ class MyFilesFileUploadOperationsProvider: FileUploadOperationsProvider {
         ])
 
         let mainFileUploaderProgress = mainFileUploadOperation.progress
+        #if os(iOS)
         mainFileUploaderProgress.totalUnitsOfWork = total
         mainFileUploaderProgress.addChild(completedWorkOperation.progress, pending: completedWorkProgress)
         mainFileUploaderProgress.addChild(fileDraftCreatorOperation.progress, pending: draftUploadUOW)
         mainFileUploaderProgress.addChild(revisionUploaderOperation.progress, pending: revisionUploaderUOW)
         mainFileUploaderProgress.addChild(revisionCommitterOperation.progress, pending: revisionSealerUOW)
+        #else
+        mainFileUploaderProgress.totalUnitsOfWork = file.file.size
+        mainFileUploaderProgress.addChild(revisionUploaderOperation.progress, pending: file.file.size)
+        #endif
 
         return mainFileUploadOperation
     }
@@ -155,11 +165,16 @@ class MyFilesFileUploadOperationsProvider: FileUploadOperationsProvider {
         ])
 
         let mainFileUploaderProgress = mainFileUploadOperation.progress
+        #if os(iOS)
         mainFileUploaderProgress.totalUnitsOfWork = total
         mainFileUploaderProgress.addChild(completedWorkOperation.progress, pending: completedWorkProgress)
         mainFileUploaderProgress.addChild(revisionUploaderOperation.progress, pending: revisionUploaderUOW)
         mainFileUploaderProgress.addChild(revisionCommitterOperation.progress, pending: revisionSealerUOW)
-
+        #else
+        mainFileUploaderProgress.totalUnitsOfWork = file.file.size
+        mainFileUploaderProgress.addChild(revisionUploaderOperation.progress, pending: file.file.size)
+        #endif
+        
         return mainFileUploadOperation
     }
 
@@ -180,9 +195,13 @@ class MyFilesFileUploadOperationsProvider: FileUploadOperationsProvider {
         ])
 
         let mainFileUploaderProgress = mainFileUploadOperation.progress
+        #if os(iOS)
         mainFileUploaderProgress.totalUnitsOfWork = total
         mainFileUploaderProgress.addChild(completedWorkOperation.progress, pending: completedWorkProgress)
         mainFileUploaderProgress.addChild(revisionCommitterOperation.progress, pending: revisionSealerUOW)
+        #else
+        mainFileUploaderProgress.totalUnitsOfWork = 0
+        #endif
 
         return mainFileUploadOperation
     }
@@ -212,11 +231,16 @@ class MyFilesFileUploadOperationsProvider: FileUploadOperationsProvider {
         ])
 
         let mainFileUploaderProgress = mainFileUploadOperation.progress
+        #if os(iOS)
         mainFileUploaderProgress.totalUnitsOfWork = total
         mainFileUploaderProgress.addChild(revisionEncryptorOperation.progress, pending: revisionEncryptionUOW)
         mainFileUploaderProgress.addChild(revisionCreatorOperation.progress, pending: revisionCreatorUOW)
         mainFileUploaderProgress.addChild(revisionUploaderOperation.progress, pending: revisionUploaderUOW)
         mainFileUploaderProgress.addChild(revisionCommitterOperation.progress, pending: revisionSealerUOW)
+        #else
+        mainFileUploaderProgress.totalUnitsOfWork = file.file.size
+        mainFileUploaderProgress.addChild(revisionUploaderOperation.progress, pending: file.file.size)
+        #endif
 
         return mainFileUploadOperation
     }
@@ -246,11 +270,16 @@ class MyFilesFileUploadOperationsProvider: FileUploadOperationsProvider {
         ])
 
         let mainFileUploaderProgress = mainFileUploadOperation.progress
+        #if os(iOS)
         mainFileUploaderProgress.totalUnitsOfWork = total
         mainFileUploaderProgress.addChild(completedWorkOperation.progress, pending: completedWorkProgress)
         mainFileUploaderProgress.addChild(createRevisionOperation.progress, pending: revisionCreatorUOW)
         mainFileUploaderProgress.addChild(revisionUploaderOperation.progress, pending: revisionUploaderUOW)
         mainFileUploaderProgress.addChild(revisionCommitterOperation.progress, pending: revisionSealerUOW)
+        #else
+        mainFileUploaderProgress.totalUnitsOfWork = file.file.size
+        mainFileUploaderProgress.addChild(revisionUploaderOperation.progress, pending: file.file.size)
+        #endif
 
         return mainFileUploadOperation
     }
@@ -259,8 +288,12 @@ class MyFilesFileUploadOperationsProvider: FileUploadOperationsProvider {
         let mainFileUploadOperation = makeMainFileUploadOperation(from: file, completion: completion)
         let failingOperation = makeFailureCompletingOperation(from: file, completion: completion)
 
+        #if os(iOS)
         mainFileUploadOperation.addDependency(failingOperation)
         mainFileUploadOperation.progress.addChild(failingOperation.progress, pending: 1)
+        #else
+        mainFileUploadOperation.progress.totalUnitsOfWork = 0
+        #endif
 
         return mainFileUploadOperation
     }

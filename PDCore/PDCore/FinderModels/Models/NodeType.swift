@@ -15,13 +15,44 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-public enum NodeType: String {
-    case file = "File"
-    case folder = "Folder"
-    case mix = "Item"
+import PDLocalization
 
+public enum NodeType {
+    case file
+    case folder
+    case mix
+    
     public var type: String {
-        rawValue.lowercased()
+        switch self {
+        case .file:
+            return Localization.general_file_type.lowercased()
+        case .folder:
+            return Localization.general_folder_type.lowercased()
+        case .mix:
+            return Localization.general_item_type.lowercased()
+        }
+    }
+    
+    public var restoreAllText: String {
+        switch self {
+        case .file:
+            return Localization.trash_action_restore_all_files
+        case .folder:
+            return Localization.trash_action_restore_all_folders
+        case .mix:
+            return Localization.trash_action_restore_all_items
+        }
+    }
+    
+    public func pluralTypesWith(count: Int) -> String {
+        switch self {
+        case .file:
+            return Localization.file_plural_type_with_num(num: count).lowercased()
+        case .folder:
+            return Localization.folder_plural_type_with_num(num: count).lowercased()
+        case .mix:
+            return Localization.item_plural_type_with_num(num: count).lowercased()
+        }
     }
 }
 
@@ -79,6 +110,11 @@ extension Node {
         default:
             return false
         }
+    }
+
+    /// Heavy operation including recursion, use carefully
+    public var isAvailableOffline: Bool {
+        (isMarkedOfflineAvailable || isInheritingOfflineAvailable) && isDownloaded
     }
 
     public var isTrashInheriting: Bool {

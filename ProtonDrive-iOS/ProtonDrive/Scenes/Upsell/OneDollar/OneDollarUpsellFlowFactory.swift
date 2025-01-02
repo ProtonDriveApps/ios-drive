@@ -20,6 +20,7 @@ import UIKit
 import SwiftUI
 import PDUIComponents
 import PDCore
+import PDLocalization
 
 struct OneDollarUpsellFlowController {
     var featureFlagEnabled: Bool
@@ -64,7 +65,7 @@ struct OneDollarUpsellFlowFactory {
     
     private func present(subscriptionsViewController: UIViewController, navigationController: UINavigationController) {
         navigationController.navigationBar.isHidden = false
-        subscriptionsViewController.title = "Subscription"
+        subscriptionsViewController.title = Localization.menu_text_subscription
         subscriptionsViewController.navigationItem.leftBarButtonItem = CloseBarButton { [unowned navigationController] in
             navigationController.dismiss(animated: true)
         }
@@ -75,23 +76,18 @@ struct OneDollarUpsellFlowFactory {
 
 #if DEBUG
 struct OneDollarUpsellFlowTestsManager {
-    
-    private static let localSettings = LocalSettings(suite: Constants.appGroup)
-    
-    static func defaultUpsellInTestsIfNeeded() {
-        guard DebugConstants.commandLineContains(flags: [.uiTests, .defaultUpsell]) else {
-            return
-        }
-        localSettings.isUpsellShown = false
-        DebugConstants.removeCommandLine(flags: [.defaultUpsell])
-    }
-    
-    static func skipUpsellInTestsIfNeeded() {
-        guard DebugConstants.commandLineContains(flags: [.uiTests, .clearAllPreference, .skipUpsell]) else {
-            return
+    static func setFlagForUITest(localSettings: LocalSettings) {
+        guard DebugConstants.commandLineContains(flags: [.uiTests]) else { return }
+        
+        if DebugConstants.commandLineContains(flags: [.defaultUpsell]) {
+            localSettings.isUpsellShown = false
+            DebugConstants.removeCommandLine(flags: [.defaultUpsell])
         }
         
-        localSettings.isUpsellShown = true
+        if DebugConstants.commandLineContains(flags: [.skipUpsell]) {
+            localSettings.isUpsellShown = true
+            DebugConstants.removeCommandLine(flags: [.skipUpsell])
+        }
     }
 }
 #endif

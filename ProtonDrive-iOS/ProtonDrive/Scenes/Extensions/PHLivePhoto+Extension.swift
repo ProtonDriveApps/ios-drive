@@ -17,6 +17,7 @@
 
 import Foundation
 import Photos
+import UIKit
 
 extension PHLivePhoto {
     static func load(resources: [URL]) async -> PHLivePhoto? {
@@ -33,6 +34,24 @@ extension PHLivePhoto {
                     return
                 }
                 continuation.resume(returning: livePhoto)
+            }
+        }
+    }
+    
+    static func load(resources: [URL], placeholderImage: UIImage? = nil) -> AsyncStream<PHLivePhoto?> {
+        AsyncStream { continuation in
+            PHLivePhoto.request(
+                withResourceFileURLs: resources,
+                placeholderImage: placeholderImage,
+                targetSize: .zero,
+                contentMode: .default
+            ) { livePhoto, info in
+                if let isLowQuality = info["PHLivePhotoInfoIsDegradedKey"] as? Int, isLowQuality == 1 {
+                    continuation.yield(livePhoto)
+                } else {
+                    continuation.yield(livePhoto)
+                    continuation.finish()
+                }
             }
         }
     }

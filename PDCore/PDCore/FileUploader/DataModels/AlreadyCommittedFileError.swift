@@ -31,11 +31,11 @@ struct AlreadyCommittedFileError: LocalizedError, CustomDebugStringConvertible {
     }
 
     public var errorDescription: String? {
-        #if HAS_BETA_FEATURES
-        "\(type(of: self)) [\(file):\(line)]"
-        #else
-        "File already committed for upload"
-        #endif
+        if Constants.buildType.isBetaOrBelow {
+            return "\(type(of: self)) [\(file):\(line)]"
+        } else {
+            return "File already committed for upload"
+        }
     }
 
     var localizedDescription: String {

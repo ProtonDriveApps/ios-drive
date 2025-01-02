@@ -2,16 +2,17 @@
   "images" : [
     {
       "filename" : "empty-folder.pdf",
-      "idiom" : "universal",
-      "scale" : "1x"
+      "idiom" : "universal"
     },
     {
-      "idiom" : "universal",
-      "scale" : "2x"
-    },
-    {
-      "idiom" : "universal",
-      "scale" : "3x"
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "empty-folder-dark.pdf",
+      "idiom" : "universal"
     }
   ],
   "info" : {

@@ -21,10 +21,18 @@ import FileProvider
 public struct NodeIdentifier: Equatable, Hashable {
     public let nodeID: String
     public let shareID: String
+    public let volumeID: String
 
-    public init(_ nodeID: String, _ shareID: String) {
+    public init(_ nodeID: String, _ shareID: String, _ volumeID: String) {
         self.nodeID = nodeID
         self.shareID = shareID
+        self.volumeID = volumeID
+    }
+}
+
+extension NodeIdentifier: VolumeIdentifiable {
+    public var id: String {
+        nodeID
     }
 }
 
@@ -37,14 +45,14 @@ extension NodeIdentifier: RawRepresentable {
         guard case let parts = rawValue.components(separatedBy: "/"), parts.count == 2 else {
             return nil
         }
-        self.init(parts.first!, parts.last!)
+        self.init(parts.first!, parts.last!, "")
     }
 }
 
 public extension Node {
     var identifier: NodeIdentifier {
         guard let moc else {
-            return NodeIdentifier("", "")
+            return NodeIdentifier("", "", "")
         }
 
         return moc.performAndWait {
@@ -53,14 +61,14 @@ public extension Node {
     }
     
     var identifierWithinManagedObjectContext: NodeIdentifier {
-        NodeIdentifier(self.id, self.shareID)
+        NodeIdentifier(self.id, self.shareId, self.volumeID)
     }
 }
 
 public extension File {
     var fileIdentifier: FileIdentifier {
         guard let pid = parentLink?.id else { fatalError("A file must have a parent link!") }
-        return FileIdentifier(fileID: id, parentID: pid, shareID: shareID)
+        return FileIdentifier(fileID: id, parentID: pid, shareID: shareId)
     }
 }
 
@@ -76,18 +84,28 @@ public struct FileIdentifier {
     let shareID: String
 }
 
-public struct RevisionIdentifier: Hashable {
+public struct RevisionIdentifier: Hashable, VolumeIdentifiable {
     public let share: String
     public let file: String
     public let revision: String
+    public let volume: String
 
-    public init(share: String, file: String, revision: String) {
+    public init(share: String, file: String, revision: String, volume: String) {
         self.share = share
         self.file = file
         self.revision = revision
+        self.volume = volume
     }
 
     var nodeIdentifier: NodeIdentifier {
-        NodeIdentifier(file, share)
+        NodeIdentifier(file, share, volume)
+    }
+
+    public var id: String {
+        revision
+    }
+
+    public var volumeID: String {
+        volume
     }
 }

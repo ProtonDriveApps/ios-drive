@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDClient
+import CoreData
 
 public protocol NodeFetchAndCacheService {
     func fetchAndCache(_ id: NodeIdentifier) async throws
@@ -23,15 +24,20 @@ public protocol NodeFetchAndCacheService {
 
 public class ClientNodeFetchAndCacheService: NodeFetchAndCacheService {
     private let client: Client
-    private let cacher: CloudSlot
-    
-    public init(client: Client, cacher: CloudSlot) {
+    private let cacher: CloudSlotProtocol
+    private let context: NSManagedObjectContext
+
+    public init(client: Client, cacher: CloudSlotProtocol, context: NSManagedObjectContext) {
         self.client = client
         self.cacher = cacher
+        self.context = context
     }
     
     public func fetchAndCache(_ id: NodeIdentifier) async throws {
         let link = try await client.getLink(shareID: id.shareID, linkID: id.nodeID, breadcrumbs: .startCollecting())
-        cacher.update([link], of: id.shareID, in: cacher.storage.photosBackgroundContext)
+        try await context.perform {
+            try self.cacher.update(links: [link], shareId: id.shareID, managedObjectContext: self.context)
+            try self.context.saveOrRollback()
+        }
     }
 }

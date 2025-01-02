@@ -15,25 +15,26 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Foundation
 import ProtonCoreDataModel
 import ProtonCoreKeyManager
 
 public typealias DecryptionKey = ProtonCoreKeyManager.DecryptionKey
 
-struct KeyPair: Equatable {
+public struct KeyPair: Equatable {
     let publicKey: ArmoredKey
     let privateKey: ArmoredKey
     let passphrase: ArmoredKey
 }
 
 extension KeyPair {
-    var decryptionKey: DecryptionKey {
+    public var decryptionKey: DecryptionKey {
         .init(privateKey: privateKey, passphrase: passphrase)
     }
 }
 
 extension KeyPair {
-    init?(addressKey: AddressManager.AddressKey) {
+    public init?(addressKey: AddressManager.AddressKey) {
         guard let publicKey = try? addressKey.publicKey(),
               let passphrase = try? SessionVault.current.addressPassphrase(for: addressKey) else {
             return nil
@@ -54,7 +55,7 @@ extension Key {
 }
 
 extension Address {
-    var activeKeys: [Key] {
+    public var activeKeys: [Key] {
         keys.filter { $0.active == 1 }
     }
     

@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import PDLocalization
+
 public struct LockingBannerViewData: Equatable {
     public let message: String?
 
@@ -27,6 +29,6 @@ public struct LockingBannerViewData: Equatable {
     }
 
     public static var shownBanner: LockingBannerViewData {
-        LockingBannerViewData(message: "The app will keep your screen awake to ensure faster backups.")
+        LockingBannerViewData(message: Localization.locking_banner_message)
     }
 }

@@ -28,6 +28,7 @@ public struct TelemetryData: Equatable {
         case backupBackgroundStart
         case backupBackgroundUpdate
         case uploadDone
+        case upsellPhotos
     }
 
     let group: Group

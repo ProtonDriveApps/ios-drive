@@ -96,7 +96,16 @@ class NameClashResolvingFileDraftCreator: FileDraftCreator {
 
     private func makeNewDraftChangingNameParameters(_ pair: NameHashPair, draft: FileDraftUploadableDraft) throws -> FileDraftUploadableDraft {
         let nameSignatureAddress = draft.nameSignatureAddress
+#if os(macOS)
         let signersKit = try signersKitFactory.make(forSigner: .address(nameSignatureAddress))
+#else
+        let signersKit = try moc.performAndWait {
+            let file = draft.file.in(moc: self.moc)
+            let addressID = try file.getContextShareAddressID()
+            let signersKit = try signersKitFactory.make(forAddressID: addressID)
+            return signersKit
+        }
+#endif
         let newArmoredName = try reencryptFileName(file: draft.file, newName: pair.name, signersKit: signersKit)
 
         return FileDraftUploadableDraft(

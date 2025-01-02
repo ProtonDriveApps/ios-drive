@@ -19,10 +19,10 @@ import CoreData
 import PDClient
 
 public final class CoreDataLinksUpdateRepository: LinksUpdateRepository {
-    private let cloudSlot: CloudSlot
+    private let cloudSlot: CloudSlotProtocol
     private let managedObjectContext: NSManagedObjectContext
 
-    public init(cloudSlot: CloudSlot, managedObjectContext: NSManagedObjectContext) {
+    public init(cloudSlot: CloudSlotProtocol, managedObjectContext: NSManagedObjectContext) {
         self.cloudSlot = cloudSlot
         self.managedObjectContext = managedObjectContext
     }

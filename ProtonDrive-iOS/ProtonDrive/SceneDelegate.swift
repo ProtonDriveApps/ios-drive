@@ -68,16 +68,15 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let url = URLContexts.first?.url else {
             return
         }
-
         guard let authenticatedContainer = container.authenticatedContainer else {
             messageHandler.handleError(PlainMessageError("Please authenticate before opening the file."))
             return
         }
+        guard let rootViewController = window?.topMostViewController else {
+            return
+        }
 
-        let interactor = ProtonDocumentOpeningFactory().makeInteractor(tower: authenticatedContainer.tower)
-        let urlCoordinator = iOSURLCoordinator()
-        let errorViewModel = ProtonDocumentErrorViewModel(messageHandler: messageHandler)
-        let controller = ProtonDocumentOpeningController(interactor: interactor, coordinator: urlCoordinator, errorViewModel: errorViewModel)
+        let controller = authenticatedContainer.protonDocumentContainer.makeController(rootViewController: rootViewController)
         controller.openPreview(url)
     }
 

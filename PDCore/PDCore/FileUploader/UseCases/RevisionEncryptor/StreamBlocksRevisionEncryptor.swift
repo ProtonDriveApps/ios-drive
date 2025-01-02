@@ -45,9 +45,13 @@ final class StreamRevisionEncryptor: RevisionEncryptor {
             do {
                 let revision = draft.revision.in(moc: self.moc)
                 revision.removeOldBlocks(in: self.moc)
+#if os(macOS)
                 guard let signatureAddress = revision.signatureAddress else { throw RevisionEncryptorError.noSignatureEmailInRevision }
                 let signersKit = try signersKitFactory.make(forSigner: .address(signatureAddress))
-
+#else
+                let addressId = try revision.file.getContextShareAddressID()
+                let signersKit = try signersKitFactory.make(forAddressID: addressId)
+#endif
                 let uploadBlocks = try self.createEncryptedBlocks(draft, revision: revision, signersKit: signersKit)
                 try self.finalize(uploadBlocks, revision: revision, cleanupCleartext: draft.localURL, signersKit: signersKit, id: draft.uploadID)
 
@@ -87,7 +91,7 @@ extension StreamRevisionEncryptor {
                 let pack = NewBlockUrlCleartext(index: index, cleardata: blockURL) // Cloud requires first index == 1
                 let encryptedBlock = try self.encryptBlock(pack, file: revision.file)
                 let encSignature = try self.encryptSignature(blockURL, file: revision.file, signersKit: signersKit)
-                let block = try self.createNewBlock(encSignature, signersKit.address.email, encryptedBlock, pack)
+                let block = try self.createNewBlock(revision.volumeID, encSignature, signersKit.address.email, encryptedBlock, pack)
                 _ = try block.store(cyphertext: encryptedBlock.cypherdata)
                 try FileManager.default.removeItem(at: blockURL)
 
@@ -141,12 +145,13 @@ extension StreamRevisionEncryptor {
         }
     }
 
-    private func createNewBlock(_ signature: String, _ signatureEmail: String, _ encrypted: NewBlockUrlCyphertext, _ cleartext: NewBlockUrlCleartext) throws -> UploadBlock {
+    private func createNewBlock(_ volumeID: String, _ signature: String, _ signatureEmail: String, _ encrypted: NewBlockUrlCyphertext, _ cleartext: NewBlockUrlCleartext) throws -> UploadBlock {
         guard let clearSize = cleartext.size else {
             throw URLConsistencyError.noURLSize
         }
 
         return UploadBlock.make(
+            volumeID: volumeID,
             signature: signature,
             signatureEmail: signatureEmail,
             index: encrypted.index,

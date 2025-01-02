@@ -57,7 +57,7 @@ extension Thumbnail {
                 throw Error.tamperedThumbnail
             }
 
-            let addressKeys = try revision.getAddressPublicKeysOfRevisionCreator()
+            let addressKeys = try revision.getAddressPublicKeysOfRevision()
             let decrypted = try Decryptor.decryptAndVerifyThumbnail(
                 thumbnailDataPacket,
                 contentSessionKey: sessionKey,
@@ -70,13 +70,17 @@ extension Thumbnail {
                 return thumbnail
 
             case .unverified(let thumbnail, let error):
-                Log.error(SignatureError(error, "Thumbnail Passphrase", description: "RevisionID: \(revision.id) \nLinkID: \(revision.file.id) \nShareID: \(revision.file.shareID)"), domain: .encryption)
+                let hasSignatureEmail = !(revision.signatureAddress?.isEmpty ?? true)
+                if hasSignatureEmail {
+                    // Anonymous upload file thumbnail doesn't have signature
+                    Log.error(SignatureError(error, "Thumbnail Passphrase", description: "RevisionID: \(revision.id) \nLinkID: \(revision.file.id) \nVolumeID: \(revision.file.volumeID)"), domain: .encryption, sendToSentryIfPossible: revision.file.isSignatureVerifiable())
+                }
                 self.clearData = thumbnail
                 return thumbnail
             }
 
         } catch {
-            Log.error(DecryptionError(error, "Thumbnail", description: "RevisionID: \(revision.id) \nLinkID: \(revision.file.id) \nShareID: \(revision.file.shareID)"), domain: .encryption)
+            Log.error(DecryptionError(error, "Thumbnail", description: "RevisionID: \(revision.id) \nLinkID: \(revision.file.id) \nVolumeID: \(revision.file.volumeID)"), domain: .encryption)
             throw error
         }
     }

@@ -1,6 +1,0 @@
-framework module ProtonCorePaymentsUI {
-  umbrella header "ProtonCore-PaymentsUI-dynamic-umbrella.h"
-
-  export *
-  module * { export * }
-}

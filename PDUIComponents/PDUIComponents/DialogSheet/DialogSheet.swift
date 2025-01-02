@@ -16,8 +16,10 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import UIKit
 import ProtonCoreUIFoundations
+#if canImport(UIKit)
+import UIKit
+#endif
 
 extension View {
 

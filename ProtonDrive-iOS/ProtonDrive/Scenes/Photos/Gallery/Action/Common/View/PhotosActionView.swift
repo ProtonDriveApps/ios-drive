@@ -51,10 +51,14 @@ struct PhotosActionView<ViewModel: PhotosActionViewModelProtocol>: View {
             return .trashMultiple
         case .share:
             return .share
+        case .newShare:
+            return .newShare
         case .shareNative:
             return .shareNative
         case .availableOffline:
             return .offlineAvailableMultiple
+        case .info:
+            return .info
         }
     }
 
@@ -68,6 +72,10 @@ struct PhotosActionView<ViewModel: PhotosActionViewModelProtocol>: View {
             return .shareNative
         case .offlineAvailableMultiple:
             return .availableOffline
+        case .newShare:
+            return .share
+        case .info:
+            return .info
         default:
             return nil
         }

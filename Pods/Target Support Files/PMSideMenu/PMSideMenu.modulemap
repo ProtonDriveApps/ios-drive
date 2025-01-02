@@ -1,6 +1,0 @@
-framework module PMSideMenu {
-  umbrella header "PMSideMenu-umbrella.h"
-
-  export *
-  module * { export * }
-}

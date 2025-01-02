@@ -15,10 +15,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+#if os(iOS)
 import Foundation
 import Security
 
-private var kKeychainGroupName = DriveKeychain.keychainGroup
+private var kKeychainGroupName = Constants.keychainGroup
 
 @objc final class SecureEnclaveKeyReference: NSObject {
     
@@ -335,3 +336,4 @@ struct SecureEnclaveHelperError: Error {
         return SecureEnclaveKeyReference(publicKey)
     }
 }
+#endif

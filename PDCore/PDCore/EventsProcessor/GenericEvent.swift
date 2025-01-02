@@ -17,6 +17,8 @@
 
 import Foundation
 
+// Please note, that the implementation currently is coupled with `PDClient.Event`
+// See `GenericEventSerializer`.
 public protocol GenericEvent {
     var genericType: GenericEventType { get }
     var eventId: String { get }
@@ -24,6 +26,7 @@ public protocol GenericEvent {
     var inLaneNodeId: String { get }
     var inLaneParentId: String? { get }
     var eventEmittedAt: TimeInterval { get }
+    var volumeId: String { get }
 }
 
 public enum GenericEventType {

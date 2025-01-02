@@ -1,6 +1,0 @@
-framework module Pods_PDFileProviderTests {
-  umbrella header "Pods-PDFileProviderTests-umbrella.h"
-
-  export *
-  module * { export * }
-}

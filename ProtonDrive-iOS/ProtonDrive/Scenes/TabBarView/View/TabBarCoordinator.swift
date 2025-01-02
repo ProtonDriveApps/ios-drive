@@ -16,53 +16,26 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import UIKit
+import PDCore
 
-protocol TabBarCoordinator {
-    func showPhotosTab()
-    func hidePhotosTab()
+protocol TabBarCoordinatorProtocol {
+    func regenerateChildren()
 }
 
-final class ConcreteTabBarCoordinator: TabBarCoordinator {
-    weak var tabBarController: UITabBarController?
-    weak var photosContainer: PhotosContainer?
+final class TabBarCoordinator: TabBarCoordinatorProtocol {
+    weak var tabBarController: UITabBarController!
+    private let childrenFactory: () -> [UIViewController]
 
-    init(photosContainer: PhotosContainer?) {
-        self.photosContainer = photosContainer
+    init(childrenFactory: @escaping () -> [UIViewController]) {
+        self.childrenFactory = childrenFactory
     }
 
-    func showPhotosTab() {
-        var children = tabBarController?.viewControllers ?? []
-
-        guard children.count == 2 else {
-            return
-        }
-
-        guard let photosViewController = makePhotosViewController() else {
-            return
-        }
-
-        children.insert(photosViewController, at: 1)
-        tabBarController?.setViewControllers(children, animated: false)
-    }
-    
-    func hidePhotosTab() {
-        var children = tabBarController?.viewControllers ?? []
-
-        guard let index = children.firstIndex(where: { $0.tabBarItem.tag == TabBarItem.photos.tag }) else {
-            return
-        }
-        
-        children.remove(at: index)
-        tabBarController?.setViewControllers(children, animated: false)
+    func regenerateChildren() {
+        let children = makeChildrenViewControllers()
+        tabBarController.setViewControllers(children, animated: false)
     }
 
-    private func makePhotosViewController() -> UIViewController? {
-        guard let photosViewController = photosContainer?.makeRootViewController() else {
-            return nil
-        }
-
-        let factory = TabBarViewControllerFactory()
-        factory.configurePhotosTab(in: photosViewController)
-        return photosViewController
+    private func makeChildrenViewControllers() -> [UIViewController] {
+        childrenFactory()
     }
 }

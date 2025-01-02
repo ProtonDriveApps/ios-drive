@@ -9,6 +9,4 @@
 // Configuration settings file format documentation can be found at:
 // https://help.apple.com/xcode/#/dev745c5c974
 
-#include "../Pods/Target Support Files/Pods-ProtonDriveFileProviderUI/Pods-ProtonDriveFileProviderUI.release-qa.xcconfig"
-
 #include "SharedBuildConfigs/Config-Release-QA.xcconfig"

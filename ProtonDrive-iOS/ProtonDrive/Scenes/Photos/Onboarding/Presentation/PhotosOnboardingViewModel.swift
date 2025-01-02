@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDLocalization
 
 struct PhotosOnboardingViewData {
     let title: String
@@ -40,7 +41,6 @@ struct PhotosOnboardingViewData {
 
 protocol PhotosOnboardingViewModelProtocol {
     var data: PhotosOnboardingViewData { get }
-    
     func enableBackup()
 }
 
@@ -59,20 +59,20 @@ final class PhotosOnboardingViewModel: PhotosOnboardingViewModelProtocol {
 
     private func makeData() -> PhotosOnboardingViewData {
         PhotosOnboardingViewData(
-            title: "Encrypt and back up your photos and videos",
+            title: Localization.photo_onboarding_title,
             rows: [
                 .init(
                     icon: .lock,
-                    title: "Protect your memories",
-                    subtitle: "Your photos are end-to-end encrypted, ensuring total privacy."
+                    title: Localization.photo_onboarding_protect_memories,
+                    subtitle: Localization.photo_onboarding_e2e
                 ),
                 .init(
                     icon: .rotatingArrows,
-                    title: "Effortless backups",
-                    subtitle: "Photos are backed up over WiFi in their original quality."
+                    title: Localization.photo_onboarding_effortless_backups,
+                    subtitle: Localization.photo_onboarding_keep_quality
                 ),
             ],
-            button: "Turn on backup"
+            button: Localization.photo_onboarding_button_enable
         )
     }
 }

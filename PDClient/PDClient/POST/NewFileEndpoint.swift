@@ -20,6 +20,11 @@ import Foundation
 public struct NewFile: Codable {
     public var ID: String
     public var revisionID: String
+
+    public init(ID: String, revisionID: String) {
+        self.ID = ID
+        self.revisionID = revisionID
+    }
 }
 
 public struct NewFileParameters: Codable {
@@ -48,26 +53,26 @@ public struct NewFileParameters: Codable {
         self.ClientUID = clientUID
     }
 
-    var Name: String
-    var Hash: String
-    var ParentLinkID: String
-    var NodeKey: String
-    var NodePassphrase: String
-    var NodePassphraseSignature: String
-    var SignatureAddress: String
-    var ContentKeyPacket: String
-    var ContentKeyPacketSignature: String
-    var MIMEType: String
-    var ClientUID: String
+    public private(set) var Name: String
+    public private(set) var Hash: String
+    public private(set) var ParentLinkID: String
+    public private(set) var NodeKey: String
+    public private(set) var NodePassphrase: String
+    public private(set) var NodePassphraseSignature: String
+    public private(set) var SignatureAddress: String
+    public private(set) var ContentKeyPacket: String
+    public private(set) var ContentKeyPacketSignature: String
+    public private(set) var MIMEType: String
+    public private(set) var ClientUID: String
 }
 
-struct NewFileEndpoint: Endpoint {
+public struct NewFileEndpoint: Endpoint {
     public struct Response: Codable {
         var code: Int
-        var file: NewFile
+        public var file: NewFile
     }
     
-    var request: URLRequest
+    public private(set) var request: URLRequest
     
     init(shareID: Share.ShareID, parameters: NewFileParameters, service: APIService, credential: ClientCredential) {
         // url

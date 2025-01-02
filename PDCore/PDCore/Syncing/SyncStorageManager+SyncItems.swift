@@ -35,11 +35,14 @@ public extension SyncStorageManager {
             syncItem.filename = item.filename
             syncItem.location = item.location
             syncItem.mimeType = item.mimeType
+            if let fileSize = item.fileSize {
+                syncItem.fileSize = NSNumber(value: fileSize)
+            }
             syncItem.fileProviderOperation = item.fileProviderOperation
             syncItem.state = item.state
             syncItem.errorDescription = item.description
 
-            try moc.saveWithParentLinkCheck()
+            try moc.saveOrRollback()
             return syncItem
         }
     }
@@ -50,7 +53,7 @@ public extension SyncStorageManager {
                 throw SyncItemError.notFound
             }
             syncItem.state = .finished
-            try moc.saveWithParentLinkCheck()
+            try moc.saveOrRollback()
         }
     }
 
@@ -61,11 +64,11 @@ public extension SyncStorageManager {
                 throw SyncItemError.notFound
             }
             syncItem.state = state
-            try moc.saveWithParentLinkCheck()
+            try moc.saveOrRollback()
         }
     }
 
-    func udpateTemporaryItem(id: String, with createdItem: ReportableSyncItem, in moc: NSManagedObjectContext) throws {
+    func updateTemporaryItem(id: String, with createdItem: ReportableSyncItem, in moc: NSManagedObjectContext) throws {
         try moc.performAndWait {
             let syncItems: [SyncItem] = self.existing(with: [id], in: moc)
             guard let syncItem = syncItems.first else {
@@ -77,10 +80,13 @@ public extension SyncStorageManager {
             syncItem.filename = createdItem.filename
             syncItem.location = createdItem.location
             syncItem.mimeType = createdItem.mimeType
+            if let fileSize = createdItem.fileSize {
+                syncItem.fileSize = NSNumber(value: fileSize)
+            }
             syncItem.state = createdItem.state
             syncItem.fileProviderOperation = createdItem.fileProviderOperation
             syncItem.errorDescription = createdItem.description
-            try moc.saveWithParentLinkCheck()
+            try moc.saveOrRollback()
         }
     }
 
@@ -94,11 +100,14 @@ public extension SyncStorageManager {
             syncItem.filename = item.filename
             syncItem.location = item.location
             syncItem.mimeType = item.mimeType
+            if let fileSize = item.fileSize {
+                syncItem.fileSize = NSNumber(value: fileSize)
+            }
             syncItem.fileProviderOperation = item.fileProviderOperation
             syncItem.state = item.state
             syncItem.errorDescription = item.description
 
-            try moc.saveWithParentLinkCheck()
+            try moc.saveOrRollback()
             return syncItem
         }
     }
@@ -116,7 +125,7 @@ public extension SyncStorageManager {
                 for oldItem in oldSyncItems {
                     moc.delete(oldItem)
                 }
-                try moc.saveWithParentLinkCheck()
+                try moc.saveOrRollback()
             }
             return oldSyncItems
         }
@@ -148,7 +157,7 @@ public extension SyncStorageManager {
             for item in items {
                 moc.delete(item)
             }
-            try moc.saveWithParentLinkCheck()
+            try moc.saveOrRollback()
         }
     }
 
@@ -159,7 +168,7 @@ public extension SyncStorageManager {
             for item in items {
                 moc.delete(item)
             }
-            try moc.saveWithParentLinkCheck()
+            try moc.saveOrRollback()
         }
     }
 }

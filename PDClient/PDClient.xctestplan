@@ -1,0 +1,31 @@
+{
+  "configurations" : [
+    {
+      "id" : "4D4B13AA-AF23-4856-8303-1DE6801EA2C4",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "PDClientIntegrationTests",
+        "name" : "PDClientIntegrationTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "PDClientUnitTests",
+        "name" : "PDClientUnitTests"
+      }
+    }
+  ],
+  "version" : 1
+}

@@ -31,13 +31,15 @@ class TreeParsingOperation<ReturnType>: SynchronousOperation, OperationWithProgr
     }()
     
     internal init(node: Folder,
-                  cloudSlot: CloudSlot,
+                  cloudSlot: CloudSlotProtocol,
+                  storage: StorageManager,
                   enumeration: @escaping Enumeration,
                   endpointFactory: EndpointFactory,
                   completion: @escaping Completion) {
         self.node = node
         self.enumeration = enumeration
         self.cloudSlot = cloudSlot
+        self.storage = storage
         self.endpointFactory = endpointFactory
         self.completion = completion
 
@@ -49,7 +51,8 @@ class TreeParsingOperation<ReturnType>: SynchronousOperation, OperationWithProgr
     fileprivate var node: Folder
     fileprivate var output: ReturnType!
     fileprivate var enumeration: Enumeration?
-    fileprivate weak var cloudSlot: CloudSlot!
+    fileprivate weak var cloudSlot: CloudSlotProtocol!
+    fileprivate weak var storage: StorageManager!
     fileprivate let endpointFactory: EndpointFactory
     
     lazy var progress: Progress = {
@@ -121,7 +124,7 @@ class DownloadTreeOperation: TreeParsingOperation<Folder> {
                     // need to download only files that are not downloaded yet
                     file.activeRevision?.blocksAreValid() != true
                 }.map { file in
-                    DownloadFileOperation(file, cloudSlot: self.cloudSlot, endpointFactory: self.endpointFactory) { [weak self] in
+                    DownloadFileOperation(file, cloudSlot: self.cloudSlot, endpointFactory: self.endpointFactory, storage: self.storage) { [weak self] in
                         // remember error or execute enumeration block
                         switch $0 {
                         case .success(let node):
@@ -150,7 +153,8 @@ class ScanTreesOperation: TreeParsingOperation<[Node]> {
     private let nodes: [Folder]
     
     init(folders: [Folder],
-         cloudSlot: CloudSlot,
+         cloudSlot: CloudSlotProtocol,
+         storage: StorageManager,
          enumeration: @escaping TreeParsingOperation.Enumeration,
          endpointFactory: EndpointFactory,
          completion: @escaping TreeParsingOperation<[Node]>.Completion) {
@@ -158,7 +162,7 @@ class ScanTreesOperation: TreeParsingOperation<[Node]> {
             fatalError("This operation must be called with at least a single node")
         }
         self.nodes = folders
-        super.init(node: node, cloudSlot: cloudSlot, enumeration: enumeration, endpointFactory: endpointFactory, completion: completion)
+        super.init(node: node, cloudSlot: cloudSlot, storage: storage, enumeration: enumeration, endpointFactory: endpointFactory, completion: completion)
         self.output = []
         internalQueue.maxConcurrentOperationCount = 6
     }

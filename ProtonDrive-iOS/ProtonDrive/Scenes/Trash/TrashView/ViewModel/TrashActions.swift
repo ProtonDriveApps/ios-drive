@@ -17,6 +17,7 @@
 
 import SwiftUI
 import PDCore
+import PDLocalization
 
 enum NodeOperationType {
     case single(id: NodeIdentifier, type: NodeType)
@@ -36,65 +37,61 @@ enum NodeOperationType {
 
     var restoreText: String {
         switch self {
-        case .single(_, let nodetype):
-            return "Restore \(nodetype.type)"
-        case .all(let ids, let nodetype):
-            let begining = ids.count > 1 ? "Restore all" : "Restore"
-            return "\(begining) \(nodetype.type)\(ids.ending)"
-        case .multiple(let ids, let nodetype):
-            return "Restore selected \(nodetype.type)\(ids.ending)"
+        case .single(_, let nodeType):
+            return Localization.trash_action_restore(type: nodeType.type)
+        case .all(let ids, let nodeType):
+            if ids.count > 1 {
+                return nodeType.restoreAllText
+            } else {
+                return Localization.trash_action_restore(type: nodeType.type)
+            }
+        case .multiple(let ids, let nodeType):
+            let type = nodeType.pluralTypesWith(count: ids.count)
+            return Localization.trash_action_restore_selected(type: type)
         }
     }
 
     var deleteText: String {
         switch self {
         case .single:
-            return "Delete"
+            return Localization.general_delete
         case .all:
-            return "Empty Trash"
+            return Localization.trash_action_empty_trash
         case .multiple:
-            return "Delete"
+            return Localization.general_delete
         }
     }
 
     var deleteConfirmationTitle: String {
         switch self {
-        case .single(_, let nodetype):
-            return "\(nodetype.rawValue) will be deleted permanently. \nDelete anyway?"
-        case .all(let ids, let nodetype):
-            return manyConfirmationTitle(ids: ids, type: nodetype)
-        case .multiple(let ids, let nodetype):
-            return manyConfirmationTitle(ids: ids, type: nodetype)
+        case .single(_, let nodeType):
+            let type = nodeType.type.capitalized
+            return Localization.trash_action_delete_permanently_confirmation_title(type: type)
+        case .all(let ids, let nodeType):
+            let type = nodeType.pluralTypesWith(count: ids.count)
+            return Localization.trash_action_delete_permanently_confirmation_title(type: type)
+        case .multiple(let ids, let nodeType):
+            let type = nodeType.pluralTypesWith(count: ids.count)
+            return Localization.trash_action_delete_permanently_confirmation_title(type: type)
         }
-    }
-
-    private func manyConfirmationTitle(ids: [NodeIdentifier], type: NodeType) -> String {
-        "\(type.rawValue)\(ids.ending) will be deleted permanently. \nDelete anyway?"
     }
 
     var deleteConfirmationButtonText: String {
         switch self {
-        case .single(_, let nodetype):
-            return "Delete \(nodetype.type)"
-        case .all(let ids, let nodetype):
-            return manyDeletionButtonText(ids: ids, type: nodetype)
-        case .multiple(let ids, let nodetype):
-            return manyDeletionButtonText(ids: ids, type: nodetype)
+        case .single(_, let nodeType):
+            let type = nodeType.type
+            return Localization.trash_action_delete_file_button(type: type)
+        case .all(let ids, let nodeType):
+            let type = nodeType.pluralTypesWith(count: ids.count)
+            return Localization.trash_action_delete_file_button(type: type)
+        case .multiple(let ids, let nodeType):
+            let type = nodeType.pluralTypesWith(count: ids.count)
+            return Localization.trash_action_delete_file_button(type: type)
         }
-    }
-
-    private func manyDeletionButtonText(ids: [NodeIdentifier], type: NodeType) -> String {
-        "Delete \(ids.count) \(type.type)" + ids.ending
     }
 }
 
 enum TrashItemAction {
     case delete
     case restore
-}
-
-private extension Array where Element == NodeIdentifier {
-    var ending: String {
-        count > 1 ? "s" : ""
-    }
 }

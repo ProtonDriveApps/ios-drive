@@ -19,6 +19,7 @@ import SwiftUI
 import PDCore
 import ProtonCoreUIFoundations
 import PDUIComponents
+import PDLocalization
 
 struct MenuView: View {
     @ObservedObject var vm: MenuViewModel
@@ -60,6 +61,12 @@ struct MenuView: View {
                 .background(ColorProvider.SidebarBackground)
                 .onTapGesture { vm.go(to: .myFiles) }
 
+            if vm.hasSharing {
+                MenuCell(item: .sharedByMe)
+                    .background(ColorProvider.SidebarBackground)
+                    .onTapGesture { vm.go(to: .sharedByMe) }
+            }
+
             MenuCell(item: .trash)
                 .background(ColorProvider.SidebarBackground)
                 .onTapGesture { vm.go(to: .trash) }
@@ -72,7 +79,7 @@ struct MenuView: View {
 
     private var moreSection: some View {
         VStack(alignment: .leading) {
-            sectionHeader(title: "More")
+            sectionHeader(title: Localization.menu_section_title_more)
             
             #if HAS_PAYMENTS
             
@@ -123,7 +130,7 @@ struct MenuView: View {
 
     private var storageSection: some View {
         VStack(alignment: .leading) {
-            sectionHeader(title: "Storage")
+            sectionHeader(title: Localization.menu_section_title_storage)
 
             // Online storage
             StorageMenuSection(
@@ -143,7 +150,7 @@ struct MenuView: View {
     @ViewBuilder
     private var storageButton: some View {
         if vm.isStorageButtonAvailable {
-            GradientButton(title: "Get more storage") {
+            GradientButton(title: Localization.general_get_more_storage) {
                 vm.go(to: .servicePlans)
             }
             .accessibilityIdentifier("MenuView.storageButton")

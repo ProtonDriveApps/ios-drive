@@ -27,6 +27,6 @@ final class PhotosTaskSchedulerEnabledPolicy: TaskSchedulerPolicy {
     }
 
     var canSchedule: Bool {
-        return featureFlagStore.isFeatureEnabled(.photosBackgroundSyncEnabled) && !lockPolicy.isProtectionEnabled()
+        return !lockPolicy.isProtectionEnabled()
     }
 }

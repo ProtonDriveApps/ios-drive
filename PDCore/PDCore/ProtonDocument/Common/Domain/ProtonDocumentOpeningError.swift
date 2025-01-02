@@ -24,6 +24,5 @@ public enum ProtonDocumentOpeningError: Error, CaseIterable {
     case missingDirectShare
     case missingAddressId
     case missingAddress
-    case missingVolume
     case notSignedIn
 }

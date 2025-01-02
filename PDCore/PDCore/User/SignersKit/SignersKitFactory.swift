@@ -18,8 +18,11 @@
 import Foundation
 
 // TODO: Rename to SignersKitFactory once the current one is removed from the project
+
+/// We should only sign with the principal key of the current address  when creating a new volume
 public protocol SignersKitFactoryProtocol {
     func make(forSigner signer: Signer) throws -> SignersKit
+    func make(forAddressID addressID: String) throws -> SignersKit
 }
 
 /// Wether to use the current main address, or some specified address
@@ -27,7 +30,7 @@ public protocol SignersKitFactoryProtocol {
 ///  - case address(String): Build a SignersKit object using the specified email.
 public enum Signer {
     case main
-    case address(String)
+    case address(String) // Should be removed
 }
 
 extension SessionVault: SignersKitFactoryProtocol {
@@ -44,6 +47,8 @@ extension SessionVault: SignersKitFactoryProtocol {
 
     }
 
+    /// Deprecated in iOS: `getSignerAddress( .address())`
+    ///  Use with main only in Volume creation
     private func getSignerAddress(_ signer: Signer) throws -> Address {
         switch signer {
         case .main:
@@ -54,22 +59,16 @@ extension SessionVault: SignersKitFactoryProtocol {
             return address
         }
     }
-}
 
-@available(*, deprecated, message: "Use directly SessionVault through SignersKitFactoryProtocol")
-public final class SignersKitFactory {
-    private let sessionVault: SessionVault
+    public func make(forAddressID addressID: String) throws -> SignersKit {
+        guard let address = getAddress(withId: addressID) else { throw Errors.addressByIDNotFound }
 
-    init(sessionVault: SessionVault) {
-        self.sessionVault = sessionVault
-    }
+        // The first key is the current primary
+        guard let addressKey = address.activeKeys.first else {
+            throw Errors.addressHasNoActiveKeys
+        }
+        let addressPassphrase = try addressPassphrase(for: addressKey)
 
-    func make(signatureAddress: String) throws -> SignersKit {
-        try SignersKit(signatureAddress: signatureAddress, sessionVault: sessionVault)
-    }
-
-    /// Use it only at the beginning
-    func make() throws -> SignersKit {
-        try SignersKit(sessionVault: sessionVault)
+        return SignersKit(address: address, addressKey: addressKey, addressPassphrase: addressPassphrase)
     }
 }

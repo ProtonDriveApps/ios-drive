@@ -18,13 +18,14 @@
 import UIKit
 import Photos
 import ProtonCoreUIFoundations
+import PDLocalization
 
 /// Custom activity for `UIActivityViewController`
 /// Because `UIActivityViewController` can't save `PHLivePhoto` (It throws error)
 /// Have to use `PHPhotoLibrary` to assemble image and video data manually
 final class SaveLivePhotoActivity: UIActivity {
     override var activityType: UIActivity.ActivityType? { .saveLivePhoto }
-    override var activityTitle: String? { "Save Live Photo" }
+    override var activityTitle: String? { Localization.share_action_save_live_photo }
     override var activityImage: UIImage? { IconProvider.arrowDownToSquare }
     
     let imageURL: URL

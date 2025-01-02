@@ -27,9 +27,11 @@ public final class SuspendableFileUploader: FileUploader, NetworkConstrained {
     var isNetworkReachable = true
 
     weak var fileUploader: FileUploader?
+    weak var progress: Progress?
 
-    public required init(uploader: FileUploader) {
+    public required init(uploader: FileUploader, progress: Progress?) {
         self.fileUploader = uploader
+        self.progress = progress
         self.networkMonitor.execute()
         super.init(fileUploadFactory: uploader.fileUploadFactory,
                    filecleaner: uploader.filecleaner,
@@ -78,7 +80,7 @@ public final class SuspendableFileUploader: FileUploader, NetworkConstrained {
             let uploadID = draft.uploadID
             let clientUID = file.clientUID
 
-            let shareID = file.shareID
+            let shareID = file.shareId
             guard let parentID = file.parentLink?.id else {
                 throw file.invalidState("The file doesn't have a parentID")
             }
@@ -127,7 +129,13 @@ public final class SuspendableFileUploader: FileUploader, NetworkConstrained {
 
             draft.file.changeUploadingState(to: .uploading)
             addOperation(operation)
-            return operation.progress
+            let operationProgress = operation.progress
+            operationProgress.kind = .file
+            operationProgress.fileOperationKind = .uploading
+            guard let progress else { return operationProgress }
+            operationProgress.totalUnitsOfWork = progress.totalUnitsOfWork
+            progress.addChild(operationProgress, pending: progress.totalUnitsOfWork)
+            return operationProgress
         }
     }
 
@@ -139,7 +147,7 @@ public final class SuspendableFileUploader: FileUploader, NetworkConstrained {
         }
     }
 
-    override public func deleteUploadingFile(_ file: File) {
-        fileUploader?.deleteUploadingFile(file)
+    override public func deleteUploadingFile(_ file: File, error: PhotosFailureUserError? = nil) {
+        fileUploader?.deleteUploadingFile(file, error: error)
     }
 }

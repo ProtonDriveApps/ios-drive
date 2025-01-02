@@ -65,15 +65,15 @@ final class CachingPhotoPreviewDetailShareController: PhotoPreviewDetailShareCon
     }
     
     private func coordinateToShare() {
-        guard 
-            let content,
-            content.couldBeLivePhoto,
-            let videoURL = content.childrenURLs.first
-        else {
+        guard let content else { return }
+        
+        if content.couldBeLivePhoto, let videoURL = content.childrenURLs.first {
+            coordinator.openShareLivePhoto(imageURL: content.url, videoURL: videoURL)
+        } else if content.couldBeBurst {
+            coordinator.openShareBurst(urls: [content.url] + content.childrenURLs)
+        } else {
             shareURL()
-            return
         }
-        coordinator.openShareLivePhoto(imageURL: content.url, videoURL: videoURL)
     }
     
     private func shareURL() {

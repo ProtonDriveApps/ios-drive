@@ -21,6 +21,7 @@ import PDCore
 import PDUIComponents
 import CoreServices
 import AVFoundation
+import PDLocalization
 
 struct CameraPicker: UIViewControllerRepresentable {
     typealias Controller = UIImagePickerController
@@ -39,7 +40,7 @@ struct CameraPicker: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> Controller {
         let imagePickerController = DriveImagePickerController()
         imagePickerController.delegate = context.coordinator
-        imagePickerController.mediaTypes = [kUTTypeImage as String, kUTTypeMovie as String]
+        imagePickerController.mediaTypes = [UTType.image.identifier, UTType.movie.identifier]
         imagePickerController.sourceType = .camera
         imagePickerController.cameraCaptureMode = .photo
         imagePickerController.modalPresentationStyle = .fullScreen
@@ -135,11 +136,15 @@ private final class DriveImagePickerController: UIImagePickerController {
     }
 
     func presentAlert() {
-        let alert = UIAlertController(title: #"“ProtonDrive” Would Like to Access the Camera"#, message: "Change app permissions in Settings", preferredStyle: UIAlertController.Style.alert)
+        let alert = UIAlertController(
+            title: Localization.camera_permission_alert_title,
+            message: Localization.camera_permission_alert_message,
+            preferredStyle: UIAlertController.Style.alert
+        )
 
-        alert.addAction(UIAlertAction(title: "Cancel", style: UIAlertAction.Style.cancel, handler: nil))
+        alert.addAction(UIAlertAction(title: Localization.general_cancel, style: UIAlertAction.Style.cancel, handler: nil))
 
-        alert.addAction(UIAlertAction(title: "Settings", style: UIAlertAction.Style.default, handler: { _ in
+        alert.addAction(UIAlertAction(title: Localization.general_settings, style: UIAlertAction.Style.default, handler: { _ in
             UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!, options: [:], completionHandler: nil)
         }))
 

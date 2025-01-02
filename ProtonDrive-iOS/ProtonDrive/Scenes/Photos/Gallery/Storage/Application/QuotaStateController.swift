@@ -59,12 +59,12 @@ final class UserQuotaStateController: QuotaStateController {
 
     private func mapQuota(_ quota: Quota) -> QuotaState? {
         let ratio = Double(quota.used) / Double(quota.total)
-        if quota.available < Constants.minimalSpaceForAllowingUpload {
+        if quota.available < Constants.Photos.minimalSpaceForAllowingUpload {
             return QuotaState.full
         } else if ratio > 0.8 {
             return QuotaState.eightyPercentFull
-        } else if ratio >= 0.5 && !quota.isPaid {
-            // Show fifty percent only to free users
+        } else if ratio >= 0.5 && quota.total < Constants.Photos.maximalSpaceForShowingQuotaWarning  {
+            // Show fifty percent only to users with small total space.
             return QuotaState.fiftyPercentFull
         } else {
             return nil

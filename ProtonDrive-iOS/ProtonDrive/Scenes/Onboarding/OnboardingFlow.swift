@@ -19,6 +19,7 @@ import SwiftUI
 import PDUIComponents
 import ProtonCoreUIFoundations
 import PDCore
+import PDLocalization
 
 struct OnboardingFlow: View {
     @Environment(\.presentationMode) private var presentationMode
@@ -59,7 +60,7 @@ struct OnboardingFlow: View {
             HStack {
                 Spacer()
                 
-                LightButton(title: "Skip", color: ColorProvider.BrandNorm, font: .body, action: dismiss)
+                LightButton(title: Localization.general_skip, color: ColorProvider.BrandNorm, font: .body, action: dismiss)
             }
             
             Spacer()
@@ -72,12 +73,12 @@ struct OnboardingFlow: View {
             Spacer()
             
             if isLast {
-                BlueRectButton(title: "Get started") {
+                BlueRectButton(title: Localization.onboarding_button_get_started) {
                     dismiss()
                 }
                 .cornerRadius(8)
             } else {
-                BlueRectButton(title: "Next") {
+                BlueRectButton(title: Localization.onboarding_button_next) {
                     withAnimation {
                         currentPage += 1
                     }

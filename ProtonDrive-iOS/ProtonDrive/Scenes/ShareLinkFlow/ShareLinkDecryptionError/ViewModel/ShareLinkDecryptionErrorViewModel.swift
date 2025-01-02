@@ -18,6 +18,7 @@
 import Foundation
 import PDCore
 import Combine
+import PDLocalization
 
 final class ShareLinkDecryptionErrorViewModel: ObservableObject {
     @Published var attemptDeleteLink = false
@@ -40,15 +41,15 @@ final class ShareLinkDecryptionErrorViewModel: ObservableObject {
     }
 
     var stopSharingAlertTitle: String {
-        "Stop sharing"
+        Localization.stop_sharing_alert_title
     }
 
     var stopSharingAlertMessage: String {
-        "This will delete the link and remove access to your file or folder for anyone with the link. You can’t undo this action."
+        Localization.stop_sharing_success_text
     }
 
     var stopSharingButton: String {
-        "Stop sharing"
+        Localization.stop_sharing_alert_title
     }
 
     func deleteLink() {
@@ -57,7 +58,7 @@ final class ShareLinkDecryptionErrorViewModel: ObservableObject {
             switch result {
             case.success:
                 self?.isScreenClosed = true
-                NotificationCenter.default.postBanner(.success("Sharing removed", delay: .delayed))
+                NotificationCenter.default.postBanner(.success(Localization.stop_sharing_success_text, delay: .delayed))
 
             case .failure(let error):
                 NotificationCenter.default.postBanner(.failure(error, delay: .immediate))

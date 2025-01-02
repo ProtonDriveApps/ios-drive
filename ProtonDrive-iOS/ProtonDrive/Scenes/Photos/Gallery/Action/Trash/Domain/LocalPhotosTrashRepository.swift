@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import PDCore
+
 protocol LocalPhotosTrashRepository {
-    func trash(with ids: [String]) async throws
+    func trash(with identifiers: [NodeIdentifier]) async throws
 }

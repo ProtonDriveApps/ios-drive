@@ -22,8 +22,8 @@ struct PhotosProcessingFactory {
     func makeProcessingController(dependencies: PhotosProcessingContainer.Dependencies) -> PhotosProcessingController {
         let factory = makeOperationsFactory(dependencies: dependencies)
         let processingResource = ConcretePhotosProcessingQueueResource(factory: factory)
-        let managedObjectContext = dependencies.tower.storage.newBackgroundContext()
-        let observer = FetchedResultsControllerObserver(controller: dependencies.tower.storage.subscriptionToPrimaryUploadingPhotos(moc: managedObjectContext))
+        let subscriptionController = dependencies.tower.storage.subscriptionToMyPrimaryUploadingPhotos(moc: dependencies.photosManagedObjectContext)
+        let observer = FetchedResultsControllerObserver(controller: subscriptionController)
         let repository = CoreDataPhotosUploadingCountRepository(observer: observer)
         let batchAvailableController = ConcretePhotosProcessingBatchAvailableController(repository: repository)
         let availableController = ConcretePhotosProcessingAvailableController(

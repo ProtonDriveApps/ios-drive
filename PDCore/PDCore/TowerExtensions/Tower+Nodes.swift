@@ -64,17 +64,23 @@ extension Tower {
         }
     }
     
+    @available(*, deprecated, message: "Wrap the functionality in a standalone object, this should not be responsibility of Tower")
     public func rename(node: NodeIdentifier, cleartextName newName: String, handler: @escaping (Result<Node, Error>) -> Void) {
         Task {
             do {
-                guard let node = storage.fetchNode(id: node, moc: storage.backgroundContext) else {
+                let managedObjectContext = storage.backgroundContext
+                guard let node = storage.fetchNode(id: node, moc: managedObjectContext) else {
                     return handler(.failure(NSError(domain: "Failed to find Node", code: 0, userInfo: nil)))
+                }
+
+                let isProtonDocument = managedObjectContext.performAndWait {
+                    (node as? File)?.isProtonDocument ?? false
                 }
 
                 let newMime: String?
                 if node is Folder {
                     newMime = Folder.mimeType
-                } else if newName.fileExtension().isEmpty {
+                } else if newName.fileExtension().isEmpty || isProtonDocument {
                     // Preserve the previous MIME type in case:
                     // 1. The user removed it when renaming; or
                     // 2. It's a Proton Document, which doesn't have an extension on other platforms
@@ -98,7 +104,7 @@ extension Tower {
             nodes.forEach { $0.isFavorite = favorite }
             
             do {
-                try self.storage.backgroundContext.saveWithParentLinkCheck()
+                try self.storage.backgroundContext.saveOrRollback()
                 handler(.success(nodes))
             } catch let error {
                 handler(.failure(error))
@@ -117,7 +123,7 @@ extension Tower {
             }
 
             do {
-                try self.storage.backgroundContext.saveWithParentLinkCheck()
+                try self.storage.backgroundContext.saveOrRollback()
                 handler(.success(nodes))
             } catch {
                 Log.error("Failed marking nodes as offline available \(error.localizedDescription)", domain: .offlineAvailable)

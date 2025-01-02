@@ -34,6 +34,8 @@ public class Encryptor {
     typealias EncryptedBinary = CoreEncryptor.EncryptedBlock
     typealias Errors = CoreEncryptor.Errors
 
+    public init() {}
+
     static func hmac(filename: String, parentHashKey: String) throws -> String {
         try CoreEncryptor.hmac(filename: filename, parentHashKey: parentHashKey)
     }
@@ -75,6 +77,11 @@ public class Encryptor {
 
     static func encryptSessionKey(_ sessionKey: CryptoSessionKey, withKey key: String) throws -> String {
         try CoreEncryptor.encryptSessionKey(sessionKey, withKey: key)
+    }
+    
+    static func encryptSessionKey(sessionKey: SessionKey, with key: String) throws -> String {
+        let sessionKey = try unwrap { CryptoGo.CryptoNewSessionKeyFromToken(sessionKey, CryptoGo.ConstantsAES256) }
+        return try encryptSessionKey(sessionKey, withKey: key)
     }
 
     // swiftlint:disable function_parameter_count
@@ -184,13 +191,6 @@ public class Encryptor {
 }
 
 extension Encryptor {
-
-    struct KeyCredentials {
-        let key: ArmoredKey
-        let passphrase: ArmoredMessage
-        let signature: ArmoredSignature
-        let passphraseRaw: Passphrase
-    }
 
     struct NodeUpdatedCredentials {
         public var nodePassphrase, signature: String
@@ -329,4 +329,55 @@ extension Encryptor {
 
 private extension Int64 {
     static var cryptoTime: Int64 { CryptoGo.CryptoGetUnixTime() }
+}
+
+extension Encryptor: EncryptionResource {
+    public func encryptAndSign(_ cleartext: String, key: String, addressPassphrase: String, addressPrivateKey: String) throws -> String {
+        return try Encryptor.encryptAndSign(cleartext, key: key, addressPassphrase: addressPassphrase, addressPrivateKey: addressPrivateKey)
+    }
+
+    public func makeHmac(string: String, hashKey: String) throws -> String {
+        return try Encryptor.hmac(filename: string, parentHashKey: hashKey)
+    }
+    
+    public func generateNodeKeys(addressPassphrase: String, addressPrivateKey: String, parentKey: String) throws -> KeyCredentials {
+        return try Encryptor.generateNodeKeys(addressPassphrase: addressPassphrase, addressPrivateKey: addressPrivateKey, parentKey: parentKey)
+    }
+    
+    public func generateNodeHashKey(nodeKey: String, passphrase: String) throws -> String {
+        return try Encryptor.generateNodeHashKey(nodeKey: nodeKey, passphrase: passphrase)
+    }
+    
+    public func generateContentKeys(nodeKey: ArmoredKey, nodePassphrase: Passphrase) throws -> RevisionContentKeys {
+        return try Encryptor.generateContentKeys(nodeKey: nodeKey, nodePassphrase: nodePassphrase)
+    }
+
+    public func sign(data: Data, addressKey: String, addressPassphrase: String) throws -> String {
+        return try Encryptor.sign(list: data, addressKey: addressKey, addressPassphrase: addressPassphrase)
+    }
+    
+    /// - Returns: Base64 encoded data
+    public func encryptSessionKey(sessionKey: SessionKey, with key: String) throws -> KeyPacket {
+        let sessionKey = try unwrap { CryptoGo.CryptoNewSessionKeyFromToken(sessionKey, CryptoGo.ConstantsAES256) }
+        let keyPacket = try Self.encryptSessionKey(sessionKey, withKey: key)
+        return try unwrap { Data(base64Encoded: keyPacket) }
+    }
+    
+    public func sign(
+        _ input: KeyPacket,
+        context: String,
+        privateKey: ArmoredKey,
+        passphrase: Passphrase
+    ) throws -> Data {
+        return try DriveCrypto.sign(input, context: context, privateKey: privateKey, passphrase: passphrase)
+    }
+    
+    public func sign(
+        text: String,
+        context: String,
+        privateKey: ArmoredKey,
+        passphrase: Passphrase
+    ) throws -> Data {
+        return try DriveCrypto.sign(text, context: .init(value: context, isCritical: true), privateKey: privateKey, passphrase: passphrase)
+    }
 }

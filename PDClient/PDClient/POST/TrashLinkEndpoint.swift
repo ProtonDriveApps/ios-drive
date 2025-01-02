@@ -77,16 +77,16 @@ struct TrashLinkEndpoint: Endpoint {
 }
 
 public struct MultipleLinkResponse: Codable {
-    public struct Item: Codable {
+    public let code: Int
+    public let responses: [LinkResponse]
+
+    public struct LinkResponse: Codable {
         public let linkID: String
-        public let response: Response
+        public let response: ErrorResponse
     }
 
-    public struct Response: Codable {
+    public struct ErrorResponse: Codable {
         public let code: Int
         public let error: String?
     }
-
-    public let code: Int
-    public let responses: [Item]
 }

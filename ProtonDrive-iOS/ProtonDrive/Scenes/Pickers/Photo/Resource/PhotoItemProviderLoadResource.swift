@@ -16,7 +16,6 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import os.log
 import PDCore
 import Photos
 
@@ -24,9 +23,8 @@ protocol ItemProviderLoadResource {
     func execute(with itemProvider: NSItemProvider, completion: @escaping (URLResult) -> Void)
 }
 
-final class PhotoItemProviderLoadResource: ItemProviderLoadResource, LogObject {
+final class PhotoItemProviderLoadResource: ItemProviderLoadResource {
     typealias URLErrorCompletion = ((URL?, Error?)) -> Void
-    static var osLog = OSLog(subsystem: "ProtonDrive", category: "PhotoItemProviderResource")
 
     func execute(with itemProvider: NSItemProvider, completion: @escaping (URLResult) -> Void) {
         guard let typeIdentifier = itemProvider.registeredTypeIdentifiers.first else  {

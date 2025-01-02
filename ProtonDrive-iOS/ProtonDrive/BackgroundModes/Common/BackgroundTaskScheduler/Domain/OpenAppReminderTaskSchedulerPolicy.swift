@@ -26,15 +26,15 @@ final class OpenAppReminderTaskSchedulerPolicy: TaskSchedulerPolicy {
     }
 
     var canSchedule: Bool {
-        isBackupUserEnabled && isPhotosFeatureEnabled
+        isBackupUserEnabled && isPhotosUploadEnabled
     }
 
     private var isBackupUserEnabled: Bool {
         localSettings.isPhotosBackupEnabled
     }
 
-    private var isPhotosFeatureEnabled: Bool {
-        localSettings.photosEnabled && !localSettings.photosUploadDisabled
+    private var isPhotosUploadEnabled: Bool {
+        !localSettings.photosUploadDisabled
     }
 
 }

@@ -33,14 +33,16 @@ public struct ExistingCompound {
 }
 
 public struct RawExistingCompound {
+    let volumeID: String
     let shareID: String
     let mainPhotoID: String
     let assets: PhotoAssets
     
-    public init(shareID: String, mainPhotoID: String, assets: PhotoAssets) {
+    public init(shareID: String, mainPhotoID: String, assets: PhotoAssets, volumeID: String) {
         self.shareID = shareID
         self.mainPhotoID = mainPhotoID
         self.assets = assets
+        self.volumeID = volumeID
     }
 }
 
@@ -54,7 +56,7 @@ public struct RemoteCachingExistingPhotoCompoundRepository: ExistingPhotoCompoun
     }
     
     public func getExistingCompound(_ compound: RawExistingCompound) async throws -> ExistingCompound {
-        let id = NodeIdentifier(compound.mainPhotoID, compound.shareID)
+        let id = NodeIdentifier(compound.mainPhotoID, compound.shareID, compound.volumeID)
         try await nodeCacheService.fetchAndCache(id)
         let photo = try cachedPhotoRepository.getPhoto(id)
         return ExistingCompound(mainPhoto: photo, assets: compound.assets)

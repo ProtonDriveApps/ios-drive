@@ -85,8 +85,7 @@ class ThumbnailRevisionEncryptor: RevisionEncryptor {
             let revision = draft.revision.in(moc: self.moc)
             revision.removeOldThumbnails(in: self.moc)
             
-            let thumbnail = makeThumbnail(from: thumbnailData, type: .default)
-            
+            let thumbnail = makeThumbnail(from: thumbnailData, type: .default, volumeID: draft.volumeID)
             revision.addToThumbnails(thumbnail)
             
             if self.isCancelled {
@@ -111,19 +110,28 @@ class ThumbnailRevisionEncryptor: RevisionEncryptor {
             throw ThumbnailGenerationError.noSignatureEmailInFile
         }
         let nodePassphrase = try file.decryptPassphrase()
+#if os(macOS)
+        // TODO: Conceptually it should we should use draft.revision.signatureAddress, in this case is the same because the creator of the file is the same as the creator of the revision, and both are created at the same time
+        let signersKit = try signersKitFactory.make(forSigner: .address(signatureEmail))
+#else
+        let addressID = try file.getContextShareAddressID()
+        let signersKit = try signersKitFactory.make(forAddressID: addressID)
+#endif
         return EncryptionMetadata(
             nodeKey: file.nodeKey,
             contentKeyPacket: contentKeyPacket,
             passphrase: nodePassphrase,
-            signatureEmail: signatureEmail
+            signatureEmail: signatureEmail,
+            signersKit: signersKit
         )
     }
 
-    func makeThumbnail(from thumbnailData: EncryptedThumbnailData, type: ThumbnailType) -> Thumbnail {
+    func makeThumbnail(from thumbnailData: EncryptedThumbnailData, type: ThumbnailType, volumeID: String) -> Thumbnail {
         let coreDataThumbnail = Thumbnail(context: self.moc)
         coreDataThumbnail.encrypted = thumbnailData.encrypted
         coreDataThumbnail.sha256 = thumbnailData.hash
         coreDataThumbnail.type = type
+        coreDataThumbnail.volumeID = volumeID
         return coreDataThumbnail
     }
 
@@ -169,21 +177,18 @@ class ThumbnailRevisionEncryptor: RevisionEncryptor {
     }
 
     func encrypt(clearThumbnail thumbnail: Data, encryptionMetadata: EncryptionMetadata) throws -> Encryptor.EncryptedBinary {
-        // TODO: Conceptually it should we should use draft.revision.signatureAddress, in this case is the same because the creator of the file is the same as the creator of the revision, and both are created at the same time
-        let signersKit = try signersKitFactory.make(forSigner: .address(encryptionMetadata.signatureEmail))
-
         return try Encryptor.encryptAndSignBinary(
             clearData: thumbnail,
             contentKeyPacket: encryptionMetadata.contentKeyPacket,
             privateKey: encryptionMetadata.nodeKey,
             passphrase: encryptionMetadata.passphrase,
-            addressKey: signersKit.addressKey.privateKey,
-            addressPassphrase: signersKit.addressPassphrase
+            addressKey: encryptionMetadata.signersKit.addressKey.privateKey,
+            addressPassphrase: encryptionMetadata.signersKit.addressPassphrase
         )
     }
 }
 
-enum ThumbnailGenerationError: String, LocalizedError {
+public enum ThumbnailGenerationError: String, LocalizedError {
     case noFileKeyPacket
     case generation
     case compression

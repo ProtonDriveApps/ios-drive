@@ -1,0 +1,22 @@
+{
+  "images" : [
+    {
+      "filename" : "Property 1=Message included illustration.svg",
+      "idiom" : "universal"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "Property 1=Message included illustration-2.svg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

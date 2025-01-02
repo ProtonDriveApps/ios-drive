@@ -18,8 +18,8 @@
 import Foundation
 import CoreData
 
-extension Revision {
-    
+extension Revision: VolumeUnique {
+
     @nonobjc public class func fetchRequest() -> NSFetchRequest<Revision> {
         return NSFetchRequest<Revision>(entityName: "Revision")
     }
@@ -27,6 +27,7 @@ extension Revision {
     @NSManaged public var signatureAddress: String?
     @NSManaged public var created: Date?
     @NSManaged public var id: String
+    @NSManaged public var volumeID: String
     @NSManaged public var manifestSignature: String?
     @NSManaged public var size: Int
     @NSManaged public var file: File
@@ -141,11 +142,11 @@ extension Revision {
 
 public extension Revision {
     var identifier: RevisionIdentifier {
-        RevisionIdentifier(share: file.shareID, file: file.id, revision: id)
+        RevisionIdentifier(share: file.shareId, file: file.id, revision: id, volume: volumeID)
     }
 }
 
 // MARK: Transient properties
 public extension Revision {
-    @NSManaged internal var clearXAttributes: ExtendedAttributes?
+    @NSManaged var clearXAttributes: ExtendedAttributes?
 }

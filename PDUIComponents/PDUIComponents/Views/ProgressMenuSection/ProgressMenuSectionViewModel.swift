@@ -15,10 +15,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import UIKit
+import Foundation
 import Combine
 import ProtonCoreUIFoundations
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
+#if os(iOS)
 public class ProgressMenuSectionViewModelGeneric<ProgressProviderType>: ObservableObject where ProgressProviderType: NSObject, ProgressProviderType: ProgressFractionCompletedProvider {
    
     enum State {
@@ -71,3 +76,4 @@ public class ProgressMenuSectionViewModelGeneric<ProgressProviderType>: Observab
 }
 
 extension Progress: ProgressFractionCompletedProvider {}
+#endif

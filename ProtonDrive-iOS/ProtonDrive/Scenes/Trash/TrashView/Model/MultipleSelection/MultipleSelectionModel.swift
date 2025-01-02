@@ -62,7 +62,6 @@ final class MultipleSelectionModel<Identifier: Hashable> {
     }
 
     func hideTabBar(_ hidden: Bool) {
-        let userInfo: [String: Bool] = ["tabBarHidden": hidden]
-        NotificationCenter.default.post(name: FinderNotifications.tabBar.name, object: nil, userInfo: userInfo)
+        NotificationCenter.default.post(name: FinderNotifications.tabBar.name, object: hidden)
     }
 }

@@ -19,15 +19,15 @@ import Foundation
 
 public extension OperationQueue {
 
-    convenience init(maxConcurrentOperation: Int, isSuspended: Bool = false, underlyingQueue: DispatchQueue? = nil) {
-        self.init(isSuspended: isSuspended, underlyingQueue: underlyingQueue)
-        self.maxConcurrentOperationCount = maxConcurrentOperation
-    }
-
-    convenience init(isSuspended: Bool = false, underlyingQueue: DispatchQueue? = nil) {
+    convenience init(maxConcurrentOperation: Int = OperationQueue.defaultMaxConcurrentOperationCount,
+                     isSuspended: Bool = false,
+                     underlyingQueue: DispatchQueue? = nil,
+                     name: String? = nil) {
         self.init()
+        self.maxConcurrentOperationCount = maxConcurrentOperation
         self.isSuspended = isSuspended
         self.underlyingQueue = underlyingQueue
+        self.name = name
     }
 
     static var serial: OperationQueue {

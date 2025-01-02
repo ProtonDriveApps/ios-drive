@@ -19,15 +19,19 @@ import Foundation
 import PDCore
 import Combine
 import PDUIComponents
+import PDLocalization
 
 class NodeCellPlaceholderConfiguration: ObservableObject, NodeCellConfiguration {
-
     var iconName: String
     var name: String
     var isFavorite: Bool = false
-    var isSavedForOffline: Bool = false
-    var isDownloaded: Bool = false
+    var isAvailableOffline: Bool = false
     var isShared: Bool = false
+    var hasDirectShare: Bool = false
+    var isSharedWithMeRoot: Bool = false
+    var isSharedCollaboratively: Bool = false
+    var hasSharing: Bool { featureFlagsController.hasSharing }
+    var creator: String = ""
     var lastModified: Date = .distantPast
     var size: Int = 0
     var isDisabled: Bool = true
@@ -38,17 +42,19 @@ class NodeCellPlaceholderConfiguration: ObservableObject, NodeCellConfiguration 
     var isInProgress: Bool = false
     let progressCompleted: Double = 0
     var progressDirection: ProgressTracker.Direction?
-    var secondLineSubtitle: String { "Unknown" }
+    var secondLineSubtitle: String { Localization.general_unknown }
     var selectionModel: CellSelectionModel?
-    var id: NodeIdentifier = NodeIdentifier("", "")
+    var id: NodeIdentifier = NodeIdentifier("", "", "")
     
     let thumbnailViewModel: ThumbnailImageViewModel?
     let nodeRowActionMenuViewModel: NodeRowActionMenuViewModel? = nil
+    let featureFlagsController: FeatureFlagsControllerProtocol
 
-    init() {
+    init(featureFlagsController: FeatureFlagsControllerProtocol) {
         self.iconName = FileTypeAsset.FileAssetName.unknown.rawValue
         self.name = Self.unknownNamePlaceholder
         self.thumbnailViewModel = nil
+        self.featureFlagsController = featureFlagsController
     }
 
     var nodeType: NodeType { .mix }

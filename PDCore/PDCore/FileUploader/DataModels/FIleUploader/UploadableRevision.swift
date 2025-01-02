@@ -18,7 +18,7 @@
 import Foundation
 import PDClient
 
-struct UploadableRevision: Equatable {
+public struct UploadableRevision: Equatable {
     let shareID: String
     let nodeID: String
     let revisionID: String
@@ -54,7 +54,7 @@ extension Revision {
             throw self.invalidState("The revision should have a valid signer email.")
         }
         return UploadableRevisionIdentifier(
-            shareID: file.shareID,
+            shareID: file.shareId,
             nodeID: file.id,
             revisionID: id,
             signatureEmail: signature

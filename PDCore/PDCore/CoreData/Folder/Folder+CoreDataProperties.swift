@@ -28,7 +28,7 @@ extension Folder {
     @NSManaged public var nodeHashKey: String?
     @NSManaged public var children: Set<Node>
     @NSManaged public var isChildrenListFullyFetched: Bool
-    
+
     public var isRoot: Bool {
         self.directShares.contains(where: \.isMain)
     }
@@ -49,4 +49,19 @@ extension Folder {
     @objc(removeChildren:)
     @NSManaged public func removeFromChildren(_ values: Set<Node>)
 
+}
+
+extension Folder {
+    @objc public func isolateChildrenToPreventCascadeDeletion() {
+        let children = self.children
+
+        for child in children {
+            if child.isSharedWithMeRoot {
+                self.removeFromChildren(child)
+                child.parentLink = nil
+            } else if let childFolder = child as? Folder {
+                childFolder.isolateChildrenToPreventCascadeDeletion()
+            }
+        }
+    }
 }

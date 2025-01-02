@@ -25,6 +25,7 @@ public struct ReportableSyncItem: Identifiable, Hashable, Equatable {
     public let filename: String
     public let location: String?
     public let mimeType: String?
+    public let fileSize: Int?
     public let fileProviderOperation: FileProviderOperation
     public let state: SyncItemState
     public var description: String?
@@ -37,21 +38,30 @@ public struct ReportableSyncItem: Identifiable, Hashable, Equatable {
         self.filename = item.filename ?? ""
         self.location = item.location
         self.mimeType = item.mimeType
+        self.fileSize = item.fileSize?.intValue
         self.fileProviderOperation = item.fileProviderOperation
         self.state = item.state
         self.description = item.errorDescription
     }
 
     // this is the initializer for the file provider side
-    public init(id: String, modificationTime: Date, filename: String?, location: String?, mimeType: String?, operation: FileProviderOperation, state: SyncItemState, description: String? = nil) {
+    public init(id: String, modificationTime: Date, filename: String?, location: String?, mimeType: String?, fileSize: Int?, operation: FileProviderOperation, state: SyncItemState, description: String? = nil) {
         self.id = id
         self.modificationTime = modificationTime
         self.objectIdentifier = ""
         self.filename = filename ?? ""
         self.location = location
         self.mimeType = mimeType
+        self.fileSize = fileSize
         self.fileProviderOperation = operation
         self.state = state
         self.description = description
+    }
+}
+
+public extension ReportableSyncItem {
+
+    var isFolder: Bool {
+        mimeType == Folder.mimeType
     }
 }

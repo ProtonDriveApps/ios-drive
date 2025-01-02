@@ -40,7 +40,9 @@ final class LocalPhotosRepository: PhotosRepository {
         self.mimeTypeResource = mimeTypeResource
         self.offlineAvailableResource = offlineAvailableResource
         subscribeToUpdates()
-        observer.start()
+        backgroundQueue.async { [weak self] in
+            self?.observer.start()
+        }
     }
 
     private func subscribeToUpdates() {
@@ -85,10 +87,12 @@ final class LocalPhotosRepository: PhotosRepository {
         return PhotosSection.Photo(
             id: photo.identifier,
             isShared: photo.isShared,
+            hasDirectShare: photo.hasDirectShare,
             isVideo: isVideo,
             captureTime: photo.captureTime,
             isAvailableOffline: photo.isMarkedOfflineAvailable && photo.isDownloaded,
-            isDownloading: photo.isMarkedOfflineAvailable && downloadingIds.contains(photo.id)
+            isDownloading: photo.isMarkedOfflineAvailable && downloadingIds.contains(photo.id),
+            burstChildrenCount: photo.canBeBurstPhoto ? photo.children.count : nil
         )
     }
 }

@@ -19,7 +19,9 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+import UIKit
 import ProtonCoreUIFoundations
+import PDLocalization
 
 final class InitialPasswordConfigurationViewModel: PasswordConfigurationViewModel {
     private let router: SecurityPasswordRouter
@@ -57,19 +59,19 @@ final class InitialPasswordConfigurationViewModel: PasswordConfigurationViewMode
     }
 
     var title: String {
-        "Use PIN code"
+        Localization.password_config_title_use_pin
     }
 
     var buttonText: String {
-        "Next"
+        Localization.password_config_next_step
     }
 
     var caption: String {
-        "Enter a PIN code with min 4 characters and max 21 characters."
+        Localization.password_config_caption
     }
 
     var textFieldTitle: String {
-        "Set your PIN code"
+        Localization.password_config_textfield_title
     }
 
     var rightBarButtonImage: UIImage {

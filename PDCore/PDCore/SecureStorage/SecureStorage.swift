@@ -19,7 +19,7 @@ import Foundation
 import ProtonCoreKeymaker
 
 @propertyWrapper
-final class SecureStorage<T: Codable> {
+public final class SecureStorage<T: Codable> {
     internal let label: String
     private let persistentStore: SecureStore<T>
     private let inMemoryStore: InMemoryStore<T>?
@@ -32,10 +32,10 @@ final class SecureStorage<T: Codable> {
     /// - Parameters:
     ///   - label: This label will be used for persistent store and cross-process notifications
     ///   - caching: whether in-memory store chaching is needed. In-memory store allows faster access when multiple subsequent calls are made (like during decryption of filenames for folder children), but is not secure against memory dump attack.
-    internal init(label: String, caching: Bool = false, allowedKeychainWriteErrorCodes: Set<OSStatus> = []) {
+    public init(label: String, caching: Bool = false, allowedKeychainWriteErrorCodes: Set<OSStatus> = []) {
         self.label = label
         self.inMemoryStore = caching ? InMemoryStore() : nil
-        self.persistentStore = SecureStore(label: label)
+        self.persistentStore = SecureStore(label: label, keychain: KeychainProvider.shared.keychain)
         self.allowedKeychainWriteErrorCodes = allowedKeychainWriteErrorCodes
     }
 
@@ -45,7 +45,7 @@ final class SecureStorage<T: Codable> {
     ///   - keyProvider: MainKey provider that would be used to protect information in persistent storage.
     ///   - notifying: whether Darwin notificatrion should be sent upon saving or listened to
     ///   - logger: Logger object
-    internal func configure(with keyProvider: MainKeyProvider, notifying: Bool = false) {
+    public func configure(with keyProvider: MainKeyProvider, notifying: Bool = false) {
         self.wasConfigured = true
         self.persistentStore.keyProvider = keyProvider
         
@@ -58,11 +58,11 @@ final class SecureStorage<T: Codable> {
         ) : nil
     }
     
-    internal func hasCyphertext() -> Bool {
+    public func hasCyphertext() -> Bool {
         persistentStore.hasCyphertext()
     }
 
-    var wrappedValue: T? {
+    public var wrappedValue: T? {
         get {
             assert(wasConfigured, "Attempt to use unconfigured " + String(describing: Self.self))
             
@@ -124,13 +124,13 @@ final class SecureStorage<T: Codable> {
         }
     }
 
-    func wipeValue() throws {
+    public func wipeValue() throws {
         Log.info("wiping persistent store \(label) in wipeValue()", domain: .storage)
         try persistentStore.wipe()
         inMemoryStore?.wipe()
     }
     
-    func duplicate(to newLabel: String, andNotify notify: Bool = false) throws {
+    public func duplicate(to newLabel: String, andNotify notify: Bool = false) throws {
         try persistentStore.duplicate(to: newLabel)
         
         if notify {

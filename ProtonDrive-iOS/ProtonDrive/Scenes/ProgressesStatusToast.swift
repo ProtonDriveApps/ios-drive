@@ -20,9 +20,10 @@ import Combine
 import PDCore
 import ProtonCoreUIFoundations
 import PDUIComponents
+import PDLocalization
 
 struct ProgressesStatusToast: View {
-    @EnvironmentObject var tabBar: TabBarViewModel
+    @EnvironmentObject var tabBar: TabBarViewViewModel
     @State var isVisible = false
     var uploadErrors: ErrorRegulator
     var failedUploads: Int
@@ -32,7 +33,7 @@ struct ProgressesStatusToast: View {
     }
     
     var message: String {
-        "Failed to upload \(failedUploads) file\(failedUploads > 1 ? "s" : "")"
+        Localization.file_upload_status_failed_message(failedUploads: failedUploads)
     }
     
     @ViewBuilder var body: some View {
@@ -44,7 +45,7 @@ struct ProgressesStatusToast: View {
                                    backgroundColor: ColorProvider.NotificationError) {
                         HStack {
                             Button(action: self.dismiss) {
-                                Text("Dismiss")
+                                Text(Localization.general_dismiss)
                                     .font(.footnote)
                                     .foregroundColor(.white)
                                     .frame(maxWidth: .infinity)

@@ -40,7 +40,7 @@ final class CoreDataFileImporter: FileImporter {
                 let newFile = try makeEncryptedImportedFile(url, parent, localID)
                 let coreDataFile = File.`import`(newFile, moc: moc)
                 coreDataFile.parentLink = folder
-                try moc.saveWithParentLinkCheck()
+                try moc.saveOrRollback()
 
                 Log.info("STAGE: 0 Batch imported 🗂💾 finished ✅", domain: .uploader)
 
@@ -59,7 +59,12 @@ final class CoreDataFileImporter: FileImporter {
     }
 
     private func makeEncryptedImportedFile(_ url: URL, _ folder: Folder, _ localID: String? = nil) throws -> EncryptedImportedFile {
+#if os(macOS)
         let signersKit = try generateSignersKit()
+#else
+        let addressID = try folder.getContextShareAddressID()
+        let signersKit = try signersKitFactory.make(forAddressID: addressID)
+#endif
         let clientUID = uploadClientUIDProvider.getUploadClientUID()
         let parent = try folder.encrypting()
 
@@ -87,6 +92,7 @@ final class CoreDataFileImporter: FileImporter {
             parentLinkID: parent.id,
             clientUID: clientUID,
             shareID: parent.shareID,
+            volumeID: parent.volumeID,
             uploadID: uuid,
             resourceURL: url,
             localID: localID

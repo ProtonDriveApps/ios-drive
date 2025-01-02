@@ -16,22 +16,36 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import Foundation
+import Photos
 
 actor PhotosAssetsInteractor: AsynchronousExecution {
+    private static let maximumRetryTime = 3
     private let context: PhotosProcessingContext
     private let resource: PhotoLibraryAssetsResource
     private let sizeResource: PhotoCompoundsSizeResource
     private let errorPolicy: PhotoAssetErrorPolicy
+    private let errorMappingPolicy: PhotosAssetsErrorMappingPolicy
     private let skippableCache: PhotosSkippableCache
     private let sizeLimit: Int
     private let measurementRepository: DurationMeasurementRepository
     private var isCancelled = false
 
-    init(context: PhotosProcessingContext, resource: PhotoLibraryAssetsResource, sizeResource: PhotoCompoundsSizeResource, errorPolicy: PhotoAssetErrorPolicy, skippableCache: PhotosSkippableCache, sizeLimit: Int, measurementRepository: DurationMeasurementRepository) {
+    init(
+        context: PhotosProcessingContext,
+        resource: PhotoLibraryAssetsResource,
+        sizeResource: PhotoCompoundsSizeResource,
+        errorPolicy: PhotoAssetErrorPolicy,
+        errorMappingPolicy: PhotosAssetsErrorMappingPolicy,
+        skippableCache: PhotosSkippableCache,
+        sizeLimit: Int,
+        measurementRepository: DurationMeasurementRepository
+    ) {
         self.context = context
         self.resource = resource
         self.sizeResource = sizeResource
         self.errorPolicy = errorPolicy
+        self.errorMappingPolicy = errorMappingPolicy
         self.skippableCache = skippableCache
         self.sizeLimit = sizeLimit
         self.measurementRepository = measurementRepository
@@ -43,7 +57,7 @@ actor PhotosAssetsInteractor: AsynchronousExecution {
         for identifier in context.validIdentifiers {
             if isCancelled { break }
 
-            await execute(identifier)
+            await execute(identifier, retryCount: 0)
 
             if isCancelled { break }
 
@@ -61,31 +75,46 @@ actor PhotosAssetsInteractor: AsynchronousExecution {
         sizeResource.getSize(of: context.createdCompounds) > sizeLimit
     }
 
-    private func execute(_ identifier: PhotoIdentifier) async {
+    private func execute(_ identifier: PhotoIdentifier, retryCount: Int) async {
         do {
             let compounds = try await resource.execute(with: identifier)
             context.addCreated(compounds: compounds, identifier: identifier)
             let filesCount = compounds.reduce(0, { $0 + $1.secondary.count + 1 })
             skippableCache.recordFiles(identifier: identifier, filesToUpload: filesCount)
         } catch {
-            handle(error: error, identifier: identifier)
+            await handle(error: error, identifier: identifier, retryCount: retryCount)
         }
     }
 
-    private func handle(error: Error, identifier: PhotoIdentifier) {
+    private func handle(error: Error, identifier: PhotoIdentifier, retryCount: Int) async {
         switch errorPolicy.map(error: error) {
         case .temporaryError:
-            context.addTemporaryError(identifier: identifier, error: error)
+            if retryCount < Self.maximumRetryTime {
+                Log.error("Fetch resource failed, current retry count: \(retryCount), error: \(error.localizedDescription)", domain: .photosProcessing)
+                let delayInSeconds = ExponentialBackoffWithJitter.getDelay(attempt: retryCount)
+                let delayInNanoSeconds = delayInSeconds * Double(10 ^ 9)
+                try? await Task.sleep(nanoseconds: UInt64(delayInNanoSeconds))
+                await execute(identifier, retryCount: retryCount + 1)
+            } else {
+                Log.error("Failed to retry fetch resource \(Self.maximumRetryTime) times, skip it", domain: .photosProcessing)
+                report(error: error, identifier: identifier)
+            }
         case .missingAsset:
             context.addMissing(identifier: identifier)
         case let .updatedIdentifier(updatedIdentifier):
             context.replace(initialIdentifier: identifier, updatedIdentifier: updatedIdentifier)
         case .generic(let error):
-            context.addGenericError(identifier: identifier, error: error)
+            report(error: error, identifier: identifier)
         }
     }
 
     func cancel() {
         isCancelled = true
+    }
+    
+    private func report(error: Error, identifier: PhotoIdentifier) {
+        Log.error(error, domain: .photosProcessing)
+        let userError = errorMappingPolicy.map(error: error)
+        context.addGenericError(identifier: identifier, error: userError)
     }
 }

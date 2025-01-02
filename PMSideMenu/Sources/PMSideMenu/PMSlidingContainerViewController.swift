@@ -16,7 +16,12 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 import UIKit
 import Combine
+#if canImport(SideMenuSwift)
 import SideMenuSwift
+#endif
+#if canImport(SideMenu)
+import SideMenu
+#endif
 
 final class DriveSideMenuController: SideMenuController {
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {

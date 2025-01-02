@@ -34,7 +34,8 @@ extension File {
         coreDataFile.clientUID = file.clientUID
         coreDataFile.localID = file.localID
 
-        coreDataFile.shareID = file.shareID
+        coreDataFile.setShareID(file.shareID)
+        coreDataFile.volumeID = file.volumeID
         coreDataFile.signatureEmail = file.signatureAddress
         coreDataFile.nameSignatureEmail = file.signatureAddress
         coreDataFile.state = .interrupted
@@ -44,7 +45,14 @@ extension File {
         coreDataFile.modifiedDate = Date()
 
         // Create new Revision
-        let coreDataRevision = Revision.`import`(id: file.uploadID.uuidString, url: file.resourceURL, size: file.size, creatorEmail: file.signatureAddress, moc: moc)
+        let coreDataRevision = Revision.`import`(
+            id: file.uploadID.uuidString,
+            volumeID: file.volumeID,
+            url: file.resourceURL,
+            size: file.size,
+            creatorEmail: file.signatureAddress,
+            moc: moc
+        )
 
         // Relationships
         coreDataRevision.file = coreDataFile // This adds the current coreDataRevision to File's revisions
@@ -54,15 +62,18 @@ extension File {
     }
 }
 
+// swiftlint:disable function_parameter_count
 extension Revision {
     /// Create a new Revision with the provided id
-    static func `import`(id: String, url: URL, size: Int, creatorEmail: String, moc: NSManagedObjectContext) -> Revision {
+    static func `import`(id: String, volumeID: String, url: URL, size: Int, creatorEmail: String, moc: NSManagedObjectContext) -> Revision {
         let coreDataRevision: Revision = NSManagedObject.newWithValue(id, by: "id", in: moc)
         coreDataRevision.uploadState = .created
         coreDataRevision.uploadSize = size
         coreDataRevision.normalizedUploadableResourceURL = url
         coreDataRevision.signatureAddress = creatorEmail
+        coreDataRevision.volumeID = volumeID
 
         return coreDataRevision
     }
 }
+// swiftlint:enable function_parameter_count

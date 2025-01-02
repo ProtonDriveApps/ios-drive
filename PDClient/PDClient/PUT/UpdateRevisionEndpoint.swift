@@ -28,10 +28,10 @@ public struct UpdateRevisionBlocks: Codable {
 }
 
 public struct UpdateRevisionParameters: Codable {
-    let ManifestSignature: String
-    let SignatureAddress: String
-    let XAttr: String?
-    let Photo: Photo?
+    public let ManifestSignature: String
+    public let SignatureAddress: String
+    public let XAttr: String?
+    public let Photo: Photo?
 
     public init(
         manifestSignature: String,

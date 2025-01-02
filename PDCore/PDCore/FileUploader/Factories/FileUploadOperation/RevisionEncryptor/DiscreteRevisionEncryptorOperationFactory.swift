@@ -21,13 +21,16 @@ class DiscreteRevisionEncryptorOperationFactory: FileUploadOperationFactory {
 
     let signersKitFactory: SignersKitFactoryProtocol
     let moc: NSManagedObjectContext
+    let parallelEncryption: Bool
 
     init(
         signersKitFactory: SignersKitFactoryProtocol,
-        moc: NSManagedObjectContext
+        moc: NSManagedObjectContext,
+        parallelEncryption: Bool
     ) {
         self.signersKitFactory = signersKitFactory
         self.moc = moc
+        self.parallelEncryption = parallelEncryption
     }
 
     func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> any UploadOperation {
@@ -51,7 +54,7 @@ class DiscreteRevisionEncryptorOperationFactory: FileUploadOperationFactory {
     }
 
     func makeBlocksRevisionEncryptor(progress: Progress, moc: NSManagedObjectContext, digestBuilder: DigestBuilder) -> RevisionEncryptor {
-        DiscreteBlocksRevisionEncryptor(signersKitFactory: signersKitFactory, maxBlockSize: maxBlockSize(), progress: progress, moc: moc, digestBuilder: digestBuilder)
+        DiscreteBlocksRevisionEncryptor(signersKitFactory: signersKitFactory, maxBlockSize: maxBlockSize(), progress: progress, moc: moc, digestBuilder: digestBuilder, parallelEncryption: parallelEncryption)
     }
 
     func makeThumbnailRevisionEncryptor(progress: Progress, moc: NSManagedObjectContext) -> RevisionEncryptor {
@@ -68,8 +71,7 @@ class DiscreteRevisionEncryptorOperationFactory: FileUploadOperationFactory {
     }
 
     func makeThumbnailProvider() -> ThumbnailProvider {
-        let provider = CGImageThumbnailProvider(next: PDFThumbnailProvider(next: VideoThumbnailProvider()))
-        return provider
+        ThumbnailProviderFactory.defaultThumbnailProvider
     }
 
     func maxBlockSize() -> Int {

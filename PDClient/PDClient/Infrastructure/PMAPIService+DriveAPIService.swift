@@ -50,7 +50,7 @@ extension DriveAPIService {
                     return completion(.failure(URLError(.unknown)))
                 }
 
-                let decoder = JSONDecoder(strategy: .decapitaliseFirstLetter)
+                let decoder = endpoint.decoder
                 if let serverError = try? decoder.decode(PDClient.ErrorResponse.self, from: responseData) {
                     let error = NSError(serverError)
                     log?(endpoint.serverError(error))

@@ -27,11 +27,8 @@ final class BackgroundModesRegistry {
         registerMyFilesBackgroundUploads()
         #endif
 
-        #if HAS_PHOTOS
         registerPhotosNotificationReminder()
-
         registerPhotosBackgroundUploads()
-        #endif
     }
 
     private func registerMyFilesBackgroundUploads() {

@@ -65,8 +65,13 @@ public class Client {
         }
     }
 
+    public func performRequest<E: Endpoint, Response>(on endpoint: E) async throws -> Response where Response == E.Response {
+        try await request(endpoint, completionExecutor: .immediateExecutor)
+    }
+
     public enum Errors: String, LocalizedError {
         case couldNotObtainCredential
+        case invalidResponse
     }
 }
 

@@ -19,7 +19,11 @@ import Foundation
 import PDClient
 import CoreData
 
-struct ShareCreator {
+public protocol ShareCreatorProtocol {
+    func createShare(for node: Node) async throws -> Share
+}
+
+public class ShareCreator: ShareCreatorProtocol {
     public typealias CloudShareCreator = (Client.VolumeID, NewShareParameters) async throws -> NewShareShort
 
     private let moc: NSManagedObjectContext
@@ -42,13 +46,13 @@ struct ShareCreator {
         self.cloudShareCreator = cloudShareCreator
     }
 
-    public func create(for root: Node) async throws -> Share {
+    public func createShare(for root: Node) async throws -> Share {
         let shareName = "New share"
 
-        let (volumeID, rootLinkID, rootKey, mainShareCreator, volume) = try await moc.perform {
+        let (volumeID, rootLinkID, rootKey, mainShareCreator, volume, signersKit) = try await moc.perform {
             let root = root.in(moc: self.moc)
-
-            guard let mainShare = storage.mainShareOfVolume(by: sessionVault.addressIDs, moc: self.moc) else {
+#if os(macOS)
+            guard let mainShare = self.storage.mainShareOfVolume(by: self.sessionVault.addressIDs, moc: self.moc) else {
                 throw Share.InvalidState(message: "No main share found in volume.")
             }
 
@@ -60,10 +64,22 @@ struct ShareCreator {
                 throw Share.InvalidState(message: "No creator found in main share.")
             }
 
-            return (volume.id, root.id, root.nodeKey, mainShareCreator, volume)
-        }
+            let signersKit = try self.sessionVault.make(forSigner: .address(mainShareCreator))
 
-        let signersKit = try sessionVault.make(forSigner: .address(mainShareCreator))
+            return (volume.id, root.id, root.nodeKey, mainShareCreator, volume, signersKit)
+
+#else
+            // I can only create shares for my own volume
+            let (mainShare, volume) = try self.storage.getMainShareAndVolume(in: self.moc)
+            guard let mainShareCreator = mainShare.creator else {
+                throw Share.InvalidState(message: "No creator found in main share.")
+            }
+
+            let addressID = try mainShare.getAddressID()
+            let signersKit = try self.signersKitFactory.make(forAddressID: addressID)
+            return (volume.id, root.id, root.nodeKey, mainShareCreator, volume, signersKit)
+#endif
+        }
 
         let shareKeys = try Encryptor.generateNodeKeys(addressPassphrase: signersKit.addressPassphrase, addressPrivateKey: signersKit.addressKey.privateKey, parentKey: signersKit.addressKey.privateKey)
 
@@ -97,13 +113,14 @@ struct ShareCreator {
 
         return try await moc.perform {
             let root = root.in(moc: self.moc)
-            let share: Share = self.storage.new(with: shareID, by: #keyPath(Share.id), in: moc)
+            let share: Share = self.storage.new(with: shareID, by: #keyPath(Share.id), in: self.moc)
             share.addressID = signersKit.address.addressID
             share.creator = mainShareCreator
             share.key = shareKeys.key
             share.passphrase = newSharePassphrase
             share.passphraseSignature = shareKeys.signature
             share.type = .standard
+            share.volumeID = volumeID
 
             share.volume = volume
             share.root = root

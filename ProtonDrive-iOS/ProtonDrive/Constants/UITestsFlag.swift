@@ -29,6 +29,13 @@ extension UITestsFlag {
     static let mockCellularConnection = UITestsFlag(content: "--mock_cellular_connection")
     static let mockNoConnection = UITestsFlag(content: "--mock_no_connection")
     static let filesAsDefaultTab = UITestsFlag(content: "--files_as_default_tab")
+    static let clearDefaultTab = UITestsFlag(content: "--clear_default_tab")
+    static let defaultPhotoUpsell = UITestsFlag(content: "--default_photo_upsell")
+    static let skipPhotoUpsell = UITestsFlag(content: "--skip_photo_upsell")
+    static let defaultNewFeaturePromote = UITestsFlag(content: "--default_new_feature_promote")
+    static let skipNewFeaturePromote = UITestsFlag(content: "--skip_new_feature_promote")
+    /// When upload photo, stop removing invalid characters
+    static let skipPhotoNameCorrection = UITestsFlag(content: "--skip_photo_name_correction")
 }
 
 #endif

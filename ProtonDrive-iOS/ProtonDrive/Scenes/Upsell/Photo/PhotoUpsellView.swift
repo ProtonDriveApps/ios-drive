@@ -33,14 +33,14 @@ struct PhotoUpsellView: View {
                 .padding(.bottom, 30)
                 .accessibilityIdentifier("PhotoUpsellView.imageIdentifier")
             
-            Text("Never run out of storage")
+            Text(viewModel.upsellTitle)
                 .foregroundColor(ColorProvider.TextNorm)
                 .font(.system(size: 22))
                 .fontWeight(.bold)
                 .padding(.bottom, 8)
                 .accessibilityIdentifier("PhotoUpsellView.titleIdentifier")
 
-            Text("Upgrade now and keep all your memories encrypted and safe.")
+            Text(viewModel.upsellSubtitle)
                 .foregroundColor(ColorProvider.TextWeak)
                 .font(.system(size: 17))
                 .multilineTextAlignment(.center)
@@ -50,22 +50,25 @@ struct PhotoUpsellView: View {
 
             Spacer()
             
-            BlueRectButton(title: "Get more storage", action: { viewModel.upgradeButtonDidTap() })
+            BlueRectButton(title: viewModel.upgradeButtonTitle, action: viewModel.upgradeButtonDidTap)
                 .cornerRadius(8)
                 .padding(24)
                 .accessibilityIdentifier("PhotoUpsellView.upgradeButton")
             
             LightButton(
-                title: "Not now",
+                title: viewModel.skipButtonTitle,
                 color: ColorProvider.BrandNorm,
                 font: .body,
-                action: { viewModel.notNowButtonDidTap() }
+                action: viewModel.skipButtonDidTap
             )
             .padding(.bottom, 24)
             .accessibilityIdentifier("PhotoUpsellView.skipButton")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(ColorProvider.BackgroundSecondary)
+        .onDisappear(perform: {
+            viewModel.onDisappear()
+        })
     }
 
 }

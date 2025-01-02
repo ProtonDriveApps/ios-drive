@@ -116,7 +116,7 @@ private extension SubscriptionViewController {
     class TokenStorage: PaymentTokenStorage {
         public static var `default` = TokenStorage()
 
-        @FastStorage("paymentToken-Cloud") var token: PaymentToken?
+        var token: PaymentToken?
 
         func add(_ token: PaymentToken) {
             self.token = token

@@ -82,6 +82,7 @@ class PMLoadingLabelCell: PMSettingsBaseCell {
         label.text = model.text.localized(in: model.bundle)
         action = model.action
         addSeparatorIfNeeded(hasSeparator)
+        backgroundColor = ColorProvider.BackgroundNorm
     }
 }
 

@@ -19,6 +19,7 @@ import Foundation
 import Combine
 import PDCore
 import PDUIComponents
+import PDLocalization
 
 final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, HasMultipleSelection {
     typealias Identifier = NodeIdentifier
@@ -33,6 +34,8 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
     var childrenCancellable: AnyCancellable?
     var lockedStateCancellable: AnyCancellable?
     var lockedStateBannerVisibility: LockedStateAlertVisibility = .hidden
+    var isSharedWithMe: Bool = false
+    let hasPlusFunctionality = false
     @Published var transientChildren: [NodeWrapper] = []
     @Published var permanentChildren: [NodeWrapper] = [] {
         didSet { selection.updateSelectable(Set(permanentChildren.map(\.node.identifier))) }
@@ -43,7 +46,7 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
     @Published var isUpdating: Bool = false
     
     var nodeName: String {
-        self.listState.isSelecting ? self.titleDuringSelection() : "Available offline"
+        self.listState.isSelecting ? self.titleDuringSelection() : Localization.available_offline_title
     }
     
     var trailingNavBarItems: [NavigationBarButton] {
@@ -59,7 +62,8 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
     let permanentChildrenSectionTitle: String = ""
 
     let supportsLayoutSwitch = true
-    
+    let featureFlagsController: FeatureFlagsControllerProtocol
+
     func refreshControlAction() {
         model.loadFromCache()
     }
@@ -79,11 +83,12 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
     @Published var listState: ListState = .active
     
     // MARK: others
-    init(model: OfflineAvailableModel) {
+    init(model: OfflineAvailableModel, featureFlagsController: FeatureFlagsControllerProtocol) {
         defer { self.model.loadFromCache() }
         self.model = model
         self.sorting = model.sorting
         self.layout = Layout(preference: model.layout)
+        self.featureFlagsController = featureFlagsController
 
         self.subscribeToChildren()
         self.subscribeToChildrenDownloading()

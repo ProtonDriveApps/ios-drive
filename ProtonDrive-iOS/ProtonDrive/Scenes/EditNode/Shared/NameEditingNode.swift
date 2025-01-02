@@ -36,7 +36,7 @@ struct NameEditingNode {
 
 extension NameEditingNode {
     init(node: Node) {
-        self.init(id: NodeIdentifier(node.id, node.shareID),
+        self.init(id: NodeIdentifier(node.id, node.shareId, node.volumeID),
                   decryptedName: node.decryptedName,
                   type: (node is Folder) ? .folder : .file)
     }

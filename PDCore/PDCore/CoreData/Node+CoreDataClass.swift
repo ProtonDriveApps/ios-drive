@@ -20,7 +20,7 @@ import CoreData
 import PDClient
 
 @objc(Node)
-public class Node: NSManagedObject {
+public class Node: NSManagedObject, VolumeUnique {
     public enum State: Int, Codable {
         case active = 1
         case deleted = 2
@@ -31,6 +31,7 @@ public class Node: NSManagedObject {
         case paused = 6             // Paused by the user
         case interrupted = 7        // Paused by the system/app
     }
+    var nameDecryptionFailed = false
 
     #if os(iOS)
     var _observation: Any?

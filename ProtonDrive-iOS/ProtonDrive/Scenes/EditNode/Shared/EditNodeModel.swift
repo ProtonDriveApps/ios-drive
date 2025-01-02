@@ -19,22 +19,20 @@ import PDCore
 
 final class EditNodeModel {
     private var tower: Tower
-    private var parent: Folder
     
-    init(tower: Tower, parent: Folder) {
+    init(tower: Tower) {
         self.tower = tower
-        self.parent = parent
     }
 }
 
 extension EditNodeModel: FolderCreator {
-    func createFolder(with name: String, completion: @escaping (FolderCreator.Result) -> Void) {
+    func createFolder(with name: String, parent: Folder, completion: @escaping (FolderCreator.Result) -> Void) {
         self.tower.createFolder(named: name, under: parent, handler: completion)
     }
 }
 
-extension EditNodeModel: NodeNameEditor {
-    func rename(to name: String, node: NodeIdentifier, completion: @escaping (NodeNameEditor.Result) -> Void) {
+extension EditNodeModel: NodeNameEditorProtocol {
+    func rename(to name: String, node: NodeIdentifier, completion: @escaping (NodeNameEditorProtocol.Result) -> Void) {
         tower.rename(node: node, cleartextName: name, handler: completion)
     }
 }

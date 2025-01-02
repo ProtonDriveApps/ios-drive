@@ -17,6 +17,7 @@
 
 import Combine
 import PMSettings
+import PDLocalization
 
 final class PhotosSettingsRowViewModel: PMDrillDownCellViewModel {
     private let settingsController: PhotoBackupSettingsController
@@ -30,7 +31,7 @@ final class PhotosSettingsRowViewModel: PMDrillDownCellViewModel {
 
     private func subscribeToUpdates() {
         settingsController.isEnabled
-            .map { $0 ? "On" : "Off" }
+            .map { $0 ? Localization.general_on : Localization.general_off }
             .sink { [weak self] value in
                 self?.value = value
             }
@@ -42,8 +43,8 @@ final class PhotosSettingsRowViewModel: PMDrillDownCellViewModel {
     }
 
     var title: String {
-        "Photos backup"
+        Localization.setting_photo_backup
     }
     
-    var accessibilityIdentifier: String { "Photos backup" }
+    var accessibilityIdentifier: String { Localization.setting_photo_backup }
 }

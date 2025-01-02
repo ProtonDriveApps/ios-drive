@@ -23,7 +23,7 @@ extension Share {
         case noCreator
     }
 
-    internal func generateShareKeys(signersKit: SignersKit) throws -> Encryptor.KeyCredentials {
+    internal func generateShareKeys(signersKit: SignersKit) throws -> KeyCredentials {
         let shareKeys = try Encryptor.generateNodeKeys(addressPassphrase: signersKit.addressPassphrase,
                                                        addressPrivateKey: signersKit.addressKey.privateKey,
                                                        parentKey: signersKit.addressKey.privateKey)
@@ -49,6 +49,8 @@ extension Share {
             if isCollaborativelyShared && isMigratedShare {
                 do {
                     return try nodeKeyDecryptedPassphrase(sharePassphrase, signature)
+                } catch is MemberDecryptableShareError {
+                    return try memberDecryptedPassphrase(sharePassphrase, signature)
                 } catch {
                     Log.error(DecryptionError(error, "Share Passphrase", description: "ShareID: \(id) - Migrated share could not be decrypted 💔"), domain: .encryption)
                     return try memberDecryptedPassphrase(sharePassphrase, signature)
@@ -80,7 +82,7 @@ extension Share {
             return clearSharePassphrase
 
         case .unverified(let clearSharePassphrase, let error):
-            Log.error(SignatureError(error, "Share Passphrase", description: "ShareID: \(id)"), domain: .encryption)
+            Log.error(SignatureError(error, "Share Passphrase", description: "ShareID: \(id)"), domain: .encryption, sendToSentryIfPossible: isSignatureVerifiable())
             self.clearPassphrase = clearSharePassphrase
             return clearSharePassphrase
         }
@@ -90,6 +92,7 @@ extension Share {
         let verificationKeys = try getAddressKeys().map(\.publicKey)
 
         guard let node = root else { throw invalidState("Share should have a root with NodeKey") }
+        guard node.parentLink != nil else { throw MemberDecryptableShareError() }
         let nodePassphrase = try node.decryptPassphrase()
 
         let decrypted = try Decryptor.decryptAndVerifySharePassphrase(
@@ -105,16 +108,25 @@ extension Share {
             return clearSharePassphrase
 
         case .unverified(let clearSharePassphrase, let error):
-            Log.error(SignatureError(error, "Share Passphrase", description: "ShareID: \(id)"), domain: .encryption)
+            Log.error(SignatureError(error, "Share Passphrase", description: "ShareID: \(id)"), domain: .encryption, sendToSentryIfPossible: isSignatureVerifiable())
             self.clearPassphrase = clearSharePassphrase
             return clearSharePassphrase
         }
     }
 
+    struct MemberDecryptableShareError: Error { }
+
     internal func getAddressKeys() throws -> [KeyPair] {
+        if let addressID = addressID {
+            if let addressKeys = SessionVault.current.getAddress(withID: addressID)?.activeKeys {
+                return addressKeys.compactMap(KeyPair.init)
+            }
+        }
+
         guard let creator = creator else {
             throw Errors.noCreator
         }
+
         guard let addressKeys = SessionVault.current.getAddress(for: creator)?.activeKeys else {
             throw SessionVault.Errors.noRequiredAddressKey
         }

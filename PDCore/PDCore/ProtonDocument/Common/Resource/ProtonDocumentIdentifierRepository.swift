@@ -41,16 +41,13 @@ final class ProtonDocumentIdentifierRepository: ProtonDocumentIdentifierReposito
         guard file.isProtonDocument else {
             throw ProtonDocumentOpeningError.invalidFileType
         }
-        guard let share = file.parentsChain().first?.primaryDirectShare else {
+        guard let share = try? file.getContextShare() else {
             throw ProtonDocumentOpeningError.missingDirectShare
         }
         guard let email = getEmailFromShare(share) ?? getCurrentEmail() else {
             throw ProtonDocumentOpeningError.missingAddress
         }
-        guard let volumeId = share.volume?.id else {
-            throw ProtonDocumentOpeningError.missingVolume
-        }
-        return ProtonDocumentIdentifier(volumeId: volumeId, linkId: file.id, email: email)
+        return ProtonDocumentIdentifier(volumeId: file.volumeID, shareId: share.id, linkId: file.id, email: email)
     }
 
     private func getEmailFromShare(_ share: Share) -> String? {

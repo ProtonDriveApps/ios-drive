@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import UIKit
 import PMSettings
 
 class PasswordChangeDrillDownConfiguration: PMCellSuplier {

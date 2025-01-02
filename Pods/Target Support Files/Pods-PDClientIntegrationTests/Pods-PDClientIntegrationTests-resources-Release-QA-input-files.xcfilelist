@@ -1,6 +1,0 @@
-${PODS_ROOT}/Target Support Files/Pods-PDClientIntegrationTests/Pods-PDClientIntegrationTests-resources.sh
-${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Login-static/Resources-Login.bundle
-${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Login-static/Translations-Login.bundle
-${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Networking-static/Translations-Networking.bundle
-${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Services-static/Translations-Services.bundle
-${PODS_CONFIGURATION_BUILD_DIR}/Sentry-static/Sentry.bundle

@@ -54,7 +54,11 @@ final class URLSessionThumbnailUploader: URLSessionDataTaskUploader, ContentUplo
             
             guard !isCancelled else { return }
 
-            upload(data, request: endpoint.request) { [weak self] result in
+            let size = moc.performAndWait { [weak self] in
+                guard let self else { return 0 }
+                return thumbnail.clearData?.count ?? data.count
+            }
+            upload(data, originalSize: size, request: endpoint.request) { [weak self] result in
                 guard let self = self, !self.isCancelled else { return }
 
                 self.handle(result, completion: completion)
@@ -88,11 +92,7 @@ final class URLSessionThumbnailUploader: URLSessionDataTaskUploader, ContentUplo
             thumbnail.uploadURL = fullUploadableThumbnail.uploadURL.absoluteString
             do {
                 // If we fail to save the local state, even if the thumbnail is uploaded, we will retry again later
-                #if os(iOS)
                 try moc.saveOrRollback()
-                #else
-                try moc.saveWithParentLinkCheck()
-                #endif
                 moc.refresh(thumbnail, mergeChanges: false)
             } catch {
                 Log.error(error, domain: .uploader)

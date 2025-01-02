@@ -33,10 +33,10 @@ final class PhotosProcessingFinishInteractor: AsynchronousExecution {
 
     func execute() async {
         Log.info("5️⃣ \(Self.self): executing", domain: .photosProcessing)
-        context.failedIdentifiers.forEach { failedIdentifiersResource.increment(cloudIdenfier: $0.cloudIdentifier) }
+        context.failedIdentifiersAndError.forEach { failedIdentifiersResource.increment(cloudIdentifier: $0.key.cloudIdentifier, error: $0.value) }
         progressRepository.discard(context.invalidIdentifiers.count + context.missingIdentifiers.count)
         progressRepository.add(context.importedCompoundsDeltaCount)
-        progressRepository.finish(context.importedCompoundsCount + context.failedIdentifiers.count)
+        progressRepository.finish(context.importedCompoundsCount + context.failedIdentifiersAndError.count)
         deleteInvalidAssets(context.invalidAssets)
         Log.info("5️⃣ \(Self.self): finished importing count: \(context.importedCompoundsCount), compoundsDelta: \(context.importedCompoundsDeltaCount)", domain: .photosProcessing)
     }

@@ -16,14 +16,46 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDLocalization
 
 final class PhotoUpsellViewModel: ObservableObject {
     
-    func upgradeButtonDidTap() {
-        
+    var upsellTitle: String { Localization.photo_upsell_title }
+    var upsellSubtitle: String { Localization.photo_upsell_subtitle }
+    var upgradeButtonTitle: String { Localization.general_get_more_storage }
+    var skipButtonTitle: String { Localization.general_not_now }
+
+    private let dismiss: () -> Void
+    private let photosCoordinator: PhotosStorageCoordinator
+    private let photoUpsellResultNotifier: PhotoUpsellResultNotifierProtocol
+    private var isButtonClicked = false
+
+    init(
+        photosCoordinator: PhotosStorageCoordinator,
+        photoUpsellResultNotifier: PhotoUpsellResultNotifierProtocol,
+        dismiss: @escaping () -> Void
+    ) {
+        self.photosCoordinator = photosCoordinator
+        self.photoUpsellResultNotifier = photoUpsellResultNotifier
+        self.dismiss = dismiss
     }
     
-    func notNowButtonDidTap() {
-        
+    func upgradeButtonDidTap() {
+        isButtonClicked = true
+        dismiss()
+        photoUpsellResultNotifier.notify(.accepted)
+        photosCoordinator.openSubscriptions()
+    }
+    
+    func skipButtonDidTap() {
+        isButtonClicked = true
+        dismiss()
+        photoUpsellResultNotifier.notify(.declined)
+    }
+    
+    func onDisappear() {
+        if isButtonClicked { return }
+        // Dismiss upsell view by drag down 
+        photoUpsellResultNotifier.notify(.declined)
     }
 }

@@ -19,7 +19,7 @@ import UIKit
 import Photos
 
 final class PhotosPreviewCoordinator: PhotosPreviewListCoordinator, PhotosPreviewDetailFactory, PhotoPreviewDetailCoordinator {
-    let container: PhotosPreviewContainer
+    private let container: PhotosPreviewContainer
     weak var rootViewController: UIViewController?
     private weak var activityVC: UIActivityViewController?
 
@@ -49,6 +49,18 @@ final class PhotosPreviewCoordinator: PhotosPreviewListCoordinator, PhotosPrevie
 
     func openShare(url: URL) {
         openShareActivity(items: [url])
+    }
+    
+    func openShareBurst(urls: [URL]) {
+        var activities: [UIActivity] = []
+        if PHPhotoLibrary.authorizationStatus(for: .addOnly) != .denied {
+            activities.append(SaveBurstPhotoActivity(urls: urls))
+        }
+        openShareActivity(
+            items: urls,
+            activities: activities,
+            excludedActivities: [.saveToCameraRoll]
+        )
     }
     
     func openShareLivePhoto(imageURL: URL, videoURL: URL) {

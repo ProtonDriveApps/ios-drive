@@ -21,43 +21,6 @@ public protocol EditShareURLParameters: Codable {
     var parameters: [String: Any]? { get }
 }
 
-public struct EditShareURLPasswordAndDuration: EditShareURLParameters {
-    let ExpirationDuration: Int?
-    let UrlPasswordSalt: String
-    let SharePasswordSalt: String
-    let SRPVerifier: String
-    let SRPModulusID: String
-    let Flags: ShareURLMeta.Flags
-    let SharePassphraseKeyPacket: String
-    let Password: String
-
-    public private(set) var parameters: [String: Any]?
-
-    public init(_ expirationParameters: EditShareURLExpiration, _ passwordParameters: EditShareURLPassword) {
-        self.ExpirationDuration = expirationParameters.ExpirationDuration
-        self.UrlPasswordSalt = passwordParameters.UrlPasswordSalt
-        self.SharePasswordSalt = passwordParameters.SharePasswordSalt
-        self.SRPVerifier = passwordParameters.SRPVerifier
-        self.SRPModulusID = passwordParameters.SRPModulusID
-        self.Flags = passwordParameters.Flags
-        self.SharePassphraseKeyPacket = passwordParameters.SharePassphraseKeyPacket
-        self.Password = passwordParameters.Password
-
-        parameters = expirationParameters.parameters?.merging(passwordParameters.parameters ?? [:], uniquingKeysWith: { $1 })
-    }
-
-    public enum CodingKeys: String, CodingKey {
-        case ExpirationDuration
-        case UrlPasswordSalt
-        case SharePasswordSalt
-        case SRPVerifier
-        case SRPModulusID
-        case Flags
-        case SharePassphraseKeyPacket
-        case Password
-    }
-}
-
 public struct EditShareURLPassword: EditShareURLParameters {
     let UrlPasswordSalt: String
     let SharePasswordSalt: String
@@ -87,6 +50,18 @@ public struct EditShareURLPassword: EditShareURLParameters {
     }
 }
 
+public struct EditShareURLPermissions: EditShareURLParameters {
+    let Permissions: ShareURLMeta.Permissions
+    
+    public init(permissions: ShareURLMeta.Permissions) {
+        self.Permissions = permissions
+    }
+    
+    public var parameters: [String: Any]? {
+        ["Permissions": Permissions.rawValue]
+    }
+}
+
 public struct EditShareURLExpiration: EditShareURLParameters {
     let ExpirationDuration: Int?
 
@@ -98,6 +73,31 @@ public struct EditShareURLExpiration: EditShareURLParameters {
         [
             "ExpirationDuration": ExpirationDuration as Any
         ]
+    }
+}
+
+public struct EditShareURLUpdateParameters: EditShareURLParameters {
+    let expirationParameters: EditShareURLExpiration?
+    let passwordParameters: EditShareURLPassword?
+    let permissionParameters: EditShareURLPermissions?
+    
+    public init(
+        expirationParameters: EditShareURLExpiration?,
+        passwordParameters: EditShareURLPassword?,
+        permissionParameters: EditShareURLPermissions?
+    ) {
+        self.expirationParameters = expirationParameters
+        self.passwordParameters = passwordParameters
+        self.permissionParameters = permissionParameters
+    }
+    
+    public var parameters: [String: Any]? {
+        let expiration = expirationParameters?.parameters ?? [:]
+        let password = passwordParameters?.parameters ?? [:]
+        let permission = permissionParameters?.parameters ?? [:]
+        return expiration
+            .merging(password) { current, _ in current }
+            .merging(permission) { current, _ in current }
     }
 }
 

@@ -49,14 +49,20 @@ final class URLSessionDiscreteBlocksUploader: URLSessionDataTaskUploader, Conten
             guard FileManager.default.fileExists(atPath: fullUploadableBlock.localURL.path) else {
                 throw ContentCleanedError(area: .block)
             }
-            var data = try Data(contentsOf: fullUploadableBlock.localURL)
+            // Use mappedIfSafe to avoid heap allocation for such a short-lived thing.
+            // Use uncached as we won't be using this file again later on the happy path.
+            var data = try Data(contentsOf: fullUploadableBlock.localURL, options: [.mappedIfSafe, .uncached])
             let endpoint = UploadBlockFromDataEndpoint(url: fullUploadableBlock.remoteURL, data: &data, credential: credential, service: apiService)
 
             try setWillStartUpload()
             
             guard !isCancelled else { return }
 
-            upload(data, request: endpoint.request) { [weak self] result in
+            let size: Int = moc.performAndWait { [weak self] in
+                guard let self else { return 0 }
+                return uploadBlock.clearSize
+            }
+            upload(data, originalSize: size, request: endpoint.request) { [weak self] result in
                 guard let self = self, !self.isCancelled else { return }
 
                 self.handle(result, completion: completion)
@@ -92,11 +98,7 @@ final class URLSessionDiscreteBlocksUploader: URLSessionDataTaskUploader, Conten
             
             do {
                 // If we fail to save the local state, even if the block is uploaded, we will retry again later
-                #if os(iOS)
                 try moc.saveOrRollback()
-                #else
-                try moc.saveWithParentLinkCheck()
-                #endif
             } catch {
                 Log.error(error, domain: .uploader)
             }

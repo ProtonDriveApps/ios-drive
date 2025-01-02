@@ -17,6 +17,7 @@
 
 import Combine
 import Foundation
+import PDLocalization
 
 protocol PhotoPreviewDetailViewModelProtocol: ObservableObject {
     var state: PhotoPreviewDetailState? { get }
@@ -103,7 +104,10 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
 
         fullPreviewController.errorPublisher
             .sink { [weak self] _ in
-                self?.state = .error(title: "Could not load this photo", text: "There was an error loading this photo")
+                self?.state = .error(
+                    title: Localization.photo_preview_error_title,
+                    text: Localization.photo_preview_error_text
+                )
             }
             .store(in: &cancellables)
     }
@@ -119,7 +123,7 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
         if let fullPreview = fullPreviewController.getPreview() {
             return .preview(fullPreview)
         } else {
-            return .loading(text: "Loading...", thumbnail: thumbnailController.getImage())
+            return .loading(text: Localization.general_loading, thumbnail: thumbnailController.getImage())
         }
     }
     

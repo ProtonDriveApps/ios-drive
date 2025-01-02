@@ -34,9 +34,9 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
     }
     
     private lazy var internalQueue: OperationQueue = {
-        let queue = OperationQueue()
-        queue.maxConcurrentOperationCount = 1
-        queue.isSuspended = true
+        let queue = OperationQueue(maxConcurrentOperation: Constants.maxConcurrentBlockDownloadsPerFile,
+                                   isSuspended: true,
+                                   name: "File Download - One File")
         return queue
     }()
     
@@ -44,7 +44,7 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
         super.start()
         guard !self.isCancelled else { return }
         Log.info("DownloadFileOperation.start, will fetch full file details, file: \(fileIdentifier)", domain: .downloader)
-        self.cloudSlot.scanNode(fileIdentifier) { [fileIdentifier] resultFile in
+        self.cloudSlot.scanNode(fileIdentifier, linkProcessingErrorTransformer: { $1 }) { [fileIdentifier] resultFile in
             guard !self.isCancelled else { return }
             switch resultFile {
             case .failure(let error):
@@ -101,7 +101,7 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
 
                             moc.performAndWait {
                                 do {
-                                    try moc.saveWithParentLinkCheck()
+                                    try moc.saveOrRollback()
                                     Log.info("DownloadFileOperation.start, connected blocks to revision, revision to file, file: \(fileIdentifier)", domain: .downloader)
                                     self.completion?(.success(updatedRevision.file))
                                 } catch {
@@ -140,13 +140,15 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
     
     public var progress: Progress
     internal let fileIdentifier: NodeIdentifier
-    private weak var cloudSlot: CloudSlot!
+    private weak var cloudSlot: CloudSlotProtocol!
     private let endpointFactory: EndpointFactory
     private var completion: Completion?
-    
-    init(_ file: File, cloudSlot: CloudSlot, endpointFactory: EndpointFactory, completion: @escaping Completion) {
+    private let storage: StorageManager
+
+    init(_ file: File, cloudSlot: CloudSlotProtocol, endpointFactory: EndpointFactory, storage: StorageManager, completion: @escaping Completion) {
         self.fileIdentifier = file.identifier
         self.cloudSlot = cloudSlot
+        self.storage = storage
         self.endpointFactory = endpointFactory
         self.completion = completion
         self.progress = Progress(totalUnitCount: 0)
@@ -157,7 +159,9 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
             self.fingerprint(progress: progress, urlForFingerprinting)
         }
         
-        if let revision = file.activeRevision, !revision.blocksAreValid() {
+        if let revision = file.activeRevision,
+           revision.blocks.count > 0,
+           !revision.blocksAreValid() {
             Log.warning("DownloadFileOperation.init, Invalid blocks are connected to revision, cleaning up, file: \(fileIdentifier)", domain: .downloader)
             file.activeRevision?.restoreAfterInvalidBlocksFound()
         }
@@ -190,10 +194,10 @@ class DownloadFileOperation: SynchronousOperation, OperationWithProgress {
     
     private func createEmptyFile(in updatedRevision: Revision) {
         guard !self.isCancelled else { return }
-        let moc = self.cloudSlot.storage.backgroundContext
+        let moc = self.storage.backgroundContext
         moc.performAndWait {
             do {
-                let emptyBlock: DownloadBlock = self.cloudSlot.storage.new(with: "Locally-Generated-" + UUID().uuidString, by: #keyPath(DownloadBlock.downloadUrl), in: moc)
+                let emptyBlock: DownloadBlock = self.storage.new(with: "Locally-Generated-" + UUID().uuidString, by: #keyPath(DownloadBlock.downloadUrl), in: moc)
                 emptyBlock.revision = updatedRevision
                 emptyBlock.signatureEmail = updatedRevision.signatureAddress
                 /*

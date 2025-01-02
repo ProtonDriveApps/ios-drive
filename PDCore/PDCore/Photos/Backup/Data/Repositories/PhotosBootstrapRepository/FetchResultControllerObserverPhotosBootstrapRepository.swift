@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import CoreData
 import Foundation
 
 public final class FetchResultControllerObserverPhotosBootstrapRepository: PhotosBootstrapRepository {

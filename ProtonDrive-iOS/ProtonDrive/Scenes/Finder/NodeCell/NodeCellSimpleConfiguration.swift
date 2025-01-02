@@ -21,12 +21,17 @@ import PDUIComponents
 import SwiftUI
 
 class NodeCellSimpleConfiguration: ObservableObject, NodeCellConfiguration {
+    
     var iconName: String
     var name: String
     var isFavorite: Bool
-    var isSavedForOffline: Bool
-    var isDownloaded: Bool
+    var isAvailableOffline: Bool
     var isShared: Bool
+    var hasSharing: Bool
+    var hasDirectShare: Bool
+    var isSharedWithMeRoot: Bool = false
+    var isSharedCollaboratively: Bool
+    var creator: String = ""
     var lastModified: Date
     var isDisabled: Bool
     var size: Int
@@ -43,24 +48,29 @@ class NodeCellSimpleConfiguration: ObservableObject, NodeCellConfiguration {
 
     let thumbnailViewModel: ThumbnailImageViewModel?
     let nodeRowActionMenuViewModel: NodeRowActionMenuViewModel? = nil
-    
-    init(from node: Node,
-         fileTypeAsset: FileTypeAsset = .shared,
-         disabled: Bool,
-         loader: ThumbnailLoader)
-    {
+    let featureFlagsController: FeatureFlagsControllerProtocol
+
+    init(
+        from node: Node,
+        fileTypeAsset: FileTypeAsset = .shared,
+        disabled: Bool,
+        loader: ThumbnailLoader,
+        featureFlagsController: FeatureFlagsControllerProtocol
+    ) {
         self.iconName = fileTypeAsset.getAsset(node.mimeType)
         self.name = node.decryptedName
         self.isFavorite = node.isFavorite
-        self.isSavedForOffline = node.isMarkedOfflineAvailable || node.isInheritingOfflineAvailable
-        self.isDownloaded = node.isDownloaded
+        self.isAvailableOffline = node.isAvailableOffline
         self.isShared = node.isShared
+        self.hasDirectShare = node.hasDirectShare
+        self.isSharedCollaboratively = node.isSharedWithMeRoot
         self.lastModified = node.modifiedDate
         self.size = node.size
         self.isDisabled = disabled
         self.id = node.identifier
-
         self.thumbnailViewModel = ThumbnailImageViewModel(node: node, loader: loader)
+        self.featureFlagsController = featureFlagsController
+        self.hasSharing = featureFlagsController.hasSharing
     }
     
     var secondLineSubtitle: String { self.defaultSecondLineSubtitle }

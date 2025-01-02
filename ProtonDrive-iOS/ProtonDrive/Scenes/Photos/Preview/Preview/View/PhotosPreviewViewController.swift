@@ -23,6 +23,8 @@ final class PhotosPreviewViewController<ViewModel: PhotosPreviewViewModelProtoco
     private let viewModel: ViewModel
     private let factory: PhotosPreviewDetailFactory
     private var cancellables = Set<AnyCancellable>()
+    private var interactionController: UIPercentDrivenInteractiveTransition?
+    private let customTransitionDelegate = PhotosPreviewModalTransitioningDelegate()
 
     init(viewModel: ViewModel, factory: PhotosPreviewDetailFactory) {
         self.viewModel = viewModel
@@ -47,6 +49,7 @@ final class PhotosPreviewViewController<ViewModel: PhotosPreviewViewModelProtoco
         dataSource = self
         setUpCloseButton(showCloseButton: true, action: #selector(close))
         setupFirstPreview()
+        addPanGestureRecognizer()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -99,15 +102,61 @@ final class PhotosPreviewViewController<ViewModel: PhotosPreviewViewModelProtoco
         return buttons
     }
 
-    @objc private func close() {
+    @objc private func share() {
+        getVisibleItem()?.share()
+    }
+
+    // MARK: - Dismissal
+
+    @objc override func close() {
+        resetOrientation()
+        startAutomaticDismiss()
+    }
+
+    private func resetOrientation() {
         if UIDevice.current.userInterfaceIdiom == .phone {
             (UIApplication.shared.delegate as? AppDelegate)?.lockOrientationIfNeeded(in: .portrait)
         }
+    }
+
+    private func addPanGestureRecognizer() {
+        let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handleTransition(_:)))
+        navigationController?.view.addGestureRecognizer(panGesture)
+    }
+
+    @objc private func handleTransition(_ gestureRecognizer: UIPanGestureRecognizer) {
+        let translation = gestureRecognizer.translation(in: view).y
+        let percentage = translation / view.frame.height
+
+        switch gestureRecognizer.state {
+        case .began:
+            startInteractiveDismiss()
+        case .changed:
+            interactionController?.update(percentage)
+        case .ended:
+            if percentage > 0.3 { // The minimal portion of screen that needs to be swiped to invoke closing
+                interactionController?.finish()
+                resetOrientation()
+            } else {
+                interactionController?.cancel()
+            }
+        default:
+            break
+        }
+    }
+
+    private func startInteractiveDismiss() {
+        interactionController = UIPercentDrivenInteractiveTransition()
+        customTransitionDelegate.interactionController = interactionController
+        navigationController?.transitioningDelegate = customTransitionDelegate
+        navigationController?.modalPresentationStyle = .custom
         viewModel.close()
     }
 
-    @objc private func share() {
-        getVisibleItem()?.share()
+    private func startAutomaticDismiss() {
+        navigationController?.transitioningDelegate = nil
+        navigationController?.modalPresentationStyle = .fullScreen
+        viewModel.close()
     }
 
     // MARK: - UIPageViewControllerDataSource

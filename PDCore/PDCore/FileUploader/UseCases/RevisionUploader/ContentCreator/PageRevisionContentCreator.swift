@@ -76,7 +76,11 @@ class PageRevisionContentCreator: ContentCreator {
         try moc.performAndWait {
             let revision = page.revision.in(moc: self.moc)
             let identifier = try revision.uploadableIdentifier()
+#if os(macOS)
             let addressID = try signersKitFactory.make(forSigner: .address(identifier.signatureEmail)).address.addressID
+#else
+            let addressID = try revision.file.getContextShareAddressID()
+#endif
             let blocks = try normalizedBlocks().compactMap {
                 try makeUploadableBlock(block: $0, verification: page.verification)
             }

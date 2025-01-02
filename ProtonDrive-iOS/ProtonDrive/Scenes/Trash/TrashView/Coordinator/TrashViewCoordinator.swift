@@ -21,11 +21,15 @@ import PDUIComponents
 
 // MARK: - TrashViewCoordinator
 final class TrashViewCoordinator: ObservableObject, SwiftUICoordinator {
-    typealias Context = Tower
+    typealias Context = AuthenticatedDependencyContainer
 
     func start(_ context: Context) -> AnyView {
-        let model = TrashModel(tower: context)
-        let viewModel = TrashViewModel(model: model)
+        let tower = context.tower
+        let restorer = TrashedNodeRestorer(client: tower.client, storage: tower.storage)
+        let deleter = TrashedNodeDeleter(client: tower.client, storage: tower.storage)
+        let trashCleaner = TrashCleaner(client: tower.client, storage: tower.storage)
+        let model = TrashModel(tower: tower, restorer: restorer, deleter: deleter, trashCleaner: trashCleaner)
+        let viewModel = TrashViewModel(model: model, featureFlagsController: context.featureFlagsController)
         return TrashView(vm: viewModel).any()
     }
 

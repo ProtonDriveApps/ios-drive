@@ -33,6 +33,7 @@ final class DrivePhotosBackupController: PhotosBackupController {
     private let settingsController: PhotoBackupSettingsController
     private let bootstrapController: PhotosBootstrapController
     private let lockController: PhotoBackupConstraintController
+    private let populatedStateController: PopulatedStateControllerProtocol
     private var cancellables = Set<AnyCancellable>()
     private let isAvailableSubject = CurrentValueSubject<PhotosBackupAvailability, Never>(.unavailable)
 
@@ -40,18 +41,23 @@ final class DrivePhotosBackupController: PhotosBackupController {
         isAvailableSubject.eraseToAnyPublisher()
     }
 
-    init(authorizationController: PhotoLibraryAuthorizationController, settingsController: PhotoBackupSettingsController, bootstrapController: PhotosBootstrapController, lockController: PhotoBackupConstraintController) {
+    init(authorizationController: PhotoLibraryAuthorizationController, settingsController: PhotoBackupSettingsController, bootstrapController: PhotosBootstrapController, lockController: PhotoBackupConstraintController, populatedStateController: PopulatedStateControllerProtocol) {
         self.authorizationController = authorizationController
         self.settingsController = settingsController
         self.bootstrapController = bootstrapController
         self.lockController = lockController
+        self.populatedStateController = populatedStateController
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
-        Publishers.CombineLatest4(authorizationController.permissions, settingsController.isEnabled, bootstrapController.isReady, lockController.constraint)
-            .map { permissions, isSettingsEnabled, isBootstraped, isLocked -> PhotosBackupAvailability in
-                if permissions == .full && isSettingsEnabled && isBootstraped {
+        let constraintsPublisher = Publishers.CombineLatest3(bootstrapController.isReady, lockController.constraint, populatedStateController.state)
+        Publishers.CombineLatest3(authorizationController.permissions, settingsController.isEnabled, constraintsPublisher)
+            .map { permissions, isSettingsEnabled, constraints -> PhotosBackupAvailability in
+                let isBootstrapped = constraints.0
+                let isLocked = constraints.1
+                let isPopulated = constraints.2 == .populated
+                if permissions == .full && isSettingsEnabled && isBootstrapped && isPopulated {
                     return isLocked ? PhotosBackupAvailability.locked : PhotosBackupAvailability.available
                 } else {
                     return PhotosBackupAvailability.unavailable

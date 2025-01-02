@@ -20,5 +20,6 @@ import Photos
 
 protocol PhotoPreviewDetailCoordinator {
     func openShare(url: URL)
+    func openShareBurst(urls: [URL])
     func openShareLivePhoto(imageURL: URL, videoURL: URL)
 }

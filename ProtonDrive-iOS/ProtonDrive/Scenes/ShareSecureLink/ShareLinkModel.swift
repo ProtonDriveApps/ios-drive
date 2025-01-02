@@ -28,12 +28,14 @@ final class ShareLinkModel {
     private var cancellables = Set<AnyCancellable>()
 
     private var sharedLink: SharedLink
+    private var storage: StorageManager
 
     init(
         node: Node,
         sharedLinkSubject: CurrentValueSubject<SharedLink, Never>,
         shareURL: ShareURL,
-        repository: SharedLinkRepository
+        repository: SharedLinkRepository,
+        storage: StorageManager
     ) {
         self.node = node
         self.shareURL = shareURL
@@ -42,6 +44,7 @@ final class ShareLinkModel {
         self.sharedLink = sharedLinkSubject.value
         self.shareURLID = sharedLinkSubject.value.id
         self.shareID = sharedLinkSubject.value.shareID
+        self.storage = storage
 
         runChecksOnNode(node)
     }
@@ -72,21 +75,52 @@ final class ShareLinkModel {
     }
 
     func deleteSecureLink(completion: @escaping (Result<Void, Error>) -> Void) {
-        repository.deleteSecureLink(shareURL, shareID: node.shareID, completion: completion)
+        let identifier = shareURL.identifier
+        Task {
+            do {
+                try await repository.deletePublicLink(identifier)
+                completion(.success)
+            } catch {
+                completion(.failure(error))
+            }
+        }
     }
 
     func updateSecureLink(values: UpdateShareURLDetails, completion: @escaping (Result<ShareURL, Error>) -> Void) {
-        repository.updateSecureLink(
-            shareURL,
-            nodeIdentifier: node.identifier,
-            values: values
-        ) { [weak self] result in
-            guard let self = self else  { return }
-            if case let .success(shareURL) = result {
-                self.sharedLink = self.sharedLink.updated(with: values, shareURL: shareURL)
-                self.sharedLinkSubject.send(self.sharedLink)
+        let identifier = shareURL.identifier
+        let nodeIdentifier = node.identifier
+        Task {
+            do {
+                try await repository.updatePublicLink(identifier, node: nodeIdentifier, with: values)
+                try await self.handleSuccess(identifier: identifier, values: values, completion: completion)
+            } catch {
+                await self.handleError(error, completion: completion)
             }
-            completion(result)
         }
+    }
+
+    func getShareURL(publicLink: PublicLinkIdentifier) async throws -> ShareURL {
+        let context = storage.mainContext
+
+        return try await context.perform {
+            guard let shareURL = ShareURL.fetch(id: publicLink.id, in: context) else {
+                throw DriveError("Thre should be a Public link in store")
+            }
+            shareURL.clearCachedPassword()
+            return shareURL
+        }
+    }
+
+    @MainActor
+    func handleSuccess(identifier: PublicLinkIdentifier, values: UpdateShareURLDetails, completion: @escaping (Result<ShareURL, Error>) -> Void) async throws {
+        let shareURL = try await getShareURL(publicLink: identifier)
+        self.sharedLink = self.sharedLink.updated(with: values, shareURL: shareURL)
+        self.sharedLinkSubject.send(self.sharedLink)
+        completion(.success(shareURL))
+    }
+
+    @MainActor
+    func handleError(_ error: Error, completion: @escaping (Result<ShareURL, Error>) -> Void) {
+        completion(.failure(error))
     }
 }

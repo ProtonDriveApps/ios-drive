@@ -16,7 +16,6 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
-import os.log
 import SwiftUI
 import PMSettings
 import ProtonCoreKeymaker

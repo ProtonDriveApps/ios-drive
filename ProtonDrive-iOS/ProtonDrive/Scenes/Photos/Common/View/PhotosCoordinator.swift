@@ -15,17 +15,20 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Combine
 import Foundation
-import ProtonCoreFoundations
-import UIKit
+import PDCore
 import PDUIComponents
-import SwiftUI
 import Photos
+import ProtonCoreFoundations
+import SwiftUI
+import UIKit
 
-final class PhotosCoordinator: PhotosRootCoordinator, PhotosPermissionsCoordinator, PhotoItemCoordinator, PhotosActionCoordinator, PhotosStorageCoordinator, PhotosStateCoordinator {
-    private let container: PhotosScenesContainer
+final class PhotosCoordinator: PhotosRootCoordinator, PhotosPermissionsCoordinator, PhotoItemCoordinator, PhotosActionCoordinator, PhotosStorageCoordinator, PhotosStateCoordinator, PhotoUpsellCoordinator {
+    let container: PhotosScenesContainer
     weak var rootViewController: UIViewController?
     private weak var activityVC: UIActivityViewController?
+    private var cancellables = Set<AnyCancellable>()
 
     private var navigationViewController: UINavigationController? {
         rootViewController?.navigationController
@@ -57,20 +60,25 @@ final class PhotosCoordinator: PhotosRootCoordinator, PhotosPermissionsCoordinat
 
     func openPreview(with id: PhotoId) {
         let viewController = container.makePreviewController(id: id)
-        viewController.modalPresentationStyle = .fullScreen
+        viewController.modalPresentationStyle = .custom
         navigationViewController?.present(viewController, animated: true)
     }
 
     func updateTabBar(isHidden: Bool) {
-        let userInfo: [String: Bool] = ["tabBarHidden": isHidden]
-        NotificationCenter.default.post(name: FinderNotifications.tabBar.name, object: nil, userInfo: userInfo)
+        NotificationCenter.default.post(name: FinderNotifications.tabBar.name, object: isHidden)
     }
 
     func openShare(id: PhotoId) {
-        guard let viewController = container.makeShareViewController(id: id) else {
-            return
+        let featureFlagsController = container.dependencies.featureFlagsController
+
+        if featureFlagsController.hasSharing, let nc = navigationViewController {
+            container.makeShareViewController(id: id, rootVC: nc)?.openSharingConfig()
+        } else {
+            guard let viewController = container.makeLegacyShareViewController(id: id) else {
+                return
+            }
+            navigationViewController?.present(viewController, animated: true)
         }
-        navigationViewController?.present(viewController, animated: true)
     }
 
     func openNativeShare(url: URL, completion: @escaping () -> Void) {
@@ -100,6 +108,19 @@ final class PhotosCoordinator: PhotosRootCoordinator, PhotosPermissionsCoordinat
         }
     }
     
+    func openNativeShareForBurstPhoto(urls: [URL], completion: @escaping () -> Void) {
+        var activities: [UIActivity] = []
+        if PHPhotoLibrary.authorizationStatus(for: .addOnly) != .denied {
+            activities.append(SaveBurstPhotoActivity(urls: urls))
+        }
+        openShareActivity(
+            items: urls,
+            activities: activities,
+            excludeActivities: [.saveToCameraRoll],
+            completion: completion
+        )
+    }
+    
     private func openShareActivity(
         items: [Any],
         activities: [UIActivity]? = nil,
@@ -126,6 +147,30 @@ final class PhotosCoordinator: PhotosRootCoordinator, PhotosPermissionsCoordinat
         }
         activityVC = viewController
         rootViewController.present(viewController, animated: true, completion: nil)
+    }
+    
+    func openPhotoDetail(id: PhotoId) {
+        let storage = container.dependencies.tower.storage
+        
+        let photo = storage.mainContext.performAndWait {
+            let photo: PDCore.Photo? = PDCore.Photo.fetch(identifier: id, in: storage.mainContext)
+            return photo
+        }
+        guard let photo else { return }
+        let root = RootViewModel()
+        
+        let hosting = NodeDetailsCoordinator()
+            .start((container.dependencies.tower, photo))
+            .environmentObject(root)
+            .embeddedInHostingController()
+        
+        root.closeCurrentSheet
+            .sink { [weak hosting] _ in
+                hosting?.dismiss(animated: true)
+            }
+            .store(in: &cancellables)
+        
+        navigationViewController?.present(hosting, animated: true)
     }
     
     func rectForShareActivity() -> CGRect {
@@ -164,11 +209,20 @@ final class PhotosCoordinator: PhotosRootCoordinator, PhotosPermissionsCoordinat
         UIApplication.shared.open(settingsUrl) { _ in }
     }
     
-    func openUpsellView() {
-        let viewModel = PhotoUpsellViewModel()
+    func openUpsellView(photoUpsellResultNotifier: PhotoUpsellResultNotifierProtocol) {
+        let navigationController = UINavigationController()
+        navigationController.navigationBar.isHidden = true
+
+        let viewModel = PhotoUpsellViewModel(
+            photosCoordinator: self,
+            photoUpsellResultNotifier: photoUpsellResultNotifier
+        ) { [weak navigationController] in
+                navigationController?.dismiss(animated: false)
+        }
         let view = PhotoUpsellView(viewModel: viewModel)
         let viewController = UIHostingController(rootView: view)
-        rootViewController?.present(viewController, animated: true)
+        navigationController.setViewControllers([viewController], animated: false)
+        rootViewController?.present(navigationController, animated: true)
     }
     
     @objc

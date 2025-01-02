@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 struct PhotosTrashData {
+    let volumeId: String
     let shareId: String
     let nodeIds: [String]
 }

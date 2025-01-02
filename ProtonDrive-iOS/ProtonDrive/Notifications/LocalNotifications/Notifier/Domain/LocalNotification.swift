@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDLocalization
 
 struct LocalNotification: Equatable {
     let id: String
@@ -28,7 +29,7 @@ struct LocalNotification: Equatable {
         LocalNotification(
             id: "ch.protondrive.usernotification.uploadIncomplete",
             title: "Proton Drive",
-            body: "Photo backup is slower in the background. Open the app for quicker uploads.",
+            body: Localization.photo_upload_interrupted_notification,
             thread: "ch.protondrive.usernotification.uploadIncomplete",
             delay: 10.0
         )
@@ -38,7 +39,7 @@ struct LocalNotification: Equatable {
         LocalNotification(
             id: "ch.protondrive.usernotification.uploadIncomplete",
             title: "Proton Drive",
-            body: "File upload paused. Open the app to resume.",
+            body: Localization.file_upload_paused_notification,
             thread: "ch.protondrive.usernotification.uploadIncomplete",
             delay: 1.0
         )
@@ -48,7 +49,7 @@ struct LocalNotification: Equatable {
         LocalNotification(
             id: "ch.protondrive.usernotification.uploadFailure",
             title: "Proton Drive",
-            body: "Some files didn’t upload. Try uploading them again.",
+            body: Localization.file_upload_failed_notification,
             thread: "ch.protondrive.usernotification.uploadFailure",
             delay: 1.0
         )

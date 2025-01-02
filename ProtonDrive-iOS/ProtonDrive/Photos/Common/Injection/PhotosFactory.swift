@@ -64,8 +64,8 @@ struct PhotosFactory {
         LocalPhotosRootDataSource(observer: observer)
     }
 
-    func makeBackupController(settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController, bootstrapController: PhotosBootstrapController, lockController: PhotoBackupConstraintController) -> PhotosBackupController {
-        return DrivePhotosBackupController(authorizationController: authorizationController, settingsController: settingsController, bootstrapController: bootstrapController, lockController: lockController)
+    func makeBackupController(settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController, bootstrapController: PhotosBootstrapController, lockController: PhotoBackupConstraintController, populatedStateController: PopulatedStateControllerProtocol) -> PhotosBackupController {
+        return DrivePhotosBackupController(authorizationController: authorizationController, settingsController: settingsController, bootstrapController: bootstrapController, lockController: lockController, populatedStateController: populatedStateController)
     }
 
     func makeCleanupController(tower: Tower, photosMoc: NSManagedObjectContext) -> PhotoLeftoversCleaner {
@@ -144,7 +144,19 @@ struct PhotosFactory {
     }
 
     // swiftlint:disable:next function_parameter_count
-    func makePhotoUploader(tower: Tower, keymaker: Keymaker, cleanedUploadingStore: DeletedPhotosIdentifierStoreResource, moc: NSManagedObjectContext, telemetryContainer: PhotosTelemetryStorageContainer, photoSkippableCache: PhotosSkippableCache, durationMeasurementRepository: DurationMeasurementRepository, uploadDoneNotifier: PhotoUploadDoneNotifier, filesMeasurementRepository: FileUploadFilesMeasurementRepositoryProtocol, blocksMeasurementRepository: FileUploadBlocksMeasurementRepositoryProtocol) -> PhotoUploader {
+    func makePhotoUploader(
+        tower: Tower, 
+        keymaker: Keymaker,
+        cleanedUploadingStore: DeletedPhotosIdentifierStoreResource,
+        moc: NSManagedObjectContext,
+        telemetryContainer: PhotosTelemetryStorageContainer,
+        photoSkippableCache: PhotosSkippableCache,
+        durationMeasurementRepository: DurationMeasurementRepository,
+        uploadDoneNotifier: PhotoUploadDoneNotifier,
+        filesMeasurementRepository: FileUploadFilesMeasurementRepositoryProtocol,
+        blocksMeasurementRepository: FileUploadBlocksMeasurementRepositoryProtocol,
+        photoUploadedNotifier: PhotoUploadedNotifier
+    ) -> PhotoUploader {
         // There are 3 heavy operations that run in for each Photo: page upload, blocks/thumbnail upload and encryption.
         // By injecting serial queues, even for multiple Photos uploading, only one of each operations will run at a time. Thus keeping CPU usage at a normal level.
         let pagesQueue = makeSerialOperationQueue()
@@ -157,6 +169,7 @@ struct PhotosFactory {
             sessionVault: tower.sessionVault,
             apiService: tower.api,
             moc: moc,
+            parallelEncryption: tower.parallelEncryption,
             pagesQueue: pagesQueue,
             uploadQueue: uploadQueue,
             encryptionQueue: encryptionQueue,
@@ -165,7 +178,23 @@ struct PhotosFactory {
             blocksMeasurementRepository: blocksMeasurementRepository
         )
         let measurementRepositoryFactory = ConcretePhotoUploadMeasurementRepositoryFactory(notifier: uploadDoneNotifier)
-        return PhotoUploader(concurrentOperations: Constants.photosUploaderParallelProcessingCount, fileUploadFactory: photoUploadFactory.make(), featureFlags: tower.featureFlags, deletedPhotosIdentifierStore: cleanedUploadingStore, filecleaner: tower.cloudSlot, moc: moc, skippableCache: photoSkippableCache, dispatchQueue: makeDispatchQueue(), childQueues: [pagesQueue, uploadQueue, encryptionQueue], durationMeasurementRepository: durationMeasurementRepository, filesMeasurementRepository: filesMeasurementRepository, measurementRepositoryFactory: measurementRepositoryFactory, protectionResource: keymaker)
+        
+        return PhotoUploader(
+            concurrentOperations: Constants.photosUploaderParallelProcessingCount,
+            fileUploadFactory: photoUploadFactory.make(),
+            featureFlags: tower.featureFlags,
+            deletedPhotosIdentifierStore: cleanedUploadingStore,
+            filecleaner: tower.cloudSlot,
+            moc: moc,
+            skippableCache: photoSkippableCache,
+            dispatchQueue: makeDispatchQueue(),
+            childQueues: [pagesQueue, uploadQueue, encryptionQueue],
+            durationMeasurementRepository: durationMeasurementRepository,
+            filesMeasurementRepository: filesMeasurementRepository,
+            measurementRepositoryFactory: measurementRepositoryFactory,
+            protectionResource: keymaker,
+            photoUploadedNotifier: photoUploadedNotifier
+        )
     }
 
     private func makeSerialOperationQueue() -> OperationQueue {
@@ -181,7 +210,7 @@ struct PhotosFactory {
     }
 
     func makeBackupProgressController(tower: Tower, libraryProgressController: PhotosLoadProgressController, loadController: PhotoLibraryLoadController, photosMoc: NSManagedObjectContext) -> PhotosBackupProgressController {
-        let observer = FetchedResultsControllerObserver(controller: tower.storage.subscriptionToPrimaryUploadingPhotos(moc: photosMoc))
+        let observer = FetchedResultsControllerObserver(controller: tower.storage.subscriptionToMyPrimaryUploadingPhotos(moc: photosMoc))
         let uploadsRepository = DatabasePhotoUploadsRepository(observer: observer)
         let uploadsController = LocalPhotosUploadsProgressController(repository: uploadsRepository)
         return LocalPhotosBackupProgressController(libraryLoadController: libraryProgressController, uploadsController: uploadsController, loadController: loadController, debounceResource: CommonLoopDebounceResource())
@@ -231,7 +260,7 @@ struct PhotosFactory {
     }
 
     func makeComputationalAvailabilityController(extensionTaskController: BackgroundTaskStateController, processingTaskController: BackgroundTaskStateController) -> ComputationalAvailabilityController {
-        let stateController = ConcreteApplicationStateController(stateResource: ApplicationRunningStateResourceImpl())
+        let stateController = ConcreteApplicationStateController(stateResource: iOSApplicationRunningStateResource())
         return ConcreteComputationalAvailabilityController(processId: "photos", extensionController: extensionTaskController, processingController: processingTaskController, applicationStateController: stateController)
     }
 

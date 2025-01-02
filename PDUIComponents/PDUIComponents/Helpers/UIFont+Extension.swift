@@ -15,8 +15,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+#if canImport(UIKit)
 import UIKit
+#endif
 
+#if os(iOS)
 extension UIFont {
     func withTraits(traits: UIFontDescriptor.SymbolicTraits) -> UIFont {
         let descriptor = fontDescriptor.withSymbolicTraits(traits)
@@ -31,3 +34,4 @@ extension UIFont {
         return withTraits(traits: .traitItalic)
     }
 }
+#endif

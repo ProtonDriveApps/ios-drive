@@ -19,6 +19,7 @@ import QuickLook
 
 final class PMPreviewController: QLPreviewController {
     var share: Bool?
+    var model: FileModel!
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
@@ -62,5 +63,15 @@ final class PMPreviewController: QLPreviewController {
             else { return }
             stackView.subviews.first?.gestureRecognizers?.first?.state = .ended
         }
+    }
+}
+
+extension UIViewController {
+    @objc func close() {
+        dismiss(animated: true)
+    }
+
+    @objc func back() {
+        navigationController?.popViewController(animated: true)
     }
 }

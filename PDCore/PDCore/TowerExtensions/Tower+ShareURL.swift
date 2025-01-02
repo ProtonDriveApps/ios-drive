@@ -17,44 +17,9 @@
 
 import Foundation
 
-public protocol SharedLinkRepository {
-    func getSecureLink(for node: Node, completion: @escaping (Result<ShareURL, Error>) -> Void)
-    func updateSecureLink(_ link: ShareURL, nodeIdentifier: NodeIdentifier, values: UpdateShareURLDetails, completion: @escaping (Result<ShareURL, Error>) -> Void)
-    func deleteSecureLink(_ shareURL: ShareURL, shareID: String, completion: @escaping (Result<Void, Error>) -> Void)
-}
-
-extension Tower: SharedLinkRepository {
+extension Tower {
     public var didFetchAllShareURLs: Bool {
         get { storage.finishedFetchingShareURLs ?? false }
         set { storage.finishedFetchingShareURLs = newValue }
-    }
-    
-    // MARK: - Retrieve or create
-    public func getSecureLink(for node: Node, completion: @escaping (Result<ShareURL, Error>) -> Void) {
-        sharingManager.getSecureLink(for: node) { result in
-            completion(
-                result.map { [unowned self] share -> ShareURL in
-                    return self.moveToMainContext(share)
-                }
-            )
-        }
-    }
-
-    public func updateSecureLink(_ link: ShareURL, nodeIdentifier: NodeIdentifier, values: UpdateShareURLDetails, completion: @escaping (Result<ShareURL, Error>) -> Void) {
-        let moc = storage.backgroundContext
-        moc.perform {
-            let link = link.in(moc: moc)
-
-            guard let email = link.share.root?.signatureEmail,
-                  let address = self.sessionVault.getAddress(for: email) else {
-                      return
-                  }
-
-            self.sharingManager.updateSecureLink(shareURL: link, node: nodeIdentifier, with: values, address: address, completion: completion)
-        }
-    }
-
-    public func deleteSecureLink(_ shareURL: ShareURL, shareID: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        sharingManager.deleteSecureLink(shareURL, shareID: shareID, completion: completion)
     }
 }

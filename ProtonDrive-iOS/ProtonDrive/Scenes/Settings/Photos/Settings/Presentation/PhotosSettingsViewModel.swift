@@ -18,6 +18,7 @@
 import Combine
 import Foundation
 import PDCore
+import PDLocalization
 
 protocol PhotosSettingsViewModelProtocol: ObservableObject {
     var backupTitle: String { get }
@@ -46,7 +47,6 @@ protocol PhotosSettingsViewModelProtocol: ObservableObject {
     func setImageEnabled(_ isEnabled: Bool)
     func setIsNotOlderThanEnabled(_ isEnabled: Bool)
     func setNotOlderThan(_ date: Date)
-    func togglePhotoFeatureEnableStatus()
 }
 
 final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
@@ -54,7 +54,7 @@ final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
     private let startController: PhotosBackupStartController
     private let localSettings: LocalSettings
 
-    let backupTitle = "Photos backup"
+    let backupTitle = Localization.setting_photo_backup
     let mobileDataTitle = "Use mobile data to backup photos"
     let imageTitle = "Backup Images"
     let videoTitle = "Backup Videos"
@@ -63,9 +63,9 @@ final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
     let shouldShowPhotoFeatureOption: Bool
     var photoFeatureTitle: String {
         if isPhotoFeatureDisabled {
-            return "Enable photo backup feature"
+            return Localization.photo_feature_enable_title
         } else {
-            return "Disable photo backup feature"
+            return Localization.photo_feature_disable_title
         }
     }
     var photoFeatureAccessibilityID: String {
@@ -77,20 +77,20 @@ final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
     }
     var photoFeatureAlertMessage: String {
         if isPhotoFeatureDisabled {
-            return "Are you sure you want to enable this feature? The photo backup will be activated and displayed again."
+            return Localization.photo_feature_enable_alert_message
         } else {
-            return "Are you sure you want to disable this feature? You can re-enable it later in settings if needed."
+            return Localization.photo_feature_disable_alert_message
         }
     }
     var photoFeatureAlertButtonTitle: String {
         if isPhotoFeatureDisabled {
-            return "Enable"
+            return Localization.general_enable
         } else {
-            return "Disable"
+            return Localization.general_disable
         }
     }
-    let photoFeatureAlertCancelTitle = "Cancel"
-    let photoFeatureExplanation = "This will enable photo backup feature on this device. The Photos tab and feature settings will be displayed."
+    let photoFeatureAlertCancelTitle = Localization.general_cancel
+    let photoFeatureExplanation = Localization.photo_feature_explanation
     @Published var isPhotoFeatureDisabled = false
     @Published var isEnabled = false
     @Published var isMobileDataEnabled = false
@@ -128,8 +128,6 @@ final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
             .assign(to: &$isVideoEnabled)
         settingsController.notOlderThan
             .assign(to: &$notOlderThan)
-        localSettings.publisher(for: \.isPhotoBackupFeatureDisabled)
-            .assign(to: &$isPhotoFeatureDisabled)
     }
 
     func setEnabled(_ isEnabled: Bool) {
@@ -161,11 +159,11 @@ final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
         settingsController.setNotOlderThan(date)
     }
     
-    func togglePhotoFeatureEnableStatus() {
-        let newStatus = !localSettings.isPhotoBackupFeatureDisabled
-        localSettings.isPhotoBackupFeatureDisabled = newStatus
-        if newStatus == true {
-            setEnabled(false)
-        }
-    }
+//    func togglePhotoFeatureEnableStatus() {
+//        let newStatus = !localSettings.isPhotoTabDisabled
+//        localSettings.isPhotoTabDisabled = newStatus
+//        if newStatus == true {
+//            setEnabled(false)
+//        }
+//    }
 }

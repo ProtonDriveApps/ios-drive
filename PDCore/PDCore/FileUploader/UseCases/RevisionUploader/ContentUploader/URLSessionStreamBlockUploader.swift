@@ -17,6 +17,7 @@
 
 import Foundation
 import PDClient
+import PDLoadTesting
 
 struct Streams {
     let input: InputStream
@@ -184,6 +185,17 @@ extension URLSessionStreamBlockUploader: URLSessionDataDelegate {
         completionHandler(boundStreams.input)
     }
 
+    func urlSession(
+        _ session: URLSession, didReceive challenge: URLAuthenticationChallenge
+    ) async -> (URLSession.AuthChallengeDisposition, URLCredential?) {
+        guard LoadTesting.isEnabled else {
+            // this is the default handling, as if this delegate method were not implemented
+            return (.performDefaultHandling, nil)
+        }
+        guard let trust = challenge.protectionSpace.serverTrust else { return (.performDefaultHandling, nil) }
+        let credential = URLCredential(trust: trust)
+        return (.useCredential, credential)
+    }
 }
 
 extension URLSessionStreamBlockUploader: StreamDelegate {

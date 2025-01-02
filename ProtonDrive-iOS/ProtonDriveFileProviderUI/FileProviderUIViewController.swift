@@ -21,6 +21,7 @@ import PDUIComponents
 import PDCore
 import ProtonCoreKeymaker
 import PMSettings
+import PDLocalization
 
 class FileProviderUIViewController: FPUIActionExtensionViewController {
     @IBOutlet var containerView: UIView!
@@ -53,10 +54,10 @@ class FileProviderUIViewController: FPUIActionExtensionViewController {
     }
 
     private func injectSignInController() {
-        let alert = UIAlertController(title: "Sign In to Proton Drive",
-                                      message: "Please open the Proton Drive app to sign in to continue",
+        let alert = UIAlertController(title: Localization.file_provider_signIn_alert_title,
+                                      message: Localization.file_provider_signIn_alert_message,
                                       preferredStyle: .alert)
-        let close = UIAlertAction(title: "Ok", style: .default) { _ in
+        let close = UIAlertAction(title: Localization.general_ok, style: .default) { _ in
             self.extensionContext.cancelRequest(withError: CrossProcessErrorExchange.cancelError)
         }
         alert.addAction(close)
@@ -66,10 +67,10 @@ class FileProviderUIViewController: FPUIActionExtensionViewController {
     }
 
     private func injectUnlockNotSupportedViewController() {
-        let alert = UIAlertController(title: "Proton Drive is Locked",
-                                      message: "While PIN or Face ID/Touch ID are enabled on Proton Drive the content is not accessible in Files",
+        let alert = UIAlertController(title: Localization.file_provider_unlock_alert_title,
+                                      message: Localization.file_provider_unlock_alert_message,
                                       preferredStyle: .alert)
-        let close = UIAlertAction(title: "Ok", style: .default) { _ in
+        let close = UIAlertAction(title: Localization.general_ok, style: .default) { _ in
             self.extensionContext.cancelRequest(withError: CrossProcessErrorExchange.cancelError)
         }
         alert.addAction(close)

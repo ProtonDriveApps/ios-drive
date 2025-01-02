@@ -16,7 +16,11 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
+#if os(iOS)
 public struct RootDeeplinkableView<Content: View>: View {
     var contents: Content
     var navigationTracker: UINavigationControllerDelegate?
@@ -46,3 +50,4 @@ public struct RootDeeplinkableView<Content: View>: View {
         }.navigationViewStyle(StackNavigationViewStyle())
     }
 }
+#endif

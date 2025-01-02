@@ -20,6 +20,12 @@ import Foundation
 public struct Link: Codable {
     public typealias LinkID = String
     
+    #if os(iOS)
+    public let volumeID: String
+    #else
+    // this must be removed once macOS implements the migration to volumeID-based DB
+    public var volumeID: String { "" }
+    #endif
     // node
     public let linkID: LinkID
     public let parentLinkID: LinkID?
@@ -47,16 +53,20 @@ public struct Link: Codable {
     public let XAttr: String?
     public let fileProperties: FileProperties?
     public let folderProperties: FolderProperties?
-    
-    public init(linkID: LinkID, parentLinkID: LinkID?, type: LinkType, name: String,
+    public let documentProperties: DocumentProperties?
+
+    public init(linkID: LinkID, parentLinkID: LinkID?, volumeID: String, type: LinkType, name: String,
                 nameSignatureEmail: String?, hash: String, state: NodeState, expirationTime: TimeInterval?,
                 size: Int, MIMEType: String, attributes: AttriburesMask, permissions: PermissionMask,
                 nodeKey: String, nodePassphrase: String, nodePassphraseSignature: String,
                 signatureEmail: String, createTime: TimeInterval, modifyTime: TimeInterval,
                 trashed: TimeInterval?, sharingDetails: SharingDetails?, nbUrls: Int, activeUrls: Int,
-                urlsExpired: Int, XAttr: String?, fileProperties: FileProperties?, folderProperties: FolderProperties?) {
+                urlsExpired: Int, XAttr: String?, fileProperties: FileProperties?, folderProperties: FolderProperties?, documentProperties: DocumentProperties? = nil) {
         self.linkID = linkID
         self.parentLinkID = parentLinkID
+        #if os(iOS)
+        self.volumeID = volumeID
+        #endif
         self.type = type
         self.name = name
         self.nameSignatureEmail = nameSignatureEmail
@@ -81,6 +91,41 @@ public struct Link: Codable {
         self.XAttr = XAttr
         self.fileProperties = fileProperties
         self.folderProperties = folderProperties
+        self.documentProperties = documentProperties
+    }
+
+    // Convenience initializer to allow migration to volume based APIs
+    public init(link: Link, volumeID: String) {
+        self.linkID = link.linkID
+        self.parentLinkID = link.parentLinkID
+        #if os(iOS)
+        self.volumeID = volumeID
+        #endif
+        self.type = link.type
+        self.name = link.name
+        self.nameSignatureEmail = link.nameSignatureEmail
+        self.hash = link.hash
+        self.state = link.state
+        self.expirationTime = link.expirationTime
+        self.size = link.size
+        self.MIMEType = link.MIMEType
+        self.attributes = link.attributes
+        self.permissions = link.permissions
+        self.nodeKey = link.nodeKey
+        self.nodePassphrase = link.nodePassphrase
+        self.nodePassphraseSignature = link.nodePassphraseSignature
+        self.signatureEmail = link.signatureEmail
+        self.createTime = link.createTime
+        self.modifyTime = link.modifyTime
+        self.trashed = link.trashed
+        self.sharingDetails = link.sharingDetails
+        self.nbUrls = link.nbUrls
+        self.activeUrls = link.activeUrls
+        self.urlsExpired = link.urlsExpired
+        self.XAttr = link.XAttr
+        self.fileProperties = link.fileProperties
+        self.folderProperties = link.folderProperties
+        self.documentProperties = link.documentProperties
     }
 }
 
@@ -89,6 +134,7 @@ public extension Link {
         Link(
             linkID: id,
             parentLinkID: nil,
+            volumeID: "",
             type: .file,
             name: "",
             nameSignatureEmail: "",
@@ -112,7 +158,8 @@ public extension Link {
             urlsExpired: 0,
             XAttr: nil,
             fileProperties: nil,
-            folderProperties: nil
+            folderProperties: nil,
+            documentProperties: nil
         )
     }
 }
@@ -146,9 +193,20 @@ public struct FileProperties: Codable {
     public let contentKeyPacket: String
     public let contentKeyPacketSignature: String?
     public let activeRevision: RevisionShort?
+
+    public init(contentKeyPacket: String, contentKeyPacketSignature: String?, activeRevision: RevisionShort?) {
+        self.contentKeyPacket = contentKeyPacket
+        self.contentKeyPacketSignature = contentKeyPacketSignature
+        self.activeRevision = activeRevision
+    }
 }
+
 public struct FolderProperties: Codable {
     public var nodeHashKey: String
+}
+
+public struct DocumentProperties: Codable {
+    public var size: Int
 }
 
 public struct SharingDetails: Codable {
@@ -162,9 +220,12 @@ public struct SharingDetails: Codable {
 }
 
 public struct ShareURL: Codable {
-    public let shareURLID: String
+    public let shareUrlID: String
     public let token: String? // not always provided, according to docs
-    public let expirationTime: Int?
-    public let createTime: Int
+    public let expireTime: Date?
+    public let createTime: Date
     public let numAccesses: Int
+    public let shareID: String
 }
+
+public typealias ShareURLShortMeta = ShareURL

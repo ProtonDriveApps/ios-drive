@@ -25,23 +25,28 @@ import SafariServices
 protocol ProtonDocumentOpeningControllerProtocol {
     func openPreview(_ identifier: NodeIdentifier)
     func openPreview(_ url: URL)
+    func openExternally(_ identifier: NodeIdentifier)
 }
 
 final class ProtonDocumentOpeningController: ProtonDocumentOpeningControllerProtocol {
-    private let interactor: ProtonDocumentOpeningURLInteractorProtocol
-    private let coordinator: URLCoordinatorProtocol
+    private let interactor: ProtonDocumentIdentifierInteractorProtocol
+    private let urlFactory: ProtonDocumentNonAuthenticatedURLFactoryProtocol
+    private let coordinator: ProtonDocumentCoordinatorProtocol
     private let errorViewModel: ProtonDocumentErrorViewModelProtocol
+    private let featureFlagsController: FeatureFlagsControllerProtocol
 
-    init(interactor: ProtonDocumentOpeningURLInteractorProtocol, coordinator: URLCoordinatorProtocol, errorViewModel: ProtonDocumentErrorViewModelProtocol) {
+    init(interactor: ProtonDocumentIdentifierInteractorProtocol, urlFactory: ProtonDocumentNonAuthenticatedURLFactoryProtocol, coordinator: ProtonDocumentCoordinatorProtocol, errorViewModel: ProtonDocumentErrorViewModelProtocol, featureFlagsController: FeatureFlagsControllerProtocol) {
         self.interactor = interactor
+        self.urlFactory = urlFactory
         self.coordinator = coordinator
         self.errorViewModel = errorViewModel
+        self.featureFlagsController = featureFlagsController
     }
 
     func openPreview(_ identifier: NodeIdentifier) {
         do {
-            let url = try interactor.getURL(for: identifier)
-            coordinator.openExternal(url: url)
+            let identifier = try interactor.getIdentifier(for: identifier)
+            try open(identifier)
         } catch {
             handleError(error)
         }
@@ -49,10 +54,29 @@ final class ProtonDocumentOpeningController: ProtonDocumentOpeningControllerProt
 
     func openPreview(_ url: URL) {
         do {
-            let url = try interactor.getURL(for: url)
+            let identifier = try interactor.getIdentifier(for: url)
+            try open(identifier)
+        } catch {
+            handleError(error)
+        }
+    }
+
+    func openExternally(_ identifier: NodeIdentifier) {
+        do {
+            let identifier = try interactor.getIdentifier(for: identifier)
+            let url = try urlFactory.makeURL(from: identifier)
             coordinator.openExternal(url: url)
         } catch {
             handleError(error)
+        }
+    }
+
+    private func open(_ identifier: ProtonDocumentIdentifier) throws {
+        if featureFlagsController.hasProtonDocumentInWebView {
+            coordinator.openPreview(identifier: identifier)
+        } else {
+            let url = try urlFactory.makeURL(from: identifier)
+            coordinator.openExternal(url: url)
         }
     }
 

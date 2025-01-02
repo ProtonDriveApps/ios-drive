@@ -1,6 +1,0 @@
-framework module ProtonCoreQuarkCommands {
-  umbrella header "ProtonCore-QuarkCommands-dynamic-umbrella.h"
-
-  export *
-  module * { export * }
-}

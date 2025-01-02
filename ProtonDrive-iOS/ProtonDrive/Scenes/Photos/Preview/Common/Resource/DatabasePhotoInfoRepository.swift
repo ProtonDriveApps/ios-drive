@@ -38,7 +38,8 @@ final class DatabasePhotoInfoRepository: PhotoInfoRepository {
 
     func execute(with id: PhotoId) {
         managedObjectContext.perform { [weak self] in
-            guard let self, let photo = try? self.storage.fetchPhoto(id: id, moc: self.managedObjectContext) else {
+            guard let self, let photo = Photo.fetch(identifier: id, in: self.managedObjectContext) else {
+                Log.error("Photo with identifier:\(id) not found", domain: .photosUI)
                 return
             }
 

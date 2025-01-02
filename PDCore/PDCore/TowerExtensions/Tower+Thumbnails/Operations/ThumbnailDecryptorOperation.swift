@@ -92,7 +92,7 @@ final class ThumbnailDecryptor {
                 thumbnail.downloadURL = nil
                 thumbnail.clearData = thumbnail.clearThumbnail
 
-                try moc.saveWithParentLinkCheck()
+                try moc.saveOrRollback()
                 completion(.success)
 
             } catch {

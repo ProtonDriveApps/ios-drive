@@ -43,7 +43,11 @@ public class FolderEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWit
     internal var fetchFromAPICancellable: AnyCancellable?
     
     public init(tower: Tower,
-                pageSize: Int = 5_000,
+                // We need to align the DB page size with the BE page size to allow switching from API fetch 
+                // to DB fetch mid-way. This means that if page 0 is fetched from API, we can fetch page 1 from DB,
+                // and we interpret the page size correctly. The FileProvider API only tells us the page number,
+                // not the page size, so having the consistent size is on us.
+                pageSize: Int = Constants.pageSizeForChildrenFetchAndEnumeration,
                 changeObserver: FileProviderChangeObserver? = nil,
                 nodeID: NodeIdentifier,
                 shouldReenumerateItems: Bool = false) {
@@ -74,7 +78,7 @@ public class FolderEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWit
             try self.reinitializeModelIfNeeded()
         } catch {
             observers.forEach { $0.finishEnumeratingWithError(Errors.mapToFileProviderError(Errors.failedToCreateModel)!) }
-            Log.error("Failed to enumerate items due to model failing to be created", domain: .fileProvider)
+            Log.error("Failed to enumerate items due to model failing to be created: \(error)", domain: .fileProvider)
             return
         }
         Log.info("Enumerating items for \(~self.model.node)", domain: .fileProvider)
@@ -109,5 +113,5 @@ extension FolderEnumerator: EnumeratorWithChanges {
     internal var shareID: String { self.nodeID.shareID }
     internal var eventsManager: EventsSystemManager { self.tower }
     internal var fileSystemSlot: FileSystemSlot { self.tower.fileSystemSlot! }
-    internal var cloudSlot: CloudSlot { self.tower.cloudSlot! }
+    internal var cloudSlot: CloudSlotProtocol { self.tower.cloudSlot! }
 }

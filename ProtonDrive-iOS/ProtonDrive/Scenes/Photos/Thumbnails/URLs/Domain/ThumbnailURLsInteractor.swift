@@ -45,7 +45,7 @@ final class RemoteThumbnailURLsInteractor: ThumbnailURLsInteractor {
         let thumbnailIds = idsDataSource.getIds(photoIds: ids, type: type)
         /// Request thumbnail urls from a given volume
         let volumeId = try await volumeIdDataSource.getVolumeId()
-        let urls = try await listInteractor.execute(ids: thumbnailIds, volumeId: volumeId)
+        let urls = try await listInteractor.execute(ids: thumbnailIds.map(\.id), volumeId: volumeId)
         /// Store urls to the repository
         try updateRepository.update(thumbnails: urls)
     }

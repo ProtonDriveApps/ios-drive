@@ -17,6 +17,7 @@
 
 import Foundation
 import PDClient
+import PDLocalization
 
 @objc public enum SortPreference: Int {
     case modifiedDescending = 0, sizeDescending, mimeDescending, nameDescending
@@ -29,13 +30,13 @@ import PDClient
     public var title: String {
         switch self {
         case .modifiedAscending, .modifiedDescending:
-            return "Last modified"
+            return Localization.sort_type_last_modified
         case .sizeAscending, .sizeDescending:
-            return "Size"
+            return Localization.sort_type_size
         case .mimeAscending, .mimeDescending:
-            return "File type"
+            return Localization.sort_type_file_type
         case .nameAscending, .nameDescending:
-            return "Name"
+            return Localization.sort_type_name
         }
     }
 

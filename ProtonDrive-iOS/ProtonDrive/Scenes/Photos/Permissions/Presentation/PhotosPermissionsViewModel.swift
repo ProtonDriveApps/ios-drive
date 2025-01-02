@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDLocalization
 
 struct PhotosPermissionsViewData {
     let headline: String
@@ -33,9 +34,9 @@ final class PhotosPermissionsViewModel: PhotosPermissionsViewModelProtocol {
 
     var viewData: PhotosPermissionsViewData {
         PhotosPermissionsViewData(
-            headline: "Proton Drive needs full access to your photos",
-            text: "This ensures all your photos are backed up and available across your devices.\n\nIn the next screen, change your settings to allow Proton Drive access to All Photos.",
-            button: "Give access"
+            headline: Localization.photo_permission_alert_title,
+            text: Localization.photo_permission_alert_text,
+            button: Localization.photo_permission_alert_button
         )
     }
 

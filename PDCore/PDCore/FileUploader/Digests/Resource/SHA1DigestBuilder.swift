@@ -31,4 +31,10 @@ public final class SHA1DigestBuilder: DigestBuilder {
         let digest = sha.finalize()
         return Data(digest)
     }
+    
+    public func hexString() -> String {
+        let digest = sha.finalize()
+        let bytes = Array(digest.makeIterator())
+        return bytes.map { String(format: "%02X", $0) }.joined()
+    }
 }

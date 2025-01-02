@@ -16,13 +16,19 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDCore
 
 protocol LocalStorageResource {
     func delete(at url: URL) throws
+    func makeTemporaryURL(filename: String) -> URL
 }
 
 final class LocalFileStorageResource: LocalStorageResource {
     func delete(at url: URL) throws {
         try FileManager.default.removeItemIncludingUniqueDirectory(at: url)
+    }
+
+    func makeTemporaryURL(filename: String) -> URL {
+        PDFileManager.prepareUrlForFile(named: filename)
     }
 }

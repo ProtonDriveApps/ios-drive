@@ -18,6 +18,7 @@
 import FileProvider
 import PDCore
 
+#if os(OSX)
 extension ItemActionsOutlet: ConflictDetection {
 
     /// Return values: (detectedConflict: ConflictingOperation?, remoteVersion: Node?)
@@ -120,11 +121,17 @@ extension ItemActionsOutlet: ConflictDetection {
         }
 
         // Move-Move (Source) - same node ID but different parent
+        
         let oldItemsParentIdentiferHash = MetadataVersion(from: version.metadataVersion)?.parentIdentifierHash
         do {
             let remoteItem = try NodeItem(node: remoteNode)
             let remoteNodesParentIdentiferHash = ItemVersionHasher.hash(for: remoteItem.parentItemIdentifier)
-            if NodeIdentifier(item.parentItemIdentifier) != remoteNodeParentIdentifier,
+            // If the metadata version is beforeFirstSyncComponent, it means the system has not yet
+            // assigned the proper version to the item (even though we had returned the item with the version).
+            // The system is sometimes slow on it. Se we cannot compare the local hash with the remote hash
+            // because there is no local hash yet.
+            if version.metadataVersion != NSFileProviderItemVersion.beforeFirstSyncComponent,
+               NodeIdentifier(item.parentItemIdentifier) != remoteNodeParentIdentifier,
                oldItemsParentIdentiferHash != remoteNodesParentIdentiferHash {
                 return (.ignore, remoteNode)
             }
@@ -191,7 +198,7 @@ extension ItemActionsOutlet: ConflictDetection {
                 // The remote version has been trashed
                 return (.recreate, nil)
             }
-
+            
             // Rename-Rename (Source) - same node ID but different name
             let oldItemsFilenameHash = MetadataVersion(from: version.metadataVersion)?.filenameHash
             var remoteName: String!
@@ -199,7 +206,16 @@ extension ItemActionsOutlet: ConflictDetection {
                 remoteName = try remoteNode.decryptName()
             }
             let remoteNodesFilenameHash = ItemVersionHasher.hash(for: remoteName)
-            if item.filename != remoteName,
+            
+            // If the metadata version is beforeFirstSyncComponent, it means the system has not yet
+            // assigned the proper version to the item (even though we had returned the item with the version).
+            // Se we cannot compare the local hash with the remote hash because there is no local hash yet.
+            // One scenario where this sometimes happen: create folder and assign it a name.
+            // We first get create callback with "untitled folder" name and then modify callback
+            // with rename to a proper name. But the modify callback might not yet contain the version
+            // of the item we returned from the create file. The system is sometimes slow in that regard.
+            if version.metadataVersion != NSFileProviderItemVersion.beforeFirstSyncComponent,
+               item.filename != remoteName,
                oldItemsFilenameHash != remoteNodesFilenameHash {
                 return (.ignore, remoteNode)
             }
@@ -309,3 +325,4 @@ extension ItemActionsOutlet: ConflictDetection {
         } ?? false
     }
 }
+#endif

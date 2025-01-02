@@ -31,20 +31,20 @@ extension FinderView {
         ForEach(items, content: navigationBarButton)
     }
 
-    func editSectionMenuItems(environment: EditSectionEnvironment) -> [ContextMenuItem] {
+    func editSectionMenuItems(environment: EditSectionEnvironment) -> [ContextMenuItemGroup] {
         guard let node = vm.node else {
             return []
         }
         let nodeRowActionViewModel = NodeRowActionMenuViewModel(node: node, model: vm, isNavigationMenu: true)
-        return nodeRowActionViewModel.editSection(environment: environment).items
+        return nodeRowActionViewModel.editSections(environment: environment)
     }
 
-    func uploadSectionMenuViewItems(environment: EditSectionEnvironment) -> [ContextMenuItem] {
+    func uploadSectionMenuViewItems(environment: EditSectionEnvironment) -> [ContextMenuItemGroup] {
         guard let node = vm.node else {
             return []
         }
         let nodeRowActionViewModel = NodeRowActionMenuViewModel(node: node, model: vm, isNavigationMenu: true)
-        return nodeRowActionViewModel.uploadSection(environment: environment).items
+        return nodeRowActionViewModel.uploadSection(environment: environment)
     }
 
     @ViewBuilder
@@ -54,23 +54,46 @@ extension FinderView {
             MenuButton { NotificationCenter.default.post(.toggleSideMenu) }.any()
 
         case .upload where self.vm.node != nil:
-            let uploadSectionItems = uploadSectionMenuViewItems(environment: .init(menuItem: $menuItem, modal: presentModal, sheet: $presentedSheet, acknowledgedNotEnoughStorage: acknowledgedNotEnoughStorage))
+            let uploadSectionGroups = uploadSectionMenuViewItems(
+                environment: .init(
+                    menuItem: $menuItem,
+                    modal: presentModal,
+                    sheet: $presentedSheet,
+                    acknowledgedNotEnoughStorage: acknowledgedNotEnoughStorage,
+                    featureFlagsController: coordinator.featureFlagsController
+                )
+            )
             ContextMenuView(icon: IconProvider.plus, viewModifier: ContextMenuNavigationModifier()) {
-                ForEach(uploadSectionItems) { item in
-                    ContextMenuItemActionView(item: item)
+                ForEach(uploadSectionGroups) { group in
+                    ForEach(group.items) { item in
+                        ContextMenuItemActionView(item: item)
+                    }
+                    Divider()
                 }
             }
             .accessibility(identifier: "RoundButtonView.Button.Plus_Button")
+            .opacity(vm.node?.getNodeRole() == .viewer ? 0 : 1)
 
         case .action where self.vm.node != nil:
-            let environment = EditSectionEnvironment(menuItem: $menuItem, modal: presentModal, sheet: $presentedSheet, acknowledgedNotEnoughStorage: acknowledgedNotEnoughStorage)
+            let environment = EditSectionEnvironment(
+                menuItem: $menuItem,
+                modal: presentModal,
+                sheet: $presentedSheet,
+                acknowledgedNotEnoughStorage: acknowledgedNotEnoughStorage,
+                featureFlagsController: coordinator.featureFlagsController
+            )
             ContextMenuView(icon: IconProvider.threeDotsHorizontal, viewModifier: ContextMenuNavigationModifier()) {
-                ForEach(uploadSectionMenuViewItems(environment: environment)) { item in
-                    ContextMenuItemActionView(item: item)
+                ForEach(uploadSectionMenuViewItems(environment: environment)) { group in
+                    Divider()
+                    ForEach(group.items) { item in
+                        ContextMenuItemActionView(item: item)
+                    }
                 }
-                Divider()
-                ForEach(editSectionMenuItems(environment: environment)) { item in
-                    ContextMenuItemActionView(item: item)
+                ForEach(editSectionMenuItems(environment: environment)) { group in
+                    Divider()
+                    ForEach(group.items) { item in
+                        ContextMenuItemActionView(item: item)
+                    }
                 }
             }
             .accessibility(identifier: "ContextMenuView.Button.Three_Dots_Horizontal")

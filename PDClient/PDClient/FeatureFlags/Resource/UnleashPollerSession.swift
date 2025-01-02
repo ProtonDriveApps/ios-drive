@@ -26,27 +26,23 @@ public final class UnleashPollerSession: PollerSession {
     }
 
     public func perform(_ request: URLRequest, completionHandler: @escaping (Data?, URLResponse?, Error?) -> Void) {
-        do {
-            let endpoint = UnleashEndpoint(request: request)
-            var dataTask: URLSessionDataTask?
-            networking.perform(request: endpoint, dataTaskBlock: {
-                dataTask = $0
-            }, completion: { task, result in
-                let response = dataTask?.response ?? task?.response
-                switch result {
-                case let .success(responseDictionary):
-                    do {
-                        let data = try JSONSerialization.data(withJSONObject: responseDictionary, options: .prettyPrinted)
-                        completionHandler(data, response, nil)
-                    } catch {
-                        completionHandler(nil, response, error)
-                    }
-                case let .failure(error):
+        let endpoint = UnleashEndpoint(request: request)
+        var dataTask: URLSessionDataTask?
+        networking.perform(request: endpoint, dataTaskBlock: {
+            dataTask = $0
+        }, completion: { task, result in
+            let response = dataTask?.response ?? task?.response
+            switch result {
+            case let .success(responseDictionary):
+                do {
+                    let data = try JSONSerialization.data(withJSONObject: responseDictionary, options: .prettyPrinted)
+                    completionHandler(data, response, nil)
+                } catch {
                     completionHandler(nil, response, error)
                 }
-            })
-        } catch {
-            completionHandler(nil, nil, error)
-        }
+            case let .failure(error):
+                completionHandler(nil, response, error)
+            }
+        })
     }
 }

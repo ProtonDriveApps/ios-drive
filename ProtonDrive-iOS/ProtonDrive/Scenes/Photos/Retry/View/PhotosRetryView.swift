@@ -74,16 +74,29 @@ struct PhotosRetryView: View {
     }
     
     private func rowFor(item: PhotosRetryListRowItem) -> some View {
-        HStack(alignment: .top) {
+        HStack(alignment: .top, spacing: 12) {
             Image(uiImage: UIImage(data: item.image) ?? UIImage(systemName: viewModel.fallbackSystemImage)!)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
-                .frame(width: 32, height: 32)
+                .frame(width: 48, height: 48)
                 .cornerRadius(.small)
+                .accessibilityIdentifier("PhotosRetryListRowItem.image.\(item.name)")
             
-            Text(item.name)
-                .lineLimit(1)
-                .foregroundStyle(ColorProvider.TextNorm)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.name)
+                    .font(.system(size: 17))
+                    .lineLimit(1)
+                    .foregroundStyle(ColorProvider.TextNorm)
+                    .padding(.top, (item.failureReason?.isEmpty ?? true) ? 12 : 0) // Vertical center when reason is empty
+                    .accessibilityIdentifier("PhotosRetryListRowItem.itemName.\(item.name)")
+                
+                if let reason = item.failureReason, !reason.isEmpty {
+                    Text(reason)
+                        .font(.system(size: 13))
+                        .foregroundStyle(ColorProvider.TextHint)
+                        .accessibilityIdentifier("PhotosRetryListRowItem.failureReason.\(item.name)")
+                }
+            }
         }
     }
     

@@ -50,7 +50,7 @@ struct ThumbnailIdentifier: Equatable {
 }
 
 /// `UploadableThumbnail` a thumbnail ready to start the uploading process, but for which we don't yet have the URL to be uploaded.
-struct UploadableThumbnail: Equatable {
+public struct UploadableThumbnail: Equatable {
     let revisionId: RevisionIdentifier
     let type: Int
     let encrypted: Data
@@ -66,7 +66,7 @@ struct UploadableThumbnail: Equatable {
 }
 
 /// `FullUploadableThumbnail` represents a thumbnail ready to be uploaded, the uploadURL property is the URL where the encrypted data should be uploaded.
-struct FullUploadableThumbnail {
+public struct FullUploadableThumbnail {
     let uploadURL: URL
     let uploadable: UploadableThumbnail
 

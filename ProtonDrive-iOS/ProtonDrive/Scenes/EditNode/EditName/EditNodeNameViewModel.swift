@@ -17,6 +17,7 @@
 
 import PDCore
 import Foundation
+import PDLocalization
 
 final class EditNodeNameViewModel: EditNodeViewModel {
     var onDismiss: (() -> Void)?
@@ -25,21 +26,21 @@ final class EditNodeNameViewModel: EditNodeViewModel {
     var onPerformingRequest: (() -> Void)?
 
     private let node: NameEditingNode
-    private let nameEditor: NodeNameEditor
+    private let nameEditor: NodeNameEditorProtocol
     private let validator: Validator<String>
 
-    init(node: NameEditingNode, nameEditor: NodeNameEditor, validator: Validator<String>) {
+    init(node: NameEditingNode, nameEditor: NodeNameEditorProtocol, validator: Validator<String>) {
         self.node = node
         self.nameEditor = nameEditor
         self.validator = validator
     }
     
     var title: String {
-        node.type == .file ? "Rename file" : "Rename folder"
+        node.type == .file ? Localization.edit_node_title_rename_file : Localization.edit_node_title_rename_folder
     }
 
     var buttonText: String {
-        "Done"
+        Localization.general_done
     }
 
     var placeHolder: String {
@@ -77,5 +78,9 @@ final class EditNodeNameViewModel: EditNodeViewModel {
                 self?.onError?(error)
             }
         }
+    }
+
+    func close() {
+        onDismiss?()
     }
 }

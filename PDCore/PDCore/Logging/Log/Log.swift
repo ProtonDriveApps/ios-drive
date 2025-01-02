@@ -17,6 +17,7 @@
 
 import Foundation
 import PDClient
+import UserNotifications
 
 public struct LogSystem: Equatable {
     public let name: String
@@ -77,6 +78,9 @@ public struct LogDomain: Equatable, Hashable {
     public static let ipc = LogDomain(name: "ipc")
     public static let logs = LogDomain(name: "logs")
     public static let protonDocs = LogDomain(name: "protonDocs")
+    public static let loadTesting = LogDomain(name: "loadTesting")
+    public static let contact = LogDomain(name: "contact")
+    public static let ddk = LogDomain(name: "ddk")
 
     public static let `default`: Set<LogDomain> = [
         .application,
@@ -98,8 +102,27 @@ public struct LogDomain: Equatable, Hashable {
         .diagnostics,
         .ipc,
         .logs,
-        .protonDocs
+        .protonDocs,
+        .loadTesting,
+        .ddk
     ]
+    
+    public static func macOSDebugDomains(appending: LogDomain...) -> Set<LogDomain> {
+        Set([.application,
+             .encryption,
+             .events,
+             .networking,
+             .uploader,
+             .downloader,
+             .storage,
+             .clientNetworking,
+             .featureFlags,
+             .forceRefresh,
+             .sessionManagement,
+             .diagnostics,
+             .fileProvider,
+             .fileManager] + appending)
+    }
 }
 
 public enum LogLevel: String {
@@ -176,9 +199,35 @@ public class Log {
     public static func deserializationErrors(_ error: NSError) {
         guard error is DecodingError || error.underlyingErrors.contains(where: { $0 is DecodingError }) else { return }
         Log.error("🧨 Failed to deserialize response: \(error)", domain: .networking)
-        #if HAS_QA_FEATURES
-        assertionFailure("🧨 Failed to deserialize response: \(error)")
-        #endif
+        if Constants.buildType.isQaOrBelow {
+            assertionFailure("🧨 Failed to deserialize response: \(error)")
+        }
     }
 
+    public static func fireWarning(error: NSError) {
+        guard Constants.buildType.isQaOrBelow else { return }
+        
+        let content = UNMutableNotificationContent()
+        content.title = "❌ \((error as NSError).code): \((error as NSError).domain)"
+        content.subtitle = (error as NSError).localizedFailureReason ?? ""
+        content.body = error.localizedDescription
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+    }
+    
+    public static func logInfoAndNotify(title: String, message: String = "") {
+        guard Constants.buildType.isQaOrBelow else { return }
+
+        Log.info(title + " " + message, domain: .application)
+
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = message
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+    }
 }

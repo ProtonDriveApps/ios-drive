@@ -38,12 +38,16 @@ protocol PhotoAssetIdentifiersInteractor {
 final class LocalPhotoAssetIdentifiersInteractor: PhotoAssetIdentifiersInteractor {
     private let rootDataSource: PhotosRootEncryptingFolderDataSource
     private let encryptionResource: EncryptionResource
-    private let validator: NodeValidator
+    private let nameCorrectionPolicy: NameCorrectionPolicy
 
-    init(rootDataSource: PhotosRootEncryptingFolderDataSource, encryptionResource: EncryptionResource, validator: NodeValidator) {
+    init(
+        rootDataSource: PhotosRootEncryptingFolderDataSource,
+        encryptionResource: EncryptionResource,
+        nameCorrectionPolicy: NameCorrectionPolicy
+    ) {
         self.rootDataSource = rootDataSource
         self.encryptionResource = encryptionResource
-        self.validator = validator
+        self.nameCorrectionPolicy = nameCorrectionPolicy
     }
 
     func getIdentifiers(from compound: PhotoAssetCompound) throws -> PhotosFilterItem {
@@ -58,9 +62,9 @@ final class LocalPhotoAssetIdentifiersInteractor: PhotoAssetIdentifiersInteracto
     }
 
     private func makeIdentifier(from asset: PhotoAsset, key: String) throws -> PhotoAssetIdentifier {
-        let name = asset.filename
-        try validator.validateName(name)
+        let name = try nameCorrectionPolicy.validateNameAndCorrectIfNeeded(fileName: asset.filename)
+        let newAsset = asset.copy(with: name)
         let nameHash = try encryptionResource.makeHmac(string: name, hashKey: key)
-        return PhotoAssetIdentifier(name: name, nameHash: nameHash, url: asset.url, asset: asset)
+        return PhotoAssetIdentifier(name: name, nameHash: nameHash, url: newAsset.url, asset: newAsset)
     }
 }

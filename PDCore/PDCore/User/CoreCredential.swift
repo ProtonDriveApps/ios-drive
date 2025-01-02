@@ -100,7 +100,7 @@ extension PDCore.CoreCredential {
     }
 }
 
-extension PDClient.ClientCredential {
+public extension PDClient.ClientCredential {
     init(_ credential: PDCore.CoreCredential) {
         self.init(UID: credential.UID,
                   accessToken: credential.accessToken,
@@ -109,6 +109,9 @@ extension PDClient.ClientCredential {
                   userName: credential.userName,
                   userID: credential.userID,
                   scope: credential.scope)
+    }
+    init(_ networkingCredential: Credential) {
+        self.init(CoreCredential(networkingCredential))
     }
 }
 

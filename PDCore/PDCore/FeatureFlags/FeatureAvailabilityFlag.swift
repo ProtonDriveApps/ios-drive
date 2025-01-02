@@ -19,9 +19,7 @@ import Foundation
 import ProtonCoreFeatureFlags
 
 public enum FeatureAvailabilityFlag: CaseIterable {
-    case photosEnabled
     case photosUploadDisabled
-    case photosBackgroundSyncEnabled
     case logsCompressionDisabled
     case domainReconnectionEnabled
     case postMigrationJunkFilesCleanup
@@ -31,13 +29,24 @@ public enum FeatureAvailabilityFlag: CaseIterable {
     case logCollectionDisabled
     case oneDollarPlanUpsellEnabled
     case driveDisablePhotosForB2B
+    case driveDDKEnabled
 
     // Sharing
     case driveSharingMigration
     case driveSharingDevelopment
+    case driveiOSSharing
     case driveSharingInvitations
     case driveSharingExternalInvitations
     case driveSharingDisabled
     case driveSharingExternalInvitationsDisabled
     case driveSharingEditingDisabled
+    case drivePublicShareEditMode
+    case drivePublicShareEditModeDisabled
+
+    // ProtonDoc
+    case driveDocsWebView
+    case driveDocsDisabled
+    
+    // Entitlement
+    case driveDynamicEntitlementConfiguration
 }

@@ -18,6 +18,7 @@
 import SwiftUI
 import ProtonCoreUIFoundations
 import PDUIComponents
+import PDLocalization
 
 struct NoConnectionFolderView: View {
     @Binding var isUpdating: Bool
@@ -43,7 +44,7 @@ struct NoConnectionFolderView: View {
             footer: {
                 Group {
                     BlueRectButton(
-                        title: "Refresh",
+                        title: Localization.general_refresh,
                         foregroundColor: ColorProvider.TextNorm,
                         backgroundColor: ColorProvider.InteractionWeak,
                         font: .caption,

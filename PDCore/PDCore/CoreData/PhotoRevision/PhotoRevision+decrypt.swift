@@ -24,14 +24,20 @@ extension PhotoRevision {
                 return transientClearExif
             }
 
-            let addressKeys = try getAddressPublicKeysOfRevisionCreator()
+            let addressKeys = try getAddressPublicKeysOfRevision()
+            let signatureAddressIsEmpty = signatureAddress?.isEmpty ?? true
+            let verificationKeys = signatureAddressIsEmpty ? [file.nodeKey] : addressKeys
 
             guard let dataPacket = Data(base64Encoded: exif) else {
                 throw invalidState("Could not decode exif data packet.")
             }
 
             let sessionKey = try decryptContentSessionKey()
-            let decrypted = try Decryptor.decryptAndVerifyExif(dataPacket, contentSessionKey: sessionKey, verificationKeys: addressKeys)
+            let decrypted = try Decryptor.decryptAndVerifyExif(
+                dataPacket,
+                contentSessionKey: sessionKey,
+                verificationKeys: verificationKeys
+            )
 
             switch decrypted {
             case .verified(let exif):
@@ -39,12 +45,12 @@ extension PhotoRevision {
                 return  exif
 
             case .unverified(let exif, let error):
-                Log.error(SignatureError(error, "EXIF", description: "RevisionID: \(id) \nLinkID: \(file.id) \nShareID: \(file.shareID)"), domain: .encryption)
+                Log.error(SignatureError(error, "EXIF", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption, sendToSentryIfPossible: photo.isSignatureVerifiable())
                 self.transientClearExif = exif
                 return exif
             }
         } catch {
-            Log.error(DecryptionError(error, "EXIF", description: "RevisionID: \(id) \nLinkID: \(file.id) \nShareID: \(file.shareID)"), domain: .encryption)
+            Log.error(DecryptionError(error, "EXIF", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption)
             return Data()
         }
     }

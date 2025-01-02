@@ -24,8 +24,10 @@ enum PhotoFullPreview: Equatable {
     case image(URL)
     case video(URL)
     case gif(URL)
-    /// PhotoURL, VideoURL
-    case livePhoto(URL, URL)
+    /// PhotoURL, VideoURL, isLoading
+    case livePhoto(URL, URL?, Bool)
+    /// PhotoURL, childrenURLs, isLoading
+    case burstPhoto(URL, [URL], Bool)
 }
 
 protocol PhotoFullPreviewController: ErrorController {
@@ -79,7 +81,7 @@ final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
                     self?.fallBackToThumbnails()
                 }
             }, receiveValue: { [weak self] info, content in
-                self?.tryUpdateLivePhoto(info: info, content: content)
+                self?.handleReceived(info: info, content: content)
             })
             .store(in: &cancellables)
     }
@@ -118,16 +120,14 @@ final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
         }
     }
     
-    private func tryUpdateLivePhoto(info: PhotoInfo, content: FileContent) {
-        guard
-            content.couldBeLivePhoto,
-            let videoURL = content.childrenURLs.first
-        else {
+    private func handleReceived(info: PhotoInfo, content: FileContent) {
+        if content.couldBeLivePhoto {
+            update(with: .livePhoto(content.url, content.childrenURLs.first, content.isLoading))
+        } else if content.couldBeBurst {
+            update(with: .burstPhoto(content.url, content.childrenURLs, content.isLoading))
+        } else {
             handle(info: info, url: content.url)
-            return
         }
-
-        update(with: .livePhoto(content.url, videoURL))
     }
 
     private func handleThumbnailUpdate() {
@@ -136,7 +136,7 @@ final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
             if let data = fullThumbnailController.getImage() ?? smallThumbnailController.getImage() {
                 update(with: .thumbnail(data))
             }
-        case .video, .image, .livePhoto, .gif:
+        case .video, .image, .livePhoto, .gif, .burstPhoto:
             break
         }
     }

@@ -17,6 +17,7 @@
 
 import Combine
 import PDCore
+import PDLocalization
 
 protocol PhotosStateViewModelProtocol: ObservableObject {
     var viewData: PhotosStateViewData? { get }
@@ -32,13 +33,13 @@ enum PhotosStateButton {
     var title: String {
         switch self {
         case .retry:
-            return "Retry"
+            return Localization.state_retry_button
         case .turnOn:
-            return "Turn on"
+            return Localization.state_turnOn_button
         case .settings:
-            return "Settings"
+            return Localization.state_settings_button
         case .useCellular:
-            return "Use Cellular"
+            return Localization.state_use_cellular_button
         }
     }
 }
@@ -91,7 +92,6 @@ final class PhotosStateViewModel: PhotosStateViewModelProtocol {
     private let controller: PhotosBackupStateController
     private let coordinator: PhotosStateCoordinator
     private let remainingItemsStrategy: PhotosRemainingItemsStrategy
-    private let numberFormatter: NumberFormatterResource
     private let backupStartController: PhotosBackupStartController
     private let settingsController: PhotoBackupSettingsController
     private let messageHandler: UserMessageHandlerProtocol
@@ -103,7 +103,6 @@ final class PhotosStateViewModel: PhotosStateViewModelProtocol {
         controller: PhotosBackupStateController,
         coordinator: PhotosStateCoordinator,
         remainingItemsStrategy: PhotosRemainingItemsStrategy,
-        numberFormatter: NumberFormatterResource,
         backupStartController: PhotosBackupStartController,
         settingsController: PhotoBackupSettingsController,
         messageHandler: UserMessageHandlerProtocol
@@ -111,7 +110,6 @@ final class PhotosStateViewModel: PhotosStateViewModelProtocol {
         self.controller = controller
         self.coordinator = coordinator
         self.remainingItemsStrategy = remainingItemsStrategy
-        self.numberFormatter = numberFormatter
         self.backupStartController = backupStartController
         self.settingsController = settingsController
         self.messageHandler = messageHandler
@@ -128,7 +126,7 @@ final class PhotosStateViewModel: PhotosStateViewModelProtocol {
             coordinator.openSystemSettingPage()
         case .useCellular:
             settingsController.setNetworkConnectionConstrained(false)
-            messageHandler.handleSuccess("Photos backup is now allowed also on mobile data")
+            messageHandler.handleSuccess(Localization.state_cellular_is_enabled)
         }
         
     }
@@ -155,26 +153,26 @@ final class PhotosStateViewModel: PhotosStateViewModelProtocol {
         case let .inProgress(progress):
             return makeData(from: progress)
         case .complete:
-            return PhotosStateViewData(type: .complete, titles: [.init(title: "Backup complete", icon: .complete)])
+            return PhotosStateViewData(type: .complete, titles: [.init(title: Localization.state_backup_complete_title, icon: .complete)])
         case .completeWithFailures:
-            return PhotosStateViewData(type: .completeWithFailures, titles: [.init(title: "Backup: issues detected", icon: .completeWithFailures)], needsButton: .retry)
+            return PhotosStateViewData(type: .completeWithFailures, titles: [.init(title: Localization.state_issues_detected_title, icon: .completeWithFailures)], needsButton: .retry)
         case .restrictedPermissions:
-            return PhotosStateViewData(type: .restrictedPermissions, titles: [.init(title: "Permission required for backup", icon: .failure)], needsButton: .settings)
+            return PhotosStateViewData(type: .restrictedPermissions, titles: [.init(title: Localization.state_permission_required_title, icon: .failure)], needsButton: .settings)
         case .disabled:
-            return PhotosStateViewData(type: .disabled, titles: [.init(title: "Backup is disabled", icon: .disabled)], needsButton: .turnOn)
+            return PhotosStateViewData(type: .disabled, titles: [.init(title: Localization.state_backup_disabled_title, icon: .disabled)], needsButton: .turnOn)
         case let .networkConstrained(constraint):
             switch constraint {
             case .noConnection:
-                return PhotosStateViewData(type: .noConnection, titles: [.init(title: "No internet connection", icon: .noConnection)])
+                return PhotosStateViewData(type: .noConnection, titles: [.init(title: Localization.state_disconnection_title, icon: .noConnection)])
             case .noWifi:
-                return PhotosStateViewData(type: .noWifi, titles: [.init(title: "Wi-Fi needed for backup", icon: .noConnection)], needsButton: .useCellular)
+                return PhotosStateViewData(type: .noWifi, titles: [.init(title: Localization.state_need_wifi_title, icon: .noConnection)], needsButton: .useCellular)
             }
         case .storageConstrained:
-            return PhotosStateViewData(type: .storageConstrained, titles: [.init(title: "Device storage full", icon: .failure)])
+            return PhotosStateViewData(type: .storageConstrained, titles: [.init(title: Localization.state_storage_full_title, icon: .failure)])
         case .featureFlag:
-            return PhotosStateViewData(type: .featureFlag, titles: [.init(title: "The upload of photos is temporarily unavailable", icon: .failure)])
+            return PhotosStateViewData(type: .featureFlag, titles: [.init(title: Localization.state_temp_unavailable_title, icon: .failure)])
         case .libraryLoading:
-            return PhotosStateViewData(type: .libraryLoading, titles: [.init(title: "Getting ready to back up", icon: .progress)])
+            return PhotosStateViewData(type: .libraryLoading, titles: [.init(title: Localization.state_ready_title, icon: .progress)])
         }
     }
 
@@ -191,8 +189,8 @@ final class PhotosStateViewModel: PhotosStateViewModelProtocol {
 
     private func makeInProgressTitles() -> [PhotosStateTitle] {
         [
-            PhotosStateTitle(title: "Encrypting...", icon: .lock),
-            PhotosStateTitle(title: "Backing up...", icon: .progress)
+            PhotosStateTitle(title: Localization.state_encrypting, icon: .lock),
+            PhotosStateTitle(title: Localization.state_backing_up, icon: .progress)
         ]
     }
 
@@ -202,12 +200,7 @@ final class PhotosStateViewModel: PhotosStateViewModelProtocol {
         }
 
         let itemsCount = remainingItemsStrategy.formatRemainingCount(from: leftCount)
-        let formattedCount = numberFormatter.format(itemsCount.count)
         let roundingSign = itemsCount.isRounded ? "+" : ""
-        if itemsCount.count == 1 {
-            return "\(formattedCount)\(roundingSign) item left"
-        } else {
-            return "\(formattedCount)\(roundingSign) items left"
-        }
+        return Localization.progress_status_item_left(items: itemsCount.count, roundingSign: roundingSign)
     }
 }

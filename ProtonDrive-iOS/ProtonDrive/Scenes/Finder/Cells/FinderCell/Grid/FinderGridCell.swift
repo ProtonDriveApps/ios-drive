@@ -21,12 +21,12 @@ import PDUIComponents
 import Combine
 
 enum GridCellConstants {
-    public static let grid: CGFloat = 82
+    public static let gridCellSize: CGSize = .init(width: 88, height: 132)
+    public static let thumbnailSize: CGSize = .init(width: 80, height: 64)
     public static let placeholder: CGFloat = 48
 }
 
 struct FinderGridCell<ViewModel: NodeCellConfiguration>: View where ViewModel: ObservableObject {
-    let gridSize: CGFloat = GridCellConstants.grid
     let placeholderSize: CGFloat = GridCellConstants.placeholder
 
     @Environment(\.acknowledgedNotEnoughStorage) var acknowledgedNotEnoughStorage
@@ -75,17 +75,17 @@ struct FinderGridCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
                             .allowsHitTesting(false)
                     }
                 )
-                .frame(width: gridSize - 1, height: gridSize - 1)
-                .cornerRadius(3)
+                .frame(width: GridCellConstants.thumbnailSize.width, height: GridCellConstants.thumbnailSize.height)
+                .accessibilityIdentifier("thumbnail.\(vm.name)")
                 .clipped()
+                .cornerRadius(8)
                 .padding(1)
-                .background(selectionBackground.cornerRadius(3.0))
 
                 Text(vm.name)
                     .lineLimit(1)
                     .font(.footnote)
                     .truncationMode(.middle)
-                    .frame(width: gridSize)
+                    .frame(width: GridCellConstants.thumbnailSize.width)
                     .padding(.bottom, 4)
                     .accessibility(identifier: "FinderGridCell.Text.\(vm.name)")
                     .accessibilityLabel("\(vm.name)_\(index)")
@@ -105,9 +105,10 @@ struct FinderGridCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
 
         }
         .accessibilityElement(children: .contain)
-        .background(ColorProvider.BackgroundNorm)
         .disabled(vm.isDisabled)
         .opacity(vm.isDisabled ? 0.5 : 1.0)
+        .frame(width: GridCellConstants.gridCellSize.width, height: GridCellConstants.gridCellSize.height)
+        .background(selectionBackground.cornerRadius(8))
     }
 
     @ViewBuilder
@@ -116,7 +117,8 @@ struct FinderGridCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
             menuItem: menuItem,
             modal: presentedModal,
             sheet: presentedSheet,
-            acknowledgedNotEnoughStorage: acknowledgedNotEnoughStorage
+            acknowledgedNotEnoughStorage: acknowledgedNotEnoughStorage, 
+            featureFlagsController: vm.featureFlagsController
         )
         switch state {
         case .menu(let button):
@@ -124,8 +126,10 @@ struct FinderGridCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
                 switch button.type {
                 case .menu where vm.nodeType == .file:
                     ContextMenuView(icon: button.icon, viewModifier: ContextMenuGridModifier()) {
-                        editSectionView(items: rowModel.editSection(environment: environment).items)
-                        Divider()
+                        ForEach(rowModel.editSections(environment: environment)) { group in
+                            editSectionView(items: group.items)
+                            Divider()
+                        }
                         ForEach(rowModel.moreSection(environment: environment).items) { item in
                             ContextMenuItemActionView(item: item)
                         }
@@ -133,7 +137,10 @@ struct FinderGridCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
                     .accessibility(identifier: "NodeCell.ButtonView.\(vm.name)")
                 case .menu where vm.nodeType == .folder:
                     ContextMenuView(icon: button.icon, viewModifier: ContextMenuGridModifier()) {
-                        editSectionView(items: rowModel.editSection(environment: environment).items)
+                        ForEach(rowModel.editSections(environment: environment)) { group in
+                            editSectionView(items: group.items)
+                            Divider()
+                        }
                     }
                     .accessibility(identifier: "NodeCell.ButtonView.\(vm.name)")
                 default:
@@ -152,9 +159,10 @@ struct FinderGridCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
             }
 
         case .selection(let isSelected):
-            SelectionButton(isSelected: isSelected)
+            RoundedSelectionView(isSelected: isSelected)
                 .onTapGesture(perform: onTap)
                 .accessibility(identifier: "selectionButton.\(vm.name)")
+                .accessibilityLabel(vm.isSelected ? "selected" : "unselected")
                 .modifier(SelectionAnimationModifier(isSelected: vm.isSelected))
 
         case .downloading(let progress):
@@ -174,7 +182,7 @@ struct FinderGridCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
     }
 
     var selectionBackground: some View {
-        vm.isSelecting ? (vm.isSelected ? ColorProvider.Shade20 : Color.clear) : Color.clear
+        vm.isSelected ? ColorProvider.BackgroundSecondary : ColorProvider.BackgroundNorm
     }
 
     @ViewBuilder

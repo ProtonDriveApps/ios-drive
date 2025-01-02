@@ -22,11 +22,11 @@ import Foundation
 /// If not configured, all URLs will be placed in a default temporary directory of current process
 public final class PDFileManager {
     static var appGroupUrl: URL = FileManager.default.temporaryDirectory
-    
+
     /// Defines state of manager with a settings suite because some URLs are located in App Groups directory
     public static func configure(with suite: SettingsStorageSuite) {
         self.appGroupUrl = suite.directoryUrl
-        
+
         initializeIntermediateFolders()
     }
 
@@ -36,7 +36,7 @@ public final class PDFileManager {
         _ = cypherBlocksCacheDirectory
         _ = cypherBlocksPermanentDirectory
     }
-    
+
     /// Removes parent directories of data considered disposable
     public static func destroyCaches() {
         try? FileManager.default.contentsOfDirectory(at: FileManager.default.temporaryDirectory, includingPropertiesForKeys: nil).forEach { childURL in
@@ -44,7 +44,7 @@ public final class PDFileManager {
         }
         try? FileManager.default.removeItem(at: appGroupTemporaryDirectory)
     }
-    
+
     /// Removes data explicitly marked as important for local access - Offilne Available, etc
     public static func destroyPermanents() {
         try? FileManager.default.removeItem(at: cypherBlocksPermanentDirectory)
@@ -56,7 +56,7 @@ public final class PDFileManager {
         self.createIfNeeded(&url)
         return url.appendingPathComponent(filename)
     }
-    
+
     /// Directory for caching cleartext. Placed in temporary directory of current process in order to benefit from OS-driven periodic cleanups to protect "forgotten" cleartext files
     public static var cleartextCacheDirectory: URL {
         var temp = FileManager.default.temporaryDirectory.appendingPathComponent("Clear")
@@ -77,30 +77,30 @@ public final class PDFileManager {
         self.createIfNeeded(&url)
         return url.appendingPathComponent(filename)
     }
-    
+
     /// Directory for caching cleartext. Placed in App Groups directory because encrypted data can be safely stored for a long time
     public static var cypherBlocksCacheDirectory: URL {
         var temp = self.appGroupTemporaryDirectory.appendingPathComponent("Downloads")
         self.createIfNeeded(&temp)
         return temp
     }
-    
+
     /// Directory for data explicitly marked as important for local access - Offilne Available, etc
     public static var cypherBlocksPermanentDirectory: URL {
         var temp = self.appGroupUrl.appendingPathComponent("Downloads")
         self.createIfNeeded(&temp)
         return temp
     }
-    
+
     /// Directory for disposable data in App Group directory
-    private static var appGroupTemporaryDirectory: URL {
+    public static var appGroupTemporaryDirectory: URL {
         var temp = self.appGroupUrl.appendingPathComponent("tmp")
         self.createIfNeeded(&temp)
         return temp
     }
-    
+
     /// Creates a directory with intermediates if they do not exist, applies security flags
-    private static func createIfNeeded(_ url: inout URL) {
+    public static func createIfNeeded(_ url: inout URL) {
         if !FileManager.default.fileExists(atPath: url.path) {
             do {
                 try FileManager.default.createDirectory(atPath: url.path, withIntermediateDirectories: true, attributes: nil)
@@ -133,8 +133,10 @@ public final class PDFileManager {
         try? FileManager.default.copyItem(at: sqlite_shm, to: sqlite_shm_copy)
         try? FileManager.default.copyItem(at: sqlite_wal, to: sqlite_wal_copy)
 
-        dump("Recorder 🔴: key 🔑 - \(Data(SessionVault.current.mainKeyProvider.mainKey!).base64EncodedString()) ")
+        let mainKey = try? SessionVault.current.mainKeyProvider.mainKeyOrError
+        dump("Recorder 🔴: key 🔑 - \(Data(mainKey!).base64EncodedString()) ")
         dump("Recorder 🔴: stage 📁 - \(destination.absoluteURL)")
+        
     }
 
     // MARK: Logs
@@ -175,7 +177,7 @@ public final class PDFileManager {
             throw error
         }
     }
-    
+
     public static func appendString(string: String, to destinationURL: URL) throws {
         do {
             if let fileHandle = FileHandle(forWritingAtPath: destinationURL.path) {

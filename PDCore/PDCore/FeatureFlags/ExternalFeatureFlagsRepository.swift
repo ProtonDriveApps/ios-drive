@@ -67,15 +67,22 @@ class ExternalFeatureFlagsRepository: FeatureFlagsRepository {
 
     func startAsync() async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+            // We need to handle just first callback (either error or update) and make sure not to call
+            // continuation multiple times.
+            // The `completionBlock` from `externalResource` can be called multiple times, it's design of 3rd party
+            // library.
+            var continuation: CheckedContinuation<Void, any Error>? = continuation
             firstUpdateCancellable = updatePublisher
                 .first()
                 .sink(receiveValue: { _ in
-                    continuation.resume()
+                    continuation?.resume()
+                    continuation = nil
                 })
             externalResource.start { error in
                 if let error {
                     self.firstUpdateCancellable = nil
-                    continuation.resume(throwing: error)
+                    continuation?.resume(throwing: error)
+                    continuation = nil
                 }
             }
         }
@@ -89,11 +96,10 @@ class ExternalFeatureFlagsRepository: FeatureFlagsRepository {
         externalResource.stop()
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     func mapExternalFeatureFlagToAvailability(external: ExternalFeatureFlag) -> FeatureAvailabilityFlag {
         switch external {
-        case .photosEnabled: return .photosEnabled
         case .photosUploadDisabled: return .photosUploadDisabled
-        case .photosBackgroundSyncEnabled: return .photosBackgroundSyncEnabled
         case .logsCompressionDisabled: return .logsCompressionDisabled
         case .postMigrationJunkFilesCleanup: return .postMigrationJunkFilesCleanup
         case .domainReconnectionEnabled: return .domainReconnectionEnabled
@@ -103,14 +109,23 @@ class ExternalFeatureFlagsRepository: FeatureFlagsRepository {
         case .logCollectionDisabled: return .logCollectionDisabled
         case .oneDollarPlanUpsellEnabled: return .oneDollarPlanUpsellEnabled
         case .driveDisablePhotosForB2B: return .driveDisablePhotosForB2B
-            // Sharing
+        case .driveDDKEnabled: return .driveDDKEnabled
+        // Sharing
         case .driveSharingMigration: return .driveSharingMigration
+        case .driveiOSSharing: return .driveiOSSharing
         case .driveSharingDevelopment: return .driveSharingDevelopment
         case .driveSharingInvitations: return .driveSharingInvitations
         case .driveSharingExternalInvitations: return .driveSharingExternalInvitations
         case .driveSharingDisabled: return .driveSharingDisabled
         case .driveSharingExternalInvitationsDisabled: return .driveSharingExternalInvitationsDisabled
         case .driveSharingEditingDisabled: return .driveSharingEditingDisabled
+        case .drivePublicShareEditMode: return .drivePublicShareEditMode
+        case .drivePublicShareEditModeDisabled: return .drivePublicShareEditModeDisabled
+        // ProtonDoc
+        case .driveDocsWebView: return .driveDocsWebView
+        case .driveDocsDisabled: return .driveDocsDisabled
+        // Entitlement
+        case .driveDynamicEntitlementConfiguration: return .driveDynamicEntitlementConfiguration
         }
     }
 }

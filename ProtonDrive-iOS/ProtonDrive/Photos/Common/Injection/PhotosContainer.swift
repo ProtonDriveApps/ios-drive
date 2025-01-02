@@ -15,11 +15,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Combine
+import CoreData
 import PDCore
 import ProtonCoreKeymaker
 import ProtonCoreServices
 import UIKit
-import Combine
+import PDContacts
 
 final class PhotosContainer {
     struct Dependencies {
@@ -30,6 +32,10 @@ final class PhotosContainer {
         let settingsSuite: SettingsStorageSuite
         let extensionStateController: BackgroundTaskStateController
         let photoSkippableCache: PhotosSkippableCache
+        let notificationsPermissionsFlowController: NotificationsPermissionsFlowController
+        let contacstsManager: ContactsManagerProtocol
+        let featureFlagsController: FeatureFlagsControllerProtocol
+        let populatedStateController: PopulatedStateControllerProtocol
     }
 
     private let dependencies: Dependencies
@@ -57,6 +63,9 @@ final class PhotosContainer {
     private let computationalAvailabilityController: ComputationalAvailabilityController
     private let circuitBreakerController: CircuitBreakerController
     private let photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>
+    private let photoUpsellResultNotifier: PhotoUpsellResultNotifierProtocol
+    private let photosManagedObjectContext: NSManagedObjectContext
+    private let photoUploadedNotifier: PhotoUploadedNotifier
     #if HAS_QA_FEATURES
     private let memoryLogResource: MemoryHeartbeatLogResource
     #endif
@@ -65,13 +74,13 @@ final class PhotosContainer {
     private let childContainers: [Any]
     private let processingContainer: PhotosProcessingContainer
 
+    // swiftlint:disable:next function_body_length
     init(dependencies: Dependencies) {
         self.dependencies = dependencies
         let tower = dependencies.tower
         let factory = PhotosFactory()
         let progressRepository = factory.makeBackupProgressRepository()
-        let photosMOC = tower.storage.newBackgroundContext()
-        let appStateResource = ApplicationRunningStateResourceImpl() // TODO: this object should be used all over the app, there should be just one, move upwards in the dependency graph
+        let appStateResource = iOSApplicationRunningStateResource() // TODO: this object should be used all over the app, there should be just one, move upwards in the dependency graph
         let processingTaskController = ConcreteBackgroundTaskStateController()
         computationalAvailabilityController = factory.makeComputationalAvailabilityController(extensionTaskController: dependencies.extensionStateController, processingTaskController: processingTaskController)
         self.failedPhotosResource = InMemoryDeletedPhotosIdentifierStoreResource()
@@ -98,7 +107,7 @@ final class PhotosContainer {
             photoSharesObserver: photoSharesObserver
         )
         lockConstraintController = factory.makeLockConstraintController(tower: tower, keymaker: dependencies.keymaker)
-        backupController = factory.makeBackupController(settingsController: settingsController, authorizationController: authorizationController, bootstrapController: bootstrapController, lockController: lockConstraintController)
+        backupController = factory.makeBackupController(settingsController: settingsController, authorizationController: authorizationController, bootstrapController: bootstrapController, lockController: lockConstraintController, populatedStateController: dependencies.populatedStateController)
         networkController = factory.makeNetworkConstraintController(backupController: backupController, settingsController: settingsController)
         quotaStateController = factory.makeQuotaStateController(tower: tower)
         quotaConstraintController = factory.makeQuotaConstraintController(quotaStateController: quotaStateController)
@@ -110,28 +119,68 @@ final class PhotosContainer {
         let identifiersController = ConcretePhotoLibraryIdentifiersController(progressController: libraryProgressController, repository: OrderedRemainingPhotoIdentifiersRepository(), identifiersQueueRepository: identifiersQueueRepository)
         retryTriggerController = ConcretePhotoLibraryLoadRetryTriggerController()
         loadController = factory.makeLoadController(backupController: backupController, tower: tower, cleanedUploadingStore: failedPhotosResource, cleanedPhotosRetryEvent: retryTriggerController.updatePublisher, progressRepository: progressRepository, settingsController: settingsController, identifiersController: identifiersController, skippableCache: dependencies.photoSkippableCache, queueRepository: identifiersQueueRepository, computationalAvailabilityController: computationalAvailabilityController, measurementRepository: scanningMeasurementRepository)
-        backupProgressController = factory.makeBackupProgressController(tower: tower, libraryProgressController: libraryProgressController, loadController: loadController, photosMoc: photosMOC)
+        photosManagedObjectContext = tower.storage.newBackgroundContext()
+        backupProgressController = factory.makeBackupProgressController(tower: tower, libraryProgressController: libraryProgressController, loadController: loadController, photosMoc: photosManagedObjectContext)
         let backupUploadAvailableController = factory.makePhotosBackupUploadAvailableController(backupController: backupController, networkConstraintController: networkController, quotaConstraintController: quotaConstraintController)
-        let photosManagedObjectContext = tower.storage.newBackgroundContext()
+        photoUploadedNotifier = ConcretePhotoUploadedNotifier(moc: photosManagedObjectContext)
         uploadingPhotosRepository = factory.makeUploadingPhotosRepository(tower: tower, moc: photosManagedObjectContext)
-        uploader = factory.makePhotoUploader(tower: tower, keymaker: dependencies.keymaker, cleanedUploadingStore: failedPhotosResource, moc: photosManagedObjectContext, telemetryContainer: telemetryStorageContainer, photoSkippableCache: dependencies.photoSkippableCache, durationMeasurementRepository: uploadDurationMeasurementRepository, uploadDoneNotifier: uploadDoneNotifier, filesMeasurementRepository: backgroundUploadMeasurementsRepository, blocksMeasurementRepository: backgroundUploadMeasurementsRepository)
+        uploader = factory.makePhotoUploader(
+            tower: tower, 
+            keymaker: dependencies.keymaker,
+            cleanedUploadingStore: failedPhotosResource,
+            moc: photosManagedObjectContext,
+            telemetryContainer: telemetryStorageContainer,
+            photoSkippableCache: dependencies.photoSkippableCache,
+            durationMeasurementRepository: uploadDurationMeasurementRepository,
+            uploadDoneNotifier: uploadDoneNotifier,
+            filesMeasurementRepository: backgroundUploadMeasurementsRepository,
+            blocksMeasurementRepository: backgroundUploadMeasurementsRepository,
+            photoUploadedNotifier: photoUploadedNotifier
+        )
         tower.photoUploader = uploader
         uploaderFeeder = factory.makePhotoUploaderFeeder(uploadingPhotosRepository: uploadingPhotosRepository, isAvailableController: backupUploadAvailableController, uploader: uploader, computationalAvailabilityController: computationalAvailabilityController)
         lockBannerRepository = InMemoryScreenLockingBannerRepository(localSettings: tower.localSettings)
         backupStateController = factory.makeBackupStateController(progressController: backupProgressController, failuresController: failuresController, settingsController: settingsController, authorizationController: authorizationController, networkController: networkController, quotaController: quotaConstraintController, availableSpaceController: availableSpaceController, featureFlagController: featureFlagController, retryTriggerController: retryTriggerController, computationalAvailabilityController: computationalAvailabilityController, loadController: loadController)
-        self.photoLeftoversCleaner = factory.makeCleanupController(tower: tower, photosMoc: photosMOC)
+        self.photoLeftoversCleaner = factory.makeCleanupController(tower: tower, photosMoc: photosManagedObjectContext)
         let processingPipelineWorker = UploadWorkerStateComposite(primaryWorker: backupStateController, secondaryWorker: identifiersController)
         let photoUploaderWorker = LocalDatabasePhotosUploadingWorkerState(storageManager: dependencies.tower.storage)
         let globalWorker = UploadWorkerStateComposite(primaryWorker: processingPipelineWorker, secondaryWorker: photoUploaderWorker)
+        self.photoUpsellResultNotifier = PhotoUpsellResultNotifier()
 
         childContainers = [
-            PhotosNotificationsPermissionsContainer(tower: tower, windowScene: dependencies.windowScene, backupAvailableController: backupUploadAvailableController),
+            PhotosNotificationsPermissionsContainer(
+                tower: tower,
+                windowScene: dependencies.windowScene,
+                backupAvailableController: backupUploadAvailableController,
+                flowController: dependencies.notificationsPermissionsFlowController
+            ),
             telemetryStorageContainer,
-            PhotosTelemetryContainer(dependencies: PhotosTelemetryContainer.Dependencies(tower: tower, settingsSuite: dependencies.settingsSuite, settingsController: settingsController, stateController: backupStateController, storage: telemetryStorageContainer.storage, loadController: loadController, uploadRepository: uploadDurationMeasurementRepository, scanningRepository: scanningMeasurementRepository, duplicatesRepository: duplicatesMeasurementRepository, throttlingRepository: throttlingMeasurementRepository, computationalAvailabilityController: computationalAvailabilityController, uploadDoneNotifier: uploadDoneNotifier, processingTaskController: processingTaskController, backgroundUploadMeasurementsRepository: backgroundUploadMeasurementsRepository, backgroundTaskResultStateRepository: backgroundUploadMeasurementsRepository, failedPhotosResource: failedPhotosResource, networkController: networkController)),
+            PhotosTelemetryContainer(
+                dependencies: PhotosTelemetryContainer.Dependencies(
+                    tower: tower,
+                    settingsSuite: dependencies.settingsSuite,
+                    settingsController: settingsController,
+                    stateController: backupStateController,
+                    storage: telemetryStorageContainer.storage,
+                    loadController: loadController,
+                    uploadRepository: uploadDurationMeasurementRepository,
+                    scanningRepository: scanningMeasurementRepository,
+                    duplicatesRepository: duplicatesMeasurementRepository,
+                    throttlingRepository: throttlingMeasurementRepository,
+                    computationalAvailabilityController: computationalAvailabilityController,
+                    uploadDoneNotifier: uploadDoneNotifier,
+                    processingTaskController: processingTaskController,
+                    backgroundUploadMeasurementsRepository: backgroundUploadMeasurementsRepository,
+                    backgroundTaskResultStateRepository: backgroundUploadMeasurementsRepository,
+                    failedPhotosResource: failedPhotosResource,
+                    networkController: networkController, 
+                    photoUpsellResultNotifier: photoUpsellResultNotifier
+                )
+            ),
             BackgroundPhotoUploadContainer(dependencies: .init(workerState: globalWorker, appBackgroundStateListener: appStateResource.state, computationAvailability: computationalAvailabilityController, backgroundTaskStateController: processingTaskController, externalFeatureFlagStore: tower.localSettings, settingsProvider: DriveKeychain.shared, keymaker: dependencies.keymaker, backgroundTaskResultStateRepository: backgroundUploadMeasurementsRepository)),
             factory.makeOpenAppReminderChildContainer(tower: tower, globalWorker: globalWorker, appStateResource: appStateResource),
         ]
-        processingContainer = PhotosProcessingContainer(dependencies: PhotosProcessingContainer.Dependencies(tower: tower, backupController: backupController, constraintsController: constraintsController, identifiersController: identifiersController, progressRepository: progressRepository, failedItemsResource: failedPhotosResource, photoSkippableCache: dependencies.photoSkippableCache, settingsController: settingsController, computationalAvailabilityController: computationalAvailabilityController, circuitBreaker: circuitBreakerController, scanningMeasurementRepository: scanningMeasurementRepository, duplicatesMeasurementRepository: duplicatesMeasurementRepository, photoSharesObserver: photoSharesObserver))
+        processingContainer = PhotosProcessingContainer(dependencies: PhotosProcessingContainer.Dependencies(tower: tower, backupController: backupController, constraintsController: constraintsController, identifiersController: identifiersController, progressRepository: progressRepository, failedItemsResource: failedPhotosResource, photoSkippableCache: dependencies.photoSkippableCache, settingsController: settingsController, computationalAvailabilityController: computationalAvailabilityController, circuitBreaker: circuitBreakerController, scanningMeasurementRepository: scanningMeasurementRepository, duplicatesMeasurementRepository: duplicatesMeasurementRepository, photoSharesObserver: photoSharesObserver, photosManagedObjectContext: photosManagedObjectContext))
         #if HAS_QA_FEATURES
         memoryLogResource = PhotosMemoryHeartbeatLogResource(resource: DeviceMemoryDiagnosticsResource(), storageManager: tower.storage)
         #endif
@@ -171,7 +220,13 @@ final class PhotosContainer {
             backupStateController: backupStateController,
             retryTriggerController: retryTriggerController,
             constraintsController: constraintsController,
-            photoSharesObserver: photoSharesObserver
+            photoSharesObserver: photoSharesObserver,
+            notificationsPermissionsFlowController: dependencies.notificationsPermissionsFlowController,
+            photoUpsellResultNotifier: photoUpsellResultNotifier,
+            photosManagedObjectContext: photosManagedObjectContext,
+            photoUploadedNotifier: photoUploadedNotifier,
+            contactsManager: dependencies.contacstsManager, 
+            featureFlagsController: dependencies.featureFlagsController
         )
         let container = PhotosScenesContainer(dependencies: dependencies)
         return container.makeRootViewController()

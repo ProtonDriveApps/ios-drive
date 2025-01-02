@@ -19,6 +19,7 @@ import SwiftUI
 import PDCore
 import ProtonCoreUIFoundations
 import PDUIComponents
+import PDLocalization
 
 struct EmptyFolderView<Header: View, Footer: View>: View {
     let viewModel: EmptyViewConfiguration
@@ -56,6 +57,10 @@ struct EmptyFolderView<Header: View, Footer: View>: View {
     
     private var imageName: String {
         switch viewModel.image {
+        case .emptySharedWithMe:
+            return "empty-shared-with-me"
+        case .emptySharedByMe:
+            return "empty-shared-by-me"
         case .emptyShared:
             return "empty-shared"
         case .emptyFolder:
@@ -74,18 +79,16 @@ struct EmptyFolderView<Header: View, Footer: View>: View {
     // Throw away specific sizes when we have new standardized illustrations.
     private var maxImageHeight: CGFloat {
         switch viewModel.image {
-        case .emptyShared:
-            return 120
-        case .emptyFolder:
-            return 88
         case .offlineFiles:
             return 170
-        case .emptyTrash:
-            return 118
         case .genericError:
             return 114
         case .cloudError:
             return 132
+        case .emptyFolder, .emptyTrash:
+            return 150
+        default:
+            return 120
         }
     }
 }
@@ -116,6 +119,8 @@ struct EmptyViewConfiguration {
         case emptyTrash
         case genericError
         case cloudError
+        case emptySharedByMe
+        case emptySharedWithMe
     }
     
     let image: ImageType
@@ -124,20 +129,57 @@ struct EmptyViewConfiguration {
 }
 
 extension EmptyViewConfiguration {
-    static let shared = EmptyViewConfiguration(image: .emptyShared,
-                                                title: "Share files with links",
-                                                message: "Create links and share files with others")
+    static let folder = EmptyViewConfiguration(
+        image: .emptyFolder,
+        title: Localization.empty_folder_title,
+        message: Localization.empty_folder_message
+    )
 
-    static let folder = EmptyViewConfiguration(image: .emptyFolder,
-                                                  title: "Nothing to see here",
-                                                  message: "This folder is empty")
+    static let folderWithoutMessage = EmptyViewConfiguration(
+        image: .emptyFolder,
+        title: Localization.empty_folder_title,
+        message: ""
+    )
 
-    static let offlineAvailable = EmptyViewConfiguration(image: .offlineFiles,
-                                                         title: "No offline files or folders",
-                                                         message: "Tap “Make available offline” in a file’s or folder’s menu to access it without internet connection.")
+    static let trash = EmptyViewConfiguration(
+        image: .emptyTrash,
+        title: Localization.trash_empty_title,
+        message: Localization.trash_empty_message
+    )
 
-    static let trash = EmptyViewConfiguration(image: .emptyTrash, title: "No files or folders in trash", message: "\n")
+    static let shared = EmptyViewConfiguration(
+        image: .emptySharedByMe,
+        title: Localization.share_empty_title,
+        message: Localization.share_empty_message
+    )
 
-    static let noConnection = EmptyViewConfiguration(image: .genericError, title: "Your device has no connection", message: "We cannot read contents of this folder")
-    static let noConnectionInPhoto = EmptyViewConfiguration(image: .genericError, title: "Your device has no connection", message: "")
+    static let sharedByMe = EmptyViewConfiguration(
+        image: .emptySharedByMe,
+        title: Localization.shared_by_me_empty_title,
+        message: Localization.shared_by_me_empty_message
+    )
+
+    static let sharedWithMe = EmptyViewConfiguration(
+        image: .emptySharedWithMe,
+        title: Localization.shared_with_me_empty_title,
+        message: Localization.shared_with_me_empty_message
+    )
+
+    static let offlineAvailable = EmptyViewConfiguration(
+        image: .offlineFiles,
+        title: Localization.available_offline_empty_title,
+        message: Localization.available_offline_empty_message
+    )
+
+    static let noConnection = EmptyViewConfiguration(
+        image: .genericError,
+        title: Localization.disconnection_view_title,
+        message: Localization.disconnection_folder_message
+    )
+
+    static let noConnectionInPhoto = EmptyViewConfiguration(
+        image: .genericError,
+        title: Localization.disconnection_view_title,
+        message: ""
+    )
 }

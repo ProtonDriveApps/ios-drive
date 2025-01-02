@@ -25,14 +25,16 @@ class DownloadBinaryOperation: SynchronousOperation {
 
     init(url: URL?) {
         self.url = url
-        self.session = URLSession(configuration: .forDownloading)
+        self.session = URLSession.forDownloading()
         super.init()
     }
 
     override func cancel() {
         super.cancel()
         self.task?.cancel()
-        self.session?.invalidateAndCancel()
+        if !Constants.downloaderUsesSharedURLSession {
+            self.session?.invalidateAndCancel()
+        }
 
         self.session = nil
         self.task = nil

@@ -19,7 +19,7 @@ import CoreData
 import PDCore
 
 protocol LocalPhotoLinkIdRepository {
-    func isPhotoExisting(_ linkId: String) -> Bool
+    func isPhotoExisting(_ identifier: NodeIdentifier) -> Bool
 }
 
 final class ConcreteLocalPhotoLinkIdRepository: LocalPhotoLinkIdRepository {
@@ -31,7 +31,7 @@ final class ConcreteLocalPhotoLinkIdRepository: LocalPhotoLinkIdRepository {
         self.managedObjectContext = managedObjectContext
     }
 
-    func isPhotoExisting(_ linkId: String) -> Bool {
-        return storageManager.isPhotoPresent(linkId: linkId, moc: managedObjectContext)
+    func isPhotoExisting(_ identifier: NodeIdentifier) -> Bool {
+        return storageManager.isPhotoPresent(identifier: identifier, moc: managedObjectContext)
     }
 }

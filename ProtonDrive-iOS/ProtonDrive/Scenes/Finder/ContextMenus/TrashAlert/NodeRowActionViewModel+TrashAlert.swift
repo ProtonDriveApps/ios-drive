@@ -46,4 +46,28 @@ extension NodeRowActionMenuViewModelTrashAlertPresenting {
             ])
     }
 
+    func makeRemoveMeAlert(environment: TrashAlertEnvironment) -> DialogSheetModel {
+        guard let node = nodes.first else {
+            return DialogSheetModel.placeholder
+        }
+
+        let vm = RemoveMeAlertViewModel(node: node, model: model)
+        return DialogSheetModel(
+            title: vm.removeMeTitle,
+            buttons: [
+                DialogButton(title: vm.removeMeButton, role: .destructive, action: {
+                    vm.removeMe(completion: { result in
+                        switch result {
+                        case .success:
+                            environment.onDismiss()
+                            environment.cancelSelection?()
+                            environment.popScreenIfNeeded()
+                        case .failure(let error):
+                            environment.onDismiss()
+                            vm.model.sendError(error)
+                        }
+                    })
+                })
+            ])
+    }
 }

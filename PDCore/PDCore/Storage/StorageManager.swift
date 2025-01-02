@@ -30,6 +30,14 @@ public class StorageManager: NSObject, ManagedStorage {
             return model
         }
         
+        #if RESOURCES_ARE_IMPORTED_BY_SPM
+        if let bundle = Bundle.module.url(forResource: "Metadata", withExtension: "momd"),
+           let model = NSManagedObjectModel(contentsOf: bundle)
+        {
+            return model
+        }
+        #endif
+
         // dynamic linking
         if let bundle = Bundle(for: StorageManager.self).url(forResource: "Metadata", withExtension: "momd"),
            let model = NSManagedObjectModel(contentsOf: bundle)
@@ -172,7 +180,11 @@ public class StorageManager: NSObject, ManagedStorage {
         return container
     }
     
+    @available(*, deprecated, message: "Remove when the old implementation of Public Link is removed")
     @SettingsStorage("finishedFetchingShareURLs") var finishedFetchingShareURLs: Bool?
+
+    @SettingsStorage("finishedFetchingSharedByMe") public var finishedFetchingSharedByMe: Bool?
+    @SettingsStorage("finishedFetchingSharedWithMe") public var finishedFetchingSharedWithMe: Bool?
     @SettingsStorage("finishedFetchingTrash") var finishedFetchingTrash: Bool?
     private let persistentContainer: NSPersistentContainer
     let userDefaults: UserDefaults // Ideally, this should be replaced with @SettingsStorage
@@ -186,6 +198,8 @@ public class StorageManager: NSObject, ManagedStorage {
         }
         
         self._finishedFetchingShareURLs.configure(with: suite)
+        self._finishedFetchingSharedByMe.configure(with: suite)
+        self._finishedFetchingSharedWithMe.configure(with: suite)
         self._finishedFetchingTrash.configure(with: suite)
     }
 
@@ -223,12 +237,12 @@ public class StorageManager: NSObject, ManagedStorage {
     
     public func prepareForTermination() {
         self.mainContext.performAndWait {
-            try? self.mainContext.saveWithParentLinkCheck()
+            try? self.mainContext.saveOrRollback()
         }
         
         // remove everything per entity
         self.backgroundContext.performAndWait {
-            try? self.backgroundContext.saveWithParentLinkCheck()
+            try? self.backgroundContext.saveOrRollback()
         }
     }
     
@@ -267,13 +281,6 @@ public class StorageManager: NSObject, ManagedStorage {
         context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
         return context
     }
-    
-    lazy var eventsContext: NSManagedObjectContext = {
-        let context = self.persistentContainer.newBackgroundContext()
-        context.automaticallyMergesChangesFromParent = true
-        context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
-        return context
-    }()
 
     func privateChildContext(of parent: NSManagedObjectContext) -> NSManagedObjectContext {
         let child = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
@@ -285,6 +292,8 @@ public class StorageManager: NSObject, ManagedStorage {
     
     func clearUp() async {
         finishedFetchingTrash = nil
+        finishedFetchingSharedByMe = nil
+        finishedFetchingSharedWithMe = nil
         finishedFetchingShareURLs = nil
 
         userDefaults.removeObject(forKey: UserDefaults.NotificationPropertyKeys.metadataDBUpdateKey.rawValue)

@@ -20,10 +20,16 @@ import Foundation
 public struct UpdateShareURLDetails: Equatable {
     public let password: Password
     public let duration: Duration
+    public let permission: Permissions
 
-    public init(password: UpdateShareURLDetails.Password, duration: UpdateShareURLDetails.Duration) {
+    public init(
+        password: UpdateShareURLDetails.Password,
+        duration: UpdateShareURLDetails.Duration,
+        permission: Permissions
+    ) {
         self.password = password
         self.duration = duration
+        self.permission = permission
     }
 
     public enum Password: Equatable {
@@ -35,5 +41,11 @@ public struct UpdateShareURLDetails: Equatable {
         case unchanged
         case nonExpiring
         case expiring(TimeInterval)
+    }
+    
+    public enum Permissions: Equatable {
+        case unchanged
+        case read
+        case readAndWrite
     }
 }

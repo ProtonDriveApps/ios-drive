@@ -78,11 +78,11 @@ public extension NSManagedObject {
         }
 
         public var errorDescription: String? {
-            #if HAS_BETA_FEATURES
-            "[\(file):\(line)] \(message)"
-            #else
-            "Invalid state: \(message)"
-            #endif
+            if Constants.buildType.isBetaOrBelow {
+                return "[\(file):\(line)] \(message)"
+            } else {
+                return "Invalid state: \(message)"
+            }
         }
 
         var localizedDescription: String {

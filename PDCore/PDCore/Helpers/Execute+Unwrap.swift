@@ -17,7 +17,7 @@
 
 import Foundation
 
-func executeAndUnwrap<T>(caller: StaticString = #function, action: (inout NSError?) -> T?) throws -> T {
+public func executeAndUnwrap<T>(caller: StaticString = #function, action: (inout NSError?) -> T?) throws -> T {
     var error: NSError?
     let output = action(&error)
     guard error == nil else { throw error! }

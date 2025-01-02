@@ -23,7 +23,7 @@ struct FilteredPhotoCompoundsResult {
     let validPartialCompounds: [PartialPhotoAssetCompound]
     let invalidCompounds: [PhotoAssetCompound]
     let invalidAssets: [PhotoAsset]
-    let failedCompounds: [PhotoAssetCompound]
+    let failedCompounds: [PhotosFailedCompound]
 }
 
 protocol PhotoAssetCompoundsConflictInteractor {

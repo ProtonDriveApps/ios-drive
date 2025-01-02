@@ -31,6 +31,12 @@ public final class MigrationDetector {
             && requiresPostMigrationStep(storeAt: storeFileUrl)
     }
     
+    public func groupContainerMigrationHappened() {
+        if requiresPostMigrationCleanup == false {
+            requiresPostMigrationCleanup = true
+        }
+    }
+    
     public var requiresPostMigrationStep: Bool {
         requiresPostMigrationCleanup == true
     }

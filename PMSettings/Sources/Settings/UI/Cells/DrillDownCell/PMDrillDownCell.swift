@@ -81,6 +81,7 @@ public final class PMDrillDownCell: PMSettingsBaseCell {
         titleLabel.text = vm.title
         previewLabel.text = vm.preview
         addSeparatorIfNeeded(hasSeparator)
+        backgroundColor = ColorProvider.BackgroundNorm
     }
 }
 

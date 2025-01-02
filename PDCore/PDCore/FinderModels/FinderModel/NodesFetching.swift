@@ -17,9 +17,11 @@
 
 import Combine
 import PDClient
+import Foundation
 
 public enum NodesFetchingErrors: Error {
     case noCloudInjected
+    case objectIsReleased
 }
 
 public protocol NodesFetching: AnyObject {
@@ -48,7 +50,7 @@ extension NodesFetching {
 extension NodesFetching where Self: NodesSorting {
     // Similar functionality is also implemented in PDCore's ScanNodeOperation
     // usage of this technique is discouraged because recursive fetching is a heavy operation
-    public func fetchChildrenFromAPI(proceedTillLastPage: Bool) -> AnyPublisher<[Node], Error> {
+    public func fetchChildrenFromAPI(proceedTillLastPage: Bool) -> AnyPublisher<(nodes: [Node], isLastPage: Bool), Error> {
         Future<[Node], Error> { [unowned self] promise in
             guard let cloud = self.tower.cloudSlot else {
                 assert(false, NodesFetchingErrors.noCloudInjected.localizedDescription)
@@ -64,23 +66,33 @@ extension NodesFetching where Self: NodesSorting {
                 params.append(.sortBy(sort))
                 params.append(.order(self.sorting.apiOrder))
             }
-            
-            cloud.scanChildren(of: self.currentNodeID, parameters: params) { promise($0) }
+            let parameters = params
+            Task {
+                do {
+                    let children = try await cloud.scanChildren(of: self.currentNodeID, parameters: parameters)
+                    promise(.success(children))
+                } catch {
+                    promise(.failure(error))
+                }
+            }
         }
-        .flatMap { [unowned self] nodes -> AnyPublisher<[Node], Error> in
+        .flatMap { [weak self] nodes -> AnyPublisher<(nodes: [Node], isLastPage: Bool), Error> in
+            guard let self else {
+                return Fail(error: NodesFetchingErrors.objectIsReleased).eraseToAnyPublisher()
+            }
             Log.info("Fetched page: \(self.lastFetchedPage)", domain: .networking)
-            if nodes.count < self.pageSize {
+            let isLastPage = nodes.count < self.pageSize
+            if isLastPage {
                 // this is last page
                 self.node.managedObjectContext?.performAndWait {
                     self.node.isChildrenListFullyFetched = true
-                    try? self.node.managedObjectContext?.saveWithParentLinkCheck()
+                    try? self.node.managedObjectContext?.saveOrRollback()
                 }
-                
-                return Just(nodes).setFailureType(to: Error.self).eraseToAnyPublisher()
+                return Just((nodes: nodes, isLastPage: true)).setFailureType(to: Error.self).eraseToAnyPublisher()
             } else if proceedTillLastPage == false {
                 // only one page requested
                 self.lastFetchedPage += 1
-                return Just(nodes).setFailureType(to: Error.self).eraseToAnyPublisher()
+                return Just((nodes: nodes, isLastPage: false)).setFailureType(to: Error.self).eraseToAnyPublisher()
             } else {
                 // this is not last page and need to request next one
                 self.lastFetchedPage += 1

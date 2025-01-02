@@ -32,7 +32,8 @@ final class CoreDataOldestPhotoIdRepository: OldestPhotoIdRepository {
     }
 
     func getOldestPhotoId() throws -> String {
-        guard let identifier = storageManager.fetchOldestPrimaryUploadedPhotoId(moc: managedObjectContext) else {
+        let volumeID = managedObjectContext.performAndWait { (try? storageManager.getMyVolumeId(in: managedObjectContext)) ?? "" }
+        guard let identifier = storageManager.fetchMyOldestPrimaryUploadedPhotoId(volumeID: volumeID, moc: managedObjectContext) else {
             throw OldestPhotoIdRepositoryError.missingPhoto
         }
         return identifier.nodeID

@@ -18,7 +18,7 @@
 import Foundation
 import PDClient
 
-struct FullUploadableBlock {
+public struct FullUploadableBlock {
     let remoteURL: URL
     let uploadToken: String
     let uploadable: UploadableBlock

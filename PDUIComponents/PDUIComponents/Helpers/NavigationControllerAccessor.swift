@@ -16,8 +16,11 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
+#if canImport(UIKit)
 import UIKit
+#endif
 
+#if os(iOS)
 public struct NavigationControllerAccessor: UIViewControllerRepresentable {
     public typealias UIViewControllerType = UIViewController
     public typealias CallbackController = (UINavigationController) -> Void
@@ -77,3 +80,4 @@ public struct NavigationControllerAccessor: UIViewControllerRepresentable {
         }
     }
 }
+#endif

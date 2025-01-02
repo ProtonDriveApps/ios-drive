@@ -19,6 +19,7 @@ import SwiftUI
 import Combine
 import PDUIComponents
 import ProtonCoreUIFoundations
+import PDLocalization
 
 struct ShareLinkDecryptionErrorView: View {
     @ObservedObject var vm: ShareLinkDecryptionErrorViewModel
@@ -30,11 +31,11 @@ struct ShareLinkDecryptionErrorView: View {
                 viewModel: EmptyViewConfiguration(
                     image: .genericError,
                     title: "",
-                    message: "Failed to generate a secure link. Try again later."),
+                    message: Localization.share_link_error_message),
                 footer: {
                     Group {
                         BlueRectButton(
-                            title: "Delete Link",
+                            title: Localization.share_link_button_delete_link,
                             foregroundColor: ColorProvider.TextNorm,
                             backgroundColor: ColorProvider.InteractionWeak,
                             font: .caption,

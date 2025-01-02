@@ -49,7 +49,7 @@ struct FinderListCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
         self.onTap = onTap
         self.onLongPress = onLongPress
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             if hasHorizontalPadding {
@@ -63,7 +63,7 @@ struct FinderListCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
             separator
         }
         .frame(height: 74)
-        .background(ColorProvider.BackgroundNorm)
+        .background(vm.isSelected ? ColorProvider.BackgroundSecondary : ColorProvider.BackgroundNorm )
         .disabled(vm.isDisabled)
         .opacity(vm.isDisabled ? 0.5 : 1.0)
     }
@@ -71,13 +71,20 @@ struct FinderListCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
     var hasHorizontalPadding: Bool {
         vm.uploadPaused || vm.uploadFailed || vm.isSelecting || (vm is TrashCellViewModel) || vm.uploadWaiting
     }
-    
+
     var cellContent: some View {
         HStack {
             
-            HStack {
-                icon()
+            HStack(spacing: .zero) {
+
+                if vm.isSelecting {
+                    selectionBox()
+                        .frame(width: 40, height: 40)
+                }
+                
+                thumbnail()
                     .frame(width: 40, height: 40)
+                    .padding(.trailing)
 
                 VStack(spacing: 0) {
                     Spacer()
@@ -93,7 +100,8 @@ struct FinderListCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
                         HStack(spacing: 0) {
                             NodeListSecondLineView(
                                 vm: vm.secondLine,
-                                parentIdentifier: "NodeListSecondLineView.\(vm.name)"
+                                parentIdentifier: "NodeListSecondLineView.\(vm.name)",
+                                featureFlagsController: vm.featureFlagsController
                             )
                             .accessibilityElement(children: .contain)
                             Spacer()
@@ -107,10 +115,9 @@ struct FinderListCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
             .contentShape(Rectangle())
             .onTapGesture(perform: onTap)
             .onLongPressGesture(perform: onLongPress)
-            
+
             if !vm.isSelecting {
                 actions
-                    .padding(.leading)
             }
         }
     }
@@ -118,14 +125,20 @@ struct FinderListCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
 
 // MARK: - Leading Icon and Trailing Button
 private extension FinderListCell {
+    
     @ViewBuilder
-    func icon() -> some View {
-        if vm.isSelecting {
-            SelectionButton(isSelected: vm.isSelected)
-                .transition(.asymmetric(insertion: .slide, removal: .identity))
-                .accessibility(identifier: "selectionButton.\(vm.name)")
-                .modifier(SelectionAnimationModifier(isSelected: vm.isSelected))
-        } else {
+
+    func selectionBox() -> some View {
+        RoundedSelectionView(isSelected: vm.isSelected)
+            .transition(.asymmetric(insertion: .slide, removal: .identity))
+            .accessibility(identifier: "selectionButton.\(vm.name)")
+            .accessibilityLabel(vm.isSelected ? "selected" : "unselected")
+            .modifier(SelectionAnimationModifier(isSelected: vm.isSelected))
+    }
+
+    @ViewBuilder
+    func thumbnail() -> some View {
+        ZStack(alignment: .bottomTrailing) {
             ThumbnailImage(vm: vm.thumbnailViewModel) {
                 Image(vm.iconName)
                     .resizable()
@@ -139,7 +152,23 @@ private extension FinderListCell {
             }
             .frame(width: 40)
             .transition(.asymmetric(insertion: .slide, removal: .identity))
+
+            if vm.isSharedCollaboratively, let initial = vm.creator.first {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(ColorProvider.Shade40)
+                        .frame(width: 20, height: 20)
+                    Text(String(initial).capitalized)
+                        .foregroundColor(.white)
+                        .font(.system(size: 14, weight: .bold))
+                }
+                .offset(x: 5, y: 5)
+            }
+
         }
+        .frame(width: 40, height: 40)
+        .transition(.asymmetric(insertion: .slide, removal: .identity))
+        .accessibilityIdentifier("thumbnail.\(vm.name)")
     }
 
     private func defaultCellButton(_ button: NodeCellButton) -> some View {
@@ -165,8 +194,10 @@ private extension FinderListCell {
         switch button.type {
         case .menu where vm.nodeType == .file:
             ContextMenuView(icon: button.icon, viewModifier: ContextMenuListModifier()) {
-                primarySectionView(items: model.editSection(environment: environment).items)
-                Divider()
+                ForEach(model.editSections(environment: environment)) { group in
+                    primarySectionView(items: group.items)
+                    Divider()
+                }
                 ForEach(model.moreSection(environment: environment).items) { item in
                     ContextMenuItemActionView(item: item)
                 }
@@ -174,7 +205,10 @@ private extension FinderListCell {
             .accessibility(identifier: "NodeCellButton.three-dots-horizontal.\(vm.name)")
         case .menu where vm.nodeType == .folder:
             ContextMenuView(icon: button.icon, viewModifier: ContextMenuListModifier()) {
-                primarySectionView(items: model.editSection(environment: environment).items)
+                ForEach(model.editSections(environment: environment)) { group in
+                    primarySectionView(items: group.items)
+                    Divider()
+                }
             }
             .accessibility(identifier: "NodeCellButton.three-dots-horizontal.\(vm.name)")
         case .cancel:
@@ -229,7 +263,8 @@ private extension FinderListCell {
             menuItem: menuItem,
             modal: presentedModal,
             sheet: presentedSheet,
-            acknowledgedNotEnoughStorage: acknowledgedNotEnoughStorage
+            acknowledgedNotEnoughStorage: acknowledgedNotEnoughStorage,
+            featureFlagsController: vm.featureFlagsController
         )
         HStack(spacing: 0) {
             if let vm = vm as? NodeCellWithProgressConfiguration,

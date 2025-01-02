@@ -17,6 +17,7 @@
 
 public struct NewPhotoShare {
     let addressID: String
+    let addressKeyID: String
     let volumeID: String
     let shareName: String
     let shareKey: String
@@ -30,6 +31,7 @@ public struct NewPhotoShare {
 
     public init(
         addressID: String,
+        addressKeyID: String,
         volumeID: String,
         shareName: String,
         shareKey: String,
@@ -42,6 +44,7 @@ public struct NewPhotoShare {
         nodeHashKey: String
     ) {
         self.addressID = addressID
+        self.addressKeyID = addressKeyID
         self.volumeID = volumeID
         self.shareName = shareName
         self.shareKey = shareKey

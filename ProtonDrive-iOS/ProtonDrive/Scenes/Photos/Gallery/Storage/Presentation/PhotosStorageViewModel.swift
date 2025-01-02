@@ -32,6 +32,7 @@ struct PhotosStorageViewData: Equatable {
     let text: String?
     let storageButton: String
     let closeButton: String?
+    let accessibilityIdentifier: String
 }
 
 final class PhotosStorageViewModel: PhotosStorageViewModelProtocol {

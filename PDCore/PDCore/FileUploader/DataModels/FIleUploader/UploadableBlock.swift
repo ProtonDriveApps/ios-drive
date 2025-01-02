@@ -17,7 +17,7 @@
 
 import Foundation
 
-struct UploadableBlock: Equatable {
+public struct UploadableBlock: Equatable {
     let index: Int
     let size: Int
     let hash: String

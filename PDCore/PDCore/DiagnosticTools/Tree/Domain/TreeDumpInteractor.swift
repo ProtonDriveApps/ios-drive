@@ -15,6 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+#if os(macOS)
+import PDLoadTesting
+#endif
+
 public protocol TreeDumpInteractor {
     func dump(tree: Tree) async throws -> String
 }
@@ -28,6 +32,17 @@ final class ConcreteTreeDumpInteractor: TreeDumpInteractor {
 
     func dump(tree: Tree) async throws -> String {
         let provider = TreeDumpProvider(node: tree.root)
+        #if os(macOS)
+        if LoadTesting.isEnabled {
+            // This change is required because the Swift compiler crashes for me during archiving locally on this line
+            // Given load testing needs constant archiving but doesn't need tree dumping, we can just ignore
+            // the Swift compiler bug by returning empty string.
+            return ""
+        } else {
+            return try await dumper.dump(root: provider)
+        }
+        #else
         return try await dumper.dump(root: provider)
+        #endif
     }
 }

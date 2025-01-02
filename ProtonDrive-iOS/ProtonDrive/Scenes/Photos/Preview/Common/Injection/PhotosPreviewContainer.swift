@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import CoreData
 import Foundation
 import PDCore
 import UIKit
@@ -25,9 +26,11 @@ final class PhotosPreviewContainer {
         let tower: Tower
         let galleryController: PhotosGalleryController
         let thumbnailsContainer: ThumbnailsControllersContainer
+        let photosManagedObjectContext: NSManagedObjectContext
+        let photoUploadedNotifier: PhotoUploadedNotifier
     }
 
-    private let dependencies: Dependencies
+    let dependencies: Dependencies
     private let previewController: PhotosPreviewController
     private let modeController: PhotosPreviewModeController
     private let currentDetailController: PhotoPreviewCurrentDetailController
@@ -65,7 +68,9 @@ final class PhotosPreviewContainer {
             thumbnailsContainer: dependencies.thumbnailsContainer,
             modeController: modeController,
             previewController: previewController,
-            detailController: detailController
+            detailController: detailController,
+            photosManagedObjectContext: dependencies.photosManagedObjectContext,
+            photoUploadedNotifier: dependencies.photoUploadedNotifier
         )
     }
 }

@@ -19,8 +19,10 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+import UIKit
 import ProtonCoreLog
 import ProtonCoreUIFoundations
+import PDLocalization
 
 public class PMUnlockViewController: UIViewController {
     lazy var scrollView = KeyboardDismissingScrollView()
@@ -141,7 +143,7 @@ public class PMUnlockViewController: UIViewController {
         title.adjustsFontForContentSizeCategory = true
         title.textAlignment = .center
         title.tintColor = ColorProvider.TextNorm
-        title.text = "Unlock App"
+        title.text = Localization.unlock_app_title
 
         container.addSubview(title)
         title.translatesAutoresizingMaskIntoConstraints = false
@@ -178,12 +180,12 @@ public class PMUnlockViewController: UIViewController {
     }
 
     @objc private func signOutDidTap() {
-        let alert = UIAlertController(title: "Are you sure?", message: viewModel.alertSubtitle, preferredStyle: .alert)
+        let alert = UIAlertController(title: Localization.logout_alert_title, message: viewModel.alertSubtitle, preferredStyle: .alert)
 
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in
+        alert.addAction(UIAlertAction(title: Localization.general_cancel, style: .cancel) { _ in
             PMLog.debug("Cancel")
         })
-        alert.addAction(UIAlertAction(title: "OK", style: .destructive) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: Localization.general_ok, style: .destructive) { [weak self] _ in
             self?.viewModel?.signOut()
             self?.dismiss(animated: true, completion: nil)
         })

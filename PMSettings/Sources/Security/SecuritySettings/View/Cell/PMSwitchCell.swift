@@ -81,5 +81,6 @@ final class PMSwitchCell: PMSettingsBaseCell {
         titleLabel.text = vm.title
         switchElement.isOn = vm.isActive
         addSeparatorIfNeeded(hasSeparator)
+        backgroundColor = ColorProvider.BackgroundNorm
     }
 }

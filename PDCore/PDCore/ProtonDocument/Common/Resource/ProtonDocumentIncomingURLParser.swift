@@ -37,6 +37,7 @@ final class ProtonDocumentIncomingURLParser: ProtonDocumentIncomingURLParserProt
         }
         let nodeId = components[componentsCount - 2]
         let shareId = components[componentsCount - 3]
-        return NodeIdentifier(nodeId, shareId)
+        // VolumeID not defined on this endpoint at the moment
+        return NodeIdentifier(nodeId, shareId, "")
     }
 }

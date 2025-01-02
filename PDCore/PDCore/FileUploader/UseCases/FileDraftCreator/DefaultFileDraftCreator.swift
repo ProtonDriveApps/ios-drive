@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import CoreData
 
 struct FileDraftUploadableDraft: Equatable {
     let uploadID: UUID
@@ -56,7 +57,16 @@ class DefaultFileDraftCreator: FileDraftCreator {
             let nameResolvingDraft = try draft.getNameResolvingFileDraft()
             uploadDraft(nameResolvingDraft, completion: completion)
         } catch {
-            completion(.failure(error))
+            // There are 3 possible error from getNameResolvingFileDraft
+            // InvalidState, NoMOC or error during decrypt hash/ name
+            if error is NSManagedObject.InvalidState {
+                completion(.failure(error))
+            } else if error is NSManagedObject.NoMOCError {
+                completion(.failure(error))
+            } else {
+                let userError = PhotosFailureUserError.encryptionFailed
+                completion(.failure(userError))
+            }
         }
     }
     
@@ -65,6 +75,7 @@ class DefaultFileDraftCreator: FileDraftCreator {
         
         let uploadableFileDraft = UploadableFileDraft(
             shareID: draft.parent.shareID,
+            volumeID: draft.parent.volumeID,
             parentLinkID: draft.parent.nodeID,
             armoredName: draft.armoredName,
             nameHash: draft.hash,
@@ -100,26 +111,26 @@ class DefaultFileDraftCreator: FileDraftCreator {
          }
      }
 
-     func cancel() {
-         isCancelled = true
-     }
+    func cancel() {
+        isCancelled = true
+    }
 
-     func finalize(_ file: File, uploaded: RemoteUploadedNewFile, nameHash: String, armoredName: Armored) throws {
-         guard let moc = file.moc else { throw File.noMOC() }
-
-         try moc.performAndWait { [weak self] in
-             guard let self, !self.isCancelled else { return }
-             
-             file.id = uploaded.fileID
-             file.activeRevisionDraft?.id = uploaded.revisionID
-
-             file.name = armoredName
-             file.nodeHash = nameHash
-
-             file.clearName = nil
-
-             try moc.saveOrRollback()
-         }
-     }
+    func finalize(_ file: File, uploaded: RemoteUploadedNewFile, nameHash: String, armoredName: Armored) throws {
+        guard let moc = file.moc else { throw File.noMOC() }
+        
+        try moc.performAndWait { [weak self] in
+            guard let self, !self.isCancelled else { return }
+            
+            file.id = uploaded.fileID
+            file.activeRevisionDraft?.id = uploaded.revisionID
+            
+            file.name = armoredName
+            file.nodeHash = nameHash
+            
+            file.clearName = nil
+            
+            try moc.saveOrRollback()
+        }
+    }
     
 }

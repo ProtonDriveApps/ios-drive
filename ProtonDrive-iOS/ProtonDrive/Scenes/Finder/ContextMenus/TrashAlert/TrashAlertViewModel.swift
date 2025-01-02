@@ -16,13 +16,14 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDLocalization
 
 final class TrashAlertViewModel {
     init(nodes: [Node], model: NodeEditionViewModel) {
         self.nodes = nodes
         self.model = model
     }
-    
+
     convenience init(node: Node, model: NodeEditionViewModel) {
         self.init(nodes: [node], model: model)
     }
@@ -32,19 +33,45 @@ final class TrashAlertViewModel {
 
     var trashText: (title: String, button: String) {
         if nodes.count == 1, nodes.first is File {
-            return ("Are you sure you want to move this file to Trash?", "Remove file")
+            return (Localization.action_trash_files_alert_message(num: 1), Localization.general_remove_files(num: 1))
         } else if nodes.count == 1, nodes.first is Folder {
-            return ("Are you sure you want to move this folder to Trash?", "Remove folder")
+            return (Localization.action_trash_folders_alert_message(num: 1), Localization.general_remove_folders(num: 1))
         } else if nodes.allSatisfy({ $0 is File }) {
-            return ("Are you sure you want to move \(nodes.count) files to Trash?", "Remove \(nodes.count) files")
+            return (Localization.action_trash_files_alert_message(num: nodes.count), Localization.general_remove_files(num: nodes.count))
         } else if nodes.allSatisfy({ $0 is Folder }) {
-            return ("Are you sure you want to move \(nodes.count) folders to Trash?", "Remove \(nodes.count) folders")
+            return (Localization.action_trash_folders_alert_message(num: nodes.count), Localization.general_remove_folders(num: nodes.count))
         } else {
-            return ("Are you sure you want to move \(nodes.count) items to Trash?", "Remove \(nodes.count) items")
+            return (Localization.action_trash_items_alert_message(num: nodes.count), Localization.general_remove_items(num: nodes.count))
         }
     }
 
     func trash(completion: @escaping (Result<Void, Error>) -> Void) {
         model.sendToTrash(nodes, completion: completion)
+    }
+}
+
+final class RemoveMeAlertViewModel {
+    let node: Node
+    let model: NodeEditionViewModel
+
+    init(node: Node, model: NodeEditionViewModel) {
+        self.node = node
+        self.model = model
+    }
+
+    var removeMeTitle: String {
+        Localization.shared_with_me_remove_me(item: node.decryptedName)
+    }
+
+    var itemName: String {
+        node.decryptedName
+    }
+
+    var removeMeButton: String {
+        Localization.shared_with_me_remove_me_confirmation
+    }
+
+    func removeMe(completion: @escaping (Result<Void, Error>) -> Void) {
+        model.removeMe(node, completion: completion)
     }
 }

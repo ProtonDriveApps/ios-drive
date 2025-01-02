@@ -17,11 +17,12 @@
 
 import CoreImage
 import CoreServices
+import UniformTypeIdentifiers
 
-extension CGImage {
+public extension CGImage {
     func jpegData(compressionQuality: CGFloat = 1) -> Data? {
         guard let mutableData = CFDataCreateMutable(nil, 0),
-                let destination = CGImageDestinationCreateWithData(mutableData, kUTTypeJPEG, 1, nil) else {
+                let destination = CGImageDestinationCreateWithData(mutableData, UTType.jpeg.identifier as CFString, 1, nil) else {
             return nil
         }
 

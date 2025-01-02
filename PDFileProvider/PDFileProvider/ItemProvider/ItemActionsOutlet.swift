@@ -18,16 +18,26 @@
 import FileProvider
 import PDCore
 
+public typealias NewRevisionUploadPerformerProvider = () async -> NewRevisionUploadPerformer
+
+public protocol NewRevisionUploadPerformer {
+    // swiftlint:disable:next function_parameter_count
+    func uploadNewRevision(item: NSFileProviderItem, file: File, tower: Tower, copy: URL, fileSize: Int, pendingFields: NSFileProviderItemFields, progress: Progress?) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool)
+}
+
 public final class ItemActionsOutlet {
     public typealias SuccessfulCompletion = (NSFileProviderItem?, NSFileProviderItemFields, Bool)
     public typealias Completion = (NSFileProviderItem?, NSFileProviderItemFields, Bool, Error?) -> Void
+    private typealias ProgressFunction = (Tower, NSFileProviderItem, NSFileProviderItemVersion, NSFileProviderItemFields, URL?, Progress?) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool)
 
     private let fileProviderManager: NSFileProviderManager
-    
     private let instanceIdentifier = UUID()
+    private let newRevisionUploadPerformerProvider: NewRevisionUploadPerformerProvider
 
-    public init(fileProviderManager: NSFileProviderManager) {
+    public init(fileProviderManager: NSFileProviderManager,
+                newRevisionUploadPerformProvider: @escaping NewRevisionUploadPerformerProvider = { DefaultNewRevisionUploadPerformer() }) {
         self.fileProviderManager = fileProviderManager
+        self.newRevisionUploadPerformerProvider = newRevisionUploadPerformProvider
         Log.info("ItemActionsOutlet init: \(instanceIdentifier.uuidString)", domain: .syncing)
     }
     
@@ -39,7 +49,8 @@ public final class ItemActionsOutlet {
                            identifier: NSFileProviderItemIdentifier,
                            baseVersion version: NSFileProviderItemVersion,
                            options: NSFileProviderDeleteItemOptions = [],
-                           request: NSFileProviderRequest? = nil) async throws
+                           request: NSFileProviderRequest? = nil,
+                           progress: Progress?) async throws
     {
         Log.info("Delete item \(identifier)", domain: .fileProvider)
         guard let nodeID = NodeIdentifier(identifier) else {
@@ -49,7 +60,7 @@ public final class ItemActionsOutlet {
         let itemTemplate = ItemTemplate(itemIdentifier: identifier)
 
         do {
-            if let resolvedItem = try await findAndResolveConflictIfNeeded(tower: tower, item: itemTemplate, changeType: .delete(version: version), fields: [], contentsURL: nil) {
+            if let resolvedItem = try await findAndResolveConflictIfNeeded(tower: tower, item: itemTemplate, changeType: .delete(version: version), fields: [], contentsURL: nil, progress: progress) {
                 throw Errors.deletionRejected(updatedItem: resolvedItem)
             } else {
                 #if os(iOS)
@@ -95,6 +106,7 @@ public final class ItemActionsOutlet {
     }
     
     @discardableResult
+    // swiftlint:disable:next function_parameter_count
     public func modifyItem(tower: Tower,
                            item: NSFileProviderItem,
                            baseVersion version: NSFileProviderItemVersion,
@@ -102,14 +114,15 @@ public final class ItemActionsOutlet {
                            contents newContents: URL?,
                            options: NSFileProviderModifyItemOptions? = nil,
                            request: NSFileProviderRequest? = nil,
-                           changeObserver: SyncChangeObserver? = nil) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool)
+                           changeObserver: SyncChangeObserver? = nil,
+                           progress: Progress?) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool)
     {
         Log.info("Modify item \(item.itemIdentifier) fields \(changedFields))", domain: .fileProvider)
         if newContents != nil {
             Log.info("New cleartext content available at path \(newContents?.path ?? "-")", domain: .fileProvider)
         }
 
-        guard let progressFunction = try await progressWithFunction(tower: tower, item: item, baseVersion: version, changedFields: changedFields, contents: newContents) else {
+        guard let progressFunction = try await progressWithFunction(tower: tower, item: item, baseVersion: version, changedFields: changedFields, contents: newContents, progress: progress) else {
             // If none of the above cases could be handled, then we either couldn't
             // find the node in our DB or we don't handle any of the change fields
             Log.info("Irrelevant changes", domain: .fileProvider)
@@ -122,7 +135,7 @@ public final class ItemActionsOutlet {
 
         changeObserver?.incrementSyncCounter()
         do {
-            let result = try await progressFunction(tower, item, version, changedFields, newContents)
+            let result = try await progressFunction(tower, item, version, changedFields, newContents, progress)
             changeObserver?.decrementSyncCounter(type: .push, error: nil)
             return result
         } catch {
@@ -137,7 +150,8 @@ public final class ItemActionsOutlet {
                            fields: NSFileProviderItemFields = [],
                            contents url: URL?,
                            options: NSFileProviderCreateItemOptions = [],
-                           request: NSFileProviderRequest? = nil) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool)
+                           request: NSFileProviderRequest? = nil,
+                           progress: Progress?) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool)
     {
         Log.info("Create item \(itemTemplate.itemIdentifier) from cleartext content at path \(url?.path ?? "unknown")", domain: .fileProvider)
 
@@ -145,7 +159,7 @@ public final class ItemActionsOutlet {
             throw Errors.excludeFromSync
         }
 
-        if let resolvedItem = try await findAndResolveConflictIfNeeded(tower: tower, item: itemTemplate, changeType: .create, fields: fields, contentsURL: url) {
+        if let resolvedItem = try await findAndResolveConflictIfNeeded(tower: tower, item: itemTemplate, changeType: .create, fields: fields, contentsURL: url, progress: progress) {
             return (resolvedItem, [], false)
         }
 
@@ -173,23 +187,22 @@ public final class ItemActionsOutlet {
                 throw Errors.excludeFromSync
             }
 
-            let file = try await createFile(tower: tower, item: itemTemplate, with: url, under: parent)
+            let file = try await createFile(tower: tower, item: itemTemplate, with: url, under: parent, progress: progress)
             
             return (try NodeItem(node: file), [], false)
         }
     }
 
     // MARK: - Actions on items
-
-    private func progressWithFunction(tower: Tower,
-                                      item: NSFileProviderItem,
-                                      baseVersion version: NSFileProviderItemVersion,
-                                      changedFields: NSFileProviderItemFields,
-                                      contents: URL?) async throws -> ((_ tower: Tower,
-                                                                                            _ item: NSFileProviderItem,
-                                                                                            _ version: NSFileProviderItemVersion,
-                                                                                            _ changedFields: NSFileProviderItemFields,
-                                                                                            _ contents: URL?) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool))? {
+    // swiftlint:disable:next function_parameter_count
+    private func progressWithFunction(
+        tower: Tower,
+        item: NSFileProviderItem,
+        baseVersion version: NSFileProviderItemVersion,
+        changedFields: NSFileProviderItemFields,
+        contents: URL?,
+        progress: Progress?
+    ) async throws -> ProgressFunction? {
         if changedFields.contains(.parentItemIdentifier), item.parentItemIdentifier == .trashContainer { // trash
             return progressWithTrash
         }
@@ -216,18 +229,21 @@ public final class ItemActionsOutlet {
             guard tower.sessionVault.currentAddress() != nil else {
                 throw Errors.noAddressInTower
             }
-
-            return progressWithNewRevision
+            return await progressWithNewRevision(
+                uploadNewRevision: newRevisionUploadPerformerProvider().uploadNewRevision(item:file:tower:copy:fileSize:pendingFields:progress:)
+            )
         }
 
         return nil // no function found to handle this situation
     }
 
+    // swiftlint:disable:next function_parameter_count
     func progressWithTrash(tower: Tower,
                            item: NSFileProviderItem,
                            baseVersion version: NSFileProviderItemVersion,
                            changedFields: NSFileProviderItemFields,
-                           contents: URL?) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool)
+                           contents: URL?,
+                           progress: Progress?) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool)
     {
         Log.info("Trashing item...", domain: .fileProvider)
 
@@ -240,22 +256,22 @@ public final class ItemActionsOutlet {
             throw Node.noMOC()
         }
 
-        let (shareID, parentID, linkID, isLocalFile) = try moc.performAndWait {
+        let (volumeID, shareID, parentID, linkID, isLocalFile) = try moc.performAndWait {
             guard let parent = node.parentLink else { throw node.invalidState("Trashing node should not be a root node.") }
-            return (node.shareID, parent.id, node.id, node.isLocalFile)
+            return (node.volumeID, node.shareId, parent.id, node.id, node.isLocalFile)
         }
 
         if isLocalFile {
-            tower.trashLocalNode([node.id])
+            try tower.trashLocalNode([TrashingNodeIdentifier(volumeID: volumeID, shareID: shareID, parentID: parentID, nodeID: linkID)])
         } else {
-            try await tower.trash(shareID: shareID, parentID: parentID, linkIDs: [linkID])
+            try await tower.trash([TrashingNodeIdentifier(volumeID: volumeID, shareID: shareID, parentID: parentID, nodeID: linkID)])
         }
         let nodeItem = try NodeItem(node: node)
         return (nodeItem, [], false)
         #else
         do {
             // Can only use the .delete changeType because all trash conflicts are ignored (same as delete)
-            if let updatedItem = try await findAndResolveConflictIfNeeded(tower: tower, item: item, changeType: .trash(version: version), fields: changedFields, contentsURL: contents) {
+            if let updatedItem = try await findAndResolveConflictIfNeeded(tower: tower, item: item, changeType: .trash(version: version), fields: changedFields, contentsURL: contents, progress: progress) {
                 return (updatedItem, [], false)
             } else {
                 throw Errors.excludeFromSync
@@ -266,21 +282,25 @@ public final class ItemActionsOutlet {
         #endif
     }
 
+    // swiftlint:disable:next function_parameter_count
     func progressWithRestore(tower: Tower,
                              item: NSFileProviderItem,
                              baseVersion version: NSFileProviderItemVersion,
                              changedFields: NSFileProviderItemFields,
-                             contents: URL?) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool)
+                             contents: URL?,
+                             progress: Progress?) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool)
     {
         Log.info("Restoring item (shouldn't be possible)...", domain: .fileProvider)
         throw Errors.excludeFromSync
     }
 
+    // swiftlint:disable:next function_parameter_count
     func progressWithMove(tower: Tower,
                           item: NSFileProviderItem,
                           baseVersion version: NSFileProviderItemVersion,
                           changedFields: NSFileProviderItemFields,
-                          contents: URL?) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool)
+                          contents: URL?, 
+                          progress: Progress?) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool)
     {
         Log.info("Moving item...", domain: .fileProvider)
         guard let nodeID = NodeIdentifier(item.itemIdentifier) else {
@@ -292,7 +312,7 @@ public final class ItemActionsOutlet {
         var pendingFields = changedFields
         pendingFields.remove(.parentItemIdentifier)
 
-        if let updatedItem = try await findAndResolveConflictIfNeeded(tower: tower, item: item, changeType: .move(version: version), fields: changedFields, contentsURL: contents) {
+        if let updatedItem = try await findAndResolveConflictIfNeeded(tower: tower, item: item, changeType: .move(version: version), fields: changedFields, contentsURL: contents, progress: progress) {
             return (updatedItem, pendingFields, false)
         } else {
             let node = try await tower.move(nodeID: nodeID, under: newParent)
@@ -300,11 +320,13 @@ public final class ItemActionsOutlet {
         }
     }
 
+    // swiftlint:disable:next function_parameter_count
     func progressWithRename(tower: Tower,
                             item: NSFileProviderItem,
                             baseVersion version: NSFileProviderItemVersion,
                             changedFields: NSFileProviderItemFields,
-                            contents: URL?) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool)
+                            contents: URL?,
+                            progress: Progress?) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool)
     {
         Log.info("Renaming item...", domain: .fileProvider)
         guard let nodeID = NodeIdentifier(item.itemIdentifier) else {
@@ -319,7 +341,7 @@ public final class ItemActionsOutlet {
 
         // Check for conflicts
         let actionChangeType: ItemActionChangeType = changedFields.contains(.parentItemIdentifier) ? .move(version: version) : .modifyMetadata(version: version)
-        if let updatedItem = try await findAndResolveConflictIfNeeded(tower: tower, item: item, changeType: actionChangeType, fields: changedFields, contentsURL: contents) {
+        if let updatedItem = try await findAndResolveConflictIfNeeded(tower: tower, item: item, changeType: actionChangeType, fields: changedFields, contentsURL: contents, progress: progress) {
             return (updatedItem, pendingFields, false)
         } else {
             let node = try await tower.rename(node: nodeID, cleartextName: item.filename.filenameNormalizedForRemote())
@@ -327,68 +349,57 @@ public final class ItemActionsOutlet {
         }
     }
 
-    func progressWithNewRevision(tower: Tower,
-                                 item: NSFileProviderItem,
-                                 baseVersion version: NSFileProviderItemVersion,
-                                 changedFields: NSFileProviderItemFields,
-                                 newContents: URL?) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool)
-    {
-        var pendingFields = changedFields
-        pendingFields.remove(.contents)
-        pendingFields.remove(.contentModificationDate)
-        #if os(macOS)
-        pendingFields.remove(.lastUsedDate)
-        #endif
-        
-        if let updatedItem = try await findAndResolveConflictIfNeeded(tower: tower, item: item, changeType: .modifyContents(version: version, contents: newContents), fields: changedFields, contentsURL: newContents) {
-
-            #if os(iOS)
-            return (updatedItem, pendingFields, false)
-            #else
-            // Fetch content if the versions differ (as described in the code
-            // comment of NSFileProviderReplicatedExtension's modifyItem
-            // function.
-            let shouldFetchContent = version.contentVersion != updatedItem.itemVersion?.contentVersion
-            return (updatedItem, pendingFields, shouldFetchContent)
+    private func progressWithNewRevision(
+        uploadNewRevision: @escaping (NSFileProviderItem, File, Tower, URL, Int, NSFileProviderItemFields, Progress?) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool)
+    ) -> ProgressFunction {
+        return { tower, item, version, changedFields, newContents, progress in
+            var pendingFields = changedFields
+            pendingFields.remove(.contents)
+            pendingFields.remove(.contentModificationDate)
+            #if os(macOS)
+            pendingFields.remove(.lastUsedDate)
             #endif
-        } else {
-            guard let file = tower.node(itemIdentifier: item.itemIdentifier) as? File else {
-                Log.error("File not found despite no conflict being found", domain: .fileProvider)
-                assertionFailure("Missing file in DB must be identified as a conflict")
-                throw Errors.nodeNotFound
-            }
-            guard let fileSize = newContents?.fileSize, let copy = self.prepare(forUpload: item, from: newContents) else {
-                throw Errors.emptyUrlForFileUpload
-            }
+            
+            if let updatedItem = try await self.findAndResolveConflictIfNeeded(tower: tower, item: item, changeType: .modifyContents(version: version, contents: newContents), fields: changedFields, contentsURL: newContents, progress: progress) {
 
-            defer {
-                try? FileManager.default.removeItem(at: copy.deletingLastPathComponent())
+                #if os(iOS)
+                return (updatedItem, pendingFields, false)
+                #else
+                // Fetch content if the versions differ (as described in the code
+                // comment of NSFileProviderReplicatedExtension's modifyItem
+                // function.
+                let shouldFetchContent = version.contentVersion != updatedItem.itemVersion?.contentVersion
+                return (updatedItem, pendingFields, shouldFetchContent)
+                #endif
+            } else {
+                guard let file = tower.node(itemIdentifier: item.itemIdentifier) as? File else {
+                    Log.error("File not found despite no conflict being found", domain: .fileProvider)
+                    assertionFailure("Missing file in DB must be identified as a conflict")
+                    throw Errors.nodeNotFound
+                }
+                guard let fileSize = newContents?.fileSize, let copy = self.prepare(forUpload: item, from: newContents) else {
+                    throw Errors.emptyUrlForFileUpload
+                }
+                
+                defer {
+                    try? FileManager.default.removeItem(at: copy.deletingLastPathComponent())
+                }
+                
+                return try await uploadNewRevision(item, file, tower, copy, fileSize, pendingFields, progress)
             }
-
-            if let uploadID = file.uploadIDIfUploadingNewRevision() {
-                tower.fileUploader.cancelOperation(id: uploadID)
-                file.prepareForNewUpload()
-            }
-
-            let fileWithNewRevision = try tower.revisionImporter.importNewRevision(from: copy, into: file)
-            guard fileSize == copy.fileSize else {
-                throw URLConsistencyError.urlSizeMismatch
-            }
-
-            let fileWithUploadedRevision = try await tower.fileUploader.upload(fileWithNewRevision)
-            return (try NodeItem(node: fileWithUploadedRevision), pendingFields, false)
         }
     }
-
 }
 
 extension ItemActionsOutlet {
+    // swiftlint:disable:next function_parameter_count
     private func findAndResolveConflictIfNeeded(
         tower: Tower,
         item: NSFileProviderItem,
         changeType: ItemActionChangeType,
         fields: NSFileProviderItemFields,
-        contentsURL: URL?) async throws -> NSFileProviderItem?
+        contentsURL: URL?,
+        progress: Progress?) async throws -> NSFileProviderItem?
     {
         #if os(iOS)
         return nil
@@ -401,14 +412,14 @@ extension ItemActionsOutlet {
         }
 
         Log.info("Conflict identified: \(action)", domain: .fileProvider)
-        return try await resolveConflict(tower: tower, between: itemWithNormalizedFilename, with: contentsURL, and: conflictingNode, applying: action)
+        return try await resolveConflict(tower: tower, between: itemWithNormalizedFilename, with: contentsURL, and: conflictingNode, applying: action, progress: progress)
         #endif
     }
 
     private func checkFolderLimit(for parent: Folder, storage: StorageManager) throws {
         guard let moc = parent.moc else { throw Folder.noMOC() }
         try moc.performAndWait {
-            guard try storage.fetchEntireChildCount(of: parent.id, share: parent.shareID, moc: moc) <= Constants.maxChildrenInFolder else {
+            guard try storage.fetchEntireChildCount(of: parent.id, share: parent.shareId, moc: moc) <= Constants.maxChildrenInFolder else {
                 throw Errors.childLimitReached
             }
         }
@@ -416,8 +427,13 @@ extension ItemActionsOutlet {
 }
 
 extension ItemActionsOutlet {
-    func createFile(tower: Tower, item: NSFileProviderItem, with url: URL?, under parent: Folder) async throws -> File {
+    func createFile(tower: Tower, item: NSFileProviderItem, with url: URL?, under parent: Folder, progress: Progress?) async throws -> File {
         guard let fileSize = url?.fileSize, let copy = self.prepare(forUpload: item, from: url) else {
+            #if os(macOS)
+            let fileInfoForEmptyURL = "Item type is: \(String(describing: item.contentType))\n"
+                                    + "Item filesystem flags: \(String(describing: item.fileSystemFlags))"
+            Log.info(fileInfoForEmptyURL, domain: .fileProvider, sendToSentryIfPossible: true)
+            #endif
             throw Errors.emptyUrlForFileUpload
         }
 
@@ -425,7 +441,7 @@ extension ItemActionsOutlet {
 
         let draft = try tower.fileImporter.importFile(from: copy, to: parent, with: item.itemIdentifier.rawValue)
         guard fileSize == copy.fileSize else {
-            tower.fileUploader.deleteUploadingFile(draft)
+            tower.fileUploader.deleteUploadingFile(draft, error: .accessFileFailed)
             throw URLConsistencyError.urlSizeMismatch
         }
 
@@ -433,11 +449,11 @@ extension ItemActionsOutlet {
         do {
             return try await tower.fileUploader.upload(draft)
         } catch {
-            tower.fileUploader.deleteUploadingFile(draft)
+            tower.fileUploader.deleteUploadingFile(draft, error: nil)
             throw error
         }
         #else
-        let fileUploader = SuspendableFileUploader(uploader: tower.fileUploader)
+        let fileUploader = SuspendableFileUploader(uploader: tower.fileUploader, progress: progress)
         do {
             return try await fileUploader.upload(draft)
         } catch {
@@ -447,7 +463,7 @@ extension ItemActionsOutlet {
         #endif
     }
 
-    private func prepare(forUpload itemTemplate: NSFileProviderItem, from url: URL?) -> URL? {
+    public func prepare(forUpload itemTemplate: NSFileProviderItem, from url: URL?) -> URL? {
         guard let url = url else { return nil }
         // copy file from system temporary location to app temporary location so it will have correct mime and name
         // TODO: inject mime and name directly into Uploader
@@ -467,5 +483,27 @@ extension ItemActionsOutlet {
         } else {
             return UUID().uuidString
         }
+    }
+}
+
+public final class DefaultNewRevisionUploadPerformer: NewRevisionUploadPerformer {
+    
+    public init() {}
+    
+    // swiftlint:disable:next function_parameter_count
+    public func uploadNewRevision(item: NSFileProviderItem, file: File, tower: Tower, copy: URL, fileSize: Int, pendingFields: NSFileProviderItemFields, progress: Progress?) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool) {
+        if let uploadID = file.uploadIDIfUploadingNewRevision() {
+            tower.fileUploader.cancelOperation(id: uploadID)
+            file.prepareForNewUpload()
+        }
+
+        let fileWithNewRevision = try tower.revisionImporter.importNewRevision(from: copy, into: file)
+        guard fileSize == copy.fileSize else {
+            throw URLConsistencyError.urlSizeMismatch
+        }
+
+        // TODO: add progress reporting here, maybe by using SuspendableFileUploader instead of tower.fileUploader?
+        let fileWithUploadedRevision = try await tower.fileUploader.upload(fileWithNewRevision)
+        return (try NodeItem(node: fileWithUploadedRevision), pendingFields, false)
     }
 }

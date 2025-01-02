@@ -39,7 +39,7 @@ final class ConcreteCloudAttributesDecryptor: ConcreteCloudNodeDecryptor, CloudA
         let decryptedPassphrase = try Decryptor.decryptAndVerifyNodePassphrase(
             node.nodePassphrase,
             armoredSignature: node.nodePassphraseSignature,
-            verificationKeys: verificationKeys,
+            verificationKeys: [node.nodeKey] + verificationKeys,
             decryptionKeys: [parentDecryptionKey]
         ).decrypted()
 

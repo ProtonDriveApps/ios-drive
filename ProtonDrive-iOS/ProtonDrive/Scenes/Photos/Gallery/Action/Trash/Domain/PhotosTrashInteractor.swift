@@ -28,10 +28,10 @@ final class PhotosTrashInteractor: ThrowingAsynchronousInteractor {
 
     func execute(with input: PhotoIdsSet) async throws {
         let groups = Array(input).splitIntoChunks()
-        let trashData = groups.map { PhotosTrashData(shareId: $0.share, nodeIds: $0.links) }
+        let trashData = groups.map { PhotosTrashData(volumeId: $0.volume, shareId: $0.share, nodeIds: $0.links) }
         for data in trashData {
             let result = try await remoteRepository.trash(with: data)
-            try await localRepository.trash(with: result.trashed)
+            try await localRepository.trash(with: result.trashed.map { NodeIdentifier($0, data.shareId, data.volumeId) })
         }
     }
 }

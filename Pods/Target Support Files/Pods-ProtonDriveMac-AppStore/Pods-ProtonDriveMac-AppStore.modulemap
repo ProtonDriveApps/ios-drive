@@ -1,6 +1,0 @@
-framework module Pods_ProtonDriveMac_AppStore {
-  umbrella header "Pods-ProtonDriveMac-AppStore-umbrella.h"
-
-  export *
-  module * { export * }
-}

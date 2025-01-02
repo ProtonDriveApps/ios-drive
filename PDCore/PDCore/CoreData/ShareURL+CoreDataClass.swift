@@ -71,3 +71,55 @@ public class ShareURL: NSManagedObject {
 #if os(iOS)
 extension ShareURL: HasTransientValues {}
 #endif
+
+extension StorageManager {
+    @discardableResult
+    func updateShareURLs(_ shareUrls: [ShareURLMeta], in context: NSManagedObjectContext) -> [ShareURL] {
+        shareUrls.map { self.updateShareURL($0, in: context) }
+    }
+
+    @discardableResult
+    public func updateShareURL(_ shareURLMeta: ShareURLMeta, in context: NSManagedObjectContext) -> ShareURL {
+        let shareUrl = ShareURL.fetchOrCreate(id: shareURLMeta.shareURLID, in: context)
+        shareUrl.fulfill(from: shareURLMeta)
+
+        let share = Share.fetchOrCreate(id: shareURLMeta.shareID, in: context)
+        share.type = .standard
+        share.root?.isShared = true
+        share.addToShareUrls(shareUrl)
+
+        return shareUrl
+    }
+
+    @discardableResult
+    public func updateShareURL(_ shareURLMeta: ShareURLShortMeta, in context: NSManagedObjectContext) -> ShareURL {
+        if let shareUrl = ShareURL.fetch(id: shareURLMeta.shareUrlID, in: context) {
+            shareUrl.fulfill(from: shareURLMeta)
+
+            let share = Share.fetchOrCreate(id: shareURLMeta.shareID, in: context)
+            share.type = .standard
+            share.addToShareUrls(shareUrl)
+            share.root?.isShared = true
+            
+            return shareUrl
+
+        } else {
+            let shareUrl = ShareURL.new(id: shareURLMeta.shareUrlID, in: context)
+            shareUrl.fulfill(from: shareURLMeta)
+            shareUrl.creatorEmail = ""
+            shareUrl.password = ""
+            shareUrl.sharePassphraseKeyPacket = ""
+            shareUrl.sharePasswordSalt = ""
+            shareUrl.srpModulusID = ""
+            shareUrl.srpVerifier = ""
+            shareUrl.urlPasswordSalt = ""
+
+            let share = Share.fetchOrCreate(id: shareURLMeta.shareID, in: context)
+            share.type = .standard
+            share.root?.isShared = true
+            share.addToShareUrls(shareUrl)
+
+            return shareUrl
+        }
+    }
+}

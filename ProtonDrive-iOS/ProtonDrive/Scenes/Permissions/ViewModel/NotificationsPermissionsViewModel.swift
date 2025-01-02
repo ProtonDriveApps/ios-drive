@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDLocalization
 
 protocol NotificationsPermissionsViewModel {
     var data: NotificationsPermissionsViewData { get }
@@ -58,18 +59,18 @@ final class NotificationsPermissionsViewModelImpl: NotificationsPermissionsViewM
         case .myFiles:
             return NotificationsPermissionsViewData(
                 isNavigationVisible: true,
-                title: "Turn on notifications",
-                description: "We’ll notify you if there are any interruptions to your uploads or downloads.",
-                enableButton: "Allow notifications",
-                closeButton: "Not now"
+                title: Localization.notification_permission_files_title,
+                description: Localization.notification_permission_files_description,
+                enableButton: Localization.notification_permission_enable_button_title,
+                closeButton: Localization.general_not_now
             )
         case .photos:
             return NotificationsPermissionsViewData(
                 isNavigationVisible: false,
-                title: "Ensure seamless backups",
-                description: "We’ll only notify you if your action is required to complete backups and uploads.",
-                enableButton: "Allow notifications",
-                closeButton: "Not now"
+                title: Localization.notification_permission_photos_title,
+                description: Localization.notification_permission_photos_description,
+                enableButton: Localization.notification_permission_enable_button_title,
+                closeButton: Localization.general_not_now
             )
         }
     }

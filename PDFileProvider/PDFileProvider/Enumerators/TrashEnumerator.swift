@@ -56,5 +56,5 @@ extension TrashEnumerator: EnumeratorWithChanges {
     internal var shareID: String { self.tower.rootFolderIdentifier()!.shareID }
     internal var eventsManager: EventsSystemManager { self.tower }
     internal var fileSystemSlot: FileSystemSlot { self.tower.fileSystemSlot! }
-    internal var cloudSlot: CloudSlot { self.tower.cloudSlot! }
+    internal var cloudSlot: CloudSlotProtocol { self.tower.cloudSlot! }
 }

@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import UIKit
 import PDClient
 import PDCore
 import ProtonCoreKeymaker
@@ -37,10 +38,19 @@ public class DriveDependencyContainer {
             let config = Constants.clientApiConfig
             let autolocker = Autolocker(lockTimeProvider: DriveKeychain.shared)
             let keymaker = DriveKeymaker(autolocker: autolocker, keychain: DriveKeychain.shared)
-            return InitialServices(userDefault: Constants.appGroup.userDefaults,
-                                   clientConfig: config,
-                                   keymaker: keymaker,
-                                   sessionRelatedCommunicatorFactory: SessionRelatedCommunicatorForMainApp.init)
+            return InitialServices(
+                userDefault: Constants.appGroup.userDefaults,
+                clientConfig: config,
+                keymaker: keymaker,
+                sessionRelatedCommunicatorFactory: { sessionStore, authenticator, _ in
+                    SessionRelatedCommunicatorForMainApp(
+                        userDefaultsConfiguration: .forFileProviderExtension(userDefaults: Constants.appGroup.userDefaults),
+                        sessionStorage: sessionStore,
+                        childSessionKind: .fileProviderExtension,
+                        authenticator: authenticator
+                    )
+                }
+            )
         }
         initialServices = makeInitialServices()
 

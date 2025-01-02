@@ -17,6 +17,7 @@
 
 import PDCore
 import Foundation
+import PDLocalization
 
 final class CreateFolderViewModel: EditNodeViewModel {
     var onDismiss: (() -> Void)?
@@ -25,24 +26,25 @@ final class CreateFolderViewModel: EditNodeViewModel {
     var onPerformingRequest: (() -> Void)?
 
     private let validator: Validator<String>
-
     private let folderCreator: FolderCreator
+    private let parent: Folder
 
-    init(folderCreator: FolderCreator, validator: Validator<String>) {
+    init(folderCreator: FolderCreator, validator: Validator<String>, parent: Folder) {
         self.folderCreator = folderCreator
         self.validator = validator
+        self.parent = parent
     }
 
     var title: String {
-        "Create folder"
+        Localization.create_folder_title
     }
 
     var buttonText: String {
-        "Done"
+        Localization.general_done
     }
 
     var placeHolder: String {
-        "Folder name"
+        Localization.create_folder_placeholder
     }
 
     var fullName: String {
@@ -60,7 +62,8 @@ final class CreateFolderViewModel: EditNodeViewModel {
             return
         }
 
-        folderCreator.createFolder(with: name) { [weak self] result in
+        onPerformingRequest?()
+        folderCreator.createFolder(with: name, parent: parent) { [weak self] result in
             DispatchQueue.main.async {
                 switch result {
                 case .failure(let error):
@@ -70,5 +73,9 @@ final class CreateFolderViewModel: EditNodeViewModel {
                 }
             }
         }
+    }
+
+    func close() {
+        onDismiss?()
     }
 }

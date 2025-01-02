@@ -63,7 +63,9 @@ final class PaginatedRevisionUploaderOperation: AsynchronousOperation, UploadOpe
                 case .success:
                     Log.info("STAGE: 3 Upload Revision 🏞📦📝☁️ finished ✅. UUID: \(self.id.uuidString)", domain: .uploader)
                     NotificationCenter.default.post(name: .operationEnd, object: draft.uri)
+                    #if os(iOS)
                     self.progress.complete()
+                    #endif
                     self.state = .finished
 
                 case .failure(let error):

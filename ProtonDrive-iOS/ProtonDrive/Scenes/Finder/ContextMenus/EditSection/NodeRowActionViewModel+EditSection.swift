@@ -28,41 +28,65 @@ extension NodeRowActionMenuViewModel {
         var items: [ContextMenuItemGroup] = []
         switch section {
         case .file:
-            items.append(editSection(environment: environment))
+            items += editSections(environment: environment)
             items.append(moreSection(environment: environment))
         case .folder:
             if isNavigationMenu {
-                items.append(uploadSection(environment: environment))
+                items += uploadSection(environment: environment)
             }
-            items.append(editSection(environment: environment))
+            items += editSections(environment: environment)
         }
         return ContextMenuModel(items: items)
     }
 }
 
 extension NodeRowActionMenuViewModel {
-    func editSection(environment: Environment) -> ContextMenuItemGroup {
-        let editViewModel = EditSectionViewModel(node: node, model: model)
-        let items = editViewModel.items.map { item in
-            singleEditRows(for: item, vm: editViewModel, environment: environment)
+    func editSections(environment: Environment) -> [ContextMenuItemGroup] {
+        let editViewModel = EditSectionViewModel(
+            node: node,
+            model: model,
+            featureFlagsController: environment.featureFlagsController
+        )
+        let groups = editViewModel.groups.filter { !$0.isEmpty }
+        return groups.map { group in
+            let items = group.map { item in
+                singleEditRows(for: item, vm: editViewModel, environment: environment)
+            }
+            return ContextMenuItemGroup(id: "editSection\(group[0].id)", items: items)
         }
-        return ContextMenuItemGroup(items: items)
     }
     
     private func singleEditRows(for type: EditSectionItem, vm: EditSectionViewModel, environment: Environment) -> ContextMenuItem {
         switch type {
-        case .share: return share(type, vm: vm, environment: environment)
-        case .shareLink: return shareLink(type, vm: vm, environment: environment)
-        case .download: return download(type, vm: vm, environment: environment)
-        case .rename: return rename(type, vm: vm, environment: environment)
-        case .move: return move(type, vm: vm, environment: environment)
-        case .details: return details(type, vm: vm, environment: environment)
-        case .remove: return remove(type, vm: vm, environment: environment)
+        case .share: 
+            return share(type, vm: vm, environment: environment)
+        case .configShareMember: 
+            return configShareMember(type, vm: vm, environment: environment)
+        case .shareLink: 
+            return shareLink(type, vm: vm, environment: environment)
+        case .download: 
+            return download(type, vm: vm, environment: environment)
+        case .rename: 
+            return rename(type, vm: vm, environment: environment)
+        case .move: 
+            return move(type, vm: vm, environment: environment)
+        case .details:
+            return details(type, vm: vm, environment: environment)
+        case .remove: 
+            return remove(type, vm: vm, environment: environment)
+        case .openInBrowser: 
+            return openInBrowser(type, vm: vm, environment: environment)
+        case .removeMe: 
+            return removeMe(type, vm: vm, environment: environment)
         }
     }
     
     private func share(_ type: EditSectionItem, vm: EditSectionViewModel, environment: Environment) -> ContextMenuItem {
         ContextMenuItem(sectionItem: type, handler: { environment.onDismiss() })
+    }
+    
+    private func configShareMember(_ type: EditSectionItem, vm: EditSectionViewModel, environment: Environment) -> ContextMenuItem {
+        ContextMenuItem(sectionItem: type, handler: { environment.configShareMember(of: node) })
     }
     
     private func shareLink(_ type: EditSectionItem, vm: EditSectionViewModel, environment: Environment) -> ContextMenuItem {
@@ -89,5 +113,13 @@ extension NodeRowActionMenuViewModel {
         ContextMenuItem(sectionItem: type, role: .destructive, handler: {
             environment.trashNode(of: self, isNavigationMenu: isNavigationMenu)
         })
+    }
+
+    private func openInBrowser(_ type: EditSectionItem, vm: EditSectionViewModel, environment: Environment) -> ContextMenuItem {
+        ContextMenuItem(sectionItem: type, handler: { environment.openInBrowser(vm: vm) })
+    }
+
+    private func removeMe(_ type: EditSectionItem, vm: EditSectionViewModel, environment: Environment) -> ContextMenuItem {
+        ContextMenuItem(sectionItem: type, role: .destructive, handler: { environment.removeMeNode(of: self) })
     }
 }

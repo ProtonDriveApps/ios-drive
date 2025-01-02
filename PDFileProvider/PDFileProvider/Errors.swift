@@ -76,32 +76,45 @@ public enum Errors: Error, LocalizedError {
     }
 }
 
+// swiftlint:disable cyclomatic_complexity
 extension Errors {
-    public static func mapToFileProviderError(_ error: Error?) -> NSFileProviderError? {
-        if let error = error {
-            #if os(iOS)
-            ConsoleLogger.shared?.fireWarning(error: error)
-            #endif
-            Log.error(error, domain: .fileProvider)
-        }
-        
+    public static func mapToFileProviderError(_ error: Error?) -> Error? {
+
+        guard let error else { return nil }
+
+        #if os(iOS)
+        Log.fireWarning(error: error as NSError)
+        #endif
+        Log.error(error, domain: .fileProvider)
+
         switch error {
-        case .none: return nil
-            
-        case .some(Errors.rootNotFound),
-             .some(Errors.noMainShare): return NSFileProviderError(.syncAnchorExpired)
-            
-        case .some(Errors.parentNotFound): return NSFileProviderError(.noSuchItem)
-        case .some(Errors.childLimitReached): return NSFileProviderError(.serverUnreachable)
-        case .some(Errors.nodeNotFound): return NSFileProviderError(.noSuchItem)
-        case .some(Errors.requestedItemForWorkingSet): return NSFileProviderError(.noSuchItem)
-        case .some(Errors.requestedItemForTrash): return NSFileProviderError(.noSuchItem)
-        case .some(Errors.noAddressInTower): return NSFileProviderError(.notAuthenticated)
-        case .some(Errors.emptyUrlForFileUpload): return NSFileProviderError(.noSuchItem)
-        case .some(Errors.failedToCreateModel): return NSFileProviderError(.pageExpired)
-        case .some(Errors.conflictIdentified): return NSFileProviderError(.serverUnreachable)
-        case .some(Errors.deletionRejected(updatedItem: let updatedItem)): return NSFileProviderError(_nsError: NSError.fileProviderErrorForRejectedDeletion(of: updatedItem))
-        case .some(Errors.excludeFromSync):
+        
+        case let fileProviderError as NSFileProviderError: return fileProviderError
+        case let cocoaError as CocoaError where cocoaError.code == .userCancelled: return cocoaError
+        
+        case Errors.rootNotFound, Errors.noMainShare:
+            return NSFileProviderError(.syncAnchorExpired)
+        case Errors.parentNotFound: 
+            return NSFileProviderError(.noSuchItem)
+        case Errors.childLimitReached: 
+            return NSFileProviderError(.serverUnreachable)
+        case Errors.nodeNotFound: 
+            return NSFileProviderError(.noSuchItem)
+        case Errors.requestedItemForWorkingSet: 
+            return NSFileProviderError(.noSuchItem)
+        case Errors.requestedItemForTrash: 
+            return NSFileProviderError(.noSuchItem)
+        case Errors.noAddressInTower: 
+            return NSFileProviderError(.notAuthenticated)
+        case Errors.emptyUrlForFileUpload: 
+            return NSFileProviderError(.noSuchItem)
+        case Errors.failedToCreateModel: 
+            return NSFileProviderError(.pageExpired)
+        case Errors.conflictIdentified: 
+            return NSFileProviderError(.serverUnreachable)
+        case Errors.deletionRejected(updatedItem: let updatedItem):
+            return NSFileProviderError(_nsError: NSError.fileProviderErrorForRejectedDeletion(of: updatedItem))
+        case Errors.excludeFromSync:
             #if os(macOS)
             if #available(macOS 13, *) {
                 return NSFileProviderError(.excludedFromSync)
@@ -112,7 +125,7 @@ extension Errors {
             return NSFileProviderError(.noSuchItem)
             #endif
             
-        case .some(let responseError as ResponseError) where responseError.responseCode == 200701:
+        case let responseError as ResponseError where responseError.responseCode == 200701:
             #if os(macOS)
             return NSFileProviderError(.excludedFromSync)
             #else
@@ -123,10 +136,10 @@ extension Errors {
             }
             #endif
             
-        case .some(is ResponseError):
+        case is ResponseError:
             return NSFileProviderError(.serverUnreachable)
             
-        case .some(is InvalidLinkIdError):
+        case is InvalidLinkIdError:
             return NSFileProviderError(.serverUnreachable)
             
         default:
@@ -138,3 +151,4 @@ extension Errors {
         }
     }
 }
+// swiftlint:enable cyclomatic_complexity

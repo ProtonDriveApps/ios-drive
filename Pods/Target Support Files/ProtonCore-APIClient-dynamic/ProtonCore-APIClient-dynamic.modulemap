@@ -1,6 +1,0 @@
-framework module ProtonCoreAPIClient {
-  umbrella header "ProtonCore-APIClient-dynamic-umbrella.h"
-
-  export *
-  module * { export * }
-}

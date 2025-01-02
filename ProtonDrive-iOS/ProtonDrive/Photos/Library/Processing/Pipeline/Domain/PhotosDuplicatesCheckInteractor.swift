@@ -44,6 +44,7 @@ final class PhotosDuplicatesCheckInteractor: AsynchronousExecution {
                 skippableCache.markAsSkippable(identifier, skippableFiles: skippableFiles)
             }
         } catch {
+            // TODO:DRVIOS-3072 if error happens this becomes an infinite loop
             context.failValidation(compounds: compounds, error: error)
         }
         measurementRepository.stop()

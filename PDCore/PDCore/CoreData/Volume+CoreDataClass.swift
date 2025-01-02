@@ -20,7 +20,7 @@ import CoreData
 import PDClient
 
 @objc(Volume)
-public class Volume: NSManagedObject {
+public class Volume: NSManagedObject, GloballyUnique {
     public typealias RestoreStatus = PDClient.Volume.RestoreStatus
     public typealias State = PDClient.Volume.State
     

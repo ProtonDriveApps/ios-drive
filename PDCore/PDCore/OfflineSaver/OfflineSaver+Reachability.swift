@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Foundation
 import Reachability
 import PDClient
 
@@ -49,7 +50,7 @@ extension OfflineSaver {
     
     func onUnreachable(_ reachability: Reachability) {
         switch reachability.connection {
-        case .unavailable, .none:
+        case .unavailable:
             Log.info("Lost reachability", domain: .networking)
             
             // check if something is not downloaded properly - and artificially add tiny fraction so progress will be claimed started

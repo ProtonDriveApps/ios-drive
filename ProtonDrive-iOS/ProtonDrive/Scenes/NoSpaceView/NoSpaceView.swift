@@ -17,6 +17,7 @@
 
 import SwiftUI
 import UIKit
+import PDLocalization
 import ProtonCoreUIFoundations
 import PDUIComponents
 
@@ -44,7 +45,7 @@ struct NoSpaceView: View {
                 .accessibilityIdentifier("NoSpaceView.storage.subtitle")
 
             if self.storage == .local {
-                BlueRectButton(title: "Go to local storage settings",
+                BlueRectButton(title: Localization.no_space_open_storage_setting,
                                action: self.openSettings)
                 .fixedSize()
                 .padding(.top, 30)

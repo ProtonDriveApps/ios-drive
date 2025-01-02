@@ -24,15 +24,20 @@ final class EditSectionEnvironment {
     var modal: Binding<(Destination)?>
     var sheet: Binding<(Destination)?>
     var acknowledgedNotEnoughStorage: Binding<Bool>
+    let featureFlagsController: FeatureFlagsControllerProtocol
 
-    init(menuItem: Binding<FinderMenu?>,
-         modal: Binding<(Destination)?>,
-         sheet: Binding<(Destination)?>,
-         acknowledgedNotEnoughStorage: Binding<Bool>) {
+    init(
+        menuItem: Binding<FinderMenu?>,
+        modal: Binding<(Destination)?>,
+        sheet: Binding<(Destination)?>,
+        acknowledgedNotEnoughStorage: Binding<Bool>,
+        featureFlagsController: FeatureFlagsControllerProtocol
+    ) {
         self.menuItem = menuItem
         self.modal = modal
         self.sheet = sheet
         self.acknowledgedNotEnoughStorage = acknowledgedNotEnoughStorage
+        self.featureFlagsController = featureFlagsController
     }
 
     func onDismiss() {
@@ -40,6 +45,13 @@ final class EditSectionEnvironment {
     }
 
     // MARK: - Edit
+    func configShareMember(of node: Node) {
+        onDismiss()
+        DispatchQueue.main.async {
+            self.modal.wrappedValue = .configShareMember(node: node)
+        }
+    }
+    
     func shareLink(of node: Node) {
         onDismiss()
         DispatchQueue.main.async {
@@ -65,6 +77,13 @@ final class EditSectionEnvironment {
         }
     }
 
+    func removeMeNode(of vm: NodeRowActionMenuViewModel) {
+        onDismiss()
+        DispatchQueue.main.async {
+            self.menuItem.wrappedValue = .removeMe(vm: vm)
+        }
+    }
+
     func rename(vm: EditSectionViewModel) {
         onDismiss()
         DispatchQueue.main.async {
@@ -83,6 +102,13 @@ final class EditSectionEnvironment {
         onDismiss()
         DispatchQueue.main.async {
             self.sheet.wrappedValue = .nodeDetails(vm.node)
+        }
+    }
+
+    func openInBrowser(vm: EditSectionViewModel) {
+        guard let file = vm.node as? File else { return }
+        DispatchQueue.main.async {
+            self.modal.wrappedValue = .openInBrowser(file: file)
         }
     }
 
@@ -120,6 +146,13 @@ final class EditSectionEnvironment {
         onDismiss()
         DispatchQueue.main.async {
             self.sheet.wrappedValue = .importDocument
+        }
+    }
+
+    func createDocument(with parentIdentifier: NodeIdentifier) {
+        onDismiss()
+        DispatchQueue.main.async {
+            self.modal.wrappedValue = .createDocument(parentIdentifier: parentIdentifier)
         }
     }
 }

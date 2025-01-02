@@ -21,4 +21,5 @@ struct FullPreview: Equatable {
     var localIdentifier: String
     var filename: String?
     var imageData: Data?
+    var errorMessage: String?
 }

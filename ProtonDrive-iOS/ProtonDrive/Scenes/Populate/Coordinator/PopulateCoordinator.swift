@@ -19,34 +19,39 @@ import UIKit
 import PDCore
 
 protocol PopulateCoordinatorProtocol {
-    func showPopulated(root: NodeIdentifier)
+    func showPopulated()
 }
 
 final class PopulateCoordinator: PopulateCoordinatorProtocol {
     private(set) unowned var viewController: PopulateViewController
-    private let populatedViewControllerFactory: (NodeIdentifier) -> UIViewController
+    private let populatedViewControllerFactory: () -> UIViewController
     private let onboardingViewControllerFactory: () -> UIViewController?
     private let upsellFactory: () -> UIViewController?
+    private let newFeaturePromoteFactory: () -> UIViewController?
 
     public init(
         viewController: PopulateViewController,
-        populatedViewControllerFactory: @escaping (NodeIdentifier) -> UIViewController,
+        populatedViewControllerFactory: @escaping () -> UIViewController,
         onboardingViewControllerFactory: @escaping () -> UIViewController?,
-        upsellFactory: @escaping () -> UIViewController?
+        upsellFactory: @escaping () -> UIViewController?,
+        newFeaturePromoteFactory: @escaping () -> UIViewController?
     ) {
         self.viewController = viewController
         self.populatedViewControllerFactory = populatedViewControllerFactory
         self.onboardingViewControllerFactory = onboardingViewControllerFactory
         self.upsellFactory = upsellFactory
+        self.newFeaturePromoteFactory = newFeaturePromoteFactory
     }
 
-    func showPopulated(root: NodeIdentifier) {
-        let populated = populatedViewControllerFactory(root)
+    func showPopulated() {
+        let populated = populatedViewControllerFactory()
         viewController.navigationController?.pushViewController(populated, animated: false)
         if let modal = onboardingViewControllerFactory() {
             viewController.present(modal, animated: true)
         } else if let modal = upsellFactory() {
             viewController.present(modal, animated: true)
+        } else if let modal = newFeaturePromoteFactory() {
+            viewController.present(modal, animated: false)
         }
     }
 }

@@ -24,13 +24,16 @@ struct PhotoRemoteFilterFactory {
         circuitBreaker: CircuitBreakerController,
         photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>
     ) -> PhotoAssetCompoundsConflictInteractor {
-        let observer = FetchedResultsControllerObserver(controller: tower.storage.subscriptionToPhotoShares(moc: tower.storage.backgroundContext))
         let rootDataSource = PhotosRepositoriesFactory().makeEncryptingRepository(tower: tower)
         let photoShareDataSource = PhotosFactory().makeLocalPhotosRootDataSource(observer: photoSharesObserver)
         let hashResource = FileStreamHashResource(digestBuilderFactory: { SHA1DigestBuilder() })
-        let hashInteractor = LocalPhotoContentHashInteractor(hashResource: hashResource, rootDataSource: rootDataSource, encryptionResource: CoreEncryptionResource())
+        let hashInteractor = LocalPhotoContentHashInteractor(hashResource: hashResource, rootDataSource: rootDataSource, encryptionResource: Encryptor())
         let nameConflictsInteractor = RemotePhotoNameConflictsInteractor(
-            identifiersInteractor: LocalPhotoAssetIdentifiersInteractor(rootDataSource: rootDataSource, encryptionResource: CoreEncryptionResource(), validator: DefaultNodeValidator()),
+            identifiersInteractor: LocalPhotoAssetIdentifiersInteractor(
+                rootDataSource: rootDataSource,
+                encryptionResource: Encryptor(),
+                nameCorrectionPolicy: PhotoNameCorrectionPolicy(validator: DefaultNodeValidator())
+            ),
             volumeIdDataSource: DatabasePhotosVolumeIdDataSource(photoShareDataSource: photoShareDataSource),
             duplicatesRepository: tower.client,
             nameHashesStrategy: LocalPhotoConflictNameHashesStrategy(), circuitBreaker: circuitBreaker

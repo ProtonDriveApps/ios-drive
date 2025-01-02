@@ -15,7 +15,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+
 import ProtonCoreUIFoundations
+#if canImport(UIKit)
+import UIKit
+#endif
 
 #if os(iOS)
 public extension UIBarButtonItem {
@@ -36,6 +40,12 @@ public extension UIBarButtonItem {
         button.setBackgroundImage(image, for: .normal)
         button.addTarget(target, action: action, for: .touchUpInside)
         return UIBarButtonItem(customView: button)
+    }
+
+    static func systemButton(imageName: String, target: Any?, action: Selector) -> UIBarButtonItem {
+        let item = UIBarButtonItem(image: UIImage(systemName: imageName), style: .plain, target: target, action: action)
+        item.tintColor = ColorProvider.IconNorm
+        return item
     }
 
     static func button(on target: Any?, action: Selector, text: String) -> UIBarButtonItem {

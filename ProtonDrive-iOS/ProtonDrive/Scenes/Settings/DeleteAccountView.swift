@@ -19,6 +19,7 @@ import SwiftUI
 import PDUIComponents
 import ProtonCoreUIFoundations
 import ProtonCoreAccountDeletion
+import PDLocalization
 
 struct DeleteAccountView: View {
 
@@ -44,7 +45,7 @@ struct DeleteAccountView: View {
 
         }
         .alert(isPresented: $vm.presentAlert) {
-            Alert(title: Text("Account Deletion Error"), message: Text(vm.errorMessage))
+            Alert(title: Text(Localization.account_deletion_alert_title), message: Text(vm.errorMessage))
         }
     }
 

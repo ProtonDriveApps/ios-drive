@@ -39,7 +39,9 @@ public class FileUploaderOperation: AsynchronousOperation, UploadOperation {
 
         Log.info("STAGE: 5 🎉🎉🎉🎉  Completed File Upload, id: \(id.uuidString) 🎉🎉🎉🎉", domain: .uploader)
         NotificationCenter.default.post(name: .didUploadFile)
+        #if os(iOS)
         progress.complete()
+        #endif
         state = .finished
         onSuccess(draft.file)
     }

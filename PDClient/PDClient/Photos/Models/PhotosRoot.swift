@@ -28,3 +28,13 @@ public struct PhotosRoot {
     }
 
 }
+
+public struct Root {
+    public let link: LinkEndpoint.Response.Link
+    public let share: ShareMetadata
+
+    public init(link: LinkEndpoint.Response.Link, share: ShareMetadata) {
+        self.link = link
+        self.share = share
+    }
+}

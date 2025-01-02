@@ -29,6 +29,22 @@ public enum FileProviderOperation: Int, Codable {
     case enumerateChanges
 }
 
+extension FileProviderOperation {
+
+    public var name: String {
+        switch self {
+        case .undefined: "UNDEFINED"
+        case .create: "CREATE"
+        case .modify: "MODIFY"
+        case .delete: "DELETE"
+        case .fetchContents: "FETCHCONTENTS"
+        case .fetchItem: "FETCHITEMS"
+        case .enumerateItems: "ENUMERATEITEMS"
+        case .enumerateChanges: "ENUMERATECHANGES"
+        }
+    }
+}
+
 extension URL: Identifiable {
     public var id: String {
         return self.absoluteString

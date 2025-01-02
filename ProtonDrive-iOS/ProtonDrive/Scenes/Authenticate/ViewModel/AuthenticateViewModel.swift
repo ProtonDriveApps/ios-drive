@@ -18,6 +18,7 @@
 import PDCore
 import ProtonCoreLogin
 import ProtonCoreNetworking
+import PDLocalization
 
 public final class AuthenticateViewModel {
 
@@ -35,7 +36,7 @@ public final class AuthenticateViewModel {
     }
 
     var welcomeBody: String {
-        "The convenience of cloud storage and the security of encryption technology. Finally a cloud storage solution you can trust."
+        Localization.authentication_welcome_text
     }
 
     func save(_ userData: UserData, _ errorBlock: @escaping (Error) -> Void) {
@@ -44,21 +45,19 @@ public final class AuthenticateViewModel {
         #endif
 
         let parentSessionCredential = Credential(userData.credential, scopes: userData.scopes)
-        sessionCommunicator
-            .fetchNewChildSession(parentSessionCredential: parentSessionCredential) { [weak self] result in
-                guard let self else { return }
-                switch result {
-                case .success:
-                    self.sessionStore.storeCredential(CoreCredential(parentSessionCredential))
-                    self.sessionStore.storeUser(userData.user)
-                    self.sessionStore.storeAddresses(userData.addresses)
-                    self.sessionStore.storePassphrases(userData.passphrases)
-                    self.completeAuthentication()
-                    self.sessionCommunicator.onChildSessionReady()
-                case .failure(let error):
-                    errorBlock(error)
-                }
+        Task { @MainActor in
+            do {
+                try await sessionCommunicator.fetchNewChildSession(parentSessionCredential: parentSessionCredential)
+                sessionStore.storeCredential(CoreCredential(parentSessionCredential))
+                sessionStore.storeUser(userData.user)
+                sessionStore.storeAddresses(userData.addresses)
+                sessionStore.storePassphrases(userData.passphrases)
+                completeAuthentication()
+                await sessionCommunicator.onChildSessionReady()
+            } catch {
+                errorBlock(error)
             }
+        }
     }
     
     func completeAuthentication() {

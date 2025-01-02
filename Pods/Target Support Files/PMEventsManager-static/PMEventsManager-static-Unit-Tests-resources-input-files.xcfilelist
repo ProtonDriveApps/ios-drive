@@ -1,5 +1,0 @@
-${PODS_ROOT}/Target Support Files/PMEventsManager-static/PMEventsManager-static-Unit-Tests-resources.sh
-${PODS_CONFIGURATION_BUILD_DIR}/Sentry-static/Sentry.bundle
-${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Networking-static/Translations-Networking.bundle
-${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Services-static/Translations-Services.bundle
-${PODS_CONFIGURATION_BUILD_DIR}/ProtonCore-Payments-static/Translations-Payments.bundle

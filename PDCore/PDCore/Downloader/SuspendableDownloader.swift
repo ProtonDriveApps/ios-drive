@@ -27,7 +27,7 @@ public final class SuspendableDownloader: Downloader, NetworkConstrained {
 
     public required init(downloader: Downloader) {
         self.networkMonitor.execute()
-        super.init(cloudSlot: downloader.cloudSlot, endpointFactory: downloader.endpointFactory)
+        super.init(cloudSlot: downloader.cloudSlot, storage: downloader.storage, endpointFactory: downloader.endpointFactory)
         self.setupNetworkMonitoring()
     }
 

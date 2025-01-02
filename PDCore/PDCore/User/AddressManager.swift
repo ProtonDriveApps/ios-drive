@@ -19,26 +19,46 @@ import ProtonCoreAuthentication
 import ProtonCoreDataModel
 import ProtonCoreNetworking
 
+public protocol AddressProvider {
+    func fetchAddresses() async throws -> [Address]
+}
+
+// Adapter to use AddressManager asynchronously
+extension AddressManager: AddressProvider {
+    public func fetchAddresses() async throws -> [Address] {
+        try await withCheckedThrowingContinuation { continuation in
+            fetchAddresses { result in
+                switch result {
+                case .success(let addresses):
+                    continuation.resume(returning: addresses)
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+}
+
 public class AddressManager {
     public typealias Address = ProtonCoreDataModel.Address
     public typealias AddressKey = ProtonCoreDataModel.Key
 
     private var sessionVault: SessionVault
     private var authenticator: Authenticator
-    
+
     init(authenticator: Authenticator, sessionVault: SessionVault) {
         self.authenticator = authenticator
         self.sessionVault = sessionVault
     }
-    
+
     enum Errors: Error {
         case noClientCredential, invalidMailboxPassword, noPrimaryAddress
     }
-    
+
     func signOut() {
         // nothig so far
     }
-    
+
     func fetchAddresses(_ handler: @escaping (Result<[Address], Error>) -> Void) {
         // 1 - get Addresses
         self.authenticator.getAddresses { resultAddresses in
@@ -65,7 +85,7 @@ public class AddressManager {
             }
         }
     }
-    
+
     func fetchAddressesAsync() async throws -> [Address] {
         try await withCheckedThrowingContinuation { continuation in
             fetchAddresses { result in

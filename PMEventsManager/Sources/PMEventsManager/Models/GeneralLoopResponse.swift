@@ -30,6 +30,8 @@ public struct GeneralLoopResponse: Codable {
     public let userSettings: UserSettings?
     public let organization: Organization?  // from ProtonCorePayments
     public let usedSpace: Double?
+    public let contacts: [ContactEvent]?
+    public let labels: [LabelEvent]?
     
     public let addresses: [AddressUpdate]?
     

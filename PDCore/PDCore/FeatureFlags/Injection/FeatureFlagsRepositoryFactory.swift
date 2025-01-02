@@ -16,6 +16,9 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 import PDClient
 import UnleashProxyClientSwift
 
@@ -24,15 +27,9 @@ struct FeatureFlagsRepositoryFactory {
     private func makeExternalResource(configuration: APIService.Configuration, networking: CoreAPIService) -> ExternalFeatureFlagsResource {
         let session = UnleashPollerSession(networking: networking)
         let configurationResolver = UnleashFeatureFlagConfigurationResolver(configuration: configuration)
-        
-        #if HAS_QA_FEATURES
-        let unleashRefreshInterval = 5 * 60 // 5 min
-        #else
-        let unleashRefreshInterval = 10 * 60 // 10 min
-        #endif
-        
+
         let resource = UnleashFeatureFlagsResource(
-            refreshInterval: unleashRefreshInterval,
+            refreshInterval: getRefreshInterval(),
             session: session,
             configurationResolver: configurationResolver,
             logMessageHandler: { Log.info($0, domain: .featureFlags) },
@@ -57,7 +54,15 @@ struct FeatureFlagsRepositoryFactory {
         
         return resource
     }
-    
+
+    private func getRefreshInterval() -> Int {
+        if Constants.buildType.isQaOrBelow {
+            return 5 * 60 // 5 min
+        } else {
+            return 10 * 60 // 10 min
+        }
+    }
+
     func makeRepository(configuration: APIService.Configuration, networking: CoreAPIService, store: ExternalFeatureFlagsStore) -> FeatureFlagsRepository {
         let externalResource = makeExternalResource(configuration: configuration, networking: networking)
         return ExternalFeatureFlagsRepository(externalResource: externalResource, externalStore: store)

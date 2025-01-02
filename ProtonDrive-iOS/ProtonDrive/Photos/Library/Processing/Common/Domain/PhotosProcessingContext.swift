@@ -21,7 +21,7 @@ protocol PhotosProcessingContext {
     var initialIdentifiers: Set<PhotoIdentifier> { get }
     var validIdentifiers: Set<PhotoIdentifier> { get }
     var invalidIdentifiers: Set<PhotoIdentifier> { get }
-    var failedIdentifiers: Set<PhotoIdentifier> { get }
+    var failedIdentifiersAndError: [PhotoIdentifier: PhotosFailureUserError] { get }
     var missingIdentifiers: Set<PhotoIdentifier> { get }
     var skippedIdentifiers: Set<PhotoIdentifier> { get }
     var newIdentifiers: Set<PhotoIdentifier> { get }
@@ -35,14 +35,14 @@ protocol PhotosProcessingContext {
     func completeIdentifiersValidation(identifiers: PhotoIdentifiers)
     func addCreated(compounds: [PhotoAssetCompound], identifier: PhotoIdentifier)
     func completeCompoundsCreation()
-    func addGenericError(identifier: PhotoIdentifier, error: Error)
+    func addGenericError(identifier: PhotoIdentifier, error: PhotosFailureUserError)
     func addTemporaryError(identifier: PhotoIdentifier, error: Error)
     func addMissing(identifier: PhotoIdentifier)
     func replace(initialIdentifier: PhotoIdentifier, updatedIdentifier: PhotoIdentifier)
     func completeCompoundsValidation(result: FilteredPhotoCompoundsResult)
     func failValidation(compounds: [PhotoAssetCompound], error: Error)
     func completeImport()
-    func failProcessing(compounds: [PhotoAssetCompoundType], error: Error)
+    func failProcessing(compounds: [PhotoAssetCompoundType], error: PhotosFailureUserError)
     func fetchDuplicatedCompounds(by identifier: PhotoIdentifier) -> [PhotoAssetCompound]
 }
 
@@ -60,7 +60,7 @@ final class ConcretePhotosProcessingContext: PhotosProcessingContext {
     let initialIdentifiers: Set<PhotoIdentifier>
     private(set) var validIdentifiers: Set<PhotoIdentifier> = []
     private(set) var invalidIdentifiers: Set<PhotoIdentifier> = []
-    private(set) var failedIdentifiers: Set<PhotoIdentifier> = []
+    private(set) var failedIdentifiersAndError: [PhotoIdentifier: PhotosFailureUserError] = [:]
     private(set) var missingIdentifiers: Set<PhotoIdentifier> = []
     private(set) var skippedIdentifiers: Set<PhotoIdentifier> = []
     private var replacedIdentifiers = [PhotoIdentifier: PhotoIdentifier]()
@@ -112,14 +112,14 @@ final class ConcretePhotosProcessingContext: PhotosProcessingContext {
 
     func completeCompoundsCreation() {
         Log.info("\(Self.self).completeCompoundsCreation", domain: .photosProcessing)
-        let processedIdentifiers = createdCompoundPairs.map(\.identifier) + failedIdentifiers + skippedIdentifiers + missingIdentifiers + replacedIdentifiers.keys
+        let processedIdentifiers = createdCompoundPairs.map(\.identifier) + failedIdentifiersAndError.keys + skippedIdentifiers + missingIdentifiers + replacedIdentifiers.keys
         let newSkippedIdentifiers = Set(validIdentifiers).subtracting(processedIdentifiers)
         skippedIdentifiers.formUnion(newSkippedIdentifiers)
     }
 
-    func addGenericError(identifier: PhotoIdentifier, error: Error) {
-        Log.error(error, domain: .photosProcessing)
-        failedIdentifiers.insert(identifier)
+    // This function is called exclusively by PhotosAssetsInteractor
+    func addGenericError(identifier: PhotoIdentifier, error: PhotosFailureUserError) {
+        failedIdentifiersAndError[identifier] = error
         errors.append(error)
     }
 
@@ -144,7 +144,7 @@ final class ConcretePhotosProcessingContext: PhotosProcessingContext {
         result.validCompounds.forEach { compound in
             guard let pair = createdCompoundPairs.first(where: { $0.compound == compound }) else { return }
             validIdentifiers.insert(pair.identifier)
-            let typePair = IdentifierCompoundTypePair(identifier: pair.identifier, compound: .new(pair.compound))
+            let typePair = IdentifierCompoundTypePair(identifier: pair.identifier, compound: .new(compound))
             validatedCompoundPairs.append(typePair)
         }
         result.validPartialCompounds.forEach { partialCompound in
@@ -165,9 +165,10 @@ final class ConcretePhotosProcessingContext: PhotosProcessingContext {
             }
         }
         invalidAssets += result.invalidAssets
-        result.failedCompounds.forEach { compound in
+        result.failedCompounds.forEach { failedCompound in
+            let compound = failedCompound.compound
             guard let pair = createdCompoundPairs.first(where: { $0.compound == compound }) else { return }
-            failedIdentifiers.insert(pair.identifier)
+            failedIdentifiersAndError[pair.identifier] = failedCompound.error
             skippedIdentifiers.remove(pair.identifier)
         }
     }
@@ -186,13 +187,16 @@ final class ConcretePhotosProcessingContext: PhotosProcessingContext {
         importedCompoundPairs = validatedCompoundPairs
     }
 
-    func failProcessing(compounds: [PhotoAssetCompoundType], error: Error) {
-        let error = DriveError(withDomainAndCode: error)
-        Log.error(error, domain: .photosProcessing)
+    // This function is called exclusively by PhotosImportInteractor.
+    func failProcessing(compounds: [PhotoAssetCompoundType], error: PhotosFailureUserError) {
         invalidAssets += compounds.flatMap(\.allAssets)
-        errors.append(error)
         let failedIdentifiers = validatedCompoundPairs.filter { compounds.contains($0.compound) }.map(\.identifier)
-        self.failedIdentifiers.formUnion(failedIdentifiers)
+
+        errors.append(error)
+        
+        for identifier in failedIdentifiers {
+            failedIdentifiersAndError[identifier] = error
+        }
     }
     
     func fetchDuplicatedCompounds(by identifier: PhotoIdentifier) -> [PhotoAssetCompound] {

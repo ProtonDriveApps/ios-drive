@@ -15,11 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import UIKit
-import ProtonCoreUIFoundations
-import PDUIComponents
 import PDCore
+import PDLocalization
+import PDUIComponents
+import ProtonCoreUIFoundations
 import SwiftUI
+import UIKit
 
 protocol HasRefreshControl {
     var refreshControlSubtitle: NSAttributedString { get }
@@ -45,9 +46,14 @@ extension HasRefreshControl where Self: FinderViewModel {
         let lastEvent = self.model.tower.eventSystemLatestFetchTime ?? .distantPast
         let lastForceFetch = self.lastUpdated
         let date = lastEvent.compare(lastForceFetch) == .orderedAscending ? lastForceFetch : lastEvent
-        let string = NSAttributedString(string: "Last updated: " + self.newLastUpdatedFormatter().string(from: date),
-                                        attributes: [NSAttributedString.Key.font: UIFont.preferredFont(forTextStyle: .caption2),
-                                                     NSAttributedString.Key.foregroundColor: UIColor(ColorProvider.TextHint)])
+        let text = date == .distantFuture ? "" : Localization.refresh_last_update(time: newLastUpdatedFormatter().string(from: date))
+        let string = NSAttributedString(
+            string: text,
+            attributes: [
+                NSAttributedString.Key.font: UIFont.preferredFont(forTextStyle: .caption2),
+                NSAttributedString.Key.foregroundColor: UIColor(ColorProvider.TextHint)
+            ]
+        )
         return string
     }
 }

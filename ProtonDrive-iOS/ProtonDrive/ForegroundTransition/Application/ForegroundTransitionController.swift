@@ -20,15 +20,33 @@ import PDCore
 
 final class ForegroundTransitionController {
     private let applicationStateResource: ApplicationRunningStateResource
+    private let populatedInteractors: [CommandInteractor]
     private let interactors: [CommandInteractor]
     private var cancellables = Set<AnyCancellable>()
     
-    init(applicationStateResource: ApplicationRunningStateResource, interactors: [CommandInteractor]) {
+    init(
+        applicationStateResource: ApplicationRunningStateResource,
+        interactors: [CommandInteractor],
+        populatedInteractors: [CommandInteractor],
+        populatedStateController: PopulatedStateControllerProtocol
+    ) {
         self.applicationStateResource = applicationStateResource
+        self.populatedInteractors = populatedInteractors
         self.interactors = interactors
+
         applicationStateResource.state.sink { [weak self] state in
             self?.handle(state)
         }.store(in: &cancellables)
+
+        // Combine both state publishers and filter for foreground and populated conditions
+        Publishers.CombineLatest(applicationStateResource.state, populatedStateController.state)
+            .filter { appState, populatedState in
+                appState == .foreground && populatedState == .populated
+            }
+            .sink { [weak self] _ in
+                self?.handleExclusivelyPopulated()
+            }
+            .store(in: &cancellables)
     }
     
     private func handle(_ state: ApplicationRunningState) {
@@ -37,5 +55,9 @@ final class ForegroundTransitionController {
         }
 
         interactors.forEach { $0.execute() }
+    }
+
+    private func handleExclusivelyPopulated() {
+        populatedInteractors.forEach { $0.execute() }
     }
 }

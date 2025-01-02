@@ -28,7 +28,8 @@ public class LocalCoredataLastPhotoRepository: LastPhotoRepository {
 
     public func getLastPhotoID() throws -> String {
         try moc.performAndWait {
-            guard let lastPhotoID = try storage.fetchLastPrimaryPhoto(moc: moc)?.photoRevision.decryptedExtendedAttributes().iOSPhotos?.iCloudID else {
+            let volumeId = try storage.getMyVolumeId(in: moc)
+            guard let lastPhotoID = try storage.fetchLastPrimaryPhoto(volumeId: volumeId, moc: moc)?.photoRevision.decryptedExtendedAttributes().iOSPhotos?.iCloudID else {
                 throw InvalidLastPhotoError()
             }
             return lastPhotoID

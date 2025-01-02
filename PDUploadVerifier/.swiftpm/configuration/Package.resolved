@@ -1,0 +1,149 @@
+{
+  "pins" : [
+    {
+      "identity" : "alamofire",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Alamofire/Alamofire",
+      "state" : {
+        "revision" : "d120af1e8638c7da36c8481fd61a66c0c08dc4fc",
+        "version" : "5.4.4"
+      }
+    },
+    {
+      "identity" : "apple-fusion",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ProtonMail/apple-fusion.git",
+      "state" : {
+        "revision" : "0abfcfa5dc4e4436e6460fc9f9b91f937c0bf03b",
+        "version" : "2.1.1"
+      }
+    },
+    {
+      "identity" : "cryptoswift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/krzyzanowskim/CryptoSwift",
+      "state" : {
+        "revision" : "c9c3df6ab812de32bae61fc0cd1bf6d45170ebf0",
+        "version" : "1.8.2"
+      }
+    },
+    {
+      "identity" : "ellipticcurvekeypair",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/agens-no/EllipticCurveKeyPair",
+      "state" : {
+        "revision" : "944ae5c89ca045e9f1a113b736706c73fc51d1c2",
+        "version" : "2.0.0"
+      }
+    },
+    {
+      "identity" : "lottie-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/airbnb/lottie-ios",
+      "state" : {
+        "revision" : "45517c3cfec9469bbdd4f86e32393c28ae9df0bc",
+        "version" : "4.3.3"
+      }
+    },
+    {
+      "identity" : "ohhttpstubs",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/AliSoftware/OHHTTPStubs",
+      "state" : {
+        "revision" : "12f19662426d0434d6c330c6974d53e2eb10ecd9",
+        "version" : "9.1.0"
+      }
+    },
+    {
+      "identity" : "protoncore_ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ProtonMail/protoncore_ios.git",
+      "state" : {
+        "revision" : "43181e17ea6286fe62686c385e9ab0969c592a53",
+        "version" : "25.2.2"
+      }
+    },
+    {
+      "identity" : "reachability.swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ashleymills/Reachability.swift",
+      "state" : {
+        "revision" : "7cbd73f46a7dfaeca079e18df7324c6de6d1834a",
+        "version" : "5.2.3"
+      }
+    },
+    {
+      "identity" : "sdwebimage",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/SDWebImage/SDWebImage.git",
+      "state" : {
+        "revision" : "7f9fb5d43ecd4aa714c00746f54873f354403438",
+        "version" : "5.15.8"
+      }
+    },
+    {
+      "identity" : "sentry-cocoa",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/getsentry/sentry-cocoa.git",
+      "state" : {
+        "revision" : "c9a692ba837f4832ec7ce6378c071cb91cb55f92",
+        "version" : "8.29.0"
+      }
+    },
+    {
+      "identity" : "swift-snapshot-testing",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/pointfreeco/swift-snapshot-testing",
+      "state" : {
+        "revision" : "63d3b45dd249878a41c56274a748ca2c1c9c5230",
+        "version" : "1.17.1"
+      }
+    },
+    {
+      "identity" : "swift-syntax",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-syntax",
+      "state" : {
+        "revision" : "4c6cc0a3b9e8f14b3ae2307c5ccae4de6167ac2c",
+        "version" : "600.0.0-prerelease-2024-06-12"
+      }
+    },
+    {
+      "identity" : "swifteventbus",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/cesarferreira/SwiftEventBus.git",
+      "state" : {
+        "revision" : "a30ff35e616f507d8a8d122dac32a2150371a87e",
+        "version" : "5.1.0"
+      }
+    },
+    {
+      "identity" : "swiftotp",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/lachlanbell/SwiftOTP",
+      "state" : {
+        "revision" : "93d4942c90dd498580988ffb9971e2ddf91d5a28",
+        "version" : "2.0.3"
+      }
+    },
+    {
+      "identity" : "trustkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ProtonMail/TrustKit",
+      "state" : {
+        "revision" : "d107d7cc825f38ae2d6dc7c54af71d58145c3506",
+        "version" : "1.0.3"
+      }
+    },
+    {
+      "identity" : "unleash-proxy-client-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Unleash/unleash-proxy-client-swift.git",
+      "state" : {
+        "revision" : "4578bb9cca31fc60ba45a07b6f608b9ed666512c",
+        "version" : "1.2.1"
+      }
+    }
+  ],
+  "version" : 2
+}

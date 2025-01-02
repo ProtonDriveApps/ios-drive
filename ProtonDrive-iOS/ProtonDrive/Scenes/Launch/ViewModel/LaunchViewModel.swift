@@ -18,6 +18,7 @@
 import Combine
 import PDCore
 import UIKit
+import PDLocalization
 
 final class LaunchViewModel {
     private var cancellables = Set<AnyCancellable>()
@@ -78,7 +79,7 @@ final class LaunchViewModel {
 
                 case .trustKitFailure:
                     let action = AlertAction(
-                        title: "Disable Validation",
+                        title: Localization.launch_alert_title_disable_validation,
                         action: { NotificationCenter.default.post(name: PMAPIClient.downgradeTrustKit, object: nil) }
                     )
 
@@ -89,7 +90,7 @@ final class LaunchViewModel {
 
                 case .forceUpgrade:
                     let primaryAction = AlertAction(
-                        title: "Update",
+                        title: Localization.launch_alert_title_update,
                         action: {
                             let url = Constants.appStorePageURL
                             guard UIApplication.shared.canOpenURL(url) else {
@@ -102,7 +103,7 @@ final class LaunchViewModel {
                     )
 
                     let secondaryAction = AlertAction(
-                        title: "Learn more",
+                        title: Localization.general_learn_more,
                         action: {
                             let url = Constants.forceUpgradeLearnMoreURL
                             guard UIApplication.shared.canOpenURL(url) else {
@@ -136,10 +137,10 @@ extension LaunchViewModel {
 
 private extension AlertAction {
     static var ok: AlertAction {
-        AlertAction(title: "OK", action: {})
+        AlertAction(title: Localization.general_ok, action: {})
     }
 
     static var cancel: AlertAction {
-        AlertAction(title: "Cancel", action: {})
+        AlertAction(title: Localization.general_cancel, action: {})
     }
 }

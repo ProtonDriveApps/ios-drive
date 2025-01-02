@@ -20,7 +20,7 @@ import PDCore
 
 struct LocalNotificationsFactory {
     func makeNotificationsController(tower: Tower) -> LocalNotificationsController {
-        let applicationRunningResource = ApplicationRunningStateResourceImpl()
+        let applicationRunningResource = iOSApplicationRunningStateResource()
         let notificationsResource = UNUserNotificationsResource()
         let notifier = UploadFileLocalNotificationNotifier(
             didInterruptOnFileUploadPublisher: NotificationCenter.default.mappedPublisher(for: .didInterruptOnFileUpload),

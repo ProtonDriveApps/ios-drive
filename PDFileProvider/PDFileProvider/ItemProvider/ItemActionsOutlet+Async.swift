@@ -31,11 +31,17 @@ extension ItemActionsOutlet {
                            completionHandler: @escaping (Error?) -> Void) -> Progress
     {
         let version = version ?? NSFileProviderItemVersion()
-
-        let task = Task { [weak self] in
+        
+        var taskCancellation: () -> Void = {}
+        let cancellingProgress = Progress { _ in
+            Log.info("Delete item cancelled", domain: .fileProvider)
+            taskCancellation()
+            completionHandler(CocoaError(.userCancelled))
+        }
+        let task = Task { [weak self, weak cancellingProgress] in
             do {
                 guard !Task.isCancelled else { return }
-                try await self?.deleteItem(tower: tower, identifier: identifier, baseVersion: version, options: options, request: request)
+                try await self?.deleteItem(tower: tower, identifier: identifier, baseVersion: version, options: options, request: request, progress: cancellingProgress)
                 Log.info("Successfully deleted item", domain: .fileProvider)
                 guard !Task.isCancelled else { return }
                 completionHandler(nil)
@@ -45,12 +51,8 @@ extension ItemActionsOutlet {
                 completionHandler(error)
             }
         }
-        
-        return Progress {
-            Log.info("Delete item cancelled", domain: .fileProvider)
-            task.cancel()
-            completionHandler(CocoaError(.userCancelled))
-        }
+        taskCancellation = { task.cancel() }
+        return cancellingProgress
     }
     
     @discardableResult
@@ -65,13 +67,24 @@ extension ItemActionsOutlet {
                            completionHandler: @escaping Completion) -> Progress
     {
         let version = version ?? NSFileProviderItemVersion()
-
-        let task = Task { [weak self] in
+        var taskCancellation: () -> Void = {}
+        let totalUnitCount: Int64
+        if changedFields.contains(.contents) {
+            totalUnitCount = item.documentSize?.flatMap { $0.int64Value } ?? 0
+        } else {
+            totalUnitCount = 0
+        }
+        let cancellingProgress = Progress(totalUnitCount: totalUnitCount) { _ in
+            Log.info("Modify item cancelled", domain: .fileProvider)
+            taskCancellation()
+            completionHandler(nil, [], false, CocoaError(.userCancelled))
+        }
+        let task = Task { [weak self, weak cancellingProgress] in
             do {
                 guard !Task.isCancelled else { return }
                 guard let (item, fields, needUpload) = try await self?.modifyItem(
                     tower: tower, item: item, baseVersion: version, changedFields: changedFields,
-                    contents: newContents, options: options, request: request, changeObserver: changeObserver
+                    contents: newContents, options: options, request: request, changeObserver: changeObserver, progress: cancellingProgress
                 ) else { return }
                 Log.info("Successfully modified item", domain: .fileProvider)
                 guard !Task.isCancelled else { return }
@@ -82,12 +95,8 @@ extension ItemActionsOutlet {
                 completionHandler(nil, [], false, error)
             }
         }
-        
-        return Progress {
-            Log.info("Modify item cancelled", domain: .fileProvider)
-            task.cancel()
-            completionHandler(nil, [], false, CocoaError(.userCancelled))
-        }
+        taskCancellation = { task.cancel() }
+        return cancellingProgress
     }
     
     @discardableResult
@@ -99,12 +108,21 @@ extension ItemActionsOutlet {
                            request: NSFileProviderRequest? = nil,
                            completionHandler: @escaping (NSFileProviderItem?, NSFileProviderItemFields, Bool, Error?) -> Void) -> Progress
     {
-        let task = Task { [weak self] in
+        var taskCancellation: () -> Void = {}
+        let totalUnitCount = itemTemplate.documentSize?.flatMap { $0.int64Value } ?? 0
+        let cancellingProgress = Progress(totalUnitCount: totalUnitCount) { _ in
+            Log.info("Create item cancelled", domain: .fileProvider)
+            taskCancellation()
+            completionHandler(nil, [], false, CocoaError(.userCancelled))
+        }
+        cancellingProgress.kind = .file
+        cancellingProgress.fileOperationKind = .uploading
+        let task = Task { [weak self, weak cancellingProgress] in
             do {
-                guard !Task.isCancelled else { return }
-                guard let (item, fields, needUpload) = try await self?.createItem(
-                    tower: tower, basedOn: itemTemplate, fields: fields, contents: url, options: options, request: request
-                ) else { return }
+                guard let self, !Task.isCancelled else { return }
+                let (item, fields, needUpload) = try await self.createItem(
+                    tower: tower, basedOn: itemTemplate, fields: fields, contents: url, options: options, request: request, progress: cancellingProgress
+                )
                 Log.info("Successfully created item", domain: .fileProvider)
                 guard !Task.isCancelled else { return }
                 completionHandler(item, fields, needUpload, nil)
@@ -114,12 +132,8 @@ extension ItemActionsOutlet {
                 completionHandler(nil, [], false, error)
             }
         }
-        
-        return Progress {
-            Log.info("Create item cancelled", domain: .fileProvider)
-            task.cancel()
-            completionHandler(nil, [], false, CocoaError(.userCancelled))
-        }
+        taskCancellation = { task.cancel() }
+        return cancellingProgress
     }
 
 }

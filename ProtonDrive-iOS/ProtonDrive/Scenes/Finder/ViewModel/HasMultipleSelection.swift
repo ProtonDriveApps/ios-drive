@@ -18,6 +18,7 @@
 import SwiftUI
 import PDUIComponents
 import PDCore
+import PDLocalization
 
 protocol HasMultipleSelection: AnyObject {
     var isUpdating: Bool { get set }
@@ -29,7 +30,7 @@ protocol HasMultipleSelection: AnyObject {
 
 extension HasMultipleSelection {
     func titleDuringSelection() -> String {
-        "\(selection.selected.count) selected"
+        Localization.general_selected(num: selection.selected.count)
     }
     
     func applyAction(completion: () -> Void) {

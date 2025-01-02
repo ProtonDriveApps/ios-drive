@@ -32,7 +32,7 @@ public class APIService {
     }
     
     var baseComponents: URLComponents {
-        var urlComponents = URLComponents(string: configuration.host)!
+        var urlComponents = URLComponents(string: configuration.apiOrigin)!
         urlComponents.path = "/drive"
         return urlComponents
     }
@@ -72,20 +72,26 @@ public extension APIService {
 
         public let environment: Environment
         public let clientVersion: String
-        /// API host path
-        public let host: String
-        /// Base host path (without API prefix)
-        public let baseHost: String
+        /// API origin (scheme + host) https://datatracker.ietf.org/doc/html/rfc6454#section-3.2
+        public let apiOrigin: String
+        /// Base origin (scheme + host) https://datatracker.ietf.org/doc/html/rfc6454#section-3.2
+        public let baseOrigin: String
+        
+        /// Base host https://datatracker.ietf.org/doc/html/rfc1738#section-5
+        public var baseHost: String {
+            let url = URL(string: baseOrigin)
+            return url?.host ?? ""
+        }
 
         public init(environment: Environment, clientVersion: String) {
             self.environment = environment
             self.clientVersion = clientVersion
-            self.host = environment.doh.defaultHost
+            self.apiOrigin = environment.doh.defaultHost
 
-            if host.contains(Configuration.apiPrefix) {
-                baseHost = host.replacingOccurrences(of: Configuration.apiPrefix, with: "")
+            if apiOrigin.contains(Configuration.apiPrefix) {
+                baseOrigin = apiOrigin.replacingOccurrences(of: Configuration.apiPrefix, with: "")
             } else {
-                baseHost = host
+                baseOrigin = apiOrigin
             }
         }
     }

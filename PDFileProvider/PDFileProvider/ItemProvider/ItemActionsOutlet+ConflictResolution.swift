@@ -20,7 +20,8 @@ import PDCore
 
 extension ItemActionsOutlet: ConflictResolution {
 
-    public func resolveConflict(tower: Tower, between item: NSFileProviderItem, with url: URL?, and conflictingNode: Node?, applying action: ResolutionAction) async throws -> NSFileProviderItem {
+    // swiftlint:disable:next function_parameter_count
+    public func resolveConflict(tower: Tower, between item: NSFileProviderItem, with url: URL?, and conflictingNode: Node?, applying action: ResolutionAction, progress: Progress?) async throws -> NSFileProviderItem {
         switch action {
         case .ignore:
             // if the conflict is direct, then `conflictingNode` will be the remote version of item,
@@ -49,7 +50,7 @@ extension ItemActionsOutlet: ConflictResolution {
                 let recreatedFolder = try await tower.createFolder(named: item.filename, under: parent)
                 return try NodeItem(node: recreatedFolder)
             } else {
-                let recreatedFile = try await createFile(tower: tower, item: item, with: url, under: parent)
+                let recreatedFile = try await createFile(tower: tower, item: item, with: url, under: parent, progress: progress)
                 return try NodeItem(node: recreatedFile)
             }
 
@@ -62,7 +63,7 @@ extension ItemActionsOutlet: ConflictResolution {
                 let createdNode = try await tower.createFolder(named: newItem.filename, under: parent)
                 return try NodeItem(node: createdNode)
             } else {
-                let createdFile = try await createFile(tower: tower, item: newItem, with: url, under: parent)
+                let createdFile = try await createFile(tower: tower, item: newItem, with: url, under: parent, progress: progress)
                 return try NodeItem(node: createdFile)
             }
 

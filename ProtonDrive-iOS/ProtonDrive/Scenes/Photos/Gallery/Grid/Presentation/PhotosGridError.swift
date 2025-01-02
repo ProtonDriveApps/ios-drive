@@ -16,11 +16,12 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDLocalization
 
 enum PhotosGridError: Error, LocalizedError {
     case failedFetch
     
     var errorDescription: String? {
-        "Failed to fetch photos. Please try again later."
+        Localization.photo_grid_error
     }
 }

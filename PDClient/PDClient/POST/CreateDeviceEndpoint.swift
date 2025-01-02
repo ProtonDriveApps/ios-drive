@@ -104,15 +104,15 @@ extension CreateDeviceEndpoint {
         }
 
         struct Share: Codable {
-            let name: String
             let addressID: String
+            let addressKeyID: String
             let key: String
             let passphrase: String
             let passphraseSignature: String
             
             enum CodingKeys: String, CodingKey {
-                case name = "Name"
                 case addressID = "AddressID"
+                case addressKeyID = "AddressKeyID"
                 case key = "Key"
                 case passphrase = "Passphrase"
                 case passphraseSignature = "PassphraseSignature"

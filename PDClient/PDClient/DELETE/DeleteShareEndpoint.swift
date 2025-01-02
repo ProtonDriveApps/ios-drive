@@ -24,9 +24,13 @@ struct DeleteShareEndpoint: Endpoint {
 
     var request: URLRequest
 
-    init(shareID: Share.ShareID, service: APIService, credential: ClientCredential) {
+    init(shareID: Share.ShareID, force: Bool, service: APIService, credential: ClientCredential) {
         // url
-        var url = service.url(of: "/shares")
+        var queries: [URLQueryItem]?
+        if force {
+            queries = [.init(name: "Force", value: "1")]
+        }
+        var url = service.url(of: "/shares", queries: queries)
         url.appendPathComponent(shareID)
 
         // request

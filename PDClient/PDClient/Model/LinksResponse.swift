@@ -27,4 +27,39 @@ public struct LinksResponse: Codable {
         self.links = links
         self.parents = parents
     }
+
+    public var sortedLinks: [Link] {
+        let sorter = LinkHierarchySorter()
+        return sorter.sort(links: parents + links)
+    }
+}
+
+private final class LinkHierarchySorter {
+    
+    func sort(links: [Link]) -> [Link] {
+        var sorted: [Link] = []
+        for link in links {
+            guard let parentLinkID = link.parentLinkID else {
+                // Parent id doesn't exist, root?
+                sorted.insert(link, at: 0)
+                continue
+            }
+
+            if let parentIndex = sorted.firstIndex(where: { $0.linkID == parentLinkID }) {
+                // Parent link is in the sorted array, insert behind the parent
+                sorted.insert(link, at: parentIndex + 1)
+                continue
+            }
+
+            if let childrenIndex = sorted.firstIndex(where: { $0.parentLinkID == link.linkID }) {
+                // Children link is in the sorted array, insert ahead the children
+                sorted.insert(link, at: childrenIndex)
+            } else {
+                // There is no parent link yet
+                sorted.append(link)
+            }
+        }
+        return sorted
+    }
+
 }

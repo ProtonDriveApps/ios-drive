@@ -23,3 +23,15 @@ public enum SyncItemState: Int, Codable {
     case finished
     case undefined
 }
+
+public extension SyncItemState {
+
+    var logName: String {
+        switch self {
+        case .inProgress: "IN PROGRESS"
+        case .errored: "FAILURE"
+        case .finished: "SUCCESS"
+        case .undefined: "UNDEFINED"
+        }
+    }
+}

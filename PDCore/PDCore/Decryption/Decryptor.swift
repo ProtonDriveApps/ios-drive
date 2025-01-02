@@ -47,6 +47,10 @@ class Decryptor {
 
 extension Decryptor {
 
+    static var cryptoTime: Int64 {
+        CryptoGo.CryptoGetUnixTime()
+    }
+
     static func decryptAndVerifySharePassphrase(
         _ armoredPassphrase: ArmoredMessage,
         armoredSignature: ArmoredSignature,
@@ -149,6 +153,13 @@ extension Decryptor {
         verificationKeys: [ArmoredKey]
     ) throws -> VerifiedBinary {
         try decryptAndVerifyDetachedBinaryMessage(blockDataPacket, sessionKey, signature, verificationKeys)
+    }
+    
+    static func decryptBlock(
+        _ blockDataPacket: DataPacket,
+        sessionKey: SessionKey
+    ) throws -> Data {
+        try decryptWithoutVerifyingDetachedBinaryMessage(blockDataPacket, sessionKey)
     }
 
     static func verifyManifestSignature(
@@ -340,6 +351,16 @@ extension Decryptor {
         } catch {
             return .unverified(binary, error)
         }
+    }
+    
+    private static func decryptWithoutVerifyingDetachedBinaryMessage(
+        _ dataPacket: DataPacket,
+        _ sessionKey: SessionKey
+    ) throws -> Data {
+        let cryptoSessionKey = try makeCryptoSessionKey(sessionKey)
+        let plainMessage = try cryptoSessionKey.decrypt(dataPacket)
+        guard let binary = plainMessage.getBinary() else { throw Errors.emptyResult }
+        return binary
     }
 
     private static func decryptMessage(

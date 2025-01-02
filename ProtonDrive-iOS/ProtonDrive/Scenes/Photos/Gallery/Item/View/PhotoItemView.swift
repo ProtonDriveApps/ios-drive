@@ -17,6 +17,7 @@
 
 import ProtonCoreUIFoundations
 import SwiftUI
+import PDUIComponents
 
 struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
     @ObservedObject private var viewModel: ViewModel
@@ -47,12 +48,15 @@ struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
             viewModel.duration.map(makeDurationView)
         }
         .overlay(alignment: .top) {
-            if viewModel.isShared || viewModel.isDownloading || viewModel.isAvailableOffline {
+            if viewModel.shareBadge != nil || viewModel.isDownloading || viewModel.isAvailableOffline {
                 statusView
             }
         }
         .overlay(alignment: .topLeading) {
             selectionView
+        }
+        .overlay(alignment: .bottomTrailing) {
+            burstIcon
         }
     }
 
@@ -62,6 +66,21 @@ struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
             RoundedSelectionView(isSelected: viewModel.isSelected)
                 .accessibilityIdentifier("\(accessibilityIdentifier).SelectionButton")
                 .padding(11)
+        }
+    }
+    
+    @ViewBuilder
+    private var burstIcon: some View {
+        if let num = viewModel.burstChildrenCount,
+           let burstIcon = UIImage(named: "ic-burst") {
+            IconBadgeView(
+                text: "\(num + 1)",
+                icon: burstIcon,
+                accessibilityIDPrefix: "\(accessibilityIdentifier).burst"
+            )
+            .padding(.trailing, 6)
+            .padding(.bottom, 6)
+            .accessibilityLabel("\(accessibilityIdentifier).burst.badge")
         }
     }
 
@@ -100,9 +119,7 @@ struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
             if viewModel.isDownloading {
                 downloadingView
             }
-            if viewModel.isShared {
-                shareView
-            }
+            viewModel.shareBadge.map(makeShareView)
         }
         .padding(EdgeInsets(top: 6, leading: 6, bottom: 4, trailing: 6))
         .background {
@@ -134,11 +151,20 @@ struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
             .accessibilityIdentifier("\(accessibilityIdentifier).AvailableOfflineIcon")
     }
 
-    private var shareView: some View {
-        Image("ic-link-filled-background")
-            .resizable()
-            .frame(width: 16, height: 16)
-            .accessibilityIdentifier("\(accessibilityIdentifier).ShareIcon")
+    @ViewBuilder
+    private func makeShareView(badge: PhotoItemShareBadge) -> some View {
+        switch badge {
+        case .link:
+            Image("ic-link-filled-background")
+                .resizable()
+                .frame(width: 16, height: 16)
+                .accessibilityIdentifier("\(accessibilityIdentifier).ShareIcon")
+        case .collaborative:
+            Image("ic-shared-filled-background")
+                .resizable()
+                .frame(width: 16, height: 16)
+                .accessibilityIdentifier("\(accessibilityIdentifier).ShareIcon")
+        }
     }
 }
 

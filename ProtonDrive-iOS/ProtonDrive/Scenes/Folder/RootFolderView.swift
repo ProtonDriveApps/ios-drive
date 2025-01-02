@@ -34,3 +34,23 @@ struct RootFolderView: View {
         }
     }
 }
+
+class MyFilesRootFetcher {
+    let storage: StorageManager
+
+    init(storage: StorageManager) {
+        self.storage = storage
+    }
+
+    func getRoot() -> NodeIdentifier {
+        return storage.mainContext.performAndWait {
+            let shares = storage.getMainShares(in: storage.mainContext)
+            guard let share = shares.first,
+                  let linkID = share.linkID else {
+                NotificationCenter.default.post(name: .nukeCache)
+                return NodeIdentifier("", "", "")
+            }
+            return NodeIdentifier(linkID, share.id, share.volumeID)
+        }
+    }
+}

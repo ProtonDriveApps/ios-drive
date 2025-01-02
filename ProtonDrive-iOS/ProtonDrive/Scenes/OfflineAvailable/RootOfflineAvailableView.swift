@@ -22,10 +22,6 @@ import PDUIComponents
 struct RootOfflineAvailableView: View {
     var coordinator: FinderCoordinator
     
-    init(deeplink: Deeplink?, tower: Tower) {
-        self.coordinator = FinderCoordinator(tower: tower, deeplink: deeplink)
-    }
-    
     var body: some View {
         RootDeeplinkableView(navigationTracker: coordinator) {
             coordinator.start(.offlineAvailable)

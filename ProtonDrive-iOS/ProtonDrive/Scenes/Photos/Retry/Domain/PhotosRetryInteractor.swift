@@ -17,6 +17,7 @@
 
 import Foundation
 import PDCore
+import PDLocalization
 
 protocol PhotosRetryInteractorProtocol {
     func fetchAssets(ofSize size: CGSize) async -> ([FullPreview], Int)
@@ -29,7 +30,7 @@ final class PhotosRetryInteractor: PhotosRetryInteractorProtocol {
     private let deletedStoreResource: DeletedPhotosIdentifierStoreResource
     private let previewProvider: PhotoLibraryPreviewResourceProtocol
     private let retryTriggerController: PhotoLibraryLoadRetryTriggerController
-    
+
     init(
         deletedStoreResource: DeletedPhotosIdentifierStoreResource,
         previewProvider: PhotoLibraryPreviewResourceProtocol,
@@ -41,19 +42,21 @@ final class PhotosRetryInteractor: PhotosRetryInteractorProtocol {
     }
     
     func fetchAssets(ofSize size: CGSize) async -> ([FullPreview], Int) {
-        let total = deletedStoreResource.getCloudIdentifiers()
+        let results = deletedStoreResource.getCloudIdentifiersAndError()
         
         let previews = await previewProvider
-            .execute(total.compactMap({ $0 }), size: size)
-            .map {
-                FullPreview(
-                    localIdentifier: $0.localIdentifier,
-                    filename: $0.originalFilename,
-                    imageData: $0.imageData
+            .execute(results.compactMap { $0.cloudIdentifier }, size: size)
+            .map { preview in
+                let error = results.first(where: { $0.cloudIdentifier == preview.localIdentifier && $0.error != nil })?.error
+                return FullPreview(
+                    localIdentifier: preview.localIdentifier,
+                    filename: preview.originalFilename,
+                    imageData: preview.imageData,
+                    errorMessage: error?.localizedDescription
                 )
             }
 
-        return (previews, total.count - previews.count)
+        return (previews, results.count - previews.count)
     }
     
     func clearDeletedStorage() {

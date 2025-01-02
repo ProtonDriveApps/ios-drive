@@ -22,7 +22,7 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
 
     let fileUploadFactory: FileUploadOperationsProvider
     let filecleaner: CloudFileCleaner
-    let moc: NSManagedObjectContext
+    public let moc: NSManagedObjectContext
     var isEnabled = true {
         didSet { Log.info("\(type(of: self)) isEnabled will become \(isEnabled)", domain: .uploader) }
     }
@@ -51,7 +51,7 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
         self.filecleaner = filecleaner
         self.moc = moc
         self.dispatchQueue = dispatchQueue ?? DispatchQueue.global(qos: .userInitiated)
-        super.init(queue: OperationQueue(maxConcurrentOperation: concurrentOperations, underlyingQueue: dispatchQueue))
+        super.init(queue: OperationQueue(maxConcurrentOperation: concurrentOperations, underlyingQueue: dispatchQueue, name: "FileUploader - All Files"))
     }
 
     public func upload(_ file: File, completion: @escaping OnUploadCompletion = { _ in }) {
@@ -66,7 +66,7 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
             let uploadID = draft.uploadID
             let clientUID = file.clientUID
 
-            let shareID = file.shareID
+            let shareID = file.shareId
             guard let parentID = file.parentLink?.id else {
                 throw file.invalidState("The file doesn't have a parentID")
             }
@@ -162,7 +162,7 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
         getProcessingOperation(with: id)?.pauseUpload()
     }
 
-    public func deleteUploadingFile(_ file: File) {
+    public func deleteUploadingFile(_ file: File, error: PhotosFailureUserError? = nil) {
         moc.perform { [weak self] in
             guard let self else { return }
 
@@ -189,7 +189,7 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
             if file is Photo {
                 let fileID = file.id
                 let parentID = parentId
-                let shareID = file.shareID
+                let shareID = file.shareId
                 Task {
                     do {
                         Log.info("\(type(of: self)).deleteUploadingFile: deleting remote Photo state: .creatingFileDraft, .uploadingRevision, .commitingRevision, UUID: \(uploadID)", domain: .uploader)
@@ -207,7 +207,8 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
                 }
             } else {
                 Log.info("\(type(of: self)).deleteUploadingFile: deleting remote File state: .creatingFileDraft, .uploadingRevision, .commitingRevision, UUID: \(uploadID)", domain: .uploader)
-                self.filecleaner.deleteUploadingFile(linkId: file.id, parentId: parentId, shareId: file.shareID, completion: { _ in
+                let identifier = file.identifier
+                self.filecleaner.deleteUploadingFile(linkId: identifier.nodeID, parentId: parentId, shareId: identifier.shareID, completion: { _ in
                     // The result is ignored because deleting file draft is not strictly required.
                     // * the file draft will be cleared after 4 hours by backend's collector,
                     // * during the initial file upload, if the file draft already exists and its uploadClientUID

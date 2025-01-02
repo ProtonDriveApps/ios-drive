@@ -29,12 +29,14 @@ public final class FetchedResultsControllerObserver<ResultType: NSFetchRequestRe
 
     public var fetchedResultsController: NSFetchedResultsController<ResultType>
 
-    public init(controller: NSFetchedResultsController<ResultType>) {
+    public init(controller: NSFetchedResultsController<ResultType>, isAutomaticallyStarted: Bool = true) {
         fetchedResultsController = controller
         super.init()
         fetchedResultsController.delegate = self
 
-        start()
+        if isAutomaticallyStarted {
+            start()
+        }
     }
 
     public func start() {

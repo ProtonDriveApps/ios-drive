@@ -57,7 +57,9 @@ final class BlockUploaderOperation: AsynchronousOperation, OperationWithProgress
             switch result {
             case .success:
                 Log.info("STAGE: 3.2 Block \(self.index) upload 📦☁️ finished ✅. UUID: \(self.id.uuidString) Token: \(self.token)", domain: .uploader)
+                #if os(iOS)
                 self.progress.complete()
+                #endif
                 self.measurementRepository?.trackBlockUploadSuccess()
                 self.state = .finished
 

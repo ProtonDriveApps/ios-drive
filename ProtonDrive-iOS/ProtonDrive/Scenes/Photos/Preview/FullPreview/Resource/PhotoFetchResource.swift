@@ -18,18 +18,18 @@
 import CoreData
 import PDCore
 
-protocol FileFetchResource {
-    func fetchFile(with id: NodeIdentifier, context: NSManagedObjectContext) throws -> File
+protocol PhotoFetchResourceProtocol {
+    func fetchPhoto(with id: NodeIdentifier, context: NSManagedObjectContext) throws -> Photo
 }
 
-final class PhotoFetchResource: FileFetchResource {
+final class PhotoFetchResource: NSObject, PhotoFetchResourceProtocol {
     private let storage: StorageManager
 
     init(storage: StorageManager) {
         self.storage = storage
     }
 
-    func fetchFile(with id: NodeIdentifier, context: NSManagedObjectContext) throws -> File {
+    func fetchPhoto(with id: NodeIdentifier, context: NSManagedObjectContext) throws -> Photo {
         try storage.fetchPhoto(id: id, moc: context)
     }
 }

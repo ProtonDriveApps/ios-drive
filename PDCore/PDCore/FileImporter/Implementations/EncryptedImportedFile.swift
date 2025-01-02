@@ -34,6 +34,7 @@ struct EncryptedImportedFile {
     let clientUID: String
 
     let shareID: String
+    let volumeID: String
 
     // MARK: - Local (OS) defined properties
     let uploadID: UUID

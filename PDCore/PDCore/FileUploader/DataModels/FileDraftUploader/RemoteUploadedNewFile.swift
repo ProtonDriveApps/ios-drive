@@ -17,7 +17,7 @@
 
 import Foundation
 
-struct RemoteUploadedNewFile {
+public struct RemoteUploadedNewFile {
     let fileID: String
     let revisionID: String
 }

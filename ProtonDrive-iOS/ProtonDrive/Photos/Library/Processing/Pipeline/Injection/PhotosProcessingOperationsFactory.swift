@@ -55,7 +55,7 @@ final class ConcretePhotosProcessingOperationsFactory: PhotosProcessingOperation
     func makeOperations(with context: PhotosProcessingContext) -> [Operation] {
         let filterSkippableInteractor = PhotosFilterSkippableInteractor(context: context, skippableCache: photoSkippableCache)
         let filterByIdInteractor = PhotosFilterByIdInteractor(context: context, resource: filterByIdResource, measurementRepository: scanningMeasurementRepository)
-        let assetsInteractor = PhotosAssetsInteractor(context: context, resource: assetsResource, sizeResource: ConcretePhotoCompoundsSizeResource(), errorPolicy: FoundationPhotoAssetErrorPolicy(), skippableCache: photoSkippableCache, sizeLimit: storageSizeLimit, measurementRepository: scanningMeasurementRepository)
+        let assetsInteractor = PhotosAssetsInteractor(context: context, resource: assetsResource, sizeResource: ConcretePhotoCompoundsSizeResource(), errorPolicy: FoundationPhotoAssetErrorPolicy(), errorMappingPolicy: FoundationPhotosAssetsErrorMappingPolicy(), skippableCache: photoSkippableCache, sizeLimit: storageSizeLimit, measurementRepository: scanningMeasurementRepository)
         let duplicateCheckInteractor = PhotosDuplicatesCheckInteractor(context: context, interactor: conflictInteractor, skippableCache: photoSkippableCache, measurementRepository: duplicatesMeasurementRepository)
         // Need to execute import and finish in a atomically to avoid race conditions.
         let finishInteractor = AggregatedAsynchronousExecution(executions: [

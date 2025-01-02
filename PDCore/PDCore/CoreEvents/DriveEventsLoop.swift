@@ -28,23 +28,26 @@ class DriveEventsLoop: EventsLoop {
     private let conveyor: EventsConveyor
     private let observers: [EventsListener]
     private let processor: DriveEventsLoopProcessorType
-    private let logError: LogHandler?
     
     private let mode: DriveEventsLoopMode
     
     init(volumeID: String, cloudSlot: CloudEventProvider, processor: DriveEventsLoopProcessorType, 
-         conveyor: EventsConveyor, observers: [EventsListener], mode: DriveEventsLoopMode, logError: LogHandler? = nil) {
+         conveyor: EventsConveyor, observers: [EventsListener], mode: DriveEventsLoopMode) {
         self.volumeID = volumeID
         self.cloudSlot = cloudSlot
         self.conveyor = conveyor
         self.observers = observers
         self.processor = processor
         self.mode = mode
-        self.logError = logError
     }
-    
+
+    // Unique loop identifier
+    var loopId: String {
+        volumeID
+    }
+
     /// Latest event received and recorded by this loop
-    var latestLoopEventId: String? {
+    var latestLoopEventId: EventID? {
         get { conveyor.latestFetchedEventID }
         set { conveyor.latestFetchedEventID = newValue }
     }
@@ -143,11 +146,13 @@ class DriveEventsLoop: EventsLoop {
 
     func onError(_ error: Error) {
         guard !error.isNetworkIssueError else { return }
-        logError?(error)
+        // Needs to strip userInfo since it can contain core data objects (can cause crashes to log such errors)
+        let error = DriveError(withDomainAndCode: error, message: error.localizedDescription)
+        Log.error(error, domain: .events)
     }
 
     func onProcessingError(_ error: Error) {
-        logError?(error)
+        Log.error(error, domain: .events)
     }
 
 }

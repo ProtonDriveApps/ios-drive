@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import PDLocalization
 
 final class SharedLinkEditorViewModel {
     let isSaveEnabledPublisher: AnyPublisher<Bool, Never>
@@ -36,11 +37,11 @@ final class SharedLinkEditorViewModel {
     }
 
     var title: String {
-        "Share via link"
+        Localization.edit_section_share_via_link
     }
 
     var saveButtonText: String {
-        "Save"
+        Localization.general_save
     }
 
     func attempSaving() {

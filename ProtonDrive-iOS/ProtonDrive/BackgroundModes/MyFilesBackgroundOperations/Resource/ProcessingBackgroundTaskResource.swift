@@ -52,16 +52,16 @@ final class ProcessingExtensionBackgroundTaskResourceImpl: ProcessingExtensionBa
         request.earliestBeginDate = Date(timeIntervalSinceNow: 60)
         do {
             try BGTaskScheduler.shared.submit(request)
-            ConsoleLogger.shared?.logAndNotify(title: "✅ background processing scheduled", message: "", osLogType: Constants.self)
+            Log.logInfoAndNotify(title: "✅ background processing scheduled")
         } catch {
-            ConsoleLogger.shared?.logAndNotify(title: "🐛⚠️ Couldn't schedule app refresh", message: error.localizedDescription, osLogType: Constants.self)
+            Log.logInfoAndNotify(title: "🐛⚠️ Couldn't schedule app refresh")
         }
     }
     
     func completeTask(success: Bool) {
         if task != nil {
             let message = success ? "with success ✅" : "without success ⚠️"
-            ConsoleLogger.shared?.logAndNotify(title: "Stop processing task", message: message, osLogType: Constants.self)
+            Log.logInfoAndNotify(title: "Stop processing task", message: message)
             task?.setTaskCompleted(success: success)
             task = nil
         }
@@ -70,7 +70,7 @@ final class ProcessingExtensionBackgroundTaskResourceImpl: ProcessingExtensionBa
     
     func cancelTask() {
         if let identifier = configuration?.identifier {
-            ConsoleLogger.shared?.logAndNotify(title: "⏸️ Cancel scheduling processing task.", message: "", osLogType: Constants.self)
+            Log.logInfoAndNotify(title: "⏸️ Cancel scheduling processing task.")
             BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: identifier)
         }
         completeTask(success: true)
@@ -81,7 +81,7 @@ final class ProcessingExtensionBackgroundTaskResourceImpl: ProcessingExtensionBa
             return
         }
         
-        ConsoleLogger.shared?.logAndNotify(title: "▶️ Launching processing task.", message: "", osLogType: Constants.self)
+        Log.logInfoAndNotify(title: "▶️ Launching processing task.")
         self.task = task
         task.expirationHandler = { [weak self] in
             self?.handleExpiration()
@@ -94,7 +94,7 @@ final class ProcessingExtensionBackgroundTaskResourceImpl: ProcessingExtensionBa
             return
         }
         
-        ConsoleLogger.shared?.logAndNotify(title: "⏸️ Processing task expired.", message: "", osLogType: Constants.self)
+        Log.logInfoAndNotify(title: "⏸️ Processing task expired.")
         configuration.expirationHandler()
         task = nil
     }

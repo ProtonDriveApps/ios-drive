@@ -38,7 +38,7 @@ public final class ItemProvider {
             guard !Task.isCancelled else { return }
             completionHandler(item, error)
         }
-        return Progress {
+        return Progress { _ in
             Log.info("Item for identifier cancelled", domain: .fileProvider)
             task.cancel()
             completionHandler(nil, CocoaError(.userCancelled))
@@ -46,7 +46,8 @@ public final class ItemProvider {
     }
     
     /// Creator is relevant only for root folder
-    public func item(for identifier: NSFileProviderItemIdentifier, creatorAddresses: Set<String>, slot: FileSystemSlot) -> (NSFileProviderItem?, Error?) {
+    public func item(
+        for identifier: NSFileProviderItemIdentifier, creatorAddresses: Set<String>, slot: FileSystemSlot) -> (NSFileProviderItem?, Error?) {
         switch identifier {
         case .rootContainer:
             guard !creatorAddresses.isEmpty, let mainShare = slot.getMainShare(of: creatorAddresses), let root = slot.moc.performAndWait({ mainShare.root }) else {
@@ -104,7 +105,7 @@ public final class ItemProvider {
         guard let fileId = NodeIdentifier(itemIdentifier), let file = slot.getNode(fileId, moc: moc) as? File else {
             Log.error(Errors.nodeNotFound, domain: .fileProvider)
             completionHandler(nil, nil, Errors.nodeNotFound)
-            return Progress {
+            return Progress { _ in
                 Log.info("Fetch contents for \(itemIdentifier) cancelled", domain: .fileProvider)
                 completionHandler(nil, nil, CocoaError(.userCancelled))
             }
@@ -130,7 +131,7 @@ public final class ItemProvider {
                     self?.downloadAndDecrypt(file, downloader: downloader, moc: moc, completionHandler: completionHandler)
                 }
             }
-            return Progress {
+            return Progress { _ in
                 Log.info("Fetch contents for \(itemIdentifier) cancelled", domain: .fileProvider)
                 task.cancel()
                 completionHandler(nil, nil, CocoaError(.userCancelled))
@@ -187,12 +188,12 @@ public final class ItemProvider {
         }
 
         return (operation as? OperationWithProgress).map {
-            $0.progress.setOneTimeCancellationHandler { [weak operation] in
+            $0.progress.setOneTimeCancellationHandler { [weak operation] _ in
                 Log.info("Download and decrypt operation cancelled", domain: .fileProvider)
                 operation?.cancel()
                 completionHandler(nil, nil, CocoaError(.userCancelled))
             }
-        } ?? Progress { [weak operation] in
+        } ?? Progress { [weak operation] _ in
             Log.info("Download and decrypt operation cancelled", domain: .fileProvider)
             operation?.cancel()
             completionHandler(nil, nil, CocoaError(.userCancelled))

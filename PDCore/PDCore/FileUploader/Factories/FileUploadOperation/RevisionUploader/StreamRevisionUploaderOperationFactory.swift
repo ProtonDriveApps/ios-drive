@@ -28,6 +28,7 @@ class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
     let signersKitFactory: SignersKitFactoryProtocol
     let verifierFactory: UploadVerifierFactory
     let moc: NSManagedObjectContext
+    let parallelEncryption: Bool
 
     init(
         storage: StorageManager,
@@ -37,7 +38,8 @@ class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
         credentialProvider: CredentialProvider,
         signersKitFactory: SignersKitFactoryProtocol,
         verifierFactory: UploadVerifierFactory,
-        moc: NSManagedObjectContext
+        moc: NSManagedObjectContext,
+        parallelEncryption: Bool
     ) {
         self.storage = storage
         self.client = client
@@ -47,6 +49,7 @@ class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
         self.signersKitFactory = signersKitFactory
         self.verifierFactory = verifierFactory
         self.moc = moc
+        self.parallelEncryption = parallelEncryption
     }
 
     func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> any UploadOperation {
@@ -68,7 +71,8 @@ class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
             },
             signersKitFactory: signersKitFactory,
             queue: OperationQueue(maxConcurrentOperation: Constants.maxConcurrentPageOperations),
-            moc: moc
+            moc: moc,
+            parallelEncryption: parallelEncryption
         )
 
         return PaginatedRevisionUploaderOperation(
@@ -121,7 +125,7 @@ class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
             service: api,
             credentialProvider: credentialProvider
         )
-        let session = URLSession(configuration: .forUploading, delegate: uploader, delegateQueue: nil)
+        let session = URLSession.forUploading(delegate: uploader)
         uploader.session = session
 
         return BlockUploaderOperation(
@@ -143,13 +147,15 @@ class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
         _ onError: @escaping OnUploadError
     ) -> Operation {
         let thumbnailProgress = parentProgress.child(pending: 1)
+        
+        let session = URLSession.forUploading()
 
         let uploader = URLSessionThumbnailUploader(
             thumbnail: thumbnail,
             fullUploadableThumbnail: fullUploadableThumbnail,
             uploadID: id,
             progressTracker: thumbnailProgress,
-            session: URLSession(configuration: .forUploading),
+            session: session,
             apiService: api,
             credentialProvider: credentialProvider,
             moc: moc

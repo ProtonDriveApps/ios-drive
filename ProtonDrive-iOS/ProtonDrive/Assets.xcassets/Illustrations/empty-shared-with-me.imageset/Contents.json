@@ -1,0 +1,22 @@
+{
+  "images" : [
+    {
+      "filename" : "shared-with-me-empty.pdf",
+      "idiom" : "universal"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "shared-with-me-empty-dark.pdf",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

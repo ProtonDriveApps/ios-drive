@@ -18,6 +18,7 @@
 import SwiftUI
 import ProtonCoreUIFoundations
 
+#if os(iOS)
 public struct ProgressMenuSectionGeneric<ProgressProviderType>: View where ProgressProviderType: NSObject, ProgressProviderType: ProgressFractionCompletedProvider {
     
     public init(progressObserver: ProgressMenuSectionViewModelGeneric<ProgressProviderType>) {
@@ -124,3 +125,4 @@ struct ProcessMenuSection_Previews: PreviewProvider {
                                                            iconName: "ic-availableoffline"))
     }
 }
+#endif

@@ -120,3 +120,49 @@ public extension TemporalMetadata {
         self = metadata
     }
 }
+
+extension Photo {
+    /// There is no solid way to check given content is live photo or not
+    /// If the childrenURLs has only one video URL
+    /// The given content has chance to be a live photo
+    public var canBeLivePhoto: Bool {
+        guard let context = managedObjectContext else { return false }
+        return context.performAndWait {
+            let mainMime = MimeType(value: mimeType)
+            let childrenMime = nonDuplicatedChildren.map { MimeType(value: $0.mimeType) }
+            
+            return mainMime.isImage && childrenMime.count == 1 && (childrenMime.first?.isVideo ?? false)
+        }
+    }
+    
+    /// workaround to fix duplicated upload
+    /// sometimes a file can be uploaded twice
+    public var nonDuplicatedChildren: [Photo] {
+        guard let context = managedObjectContext else { return [] }
+        return context.performAndWait {
+            var names: [String] = []
+            var nonDuplicatedChildren: [Photo] = []
+            for child in children {
+                let decryptedName = child.decryptedName
+                if names.contains(decryptedName) { continue }
+                names.append(decryptedName)
+                nonDuplicatedChildren.append(child)
+            }
+            return nonDuplicatedChildren
+        }
+    }
+    
+    /// There is no solid way to check given content is burst photo or not
+    /// If all of children are photos
+    /// It is considered a burst photo.
+    public var canBeBurstPhoto: Bool {
+        guard let context = managedObjectContext else { return false }
+        return context.performAndWait {
+            let mainMime = MimeType(value: mimeType)
+            let allChildrenArePhoto = children
+                .map { MimeType(value: $0.mimeType) }
+                .allSatisfy { $0.isImage }
+            return mainMime.isImage && !children.isEmpty && allChildrenArePhoto
+        }
+    }
+}

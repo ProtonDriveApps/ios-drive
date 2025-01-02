@@ -19,6 +19,7 @@ import SwiftUI
 import PDCore
 import PDUIComponents
 import ProtonCoreUIFoundations
+import PDLocalization
 
 final class UploadManagementMenuViewModel {
     let node: Node
@@ -45,8 +46,8 @@ final class UploadManagementMenuViewModel {
         var text: String {
             let name: String
             switch self {
-            case .pause: name = "Pause"
-            case .remove: name = "Remove"
+            case .pause: name = Localization.general_pause
+            case .remove: name = Localization.general_remove
             }
             return name
         }

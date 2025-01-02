@@ -18,6 +18,7 @@
 import SwiftUI
 import ProtonCoreUIFoundations
 
+#if os(iOS)
 struct ActionBarRow<Content: View>: View {
     @Binding var selection: ActionBarButtonViewModel?
     private let items: [ActionBarButtonViewModel]
@@ -86,3 +87,4 @@ struct ActionBarModern_Previews: PreviewProvider {
         }
     }
 }
+#endif

@@ -18,6 +18,7 @@
 import SwiftUI
 import ProtonCoreUIFoundations
 
+#if os(iOS)
 struct ActionBarButtonView: View {
     var vm: ActionBarButtonViewModel
     @Binding var selection: ActionBarButtonViewModel?
@@ -65,3 +66,4 @@ struct ActionBarButtonView: View {
             )
     }
 }
+#endif

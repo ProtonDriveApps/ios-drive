@@ -25,8 +25,27 @@ extension URLSessionConfiguration {
         return configuration
     }
     
+    /*
+     Before the commit with this comment, this var was never actually used in the code.
+     
+     Where it should have been used, `forUploading` was used instead by mistake.
+     
+     To avoid any unintended consequences from fixing the callers to use this instead,
+     the actual session configuration returned was made identical to what `forUploading` returns.
+     
+     Any further changes in future to either `forUploading` and `forDownloading` can now
+     be independant of each other.
+     */
     static var forDownloading: URLSessionConfiguration {
-        .ephemeral
+        let configuration = URLSessionConfiguration.ephemeral
+        if Constants.downloaderUsesSharedURLSession {
+            // With a single shared session, we want this to equal the most concurrent blocks we can support
+            configuration.httpMaximumConnectionsPerHost = Constants.maxConcurrentInflightFileDownloads * Constants.maxConcurrentBlockDownloadsPerFile
+        } else {
+            // Same as it ever was
+            configuration.httpMaximumConnectionsPerHost = 16
+        }
+        return configuration
     }
 
 }

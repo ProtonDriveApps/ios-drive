@@ -22,4 +22,6 @@ protocol PhotosActionCoordinator {
     func openShare(id: PhotoId)
     func openNativeShare(url: URL, completion: @escaping () -> Void)
     func openNativeShareForLivePhoto(imageURL: URL, videoURL: URL, completion: @escaping () -> Void)
+    func openPhotoDetail(id: PhotoId)
+    func openNativeShareForBurstPhoto(urls: [URL], completion: @escaping () -> Void)
 }

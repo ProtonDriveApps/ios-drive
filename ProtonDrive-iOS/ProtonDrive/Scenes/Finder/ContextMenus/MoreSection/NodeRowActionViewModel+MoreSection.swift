@@ -28,7 +28,7 @@ extension NodeRowActionMenuViewModel {
         let items = moreViewModel.items.map { item in
             singleMoreRows(for: item, environment: environment)
         }
-        return ContextMenuItemGroup(items: items)
+        return ContextMenuItemGroup(id: "moreSection", items: items)
     }
     
     private func singleMoreRows(for type: MoreSectionItem, environment: Environment) -> ContextMenuItem {

@@ -22,7 +22,7 @@ class ScanNodeOperation: SynchronousOperation {
     typealias Completion = (Result<[Node], Error>) -> Void
     
     private var nodeID: NodeIdentifier
-    private weak var cloudSlot: CloudSlot?
+    private weak var cloudSlot: CloudSlotProtocol?
     private let shouldIncludeDeletedItems: Bool
     private var completion: Completion?
     
@@ -30,7 +30,7 @@ class ScanNodeOperation: SynchronousOperation {
     private var pageSize: Int = 150
     
     init(_ nodeID: NodeIdentifier,
-         cloudSlot: CloudSlot,
+         cloudSlot: CloudSlotProtocol,
          shouldIncludeDeletedItems: Bool = false,
          completionHandler: @escaping Completion)
     {
@@ -52,8 +52,8 @@ class ScanNodeOperation: SynchronousOperation {
     override func start() {
         super.start()
         guard !self.isCancelled else { return }
-        
-        self.cloudSlot?.scanNode(self.nodeID) { [weak self] nodeResult in
+
+        self.cloudSlot?.scanNode(self.nodeID, linkProcessingErrorTransformer: { $1 }) { [weak self] nodeResult in
             guard let self = self, !self.isCancelled else { return }
             switch nodeResult {
             case let .failure(error):
@@ -98,7 +98,7 @@ class ScanNodeOperation: SynchronousOperation {
                 Log.info("Fetched page #\(self.lastFetchedPage) last (\(nodes.count) nodes) children for node \(self.nodeID.nodeID)", domain: .networking)
                 node.managedObjectContext?.performAndWait {
                     node.isChildrenListFullyFetched = true
-                    try? node.managedObjectContext?.saveWithParentLinkCheck()
+                    try? node.managedObjectContext?.saveOrRollback()
                 }
                 
                 // return not `nodes` that we got for last page, but children from all pages

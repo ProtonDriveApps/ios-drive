@@ -21,7 +21,7 @@ import PDClient
 public struct ThumbnailLoaderFactory {
     public init() {}
     
-    func makeFileThumbnailLoader(storage: StorageManager, cloudSlot: CloudSlot, client: PDClient.Client) -> CancellableThumbnailLoader {
+    func makeFileThumbnailLoader(storage: StorageManager, cloudSlot: CloudSlotProtocol, client: PDClient.Client) -> CancellableThumbnailLoader {
         let repository = FileNodeThumbnailRepository(store: storage)
         let typeStrategy = DefaultThumbnailTypeStrategy()
         return makeLoader(storage: storage, cloudSlot: cloudSlot, client: client, repository: repository, typeStrategy: typeStrategy)
@@ -39,7 +39,7 @@ public struct ThumbnailLoaderFactory {
         return makeLoader(storage: tower.storage, cloudSlot: tower.cloudSlot, client: tower.client, repository: repository, typeStrategy: typeStrategy)
     }
 
-    private func makeLoader(storage: StorageManager, cloudSlot: CloudSlot, client: PDClient.Client, repository: NodeThumbnailRepository, typeStrategy: ThumbnailTypeStrategy) -> DispatchedAsyncThumbnailLoader {
+    private func makeLoader(storage: StorageManager, cloudSlot: CloudSlotProtocol, client: PDClient.Client, repository: NodeThumbnailRepository, typeStrategy: ThumbnailTypeStrategy) -> DispatchedAsyncThumbnailLoader {
         let thumbnailsOperatiosFactory = LoadThumbnailOperationsFactory(store: storage, cloud: cloudSlot, client: client, thumbnailRepository: repository, typeStrategy: typeStrategy)
         let asyncLoader = AsyncThumbnailLoader(operationsFactory: thumbnailsOperatiosFactory)
         return DispatchedAsyncThumbnailLoader(thumbnailLoader: asyncLoader)

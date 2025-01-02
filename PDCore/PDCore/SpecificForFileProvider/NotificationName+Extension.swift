@@ -42,9 +42,8 @@ extension DarwinNotification.Name {
     private static var AppDidSaveMOC = DarwinNotification.Name("ch.protonmail.drive.DidSaveMOCFromApp")
 }
 
-#if HAS_QA_FEATURES
+// QA only
 public extension DarwinNotification.Name {
     static var SendErrorEventToTestSentry = DarwinNotification.Name("ch.protonmail.drive.qa.SendErrorEventToTestSentry")
     static var DoCrashToTestSentry = DarwinNotification.Name("ch.protonmail.drive.qa.DoCrashToTestSentry")
 }
-#endif

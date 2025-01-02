@@ -19,9 +19,13 @@ import FileProvider
 import Foundation
 import PDCore
 import UniformTypeIdentifiers
+#if os(macOS)
+public var PDFileProviderDecryptName: (Node) throws -> String = { try $0.decryptNameWithCryptoGo() }
+#endif
 
 public class NodeItem: NSObject, NSFileProviderItem {
 
+    // swiftlint:disable:next function_body_length
     public init(node: Node) throws {
         guard let moc = node.moc else {
             Log.error("Attempting to create NodeItem when node's moc is nil (node has been deleted)", domain: .fileProvider)
@@ -31,9 +35,11 @@ public class NodeItem: NSObject, NSFileProviderItem {
         var itemIdentifier: NSFileProviderItemIdentifier!
         var parentItemIdentifier: NSFileProviderItemIdentifier!
         var contentType: UTType!
-        var isTrashed: Bool!
         var isUploaded: Bool!
+        #if os(iOS)
+        var isTrashed: Bool!
         var isDownloaded: Bool!
+        #endif
         var filename: String!
         var filesystemFilename: String!
         var creationDate: Date!
@@ -45,7 +51,11 @@ public class NodeItem: NSObject, NSFileProviderItem {
         var contentVersion: Data!
 
         try moc.performAndWait {
+            #if os(macOS)
+            filename = try PDFileProviderDecryptName(node)
+            #else
             filename = try node.decryptName()
+            #endif
             filesystemFilename = filename.filenameNormalizedForFilesystem(basedOn: node.mimeType)
 
             if let folder = node as? Folder, folder.isRoot { // root
@@ -67,16 +77,18 @@ public class NodeItem: NSObject, NSFileProviderItem {
             let defaultMIME = "application/octet-stream"
             let uti: UTType
             if node.mimeType == defaultMIME {
-                uti = UTType(filenameExtension: node.decryptedName.fileExtension()) ?? .data
+                uti = UTType(filenameExtension: filename.fileExtension()) ?? .data
             } else {
                 uti = UTType(mimeType: node.mimeType) ?? .data
             }
             contentType = (node is Folder) ? .folder : uti
 
+            #if os(iOS)
             isTrashed = node.state == .deleted
+            isDownloaded = node.isDownloaded
+            #endif
 
             isUploaded = node.state == .active
-            isDownloaded = node.isDownloaded
             creationDate = node.createdDate
 
             let activeRevision = (node as? File)?.activeRevision
@@ -119,10 +131,10 @@ public class NodeItem: NSObject, NSFileProviderItem {
 
         #if os(iOS)
         self.isTrashed = isTrashed
+        self.isDownloaded = isDownloaded
         #endif
 
         self.isUploaded = isUploaded
-        self.isDownloaded = isDownloaded
         #if os(macOS)
         self.filename = filesystemFilename
         #else
@@ -166,7 +178,6 @@ public class NodeItem: NSObject, NSFileProviderItem {
         self.capabilities = item.capabilities ?? []
         self.contentType = item.contentType ?? .folder
         self.isUploaded = item.isUploaded ?? false
-        self.isDownloaded = item.isDownloaded ?? false
         self.creationDate = item.creationDate ?? Date()
         self.contentModificationDate = item.contentModificationDate ?? Date()
         self.documentSize = item.documentSize ?? 0
@@ -175,6 +186,7 @@ public class NodeItem: NSObject, NSFileProviderItem {
                 
         #if os(iOS)
         self.isTrashed = item.isTrashed ?? false
+        self.isDownloaded = item.isDownloaded ?? false
         #endif
         
         #if os(macOS)
@@ -191,7 +203,6 @@ public class NodeItem: NSObject, NSFileProviderItem {
     }
 
     public var isUploaded: Bool
-    public var isDownloaded: Bool
     public var isShared: Bool
     #if os(macOS)
     public var decorations: [NSFileProviderItemDecorationIdentifier]?
@@ -209,9 +220,10 @@ public class NodeItem: NSObject, NSFileProviderItem {
 
     #if os(iOS)
     public var isTrashed: Bool
+    public var isDownloaded: Bool
     #endif
     
-    private static func capabilities(_ node: Node) -> NSFileProviderItemCapabilities {
+    private static func capabilities(_ node: PDCore.Node) -> NSFileProviderItemCapabilities {
         // all but writing
         var capabilities: NSFileProviderItemCapabilities = [.allowsReading, .allowsReparenting, .allowsRenaming, .allowsTrashing, .allowsDeleting]
         
@@ -220,17 +232,16 @@ public class NodeItem: NSObject, NSFileProviderItem {
             return capabilities
         } else {
             // macOS:
-            //  files without locally available contents should not have .allowsWriting capability
-            //  otherwise apps (eg. Preview for images) will hang after download complete and will not open the file
-            //  on the other hand, this flaw does not affect files that were downloaded beforehand
+            //  Ideally we should not force allowsWriting if the permissions of the original file did not allow writing.
+            // But that is a fix for another day to properly support file permissions.
             //
             // iOS:
             //  writing needs to be fixed later
             //
-            #if os(OSX)
+            #if os(macOS)
             capabilities.insert(.allowsEvicting)
 
-            if node.isDownloaded && MimeType(value: node.mimeType) != .protonDocument {
+            if MimeType(value: node.mimeType) != .protonDocument {
                 capabilities.insert(.allowsWriting)
             }
             #endif
@@ -238,6 +249,27 @@ public class NodeItem: NSObject, NSFileProviderItem {
             return capabilities
         }
     }
+    
+    #if os(macOS)
+    override public var debugDescription: String {
+        """
+        isUploaded: \(isUploaded) \
+        isShared: \(isShared) \
+        decorations: \(String(describing: decorations)) \
+        creationDate: \(String(describing: creationDate)) \
+        contentModificationDate: \(String(describing: contentModificationDate)) \
+        documentSize: \(String(describing: documentSize)) \
+        childItemCount: \(String(describing: childItemCount)) \
+        itemIdentifier: \(itemIdentifier) \
+        parentItemIdentifier: \(parentItemIdentifier) \
+        filename: \(filename) \
+        itemVersion.metadataVersion: \(itemVersion.metadataVersion) \
+        itemVersion.contentVersion: \(itemVersion.contentVersion) \
+        capabilities: \(capabilities) \
+        contentType: \(contentType)
+        """
+    }
+    #endif
 }
 
 #if os(macOS)

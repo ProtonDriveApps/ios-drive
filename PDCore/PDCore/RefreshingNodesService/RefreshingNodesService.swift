@@ -28,13 +28,15 @@ public final class RefreshingNodesService {
     private let storage: StorageManager
     private let sessionVault: SessionVault
     
-    private var cloudSlot: CloudSlot {
+    private var cloudSlot: CloudSlotProtocol {
         downloader.cloudSlot
     }
     
     private var moc: NSManagedObjectContext {
-        cloudSlot.moc
+        storage.backgroundContext
     }
+    
+    private static let shouldLogDebugInfo: Bool = Constants.buildType.isQaOrBelow
     
     init(downloader: Downloader,
          coreEventManager: Tower.CoreEventLoopManager,
@@ -47,30 +49,16 @@ public final class RefreshingNodesService {
     }
     
     public func hasDirtyNodes(root: Folder) async throws -> Bool {
-        let shareID = await moc.perform { root.shareID }
+        let shareID = await moc.perform { root.shareId }
         return try await storage.fetchDirtyNodesCount(share: shareID, moc: moc) > 0
     }
     
-    public func refreshUsingEagerSyncApproach(root: Folder, evictItem: (NSFileProviderItemIdentifier) async throws -> Void) async throws {
+    public func refreshUsingEagerSyncApproach(root: Folder) async throws {
         let enumeration: Downloader.Enumeration = { node in
             Log.debug("[Eager sync] Scanned node \(node.decryptedName)", domain: .syncing)
         }
         
-        let nodes = try await downloader.scanTrees(treesRootFolders: [root], enumeration: enumeration)
-        
-        guard let moc = nodes.first?.moc else { throw Node.noMOC() }
-        
-        try await evictDeletedItems(from: nodes, in: moc, evictItem: evictItem)
-    }
-    
-    private func evictDeletedItems(from nodes: [Node], in moc: NSManagedObjectContext,
-                                   evictItem: (NSFileProviderItemIdentifier) async throws -> Void) async throws {
-        let deletedNodesIdentifiers = await moc.perform {
-            nodes.filter { $0.state == .deleted }.map { NSFileProviderItemIdentifier($0.identifierWithinManagedObjectContext.rawValue) }
-        }
-        
-        try await deletedNodesIdentifiers
-            .forEach { try await evictItem($0) }
+        _ = try await downloader.scanTrees(treesRootFolders: [root], enumeration: enumeration)
     }
     
     public func sendRefreshNotFinishedSentryEvent(root: Folder, error: Error? = nil) async {
@@ -87,13 +75,11 @@ public final class RefreshingNodesService {
     
     public func refreshUsingDirtyNodesApproach(root: Folder,
                                                resumingOnRetry: Bool = false,
-                                               progressClosure: @escaping (Int, Int) -> Void,
-                                               evictItem: (NSFileProviderItemIdentifier) async throws -> Void) async throws {
+                                               progressClosure: @escaping (Int, Int) -> Void) async throws {
         // Nodes refreshing algorithm:
         // 0. Stop the events to not get the updates while the refresh is in-flight
         // 1. Mark all nodes as dirty OR fetch the currently dirty nodes (in case of retry)
         // 2. Start refreshing current dirty nodes
-        // 3. Evict deleted items
         
         // 0. Stop the events to not get the updates while the refresh is in-flight
         coreEventManager.suspend()
@@ -122,6 +108,7 @@ public final class RefreshingNodesService {
             let refreshingContext = RefreshingContext(
                 dirtyNodes: dirtyNodes,
                 refreshedNodes: [],
+                permanentlyDeletedNodes: [],
                 moc: moc,
                 cloudSlot: cloudSlot,
                 progressClosure: {
@@ -130,19 +117,17 @@ public final class RefreshingNodesService {
             )
             try await Self.refreshNodes(rootFolderIdentifier: rootFolderIdentifier,
                                         refreshingContext: refreshingContext)
+            try await refreshingContext.moc.perform {
+                refreshingContext.permanentlyDeletedNodes.forEach {
+                    let object = refreshingContext.moc.object(with: $0)
+                    refreshingContext.moc.delete(object)
+                }
+                try refreshingContext.moc.save()
+            }
             
             assert(refreshingContext.dirtyNodes.isEmpty)
             assert(dirtyNodesCount <= refreshingContext.refreshedNodes.count)
             
-            // 3. Evict deleted items
-            let deletedNodes = try await refreshingContext.moc.perform {
-                let fetchRequest = Node.fetchRequest()
-                fetchRequest.predicate = NSPredicate(format: "%K == %d", 
-                                                     #keyPath(Node.stateRaw), Node.State.deleted.rawValue)
-                return try refreshingContext.moc.fetch(fetchRequest)
-            }
-            
-            try await evictDeletedItems(from: deletedNodes, in: moc, evictItem: evictItem)
             progressClosure(allNodesCount, allNodesCount)
         } catch {
             await sendRefreshNotFinishedSentryEvent(root: root, error: error)
@@ -176,10 +161,12 @@ public final class RefreshingNodesService {
             }
             node.dirtyIndex = dirtyIndex
             try moc.save()
-#if HAS_QA_FEATURES
-            Log.debug("[Dirty nodes sync] Node \(nodeID) marked as dirty with index \(dirtyIndex)",
-                      domain: .syncing)
-#endif
+
+            if shouldLogDebugInfo {
+                Log.debug("[Dirty nodes sync] Node \(nodeID) marked as dirty with index \(dirtyIndex)",
+                          domain: .syncing)
+            }
+
             if let folder = node as? Folder {
                 childrenIDs = folder.children
                     .filter(\.shouldBeIncludedInRefresh)
@@ -196,17 +183,20 @@ public final class RefreshingNodesService {
     final class RefreshingContext {
         var dirtyNodes: [NSManagedObjectID: Int64]
         var refreshedNodes: Set<NSManagedObjectID>
+        var permanentlyDeletedNodes: Set<NSManagedObjectID>
         let moc: NSManagedObjectContext
-        let cloudSlot: CloudSlot
+        let cloudSlot: CloudSlotProtocol
         let progressClosure: (Int) -> Void
         
         init(dirtyNodes: [NSManagedObjectID: Int64],
              refreshedNodes: Set<NSManagedObjectID>,
+             permanentlyDeletedNodes: Set<NSManagedObjectID>,
              moc: NSManagedObjectContext,
-             cloudSlot: CloudSlot,
+             cloudSlot: CloudSlotProtocol,
              progressClosure: @escaping (Int) -> Void) {
             self.dirtyNodes = dirtyNodes
             self.refreshedNodes = refreshedNodes
+            self.permanentlyDeletedNodes = permanentlyDeletedNodes
             self.moc = moc
             self.cloudSlot = cloudSlot
             self.progressClosure = progressClosure
@@ -219,7 +209,7 @@ public final class RefreshingNodesService {
         let (nodeIdentifier, dirtyIndex, isFolder, shouldBeRefreshed) = ctx.moc.performAndWait {
             guard let node = ctx.moc.object(with: nodeID) as? Node else {
                 assertionFailure("should never happen")
-                return (NodeIdentifier("", ""), Int64(0), false, false)
+                return (NodeIdentifier("", "", ""), Int64(0), false, false)
             }
             return (node.identifierWithinManagedObjectContext, 
                     node.dirtyIndex,
@@ -233,7 +223,8 @@ public final class RefreshingNodesService {
         }
         
         guard isFolder else {
-            return try await refreshFileNode(nodeIdentifier: nodeIdentifier,
+            return try await refreshFileNode(nodeManagedObjectID: nodeID,
+                                             nodeIdentifier: nodeIdentifier,
                                              rootFolderIdentifier: rootFolderIdentifier,
                                              refreshingContext: ctx)
         }
@@ -243,23 +234,32 @@ public final class RefreshingNodesService {
         // we don't handle the missing parent here because root has no parent by design
         if let rootFolderIdentifier, nodeIdentifier == rootFolderIdentifier {
             _ = try await withCheckedThrowingContinuation { continuation in
-                ctx.cloudSlot.scanNode(nodeIdentifier, handler: continuation.resume(with:))
+                ctx.cloudSlot.scanNode(rootFolderIdentifier, linkProcessingErrorTransformer: { $1 }, handler: continuation.resume(with:))
             }
         }
         
-        try await refreshFolderNode(folderIdentifier: nodeIdentifier,
+        try await refreshFolderNode(nodeManagedObjectID: nodeID,
+                                    folderIdentifier: nodeIdentifier,
                                     rootFolderIdentifier: rootFolderIdentifier,
                                     refreshingContext: ctx)
     }
     
-    private static func refreshFileNode(nodeIdentifier: NodeIdentifier,
+    private static func refreshFileNode(nodeManagedObjectID: NSManagedObjectID,
+                                        nodeIdentifier: NodeIdentifier,
                                         rootFolderIdentifier: NodeIdentifier?,
                                         refreshingContext ctx: RefreshingContext) async throws {
         
         // File is marked as fresh if its metadata is available. The file metadata is usually fetched when enumerating its parent.
         // The exception is when parent is unknown to metadata DB (it was created during disconnection) so we need to fetch it explicitely.
+        guard let refreshedNode = try await fetchNodeMetadataHandlingMissingParentError(nodeIdentifier: nodeIdentifier, refreshingContext: ctx)
+        else {
+            await ctx.moc.perform {
+                let node = ctx.moc.object(with: nodeManagedObjectID)
+                markNodeAsPermanentlyDeleted(node, refreshingContext: ctx)
+            }
+            return try await refreshNodes(rootFolderIdentifier: rootFolderIdentifier, refreshingContext: ctx)
+        }
         
-        let refreshedNode = try await fetchNodeMetadataHandlingMissingParentError(nodeIdentifier: nodeIdentifier, refreshingContext: ctx)
         try ctx.moc.performAndWait {
             let previousDirtyIndes = refreshedNode.dirtyIndex
             refreshedNode.dirtyIndex = 0
@@ -268,36 +268,68 @@ public final class RefreshingNodesService {
             assert(wasInserted)
             ctx.dirtyNodes.removeValue(forKey: refreshedNode.objectID)
             ctx.progressClosure(ctx.dirtyNodes.count)
-#if HAS_QA_FEATURES
-            Log.debug("[Dirty nodes sync] Refreshed file \(refreshedNode.objectID) with dirty index \(previousDirtyIndes), \(ctx.dirtyNodes.count) more dirty nodes to go",
-                      domain: .syncing)
-#endif
+
+            if shouldLogDebugInfo {
+                Log.debug("[Dirty nodes sync] Refreshed file \(refreshedNode.objectID) with dirty index \(previousDirtyIndes), \(ctx.dirtyNodes.count) more dirty nodes to go",
+                          domain: .syncing)
+            }
         }
         
-        return try await refreshNodes(rootFolderIdentifier: rootFolderIdentifier,
-                                      refreshingContext: ctx)
+        return try await refreshNodes(rootFolderIdentifier: rootFolderIdentifier, refreshingContext: ctx)
     }
     
-    private static func refreshFolderNode(folderIdentifier: NodeIdentifier,
+    private static func refreshFolderNode(nodeManagedObjectID: NSManagedObjectID,
+                                          folderIdentifier: NodeIdentifier,
                                           rootFolderIdentifier: NodeIdentifier?,
                                           refreshingContext ctx: RefreshingContext) async throws {
         
         // Folder is marked as fresh if its metadata is available plus it has fetched all its children and saved their metadata.
-        // The folder metadata is usually fetched when enumerating its parent. However, there are exceptions.
-        // One of them is the root folder, which is fresh if both its metadata and the children are fetched.
-        // The other one is the folder whose parent is unknown to metadata DB (it was created during disconnection) so we need to fetch it explicitely.
+        // The folder metadata is usually fetched when enumerating its parent. However, there are exceptions:
+        // 1. Root folder, which is fresh if both its metadata and the children are fetched.
+        //    This case is covered in special handling in `refreshNodes`.
+        // 2. Folder whose parent is unknown to metadata DB (it was created during disconnection) so we need to fetch it explicitely.
+        //    This case is covered in `fetchFolderNodeChildrenHandlingMissingParentError`, in the `HandlingMissingParentError` part.
+        // 3. Folder whose parent was permanently deleted, so its metadata was never fetched alongside its children.
+        //    We cover this case below, see `shouldRefreshMetadata`.
+
+        let shouldRefreshMetadata = await ctx.moc.perform {
+            guard let node = ctx.moc.object(with: nodeManagedObjectID) as? Node,
+                  let parentObjectID = node.parentLink?.objectID
+            else { return false }
+            return ctx.permanentlyDeletedNodes.contains(parentObjectID)
+        }
         
-        let (folder, refreshedChildren) = try await fetchFolderNodeChildrenHandlingMissingParentError(
+        if shouldRefreshMetadata {
+            let folder = try await fetchNodeMetadataHandlingMissingParentError(nodeIdentifier: folderIdentifier, refreshingContext: ctx)
+            guard let folder else {
+                await ctx.moc.perform {
+                    let node = ctx.moc.object(with: nodeManagedObjectID)
+                    markNodeAsPermanentlyDeleted(node, refreshingContext: ctx)
+                }
+                return try await refreshNodes(rootFolderIdentifier: rootFolderIdentifier, refreshingContext: ctx)
+            }
+        }
+        
+        guard let (folder, refreshedChildren): (Node, [Node]) = try await fetchFolderNodeChildrenHandlingMissingParentError(
             folderIdentifier: folderIdentifier, refreshingContext: ctx
-        )
+        ) else {
+            await ctx.moc.perform {
+                let node = ctx.moc.object(with: nodeManagedObjectID)
+                markNodeAsPermanentlyDeleted(node, refreshingContext: ctx)
+            }
+            return try await refreshNodes(rootFolderIdentifier: rootFolderIdentifier, refreshingContext: ctx)
+        }
         
-        try ctx.moc.performAndWait {
+        try await ctx.moc.perform {
             let refreshedFiles: [Node] = refreshedChildren.compactMap { $0 as? File }
-#if HAS_QA_FEATURES
-            let refreshedObjectIDsWithDirtyIndex = refreshedFiles.map {
-                "\($0.dirtyIndex)"
-            }.joined(separator: ", ")
-#endif
+
+            var refreshedObjectIDsWithDirtyIndex = ""
+            if shouldLogDebugInfo {
+                refreshedObjectIDsWithDirtyIndex = refreshedFiles.map {
+                    "\($0.dirtyIndex)"
+                }.joined(separator: ", ")
+            }
+
             let folderDirtyIndex = folder.dirtyIndex
             let refreshedFilesWithParent = refreshedFiles.appending(folder)
             refreshedFilesWithParent.forEach { $0.dirtyIndex = 0 }
@@ -311,10 +343,11 @@ public final class RefreshingNodesService {
                 ctx.dirtyNodes.removeValue(forKey: $0)
             }
             ctx.progressClosure(ctx.dirtyNodes.count)
-#if HAS_QA_FEATURES
-            Log.info("[Dirty nodes sync] Refreshed folder \(folder.objectID) with dirtyIndex \(folderDirtyIndex) alongside its \(refreshedFiles.count) children files with indexes: \(refreshedObjectIDsWithDirtyIndex). \(refreshedChildren.count - refreshedFiles.count) children folders to go. \(ctx.dirtyNodes.count) more dirty nodes to go",
-                     domain: .syncing)
-#endif
+
+            if shouldLogDebugInfo {
+                Log.info("[Dirty nodes sync] Refreshed folder \(folder.objectID) with dirtyIndex \(folderDirtyIndex) alongside its \(refreshedFiles.count) children files with indexes: \(refreshedObjectIDsWithDirtyIndex). \(refreshedChildren.count - refreshedFiles.count) children folders to go. \(ctx.dirtyNodes.count) more dirty nodes to go",
+                         domain: .syncing)
+            }
         }
         
         try await refreshNodes(rootFolderIdentifier: rootFolderIdentifier, refreshingContext: ctx)
@@ -322,28 +355,39 @@ public final class RefreshingNodesService {
     
     private static func fetchNodeMetadataHandlingMissingParentError(
         nodeIdentifier: NodeIdentifier, refreshingContext ctx: RefreshingContext
-    ) async throws -> Node {
+    ) async throws -> Node? {
         try await performHandlingMissingParentError(shareID: nodeIdentifier.shareID, refreshingContext: ctx) {
-            try await withCheckedThrowingContinuation { continuation in
-                ctx.cloudSlot.scanNode(nodeIdentifier,
-                                   linkProcessingErrorTransformer: ErrorWithLink.init(link:error:),
-                                   handler: continuation.resume(with:))
+            do {
+                return try await withCheckedThrowingContinuation { continuation in
+                    ctx.cloudSlot.scanNode(nodeIdentifier,
+                                           linkProcessingErrorTransformer: ErrorWithLink.init(link:error:),
+                                           handler: continuation.resume(with:))
+                }
+            } catch {
+                // identify the permanently deleted file error, we need to handle it gracefully
+                guard let responseError = error as? ResponseError, responseError.responseCode == 2501 else { throw error }
+                return nil
             }
         }
     }
     
     private static func fetchFolderNodeChildrenHandlingMissingParentError(
         folderIdentifier: NodeIdentifier, refreshingContext ctx: RefreshingContext
-    ) async throws -> (Node, [Node]) {
-        try await performHandlingMissingParentError(shareID: folderIdentifier.shareID, refreshingContext: ctx) {
-            let (parent, children) = try await withCheckedThrowingContinuation { continuation in
-                fetchChildren(
-                    folderIdentifier: folderIdentifier, cloudSlot: ctx.cloudSlot, pageToFetch: 0, pageSize: 150,
-                    alreadyFetchedChildren: [], moc: ctx.moc, handler: continuation.resume(with:)
-                )
+    ) async throws -> (Node, [Node])? {
+        do {
+            return try await performHandlingMissingParentError(shareID: folderIdentifier.shareID, refreshingContext: ctx) {
+                let (parent, children) = try await withCheckedThrowingContinuation { continuation in
+                    fetchChildren(
+                        folderIdentifier: folderIdentifier, cloudSlot: ctx.cloudSlot, pageToFetch: 0, pageSize: 150,
+                        alreadyFetchedChildren: [], moc: ctx.moc, handler: continuation.resume(with:)
+                    )
+                }
+                try await ensureChildrenHaveProperParent(parent: parent, children: children, refreshingContext: ctx)
+                return (parent, children)
             }
-            try await ensureChildrenHaveProperParent(parent: parent, children: children, refreshingContext: ctx)
-            return (parent, children)
+        } catch {
+            guard let responseError = error as? ResponseError, responseError.responseCode == 2501 else { throw error }
+            return nil
         }
         
     }
@@ -354,15 +398,23 @@ public final class RefreshingNodesService {
         do {
             return try await operation()
         } catch {
+            
             let (errorWithLink, parentLinkID) = try extractLinks(from: error)
             
             // the operation has failed because of missing parent node in the DB, let's fetch it!
             // we recurs into the same method for fetching parent because there might be a whole chain of missing parents
             _ = try await performHandlingMissingParentError(shareID: shareID, refreshingContext: ctx) {
-                let parentIdentifier = NodeIdentifier(parentLinkID, shareID)
-                let (parent, children) = try await fetchNodeAndChildrenOfUnknownParent(
+                // VolumeID not used in macOS at the moment
+                let parentIdentifier = NodeIdentifier(parentLinkID, shareID, "")
+                guard let (parent, children) = try await fetchMetadataAndChildrenOfUnknownParentFolder(
                     nodeIdentifier: parentIdentifier, refreshingContext: ctx
-                )
+                ) else {
+                    // the node is not permanently deleted, but its parent is permanently deleted
+                    // this should never happen, so let's return an original error
+                    assertionFailure("The existing child must have the parent that's not permanently deleted")
+                    // throwing back the original error
+                    throw errorWithLink.error
+                }
                 
                 return try ctx.moc.performAndWait {
                     // this is basically a sanity check
@@ -383,6 +435,17 @@ public final class RefreshingNodesService {
         }
     }
     
+    private static func markNodeAsPermanentlyDeleted(
+        _ node: NSManagedObject, refreshingContext ctx: RefreshingContext
+    ) {
+        ctx.dirtyNodes.removeValue(forKey: node.objectID)
+        var wasInserted = ctx.refreshedNodes.insert(node.objectID).inserted
+        assert(wasInserted)
+        wasInserted = ctx.permanentlyDeletedNodes.insert(node.objectID).inserted
+        assert(wasInserted)
+        ctx.progressClosure(ctx.dirtyNodes.count)
+    }
+    
     private static func extractLinks(from error: Error) throws -> (ErrorWithLink, String) {
         guard let errorWithLink = error as? ErrorWithLink else { throw error }
         let nsError = errorWithLink.error as NSError
@@ -397,15 +460,21 @@ public final class RefreshingNodesService {
         return (errorWithLink, parentLinkID)
     }
     
-    private static func fetchNodeAndChildrenOfUnknownParent(
+    private static func fetchMetadataAndChildrenOfUnknownParentFolder(
         nodeIdentifier: NodeIdentifier, refreshingContext ctx: RefreshingContext
-    ) async throws -> (parent: Node, children: [Node]) {
-        let node = try await withCheckedThrowingContinuation { continuation in
-            ctx.cloudSlot.scanNode(nodeIdentifier,
-                                   linkProcessingErrorTransformer: ErrorWithLink.init(link:error:),
-                                   handler: continuation.resume(with:))
+    ) async throws -> (parent: Node, children: [Node])? {
+        let node: Node
+        do {
+            node = try await withCheckedThrowingContinuation { continuation in
+                ctx.cloudSlot.scanNode(nodeIdentifier,
+                                       linkProcessingErrorTransformer: ErrorWithLink.init(link:error:),
+                                       handler: continuation.resume(with:))
+            }
+        } catch {
+            // identify the permanently deleted file error, we need to handle it gracefully
+            guard let responseError = error as? ResponseError, responseError.responseCode == 2501 else { throw error }
+            return nil
         }
-        
         guard let parent = node as? Folder else {
             assertionFailure("This should never happen, the parent is always a folder")
             return (parent: node, children: [])
@@ -431,8 +500,13 @@ public final class RefreshingNodesService {
         }
         try await noLongerChildren.forEach { node in
             let nodeIdentifier = await ctx.moc.perform { node.identifierWithinManagedObjectContext }
-            let refreshedNode = try await fetchNodeMetadataHandlingMissingParentError(nodeIdentifier: nodeIdentifier, refreshingContext: ctx)
-            
+            guard let refreshedNode = try await fetchNodeMetadataHandlingMissingParentError(nodeIdentifier: nodeIdentifier, refreshingContext: ctx)
+            else {
+                return await ctx.moc.perform {
+                    markNodeAsPermanentlyDeleted(node, refreshingContext: ctx)
+                }
+            }
+
             // if node is a file and it was dirty, we can mark is as refreshed
             if refreshedNode is File, ctx.dirtyNodes[refreshedNode.objectID] != nil {
                 try ctx.moc.performAndWait {
@@ -443,25 +517,26 @@ public final class RefreshingNodesService {
                     assert(wasInserted)
                     ctx.dirtyNodes.removeValue(forKey: refreshedNode.objectID)
                     ctx.progressClosure(ctx.dirtyNodes.count)
-#if HAS_QA_FEATURES
-                    Log.debug("[Dirty nodes sync] Refreshed file \(refreshedNode.objectID) with dirty index \(previousDirtyIndes), \(ctx.dirtyNodes.count) more dirty nodes to go",
-                              domain: .syncing)
-#endif
+
+                    if shouldLogDebugInfo {
+                        Log.debug("[Dirty nodes sync] Refreshed file \(refreshedNode.objectID) with dirty index \(previousDirtyIndes), \(ctx.dirtyNodes.count) more dirty nodes to go",
+                                  domain: .syncing)
+                    }
                 }
             }
-        #if HAS_QA_FEATURES
-            // sanity check
-            await ctx.moc.perform {
-                guard refreshedNode.state != .deleted else { return }
-                assert(refreshedNode.parentLink?.identifierWithinManagedObjectContext != parent.identifierWithinManagedObjectContext)
+            if shouldLogDebugInfo {
+                // sanity check
+                await ctx.moc.perform {
+                    guard refreshedNode.state != .deleted else { return }
+                    assert(refreshedNode.parentLink?.identifierWithinManagedObjectContext != parent.identifierWithinManagedObjectContext)
+                }
             }
-        #endif
         }        
     }
     
     // swiftlint:disable:next function_parameter_count
     private static func fetchChildren(folderIdentifier: NodeIdentifier,
-                                      cloudSlot: CloudSlot,
+                                      cloudSlot: CloudSlotProtocol,
                                       pageToFetch: Int,
                                       pageSize: Int,
                                       alreadyFetchedChildren: [Node],

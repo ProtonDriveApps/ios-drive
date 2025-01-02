@@ -22,9 +22,12 @@ final class PhotosNotificationsPermissionsContainer {
     private let controller: NotificationsPermissionsController
     private var coordinator: NotificationsPermissionsCoordinator?
 
-    init(tower: Tower, windowScene: UIWindowScene, backupAvailableController: PhotosBackupUploadAvailableController) {
-        let commonFactory = NotificationsPermissionsFactory()
-        let flowController = commonFactory.makeFlowController()
+    init(
+        tower: Tower,
+        windowScene: UIWindowScene,
+        backupAvailableController: PhotosBackupUploadAvailableController,
+        flowController: NotificationsPermissionsFlowController
+    ) {
         controller = PhotosNotificationsPermissionsFactory().makeController(tower: tower, flowController: flowController, backupAvailableController: backupAvailableController)
         startPermissionsCoordinator(flowController: flowController, windowScene: windowScene)
     }

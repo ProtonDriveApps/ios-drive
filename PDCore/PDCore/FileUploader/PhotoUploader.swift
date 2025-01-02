@@ -19,8 +19,11 @@ import Foundation
 import Combine
 import CoreData
 import ProtonCoreKeymaker
+import ProtonCoreObservability
 
 public final class PhotoUploader: MyFilesFileUploader {
+    public typealias PhotoID = String
+
     private let featureFlags: FeatureFlagsRepository
     private let deletedPhotosIdentifierStore: DeletedPhotosIdentifierStoreResource
     private let skippableCache: PhotosSkippableCache
@@ -31,6 +34,7 @@ public final class PhotoUploader: MyFilesFileUploader {
     private let protectionResource: ProtectionResource
     private let measurementsQueue = DispatchQueue(label: "PhotoUploader.measurementsQueue")
     private var measurementRepositories = [String: PhotoUploadMeasurementRepository]()
+    public let photoUploadedNotifier: PhotoUploadedNotifier
     private var cancellables = Set<AnyCancellable>()
 
     public init(
@@ -46,7 +50,8 @@ public final class PhotoUploader: MyFilesFileUploader {
         durationMeasurementRepository: DurationMeasurementRepository,
         filesMeasurementRepository: FileUploadFilesMeasurementRepositoryProtocol,
         measurementRepositoryFactory: PhotoUploadMeasurementRepositoryFactory,
-        protectionResource: ProtectionResource
+        protectionResource: ProtectionResource,
+        photoUploadedNotifier: PhotoUploadedNotifier
     ) {
         self.deletedPhotosIdentifierStore = deletedPhotosIdentifierStore
         self.childQueues = childQueues
@@ -56,6 +61,7 @@ public final class PhotoUploader: MyFilesFileUploader {
         self.filesMeasurementRepository = filesMeasurementRepository
         self.measurementRepositoryFactory = measurementRepositoryFactory
         self.protectionResource = protectionResource
+        self.photoUploadedNotifier = photoUploadedNotifier
         super.init(concurrentOperations: concurrentOperations, fileUploadFactory: fileUploadFactory, filecleaner: filecleaner, moc: moc, dispatchQueue: dispatchQueue)
         setUpMeasurements()
     }
@@ -94,13 +100,23 @@ public final class PhotoUploader: MyFilesFileUploader {
         case photoParenIsNotUploaded
     }
 
-    override func handleGlobalSuccess(fileDraft: FileDraft, completion: @escaping OnUploadCompletion) {
+    override func handleGlobalSuccess(
+        fileDraft: FileDraft,
+        retryCount: Int,
+        completion: @escaping OnUploadCompletion
+    ) {
+        photoUploadedNotifier.uploadCompleted(fileDraft: fileDraft)
         markUploadingFileAsSkippable(fileDraft.file)
         measureSuccess(of: fileDraft)
-        super.handleGlobalSuccess(fileDraft: fileDraft, completion: completion)
+        super.handleGlobalSuccess(fileDraft: fileDraft, retryCount: retryCount, completion: completion)
     }
 
-    override func handleGlobalError(_ error: Error, fileDraft: FileDraft, retryCount: Int, completion: @escaping OnUploadCompletion) {
+    override func handleGlobalError(
+        _ error: Error,
+        fileDraft: FileDraft,
+        retryCount: Int,
+        completion: @escaping OnUploadCompletion
+    ) {
         guard !(error is NSManagedObject.NoMOCError) else {
             return
         }
@@ -111,7 +127,7 @@ public final class PhotoUploader: MyFilesFileUploader {
             // Once the device is unlocked, this failed file will be picked up and added to the queue again.
             return
         }
-
+        
         let uploadID = fileDraft.uploadID
         let file = fileDraft.file
 
@@ -124,14 +140,14 @@ public final class PhotoUploader: MyFilesFileUploader {
                 handleRetryOnError(responseError, file: file, retryCount: retryCount, uploadID: uploadID, completion: completion)
             } else {
                 cancelOperation(id: uploadID)
-                deleteUploadingFile(file)
+                deleteUploadingFile(file, error: PhotosFailureUserError.connectionError)
                 handleDefaultError(error, completion: completion)
                 measureFailure(of: fileDraft)
             }
 
         } else if error is NSManagedObject.InvalidState {
             cancelOperation(id: uploadID)
-            deleteUploadingFile(file)
+            deleteUploadingFile(file, error: nil)
             handleDefaultError(error, completion: completion)
             measureFailure(of: fileDraft)
         } else if error is AlreadyCommittedFileError {
@@ -140,14 +156,32 @@ public final class PhotoUploader: MyFilesFileUploader {
             let overestimatedRetryCount = retryCount + 3
             if checkNonServerErrorIsRetriable(error), overestimatedRetryCount < maximumRetries {
                 handleRetryOnError(error, file: file, retryCount: overestimatedRetryCount, uploadID: uploadID, completion: completion)
-                return
+            } else {
+                cancelOperation(id: uploadID)
+                let userError = mapToUserError(error: error)
+                deleteUploadingFile(file, error: userError)
+                handleDefaultError(error, completion: completion)
+                measureFailure(of: fileDraft)
             }
-
-            cancelOperation(id: uploadID)
-            deleteUploadingFile(file)
-            handleDefaultError(error, completion: completion)
-            measureFailure(of: fileDraft)
         }
+        
+        // This function does not call the super, thus it needs to report the error here, unlike the
+        // success case which is reported in the base class.
+        ObservabilityEnv.report(
+            .uploadSuccessRateEvent(
+                status: .failure,
+                retryCount: retryCount,
+                fileDraft: fileDraft)
+        )
+
+    }
+    
+    private func mapToUserError(error: Error) -> PhotosFailureUserError? {
+        if let uploadError = error as? FileUploaderError,
+           case .insuficientSpace = uploadError {
+            return .driveStorageFull
+        }
+        return error as? PhotosFailureUserError
     }
 
     override public func pauseAllUploads() {
@@ -173,15 +207,15 @@ public final class PhotoUploader: MyFilesFileUploader {
         return false
     }
 
-    override public func deleteUploadingFile(_ file: File) {
+    override public func deleteUploadingFile(_ file: File, error: PhotosFailureUserError? = nil) {
         guard let photo = file as? Photo else {
             Log.error(file.invalidState("The File should be a Photo."), domain: .uploader)
             assert(false, "The File should be a Photo.")
             return
         }
         let cloudIdentifier = photo.iCloudID()
-        defer { deletedPhotosIdentifierStore.increment(cloudIdenfier: cloudIdentifier) }
-        super.deleteUploadingFile(file)
+        defer { deletedPhotosIdentifierStore.increment(cloudIdentifier: cloudIdentifier, error: error) }
+        super.deleteUploadingFile(file, error: error)
     }
     
     public func markUploadingFileAsSkippable(_ file: File) {

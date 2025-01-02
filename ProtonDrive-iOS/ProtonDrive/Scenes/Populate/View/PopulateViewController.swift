@@ -15,40 +15,40 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import UIKit
 import Combine
 import PDCore
-import ProtonCoreUIFoundations
+import PDLocalization
 import PDUIComponents
+import ProtonCoreUIFoundations
 import SwiftUI
+import UIKit
 
-final class PopulateViewController: UIViewController {
+final class PopulateViewController: UIViewController, NukeCacheRequesting, LogoutRequesting {
     private lazy var spinner = ViewHosting {
-        SpinnerTextView(text: "Getting things ready...")
+        SpinnerTextView(text: Localization.populate_loading_text)
     }
 
-    var viewModel: PopulateViewModel!
+    var viewModel: PopulateViewModelProtocol!
 
     override public func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = ColorProvider.BackgroundNorm
         view.addSubview(spinner)
         spinner.fillSuperview()
-        viewModel.viewDidLoad()
-
-        #if DEBUG
-        modifyModalFlowsInTests()
-        #endif
-    }
-}
-
-#if DEBUG
-extension PopulateViewController {
-    
-    func modifyModalFlowsInTests() {
-        OnboardingFlowTestsManager.defaultOnboardingInTestsIfNeeded()
-        OneDollarUpsellFlowTestsManager.defaultUpsellInTestsIfNeeded()
+        populate()
     }
 
+    private func populate() {
+        Task {
+            do {
+                try await viewModel.populate()
+            } catch let error as NukingCacheError {
+                Log.error(error, domain: .application)
+                requestCacheNuke()
+            } catch {
+                Log.error(error, domain: .application)
+                requestLogout()
+            }
+        }
+    }
 }
-#endif

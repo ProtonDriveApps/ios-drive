@@ -18,6 +18,7 @@
 import TrustKit
 import ProtonCoreEnvironment
 import ProtonCoreServices
+import PDLoadTesting
 
 public final class TrustKitFactory {
     public typealias Delegate = TrustKitDelegate
@@ -25,16 +26,23 @@ public final class TrustKitFactory {
 
     @discardableResult
     public static func make(isHardfail: Bool, delegate: TrustKitDelegate) -> TrustKit? {
-        #if HAS_QA_FEATURES
-        let configuration = TrustKitWrapper.configuration(hardfail: isHardfail,
-                                                          ignoreMacUserDefinedTrustAnchors: true)
-        #else
-        let configuration = TrustKitWrapper.configuration(hardfail: isHardfail)
-        #endif
+        let configuration = makeConfiguration(isHardfail: isHardfail)
         let trustKit = make(configuration: configuration, delegate: delegate)
         PMAPIService.trustKit = trustKit
         PMAPIService.noTrustKit = trustKit == nil
-        return trustKit
+        if LoadTesting.isEnabled {
+            return nil
+        } else {
+            return trustKit
+        }
+    }
+
+    private static func makeConfiguration(isHardfail: Bool) -> [String: Any] {
+        if Constants.buildType.isQaOrBelow {
+            return TrustKitWrapper.configuration(hardfail: isHardfail, ignoreMacUserDefinedTrustAnchors: true)
+        } else {
+            return TrustKitWrapper.configuration(hardfail: isHardfail)
+        }
     }
 
     private static func make(configuration: Configuration, delegate: TrustKitDelegate) -> TrustKit? {

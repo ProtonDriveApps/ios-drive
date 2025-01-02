@@ -17,6 +17,7 @@
 
 import Combine
 import Foundation
+import PDLocalization
 
 struct EditableData: Equatable {
     let expiration: Date?
@@ -113,9 +114,9 @@ final class EditLinkViewModel: ObservableObject {
     }
 
     var maximumPasswordSize: Int { 50 }
-    var sectionTitle: String { "Privacy settings" }
-    var passwordTitle: String { "Password protection" }
-    var passwordPlaceholder: String { "Password" }
-    var expirationDateTitle: String { "Expiration date" }
-    var datePickerPlaceholder: String { "Date" }
+    var sectionTitle: String { Localization.edit_link_section_title }
+    var passwordTitle: String { Localization.edit_link_title_password }
+    var passwordPlaceholder: String { Localization.edit_link_placeholder_password }
+    var expirationDateTitle: String { Localization.edit_link_title_expiration_date }
+    var datePickerPlaceholder: String { Localization.edit_link_placeholder_date_picker }
 }

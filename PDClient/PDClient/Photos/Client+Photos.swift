@@ -67,6 +67,7 @@ extension Client: PhotoShareCreator {
             body: .init(
                 share: .init(
                     addressID: photoShare.addressID,
+                    addressKeyID: photoShare.addressKeyID,
                     key: photoShare.shareKey,
                     passphrase: photoShare.sharePassphrase,
                     passphraseSignature: photoShare.sharePassphraseSignature

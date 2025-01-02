@@ -34,7 +34,7 @@ final class CoreDataUploadBlockUrlDataSource: UploadBlockUrlDataSource {
 
     func getBlockUrl(for block: VerifiableBlock) async throws -> URL {
         return try managedObjectContext.performAndWait {
-            let revisionId = RevisionIdentifier(share: block.identifier.shareId, file: block.identifier.nodeId, revision: block.identifier.revisionId)
+            let revisionId = RevisionIdentifier(share: block.identifier.shareId, file: block.identifier.nodeId, revision: block.identifier.revisionId, volume: block.identifier.volumeId)
             guard let revision = storage.fetchRevision(id: revisionId, moc: managedObjectContext) else {
                 throw UploadVerifierError.missingRevision
             }

@@ -15,8 +15,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-struct ProtonDocumentIdentifier: Equatable {
-    let volumeId: String
-    let linkId: String
-    let email: String
+public struct ProtonDocumentIdentifier: Equatable {
+    public let volumeId: String
+    public let shareId: String
+    public let linkId: String
+    public let email: String
 }

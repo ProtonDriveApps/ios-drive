@@ -18,10 +18,15 @@
 import Foundation
 import Combine
 
+public struct DeletedPhotoInfo {
+    public let cloudIdentifier: String?
+    public let error: PhotosFailureUserError?
+}
+
 public protocol DeletedPhotosIdentifierStoreResource {
-    func increment(cloudIdenfier: String?)
+    func increment(cloudIdentifier: String?, error: PhotosFailureUserError?)
     func getCount() -> Int
-    func getCloudIdentifiers() -> [String?]
+    func getCloudIdentifiersAndError() -> [DeletedPhotoInfo]
     func reset()
 
     var count: AnyPublisher<Int, Never> { get }
@@ -30,7 +35,7 @@ public protocol DeletedPhotosIdentifierStoreResource {
 public final class InMemoryDeletedPhotosIdentifierStoreResource: DeletedPhotosIdentifierStoreResource {
     private let accessQueue = DispatchQueue(label: "InMemoryDeletedPhotosIdentifierStoreResource", attributes: .concurrent)
     private let subject = CurrentValueSubject<Int, Never>(0)
-    private var cloudIdentifiers = [String?]()
+    private var cloudIdentifiersAndError: [DeletedPhotoInfo] = []
 
     public var count: AnyPublisher<Int, Never> {
         subject.eraseToAnyPublisher()
@@ -38,11 +43,14 @@ public final class InMemoryDeletedPhotosIdentifierStoreResource: DeletedPhotosId
     
     public init() { }
 
-    public func increment(cloudIdenfier: String?) {
+    public func increment(cloudIdentifier: String?, error: PhotosFailureUserError?) {
         Log.debug("Incrementing failed photos counter", domain: .photosProcessing)
         accessQueue.async(flags: .barrier) {
-            self.subject.send(self.subject.value + 1)
-            self.cloudIdentifiers.append(cloudIdenfier)
+            if !self.cloudIdentifiersAndError.contains(where: { $0.cloudIdentifier == cloudIdentifier }) {
+                self.cloudIdentifiersAndError.append(.init(cloudIdentifier: cloudIdentifier, error: error))
+                self.subject.send(self.subject.value + 1)
+            }
+            
         }
      }
 
@@ -59,13 +67,13 @@ public final class InMemoryDeletedPhotosIdentifierStoreResource: DeletedPhotosId
         Log.debug("Resetting failed photos count", domain: .photosProcessing)
         accessQueue.async(flags: .barrier) {
             self.subject.send(0)
-            self.cloudIdentifiers.removeAll()
+            self.cloudIdentifiersAndError.removeAll()
         }
     }
-
-    public func getCloudIdentifiers() -> [String?] {
-        return accessQueue.sync {
-            cloudIdentifiers
+    
+    public func getCloudIdentifiersAndError() -> [DeletedPhotoInfo] {
+        accessQueue.sync {
+            cloudIdentifiersAndError
         }
     }
 }

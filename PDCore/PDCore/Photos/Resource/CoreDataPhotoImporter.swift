@@ -30,7 +30,8 @@ public class CoreDataPhotoImporter: PhotoImporter {
     }
 
     public func `import`(_ asset: PhotoAsset, folder: Folder, encryptingFolder: EncryptingFolder) throws -> Photo {
-        let signersKit = try signersKitFactory.make(forSigner: .main)
+        let addressID = try folder.getContextShareAddressID()
+        let signersKit = try signersKitFactory.make(forAddressID: addressID)
         let root = folder
         let parent = encryptingFolder
 
@@ -45,6 +46,7 @@ public class CoreDataPhotoImporter: PhotoImporter {
 
         // Create new Photo
         let coreDataPhoto: Photo = NSManagedObject.newWithValue(uuid.uuidString, by: "id", in: moc)
+        coreDataPhoto.volumeID = folder.volumeID
         coreDataPhoto.name = encryptedName
         coreDataPhoto.nodeHash = hash
         coreDataPhoto.mimeType = asset.mimeType.value
@@ -55,7 +57,7 @@ public class CoreDataPhotoImporter: PhotoImporter {
         coreDataPhoto.contentKeyPacket = contentPack.contentKeyPacketBase64
         coreDataPhoto.contentKeyPacketSignature = contentPack.contentKeyPacketSignature
         coreDataPhoto.clientUID = uploadClientUIDProvider.getUploadClientUID()
-        coreDataPhoto.shareID = parent.shareID
+        coreDataPhoto.setShareID(parent.shareID)
         coreDataPhoto.signatureEmail = signersKit.address.email
         coreDataPhoto.nameSignatureEmail = signersKit.address.email
         coreDataPhoto.uploadID = uuid
@@ -82,6 +84,7 @@ public class CoreDataPhotoImporter: PhotoImporter {
 
         // Create new Revision
         let coreDataPhotoRevision: PhotoRevision = NSManagedObject.newWithValue(uuid.uuidString, by: "id", in: moc)
+        coreDataPhotoRevision.volumeID = folder.volumeID
         coreDataPhotoRevision.exif = encryptedExif.base64EncodedString()
         coreDataPhotoRevision.uploadState = .created
         coreDataPhotoRevision.uploadSize = try asset.url.getFileSize()

@@ -17,6 +17,7 @@
 
 import SwiftUI
 import ProtonCoreUIFoundations
+import PDLocalization
 
 enum MenuItem {
     case myFiles
@@ -25,6 +26,7 @@ enum MenuItem {
     case settings
     case feedback
     case logout
+    case sharedByMe
 
     var icon: Image {
         switch self {
@@ -40,26 +42,30 @@ enum MenuItem {
             return IconProvider.bug
         case .logout:
             return IconProvider.arrowOutFromRectangle
+        case .sharedByMe:
+            return IconProvider.link
         }
     }
 
     var text: String {
         switch self {
         case .myFiles:
-            return "My files"
+            return Localization.menu_text_my_files
         case .trash:
-            return "Trash"
+            return Localization.menu_text_trash
         case .servicePlans:
-            return "Subscription"
+            return Localization.menu_text_subscription
         case .settings:
-            return "Settings"
+            return Localization.menu_text_settings
         case .feedback:
-            return "Report a problem"
+            return Localization.menu_text_feedback
         case .logout:
-            return "Sign out"
+            return Localization.menu_text_logout
+        case .sharedByMe:
+            return Localization.menu_text_shared_by_me
         }
     }
-    
+
     var identifier: String {
         switch self {
         case .myFiles:
@@ -74,6 +80,8 @@ enum MenuItem {
             return "MenuItem.feedback"
         case .logout:
             return "MenuItem.logout"
+        case .sharedByMe:
+            return "MenuItem.sharedByMe"
         }
     }
 }

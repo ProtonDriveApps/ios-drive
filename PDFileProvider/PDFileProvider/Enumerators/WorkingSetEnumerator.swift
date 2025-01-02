@@ -38,7 +38,7 @@ public final class WorkingSetEnumerator: NSObject, NSFileProviderEnumerator, Enu
     private let pageSize: Int
 
     var shouldReenumerateItems: Bool
-    var changeObserver: FileProviderChangeObserver?
+    let changeObserver: FileProviderChangeObserver?
 
     public init(tower: Tower,
                 pageSize: Int = 5_000,
@@ -94,5 +94,5 @@ extension WorkingSetEnumerator: EnumeratorWithChanges {
     internal var shareID: String { self.model.shareID }
     internal var eventsManager: EventsSystemManager { self.tower }
     internal var fileSystemSlot: FileSystemSlot { self.tower.fileSystemSlot! }
-    internal var cloudSlot: CloudSlot { self.tower.cloudSlot! }
+    internal var cloudSlot: CloudSlotProtocol { self.tower.cloudSlot! }
 }

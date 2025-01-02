@@ -20,6 +20,7 @@ import Combine
 import PDCore
 import PDUIComponents
 import SwiftUI
+import PDLocalization
 
 class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration {
     @Published var node: Node
@@ -40,21 +41,25 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
     let iconName: String
     var name: String
     var isFavorite: Bool { node.isFavorite }
-    var isSavedForOffline: Bool { node.isMarkedOfflineAvailable || node.isInheritingOfflineAvailable }
-    var isDownloaded: Bool { node.isDownloaded }
+    var isAvailableOffline: Bool { node.isAvailableOffline }
     var isShared: Bool { node.isShared }
+    var hasSharing: Bool { featureFlagsController.hasSharing }
+    var hasDirectShare: Bool { node.hasDirectShare }
     var lastModified: Date { node.modifiedDate }
     var size: Int { node.size }
-    
+
     let progressDirection: ProgressTracker.Direction?
     let isDisabled = false
     let selectionModel: CellSelectionModel?
     let id: NodeIdentifier
-    
+    var featureFlagsController: FeatureFlagsControllerProtocol
+
     var actionButtonAction: () -> Void = { }
     var retryUploadAction: () -> Void = { }
     var cancelUploadAction: () -> Void = { }
-    
+
+    var isSharedWithMeRoot: Bool
+
     init(from node: Node,
          fileTypeAsset: FileTypeAsset = .shared,
          selectionModel: CellSelectionModel? = nil,
@@ -62,8 +67,11 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
          progressTracker: ProgressTracker? = nil,
          downloadProgresses: [ProgressTracker] = [],
          thumbnailLoader: ThumbnailLoader,
-         nodeStatePolicy: NodeStatePolicy)
-    {
+         nodeStatePolicy: NodeStatePolicy,
+         featureFlagsController: FeatureFlagsControllerProtocol,
+         isSharedWithMeRoot: Bool
+    ) {
+        self.isSharedWithMeRoot = isSharedWithMeRoot
         self.progressesAvailable = progressesAvailable
         self.node = node
         self.selectionModel = selectionModel
@@ -76,6 +84,7 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
         self.progressTracker = progressTracker
         self.progressDirection = progressTracker?.direction
         self.thumbnailViewModel = ThumbnailImageViewModel(node: node, loader: thumbnailLoader)
+        self.featureFlagsController = featureFlagsController
         self.progressCancellable = progressTracker?.progressPublisher()?
             .receive(on: DispatchQueue.main)
             .throttle(for: .milliseconds(300), scheduler: DispatchQueue.main, latest: true)
@@ -91,7 +100,7 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
     private var thumbnail: Thumbnail? {
         file?.activeRevision?.thumbnails.first
     }
-    
+
     var buttons: [NodeCellButton] {
         if self.uploadFailed || self.uploadWaiting || self.uploadPaused {
             return [.init(type: .cancel, action: self.cancelUploadAction),
@@ -100,23 +109,23 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
             return [.init(type: .menu, action: self.actionButtonAction)]
         }
     }
-    
+
     var isInProgress: Bool {
         self.progress?.isFinished == false && self.progress?.isCancelled == false
     }
-    
+
     var uploadFailed: Bool {
         nodeStatePolicy.isUploadFailed(for: node, progressTracker: progressTracker, areProgressesAvailable: progressesAvailable)
     }
-    
+
     var uploadWaiting: Bool {
         nodeStatePolicy.isUploadWaiting(for: node)
     }
-    
+
     var uploadPaused: Bool {
         nodeStatePolicy.isUploadPaused(for: node)
     }
-    
+
     private static let percentFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .percent
@@ -128,33 +137,37 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
     var secondLineSubtitle: String {
         switch self.progress {
         case _ where uploadPaused:
-            return "Paused"
+            return Localization.progress_status_paused
             
         case _ where uploadWaiting:
-            return "Waiting..."
-            
+            return Localization.progress_status_waiting
+
         case .none where self.uploadFailed:
-            return "Upload failed"
+            return Localization.progress_status_upload_failed
 
         case .some where self.progressCompleted != 0 && self.isInProgress:
-            return percentageDownloaded + (self.progressDirection == .upstream ? " uploaded..." : " downloaded")
+            if progressDirection == .upstream {
+                return Localization.progress_status_uploaded(percent: percentageDownloaded)
+            } else {
+                return Localization.progress_status_downloaded(percent: percentageDownloaded)
+            }
             
         case .some where self.isInProgress:
-            return self.progressDirection == .upstream ? "Uploading..." : "Downloading..."
-            
+            return self.progressDirection == .upstream ? Localization.progress_status_uploading : Localization.progress_status_downloading
+
         case .some, .none:
-            return self.isFolderDownloading ? "Downloading..." : self.defaultSecondLineSubtitle
+            return self.isFolderDownloading ? Localization.progress_status_downloading : self.defaultSecondLineSubtitle
         }
     }
 
     var isFolderDownloading: Bool {
-        (nodeType == .folder) && isSavedForOffline && !isDownloaded
+        (nodeType == .folder) && (node.isMarkedOfflineAvailable || node.isInheritingOfflineAvailable) && !node.isDownloaded
     }
 
     var percentageDownloaded: String {
         Self.percentFormatter.string(from: self.progressCompleted as NSNumber) ?? ""
     }
-    
+
     var nodeType: NodeType {
         if node is Folder {
             return .folder
@@ -162,4 +175,44 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
             return .file
         }
     }
+
+    var isSharedCollaboratively: Bool {
+        node.isSharedWithMeRoot
+    }
+
+    var defaultSecondLineSubtitle: String {
+        if isSharedWithMeRoot {
+            return "\(inviter)•\(sharingDate)"
+        } else {
+            let suffix = "Modified \(DateStamper.stamp(for: self.lastModified))"
+            if nodeType == .file && self.size > 0 {
+                let sizeString = ByteCountFormatter.storageSizeString(forByteCount: Int64(self.size))
+                return "\(sizeString), \(suffix)"
+            } else {
+                return suffix
+            }
+        }
+    }
+
+    var creator: String {
+        inviter
+    }
+
+    private var inviter: String {
+        node.directShares.first?.members.first?.inviter ?? ""
+    }
+
+    private var sharingDate: String {
+        guard let membership = node.directShares.first?.members.first else { return "" }
+        return DateFormatter.sharedWithMe.string(from: membership.modifyTime)
+    }
+}
+
+extension DateFormatter {
+    static let sharedWithMe = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, yyyy"
+        return formatter
+
+    }()
 }

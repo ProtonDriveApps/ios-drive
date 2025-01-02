@@ -15,9 +15,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import UIKit
 import SwiftUI
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
+#if os(iOS)
 struct TableViewAccessor: UIViewRepresentable, Equatable {
     static func == (lhs: TableViewAccessor, rhs: TableViewAccessor) -> Bool {
         lhs.isVisible == rhs.isVisible
@@ -64,3 +68,4 @@ extension UIView {
         }
     }
 }
+#endif

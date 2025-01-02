@@ -34,16 +34,16 @@ final class FilesAndPhotosUploadsRestartingQuotaUpdatesInteractor: QuotaUpdatesI
 
         let waitingFiles = storage.fetchWaitingFiles(maxSize: storageLeft)
         for waitingFile in waitingFiles {
-            guard storageLeft > Constants.minimalSpaceForAllowingUpload else { break }
+            guard storageLeft > Constants.Photos.minimalSpaceForAllowingUpload else { break }
             storageLeft -= waitingFile.size
             fileUploader.upload(waitingFile.file) { _ in }
         }
 
         guard storageLeft > 0 else { return }
 
-        let waitingPhotos = storage.fetchWaitingPhotos(maxSize: storageLeft)
+        let waitingPhotos = storage.fetchMyWaitingPhotos(maxSize: storageLeft)
         for waitingPhoto in waitingPhotos {
-            guard storageLeft > Constants.minimalSpaceForAllowingUpload else { break }
+            guard storageLeft > Constants.Photos.minimalSpaceForAllowingUpload else { break }
             storageLeft -= waitingPhoto.size
             photosUploader?.upload(waitingPhoto.photo) { _ in }
         }

@@ -27,7 +27,8 @@ extension Decryptor {
                               _ decryptionKeys: [DecryptionKey],
                               _ keyPacket: Data,
                               _ verificationKeys: [ArmoredKey],
-                              _ signature: String) throws
+                              _ signature: String,
+                              isSignatureVerifiable: (() -> Bool)) throws
     {
         // prepare files
         if FileManager.default.fileExists(atPath: cleartextUrl.path) {
@@ -54,8 +55,7 @@ extension Decryptor {
         do {
             try Decryptor.verifyStreamWithEncryptedSignature(verificationKeyRing, decryptionKeyRing, verifyFileHandle, signature)
         } catch {
-            // This method is only used on the context of decrypting Blocks from the FileProvider
-            Log.error(SignatureError(error, "Block - stream"), domain: .encryption)
+            Log.error(SignatureError(error, "Block - stream"), domain: .encryption, sendToSentryIfPossible: isSignatureVerifiable())
         }
     }
 }

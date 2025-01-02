@@ -50,8 +50,10 @@ public class PostLoginServices {
         let towerStorage = storage ?? StorageManager(suite: appGroup, sessionVault: initialServices.sessionVault)
         #if os(macOS)
         let towerSyncStorage: SyncStorageManager = syncStorage ?? SyncStorageManager(suite: appGroup)
+        let populatedStateController: PopulatedStateControllerProtocol = PopulatedStateControllerStub()
         #else
         let towerSyncStorage: SyncStorageManager? = nil
+        let populatedStateController: PopulatedStateControllerProtocol = PopulatedStateController()
         #endif
 
         self.tower = Tower(storage: towerStorage,
@@ -67,7 +69,8 @@ public class PostLoginServices {
                            eventObservers: eventObservers,
                            eventProcessingMode: eventProcessingMode,
                            uploadVerifierFactory: uploadVerifierFactory,
-                           localSettings: initialServices.localSettings)
+                           localSettings: initialServices.localSettings,
+                           populatedStateController: populatedStateController)
 
         self.initialServices.networkClient.publisher(for: \.currentActivity)
             .dropFirst() // ignore the current value
@@ -86,11 +89,11 @@ public class PostLoginServices {
     }
     
     #if os(macOS)
-    public func signOutAsync(domainConnectionManager: DomainConnectionManagerProtocol) async {
+    public func signOutAsync(domainOperationsService: DomainOperationsServiceProtocol) async {
         // disconnect FileProvider extensions
-        try? await domainConnectionManager.tearDownDomain()
+        try? await domainOperationsService.tearDownConnectionToAllDomains()
         // close Tower properly, close session on BE and remove credentials from session vault
-        await tower.signOut(cacheCleanupStrategy: domainConnectionManager.cacheCleanupStrategy)
+        await tower.signOut(cacheCleanupStrategy: domainOperationsService.cacheCleanupStrategy)
         // intentionally, we don't clear the main key
         
         // remove session from networking object when signing out
@@ -132,29 +135,11 @@ public class PostLoginServices {
     #endif
     
     public func onLaunchAfterSignIn() {
-        tower.start(runEventsProcessor: false)
+        tower.start(options: [])
     }
 
     private func currentActivityChanged(_ activity: NSUserActivity) {
         Log.info("event: \(activity.activityType)", domain: .events)
         self.activityObserver(activity)
-    }
-}
-
-extension PostLoginServices.Errors: LocalizedError {
-
-    public var errorDescription: String? {
-        switch self {
-        case let .addDomainFailed(error):
-            return "Adding new domain failed with error: \(error.localizedDescription), code \((error as NSError).code)"
-        case let .getDomainsFailed(error): return "Getting file provider extension's domains failed with error: \(error.localizedDescription), code \((error as NSError).code)"
-        case let .disconnectDomainFailed(error): return "Disconnecting domain failed with error: \(error.localizedDescription), code \((error as NSError).code)"
-        case let .removeDomainFailed(error): return "Removing domain failed with error: \(error.localizedDescription), code \((error as NSError).code)"
-        case .reconnectDomainFailed: return "Reconnecting domain failed"
-        case .identifyDomainFailed(let error):
-            return "Identifying domain failed with error: \(error.localizedDescription)"
-        case let .postMigrationStepFailed(error?): return "Post-migration step (cleanup) failed with error: \(error.localizedDescription), code \((error as NSError).code)"
-        case .postMigrationStepFailed: return "Post-migration step (cleanup) failed without error"
-        }
     }
 }

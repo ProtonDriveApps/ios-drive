@@ -16,55 +16,53 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDLocalization
 
 protocol PhotosStorageViewDataFactory {
     func makeData(state: QuotaState, progress: PhotosBackupProgress?) -> PhotosStorageViewData
 }
 
 final class LocalizedPhotosStorageViewDataFactory: PhotosStorageViewDataFactory {
-    private let numberFormatter: NumberFormatterResource
-
-    init(numberFormatter: NumberFormatterResource) {
-        self.numberFormatter = numberFormatter
-    }
 
     func makeData(state: QuotaState, progress: PhotosBackupProgress?) -> PhotosStorageViewData {
         switch state {
         case .fiftyPercentFull:
             return PhotosStorageViewData(
                 severance: .info,
-                title: "Your storage is **50%** full",
+                title: Localization.photo_storage_fifty_percent_title,
                 items: nil,
                 text: nil,
-                storageButton: "Get storage",
-                closeButton: "Not now"
+                storageButton: Localization.general_get_storage,
+                closeButton: Localization.general_not_now,
+                accessibilityIdentifier: "PhotosStorageViewData.FiftyPercentFullStorage"
             )
         case .eightyPercentFull:
             return PhotosStorageViewData(
                 severance: .warning,
-                title: "Your storage is more than **80%** full",
+                title: Localization.photo_storage_eighty_percent_title,
                 items: nil,
                 text: nil,
-                storageButton: "Get storage",
-                closeButton: "Not now"
+                storageButton: Localization.general_get_storage,
+                closeButton: Localization.general_not_now,
+                accessibilityIdentifier: "PhotosStorageViewData.EightyPercentFullStorage"
             )
         case .full:
             return PhotosStorageViewData(
                 severance: .error,
-                title: "Storage full",
+                title: Localization.photo_storage_full_title,
                 items: makeItems(from: progress),
-                text: "To continue the process you need to upgrade your plan.",
-                storageButton: "Get more storage",
-                closeButton: nil
+                text: Localization.photo_storage_full_subtitle,
+                storageButton: Localization.general_get_more_storage,
+                closeButton: nil,
+                accessibilityIdentifier: "PhotosStorageViewData.FullStorage"
             )
         }
     }
 
     private func makeItems(from progress: PhotosBackupProgress?) -> String? {
         if let count = progress?.inProgress {
-            let number = numberFormatter.format(count)
-            let items = count == 1 ? "item" : "items"
-            return "**\(number)** \(items) left"
+            let items = "**\(Localization.item_plural_type_with_num(num: count).lowercased())**"
+            return Localization.photo_storage_item_left(items: items)
         } else {
             return nil
         }

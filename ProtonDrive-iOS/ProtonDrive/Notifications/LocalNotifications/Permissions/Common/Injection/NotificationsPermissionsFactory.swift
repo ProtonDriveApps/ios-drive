@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import UIKit
+import PDCore
 
 struct NotificationsPermissionsFactory {
     func makeFlowController() -> NotificationsPermissionsFlowController {
@@ -23,7 +24,7 @@ struct NotificationsPermissionsFactory {
     }
 
     func makePermissionsCoordinator(controller: NotificationsPermissionsController, flowController: NotificationsPermissionsFlowController, windowScene: UIWindowScene, type: NotificationsPermissionsType) -> NotificationsPermissionsCoordinator {
-        return NotificationsPermissionsCoordinator(windowScene: windowScene, controller: flowController, viewControllerFactory: {
+        return NotificationsPermissionsCoordinator(windowScene: windowScene, controller: flowController, type: type, viewControllerFactory: {
             makePermissionsView(controller: controller, flowController: flowController, type: type)
         }, transparentViewControllerFactory: makeTransparentViewController)
     }

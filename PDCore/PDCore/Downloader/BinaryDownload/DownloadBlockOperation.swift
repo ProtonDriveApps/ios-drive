@@ -33,9 +33,12 @@ class DownloadBlockOperation: DownloadBinaryOperation {
         super.init(url: downloadTaskURL)
 
         self.completionBlock = { [weak self] in
-            self?.progress?.completedUnitCount = 1
-            self?.task = nil
-            self?.session?.invalidateAndCancel()
+            guard let self else { return }
+            self.progress?.completedUnitCount = 1
+            self.task = nil
+            if !Constants.downloaderUsesSharedURLSession {
+                self.session?.invalidateAndCancel()
+            }
         }
     }
     

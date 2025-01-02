@@ -23,20 +23,30 @@ import PDCore
 typealias UploadSectionItem = UploadSectionViewModel.UploadSectionItem
 
 extension NodeRowActionMenuViewModel {
-    func uploadSection(environment: Environment) -> ContextMenuItemGroup {
-        let uploadViewModel = UploadSectionViewModel(folder: node as! Folder)
-        let items = uploadViewModel.items.map { item in
-            uploadRows(for: item, vm: uploadViewModel, environment: environment)
+    func uploadSection(environment: Environment) -> [ContextMenuItemGroup] {
+        let uploadViewModel = UploadSectionViewModel(folder: node as! Folder, featureFlagsController: environment.featureFlagsController)
+        let nonEmptyGroups = uploadViewModel.items.filter { !$0.isEmpty }
+        let groups = nonEmptyGroups.map { group in
+            let items = group.map { item in
+                uploadRows(for: item, vm: uploadViewModel, environment: environment)
+            }
+            return ContextMenuItemGroup(id: "uploadSection\(items[0].id)", items: items)
         }
-        return ContextMenuItemGroup(items: items)
+        return groups
     }
 
     private func uploadRows(for type: UploadSectionItem, vm: UploadSectionViewModel, environment: Environment) -> ContextMenuItem {
         switch type {
-        case .uploadPhoto: return uploadPhoto(type, vm: vm, environment: environment)
-        case .takePhoto: return takePhoto(type, vm: vm, environment: environment)
-        case .createFolder: return createFolder(type, vm: vm, environment: environment)
-        case .importFile: return importFile(type, vm: vm, environment: environment)
+        case .uploadPhoto:
+            return uploadPhoto(type, vm: vm, environment: environment)
+        case .takePhoto: 
+            return takePhoto(type, vm: vm, environment: environment)
+        case .createFolder:
+            return createFolder(type, vm: vm, environment: environment)
+        case .importFile: 
+            return importFile(type, vm: vm, environment: environment)
+        case .createDocument:
+            return createDocument(type, vm: vm, environment: environment)
         }
     }
     
@@ -61,6 +71,12 @@ extension NodeRowActionMenuViewModel {
     private func importFile(_ type: UploadSectionItem, vm: UploadSectionViewModel, environment: Environment) -> ContextMenuItem {
         ContextMenuItem(sectionItem: type, handler: {
             environment.importFile()
+        })
+    }
+
+    private func createDocument(_ type: UploadSectionItem, vm: UploadSectionViewModel, environment: Environment) -> ContextMenuItem {
+        ContextMenuItem(sectionItem: type, handler: {
+            environment.createDocument(with: vm.folder.identifier)
         })
     }
 

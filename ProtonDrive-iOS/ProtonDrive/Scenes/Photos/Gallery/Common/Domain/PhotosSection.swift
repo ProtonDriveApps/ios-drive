@@ -25,18 +25,22 @@ struct PhotosSection: Equatable {
     struct Photo: Equatable {
         let id: PhotoId
         let isShared: Bool
+        let hasDirectShare: Bool
         let isVideo: Bool
         let captureTime: Date
         let isAvailableOffline: Bool
         let isDownloading: Bool
+        let burstChildrenCount: Int?
 
-        init(id: PhotoId, isShared: Bool = false, isVideo: Bool = false, captureTime: Date, isAvailableOffline: Bool = false, isDownloading: Bool = false) {
+        init(id: PhotoId, isShared: Bool = false, hasDirectShare: Bool = false, isVideo: Bool = false, captureTime: Date, isAvailableOffline: Bool = false, isDownloading: Bool = false, burstChildrenCount: Int? = nil) {
             self.id = id
             self.isShared = isShared
+            self.hasDirectShare = hasDirectShare
             self.isVideo = isVideo
             self.captureTime = captureTime
             self.isAvailableOffline = isAvailableOffline
             self.isDownloading = isDownloading
+            self.burstChildrenCount = burstChildrenCount
         }
     }
 }

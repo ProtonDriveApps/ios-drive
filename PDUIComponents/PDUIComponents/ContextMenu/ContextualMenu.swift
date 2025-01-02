@@ -32,11 +32,12 @@ public struct ContextMenuModel {
     }
 }
 
-public struct ContextMenuItemGroup {
-    
+public struct ContextMenuItemGroup: Identifiable {
+    public let id: String
     public internal(set) var items: [ContextMenuItem]
     
-    public init(items: [ContextMenuItem]) {
+    public init(id: String, items: [ContextMenuItem]) {
+        self.id = id
         self.items = items
     }
 }

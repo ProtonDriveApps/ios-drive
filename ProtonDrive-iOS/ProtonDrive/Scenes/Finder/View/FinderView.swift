@@ -19,6 +19,7 @@ import SwiftUI
 import PDCore
 import ProtonCoreUIFoundations
 import PDUIComponents
+import PDLocalization
 
 struct FinderView<ViewModel: ObservableFinderViewModel>: View {
     @Environment(\.acknowledgedNotEnoughStorage) var acknowledgedNotEnoughStorage
@@ -63,10 +64,10 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
         }
         .errorToast(location: .bottomWithOffset(errorToastSize), errors: errorsWithToast)
         .presentView(item: $presentedSheet, style: .sheet) {
-            self.coordinator.go(to: $0).environmentObject(root).environmentObject(TabBarViewModel())
+            self.coordinator.go(to: $0).environmentObject(root).environmentObject(TabBarViewViewModel())
         }
         .presentView(item: presentModal, style: .fullScreenWithBlender) {
-            self.coordinator.go(to: $0).environmentObject(root).environmentObject(TabBarViewModel())
+            self.coordinator.go(to: $0).environmentObject(root).environmentObject(TabBarViewViewModel())
         }
         .dialogSheet(item: $menuItem, model: dialogSheetModel())
         .onReceive(root.closeCurrentSheet) { _ in
@@ -143,7 +144,7 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
     @ViewBuilder private var uploadDisclaimer: some View {
         if vm.isUploadDisclaimerVisible {
             NotificationBanner(
-                message: "For uninterrupted uploads, keep the app open. Uploads will pause when the app is in the background.",
+                message: Localization.upload_disclaimer,
                 style: .inverted,
                 padding: .vertical,
                 closeBlock: vm.closeUploadDisclaimer
@@ -181,7 +182,7 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
     }
 
     @ViewBuilder private var uploadingBar: some View {
-        UploadingSectionHeader(title: "Uploading")
+        UploadingSectionHeader(title: Localization.general_uploading)
         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
         .padding(.vertical, 8)
         .modifier(HeaderShadowModifier(visible: $headersShadowVisible1))
@@ -200,6 +201,14 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
         switch menuItem {
         case let .trash(nodeVM, isNavigationMenu):
             return nodeVM.makeTrashAlert(environment: .init(menuItem: $menuItem, presentationMode: isNavigationMenu ? presentationMode : nil, cancelSelection: (vm as? (any HasMultipleSelection))?.cancelSelection))
+        case let .removeMe(vm: nodeVM):
+            return nodeVM.makeRemoveMeAlert(
+                environment: .init(
+                    menuItem: $menuItem,
+                    presentationMode: nil,
+                    cancelSelection: (vm as? (any HasMultipleSelection))?.cancelSelection
+                )
+            )
         }
     }
 
@@ -260,15 +269,24 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
 
     @ViewBuilder
     private func contextMenuView(selectionViewModel: FinderViewModelWithSelection) -> some View {
-        let editSectionEnvironment = EditSectionEnvironment(menuItem: $menuItem, modal: presentModal, sheet: $presentedSheet, acknowledgedNotEnoughStorage: acknowledgedNotEnoughStorage)
+        let editSectionEnvironment = EditSectionEnvironment(
+            menuItem: $menuItem,
+            modal: presentModal,
+            sheet: $presentedSheet,
+            acknowledgedNotEnoughStorage: acknowledgedNotEnoughStorage,
+            featureFlagsController: coordinator.featureFlagsController
+        )
         let nodes = selectionViewModel.selectedNodes()
         if let node = nodes.map(\.node).first {
             let nodeRowViewModel = NodeRowActionMenuViewModel(node: node, model: vm)
 
             ContextMenuView(icon: IconProvider.threeDotsHorizontal, color: ColorProvider.IconNorm, viewModifier: EmptyModifier()) {
-                ForEach(nodeRowViewModel.editSection(environment: editSectionEnvironment).items) { item in
-                    ContextMenuItemActionView(item: item)
-                        .accessibility(identifier: "ContextMenuItemActionView.\(item.identifier)")
+                ForEach(nodeRowViewModel.editSections(environment: editSectionEnvironment)) { group in
+                    ForEach(group.items) { item in
+                        ContextMenuItemActionView(item: item)
+                            .accessibility(identifier: "ContextMenuItemActionView.\(item.identifier)")
+                    }
+                    Divider()
                 }
                 if node is File {
                     Divider()

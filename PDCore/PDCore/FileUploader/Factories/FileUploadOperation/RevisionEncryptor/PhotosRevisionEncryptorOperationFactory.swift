@@ -21,9 +21,14 @@ import CoreData
 class PhotosRevisionEncryptorOperationFactory: DiscreteRevisionEncryptorOperationFactory {
     private let globalQueue: OperationQueue
 
-    init(signersKitFactory: SignersKitFactoryProtocol, moc: NSManagedObjectContext, globalQueue: OperationQueue) {
+    init(
+        signersKitFactory: SignersKitFactoryProtocol,
+        moc: NSManagedObjectContext,
+        globalQueue: OperationQueue,
+        parallelEncryption: Bool
+    ) {
         self.globalQueue = globalQueue
-        super.init(signersKitFactory: signersKitFactory, moc: moc)
+        super.init(signersKitFactory: signersKitFactory, moc: moc, parallelEncryption: parallelEncryption)
     }
 
     override func makeRevisionEncryptor(_ progress: Progress, blocks: Int) -> RevisionEncryptor {

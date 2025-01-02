@@ -24,8 +24,10 @@ import ProtonCoreLog
 import ProtonCoreAuthentication
 import ProtonCoreKeymaker
 import ProtonCoreServices
-import ProtonCoreCryptoGoImplementation
+import ProtonCoreCryptoGoInterface
+import ProtonCoreCryptoPatchedGoImplementation
 import PDUploadVerifier
+import PDLoadTesting
 
 class FileProviderExtension: NSFileProviderExtension {
     private let itemProvider: ItemProvider
@@ -38,8 +40,13 @@ class FileProviderExtension: NSFileProviderExtension {
     private let logConfigurator: LogsConfigurator
 
     override init() {
-        injectDefaultCryptoImplementation()
+        inject(cryptoImplementation: ProtonCoreCryptoPatchedGoImplementation.CryptoGoMethodsImplementation.instance)
         PDFileManager.configure(with: Constants.appGroup)
+        // Inject build type to enable build differentiation. (Build macros don't work in SPM)
+        PDCore.Constants.buildType = Constants.buildType
+        #if LOAD_TESTING && !SSL_PINNING
+        LoadTesting.enableLoadTesting()
+        #endif
 
         self.keymaker = DriveKeymaker(autolocker: nil, keychain: DriveKeychain.shared)
         self.itemProvider = ItemProvider()
@@ -68,7 +75,14 @@ class FileProviderExtension: NSFileProviderExtension {
                 userDefault: Constants.appGroup.userDefaults,
                 clientConfig: Constants.clientApiConfig,
                 keymaker: keymaker,
-                sessionRelatedCommunicatorFactory: SessionRelatedCommunicatorForExtension.init
+                sessionRelatedCommunicatorFactory: { sessionStore, authenticator, onSessionReceived in
+                    SessionRelatedCommunicatorForExtension(
+                        userDefaultsConfiguration: .forFileProviderExtension(userDefaults: Constants.appGroup.userDefaults),
+                        sessionStorage: sessionStore,
+                        childSessionKind: .fileProviderExtension,
+                        onChildSessionObtained: onSessionReceived
+                    )
+                }
             )
 
             let listener = FileProviderEventsListener(manager: NSFileProviderManager.default)
@@ -83,7 +97,7 @@ class FileProviderExtension: NSFileProviderExtension {
                     self?.currentActivityChanged(activity)
                 }
             )
-            self.postLoginServices?.tower.start(runEventsProcessor: true)
+            self.postLoginServices?.tower.start(options: .runEventsProcessor)
         }
     }
 

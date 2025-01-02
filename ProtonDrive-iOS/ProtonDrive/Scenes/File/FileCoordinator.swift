@@ -19,6 +19,7 @@ import Combine
 import Foundation
 import PDCore
 import UIKit
+import PDLocalization
 
 final class FileCoordinator {
     private var dismissHandler: () -> Void
@@ -38,7 +39,7 @@ final class FileCoordinator {
         let model = preparePreviewModel(file: file, share: share)
         presentingFileModel = model
         model.decrypt()
-        presentDecryptionAlert(title: "Decrypting...", message: nil, cancelAction: model.cancel)
+        presentDecryptionAlert(title: Localization.general_decrypting, message: nil, cancelAction: model.cancel)
     }
 }
 
@@ -81,7 +82,7 @@ extension FileCoordinator {
     // Can't show alert right after dismiss previous alert
     private func presentDecryptionAlert(title: String, message: String?, cancelAction: @escaping (() -> Void)) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        let action = UIAlertAction(title: "Cancel", style: .default) { _ in
+        let action = UIAlertAction(title: Localization.general_cancel, style: .default) { _ in
             cancelAction()
         }
         alert.addAction(action)
@@ -91,7 +92,7 @@ extension FileCoordinator {
     
     private func presentDecryptionFailedAlert(error: String) {
         dismissAlertController { [weak self] in
-            self?.presentDecryptionAlert(title: "Decryption failed", message: error, cancelAction: {
+            self?.presentDecryptionAlert(title: Localization.general_decryption_failed, message: error, cancelAction: {
                 self?.presentingFileModel?.cleanup()
             })
         }

@@ -26,29 +26,29 @@ final class SideMenuCoordinator {
     private weak var settingsVC: UIViewController?
 
     private let myFilesFactory: () -> UIViewController
+    private let sharedByMeFactory: () -> UIViewController
     private let trashFactory: () -> UIViewController
     private let offlineAvailableFactory: () -> UIViewController
     private let settingsFactory: () -> UIViewController
-    private let accountFactory: () -> UIViewController
     private let plansFactory: () -> UIViewController
 
     init(
         viewController: SideMenuViewController,
         myFilesFactory: @escaping () -> UIViewController,
+        sharedByMeFactory: @escaping () -> UIViewController,
         trashFactory: @escaping () -> UIViewController,
         offlineAvailableFactory: @escaping () -> UIViewController,
         settingsFactory: @escaping () -> UIViewController,
-        accountFactory: @escaping () -> UIViewController,
         plansFactory: @escaping () -> UIViewController
     ) {
         self.viewController = viewController
         self.myFilesFactory = myFilesFactory
+        self.sharedByMeFactory = sharedByMeFactory
         self.trashFactory = trashFactory
         self.offlineAvailableFactory = offlineAvailableFactory
         self.settingsFactory = settingsFactory
-        self.accountFactory = accountFactory
         self.plansFactory = plansFactory
-        
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(orientationDidChange),
@@ -63,8 +63,6 @@ final class SideMenuCoordinator {
             showMyFiles()
         case .servicePlans:
             showServicePlans()
-        case .accountManager:
-            showAccountManager()
         case .trash:
             showTrash()
         case .offlineAvailable:
@@ -75,6 +73,8 @@ final class SideMenuCoordinator {
             showFeedback()
         case .logout:
             showLogout()
+        case .sharedByMe:
+            showSharedByMe()
         }
     }
 }
@@ -84,20 +84,16 @@ private extension SideMenuCoordinator {
         delegate.sideMenu(viewController, didSelectViewController: myFilesFactory())
     }
 
+    func showSharedByMe() {
+        delegate.sideMenu(viewController, didSelectViewController: sharedByMeFactory())
+    }
+
     func showServicePlans() {
         delegate.sideMenu(viewController, didSelectViewController: plansFactory())
     }
 
     func showTrash() {
         delegate.sideMenu(viewController, didSelectViewController: trashFactory())
-    }
-
-    func showAccountManager() {
-        let vc = accountFactory()
-        vc.modalPresentationStyle = .overCurrentContext
-        vc.modalTransitionStyle = .crossDissolve
-        vc.view.backgroundColor = .clear
-        viewController.present(vc, animated: false, completion: nil)
     }
 
     func showSettings() {
@@ -132,10 +128,10 @@ private extension SideMenuCoordinator {
         optionMenu.popoverPresentationController?.sourceRect = viewController.view.frame
         viewController.present(optionMenu, animated: true, completion: nil)
     }
-    
+
     @objc
     func orientationDidChange() {
-        guard 
+        guard
             settingsVC != nil, // Make sure setting view is presented
             let topVC = UIApplication.shared.topViewController(),
             let popover = topVC.presentationController as? UIPopoverPresentationController,

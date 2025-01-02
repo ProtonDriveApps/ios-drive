@@ -15,7 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-struct CommitableRevision {
+public struct CommitableRevision {
+    let volumeID: String
     let shareID: String
     let fileID: String
     let revisionID: String

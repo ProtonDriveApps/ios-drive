@@ -19,6 +19,8 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+import UIKit
+import PDLocalization
 import Foundation
 import ProtonCoreUIFoundations
 
@@ -73,19 +75,19 @@ final class ConfirmationPasswordConfigurationViewModel: PasswordConfigurationVie
     }
 
     var title: String {
-        "Use PIN code"
+        Localization.password_config_title_use_pin
     }
 
     var buttonText: String {
-        "Save"
+        Localization.general_save
     }
 
     var caption: String {
-        "Repeat your PIN to confirm."
+        Localization.protection_pin_caption_repeat_pin_code
     }
 
     var textFieldTitle: String {
-        "Repeat your PIN code"
+        Localization.protection_pin_title_repeat_pin_code
     }
 
     var rightBarButtonImage: UIImage {

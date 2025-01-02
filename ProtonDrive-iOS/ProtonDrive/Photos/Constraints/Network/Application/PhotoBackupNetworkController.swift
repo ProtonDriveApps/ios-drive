@@ -68,7 +68,7 @@ final class PhotoBackupNetworkController: PhotoBackupNetworkControllerProtocol {
         
         Publishers.CombineLatest(settingsController.isNetworkConstrained, interactor.state)
             .map { isConstrainedToWifi, state -> NetworkConstraint? in
-                Log.debug("PhotoBackupNetworkController network state: \(state), isConstrainedToWifi: \(isConstrainedToWifi)", domain: .photosProcessing)
+                Log.info("PhotoBackupNetworkController network state: \(state), isConstrainedToWifi: \(isConstrainedToWifi)", domain: .photosProcessing)
                 switch state {
                 case .unreachable:
                     return .noConnection
@@ -82,7 +82,7 @@ final class PhotoBackupNetworkController: PhotoBackupNetworkControllerProtocol {
             }
             .removeDuplicates()
             .sink { [weak self] constraint in
-                Log.debug("PhotoBackupNetworkController constraint: \(String(describing: constraint))", domain: .photosProcessing)
+                Log.info("PhotoBackupNetworkController constraint: \(String(describing: constraint))", domain: .photosProcessing)
                 self?.constraintSubject.send(constraint)
             }
             .store(in: &cancellables)

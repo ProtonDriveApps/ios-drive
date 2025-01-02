@@ -38,16 +38,18 @@ public class Downloader: NSObject, ProgressTrackerProvider {
         }
     }
     
-    var cloudSlot: CloudSlot
+    var cloudSlot: CloudSlotProtocol
+    var storage: StorageManager
     let endpointFactory: EndpointFactory
     internal lazy var queue: OperationQueue = {
-        let queue = OperationQueue()
-        queue.maxConcurrentOperationCount = 3
+        let queue = OperationQueue(maxConcurrentOperation: Constants.maxConcurrentInflightFileDownloads,
+                                   name: "File Download - All Files")
         return queue
     }()
     
-    init(cloudSlot: CloudSlot, endpointFactory: EndpointFactory) {
+    init(cloudSlot: CloudSlotProtocol, storage: StorageManager, endpointFactory: EndpointFactory) {
         self.cloudSlot = cloudSlot
+        self.storage = storage
         self.endpointFactory = endpointFactory
     }
     
@@ -68,7 +70,7 @@ public class Downloader: NSObject, ProgressTrackerProvider {
             }
             .forEach { $0.cancel() }
     }
-    
+
     func presentOperationFor(file: File) -> Operation? {
         self.queue.operations
             .filter { !$0.isCancelled }
@@ -128,7 +130,7 @@ public class Downloader: NSObject, ProgressTrackerProvider {
             return presentOperation
         }
 
-        let operation = DownloadFileOperation(file, cloudSlot: self.cloudSlot, endpointFactory: endpointFactory) { result in
+        let operation = DownloadFileOperation(file, cloudSlot: self.cloudSlot, endpointFactory: endpointFactory, storage: storage) { result in
             result.sendNotificationIfFailure(with: Self.downloadFail)
             completion(result)
         }
@@ -143,6 +145,7 @@ public class Downloader: NSObject, ProgressTrackerProvider {
     {
         let downloadTree = DownloadTreeOperation(node: folder,
                                                  cloudSlot: self.cloudSlot,
+                                                 storage: storage,
                                                  enumeration: enumeration,
                                                  endpointFactory: endpointFactory,
                                                  completion: completion)
@@ -157,6 +160,7 @@ public class Downloader: NSObject, ProgressTrackerProvider {
     {
         let scanChildren = ScanChildrenOperation(node: folder,
                                                  cloudSlot: self.cloudSlot,
+                                                 storage: storage,
                                                  enumeration: enumeration,
                                                  endpointFactory: endpointFactory,
                                                  completion: completion)
@@ -170,6 +174,7 @@ public class Downloader: NSObject, ProgressTrackerProvider {
                           completion: @escaping (Result<[Node], Error>) -> Void) -> OperationWithProgress {
         let scanTree = ScanTreesOperation(folders: folders,
                                           cloudSlot: self.cloudSlot,
+                                          storage: storage,
                                           enumeration: enumeration,
                                           endpointFactory: endpointFactory,
                                           completion: completion)
@@ -182,6 +187,7 @@ public class Downloader: NSObject, ProgressTrackerProvider {
         try await withCheckedThrowingContinuation { continuation in
             let scanTree = ScanTreesOperation(folders: folders,
                                               cloudSlot: self.cloudSlot,
+                                              storage: storage,
                                               enumeration: enumeration,
                                               endpointFactory: endpointFactory,
                                               completion: { result in

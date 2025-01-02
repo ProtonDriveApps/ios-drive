@@ -19,15 +19,17 @@ public struct UploadingFileIdentifier {
     public let nodeId: String
     public let shareId: String
     public let revisionId: String
+    public let volumeId: String
 
     public var identifier: NodeIdentifier {
-        NodeIdentifier(nodeId, shareId)
+        NodeIdentifier(nodeId, shareId, volumeId)
     }
 
-    public init(nodeId: String, shareId: String, revisionId: String) {
+    public init(nodeId: String, shareId: String, revisionId: String, volumeId: String) {
         self.nodeId = nodeId
         self.shareId = shareId
         self.revisionId = revisionId
+        self.volumeId = volumeId
     }
 }
 

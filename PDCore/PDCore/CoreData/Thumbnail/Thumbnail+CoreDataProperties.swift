@@ -18,8 +18,9 @@
 import CoreData
 import Foundation
 
-extension Thumbnail {
-    @NSManaged public var id: String?
+extension Thumbnail: VolumeUnique {
+    @NSManaged public var id: String
+    @NSManaged public var volumeID: String
     @NSManaged public var revision: Revision
     @NSManaged public var type: ThumbnailType
     @available(*, deprecated, message: "Please use the sha256 property")
@@ -64,7 +65,7 @@ extension Thumbnail {
 }
 
 extension Thumbnail {
-    static func make(id: String? = nil, downloadURL: URL?, revision: Revision, type: ThumbnailType, hash: String, in moc: NSManagedObjectContext) -> Thumbnail {
+    static func make(id: String, downloadURL: URL?, revision: Revision, type: ThumbnailType, hash: String, in moc: NSManagedObjectContext) -> Thumbnail {
         let thumbnail = Thumbnail(context: moc)
         thumbnail.id = id
         thumbnail.downloadURL = downloadURL?.absoluteString

@@ -31,7 +31,8 @@ final class PhotosDatabaseTreeRepository: TreeRepository {
     func get() async throws -> Tree {
         Log.debug("Fetching all photos from DB", domain: .diagnostics)
         let items: [Tree.Node] = try await managedObjectContext.perform {
-            let photos = self.storageManager.fetchPrimaryPhotos(moc: self.managedObjectContext)
+            let volumeId = try self.storageManager.getMyVolumeId(in: self.managedObjectContext)
+            let photos = self.storageManager.fetchPrimaryPhotos(inVolume: volumeId, moc: self.managedObjectContext)
 
             // Group photos by iCloud identifier
             var dictionary = [String: [Photo]]()

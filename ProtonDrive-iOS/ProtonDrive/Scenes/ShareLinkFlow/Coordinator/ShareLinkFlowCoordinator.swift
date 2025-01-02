@@ -82,21 +82,23 @@ private struct RepresentableShareLinkViewController: UIViewControllerRepresentab
     // MARK: - Share Link
 
     private func makeShareLinkViewModel(
-        closeScreenSubject: PassthroughSubject<Void, Never>
+        closeScreenSubject: PassthroughSubject<Void, Never>,
+        repository: SharedLinkRepository
     ) -> ShareLinkCreatorViewModel {
-        let vm = ShareLinkCreatorViewModel(node: node, sharedLinkRepository: tower)
+        let vm = ShareLinkCreatorViewModel(node: node.identifier, sharedLinkRepository: repository, storage: tower.storage)
         vm.onErrorSharing = { closeScreenSubject.send(Void()) }
         return vm
     }
 
     func makeShareLinkViewController() -> ShareLinkCreatorViewController {
         let closeSubject = PassthroughSubject<Void, Never>()
-        let viewModel = makeShareLinkViewModel(closeScreenSubject: closeSubject)
+        let repository = makeSharedLinkRepository(with: tower)
+        let viewModel = makeShareLinkViewModel(closeScreenSubject: closeSubject, repository: repository)
         let viewController = ShareLinkCreatorViewController(viewModel: viewModel, closeSubject: closeSubject)
 
         let coordinator = ShareLinkCreatorCoordinator(
             view: viewController,
-            sharedViewControllerFactory: makeSharedLinkViewController
+            sharedViewControllerFactory: { makeSharedLinkViewController(shareURL: $0, repository: repository) }
         )
 
         viewModel.onSharedLinkObtained = coordinator.goSharedLink
@@ -104,7 +106,7 @@ private struct RepresentableShareLinkViewController: UIViewControllerRepresentab
     }
 
     // MARK: - Shared Link
-    func makeSharedLinkViewController(shareURL: ShareURL) -> UIViewController {
+    func makeSharedLinkViewController(shareURL: ShareURL, repository: SharedLinkRepository) -> UIViewController {
         let closeScreenSubject = PassthroughSubject<Void, Never>()
         let saveSubject = PassthroughSubject<Void, Never>()
         let canSavePublisher = CurrentValueSubject<Bool, Never>(false)
@@ -115,10 +117,10 @@ private struct RepresentableShareLinkViewController: UIViewControllerRepresentab
             let sharedLinkSubject = CurrentValueSubject<SharedLink, Never>(sharedLink)
 
             return SharedLinkEditorViewController(viewModel: viewModel) {
-                UIHostingController(rootView: getShareLinkView(shareURL, closeScreenSubject, saveSubject, canSavePublisher, sharedLinkSubject))
+                UIHostingController(rootView: getShareLinkView(shareURL, repository, closeScreenSubject, saveSubject, canSavePublisher, sharedLinkSubject))
             }
         } catch {
-            let model = ShareLinkDecryptionErrorModel(shareURL: shareURL, repository: tower)
+            let model = ShareLinkDecryptionErrorModel(shareURL: shareURL, repository: repository)
             let vm = ShareLinkDecryptionErrorViewModel(closeScreenSubject: closeScreenSubject.eraseToAnyPublisher(), model: model)
             return SharedLinkEditorViewController(viewModel: viewModel) {
                 UIHostingController(rootView: ShareLinkDecryptionErrorView(vm: vm))
@@ -140,13 +142,14 @@ private struct RepresentableShareLinkViewController: UIViewControllerRepresentab
 
     private func getShareLinkView(
         _ shareURL: ShareURL,
+        _ repository: SharedLinkRepository,
         _ closeScreenSubject: PassthroughSubject<Void, Never>,
         _ saveChangesSubject: PassthroughSubject<Void, Never>,
         _ isSaveEnabledPublisher: CurrentValueSubject<Bool, Never>,
         _ sharedLinkSubject: CurrentValueSubject<SharedLink, Never>
     ) -> ShareLinkView<SharedLinkView<EditLinkView>> {
         let shareURL = tower.moveToMainContext(shareURL)
-        let model = ShareLinkModel(node: node, sharedLinkSubject: sharedLinkSubject, shareURL: shareURL, repository: tower)
+        let model = ShareLinkModel(node: node, sharedLinkSubject: sharedLinkSubject, shareURL: shareURL, repository: repository, storage: tower.storage)
         let editingLinkSubject = CurrentValueSubject<EditableData, Never>(model.editable)
 
         let vm = ShareLinkViewModel(
@@ -180,4 +183,19 @@ private struct RepresentableShareLinkViewController: UIViewControllerRepresentab
         )
         return SharedLinkView(vm: vm, editingView: editView)
     }
+
+    func makeSharedLinkRepository(with tower: Tower) -> SharedLinkRepository {
+        let storage = tower.storage
+        let sessionVault = tower.sessionVault
+        let client = tower.client
+
+        let shareCreator = ShareCreator(storage: storage, sessionVault: sessionVault, cloudShareCreator: client.createShare, signersKitFactory: sessionVault, moc: storage.backgroundContext)
+        let publicLinkCreator = RemoteCachingPublicLinkCreator(client: client, storage: storage, signersKitFactory: sessionVault)
+        let publicLinkProvider = RemoteCachingPublicLinkProvider(client: tower.client, storage: tower.storage, shareCreator: shareCreator, publicLinkCreator: publicLinkCreator)
+        let publicLinkUpdater = RemoteCachingPublicLinkUpdater(client: client, storage: storage, signersKitFactory: sessionVault)
+        let shareDeleter = RemoteCachingShareDeleter(client: client, storage: storage)
+        let publicLinkDeleter = RemoteCachingPublicLinkDeleter(client: client, storage: storage, shareDeleter: shareDeleter)
+        return SharingManager(provider: publicLinkProvider, updater: publicLinkUpdater, deleter: publicLinkDeleter, shareDeleter: shareDeleter)
+    }
+
 }

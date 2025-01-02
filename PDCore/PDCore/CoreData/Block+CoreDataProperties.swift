@@ -18,12 +18,14 @@
 import Foundation
 import CoreData
 
-extension Block {
+extension Block: VolumeUnique {
 
     @nonobjc public class func fetchRequest() -> NSFetchRequest<Block> {
         return NSFetchRequest<Block>(entityName: "Block")
     }
 
+    @NSManaged public var id: String
+    @NSManaged public var volumeID: String
     @NSManaged var localPath: String? // this should be relative path, relative to some BaseURL
     @NSManaged public var index: Int
     @NSManaged public var sha256: Data
@@ -74,7 +76,7 @@ extension DownloadBlock {
         try FileManager.default.copyItem(at: intermediateUrl, to: localUrl)
         
         do {
-            try self.managedObjectContext?.saveWithParentLinkCheck()
+            try self.managedObjectContext?.saveOrRollback()
         } catch let error {
             assert(false, error.localizedDescription)
             throw error
@@ -91,7 +93,7 @@ extension DownloadBlock {
         FileManager.default.createFile(atPath: localUrl.path, contents: nil, attributes: nil)
 
         do {
-            try self.managedObjectContext?.saveWithParentLinkCheck()
+            try self.managedObjectContext?.saveOrRollback()
         } catch let error {
             assert(false, error.localizedDescription)
             throw error

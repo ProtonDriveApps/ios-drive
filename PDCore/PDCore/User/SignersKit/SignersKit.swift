@@ -28,9 +28,15 @@ public struct SignersKit {
         case noAddressFound
     }
     
-    let address: Address
-    let addressKey: AddressKey
-    let addressPassphrase: String
+    public let address: Address
+    public let addressKey: AddressKey
+    public let addressPassphrase: String
+
+    public init(address: Address, addressKey: AddressKey, addressPassphrase: String) {
+        self.address = address
+        self.addressKey = addressKey
+        self.addressPassphrase = addressPassphrase
+    }
 
     @available(*, deprecated, message: "Build directly from SessionVault")
     init(address: Address, sessionVault: SessionVault) throws {
@@ -56,11 +62,5 @@ public struct SignersKit {
             throw Errors.noAddressFound
         }
         try self.init(address: address, sessionVault: sessionVault)
-    }
-
-    init(address: Address, addressKey: AddressKey, addressPassphrase: String) {
-        self.address = address
-        self.addressKey = addressKey
-        self.addressPassphrase = addressPassphrase
     }
 }

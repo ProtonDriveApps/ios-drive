@@ -27,6 +27,7 @@ import ProtonCoreFeatureFlags
 import ProtonCoreNetworking
 import ProtonCoreServices
 import ProtonCorePasswordChange
+import PDLocalization
 
 final class SettingsAssembler {
 
@@ -108,7 +109,7 @@ final class SettingsAssembler {
     static func exportLogsButton(_ featureFlags: LocalSettings) -> PMCellSuplier? {
         guard featureFlags.driveiOSLogCollection == true && featureFlags.driveiOSLogCollectionDisabled == false else { return nil }
         let configuration = PMLoadingLabelConfiguration(
-            text: "Export logs",
+            text: Localization.setting_export_logs,
             action: {
                 let logsURL = await LogExporter().export()
                 await presentShareViewController(logs: logsURL)
@@ -141,7 +142,7 @@ final class SettingsAssembler {
 
     static var clearCacheButton: PMAboutConfiguration {
         PMAboutConfiguration(
-            title: "Clear local cache",
+            title: Localization.setting_clear_local_cache,
             action: .perform({ NotificationCenter.default.post(name: .nukeCache, object: nil) }),
             bundle: .main,
             accessibilityIdentifier: "Clear local cache"

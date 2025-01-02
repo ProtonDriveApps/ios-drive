@@ -19,6 +19,7 @@ import Foundation
 
 public protocol SyncReporting: ItemReporting {
     func update(item: ReportableSyncItem)
+    func updateTemporaryItem(id: String, with createdItem: ReportableSyncItem) throws
     func cleanSyncItems(olderThan date: Date) throws
     func cleanSyncingItems()
 }

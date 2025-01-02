@@ -22,7 +22,7 @@ protocol EnumeratorWithChanges: AnyObject {
     var shareID: String { get }
     var eventsManager: EventsSystemManager { get }
     var fileSystemSlot: FileSystemSlot { get }
-    var cloudSlot: CloudSlot { get }
+    var cloudSlot: CloudSlotProtocol { get }
     var changeObserver: FileProviderChangeObserver? { get }
     var shouldReenumerateItems: Bool { get set }
 }
@@ -177,13 +177,14 @@ extension EnumeratorWithChanges {
                         filename: "Error: Not available",
                         location: nil,
                         mimeType: $0.mimeType,
+                        fileSize: $0.size,
                         operation: .enumerateChanges,
                         state: .errored,
                         description: "Access to file attribute (e.g., file name) not available. Please retry or contact support."
                     )
                     if let syncStorage = self.fileSystemSlot.syncStorage {
                         let syncReportingController = SyncReportingController(storage: syncStorage, suite: .group(named: Constants.appGroup), appTarget: .main)
-                        try? syncReportingController.report(item: reportableSyncItem)
+                        syncReportingController.report(item: reportableSyncItem)
                     }
                     #endif
                     return nil
@@ -202,11 +203,11 @@ extension EnumeratorWithChanges {
         switch row.event.genericType {
         case .delete:
             let shareID = !row.share.isEmpty ? row.share : shareID
-            let nodeIdentifier = NodeIdentifier(row.event.inLaneNodeId, shareID)
+            let nodeIdentifier = NodeIdentifier(row.event.inLaneNodeId, shareID, "")
             itemsToDelete.append(.init(nodeIdentifier))
             
         case .updateContent, .updateMetadata, .create:
-            let nodeIdentifier = NodeIdentifier(row.event.inLaneNodeId, row.share)
+            let nodeIdentifier = NodeIdentifier(row.event.inLaneNodeId, row.share, "")
             guard let node = self.fileSystemSlot.getNode(nodeIdentifier) else {
                 Log.info("Event's node not found in storage - event has not yet been processed", domain: .events)
                 return
@@ -224,7 +225,6 @@ extension EnumeratorWithChanges {
             } else {
                 nodesToUpdate.append(node)
             }
-        default: break
         }
     }
 }

@@ -20,5 +20,5 @@ import PDCore
 protocol FolderCreator {
     typealias Result = Swift.Result<Folder, Error>
 
-    func createFolder(with name: String, completion: @escaping (Result) -> Void)
+    func createFolder(with name: String, parent: Folder, completion: @escaping (Result) -> Void)
 }

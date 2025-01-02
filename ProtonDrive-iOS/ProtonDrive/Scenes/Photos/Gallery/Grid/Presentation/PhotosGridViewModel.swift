@@ -80,11 +80,14 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
         PhotoGridViewItem(
             photoId: photo.id.nodeID,
             shareId: photo.id.shareID,
+            volumeId: photo.id.volumeID,
             isShared: photo.isShared,
+            hasDirectShare: photo.hasDirectShare,
             isVideo: photo.isVideo,
             captureTime: photo.captureTime,
             isDownloading: photo.isDownloading,
-            isAvailableOffline: photo.isAvailableOffline
+            isAvailableOffline: photo.isAvailableOffline,
+            burstChildrenCount: photo.burstChildrenCount
         )
     }
 }

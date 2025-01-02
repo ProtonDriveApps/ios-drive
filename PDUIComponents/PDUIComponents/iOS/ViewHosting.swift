@@ -16,8 +16,11 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
+#if canImport(UIKit)
 import UIKit
+#endif
 
+#if os(iOS)
 public final class ViewHosting<Content: View>: UIView {
 
     private var hostingController: UIHostingController<Content>?
@@ -46,3 +49,4 @@ public final class ViewHosting<Content: View>: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 }
+#endif

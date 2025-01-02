@@ -20,7 +20,7 @@ import PDCore
 
 struct PhotoAssetCompoundNameConflictsResult {
     let validCompounds: [PhotoAssetCompound]
-    let failedCompounds: [PhotoAssetCompound]
+    let failedCompounds: [PhotosFailedCompound]
     let conflictingItems: [PhotosFilterItem]
     let remoteItems: [PhotoRemoteDuplicateCheckItem]
 }
@@ -74,14 +74,16 @@ final class RemotePhotoNameConflictsInteractor: PhotoNameConflictsInteractor {
 
     private func makeData(from compounds: [PhotoAssetCompound]) -> PhotosFilterCompounds {
         var validItems = [PhotosFilterItem]()
-        var failedCompounds = [PhotoAssetCompound]()
+        var failedCompounds = [PhotosFailedCompound]()
         compounds.forEach { compound in
             do {
                 let item = try identifiersInteractor.getIdentifiers(from: compound)
                 validItems.append(item)
             } catch {
                 Log.error(DriveError(withDomainAndCode: error, message: error.localizedDescription), domain: .photosProcessing)
-                failedCompounds.append(compound)
+
+                let userError = mapToUserError(error: error)
+                failedCompounds.append(.init(compound: compound, error: userError))
             }
         }
         return PhotosFilterCompounds(items: validItems, failedCompounds: failedCompounds)
@@ -103,5 +105,16 @@ final class RemotePhotoNameConflictsInteractor: PhotoNameConflictsInteractor {
             }
         }
         return remoteItems
+    }
+    
+    // Errors from the interactor can be quite complex,
+    // especially those originating from the crypto library.
+    // Apply this straightforward logic to differentiate between them.
+    private func mapToUserError(error: Error) -> PhotosFailureUserError {
+        if error is ValidationError<String> {
+            return .nameValidationError
+        } else {
+            return .encryptionFailed
+        }
     }
 }

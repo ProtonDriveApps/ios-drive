@@ -73,7 +73,7 @@ class ConcreteCloudNodeDecryptor: CloudNodeDecryptor {
     func prepareDecryptionKey(node: Link) throws -> DecryptionKey {
         let parentPrivateKey: String
         let parentPassphrase: String
-        let verificationKeys = try getVerificationKeys(for: node)
+        let verificationKeys = try getVerificationKeys(for: node) + [node.nodeKey]
 
         // required parent keys
         if let parentLinkID = node.parentLinkID { // folder under root
@@ -121,7 +121,7 @@ class ConcreteCloudNodeDecryptor: CloudNodeDecryptor {
             return try Decryptor.decryptAndVerifyNodeName(
                 node.name,
                 decryptionKeys: parentDecryptionKey,
-                verificationKeys: verificationKeys
+                verificationKeys: [node.nodeKey] + verificationKeys
             ).decrypted()
         } else {
             return "root"
@@ -129,10 +129,10 @@ class ConcreteCloudNodeDecryptor: CloudNodeDecryptor {
     }
 
     func getVerificationKeys(for node: Link) throws -> [PublicKey] {
-        if let parentLinkID = node.parentLinkID { // folder under root
-            return try addressVerificationKeys[node.nameSignatureEmail ?? node.signatureEmail]! ?! "Missing verification key"
-        } else { // root
+        if node.parentLinkID == nil { // root
             return try addressVerificationKeys[share.creator] ?! "Missing verification key"
+        } else { // folder under root
+            return try addressVerificationKeys[node.nameSignatureEmail ?? node.signatureEmail]! ?! "Missing verification key"
         }
     }
 }

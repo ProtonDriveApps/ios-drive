@@ -21,4 +21,5 @@ struct PhotosRetryListRowItem: Identifiable, Equatable {
     var id: String
     var name: String
     var image: Data
+    var failureReason: String?
 }

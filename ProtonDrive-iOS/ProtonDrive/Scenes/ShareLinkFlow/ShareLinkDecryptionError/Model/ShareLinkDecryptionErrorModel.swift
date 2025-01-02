@@ -27,6 +27,14 @@ final class ShareLinkDecryptionErrorModel {
     }
 
     func deleteSecureLink(completion: @escaping (Result<Void, Error>) -> Void) {
-        repository.deleteSecureLink(shareURL, shareID: shareURL.shareID, completion: completion)
+        let identifier = shareURL.identifier
+        Task {
+            do {
+                try await repository.deletePublicLink(identifier)
+                completion(.success)
+            } catch {
+                completion(.failure(error))
+            }
+        }
     }
 }

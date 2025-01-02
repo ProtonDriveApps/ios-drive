@@ -42,10 +42,10 @@ final class LocalPhotoLibraryFetchResource: PhotoLibraryIdentifiersResource {
 
     func execute() {
         cancel()
-        let operation = CancellableBlockOperation { [weak self] in
+        let operation = AsynchronousBlockOperation { [weak self] in
             self?.measurementRepository.start()
-            let identifiers = self?.identifiersRepository.getIdentifiers() ?? []
-            DispatchQueue.main.async {
+            let identifiers = (await self?.identifiersRepository.getIdentifiers()) ?? []
+            await MainActor.run { [weak self] in
                 self?.updateSubject.send(identifiers)
                 self?.measurementRepository.stop()
             }

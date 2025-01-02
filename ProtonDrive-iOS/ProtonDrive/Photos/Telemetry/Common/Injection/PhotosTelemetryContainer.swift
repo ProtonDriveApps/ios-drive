@@ -36,6 +36,7 @@ final class PhotosTelemetryContainer {
         let backgroundTaskResultStateRepository: BackgroundTaskResultStateRepositoryProtocol
         let failedPhotosResource: DeletedPhotosIdentifierStoreResource
         let networkController: PhotoBackupNetworkControllerProtocol
+        let photoUpsellResultNotifier: PhotoUpsellResultNotifierProtocol
     }
 
     private let dependencies: Dependencies
@@ -46,6 +47,7 @@ final class PhotosTelemetryContainer {
     private let uploadDoneController: PhotoUploadDoneTelemetryController
     private let backgroundUpdateController: PhotosBackupBackgroundUpdateTelemetryController
     private let backgroundStartController: PhotosBackupBackgroundStartTelemetryController
+    private let upsellController: PhotosTelemetryUpsellControllerProtocol
 
     init(dependencies: Dependencies) {
         self.dependencies = dependencies
@@ -62,6 +64,6 @@ final class PhotosTelemetryContainer {
         backgroundUpdateController = backgroundUpdateFactory.makeController(telemetryController: telemetryController, taskController: dependencies.processingTaskController, backupStorage: dependencies.storage, backgroundUploadStorage: backgroundUploadStorage, userInfoResource: dependencies.tower.sessionVault, uploadMeasurementsRepository: dependencies.backgroundUploadMeasurementsRepository, networkController: dependencies.networkController)
         let backgroundStartFactory = PhotosBackupBackgroundStartTelemetryFactory()
         backgroundStartController = backgroundStartFactory.makeController(telemetryController: telemetryController, availabilityController: dependencies.computationalAvailabilityController, backupStorage: dependencies.storage, userInfoResource: dependencies.tower.sessionVault, backgroundUploadStorage: backgroundUploadStorage, networkController: dependencies.networkController)
-
+        upsellController = PhotosTelemetryUpsellController(telemetryController: telemetryController, notifier: dependencies.photoUpsellResultNotifier)
     }
 }

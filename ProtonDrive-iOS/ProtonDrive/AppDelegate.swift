@@ -22,9 +22,15 @@ import PDClient
 import PDCore
 import PDUIComponents
 import ProtonCoreServices
-import ProtonCoreCryptoGoImplementation
+import ProtonCoreCryptoGoInterface
+import ProtonCoreCryptoPatchedGoImplementation
 import ProtonCoreFeatureFlags
 import ProtonCorePushNotifications
+import PDLoadTesting
+
+#if LOAD_TESTING && SSL_PINNING
+#error("Load testing requires turning off SSL pinning, so it cannot be set for SSL-pinning targets")
+#endif
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate, hasPushNotificationService {
@@ -51,7 +57,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, hasPushNotificationServic
         Log.info("application didFinishLaunchingWithOptions", domain: .application)
 
         lockOrientationIfNeeded(in: .portrait)
-        injectDefaultCryptoImplementation()
+        inject(cryptoImplementation: ProtonCoreCryptoPatchedGoImplementation.CryptoGoMethodsImplementation.instance)
+        // Inject build type to enable build differentiation. (Build macros don't work in SPM)
+        PDCore.Constants.buildType = Constants.buildType
+        #if LOAD_TESTING && !SSL_PINNING
+        LoadTesting.enableLoadTesting()
+        #endif
 
         UINavigationBar.setupFlatNavigationBarSystemWide()
         UIToolbar.setupApparance()

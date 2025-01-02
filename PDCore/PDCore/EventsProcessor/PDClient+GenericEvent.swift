@@ -42,4 +42,7 @@ extension PDClient.Event: GenericEvent {
     public var inLaneParentId: String? {
         self.link.parentLinkID
     }
+    public var volumeId: String {
+        link.volumeID
+    }
 }

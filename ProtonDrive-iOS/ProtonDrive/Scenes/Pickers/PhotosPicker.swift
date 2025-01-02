@@ -18,9 +18,9 @@
 import Combine
 import UIKit
 import SwiftUI
-import os.log
 import PhotosUI
 import PDCore
+import PDLocalization
 import PDUIComponents
 import ProtonCoreUIFoundations
 
@@ -68,8 +68,7 @@ struct PhotoPicker: UIViewControllerRepresentable {
     }
 
     // MARK: - SwiftUICoordinator
-    class Coordinator: PHPickerViewControllerDelegate, LogObject {
-        static var osLog = OSLog(subsystem: "ProtonDrive", category: "PhotoPicker")
+    class Coordinator: PHPickerViewControllerDelegate {
         private let parent: PhotoPicker
         private let resource: PhotoPickerLoadResource
         private var cancellables = Set<AnyCancellable>()
@@ -97,7 +96,7 @@ struct PhotoPicker: UIViewControllerRepresentable {
         }
         
         private func setupOverlay(on picker: UIViewController) {
-            let label = UILabel("Importing the files. Please keep the app open to avoid interruptions.", font: nil, textColor: ColorProvider.TextHint)
+            let label = UILabel(Localization.photos_picker_warning, font: nil, textColor: ColorProvider.TextHint)
             label.numberOfLines = 0
             label.textAlignment = .center
             

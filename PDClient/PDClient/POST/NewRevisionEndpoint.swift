@@ -19,16 +19,20 @@ import Foundation
 
 public struct NewRevision: Codable {
     public var ID: Revision.RevisionID
+
+    public init(ID: Revision.RevisionID) {
+        self.ID = ID
+    }
 }
 
-struct NewRevisionEndpoint: Endpoint {
+public struct NewRevisionEndpoint: Endpoint {
     public struct Response: Codable {
         var code: Int
-        var revision: NewRevision
+        public var revision: NewRevision
     }
     
-    var request: URLRequest
-    
+    public var request: URLRequest
+
     init(fileID: Link.LinkID, shareID: Share.ShareID, service: APIService, credential: ClientCredential) {
         // url
         var url = service.url(of: "/shares")

@@ -46,7 +46,10 @@ public final class MonitoringNetworkStateResource: NetworkStateResource {
         }
         monitor.start(queue: queue)
         self.monitor = monitor
+        #if os(iOS)
+        // the current path just after monitor creation is always a "none" path for mac
         handleUpdate(monitor.currentPath)
+        #endif
     }
 
     public func cancel() {

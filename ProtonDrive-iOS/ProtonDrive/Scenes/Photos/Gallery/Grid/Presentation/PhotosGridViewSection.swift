@@ -34,9 +34,12 @@ struct PhotoGridViewItem: Identifiable, Hashable {
 
     let photoId: String
     let shareId: String
+    let volumeId: String
     let isShared: Bool
+    let hasDirectShare: Bool
     let isVideo: Bool
     let captureTime: Date
     let isDownloading: Bool
     let isAvailableOffline: Bool
+    let burstChildrenCount: Int?
 }

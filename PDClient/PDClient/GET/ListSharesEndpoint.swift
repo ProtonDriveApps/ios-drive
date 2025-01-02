@@ -80,16 +80,14 @@ extension ListSharesEndpoint {
         // MARK: - Share
         public struct Share: Codable {
             public let shareID: String
+            public let volumeID: String
             public let type: ´Type´
             public let state: State
-            public let creationTime: Int?
+            public let creator: String
+            public let locked: Bool?
+            public let createTime: Int?
             public let modifyTime: Int?
             public let linkID: String
-            public let volumeID: String
-            public let creator: String
-            public let flags: Flags?
-            public let locked: Bool?
-            public let volumeSoftDeleted: Bool?
 
             public enum ´Type´: Int, Codable {
                 case main = 1
@@ -103,16 +101,6 @@ extension ListSharesEndpoint {
                 case deleted = 2
                 case restored = 3
             }
-
-            public struct Flags: OptionSet, Codable {
-                public let rawValue: Int
-                public init(rawValue: Int) {
-                    self.rawValue = rawValue
-                }
-
-                public static let main = Flags(rawValue: 1 << 0)
-            }
         }
-
     }
 }

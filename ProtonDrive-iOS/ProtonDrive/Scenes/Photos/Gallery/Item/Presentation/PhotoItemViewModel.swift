@@ -24,9 +24,12 @@ protocol PhotoItemViewModelProtocol: ObservableObject {
     var image: Data? { get }
     var isSelecting: Bool { get }
     var isSelected: Bool { get }
-    var isShared: Bool { get }
+    var shareBadge: PhotoItemShareBadge? { get }
     var isDownloading: Bool { get }
     var isAvailableOffline: Bool { get }
+    /// Number of children photos in burst photo
+    /// nil means the given photo is not a burst
+    var burstChildrenCount: Int? { get }
     func onAppear()
     func onDisappear()
     func didTap()
@@ -36,6 +39,11 @@ protocol PhotoItemViewModelProtocol: ObservableObject {
 struct PhotoItemViewModelData {
     let image: Data?
     let duration: String?
+}
+
+enum PhotoItemShareBadge {
+    case link
+    case collaborative
 }
 
 final class PhotoItemViewModel: PhotoItemViewModelProtocol {
@@ -57,10 +65,11 @@ final class PhotoItemViewModel: PhotoItemViewModelProtocol {
     @Published var isSelected = false
     let isDownloading: Bool
     let isAvailableOffline: Bool
-    let isShared: Bool
+    let shareBadge: PhotoItemShareBadge?
+    let burstChildrenCount: Int?
 
-    init(item: PhotoGridViewItem, thumbnailController: ThumbnailController, coordinator: PhotoItemCoordinator, selectionController: PhotosSelectionController, infoController: PhotoAdditionalInfoController, durationFormatter: DurationFormatter, debounceResource: DebounceResource, loadController: PhotosPagingLoadController) {
-        id = PhotoId(item.photoId, item.shareId)
+    init(item: PhotoGridViewItem, thumbnailController: ThumbnailController, coordinator: PhotoItemCoordinator, selectionController: PhotosSelectionController, infoController: PhotoAdditionalInfoController, durationFormatter: DurationFormatter, debounceResource: DebounceResource, loadController: PhotosPagingLoadController, featureFlagsController: FeatureFlagsControllerProtocol) {
+        id = PhotoId(item.photoId, item.shareId, item.volumeId)
         self.item = item
         self.thumbnailController = thumbnailController
         self.coordinator = coordinator
@@ -69,9 +78,17 @@ final class PhotoItemViewModel: PhotoItemViewModelProtocol {
         self.durationFormatter = durationFormatter
         self.debounceResource = debounceResource
         self.loadController = loadController
-        isShared = item.isShared
-        isDownloading = !item.isAvailableOffline && item.isDownloading 
+
+        if item.hasDirectShare && featureFlagsController.hasSharing {
+            shareBadge = .collaborative
+        } else if item.isShared {
+            shareBadge = .link
+        } else {
+            shareBadge = nil
+        }
+        isDownloading = !item.isAvailableOffline && item.isDownloading
         isAvailableOffline = item.isAvailableOffline
+        burstChildrenCount = item.burstChildrenCount
         reloadImage()
         reloadSelection()
         debounceResource.debounce(interval: 1) { [weak self] in

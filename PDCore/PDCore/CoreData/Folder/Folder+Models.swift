@@ -23,6 +23,7 @@ import Foundation
 public struct EncryptingFolder {
     public let id: String
     public let shareID: String
+    public let volumeID: String
     public let hashKey: HashKey
     public let nodeKey: ArmoredKey
 }
@@ -33,7 +34,8 @@ extension Folder {
 
         return EncryptingFolder(
             id: id,
-            shareID: shareID,
+            shareID: shareId,
+            volumeID: volumeID,
             hashKey: nodeHashKey,
             nodeKey: nodeKey
         )

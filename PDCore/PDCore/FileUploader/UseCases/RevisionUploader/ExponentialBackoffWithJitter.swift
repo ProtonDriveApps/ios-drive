@@ -17,9 +17,9 @@
 
 import Foundation
 
-final class ExponentialBackoffWithJitter {
+public final class ExponentialBackoffWithJitter {
 
-    static func getDelay(attempt n: Int) -> TimeInterval {
+    public static func getDelay(attempt n: Int) -> TimeInterval {
         let maxDelay = 600000 // 10 minutes in milliseconds
         if n == 0 { return 0 } // No delay for the first attempt
         let delay = Int(pow(2.0, Double(n - 1))) * 1000

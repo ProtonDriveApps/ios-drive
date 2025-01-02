@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import PDLocalization
 
 protocol PhotosGalleryPlaceholderViewModelProtocol: ObservableObject {
     var title: String { get }
@@ -48,6 +49,6 @@ final class PhotosGalleryPlaceholderViewModel: PhotosGalleryPlaceholderViewModel
     }
 
     private func updateTitle() {
-        title = flag ? "End-to-end encrypted" : "Backup in progress. This may take a while."
+        title = flag ? Localization.photo_backup_banner_title_e2ee : Localization.photo_backup_banner_in_progress
     }
 }

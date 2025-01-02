@@ -20,6 +20,7 @@ import PDClient
 
 public typealias ThumbnailsList = [ThumbnailURL]
 public struct ThumbnailURL: Equatable {
+    public let volumeID: String
     public let id: String
     public let url: URL
 }
@@ -48,13 +49,13 @@ final class RemoteThumbnailsListInteractor: ThumbnailsListInteractor {
             let thumbnailsBatch = try await repository.getThumbnails(with: parameters)
             result += thumbnailsBatch
         }
-        return try result.map(makeModel)
+        return try result.map { try makeModel(from: $0, volumeID: volumeId) }
     }
 
-    private func makeModel(from info: ThumbnailInfo) throws -> ThumbnailURL {
+    private func makeModel(from info: ThumbnailInfo, volumeID: String) throws -> ThumbnailURL {
         guard let url = URL(string: info.bareURL + "/" + info.token) else {
             throw ThumbnailsListInteractorError.invalidResponse
         }
-        return ThumbnailURL(id: info.thumbnailID, url: url)
+        return ThumbnailURL(volumeID: volumeID, id: info.thumbnailID, url: url)
     }
 }

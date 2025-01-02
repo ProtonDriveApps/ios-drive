@@ -32,6 +32,24 @@ public struct PhotoAsset: Equatable {
         self.exif = exif
         self.metadata = metadata
     }
+    
+    public func copy(with newFileName: String) -> PhotoAsset {
+        .init(
+            url: url,
+            filename: newFileName,
+            mimeType: mimeType,
+            exif: exif,
+            metadata: metadata
+        )
+    }
+    
+    public static func == (lhs: PhotoAsset, rhs: PhotoAsset) -> Bool {
+        // Filename can be changed due to validation failed, not reliable here
+        return lhs.url == rhs.url &&
+        lhs.mimeType == rhs.mimeType &&
+        lhs.exif == rhs.exif &&
+        lhs.metadata == rhs.metadata
+    }
 
     public typealias Exif = Data
 }

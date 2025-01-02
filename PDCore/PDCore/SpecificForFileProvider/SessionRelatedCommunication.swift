@@ -21,20 +21,46 @@ import ProtonCoreNetworking
 import ProtonCoreServices
 
 public protocol SessionRelatedCommunicatorBetweenMainAppAndExtensions {
-    init(userDefaults: UserDefaults, sessionStorage: SessionStore, authenticator: Authenticator, apiService: PMAPIService)
-    func onChildSessionReady()
-    func askMainAppToProvideNewChildSession()
-    func performInitialSetup()
+
+    var isWaitingforNewChildSession: Bool { get }
+
+    func onChildSessionReady() async
+    func askMainAppToProvideNewChildSession() async
+    func performInitialSetup() async
+    func fetchNewChildSession(parentSessionCredential: Credential) async throws
+
     func startObservingSessionChanges()
     func stopObservingSessionChanges()
     func clearStateOnSignOut()
-    func fetchNewChildSession(parentSessionCredential: Credential,
-                              completionBlock: @escaping (Result<Void, Error>) -> Void)
     func isChildSessionExpired() -> Bool
 }
 
+public struct UserDefaultsConfiguration {
+    let userDefaults: UserDefaults
+    let sessionReadyPropertyKey: UserDefaults.NotificationPropertyKeys
+    let sessionExpiredPropertyKey: UserDefaults.NotificationPropertyKeys
+    let sessionReadyKeyPath: KeyPath<UserDefaults, Bool>
+    let sessionExpiredKeyPath: KeyPath<UserDefaults, Bool>
+    
+    public static func forFileProviderExtension(userDefaults: UserDefaults) -> UserDefaultsConfiguration {
+        .init(userDefaults: userDefaults,
+              sessionReadyPropertyKey: .childSessionReadyKey,
+              sessionExpiredPropertyKey: .childSessionExpiredKey,
+              sessionReadyKeyPath: \.childSessionReady,
+              sessionExpiredKeyPath: \.childSessionExpired)
+    }
+    
+    public static func forDDK(userDefaults: UserDefaults) -> UserDefaultsConfiguration {
+        .init(userDefaults: userDefaults,
+              sessionReadyPropertyKey: .ddkSessionReadyKey,
+              sessionExpiredPropertyKey: .ddkSessionExpiredKey,
+              sessionReadyKeyPath: \.ddkSessionReady,
+              sessionExpiredKeyPath: \.ddkSessionExpired)
+    }
+}
+
 public typealias SessionRelatedCommunicatorFactory = (
-    UserDefaults, SessionStore, Authenticator, PMAPIService
+    SessionStore, Authenticator, @escaping (Credential, ChildSessionCredentialKind) -> Void
 ) -> SessionRelatedCommunicatorBetweenMainAppAndExtensions
 
 public final class SessionRelatedCommunicatorForMainApp: SessionRelatedCommunicatorBetweenMainAppAndExtensions {
@@ -49,21 +75,30 @@ public final class SessionRelatedCommunicatorForMainApp: SessionRelatedCommunica
     
     private let authenticator: Authenticator
     private let sessionStorage: SessionStore
-    private let userDefaults: UserDefaults
+    private let childSessionKind: ChildSessionCredentialKind
+    private let userDefaultsConfiguration: UserDefaultsConfiguration
     private let userDefaultsObservationCenter: UserDefaultsObservationCenter
-    private var isFetchingNewChildSession = false
+    public private(set) var isWaitingforNewChildSession = false
+
+    private var userDefaults: UserDefaults { userDefaultsConfiguration.userDefaults }
     
-    public init(userDefaults: UserDefaults, sessionStorage: SessionStore, authenticator: Authenticator, apiService _: PMAPIService) {
-        self.userDefaults = userDefaults
-        self.userDefaultsObservationCenter = UserDefaultsObservationCenter(userDefaults: userDefaults)
+    public init(userDefaultsConfiguration: UserDefaultsConfiguration,
+                sessionStorage: SessionStore,
+                childSessionKind: ChildSessionCredentialKind,
+                authenticator: Authenticator) {
+        self.userDefaultsConfiguration = userDefaultsConfiguration
+        self.userDefaultsObservationCenter = UserDefaultsObservationCenter(userDefaults: userDefaultsConfiguration.userDefaults)
         self.authenticator = authenticator
         self.sessionStorage = sessionStorage
+        self.childSessionKind = childSessionKind
     }
     
     public func startObservingSessionChanges() {
-        userDefaultsObservationCenter.addObserver(self, of: \.childSessionExpired) { [weak self] isExpired in
+        userDefaultsObservationCenter.addObserver(self, of: userDefaultsConfiguration.sessionExpiredKeyPath) { [weak self] isExpired in
             guard let self, isExpired == true else { return }
-            self.askMainAppToProvideNewChildSession()
+            Task {
+                await self.askMainAppToProvideNewChildSession()
+            }
         }
     }
     
@@ -76,88 +111,93 @@ public final class SessionRelatedCommunicatorForMainApp: SessionRelatedCommunica
     }
     
     // initial check on the app launch
-    public func performInitialSetup() {
-        if userDefaults.childSessionExpired == true {
-            askMainAppToProvideNewChildSession()
+    public func performInitialSetup() async {
+        if userDefaults[keyPath: userDefaultsConfiguration.sessionExpiredKeyPath] == true {
+            await askMainAppToProvideNewChildSession()
         }
     }
     
-    public func askMainAppToProvideNewChildSession() {
+    public func askMainAppToProvideNewChildSession() async {
         guard let currentCredentials = sessionStorage.sessionCredential else { return }
         let parentSessionCredentials = Credential(currentCredentials)
         guard !parentSessionCredentials.isForUnauthenticatedSession else { return }
-        fetchNewChildSession(parentSessionCredential: parentSessionCredentials) { [weak self] result in
-            guard let self else { return }
-            switch result {
-            case .success:
-                self.onChildSessionReady()
-            case .failure:
-                // TODO: how to handle error? Should we retry? Maybe after some time?
-                break
-            }
+        do {
+            try await fetchNewChildSession(parentSessionCredential: parentSessionCredentials)
+            onChildSessionReady()
+        } catch {
+            Log.error("Fetching new child session failed with error \(error.localizedDescription)",
+                      domain: .fileProvider)
         }
     }
     
     public func onChildSessionReady() {
-        Log.info("Child session fetched and stored in the locker", domain: .sessionManagement)
-        userDefaults.set(false, forKey: UserDefaults.NotificationPropertyKeys.childSessionExpiredKey.rawValue)
-        userDefaults.set(true, forKey: UserDefaults.NotificationPropertyKeys.childSessionReadyKey.rawValue)
+        Log.info("Child session of kind \(childSessionKind) fetched and stored in the locker", domain: .sessionManagement)
+        userDefaults.set(false, forKey: userDefaultsConfiguration.sessionExpiredPropertyKey.rawValue)
+        userDefaults.set(true, forKey: userDefaultsConfiguration.sessionReadyPropertyKey.rawValue)
     }
     
-    public func fetchNewChildSession(parentSessionCredential: Credential,
-                                     completionBlock: @escaping (Result<Void, Error>) -> Void) {
-        guard !isFetchingNewChildSession else {
-            Log.info("Not fetching new child session because fetching already in progress", domain: .sessionManagement)
+    public func fetchNewChildSession(parentSessionCredential: Credential) async throws {
+        guard !isWaitingforNewChildSession else {
+            Log.info("Not fetching new child session of kind \(childSessionKind) because fetching already in progress", domain: .sessionManagement)
             return
         }
-        isFetchingNewChildSession = true
-        Log.info("Started fetching new child session", domain: .sessionManagement)
-        authenticator.performForkingAndObtainChildSession(
-            parentSessionCredential, useCase: .forChildClientID(childClientID, independent: isChildSessionIndependent)
-        ) { [weak self] result in
-            guard let self else { return }
-            self.isFetchingNewChildSession = false
-            switch result {
-            case .success(let newCredentials):
-                Log.info("Successfully fetched new child session", domain: .sessionManagement)
-                self.sessionStorage.storeNewChildSessionCredential(CoreCredential(newCredentials))
-                completionBlock(.success)
-            case .failure(let error):
-                #if HAS_QA_FEATURES
-                Log.error("Failed to fetch new child session with error \(error.localizedDescription)",
-                          domain: .sessionManagement)
-                #else
-                Log.error("Failed to fetch new child session becuse of error",
-                          domain: .sessionManagement)
-                #endif
-                completionBlock(.failure(error))
+        isWaitingforNewChildSession = true
+        Log.info("Started fetching new child session of kind \(childSessionKind)", domain: .sessionManagement)
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            authenticator.performForkingAndObtainChildSession(
+                parentSessionCredential, useCase: .forChildClientID(childClientID, independent: isChildSessionIndependent, payload: nil)
+            ) { [weak self] result in
+                guard let self else { return }
+                self.isWaitingforNewChildSession = false
+                switch result {
+                case .success(let newCredentials):
+                    Log.info("Successfully fetched new child session of kind \(childSessionKind)", domain: .sessionManagement)
+                    self.sessionStorage.storeNewChildSessionCredential(CoreCredential(newCredentials), kind: childSessionKind)
+                    continuation.resume()
+                case .failure(let error):
+                    if Constants.buildType.isQaOrBelow {
+                        Log.error("Failed to fetch new child session of kind \(childSessionKind) with error \(error.localizedDescription)",
+                                  domain: .sessionManagement)
+                    } else {
+                        Log.error("Failed to fetch new child session of kind \(childSessionKind) becuse of error",
+                                  domain: .sessionManagement)
+                    }
+                    continuation.resume(throwing: error)
+                }
             }
         }
     }
     
     public func clearStateOnSignOut() {
         Log.info("UserDefaults state cleaned on signout", domain: .sessionManagement)
-        userDefaults.removeObject(forKey: UserDefaults.NotificationPropertyKeys.childSessionExpiredKey.rawValue)
-        userDefaults.removeObject(forKey: UserDefaults.NotificationPropertyKeys.childSessionReadyKey.rawValue)
+        userDefaults.removeObject(forKey: userDefaultsConfiguration.sessionExpiredPropertyKey.rawValue)
+        userDefaults.removeObject(forKey: userDefaultsConfiguration.sessionReadyPropertyKey.rawValue)
     }
     
     public func isChildSessionExpired() -> Bool {
-        userDefaults.bool(forKey: UserDefaults.NotificationPropertyKeys.childSessionExpiredKey.rawValue)
+        userDefaults.bool(forKey: userDefaultsConfiguration.sessionExpiredPropertyKey.rawValue)
     }
 }
 
 public final class SessionRelatedCommunicatorForExtension: SessionRelatedCommunicatorBetweenMainAppAndExtensions {
     
-    private let apiService: PMAPIService
     private let sessionStorage: SessionStore
-    private let userDefaults: UserDefaults
+    private let userDefaultsConfiguration: UserDefaultsConfiguration
     private let userDefaultsObservationCenter: UserDefaultsObservationCenter
-    
-    public init(userDefaults: UserDefaults, sessionStorage: SessionStore, authenticator _: Authenticator, apiService: PMAPIService) {
-        self.userDefaults = userDefaults
-        self.userDefaultsObservationCenter = UserDefaultsObservationCenter(userDefaults: userDefaults)
+    private let childSessionKind: ChildSessionCredentialKind
+    private var userDefaults: UserDefaults { userDefaultsConfiguration.userDefaults }
+    private let onChildSessionObtained: (Credential, ChildSessionCredentialKind) async -> Void
+    public private(set) var isWaitingforNewChildSession = false
+
+    public init(userDefaultsConfiguration: UserDefaultsConfiguration, 
+                sessionStorage: SessionStore,
+                childSessionKind: ChildSessionCredentialKind,
+                onChildSessionObtained: @escaping (Credential, ChildSessionCredentialKind) async -> Void) {
+        self.userDefaultsConfiguration = userDefaultsConfiguration
+        self.userDefaultsObservationCenter = UserDefaultsObservationCenter(userDefaults: userDefaultsConfiguration.userDefaults)
         self.sessionStorage = sessionStorage
-        self.apiService = apiService
+        self.childSessionKind = childSessionKind
+        self.onChildSessionObtained = onChildSessionObtained
         startObservingSessionChanges()
     }
     
@@ -166,9 +206,11 @@ public final class SessionRelatedCommunicatorForExtension: SessionRelatedCommuni
     }
     
     public func startObservingSessionChanges() {
-        userDefaultsObservationCenter.addObserver(self, of: \.childSessionReady) { [weak self] isReady in
+        userDefaultsObservationCenter.addObserver(self, of: userDefaultsConfiguration.sessionReadyKeyPath) { [weak self] isReady in
             guard let self, isReady == true else { return }
-            self.onChildSessionReady()
+            Task {
+                await self.onChildSessionReady()
+            }
         }
     }
     
@@ -177,47 +219,50 @@ public final class SessionRelatedCommunicatorForExtension: SessionRelatedCommuni
     }
     
     // initial check on the extension launch
-    public func performInitialSetup() {
+    public func performInitialSetup() async {
         let isChildSessionReady = userDefaults
-            .object(forKey: UserDefaults.NotificationPropertyKeys.childSessionReadyKey.rawValue) as? Bool
+            .object(forKey: userDefaultsConfiguration.sessionReadyPropertyKey.rawValue) as? Bool
         // the nil case is for the first ever launch of the extension
         if isChildSessionReady == true || isChildSessionReady == nil {
-            onChildSessionReady()
+            await onChildSessionReady()
         }
     }
     
-    public func onChildSessionReady() {
-        sessionStorage.consumeChildSessionCredentials()
-        userDefaults.set(false, forKey: UserDefaults.NotificationPropertyKeys.childSessionReadyKey.rawValue)
-        guard let currentCredentials = sessionStorage.sessionCredential else {
-            return
+    public func onChildSessionReady() async {
+        sessionStorage.consumeChildSessionCredentials(kind: childSessionKind)
+        userDefaults.set(false, forKey: userDefaultsConfiguration.sessionReadyPropertyKey.rawValue)
+        isWaitingforNewChildSession = false
+        let credential: CoreCredential?
+        switch childSessionKind {
+        case .fileProviderExtension: credential = sessionStorage.sessionCredential
+        case .ddk: credential = sessionStorage.ddkCredential
         }
-        let childSessionCredentials = Credential(currentCredentials)
-        guard !childSessionCredentials.isForUnauthenticatedSession else {
-            return
-        }
-        apiService.setSessionUID(uid: childSessionCredentials.UID)
-        Log.info("New child session consumeds", domain: .sessionManagement)
+        guard let credential else { return }
+        let childSessionCredentials = Credential(credential)
+        guard !childSessionCredentials.isForUnauthenticatedSession else { return }
+        await onChildSessionObtained(childSessionCredentials, childSessionKind)
+        Log.info("New child session of kind \(childSessionKind) consumed", domain: .sessionManagement)
     }
     
-    public func askMainAppToProvideNewChildSession() {
-        Log.info("Child session expired written to user defaults", domain: .sessionManagement)
-        userDefaults.set(true, forKey: UserDefaults.NotificationPropertyKeys.childSessionExpiredKey.rawValue)
+    public func askMainAppToProvideNewChildSession() async {
+        guard !isWaitingforNewChildSession else { return }
+        isWaitingforNewChildSession = true
+        Log.info("Child session of kind \(childSessionKind) expired written to user defaults", domain: .sessionManagement)
+        userDefaults.set(true, forKey: userDefaultsConfiguration.sessionExpiredPropertyKey.rawValue)
     }
     
     public func clearStateOnSignOut() {
         Log.info("UserDefaults state cleaned on signout", domain: .sessionManagement)
-        userDefaults.removeObject(forKey: UserDefaults.NotificationPropertyKeys.childSessionExpiredKey.rawValue)
-        userDefaults.removeObject(forKey: UserDefaults.NotificationPropertyKeys.childSessionReadyKey.rawValue)
+        userDefaults.removeObject(forKey: userDefaultsConfiguration.sessionExpiredPropertyKey.rawValue)
+        userDefaults.removeObject(forKey: userDefaultsConfiguration.sessionReadyPropertyKey.rawValue)
     }
     
-    public func fetchNewChildSession(parentSessionCredential: Credential,
-                                     completionBlock: @escaping (Result<Void, Error>) -> Void) {
+    public func fetchNewChildSession(parentSessionCredential: Credential) async throws {
         assertionFailure("This method should never be called.")
-        completionBlock(.failure(AuthErrors.notImplementedYet("")))
+        throw AuthErrors.notImplementedYet("")
     }
     
     public func isChildSessionExpired() -> Bool {
-        userDefaults.bool(forKey: UserDefaults.NotificationPropertyKeys.childSessionExpiredKey.rawValue)
+        userDefaults.bool(forKey: userDefaultsConfiguration.sessionExpiredPropertyKey.rawValue)
     }
 }

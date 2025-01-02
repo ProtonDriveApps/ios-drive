@@ -17,6 +17,7 @@
 
 import SwiftUI
 import ProtonCoreUIFoundations
+import PDLocalization
 
 public struct ContextMenuView<Content: View, Modifier: ViewModifier>: View {
     
@@ -51,10 +52,10 @@ struct ContextMenuView_Previews: PreviewProvider {
     static var previews: some View {
         ContextMenuView(icon: IconProvider.plus, viewModifier: EmptyModifier()) {
             Button(action: {}) {
-                Label("Rename", image: "ic-text-font")
+                Label(Localization.general_rename, image: "ic-text-font")
             }
             Button(action: {}) {
-                Label("Move to trash", image: "ic-trash")
+                Label(Localization.edit_section_remove, image: "ic-trash")
             }
         }
     }

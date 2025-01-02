@@ -19,7 +19,8 @@ import Foundation
 
 struct DeleteLinkEndpoint: Endpoint {
     public struct Response: Codable {
-        var code: Int
+        let code: Int
+        let responses: [ResponseElement]
     }
 
     struct Parameters {

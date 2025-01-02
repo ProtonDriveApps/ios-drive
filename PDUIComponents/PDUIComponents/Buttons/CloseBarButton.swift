@@ -16,7 +16,9 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import ProtonCoreUIFoundations
+#if canImport(UIKit)
 import UIKit
+#endif
 
 #if os(iOS)
 public final class CloseBarButton: UIBarButtonItem {
@@ -28,6 +30,7 @@ public final class CloseBarButton: UIBarButtonItem {
         button.setSizeContraint(height: 24, width: 24)
         button.tintColor = ColorProvider.IconNorm
         button.setBackgroundImage(IconProvider.cross, for: .normal)
+        button.accessibilityIdentifier = "SimpleCloseButtonView.Button.Close"
         super.init()
         customView = button
         button.addTarget(self, action: #selector(onTap), for: .touchUpInside)

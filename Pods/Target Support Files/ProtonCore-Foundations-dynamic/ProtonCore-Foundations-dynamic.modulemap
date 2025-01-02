@@ -1,6 +1,0 @@
-framework module ProtonCoreFoundations {
-  umbrella header "ProtonCore-Foundations-dynamic-umbrella.h"
-
-  export *
-  module * { export * }
-}

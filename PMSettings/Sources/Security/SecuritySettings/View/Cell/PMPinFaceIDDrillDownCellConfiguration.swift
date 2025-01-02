@@ -20,6 +20,7 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import UIKit
+import PDLocalization
 
 public struct PMPinFaceIDDrillDownCellConfiguration: PMCellSuplier {
     let lockReader: LockReader
@@ -47,16 +48,16 @@ public struct PMPinFaceIDDrillDownCellConfiguration: PMCellSuplier {
 
 extension PMPinFaceIDDrillDownCellConfiguration: PMDrillDownCellViewModel {
     public var title: String {
-        ["PIN", biometryProtectionName].filter { !$0.isEmpty }.joined(separator: " & ")
+        [Localization.setting_pin, biometryProtectionName].filter { !$0.isEmpty }.joined(separator: " & ")
     }
 
     private var biometryProtectionName: String {
-        let bioProtected = lockReader.isBioProtected ? "Biometry" : ""
+        let bioProtected = lockReader.isBioProtected ? Localization.setting_biometry : ""
         return biometryType == .none ? bioProtected : biometryType.technologyName
     }
 
     public var preview: String? {
-        lockReader.isProtectionEnabled() ? "On" : "Off"
+        lockReader.isProtectionEnabled() ? Localization.general_on : Localization.general_off
     }
     
     public var accessibilityIdentifier: String { "PIN" }

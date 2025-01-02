@@ -19,6 +19,7 @@ import Foundation
 import SwiftUI
 import PDUIComponents
 import ProtonCoreUIFoundations
+import PDLocalization
 
 struct OneDollarUpsellView: View {
     @ObservedObject var model: OneDollarUpsellViewModel
@@ -33,7 +34,7 @@ struct OneDollarUpsellView: View {
                 .padding(.bottom, 30)
                 .accessibilityIdentifier("OneDollarUpsellView.imageIdentifier")
             
-            Text("More storage for only \(model.localPriceLabel)")
+            Text(Localization.one_dollar_upsell_title(localPrice: model.localPriceLabel))
                 .foregroundColor(ColorProvider.TextNorm)
                 .font(.system(size: 22))
                 .fontWeight(.bold)
@@ -41,7 +42,7 @@ struct OneDollarUpsellView: View {
                 .accessibilityIdentifier("OneDollarUpsellView.titleIdentifier")
                 .animation(.smooth, value: model.localPriceLabel)
 
-            Text("When you need a little more storage, but not a lot. Introducing Drive Lite, featuring 20 GB storage for only \(model.localPriceLabel) a month.")
+            Text(Localization.one_dollar_upsell_desc(localPrice: model.localPriceLabel))
                 .foregroundColor(ColorProvider.TextWeak)
                 .font(.system(size: 17))
                 .lineLimit(nil)
@@ -51,12 +52,12 @@ struct OneDollarUpsellView: View {
 
             Spacer()
             
-            BlueRectButton(title: "Get Drive Lite", action: model.onButtonTapped)
+            BlueRectButton(title: Localization.one_dollar_upsell_get_plan_button, action: model.onButtonTapped)
             .cornerRadius(8)
             .padding(24)
             .accessibilityIdentifier("OneDollarUpsellView.nextButton")
             
-            LightButton(title: "Not now", color: ColorProvider.BrandNorm, font: .body, action: model.onSkipButtonTapped)
+            LightButton(title: Localization.general_not_now, color: ColorProvider.BrandNorm, font: .body, action: model.onSkipButtonTapped)
             .padding(.bottom, 24)
             .accessibilityIdentifier("OneDollarUpsellView.skipButton")
         }

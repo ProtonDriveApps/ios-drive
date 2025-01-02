@@ -100,3 +100,36 @@ public class SettingsStorage<T> {
         }
     }
 }
+
+@propertyWrapper
+public class SettingsCodableProperty<T: Codable> {
+    private let key: String
+    private let defaultValue: T
+    private var suite: SettingsStorageSuite
+
+    public init(wrappedValue: T, _ key: String, suite: SettingsStorageSuite = .group(named: Constants.appGroup)) {
+        self.key = key
+        self.defaultValue = wrappedValue
+        self.suite = suite
+    }
+
+    public func configure(with suite: SettingsStorageSuite) {
+        self.suite = suite
+    }
+
+    public var wrappedValue: T {
+        get {
+            guard let data = suite.userDefaults.data(forKey: key),
+                  let value = try? JSONDecoder().decode(T.self, from: data) else {
+                return defaultValue
+            }
+            return value
+        }
+        set {
+            let encoder = JSONEncoder()
+            if let data = try? encoder.encode(newValue) {
+                suite.userDefaults.set(data, forKey: key)
+            }
+        }
+    }
+}

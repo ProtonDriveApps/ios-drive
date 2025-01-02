@@ -18,6 +18,7 @@
 import SwiftUI
 import ProtonCoreUIFoundations
 import PDCore
+import PDLocalization
 
 struct FinderConfigurationView: View {
     let sortingText: String?
@@ -33,26 +34,26 @@ struct FinderConfigurationView: View {
                     Button {
                         switchSortPreference(ascending: .nameAscending, descending: .nameDescending)
                     } label: {
-                        menuItem(name: "Name", ascending: .nameAscending, descending: .nameDescending)
+                        menuItem(name: Localization.sort_type_name, ascending: .nameAscending, descending: .nameDescending)
                     }
                     
                     Button {
                         switchSortPreference(ascending: .modifiedAscending, descending: .modifiedDescending)
 
                     } label: {
-                        menuItem(name: "Last modified", ascending: .modifiedAscending, descending: .modifiedDescending)
+                        menuItem(name: Localization.sort_type_last_modified, ascending: .modifiedAscending, descending: .modifiedDescending)
                     }
                     
                     Button {
                         switchSortPreference(ascending: .sizeAscending, descending: .sizeDescending)
                     } label: {
-                        menuItem(name: "Size", ascending: .sizeAscending, descending: .sizeDescending)
+                        menuItem(name: Localization.sort_type_size, ascending: .sizeAscending, descending: .sizeDescending)
                     }
                     
                     Button {
                         switchSortPreference(ascending: .mimeAscending, descending: .mimeDescending)
                     } label: {
-                        menuItem(name: "File type", ascending: .mimeAscending, descending: .mimeDescending)
+                        menuItem(name: Localization.sort_type_file_type, ascending: .mimeAscending, descending: .mimeDescending)
                     }
                 } label: {
                     HStack {

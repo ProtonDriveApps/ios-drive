@@ -24,17 +24,20 @@ extension FinderCoordinator {
         case none // no changes to hierarchy
 
         case file(file: File, share: Bool), folder(Folder) // push to navigation controller
-        case protonDocument(file: File) // open in browser
+        case protonDocument(file: File) // open proton document preview
+        case openInBrowser(file: File) // open proton document in browser
 
         case importPhoto, importDocument, camera // modals
         case nodeDetails(Node)
         case createFolder(parent: Folder), rename(Node), move([Node], parent: Folder?)
         case shareLink(node: Node)
         case shareIn(url: URL)
-        
+        case configShareMember(node: Node)
+        case createDocument(parentIdentifier: NodeIdentifier)
+
         case noSpaceLeftLocally, noSpaceLeftCloud
     }
-    
+
     func destination(for nextNode: Node) -> Destination {
         switch nextNode {
         case is File where self.model is MoveModel:

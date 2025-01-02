@@ -28,7 +28,14 @@ public final class StorageUploadingPhotosRepository: UploadingPrimaryPhotosRepos
 
     public func getPhotos() -> [Photo] {
         moc.performAndWait {
-            storage.fetchUploadingPhotos(size: Constants.processingPhotoUploadsBatchSize, moc: moc)
+            do {
+                let volumeId = try storage.getMyVolumeId(in: moc)
+                let photos = storage.fetchUploadingPhotos(volumeId: volumeId, size: Constants.processingPhotoUploadsBatchSize, moc: moc)
+                return photos
+            } catch {
+                Log.error(error.localizedDescription, domain: .photosUI)
+                return []
+            }
         }
     }
 }

@@ -22,6 +22,7 @@ public struct ActionBarSize {
     public static let height: CGFloat = 40
 }
 
+#if os(iOS)
 public struct ActionBar<Content: View>: View {
     
     @Binding var selection: ActionBarButtonViewModel?
@@ -74,3 +75,4 @@ public struct ActionBar<Content: View>: View {
         }
     }
 }
+#endif

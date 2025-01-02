@@ -125,14 +125,11 @@ public final class UnleashFeatureFlagsResource: ExternalFeatureFlagsResource {
         return client?.isEnabled(name: name) ?? false
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     private func makeName(from flag: ExternalFeatureFlag) -> String {
         switch flag {
         case .photosUploadDisabled:
             return "DrivePhotosUploadDisabled"
-        case .photosEnabled:
-            return "DrivePhotos"
-        case .photosBackgroundSyncEnabled:
-            return "DrivePhotosBackgroundSync"
         case .logsCompressionDisabled:
             return "DriveLogsCompressionDisabled"
         case .postMigrationJunkFilesCleanup:
@@ -149,8 +146,15 @@ public final class UnleashFeatureFlagsResource: ExternalFeatureFlagsResource {
             return "DriveiOSLogCollectionDisabled"
         case .oneDollarPlanUpsellEnabled:
             return "DriveOneDollarPlanUpsell"
+        case .driveDisablePhotosForB2B:
+            return "DriveDisablePhotosForB2B"
+        case .driveDDKEnabled:
+            return "DriveDDKEnabled"
+        // Sharing
         case .driveSharingMigration:
             return "DriveSharingMigration"
+        case .driveiOSSharing:
+            return "DriveiOSSharing"
         case .driveSharingDevelopment:
             return "DriveSharingDevelopment"
         case .driveSharingInvitations:
@@ -163,8 +167,17 @@ public final class UnleashFeatureFlagsResource: ExternalFeatureFlagsResource {
             return "DriveSharingExternalInvitationsDisabled"
         case .driveSharingEditingDisabled:
             return "DriveSharingEditingDisabled"
-        case .driveDisablePhotosForB2B:
-            return "DriveDisablePhotosForB2B"
+        case .drivePublicShareEditMode:
+            return "DrivePublicShareEditMode"
+        case .drivePublicShareEditModeDisabled:
+            return "DrivePublicShareEditModeDisabled"
+        case .driveDynamicEntitlementConfiguration:
+            return "DriveDynamicEntitlementConfiguration"
+        // ProtonDoc
+        case .driveDocsWebView:
+            return "DriveDocsWebView"
+        case .driveDocsDisabled:
+            return "DriveDocsDisabled"
         }
     }
 

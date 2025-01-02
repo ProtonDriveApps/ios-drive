@@ -19,6 +19,8 @@ import Foundation
 import PMSettings
 import PDCore
 import ProtonCoreUIFoundations
+import UIKit
+import PDLocalization
 
 struct DefaultHomeTabFactory {
 
@@ -42,7 +44,7 @@ struct DefaultHomeTabFactory {
     ) {
         var sheet: PMActionSheet?
         let header = PMActionSheetHeaderView(
-            title: "Default home tab",
+            title: Localization.default_home_tab_title,
             leftItem: .right(IconProvider.crossSmall),
             leftItemHandler: {
                 sheet?.dismiss(animated: true)
@@ -69,7 +71,7 @@ struct DefaultHomeTabFactory {
         }
         
         let group = PMActionSheetItemGroup(
-            title: "Choose the screen opens by default",
+            title: Localization.default_home_tab_setting_sheet_title,
             items: items,
             hasSeparator: false,
             style: .singleSelection
@@ -81,6 +83,13 @@ struct DefaultHomeTabFactory {
     }
     
     private static func availableTab(localSettings: LocalSettings) -> [TabBarItem] {
-        [.files, .photos, .shared]
+        var tabs: [TabBarItem] = [.files, .photos]
+
+        if localSettings.driveiOSSharing {
+            tabs.append(.sharedWithMe)
+        } else {
+            tabs.append(.shared)
+        }
+        return tabs
     }
 }

@@ -17,6 +17,7 @@
 
 import Foundation
 import PDCore
+import PDLocalization
 
 protocol MonthFormatter {
     func formatMonth(from date: Date) -> String
@@ -37,7 +38,7 @@ final class LocalizedMonthFormatter: MonthFormatter {
         let currentMonth = monthResource.getMonth(from: dateResource.getDate())
         let month = monthResource.getMonth(from: date)
         if currentMonth == month {
-            return "This month"
+            return Localization.format_month_this_month
         } else if currentMonth.year == month.year {
             return dateFormatter.formatMonth(date: date)
         } else {

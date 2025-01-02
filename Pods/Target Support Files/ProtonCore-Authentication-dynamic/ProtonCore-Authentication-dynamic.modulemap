@@ -1,6 +1,0 @@
-framework module ProtonCoreAuthentication {
-  umbrella header "ProtonCore-Authentication-dynamic-umbrella.h"
-
-  export *
-  module * { export * }
-}

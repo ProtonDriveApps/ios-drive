@@ -18,7 +18,8 @@
 import Combine
 
 enum NotificationsPermissionsEvent {
-    case open
+    case openFileNotification
+    case openPhotoNotification
     case close
 }
 

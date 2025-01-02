@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDLocalization
 
 final class PhotosRetryViewModel: ObservableObject {
     @Published var destination: PhotosRetryViewDestination?
@@ -28,17 +29,13 @@ final class PhotosRetryViewModel: ObservableObject {
     private let imageUnwrappingStrategy: RetryImageUnwrappingStrategy
     
     let fallbackSystemImage = "eye.slash"
-    let title = "Backup issues"
-    let retryButtonTitle = "Retry all"
-    let skipButtonTitle = "Skip"
+    let title = Localization.retry_view_title
+    let retryButtonTitle = Localization.retry_view_button_retry_all
+    let skipButtonTitle = Localization.general_skip
     
     var subtitle: String {
         let count = items.count + failedToPreview
-        if count <= 1 {
-            return "\(count) item failed to backup"
-        } else {
-            return "\(count) items failed to backup"
-        }
+        return Localization.retry_view_items_failed_to_backup(count: count)
     }
     
     init(
@@ -58,7 +55,8 @@ final class PhotosRetryViewModel: ObservableObject {
             PhotosRetryListRowItem(
                 id: $0.localIdentifier,
                 name: nameUnwrappingStrategy($0.filename),
-                image: imageUnwrappingStrategy($0.imageData)
+                image: imageUnwrappingStrategy($0.imageData),
+                failureReason: $0.errorMessage
             )
         }
         self.failedToPreview = failures

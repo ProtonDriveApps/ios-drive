@@ -21,7 +21,7 @@ import PDCore
 
 extension FinderCoordinator: DeeplinkableScene {
     private static let ParentsChainKey = "ParentsChain"
-    private static let SharedKey = NodeIdentifier("Shared", "Shared")
+    private static let SharedKey = NodeIdentifier("Shared", "Shared", "")
     
     struct RestorationInfo {
         var parents: [NodeIdentifier]

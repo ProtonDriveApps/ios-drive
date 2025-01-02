@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import CoreData
 
 public final class OfflineAvailableModel: FinderModel, FinderErrorModel, NodesListing, DownloadsListing {
     // MARK: FinderModel

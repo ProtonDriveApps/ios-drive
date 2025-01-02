@@ -17,10 +17,16 @@
 
 import CoreImage
 
-protocol ThumbnailProvider: AnyObject {
+public protocol ThumbnailProvider: AnyObject {
     typealias Image = CGImage
 
     var next: ThumbnailProvider? { get set }
 
     func getThumbnail(from url: URL, ofSize size: CGSize) -> Image?
+}
+
+public enum ThumbnailProviderFactory {
+    public static var defaultThumbnailProvider: ThumbnailProvider {
+        CGImageThumbnailProvider(next: PDFThumbnailProvider(next: VideoThumbnailProvider()))
+    }
 }

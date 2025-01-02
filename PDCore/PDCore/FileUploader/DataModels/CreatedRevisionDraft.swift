@@ -18,6 +18,7 @@
 import Foundation
 
 struct CreatedRevisionDraft: Equatable {
+    let volumeID: String
     let uploadID: UUID
     let localURL: URL
     let size: Int

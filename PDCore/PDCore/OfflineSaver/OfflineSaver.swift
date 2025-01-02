@@ -36,26 +36,33 @@ public final class OfflineSaver: NSObject {
     private var cancelables: Set<AnyCancellable> = []
     private var isCleaningUp = false
 
-    init(clientConfig: APIService.Configuration, storage: StorageManager, downloader: Downloader) {
+    init(
+        clientConfig: APIService.Configuration,
+        storage: StorageManager,
+        downloader: Downloader,
+        populatedStateController: PopulatedStateControllerProtocol
+    ) {
         self.storage = storage
         self.downloader = downloader
         self.reachability = nil
         
         super.init()
         
-        self.trackReachability(toHost: clientConfig.host)
+        self.trackReachability(toHost: clientConfig.apiOrigin)
 
         // Progress rebuilding is dangerous task because of KVO and subscriptions involved.
         // We want to make is as seldom as possible, so we wait a couple of seconds after last request
         rebuildProgressSubject
+            .combineLatest(populatedStateController.state)
+            .filter { _, state in state == .populated }
             .throttle(for: .seconds(2), scheduler: DispatchQueue.main, latest: true)
-            .handleEvents(receiveOutput: { [weak self] in
+            .handleEvents(receiveOutput: { [weak self] _ in
                 // Clear the old process with references to the children progresses as soon as possible
                 self?.progress = Progress()
                 Log.info("Did clear old Progress tracking", domain: .downloader)
             })
             .delay(for: .seconds(1), scheduler: DispatchQueue.main)
-            .sink { [weak self] in
+            .sink { [weak self] _ in
                 guard let self, !self.isCleaningUp else { return }
                 self.rebuildProgress()
             }
@@ -234,19 +241,25 @@ extension OfflineSaver: NSFetchedResultsControllerDelegate {
                            for type: NSFetchedResultsChangeType,
                            newIndexPath: IndexPath?)
     {
-        switch type {
-        case .insert where anObject is File:
-            self.checkMarkedAndInheriting(files: [anObject as! File])
-        case .insert where anObject is Folder:
-            self.checkMarkedAndInheriting(folders: [anObject as! Folder])
-        case .delete where anObject is File:
-            self.uncheckMarked(files: [anObject as! File])
-        case .delete where anObject is Folder:
-            self.uncheckMarked(folders: [anObject as! Folder])
-        
-        /* Cases of updates are handled by CloudSlot components of EventsProvider */
-            
-        default: return // no need to rebuld progresses block for other cases of updates
+        // To break possible recursive call
+        // When recursive call happens, coreData will throw error 132001 when save
+        DispatchQueue.global().async {
+            controller.managedObjectContext.perform {
+                switch type {
+                case .insert where anObject is File:
+                    self.checkMarkedAndInheriting(files: [anObject as! File])
+                case .insert where anObject is Folder:
+                    self.checkMarkedAndInheriting(folders: [anObject as! Folder])
+                case .delete where anObject is File:
+                    self.uncheckMarked(files: [anObject as! File])
+                case .delete where anObject is Folder:
+                    self.uncheckMarked(folders: [anObject as! Folder])
+                    
+                    /* Cases of updates are handled by CloudSlot components of EventsProvider */
+                    
+                default: return // no need to rebuld progresses block for other cases of updates
+                }
+            }
         }
         
         Log.info("Offline available state did change. Attemot rebuild progress.", domain: .downloader)

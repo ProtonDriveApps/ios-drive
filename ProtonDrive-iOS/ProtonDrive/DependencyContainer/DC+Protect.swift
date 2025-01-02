@@ -25,7 +25,8 @@ import PDUploadVerifier
 extension DriveDependencyContainer {
     @MainActor
     func makeProtectViewController() async -> UIViewController {
-        let tower = await initializeTowerInBackgroundQueue()
+        let populatedController = PopulatedStateController()
+        let tower = await initializeTowerInBackgroundQueue(populatedController: populatedController)
 
         let authenticatedContainer = AuthenticatedDependencyContainer(
             tower: tower, 
@@ -33,7 +34,9 @@ extension DriveDependencyContainer {
             networkService: networkService,
             localSettings: localSettings,
             windowScene: windowScene,
-            settingsSuite: appGroup
+            settingsSuite: appGroup,
+            authenticator: authenticator,
+            populatedStateController: populatedController
         )
         
         self.authenticatedContainer = authenticatedContainer
@@ -41,7 +44,7 @@ extension DriveDependencyContainer {
         return await authenticatedContainer.makeProtectViewController()
     }
 
-    func initializeTowerInBackgroundQueue() async -> Tower {
+    func initializeTowerInBackgroundQueue(populatedController: PopulatedStateControllerProtocol) async -> Tower {
         let storageManager = StorageManager(suite: Constants.appGroup, sessionVault: sessionVault)
         let tower = Tower(
             storage: storageManager,
@@ -56,7 +59,8 @@ extension DriveDependencyContainer {
             eventObservers: [],
             eventProcessingMode: .full,
             uploadVerifierFactory: ConcreteUploadVerifierFactory(),
-            localSettings: localSettings
+            localSettings: localSettings,
+            populatedStateController: populatedController
         )
         return tower
     }

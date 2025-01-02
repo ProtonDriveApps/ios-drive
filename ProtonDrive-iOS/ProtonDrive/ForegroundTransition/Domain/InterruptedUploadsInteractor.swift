@@ -33,22 +33,3 @@ final class InterruptedUploadsInteractor: CommandInteractor {
         }
     }
 }
-
-import Combine
-import Foundation
-
-@available(*, deprecated, message: "Remove properly after GA to avoid clashing features with the PhotoUploaderFeeder")
-final class PhotosInterruptedUploadsInteractor: CommandInteractor {
-    private let uploadingFiles: () -> [File]
-    private let uploader: FileUploader
-    private let queue = DispatchQueue.global()
-
-    private var cancelables = Set<AnyCancellable>()
-
-    init(uploadingFiles: @escaping () -> [File], uploader: FileUploader) {
-        self.uploadingFiles = uploadingFiles
-        self.uploader = uploader
-    }
-
-    func execute() { }
-}

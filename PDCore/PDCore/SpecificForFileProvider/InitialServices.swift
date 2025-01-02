@@ -19,6 +19,7 @@ import Combine
 import Foundation
 import OSLog
 import PDClient
+import PDLoadTesting
 #if os(iOS)
 import ProtonCoreChallenge
 #endif
@@ -112,22 +113,27 @@ public class InitialServices {
 #endif
         let authenticator = Authenticator(api: networking)
 
-        let sessionRelatedCommunicator = sessionRelatedCommunicatorFactory(
-            userDefault, sessionVault, authenticator, networking
-        )
+        let sessionRelatedCommunicator = sessionRelatedCommunicatorFactory(sessionVault, authenticator) { [weak networking] credential, kind in
+            guard kind == .fileProviderExtension else { return }
+            networking?.setSessionUID(uid: credential.UID)
+        }
 
         let serviceDelegate = PMAPIClient(
             version: clientConfig.clientVersion,
             sessionVault: sessionVault,
             apiService: networking,
             authenticator: authenticator,
-            generalReachability: try? Reachability(hostname: clientConfig.host),
+            generalReachability: try? Reachability(hostname: clientConfig.apiOrigin),
             sessionRelatedCommunicator: sessionRelatedCommunicator
         )
 
         TrustKitFactory.make(isHardfail: true, delegate: serviceDelegate)
 
-        networking.getSession()?.setChallenge(noTrustKit: PMAPIService.noTrustKit, trustKit: PMAPIService.trustKit)
+        if LoadTesting.isEnabled {
+            networking.getSession()?.setChallenge(noTrustKit: true, trustKit: nil)
+        } else {
+            networking.getSession()?.setChallenge(noTrustKit: PMAPIService.noTrustKit, trustKit: PMAPIService.trustKit)
+        }
 
         networking.serviceDelegate = serviceDelegate
         networking.authDelegate = serviceDelegate
@@ -163,11 +169,13 @@ public class InitialServices {
             TelemetryService.shared.setTelemetryEnabled(!(localSettings.optOutFromTelemetry ?? false))
         }
 #endif
-
-        sessionRelatedCommunicator.performInitialSetup()
+        Task {
+            await sessionRelatedCommunicator.performInitialSetup()
+        }
 
         return (sessionVault, networking, serviceDelegate, authenticator, sessionRelatedCommunicator, featureFlagsRepository, pushNotificationService)
     }
+    // swiftlint:enable large_tuple
 }
 
 public protocol hasPushNotificationService {

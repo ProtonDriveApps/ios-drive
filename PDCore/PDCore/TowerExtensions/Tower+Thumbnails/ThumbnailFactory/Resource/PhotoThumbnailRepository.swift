@@ -29,8 +29,11 @@ final class PhotoNodeThumbnailRepository: NodeThumbnailRepository {
     func fetchThumbnail(fileID: NodeIdentifier) throws -> Thumbnail {
         let moc = store.backgroundContext
         return try moc.performAndWait {
-            let photo = try store.fetchPhoto(id: fileID, moc: moc)
-            return try getThumbnail(from: photo.photoRevision)
+            let photo = Photo.fetch(identifier: AnyVolumeIdentifier(id: fileID.nodeID, volumeID: fileID.volumeID), in: moc)
+            guard let photoRevision = photo?.photoRevision else {
+                throw DriveError("No local photo with identifier: \(fileID)")
+            }
+            return try getThumbnail(from: photoRevision)
         }
     }
 

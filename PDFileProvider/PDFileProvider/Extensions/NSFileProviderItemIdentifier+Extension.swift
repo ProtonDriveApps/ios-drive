@@ -26,7 +26,8 @@ public extension NSFileProviderItemIdentifier {
         _ = url.lastPathComponent // filename
         let nodeId = url.deletingLastPathComponent().lastPathComponent // node id
         let shareId = url.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent // share id
-        let identifier = NodeIdentifier(nodeId, shareId)
+        // TODO: Fix this, it should be broken
+        let identifier = NodeIdentifier(nodeId, shareId, "")
         self.init(identifier)
     }
     

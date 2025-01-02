@@ -54,7 +54,7 @@ extension Layout {
     var finderLayout: [GridItem] {
         switch self {
         case .grid:
-            return [GridItem(.adaptive(minimum: GridCellConstants.grid + 2))]
+            return [GridItem(.adaptive(minimum: GridCellConstants.gridCellSize.width + 2))]
         case .list:
             return [GridItem(.flexible())]
         }

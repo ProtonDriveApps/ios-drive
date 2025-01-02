@@ -29,9 +29,12 @@ final class TrashCellViewModel: ObservableObject {
 
     // MARK: Non-applicable for trash properties, required by `NodeCellConfiguration` protocol
     let isFavorite = false
-    let isSavedForOffline = false
-    let isDownloaded = false
+    let isAvailableOffline = false
     let isShared = false
+    let hasDirectShare: Bool = false
+    var hasSharing: Bool { featureFlagsController.hasSharing }
+    var isSharedWithMeRoot: Bool = false
+    var isSharedCollaboratively: Bool = false
     let isDisabled = false
     let uploadFailed = false
     let uploadWaiting = false
@@ -43,21 +46,29 @@ final class TrashCellViewModel: ObservableObject {
 
     let thumbnailViewModel: ThumbnailImageViewModel?
     let nodeRowActionMenuViewModel: NodeRowActionMenuViewModel?
-    
-    init(node: Node,
-         fileTypeAsset: FileTypeAsset = .shared,
-         selectionModel: CellSelectionModel? = nil,
-         nodeRowActionMenuViewModel: NodeRowActionMenuViewModel? = nil)
-    {
+    let featureFlagsController: FeatureFlagsControllerProtocol
+
+    init(
+        node: Node,
+        fileTypeAsset: FileTypeAsset = .shared,
+        selectionModel: CellSelectionModel? = nil,
+        nodeRowActionMenuViewModel: NodeRowActionMenuViewModel? = nil,
+        featureFlagsController: FeatureFlagsControllerProtocol
+    ) {
         self.node = node
         self.selectionModel = selectionModel
         self.thumbnailViewModel = ThumbnailImageViewModel(node: node)
         self.nodeRowActionMenuViewModel = nodeRowActionMenuViewModel
         self.iconName = fileTypeAsset.getAsset(node.mimeType)
+        self.featureFlagsController = featureFlagsController
     }
 }
 
 extension TrashCellViewModel: NodeCellConfiguration {
+    var creator: String {
+        ""
+    }
+    
     var id: NodeIdentifier {
         node.identifier
     }

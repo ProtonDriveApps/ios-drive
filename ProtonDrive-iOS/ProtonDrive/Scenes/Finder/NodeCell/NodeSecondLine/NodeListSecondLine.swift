@@ -32,6 +32,7 @@ enum SecondLineFigure {
 enum Badge: Equatable {
     case cloud
     case favorite
-    case offline(downloaded: Bool)
+    case offline
     case shared
+    case sharedCollaboratively
 }

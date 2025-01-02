@@ -21,7 +21,9 @@ import PDClient
 
 public final class FolderModel: FinderModel, FinderErrorModel, ThumbnailLoader, NodesListing, NodesFetching, UploadsListing, DownloadsListing, NodesSorting {
     public enum Errors: Error {
-        case nodeIdDoesNotBelongToFolder
+        case nodeIdDoesNotBelongToFolder(String)
+        case nodeIdNotFound(String)
+        case noFileSystemSlot
         case noMainShareFound
     }
     
@@ -52,7 +54,7 @@ public final class FolderModel: FinderModel, FinderErrorModel, ThumbnailLoader, 
     // MARK: NodesFetching
     public let node: Folder // should be from main thread context
     public var currentNodeID: NodeIdentifier!
-    public let pageSize = Constants.pageSizeForRefreshes
+    public let pageSize = Constants.pageSizeForChildrenFetchAndEnumeration
     public var lastFetchedPage = 0
     
     // MARK: others
@@ -84,11 +86,20 @@ public final class FolderModel: FinderModel, FinderErrorModel, ThumbnailLoader, 
 
     /// Constructor for background thead, uses fileSystemSlot for subscriptions
     public init(tower: Tower, nodeID: NodeIdentifier) throws {
-        guard let node = tower.fileSystemSlot?.getNode(nodeID) as? Folder else {
-            throw Errors.nodeIdDoesNotBelongToFolder
+        guard let fileSystemSlot = tower.fileSystemSlot else {
+            throw Errors.noFileSystemSlot
         }
+
+        guard let node = fileSystemSlot.getNode(nodeID) else {
+            throw Errors.nodeIdNotFound(nodeID.rawValue)
+        }
+
+        guard let folder = node as? Folder else {
+            throw Errors.nodeIdDoesNotBelongToFolder(nodeID.rawValue)
+        }
+
         self.tower = tower
-        self.node = node
+        self.node = folder
 
         let children = tower.fileSystemSlot!.subscribeToChildren(of: nodeID)
         self.childrenObserver = FetchedObjectsObserver(children)

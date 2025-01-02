@@ -57,5 +57,6 @@ struct NodeDetailsView: View {
         }
         .background(ColorProvider.BackgroundSecondary)
         .edgesIgnoringSafeArea(.bottom)
+        .accessibilityIdentifier("NodeDetailsView.\(vm.node.decryptedName)")
     }
 }

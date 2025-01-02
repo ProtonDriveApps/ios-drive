@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import PDLocalization
 
 enum PhotosRootState {
     case loading
@@ -30,7 +31,11 @@ struct PhotosRootNavigation {
     let leftItem: Item
     let rightItem: Item?
 
-    static let `default` = PhotosRootNavigation(title: "Photos", leftItem: .menu, rightItem: nil)
+    static let `default` = PhotosRootNavigation(
+        title: Localization.tab_bar_title_photos,
+        leftItem: .menu,
+        rightItem: nil
+    )
 
     enum Item: Equatable {
         case menu
@@ -42,9 +47,13 @@ struct PhotosRootNavigation {
 protocol PhotosRootViewModelProtocol: ObservableObject {
     var state: PhotosRootState { get }
     var navigation: PhotosRootNavigation { get }
+    var isVisible: Bool { get }
+    var visiblePublisher: AnyPublisher<Bool, Never> { get }
+    
     func handle(item: PhotosRootNavigation.Item)
     func close()
     func refreshIfNeeded()
+    func updateVisibleStatus(isVisible: Bool)
 }
 
 final class PhotosRootViewModel: PhotosRootViewModelProtocol {
@@ -53,11 +62,18 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
     private let authorizationController: PhotoLibraryAuthorizationController
     private let galleryController: PhotosGalleryController
     private let selectionController: PhotosSelectionController
+    private let photoUpsellFlowController: PhotoUpsellFlowController?
     private var cancellables = Set<AnyCancellable>()
     private let photosPagingLoadController: PhotosPagingLoadController
+    /// Is photos root view visible on the screen
+    var isVisible: Bool { visibleSubject.value }
+    private var visibleSubject = CurrentValueSubject<Bool, Never>(true)
 
     @Published var state: PhotosRootState = .loading
     @Published var navigation: PhotosRootNavigation = .default
+    var visiblePublisher: AnyPublisher<Bool, Never> {
+        visibleSubject.eraseToAnyPublisher()
+    }
 
     init(
         coordinator: PhotosRootCoordinator,
@@ -65,7 +81,8 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
         authorizationController: PhotoLibraryAuthorizationController,
         galleryController: PhotosGalleryController,
         selectionController: PhotosSelectionController,
-        photosPagingLoadController: PhotosPagingLoadController
+        photosPagingLoadController: PhotosPagingLoadController,
+        photoUpsellFlowController: PhotoUpsellFlowController?
     ) {
         self.coordinator = coordinator
         self.settingsController = settingsController
@@ -73,6 +90,7 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
         self.galleryController = galleryController
         self.selectionController = selectionController
         self.photosPagingLoadController = photosPagingLoadController
+        self.photoUpsellFlowController = photoUpsellFlowController
         subscribeToUpdates()
     }
 
@@ -150,6 +168,11 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
         photosPagingLoadController.loadNext()
     }
 
+    func updateVisibleStatus(isVisible: Bool) {
+        visibleSubject.send(isVisible)
+        photoUpsellFlowController?.updatePhotoTabVisible(isVisible: isVisible)
+    }
+
     private func isFullSelection() -> Bool {
         let selectedIds = selectionController.getIds()
         let allIds = galleryController.getIds()
@@ -159,11 +182,11 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
     private func handleSelectionUpdate() {
         if selectionController.isSelecting() {
             let selectedIds = selectionController.getIds()
-            let selectedAllTitle = isFullSelection() ? "Deselect all" : "Select all"
+            let selectedAllTitle = isFullSelection() ? Localization.general_deselect_all : Localization.general_select_all
             navigation = PhotosRootNavigation(
-                title: "\(selectedIds.count) selected",
+                title: Localization.general_selected(num: selectedIds.count),
                 leftItem: .selection(selectedAllTitle),
-                rightItem: .cancel("Cancel")
+                rightItem: .cancel(Localization.general_cancel)
             )
         } else {
             navigation = .default

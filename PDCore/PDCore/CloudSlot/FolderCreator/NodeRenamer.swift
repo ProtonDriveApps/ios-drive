@@ -18,7 +18,7 @@
 import PDClient
 import CoreData
 
-public final class NodeRenamer {
+public final class NodeRenamer: NodeRenamerProtocol {
     /// Typealias for one of the methods of PDCLient's Client.
     public typealias CloudNodeRenamer = (Client.ShareID, Client.LinkID, RenameNodeParameters) async throws -> Void
 
@@ -40,14 +40,18 @@ public final class NodeRenamer {
     }
 
     public func rename(_ node: Node, to newName: String, mimeType: String?) async throws {
-        let signersKit = try signersKitFactory.make(forSigner: .main)
         let validatedNewName = try newName.validateNodeName(validator: NameValidations.iosName)
 
-        let (nodeID, shareID, oldNodeName, parentKey, parentPassphrase, parentHashKey) = try await moc.perform {
+        let (nodeID, shareID, oldNodeName, parentKey, parentPassphrase, parentHashKey, signersKit) = try await moc.perform {
             let node = node.in(moc: self.moc)
             let nodeID = node.id
-            let shareID = node.shareID
-
+            let shareID = try node.getContextShare().id
+#if os(macOS)
+            let signersKit = try self.signersKitFactory.make(forSigner: .main)
+#else
+            let addressID = try node.getContextShareAddressID()
+            let signersKit = try self.signersKitFactory.make(forAddressID: addressID)
+#endif
             guard let oldNodeName = node.name else { throw node.invalidState("The renaming Node should have a valid old name.") }
 
             guard let parent = node.parentLink else { throw node.invalidState("The renaming Node should have a parent.") }
@@ -55,7 +59,7 @@ public final class NodeRenamer {
             let parentPassphrase = try parent.decryptPassphrase()
             let parentHashKey = try parent.decryptNodeHashKey()
 
-            return (nodeID, shareID, oldNodeName, parentKey, parentPassphrase, parentHashKey)
+            return (nodeID, shareID, oldNodeName, parentKey, parentPassphrase, parentHashKey, signersKit)
         }
 
         let newEncryptedName = try node.renameNode(
@@ -80,6 +84,7 @@ public final class NodeRenamer {
             let node = node.in(moc: self.moc)
             node.name = newEncryptedName
             node.nodeHash = newNameHash
+            node.nameSignatureEmail = signersKit.address.email
 
             // MIME type should remain unchanged if the rename either removed
             // the file extension, or it's Proton Doc, which doesn't have an

@@ -27,9 +27,11 @@ typealias ListState = TrashViewModel.ListState
 typealias ObservableFinderViewModel = FinderViewModel & ObservableObject
 
 protocol NodeEditionViewModel {
+    var isSharedWithMeRoot: Bool { get }
     func setFavorite(_ favorite: Bool, nodes: [Node])
     func markOfflineAvailable(_ mark: Bool, nodes: [Node])
     func sendToTrash(_ currentNodes: [Node], completion: @escaping (Result<Void, Error>) -> Void)
+    func removeMe(_ currentNode: Node, completion: @escaping (Result<Void, Error>) -> Void)
     func sendError(_ error: Error)
 }
 
@@ -47,7 +49,7 @@ protocol FinderViewModel: NodeEditionViewModel, FlatNavigationBarDelegate {
     associatedtype Model: FinderModel, NodesListing, ThumbnailLoader
     typealias ApplyActionCompletion = () -> Void
     var model: Model { get }
-    
+
     var sorting: SortPreference { get }
     var supportsSortingSwitch: Bool { get }
     var permanentChildrenSectionTitle: String { get }
@@ -56,27 +58,31 @@ protocol FinderViewModel: NodeEditionViewModel, FlatNavigationBarDelegate {
     var layout: Layout { get }
     var supportsLayoutSwitch: Bool { get }
     func changeLayout()
-    
+
     var childrenCancellable: AnyCancellable? { get set }
     var transientChildren: [NodeWrapper] { get set }
     var permanentChildren: [NodeWrapper] { get set }
-    
+
     var isVisible: Bool { get set }
     var genericErrors: ErrorRegulator { get }
-    
+
+    var isSharedWithMeRoot: Bool { get }
+    var hasPlusFunctionality: Bool { get }
+
     var nodeName: String { get }
     var isUpdating: Bool { get set }
     var trailingNavBarItems: [NavigationBarButton] { get }
     var leadingNavBarItems: [NavigationBarButton] { get }
     var lastUpdated: Date { get }
+    var featureFlagsController: FeatureFlagsControllerProtocol { get }
 
     func refreshOnAppear()
     func didScrollToBottom()
-    
+
     func selected(file: File)
     func childViewModel(for node: Node) -> NodeCellConfiguration
     func applyAction(completion: @escaping ApplyActionCompletion)
-    
+
     var isUploadDisclaimerVisible: Bool { get }
     var lockedStateCancellable: AnyCancellable? { get set }
     var lockedStateBannerVisibility: LockedStateAlertVisibility { get set }
@@ -84,6 +90,10 @@ protocol FinderViewModel: NodeEditionViewModel, FlatNavigationBarDelegate {
 }
 
 extension FinderViewModel {
+    var isSharedWithMeRoot: Bool {
+        return false
+    }
+
     var node: Folder? {
         self.model.folder
     }
@@ -109,39 +119,51 @@ extension FinderViewModel {
                 self.transientChildren = uploading.map(NodeWrapper.init)
             }
     }
-    
+
     func switchSorting(_ newValue: SortPreference) {
         self.model.switchSorting(newValue)
     }
-    
+
     private var noChildren: Bool {
         permanentChildren.isEmpty && transientChildren.isEmpty
     }
-    
+
     private var provedChildrenCount: Bool {
         lastUpdated > .distantPast && !isUpdating
     }
-    
+
     var provedEmpty: Bool {
         noChildren && provedChildrenCount
     }
-    
+
     var needsNoConnectionBackground: Bool {
         guard model is NodesFetching, isVisible else {
             return false
         }
-        
+
         return noChildren && !provedChildrenCount
     }
-    
+
     var emptyBackgroundConfig: EmptyViewConfiguration? {
         guard provedEmpty else { return nil }
-        
+
         switch self.model {
-        case is NodesFetching: return .folder
-        case is SharedModel: return .shared
-        case is OfflineAvailableModel: return .offlineAvailable
-        default: return nil
+        case is NodesFetching:
+            if hasPlusFunctionality {
+                return .folder
+            } else {
+                return .folderWithoutMessage
+            }
+        case is SharedModel:
+            return .shared
+        case is SharedByMeModel:
+            return .sharedByMe
+        case is OfflineAvailableModel:
+            return .offlineAvailable
+        case is SharedWithMeModel:
+            return .sharedWithMe
+        default:
+            return nil
         }
     }
 
@@ -151,7 +173,7 @@ extension FinderViewModel {
 }
 
 extension FinderViewModel {
-    
+
     func numberOfControllers(_ count: Int, _ root: RootViewModel) {
         root.isAccessible = count == 1
     }
@@ -168,16 +190,18 @@ extension FinderViewModel where Self: HasMultipleSelection {
         case .trashMultiple:
             let vm = NodeRowActionMultipleMenuViewModel(nodes: nodes.map(\.node), model: self)
             menuItem.wrappedValue = .trash(vm: vm, isNavigationMenu: false)
-            
+
         case .moveMultiple where !nodes.isEmpty:
             sheet.wrappedValue = .move(nodes.map(\.node), parent: self.node ?? nodes.map(\.node).first!.parentLink)
-            
+
         case .offlineAvailableMultiple:
             // Only downloadable nodes should be considered for offline available functionality
             // (Proton docs should be excluded)
             let nodes = nodes.filter { $0.node.isDownloadable }
             self.markOfflineAvailable(!nodes.map(\.node).allSatisfy(\.isMarkedOfflineAvailable), nodes: nodes.map(\.node))
-            
+        case .removeMe:
+            let vm = NodeRowActionMultipleMenuViewModel(nodes: nodes.map(\.node), model: self)
+            menuItem.wrappedValue = .removeMe(vm: vm)
         default: break
         }
     }
@@ -198,7 +222,9 @@ extension FinderViewModel where Self: UploadingViewModel, Self: DownloadingViewM
             progressTracker: makeFileProgressTracker(for: node),
             downloadProgresses: self.downloadProgresses,
             thumbnailLoader: self.model,
-            nodeStatePolicy: nodeStatePolicy
+            nodeStatePolicy: nodeStatePolicy,
+            featureFlagsController: featureFlagsController,
+            isSharedWithMeRoot: isSharedWithMeRoot
         )
     }
 
@@ -232,15 +258,25 @@ extension FinderViewModel where Self: DownloadingViewModel, Self: HasMultipleSel
         NodeCellWithProgressConfiguration(
             from: node,
             selectionModel: self.prepareSelectionModel(),
+            progressTracker: makeFileProgressTracker(for: node),
             downloadProgresses: self.downloadProgresses,
             thumbnailLoader: self.model,
-            nodeStatePolicy: DisabledNodeStatePolicy()
+            nodeStatePolicy: DisabledNodeStatePolicy(),
+            featureFlagsController: featureFlagsController,
+            isSharedWithMeRoot: isSharedWithMeRoot
         )
+    }
+
+    func makeFileProgressTracker(for node: Node) -> ProgressTracker? {
+        if let file = node as? File {
+            return downloadProgresses.first { $0.matches(file.id) }
+        }
+        return nil
     }
 }
 
 extension FinderViewModel where Self: UploadingViewModel, Self.Model: UploadsListing {
-    
+
     func subscribeToChildrenUploading() {
         self.childrenUploadCancellable?.cancel()
         self.childrenUploadCancellable = self.model.childrenUploading()
@@ -301,7 +337,7 @@ extension FinderViewModel where Self: DownloadingViewModel, Self.Model: Download
             self?.downloadProgresses = progresses
         })
     }
-    
+
     func selected(file: File) {
         self.model.download(node: file)
     }
@@ -320,35 +356,91 @@ extension FinderViewModel where Self.Model: NodesListing {
 
         (self.model as? DownloadsListing)?.download(node: node)
     }
-    
+
     func setFavorite(_ favorite: Bool, nodes: [Node]) {
         model.tower.setFavourite(favorite, nodes: nodes) { _ in }
     }
-    
+
     func markOfflineAvailable(_ mark: Bool, nodes: [Node]) {
         model.tower.markOfflineAvailable(mark, nodes: nodes) { _ in }
     }
 
-    func sendToTrash(_ currentNodes: [Node], completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let moc = currentNodes.first?.moc else {
+    func removeMe(_ currentNode: Node, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let moc = currentNode.moc else {
             completion(.failure(Node.noMOC()))
             return
         }
 
-        moc.perform { [weak self] in
-            guard let self else { return }
+        guard let share = currentNode.directShares.first else {
+            completion(.failure(currentNode.invalidState("Shared Node should have a direct share")))
+            return
+        }
+
+        guard let memberID = share.members.first?.id else {
+            completion(.failure(currentNode.invalidState("Shared Node should have a memberID")))
+            return
+        }
+
+        let shareID = share.id
+
+        Task {
+            do {
+                try await model.tower.removeMember(shareID: shareID, memberID: memberID)
+                try await moc.perform {
+                    if let folder = currentNode as? Folder {
+                        folder.isolateChildrenToPreventCascadeDeletion()
+                    }
+                    moc.delete(currentNode)
+                    moc.delete(share)
+                    try moc.saveOrRollback()
+                    completion(.success)
+                }
+            } catch {
+                completion(.failure(error))
+            }
+        }
+    }
+
+    @MainActor
+    func sendToTrash(_ currentNodes: [Node], completion: @escaping (Result<Void, Error>) -> Void) {
+        Task {
+            do {
+                try await sendToTrash(currentNodes)
+                completion(.success)
+            } catch {
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func sendToTrash(_ currentNodes: [Node]) async throws {
+        guard let moc = currentNodes.first?.moc else {
+            throw Node.noMOC()
+        }
+
+        let (trashingLocalNodes, trashingRemoteNodes) = try await moc.perform { [weak self] in
+            if self == nil { throw DriveError("FinderViewModel was deallocated before it could trash items") }
 
             let (localNodes, remoteNodes) = currentNodes.partitioned { $0.isLocalFile }
 
-            model.tower.trashLocalNode(localNodes.map(\.id))
-
-            let trashingNodes = remoteNodes.compactMap { (node: Node) -> TrashingNodeIdentifier? in
+            // Trash local nodes
+            let trashingLocalNodes = localNodes.compactMap { (node: Node) -> TrashingNodeIdentifier? in
                 guard let parent = node.parentLink else { return nil }
-                return TrashingNodeIdentifier(nodeID: node.id, shareID: node.shareID, parentID: parent.id)
+                return TrashingNodeIdentifier(volumeID: node.volumeID, shareID: node.shareId, parentID: parent.id, nodeID: node.id)
             }
 
-            model.tower.trash(trashingNodes, completion: completion)
+            // Trash remote nodes asynchronously
+            let trashingRemoteNodes = remoteNodes.compactMap { (node: Node) -> TrashingNodeIdentifier? in
+                guard let parent = node.parentLink else { return nil }
+                return TrashingNodeIdentifier(volumeID: node.volumeID, shareID: node.shareId, parentID: parent.id, nodeID: node.id)
+            }
+
+            return (trashingLocalNodes, trashingRemoteNodes)
         }
+
+        // Perform local trashing
+        try model.tower.trashLocalNode(trashingLocalNodes)
+        try await model.tower.trash(trashingRemoteNodes)
     }
 
     func sendError(_ error: Error) {
@@ -377,7 +469,7 @@ extension FinderViewModel {
 }
 
 struct DriveFinderUpload: Error {
-    
+
     var localizedDescription: String {
         "Uploading file with no activeRevisionDraft"
     }

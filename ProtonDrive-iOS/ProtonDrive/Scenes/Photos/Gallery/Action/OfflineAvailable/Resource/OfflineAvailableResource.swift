@@ -61,8 +61,8 @@ final class LocalOfflineAvailableResource: OfflineAvailableResource {
     func toggle(ids: PhotoIdsSet) {
         managedObjectContext.perform { [weak self] in
             guard let self = self else { return }
-            let ids = ids.map { $0.nodeID }
-            let photos = self.storage.fetchPhotos(ids: ids, moc: self.managedObjectContext)
+            let ids = Array(ids)
+            let photos = self.storage.fetchPhotos(identifiers: ids, moc: self.managedObjectContext)
             let shouldMarkOffline = photos.contains(where: { !$0.isMarkedOfflineAvailable })
             self.tower.markOfflineAvailable(shouldMarkOffline, nodes: photos, handler: { _ in })
         }

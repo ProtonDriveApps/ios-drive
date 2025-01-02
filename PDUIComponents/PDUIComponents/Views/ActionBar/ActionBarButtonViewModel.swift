@@ -17,6 +17,7 @@
 
 import SwiftUI
 import ProtonCoreUIFoundations
+import PDLocalization
 
 public enum ActionBarButtonViewModel: Int {
     case createFolder
@@ -28,7 +29,10 @@ public enum ActionBarButtonViewModel: Int {
     case offlineAvailableMultiple
     case share
     case shareNative
-    
+    case newShare
+    case removeMe
+    case info
+
     // MARK: - Properties
     
     var icon: Image? {
@@ -42,6 +46,9 @@ public enum ActionBarButtonViewModel: Int {
         case .deleteMultiple: return nil
         case .share: return IconProvider.link
         case .shareNative: return IconProvider.arrowUpFromSquare
+        case .removeMe: return .init("ic_user_cross")
+        case .newShare: return IconProvider.userPlus
+        case .info: return IconProvider.infoCircle
         }
     }
     
@@ -56,16 +63,19 @@ public enum ActionBarButtonViewModel: Int {
         case .deleteMultiple: return "ActionBar.Button.DeleteMultiple"
         case .share: return "ActionBar.Button.Share"
         case .shareNative: return "ActionBar.Button.ShareNative"
+        case .removeMe: return "ActionBar.Button.RemoveMe"
+        case .newShare: return "ActionBar.Button.NewShare"
+        case .info: return "ActionBar.Button.info"
         }
     }
     
     var title: String? {
         switch self {
         case .trashMultiple: return nil
-        case .deleteMultiple: return "Delete"
-        case .restoreMultiple: return "Restore"
+        case .deleteMultiple: return Localization.general_delete
+        case .restoreMultiple: return Localization.general_restore
         case .createFolder: return "New folder"
-        case .cancel: return "Cancel"
+        case .cancel: return Localization.general_cancel
         default: return nil
         }
     }
@@ -82,8 +92,8 @@ public enum ActionBarButtonViewModel: Int {
 
     var isBold: Bool {
         switch self {
-        case .trashMultiple, .cancel: return false
-        case .deleteMultiple, .restoreMultiple, .createFolder, .moveMultiple, .offlineAvailableMultiple, .share, .shareNative: return true
+        case .trashMultiple, .cancel, .removeMe: return false
+        case .deleteMultiple, .restoreMultiple, .createFolder, .moveMultiple, .offlineAvailableMultiple, .share, .newShare, .shareNative, .info: return true
         }
     }
 }

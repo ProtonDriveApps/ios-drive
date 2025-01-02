@@ -25,6 +25,8 @@ final class ChildSessionInteractor: CommandInteractor {
     }
 
     func execute() {
-        sessionCommunicator.performInitialSetup()
+        Task {
+            await sessionCommunicator.performInitialSetup()
+        }
     }
 }

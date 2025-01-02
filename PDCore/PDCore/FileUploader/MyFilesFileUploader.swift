@@ -17,6 +17,7 @@
 
 import Foundation
 import CoreData
+import ProtonCoreObservability
 
 public class MyFilesFileUploader: FileUploader {
     public func upload(files: [File]) {
@@ -61,9 +62,13 @@ public class MyFilesFileUploader: FileUploader {
                 guard let self = self, !self.didSignOut else { return }
 
                 switch result {
-                case .success(let file):
+                case .success:
                     Log.info("2️⃣ file upload success, retry: \(retryCount), UUID: \(uploadID)", domain: .uploader)
-                    self.handleGlobalSuccess(fileDraft: draft, completion: completion)
+                    self.handleGlobalSuccess(
+                        fileDraft: draft,
+                        retryCount: retryCount,
+                        completion: completion
+                    )
 
                 case .failure(let error):
                     Log.error("2️⃣❌ file upload failure. Error: \(error.localizedDescription), retry: \(retryCount), UUID: \(uploadID)", domain: .uploader)
@@ -79,7 +84,7 @@ public class MyFilesFileUploader: FileUploader {
             file.isUploading = false
         } catch let error as ContentCleanedError {
             Log.info("1️⃣❌🧹 file upload failure, UUID: \(String(describing: file.uploadID))", domain: .uploader)
-            deleteUploadingFile(file)
+            deleteUploadingFile(file, error: nil)
             handleDefaultError(error, completion: completion)
         } catch {
             Log.info("1️⃣❌ file upload failure, UUID: \(String(describing: file.uploadID))", domain: .uploader)
@@ -88,18 +93,36 @@ public class MyFilesFileUploader: FileUploader {
         }
     }
     
-    func handleGlobalSuccess(fileDraft: FileDraft, completion: @escaping OnUploadCompletion) {
+    func handleGlobalSuccess(
+        fileDraft: FileDraft,
+        retryCount: Int,
+        completion: @escaping OnUploadCompletion
+    ) {
+        
         guard !didSignOut else { return }
         completion(.success(fileDraft.file))
+        ObservabilityEnv.report(
+            .uploadSuccessRateEvent(
+                status: .success,
+                retryCount: retryCount,
+                fileDraft: fileDraft
+            )
+        )
     }
 
-    func handleGlobalError(_ error: Error, fileDraft: FileDraft, retryCount: Int, completion: @escaping OnUploadCompletion) {
+    func handleGlobalError(
+        _ error: Error,
+        fileDraft: FileDraft,
+        retryCount: Int,
+        completion: @escaping OnUploadCompletion
+    ) {
+        
         guard !didSignOut else { return }
 
         guard !(error is NSManagedObject.NoMOCError) else {
             return
         }
-
+        
         let uploadID = fileDraft.uploadID
         let file = fileDraft.file
 
@@ -119,7 +142,7 @@ public class MyFilesFileUploader: FileUploader {
 
         } else if error is NSManagedObject.InvalidState {
             cancelOperation(id: uploadID)
-            deleteUploadingFile(file)
+            deleteUploadingFile(file, error: nil)
             handleDefaultError(error, completion: completion)
         } else if error is AlreadyCommittedFileError {
             cancelOperation(id: uploadID)
@@ -128,6 +151,14 @@ public class MyFilesFileUploader: FileUploader {
             file.makeUploadableAgain()
             handleDefaultError(error, completion: completion)
         }
+        
+        ObservabilityEnv.report(
+            .uploadSuccessRateEvent(
+                status: .failure,
+                retryCount: retryCount,
+                fileDraft: fileDraft
+            )
+        )
     }
 
     func handleRetryOnError(_ error: Error, file: File, retryCount: Int, uploadID: UUID, completion: @escaping OnUploadCompletion) {

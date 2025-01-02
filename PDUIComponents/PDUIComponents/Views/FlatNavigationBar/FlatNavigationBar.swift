@@ -16,13 +16,17 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
-import UIKit
 import ProtonCoreUIFoundations
+
+#if canImport(UIKit)
+import UIKit
+#endif
 
 public protocol FlatNavigationBarDelegate: AnyObject {
     func numberOfControllers(_ count: Int, _ root: RootViewModel)
 }
 
+#if os(iOS)
 extension UINavigationBar {
     public static func setupFlatNavigationBarSystemWide() {
         let globalAppearance = UINavigationBar.appearance()
@@ -80,3 +84,4 @@ struct NavigationBarModifier<L, T>: ViewModifier where L: View, T: View {
             )
     }
 }
+#endif

@@ -49,14 +49,20 @@ protocol NodeCellConfiguration: AnyObject {
     var iconName: String { get }
     var name: String { get }
     var isFavorite: Bool { get }
-    var isSavedForOffline: Bool { get }
-    var isDownloaded: Bool { get }
+    var isAvailableOffline: Bool { get }
+    /// Public share link has been enabled
     var isShared: Bool { get }
+    // Sharing feature is enabled
+    var hasSharing: Bool { get }
+    var hasDirectShare: Bool { get }
+    var isSharedWithMeRoot: Bool { get }
+    var isSharedCollaboratively: Bool { get }
     var lastModified: Date { get }
     var size: Int { get }
     var secondLineSubtitle: String { get }
     var isDisabled: Bool { get }
-    
+    var creator: String { get }
+
     var buttons: [NodeCellButton] { get }
     
     var uploadFailed: Bool { get }
@@ -72,6 +78,8 @@ protocol NodeCellConfiguration: AnyObject {
     var thumbnailViewModel: ThumbnailImageViewModel? { get }
     
     var nodeRowActionMenuViewModel: NodeRowActionMenuViewModel? { get }
+    var featureFlagsController: FeatureFlagsControllerProtocol { get }
+    var defaultSecondLineSubtitle: String { get }
 }
 
 extension NodeCellConfiguration {

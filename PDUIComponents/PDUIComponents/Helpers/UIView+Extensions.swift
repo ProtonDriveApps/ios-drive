@@ -15,8 +15,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+#if canImport(UIKit)
 import UIKit
+#endif
 
+#if os(iOS)
 public extension UIView {
     func constrainBySuperviewBounds(padding: CGFloat) {
         guard let superview = superview else { return }
@@ -28,3 +31,4 @@ public extension UIView {
         ])
     }
 }
+#endif

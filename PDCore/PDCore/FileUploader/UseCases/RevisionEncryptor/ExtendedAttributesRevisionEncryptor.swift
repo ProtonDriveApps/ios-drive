@@ -60,8 +60,13 @@ class ExtendedAttributesRevisionEncryptor: RevisionEncryptor {
             let revision = revision.in(moc: self.moc)
             
             do {
+#if os(macOS)
                 guard let signatureEmail = revision.signatureAddress else { throw RevisionEncryptorError.noSignatureEmailInRevision }
                 let signersKit = try self.signersKitFactory.make(forSigner: .address(signatureEmail))
+#else
+                let addressID = try revision.file.getContextShareAddressID()
+                let signersKit = try signersKitFactory.make(forAddressID: addressID)
+#endif
                 let publicNodeKey = try Encryptor.getPublicKey(fromPrivateKey: revision.file.nodeKey)
                 let addressKey = signersKit.addressKey.privateKey
                 let addressPassphrase = signersKit.addressPassphrase

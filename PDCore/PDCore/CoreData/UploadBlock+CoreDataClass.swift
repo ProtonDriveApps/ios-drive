@@ -25,7 +25,7 @@ public class UploadBlock: Block {
 
 extension UploadBlock {
     // swiftlint:disable:next function_parameter_count
-    static func make(signature: String, signatureEmail: String, index: Int, hash: Data, size: Int, clearSize: Int, moc: NSManagedObjectContext) -> UploadBlock {
+    static func make(volumeID: String, signature: String, signatureEmail: String, index: Int, hash: Data, size: Int, clearSize: Int, moc: NSManagedObjectContext) -> UploadBlock {
         let block = UploadBlock(context: moc)
         block.index = index
         block.sha256 = hash
@@ -33,6 +33,7 @@ extension UploadBlock {
         block.clearSize = clearSize
         block.encSignature = signature
         block.signatureEmail = signatureEmail
+        block.volumeID = volumeID
         return block
     }
 }

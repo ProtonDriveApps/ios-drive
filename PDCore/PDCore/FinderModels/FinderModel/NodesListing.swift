@@ -70,6 +70,7 @@ extension NodesListing {
             filename: "Error: Not available",
             location: nil,
             mimeType: node.mimeType,
+            fileSize: node.size,
             operation: .enumerateItems,
             state: .errored,
             description: "Access to file attribute (e.g., file name) not available. Please retry or contact support."

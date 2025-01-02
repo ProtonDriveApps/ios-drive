@@ -23,11 +23,10 @@ public protocol ExternalFeatureFlagsStore: AnyObject {
 }
 
 extension LocalSettings: ExternalFeatureFlagsStore {
+    // swiftlint:disable:next cyclomatic_complexity
     public func setFeatureEnabled(_ flag: FeatureAvailabilityFlag, value: Bool) {
         switch flag {
-        case .photosEnabled: photosEnabled = value
         case .photosUploadDisabled: photosUploadDisabled = value
-        case .photosBackgroundSyncEnabled: photosBackgroundSyncEnabled = value
         case .logsCompressionDisabled: logsCompressionDisabled = value
         case .domainReconnectionEnabled: domainReconnectionEnabled = value
         case .postMigrationJunkFilesCleanup: postMigrationJunkFilesCleanup = value
@@ -36,22 +35,31 @@ extension LocalSettings: ExternalFeatureFlagsStore {
         case .logCollectionEnabled: logCollectionEnabled = value
         case .logCollectionDisabled: logCollectionDisabled = value
         case .oneDollarPlanUpsellEnabled: oneDollarPlanUpsellEnabled = value
+        case .driveDisablePhotosForB2B: driveDisablePhotosForB2B = value
+        case .driveDDKEnabled: driveDDKEnabled = value
+        // Sharing
         case .driveSharingMigration: driveSharingMigration = value
+        case .driveiOSSharing: driveiOSSharing = value
         case .driveSharingDevelopment: driveSharingDevelopment = value
         case .driveSharingInvitations: driveSharingInvitations = value
         case .driveSharingExternalInvitations: driveSharingExternalInvitations = value
         case .driveSharingDisabled: driveSharingDisabled = value
         case .driveSharingExternalInvitationsDisabled: driveSharingExternalInvitationsDisabled = value
         case .driveSharingEditingDisabled: driveSharingEditingDisabled = value
-        case .driveDisablePhotosForB2B: driveDisablePhotosForB2B = value
+        case .drivePublicShareEditMode: drivePublicShareEditMode = value
+        case .drivePublicShareEditModeDisabled: drivePublicShareEditModeDisabled = value
+        // ProtonDoc
+        case .driveDocsWebView: driveDocsWebView = value
+        case .driveDocsDisabled: driveDocsDisabled = value
+        // Entitlement
+        case .driveDynamicEntitlementConfiguration: driveDynamicEntitlementConfiguration = value
         }
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     public func isFeatureEnabled(_ flag: FeatureAvailabilityFlag) -> Bool {
         switch flag {
-        case .photosEnabled: return photosEnabled
         case .photosUploadDisabled: return photosUploadDisabled
-        case .photosBackgroundSyncEnabled: return photosBackgroundSyncEnabled
         case .logsCompressionDisabled: return logsCompressionDisabled
         case .domainReconnectionEnabled: return domainReconnectionEnabled
         case .postMigrationJunkFilesCleanup: return postMigrationJunkFilesCleanup
@@ -60,14 +68,24 @@ extension LocalSettings: ExternalFeatureFlagsStore {
         case .logCollectionEnabled: return logCollectionEnabled
         case .logCollectionDisabled: return logCollectionDisabled
         case .oneDollarPlanUpsellEnabled: return oneDollarPlanUpsellEnabled
+        case .driveDisablePhotosForB2B: return driveDisablePhotosForB2B
+        case .driveDDKEnabled: return driveDDKEnabled
+        // Sharing
         case .driveSharingMigration: return driveSharingMigration
+        case .driveiOSSharing: return driveiOSSharing
         case .driveSharingDevelopment: return driveSharingDevelopment
         case .driveSharingInvitations: return driveSharingInvitations
         case .driveSharingExternalInvitations: return driveSharingExternalInvitations
         case .driveSharingDisabled: return driveSharingDisabled
         case .driveSharingExternalInvitationsDisabled: return driveSharingExternalInvitationsDisabled
         case .driveSharingEditingDisabled: return driveSharingEditingDisabled
-        case .driveDisablePhotosForB2B: return driveDisablePhotosForB2B
+        case .drivePublicShareEditMode: return drivePublicShareEditMode
+        case .drivePublicShareEditModeDisabled: return drivePublicShareEditModeDisabled
+        // ProtonDoc
+        case .driveDocsWebView: return driveDocsWebView
+        case .driveDocsDisabled: return driveDocsDisabled
+        // Entitlement
+        case .driveDynamicEntitlementConfiguration: return driveDynamicEntitlementConfiguration
         }
     }
 }

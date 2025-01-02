@@ -16,7 +16,11 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import ProtonCoreUIFoundations
+#if canImport(UIKit)
+import UIKit
+#endif
 
+#if os(iOS)
 extension UINavigationBarAppearance {
     private static var textColor: UIColor { ColorProvider.TextNorm }
     private static var backgroundColor: UIColor { ColorProvider.BackgroundNorm }
@@ -73,3 +77,4 @@ extension UIBarButtonItemAppearance {
         return appearance
     }
 }
+#endif

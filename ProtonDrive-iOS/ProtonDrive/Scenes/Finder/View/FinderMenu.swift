@@ -20,6 +20,7 @@ import PDUIComponents
 
 enum FinderMenu {
     case trash(vm: NodeRowActionMenuViewModelTrashAlertPresenting, isNavigationMenu: Bool)
+    case removeMe(vm: NodeRowActionMenuViewModelTrashAlertPresenting)
 }
 
 extension FinderMenu: Identifiable, MirrorableEnum {

@@ -56,7 +56,7 @@ class URLSessionDataTaskUploader {
         self.moc = moc
     }
 
-    func upload(_ data: Data, request: URLRequest, completion: @escaping (Result<Void, ResponseError>) -> Void) {
+    func upload(_ data: Data, originalSize: Int, request: URLRequest, completion: @escaping (Result<Void, ResponseError>) -> Void) {
         // this `URLSessionUploadTask` retains the `data` even after the request is completed, unit task is released
         let id = self.uploadID
         let uploadTask = session.uploadTask(with: request, from: data) { [weak self] data, response, error in
@@ -64,8 +64,15 @@ class URLSessionDataTaskUploader {
             
             completion(Self.parse(response, responseDict: JSONSerialization.json(data: data), error: error as? NSError, id: id))
         }
+        #if os(iOS)
         progressTracker.addChild(uploadTask.progress, withPendingUnitCount: 1)
-
+        #else
+        let taskProgress = uploadTask.progress
+        taskProgress.kind = .file
+        taskProgress.fileOperationKind = .uploading
+        progressTracker.addChild(taskProgress, withPendingUnitCount: Int64(originalSize))
+        #endif
+        
         task = uploadTask
         task?.resume()
     }

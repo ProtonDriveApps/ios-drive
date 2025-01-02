@@ -21,9 +21,6 @@ import UIKit
 public extension DriveDependencyContainer {
     func makeStartViewController() -> UIViewController {
         let viewController = StartViewController()
-        let navigationController = UINavigationController(rootViewController: viewController)
-        navigationController.navigationBar.isHidden = true
-        navigationController.interactivePopGestureRecognizer?.isEnabled = false
         let viewModel = makeStartViewModel()
         let coordinator = makeStartCoordinator(viewController)
 
@@ -34,7 +31,10 @@ public extension DriveDependencyContainer {
             self?.discardAuthenticatedContainer()
             coordinator?.onNonAuthenticated()
         }
-
+        
+        let navigationController = UINavigationController(rootViewController: viewController)
+        navigationController.navigationBar.isHidden = true
+        navigationController.interactivePopGestureRecognizer?.isEnabled = false
         return navigationController
     }
 

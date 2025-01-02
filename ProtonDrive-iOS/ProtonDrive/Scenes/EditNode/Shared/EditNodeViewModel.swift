@@ -30,4 +30,5 @@ protocol EditNodeViewModel: AnyObject {
 
     func validate(_ proposal: String) -> [ValidationError<String>]
     func setName(to name: String)
+    func close()
 }

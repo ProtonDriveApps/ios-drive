@@ -17,9 +17,9 @@
 
 import Foundation
 
+public typealias LoopID = String
+
 public class EventPeriodicScheduler<GeneralEventsLoop: EventsLoop, SpecialEventsLoop: EventsLoop> {
-    public typealias LoopID = String
-    
     /// Serial queue for jobs posted by all loops
     private var queue: OperationQueue
     
@@ -32,15 +32,19 @@ public class EventPeriodicScheduler<GeneralEventsLoop: EventsLoop, SpecialEvents
     
     /// Factories for event polling operations for per-calendar events. Key is `CalendarID`
     private var specialLoops: [LoopID: LoopOperationScheduler<SpecialEventsLoop>]
-    
-    public init(generalLoop: GeneralEventsLoop, refillPeriod: TimeInterval = 60) {
+
+    /// Events loop polling differs. Timing controller gives us data to know which loops to trigger
+    private let timingController: EventLoopsTimingController
+
+    public init(generalLoop: GeneralEventsLoop, timingController: EventLoopsTimingController) {
         self.queue = OperationQueue()
         self.queue.maxConcurrentOperationCount = 1
         self.queue.qualityOfService = .utility
 
         self.generalLoopScheduler = LoopOperationScheduler(loop: generalLoop, queue: queue)
         self.specialLoops = [:]
-        self.refillPeriod = refillPeriod
+        self.timingController = timingController
+        self.refillPeriod = timingController.getInterval()
     }
     
     public func start() {
@@ -53,7 +57,9 @@ public class EventPeriodicScheduler<GeneralEventsLoop: EventsLoop, SpecialEvents
         self.timer = timer
 
         RunLoop.main.add(timer, forMode: .common)
-        timer.fire()
+        DispatchQueue.main.async { [weak self] in
+            self?.refillQueueIfNeeded()
+        }
     }
 
     deinit {
@@ -61,15 +67,29 @@ public class EventPeriodicScheduler<GeneralEventsLoop: EventsLoop, SpecialEvents
         timer = nil
     }
     
-    @objc private func refillQueueIfNeeded() {
-        guard self.queue.operationCount == 0 else { return } // schedule operations only if old ones are done
+    private func refillQueueIfNeeded() {
+        let enqueuedIds = getEnqueuedLoopIds()
 
-        generalLoopScheduler.addOperation()
-        specialLoops.forEach { _, loop in
-            loop.addOperation()
+        // General loop is added only if not enqueued. (Isn't constrained by timing)
+        if !enqueuedIds.contains(generalLoopScheduler.loop.loopId) {
+            generalLoopScheduler.addOperation()
         }
+
+        // Special loops are constrained by queue state + timing constraints
+        let notEnqueuedLoops = specialLoops.filter { id, _ in
+            !enqueuedIds.contains(id)
+        }
+        let possibleIds = notEnqueuedLoops.keys
+        let readyIds = timingController.getReadyLoops(possible: Array(possibleIds))
+        let readyLoops = notEnqueuedLoops.filter { id, _ in
+            readyIds.contains(id)
+        }
+        readyLoops.forEach { _, scheduler in
+            scheduler.addOperation()
+        }
+        timingController.setExecutedLoops(loopIds: Array(readyLoops.keys))
     }
-    
+
     public func suspend() {
         queue.isSuspended = true
         queue.cancelAllOperations()
@@ -89,19 +109,25 @@ public class EventPeriodicScheduler<GeneralEventsLoop: EventsLoop, SpecialEvents
         }
     }
     
-    public func enable(loop: SpecialEventsLoop, for calendarID: LoopID) {
-        specialLoops[calendarID] = LoopOperationScheduler(loop: loop, queue: self.queue)
+    public func enable(loop: SpecialEventsLoop, for loopID: LoopID) {
+        specialLoops[loopID] = LoopOperationScheduler(loop: loop, queue: self.queue)
     }
-    
-    public func disable(loopFor calendarID: LoopID) {
+
+    public func removeLoops(with loopIds: [LoopID]) {
+        loopIds.forEach {
+            specialLoops[$0] = nil
+        }
+    }
+
+    public func disable(loopFor loopID: LoopID) {
         // stop operations in queue
         queue.operations
             .compactMap { $0 as? LoopOperation<SpecialEventsLoop> }
-            .filter { $0.loop === specialLoops[calendarID] }
+            .filter { $0.loop === specialLoops[loopID] }
             .forEach { $0.cancel() }
         
         // remove from loops
-        specialLoops[calendarID] = nil
+        specialLoops[loopID] = nil
     }
     
     public func currentlyEnabled() -> Set<LoopID> {
@@ -114,5 +140,12 @@ public class EventPeriodicScheduler<GeneralEventsLoop: EventsLoop, SpecialEvents
     
     public var isRunning: Bool {
         timer?.isValid == true && !queue.isSuspended
+    }
+
+    private func getEnqueuedLoopIds() -> [LoopID] {
+        return queue.operations.compactMap {
+            ($0 as? LoopOperation<SpecialEventsLoop>)?.loop?.loopId ?? 
+            ($0 as? LoopOperation<GeneralEventsLoop>)?.loop?.loopId
+        }
     }
 }

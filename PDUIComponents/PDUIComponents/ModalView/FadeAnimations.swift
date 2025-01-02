@@ -15,11 +15,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import UIKit
 import ProtonCoreUIFoundations
+import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 private var fadeAnimationDuration: TimeInterval { 0.3 }
 
+#if os(iOS)
 final class FadeInAnimation: NSObject, UIViewControllerAnimatedTransitioning {
     func transitionDuration(using transitionContext: UIViewControllerContextTransitioning?) -> TimeInterval {
         fadeAnimationDuration
@@ -62,3 +66,4 @@ final class FadeOutAnimation: NSObject, UIViewControllerAnimatedTransitioning {
         }
     }
 }
+#endif

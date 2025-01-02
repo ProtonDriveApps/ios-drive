@@ -56,22 +56,15 @@ extension ManagedStorage {
         
         return presentObjects
     }
-    
+
     /// Creates new object with named id
-    public func new<Entity: NSManagedObject>(with id: String,
-                                             by keyPath: String,
-                                             in moc: NSManagedObjectContext) -> Entity
-    {
+    public func new<Entity: NSManagedObject>(with id: String, by keyPath: String, in moc: NSManagedObjectContext) -> Entity {
         let new = NSEntityDescription.insertNewObject(forEntityName: Entity.entity().managedObjectClassName, into: moc)
         new.setValue(id, forKey: keyPath)
         return new as! Entity
     }
     
-    public func existing<Entity: NSManagedObject>(with ids: Set<String>,
-                                                  by keyPath: String = "id",
-                                                  allowSubclasses: Bool = false,
-                                                  in moc: NSManagedObjectContext) -> [Entity]
-    {
+    public func existing<Entity: NSManagedObject>(with ids: Set<String>, by keyPath: String = "id", allowSubclasses: Bool = false, in moc: NSManagedObjectContext) -> [Entity] {
         let fetchRequest = NSFetchRequest<Entity>()
         fetchRequest.entity = Entity.entity()
         if allowSubclasses {
@@ -83,7 +76,20 @@ extension ManagedStorage {
         }
         return (try? moc.fetch(fetchRequest) ) ?? []
     }
-    
+
+    public func existing<Entity: NSManagedObject>(id: String, allowSubclasses: Bool = false, in moc: NSManagedObjectContext) throws -> Entity? {
+        let fetchRequest = NSFetchRequest<Entity>()
+        fetchRequest.entity = Entity.entity()
+
+        if allowSubclasses {
+            fetchRequest.predicate = NSPredicate(format: "(%K == %@)", "id", id)
+        } else {
+            fetchRequest.predicate = NSPredicate(format: "(self.entity == %@ AND %K == %@)", Entity.entity(), "id", id)
+        }
+        fetchRequest.fetchLimit = 1 // Limit the fetch to only one object
+        return try moc.fetch(fetchRequest).first
+    }
+
     public func exists(with id: String,
                        by keyPath: String = "id",
                        entityName: String = "Node",
@@ -101,5 +107,28 @@ extension ManagedStorage {
             assert(false, error.localizedDescription)
             return false
         }
+    }
+}
+
+// MARK: - API for single objects
+extension ManagedStorage {
+    public func unique<Entity: NSManagedObject, Value>(forId id: String, keyPath: KeyPath<Entity, Value>, allowSubclasses: Bool = false, in context: NSManagedObjectContext) -> Entity {
+        if let existing: Entity = existing(forId: id, keyPath: keyPath, allowSubclasses: allowSubclasses, in: context) {
+            return existing
+        }
+        let keyPath = NSExpression(forKeyPath: keyPath).keyPath
+        return new(with: id, by: keyPath, in: context)
+    }
+
+    public func existing<Entity: NSManagedObject, Value>(forId id: String, keyPath: KeyPath<Entity, Value>, allowSubclasses: Bool = false, in context: NSManagedObjectContext) -> Entity? {
+        let keyPath = NSExpression(forKeyPath: keyPath).keyPath
+        let fetchRequest = NSFetchRequest<Entity>()
+        fetchRequest.entity = Entity.entity()
+        fetchRequest.fetchLimit = 1
+        fetchRequest.predicate = allowSubclasses
+            ? NSPredicate(format: "%K == %@", keyPath, id)
+            : NSPredicate(format: "self.entity == %@ AND %K == %@", Entity.entity(), keyPath, id)
+
+        return try? context.fetch(fetchRequest).first
     }
 }

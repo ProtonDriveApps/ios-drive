@@ -83,7 +83,7 @@ public class FileSystemSlot {
     // MARK: - SEND FROM DB TO FS
     
     public func subscribeToChildren(of parentID: NodeIdentifier) -> NSFetchedResultsController<Node> {
-        self.storage.subscriptionToChildren(node: parentID.nodeID, share: parentID.shareID, sorting: .default, moc: self.moc)
+        self.storage.subscriptionToChildren(ofNode: parentID, sorting: .default, moc: self.moc)
     }
 }
 

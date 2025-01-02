@@ -20,7 +20,10 @@ import Foundation
 /// Concrete events loop needs to know its endpoint (make request and parse response) and apply received information to local storage (either clear cache or update it)
 public protocol EventsLoop: AnyObject {
     associatedtype Response: EventPage
-    
+
+    // Unique loop identifier
+    var loopId: String { get }
+
     // async because of network call
     func poll(since loopEventID: String) async throws -> Response
     

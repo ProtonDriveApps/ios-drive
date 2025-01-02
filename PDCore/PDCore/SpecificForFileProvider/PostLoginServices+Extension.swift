@@ -24,7 +24,7 @@ public extension PostLoginServices {
         do {
             let domains = try await NSFileProviderManager.domains()
 
-            var finalError: PostLoginServices.Errors?
+            var finalError: DomainOperationErrors?
             await domains.forEach { domain in
                 Log.debug("Removing domain \(domain.displayName)", domain: .fileProvider)
 
@@ -33,7 +33,7 @@ public extension PostLoginServices {
 
                     Log.info("Removed domain", domain: .fileProvider)
                 } catch {
-                    let domainError = PostLoginServices.Errors.removeDomainFailed(error)
+                    let domainError = DomainOperationErrors.removeDomainFailed(error)
                     let errorMessage: String = domainError.errorDescription ?? ""
                     Log.error(errorMessage, domain: .fileProvider)
                     finalError = domainError
@@ -44,35 +44,10 @@ public extension PostLoginServices {
                 throw finalError
             }
         } catch {
-            let domainError = PostLoginServices.Errors.getDomainsFailed(error)
+            let domainError = DomainOperationErrors.getDomainsFailed(error)
             Log.error(domainError.errorDescription ?? "", domain: .fileProvider)
             throw domainError
         }
     }
 }
 #endif
-
-extension PostLoginServices {
-
-    public enum Errors: Error {
-        case addDomainFailed(_ error: Error)
-        case getDomainsFailed(_ error: Error)
-        case disconnectDomainFailed(_ error: Error)
-        case removeDomainFailed(_ error: Error)
-        case reconnectDomainFailed(_ error: Error)
-        case identifyDomainFailed(_ error: Error)
-        case postMigrationStepFailed(_ error: Error?)
-        
-        public var underlyingError: Error? {
-            switch self {
-            case .addDomainFailed(let error): return error
-            case .getDomainsFailed(let error): return error
-            case .disconnectDomainFailed(let error): return error
-            case .removeDomainFailed(let error): return error
-            case .reconnectDomainFailed(let error): return error
-            case .identifyDomainFailed(let error): return error
-            case .postMigrationStepFailed(let error): return error
-            }
-        }
-    }
-}

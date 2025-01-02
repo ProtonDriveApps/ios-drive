@@ -20,31 +20,47 @@ import Foundation
 import PDCore
 import PMSettings
 import ProtonCoreUIFoundations
+import PDLocalization
 
 final class DefaultHomeTabSettingViewModel: PMDrillDownCellViewModel {
     var accessibilityIdentifier: String { "default_home_tab" }
-    
+
     private let localSettings: LocalSettings
     private var cancellable: AnyCancellable?
     private var currentSelection: TabBarItem?
 
-    var title: String = "Default home tab"
+    var title: String = Localization.settings_default_home_tab
 
     var preview: String? {
         currentSelection?.title
     }
-    
+
     var previewAccessibilityIdentifier: String? {
-        currentSelection?.accessibilityIdentifier
+        currentSelection?.settingsAccessibilityIdentifier
     }
 
     init(localSettings: LocalSettings) {
         self.localSettings = localSettings
-        
+
         cancellable = localSettings
             .publisher(for: \.defaultHomeTabTag)
             .sink { tag in
-                self.currentSelection = TabBarItem(tag: tag)
+                self.currentSelection = TabBarItem(rawValue: tag)
             }
+    }
+}
+
+extension TabBarItem {
+    var settingsAccessibilityIdentifier: String {
+        switch self {
+        case .files:
+            return "Files"
+        case .photos:
+            return "Photos"
+        case .shared:
+            return "Shared"
+        case .sharedWithMe:
+            return "SharedWithMe"
+        }
     }
 }

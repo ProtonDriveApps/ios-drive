@@ -18,6 +18,7 @@
 import Combine
 import Foundation
 import PDCore
+import PDLocalization
 
 final class ShareLinkViewModel: ObservableObject {
     private let model: ShareLinkModel
@@ -53,23 +54,23 @@ final class ShareLinkViewModel: ObservableObject {
         self.now = now()
 
         closeScreenSubject
-            .sink { [unowned self] in self.attemptClose() }
+            .sink { [weak self] in self?.attemptClose() }
             .store(in: &cancellables)
 
         saveChangesSubject
-            .sink { [unowned self] in self.save() }
+            .sink { [weak self] in self?.save() }
             .store(in: &cancellables)
 
         editingLinkSubject
             .removeDuplicates()
-            .sink { [unowned self] in
-                self.proposedEdition = $0
+            .sink { [weak self] in
+                self?.proposedEdition = $0
             }
             .store(in: &cancellables)
 
         model.sharedLinkPublisher
             .map { EditableData.init(expiration: $0.expirationDate, password: $0.customPassword) }
-            .sink { [unowned self] in self.proposedEdition = $0 }
+            .sink { [weak self] in self?.proposedEdition = $0 }
             .store(in: &cancellables)
     }
 
@@ -91,18 +92,18 @@ final class ShareLinkViewModel: ObservableObject {
         guard isEditingSubject.value else { return }
 
         let prevState = state
-        state = .loading("Updating Settings")
+        state = .loading(Localization.share_link_updating_title)
 
         do {
             let updates = try calculateExpirationUpdates()
-            model.updateSecureLink(values: updates) { [unowned self] result in
+            model.updateSecureLink(values: updates) { [weak self] result in
                 switch result {
                 case .success:
-                    self.state = .sharing
-                    NotificationCenter.default.post(name: .banner, object: BannerModel.success("Sharing settings updated"))
+                    self?.state = .sharing
+                    NotificationCenter.default.post(name: .banner, object: BannerModel.success(Localization.share_link_settings_updated))
                     
                 case .failure(let error):
-                    self.state = prevState
+                    self?.state = prevState
                     NotificationCenter.default.post(name: .banner, object: BannerModel.failure(error))
                 }
             }
@@ -123,15 +124,15 @@ final class ShareLinkViewModel: ObservableObject {
     func saveAndClose() {
         guard isEditingSubject.value else { return }
 
-        state = .loading("Updating Settings")
+        state = .loading(Localization.share_link_updating_title)
 
         do {
             let updates = try calculateExpirationUpdates()
-            model.updateSecureLink(values: updates) { [unowned self] result in
-                self.shouldClose = true
+            model.updateSecureLink(values: updates) { [weak self] result in
+                self?.shouldClose = true
                 switch result {
                 case .success:
-                    NotificationCenter.default.post(name: .banner, object: BannerModel.success("Sharing settings updated", delay: .delayed))
+                    NotificationCenter.default.post(name: .banner, object: BannerModel.success(Localization.share_link_settings_updated, delay: .delayed))
 
                 case .failure(let error):
                     NotificationCenter.default.post(name: .banner, object: BannerModel.failure(error, delay: .delayed))
@@ -153,7 +154,7 @@ final class ShareLinkViewModel: ObservableObject {
             let secondsUntilExpiration = now.distance(to: expiration)
             duration = .expiring(secondsUntilExpiration)
 
-            guard secondsUntilExpiration > .zero else { throw TimeError("Please select an expiration date in the future") }
+            guard secondsUntilExpiration > .zero else { throw TimeError(Localization.share_link_past_date_error) }
         case .none:
             duration = .nonExpiring
         default:
@@ -171,7 +172,7 @@ final class ShareLinkViewModel: ObservableObject {
             password = .unchanged
         }
 
-        return UpdateShareURLDetails(password: password, duration: duration)
+        return UpdateShareURLDetails(password: password, duration: duration, permission: .unchanged)
     }
 
     func close() {
@@ -192,9 +193,9 @@ final class ShareLinkViewModel: ObservableObject {
 
     var closeAlertModel: AlertModel {
         AlertModel(
-            title: "Your unsaved changes will be lost.",
-            primaryAction: "Save changes",
-            secondaryAction: "Leave without saving"
+            title: Localization.share_link_unsaved_change_alert_title,
+            primaryAction: Localization.share_link_save_changes,
+            secondaryAction: Localization.share_link_drop_unsaved_change_action
         )
     }
     

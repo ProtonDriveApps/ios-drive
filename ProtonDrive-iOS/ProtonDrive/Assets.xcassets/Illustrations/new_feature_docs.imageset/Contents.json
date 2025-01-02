@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "new_feature_docs.svg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

@@ -18,6 +18,7 @@
 import SwiftUI
 import PDUIComponents
 import ProtonCoreUIFoundations
+import PDLocalization
 
 struct SharedLinkView<EditingView: View>: View {
     @ObservedObject private var vm: SharedLinkViewModel
@@ -117,7 +118,7 @@ private struct FormattedSharedLink: View {
 
     var body: some View {
         Group {
-            Text(text)
+            Text("\(text) ")
                 .fontWeight(.regular) +
             Text(boldText)
                 .fontWeight(.semibold) +
@@ -134,13 +135,13 @@ extension LinkActionsSection.ActionType: Identifiable {
     var text: String {
         switch self {
         case .copyLink:
-            return "Copy link"
+            return Localization.share_action_copy_link
         case .copyPassword:
-            return "Copy password"
+            return Localization.share_action_copy_password
         case .share:
-            return "Share"
+            return Localization.share_action_share
         case .delete:
-            return "Stop sharing"
+            return Localization.share_action_stop_sharing
         }
     }
 

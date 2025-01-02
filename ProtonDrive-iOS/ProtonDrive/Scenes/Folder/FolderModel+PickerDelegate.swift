@@ -17,6 +17,7 @@
 
 import UIKit
 import PDCore
+import PDLocalization
 
 enum PickerError: Error, LocalizedError {
     case importFailures(errors: [Error])
@@ -24,9 +25,9 @@ enum PickerError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case let .importFailures(errors):
-            let file = errors.count > 1 ? "files" : "file"
+            let file = Localization.file_plural_type_with_num(num: errors.count).lowercased()
             let title = errors.first?.localizedDescription ?? ""
-            return "Failed to import \(errors.count) \(file): \(title)"
+            return Localization.file_pickup_error(files: file, error: title)
         }
     }
 }

@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDLocalization
 
 extension NoSpaceView {
     enum Storage {
@@ -24,18 +25,18 @@ extension NoSpaceView {
         var title: String {
             switch self {
             case .local:
-                return "Your device is packed."
+                return Localization.no_space_title_device_is_packed
             case .cloud:
-                return "You reached the limit of your plan."
+                return Localization.no_space_title_limit_of_plan
             }
         }
         
         var subtitle: String {
             switch self {
             case .local:
-                return "There is not enough storage on your device to download all the files marked as offline available."
+                return Localization.no_space_subtitle_device_full
             case .cloud:
-                return "Not enough storage space to upload. Please consider upgrading your account or contact our customer support."
+                return Localization.no_space_subtitle_cloud_full
             }
         }
     }

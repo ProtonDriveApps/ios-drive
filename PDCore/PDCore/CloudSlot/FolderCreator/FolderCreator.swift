@@ -51,9 +51,19 @@ public class FolderCreator {
     /// - Returns: An asynchronously created `Folder` instance representing the new folder.
     /// - Throws: An error if any part of the folder creation process fails.
     public func createFolder(_ name: String, parent: Folder) async throws -> Folder {
-        let signersKit = try signersKitFactory.make(forSigner: .main)
-        let parentFolder = try await moc.perform { try parent.in(moc: self.moc).encrypting() }
         let clearValidatedName = try name.validateNodeName(validator: NameValidations.iosName)
+
+        let (parentFolder, signersKit) = try await moc.perform {
+            let parent = parent.in(moc: self.moc)
+#if os(macOS)
+            let signersKit = try self.signersKitFactory.make(forSigner: .main)
+#else
+            let addressID = try parent.getContextShareAddressID()
+            let signersKit = try self.signersKitFactory.make(forAddressID: addressID)
+#endif
+            let parentFolder = try parent.encrypting()
+            return (parentFolder, signersKit)
+        }
 
         let encryptedName = try Encryptor.encryptAndSign(clearValidatedName, key: parentFolder.nodeKey, addressPassphrase: signersKit.addressPassphrase, addressPrivateKey: signersKit.addressKey.privateKey)
         let nameHash = try Encryptor.hmac(filename: clearValidatedName, parentHashKey: parentFolder.hashKey)
@@ -61,7 +71,7 @@ public class FolderCreator {
         let nodeKeyPack = try Encryptor.generateNodeKeys(addressPassphrase: signersKit.addressPassphrase, addressPrivateKey: signersKit.addressKey.privateKey, parentKey: parentFolder.nodeKey)
         let hashKey = try Encryptor.generateNodeHashKey(nodeKey: nodeKeyPack.key, passphrase: nodeKeyPack.passphraseRaw)
 
-        let createdFolder = CreatedFolder(shareID: parentFolder.shareID, name: encryptedName, nameSignatureEmail: signersKit.address.email, nameHash: nameHash, nodeKey: nodeKeyPack.key, nodePassphrase: nodeKeyPack.passphrase, nodePassphraseSignature: nodeKeyPack.signature, nodeHashKey: hashKey)
+        let createdFolder = CreatedFolder(volumeID: parentFolder.volumeID, shareID: parentFolder.shareID, name: encryptedName, nameSignatureEmail: signersKit.address.email, nameHash: nameHash, nodeKey: nodeKeyPack.key, nodePassphrase: nodeKeyPack.passphrase, nodePassphraseSignature: nodeKeyPack.signature, nodeHashKey: hashKey)
 
         let parameters = NewFolderParameters(
             name: createdFolder.name,
@@ -88,6 +98,7 @@ public class FolderCreator {
 }
 
 private struct CreatedFolder {
+    let volumeID: String
     let shareID: String
 
     let name: String
@@ -104,8 +115,8 @@ private extension Folder {
     /// Create a new File from the `EncryptedImportedFile` model
     static func make(from createdFolder: CreatedFolder, id: String, moc: NSManagedObjectContext) -> Folder {
         // Create new Folder
-        let coreDataFolder: Folder = NSManagedObject.newWithValue(id, by: "id", in: moc)
-        coreDataFolder.shareID = createdFolder.shareID
+        let coreDataFolder = Folder.fetchOrCreate(id: id, volumeID: createdFolder.volumeID, in: moc)
+        coreDataFolder.setShareID(createdFolder.shareID)
 
         coreDataFolder.name = createdFolder.name
         coreDataFolder.nameSignatureEmail = createdFolder.nameSignatureEmail

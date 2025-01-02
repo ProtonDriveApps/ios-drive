@@ -32,7 +32,17 @@ struct PhotosFilterItem: Equatable {
 
 struct PhotosFilterCompounds {
     let items: [PhotosFilterItem]
-    let failedCompounds: [PhotoAssetCompound]
+    let failedCompounds: [PhotosFailedCompound]
+}
+
+struct PhotosFailedCompound {
+    let compound: PhotoAssetCompound
+    let error: PhotosFailureUserError
+    
+    init(compound: PhotoAssetCompound, error: PhotosFailureUserError = .unknown) {
+        self.compound = compound
+        self.error = error
+    }
 }
 
 struct PhotoHashes: Equatable, Hashable {

@@ -19,7 +19,7 @@ import CoreData
 import PDCore
 
 protocol PhotoThumbnailIdsRepository {
-    func getIds(photoIds: [PhotoId], type: ThumbnailType) -> [String]
+    func getIds(photoIds: [PhotoId], type: ThumbnailType) -> [AnyVolumeIdentifier]
 }
 
 final class LocalPhotoThumbnailIdsRepository: PhotoThumbnailIdsRepository {
@@ -31,18 +31,19 @@ final class LocalPhotoThumbnailIdsRepository: PhotoThumbnailIdsRepository {
         self.storageManager = storageManager
     }
 
-    func getIds(photoIds: [PhotoId], type: ThumbnailType) -> [String] {
-        let nodeIds = photoIds.map { $0.nodeID }
+    func getIds(photoIds: [PhotoId], type: ThumbnailType) -> [AnyVolumeIdentifier] {
+        let ids = Set(photoIds.map { AnyVolumeIdentifier(id: $0.nodeID, volumeID: $0.volumeID) })
         return managedObjectContext.performAndWait {
-            let photos = storageManager.fetchPhotos(ids: nodeIds, moc: managedObjectContext)
+            let photos = Photo.fetch(identifiers: ids, in: managedObjectContext)
+
             return photos.compactMap { getId(photo: $0, type: type) }
         }
     }
 
-    private func getId(photo: Photo, type: ThumbnailType) -> String? {
+    private func getId(photo: Photo, type: ThumbnailType) -> AnyVolumeIdentifier? {
         let thumbnail = photo.photoRevision.thumbnails.first(where: { $0.type == type })
         if let id = thumbnail?.id {
-            return id
+            return AnyVolumeIdentifier(id: id, volumeID: photo.volumeID)
         } else {
             Log.error("Failed to retrieve thumbnail id.", domain: .photosUI)
             return nil

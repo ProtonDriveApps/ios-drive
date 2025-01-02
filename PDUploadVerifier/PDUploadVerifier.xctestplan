@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "5FE6D031-581E-40FB-94AD-6C3E6F2A3A20",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "PDUploadVerifierTests",
+        "name" : "PDUploadVerifierTests"
+      }
+    }
+  ],
+  "version" : 1
+}

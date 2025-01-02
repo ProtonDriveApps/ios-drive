@@ -19,6 +19,7 @@ import SwiftUI
 import Combine
 import PDUIComponents
 import ProtonCoreUIFoundations
+import PDLocalization
 
 struct EditLinkView: View {
     @ObservedObject var vm: EditLinkViewModel
@@ -94,7 +95,7 @@ struct EditLinkView: View {
                 .resizable()
                 .frame(width: 24, height: 24)
 
-            Text("This link was created with an old Drive version and can not be modified. Delete this link and create a new one to change the settings.")
+            Text(Localization.share_legacy_link_warning)
                 .font(.callout)
                 .foregroundColor(ColorProvider.TextWeak)
         }

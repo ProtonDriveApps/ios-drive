@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+#if os(iOS)
 import Foundation
 import FileProvider
 import FileProviderUI
@@ -39,3 +40,4 @@ public enum CrossProcessErrorExchange {
                                             code: Int(FPUIExtensionErrorCode.failed.rawValue),
                                             userInfo: nil)
 }
+#endif

@@ -1,0 +1,5064 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "account_deletion_alert_title" : {
+      "comment" : "Alert title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Account Deletion Error"
+          }
+        }
+      }
+    },
+    "action_trash_files_alert_message" : {
+      "comment" : "#@num: Int@# \nAlert message shown when user trying to trash files",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Are you sure you want to move this file to Trash?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Are you sure you want to move %d files to Trash?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "action_trash_folders_alert_message" : {
+      "comment" : "#@num: Int@# \nAlert message shown when user trying to trash folders",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Are you sure you want to move this folder to Trash?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Are you sure you want to move %d folders to Trash?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "action_trash_items_alert_message" : {
+      "comment" : "#@num: Int@# \nAlert message shown when user trying to trash items",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Are you sure you want to move this item to Trash?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Are you sure you want to move %d items to Trash?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "authentication_welcome_text" : {
+      "comment" : "Text shown on the welcome page when user is not logged in ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The convenience of cloud storage and the security of encryption technology. Finally a cloud storage solution you can trust."
+          }
+        }
+      }
+    },
+    "available_offline_downloading_files" : {
+      "comment" : "Text to indicate downloading",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading files..."
+          }
+        }
+      }
+    },
+    "available_offline_empty_message" : {
+      "comment" : "Message of the available offline page when no items are available",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap “Make available offline” in a file’s or folder’s menu to access it without internet connection."
+          }
+        }
+      }
+    },
+    "available_offline_empty_title" : {
+      "comment" : "Title of the available offline page when no items are available",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No offline files or folders"
+          }
+        }
+      }
+    },
+    "available_offline_title" : {
+      "comment" : "Title of available offline page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Available offline"
+          }
+        }
+      }
+    },
+    "camera_permission_alert_message" : {
+      "comment" : "Alert message displayed when required permissions are missing.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change app permissions in Settings"
+          }
+        }
+      }
+    },
+    "camera_permission_alert_title" : {
+      "comment" : "Alert title displayed when required permission is missing",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“ProtonDrive” Would Like to Access the Camera"
+          }
+        }
+      }
+    },
+    "contact_error_unable_to_fetch" : {
+      "comment" : "Error message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to fetch contacts. Please check your network connection and try again."
+          }
+        }
+      }
+    },
+    "create_document_button" : {
+      "comment" : "Button for creating new document",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create document"
+          }
+        }
+      }
+    },
+    "create_document_error" : {
+      "comment" : "Generic document creation error alert",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to create new document. Please try again later."
+          }
+        }
+      }
+    },
+    "create_document_placeholder" : {
+      "comment" : "Placeholder of document name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Document name"
+          }
+        }
+      }
+    },
+    "create_document_title" : {
+      "comment" : "View title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create document"
+          }
+        }
+      }
+    },
+    "create_folder_placeholder" : {
+      "comment" : "Placeholder of folder name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folder name"
+          }
+        }
+      }
+    },
+    "create_folder_title" : {
+      "comment" : "View title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create folder"
+          }
+        }
+      }
+    },
+    "creating_new_document" : {
+      "comment" : "Creating new document loading state",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Creating new document"
+          }
+        }
+      }
+    },
+    "default_home_tab_setting_sheet_title" : {
+      "comment" : "Title of setting action sheet",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose the screen opens by default"
+          }
+        }
+      }
+    },
+    "default_home_tab_title" : {
+      "comment" : "View title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Default home tab"
+          }
+        }
+      }
+    },
+    "disconnection_folder_message" : {
+      "comment" : "Message shown in the folder view when device is disconnected",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "We cannot read contents of this folder"
+          }
+        }
+      }
+    },
+    "disconnection_view_title" : {
+      "comment" : "Title shown in the view when device is disconnected",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your device has no connection"
+          }
+        }
+      }
+    },
+    "edit_link_placeholder_date_picker" : {
+      "comment" : "Placeholder of date picker",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Date"
+          }
+        }
+      }
+    },
+    "edit_link_placeholder_password" : {
+      "comment" : "Placeholder of password configuration",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set password"
+          }
+        }
+      }
+    },
+    "edit_link_section_title" : {
+      "comment" : "Section title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy settings"
+          }
+        }
+      }
+    },
+    "edit_link_settings_updated" : {
+      "comment" : "Banner text shown after saving change",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link settings updated"
+          }
+        }
+      }
+    },
+    "edit_link_title_expiration_date" : {
+      "comment" : "Expiration Date configuration",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set expiration date"
+          }
+        }
+      }
+    },
+    "edit_link_title_password" : {
+      "comment" : "Password configuration",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Require password"
+          }
+        }
+      }
+    },
+    "edit_node_title_rename_file" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename file"
+          }
+        }
+      }
+    },
+    "edit_node_title_rename_folder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename folder"
+          }
+        }
+      }
+    },
+    "edit_section_make_available_offline" : {
+      "comment" : "Button to mark as available offline",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Make available offline"
+          }
+        }
+      }
+    },
+    "edit_section_move_to" : {
+      "comment" : "Button to move an item",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move to..."
+          }
+        }
+      }
+    },
+    "edit_section_open_in_browser" : {
+      "comment" : "Button to open document in browser",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open in browser"
+          }
+        }
+      }
+    },
+    "edit_section_remove" : {
+      "comment" : "Button to move item to trash",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move to trash"
+          }
+        }
+      }
+    },
+    "edit_section_remove_from_available_offline" : {
+      "comment" : "Button to remove from available offline",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove from available offline"
+          }
+        }
+      }
+    },
+    "edit_section_remove_me" : {
+      "comment" : "Button to remove me from shared file or folder",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove me"
+          }
+        }
+      }
+    },
+    "edit_section_share_via_link" : {
+      "comment" : "Button to open share via link",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share via link"
+          }
+        }
+      }
+    },
+    "edit_section_sharing_options" : {
+      "comment" : "Button to open sharing options",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sharing options"
+          }
+        }
+      }
+    },
+    "edit_section_show_file_details" : {
+      "comment" : "Show file details button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show file details"
+          }
+        }
+      }
+    },
+    "edit_section_show_folder_details" : {
+      "comment" : "Button to show folder details",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show folder details"
+          }
+        }
+      }
+    },
+    "empty_folder_message" : {
+      "comment" : "Message shown in the empty folder view",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap the + button to upload files or create something new"
+          }
+        }
+      }
+    },
+    "empty_folder_title" : {
+      "comment" : "Title shown in the empty folder view",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folder is empty"
+          }
+        }
+      }
+    },
+    "file_detail_extension" : {
+      "comment" : "Text displayed on the file detail view to indicate the file extension",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Extension"
+          }
+        }
+      }
+    },
+    "file_detail_general_title" : {
+      "comment" : "View title displayed on the file detail view when we can't recognize file type",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Details"
+          }
+        }
+      }
+    },
+    "file_detail_location" : {
+      "comment" : "Text displayed on the file detail view to indicate the file path",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Location"
+          }
+        }
+      }
+    },
+    "file_detail_modified" : {
+      "comment" : "Text displayed on the file detail view to indicate the file modificated date",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modified"
+          }
+        }
+      }
+    },
+    "file_detail_name" : {
+      "comment" : "Text displayed on the file detail view to indicate the file name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name"
+          }
+        }
+      }
+    },
+    "file_detail_share_no" : {
+      "comment" : "Text displayed on the file detail view to indicate the file is not sharing",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No"
+          }
+        }
+      }
+    },
+    "file_detail_share_yes" : {
+      "comment" : "Text displayed on the file detail view to indicate the file is sharing",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yes"
+          }
+        }
+      }
+    },
+    "file_detail_shared" : {
+      "comment" : "Text displayed on the file detail view to indicate the file share status",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shared"
+          }
+        }
+      }
+    },
+    "file_detail_size" : {
+      "comment" : "Text displayed on the file detail view to indicate the file size",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Size"
+          }
+        }
+      }
+    },
+    "file_detail_subtitle_moments_ago" : {
+      "comment" : "#@size: String@#\nSubtitle for file to represent file size and last modified date",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ | Moments ago"
+          }
+        }
+      }
+    },
+    "file_detail_title" : {
+      "comment" : "View title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File details"
+          }
+        }
+      }
+    },
+    "file_detail_uploaded_by" : {
+      "comment" : "Text displayed on the file detail view to show who uploaded the file",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uploaded by"
+          }
+        }
+      }
+    },
+    "file_detail_uploaded_by_anonymous" : {
+      "comment" : "Indicate the file is uploaded by anonymous user",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anonymous"
+          }
+        }
+      }
+    },
+    "file_pickup_error" : {
+      "comment" : "#@files: String, error: String@# \ne.g. Failed to import 3 files: access denied",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to import %@: %@"
+          }
+        }
+      }
+    },
+    "file_plural_type_with_num" : {
+      "comment" : "#@num: Int@# Concat with other string, e.g. Restore 4 files, Delete 1 file",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%d File"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d Files"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "file_provider_signIn_alert_message" : {
+      "comment" : "Alert message shown when user try to open file provider when app is not logged in ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please open the Proton Drive app to sign in to continue"
+          }
+        }
+      }
+    },
+    "file_provider_signIn_alert_title" : {
+      "comment" : "Alert title shown when user try to open file provider when app is not logged in ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign In to Proton Drive"
+          }
+        }
+      }
+    },
+    "file_provider_unlock_alert_message" : {
+      "comment" : "Alert message shown when user try to open file provider when app is locked",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "While PIN or Face ID\/Touch ID are enabled on Proton Drive the content is not accessible in Files"
+          }
+        }
+      }
+    },
+    "file_provider_unlock_alert_title" : {
+      "comment" : "Alert title shown when user try to open file provider when app is locked",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proton Drive is Locked"
+          }
+        }
+      }
+    },
+    "file_upload_failed_notification" : {
+      "comment" : "Notification text when files upload failed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Some files didn’t upload. Try uploading them again."
+          }
+        }
+      }
+    },
+    "file_upload_paused_notification" : {
+      "comment" : "Notification text when files upload paused",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File upload paused. Open the app to resume."
+          }
+        }
+      }
+    },
+    "file_upload_status_failed_message" : {
+      "comment" : "#@failedUploads: Int@# \nAlert text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "Failed to upload %d file"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Failed to upload %d files"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "finder_coordinator_invalid_folder" : {
+      "comment" : "Error text shown on the view when user try to open invalid folder",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start Folder with insufficient context"
+          }
+        }
+      }
+    },
+    "finder_coordinator_invalid_go_move" : {
+      "comment" : "Error text shown on the view when user try to open move to page for invalid node",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Called Go-Move with insufficient context"
+          }
+        }
+      }
+    },
+    "finder_coordinator_invalid_shared_folder" : {
+      "comment" : "Error text shown on the view when user try to open invalid shared folder",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Started Shared Folder with insufficient context"
+          }
+        }
+      }
+    },
+    "finder_coordinator_move_invalid_node" : {
+      "comment" : "Error text shown on the view when user try to move invalid node",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start Move with insufficient context"
+          }
+        }
+      }
+    },
+    "folder_detail_title" : {
+      "comment" : "View title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folder details"
+          }
+        }
+      }
+    },
+    "folder_plural_type_with_num" : {
+      "comment" : "#@num: Int@# Concat with other string, e.g. Restore 4 folders, Delete 1 folder",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%d Folder"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d Folders"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "format_month_this_month" : {
+      "comment" : "Date formate for this month",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This month"
+          }
+        }
+      }
+    },
+    "general_apply" : {
+      "comment" : "Button title, apply change",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apply"
+          }
+        }
+      }
+    },
+    "general_cancel" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        }
+      }
+    },
+    "general_copy" : {
+      "comment" : "Copy image, text...etc",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy"
+          }
+        }
+      }
+    },
+    "general_decrypting" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Decrypting..."
+          }
+        }
+      }
+    },
+    "general_decryption_failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Decryption failed"
+          }
+        }
+      }
+    },
+    "general_delete" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        }
+      }
+    },
+    "general_deselect_all" : {
+      "comment" : "Button to deselect items in the list",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deselect all"
+          }
+        }
+      }
+    },
+    "general_disable" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disable"
+          }
+        }
+      }
+    },
+    "general_dismiss" : {
+      "comment" : "Button to dismiss page, banner..etc",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dismiss"
+          }
+        }
+      }
+    },
+    "general_done" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        }
+      }
+    },
+    "general_downloading" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading"
+          }
+        }
+      }
+    },
+    "general_enable" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable"
+          }
+        }
+      }
+    },
+    "general_file_type" : {
+      "comment" : "Concat with other string, e.g. Restore file, Delete file",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File"
+          }
+        }
+      }
+    },
+    "general_folder_type" : {
+      "comment" : "Concat with other string, e.g. Restore folder, Delete folder",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folder"
+          }
+        }
+      }
+    },
+    "general_get_more_storage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get more storage"
+          }
+        }
+      }
+    },
+    "general_get_storage" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get storage"
+          }
+        }
+      }
+    },
+    "general_go_back" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go back"
+          }
+        }
+      }
+    },
+    "general_got_it" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Got it"
+          }
+        }
+      }
+    },
+    "general_item_type" : {
+      "comment" : "Concat with other string, e.g. Restore item, Delete item",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Item"
+          }
+        }
+      }
+    },
+    "general_learn_more" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learn more"
+          }
+        }
+      }
+    },
+    "general_link_copied" : {
+      "comment" : "information text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link copied"
+          }
+        }
+      }
+    },
+    "general_loading" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading..."
+          }
+        }
+      }
+    },
+    "general_logout" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log out"
+          }
+        }
+      }
+    },
+    "general_next" : {
+      "comment" : "Next button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next"
+          }
+        }
+      }
+    },
+    "general_not_now" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not now"
+          }
+        }
+      }
+    },
+    "general_off" : {
+      "comment" : "Status label text to indicate that the feature is turned off, e.g., Backup: Off",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off"
+          }
+        }
+      }
+    },
+    "general_ok" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        }
+      }
+    },
+    "general_on" : {
+      "comment" : "Status label text to indicate that the feature is turned on, e.g., 'Backup: On.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On"
+          }
+        }
+      }
+    },
+    "general_password_copied" : {
+      "comment" : "information text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Password copied"
+          }
+        }
+      }
+    },
+    "general_pause" : {
+      "comment" : "action to pause, e.g. pause upload",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause"
+          }
+        }
+      }
+    },
+    "general_refresh" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refresh"
+          }
+        }
+      }
+    },
+    "general_remove" : {
+      "comment" : "Action to remove items , e.g. remove upload failed file",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove"
+          }
+        }
+      }
+    },
+    "general_remove_files" : {
+      "comment" : "#@num: Int@# \nAlert button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Remove file"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Remove %d files"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "general_remove_folders" : {
+      "comment" : "#@num: Int@# \nAlert button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Remove folder"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Remove %d folders"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "general_remove_items" : {
+      "comment" : "#@num: Int@# \nAlert button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Remove item"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Remove %d items"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "general_rename" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename"
+          }
+        }
+      }
+    },
+    "general_restore" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore"
+          }
+        }
+      }
+    },
+    "general_retry" : {
+      "comment" : "Button to retry action after failing ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        }
+      }
+    },
+    "general_save" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save"
+          }
+        }
+      }
+    },
+    "general_select" : {
+      "comment" : "Action to select item",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select"
+          }
+        }
+      }
+    },
+    "general_select_all" : {
+      "comment" : "Button to select all items in the list",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select all"
+          }
+        }
+      }
+    },
+    "general_selected" : {
+      "comment" : "#@num: Int@# \n",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%d selected"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d selected"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "general_settings" : {
+      "comment" : "button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        }
+      }
+    },
+    "general_share" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share"
+          }
+        }
+      }
+    },
+    "general_signing_out" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Signing out..."
+          }
+        }
+      }
+    },
+    "general_skip" : {
+      "comment" : "button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip"
+          }
+        }
+      }
+    },
+    "general_syncing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Syncing"
+          }
+        }
+      }
+    },
+    "general_unknown" : {
+      "comment" : "placeholder",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unknown"
+          }
+        }
+      }
+    },
+    "general_upgrade" : {
+      "comment" : "Button title, e.g. upgrade plan",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upgrade"
+          }
+        }
+      }
+    },
+    "general_uploading" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uploading"
+          }
+        }
+      }
+    },
+    "import_file_button" : {
+      "comment" : "Button for importing new file",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import file"
+          }
+        }
+      }
+    },
+    "item_plural_type_with_num" : {
+      "comment" : "#@num: Int@# Concat with other string, e.g. Restore 4 items, Delete 1 item",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%d Item"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d Items"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "launch_alert_title_disable_validation" : {
+      "comment" : "Alert title shown when certificate validation failed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disable Validation"
+          }
+        }
+      }
+    },
+    "launch_alert_title_update" : {
+      "comment" : "Alert to user when force update is needed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update"
+          }
+        }
+      }
+    },
+    "locking_banner_message" : {
+      "comment" : "Banner text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app will keep your screen awake to ensure faster backups."
+          }
+        }
+      }
+    },
+    "logout_alert_message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By logging out, all files saved for offline will be deleted from your device"
+          }
+        }
+      }
+    },
+    "logout_alert_title" : {
+      "comment" : "Alert title shown when user attempts to logout",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Are you sure?"
+          }
+        }
+      }
+    },
+    "menu_section_title_more" : {
+      "comment" : "Side menu section title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More"
+          }
+        }
+      }
+    },
+    "menu_section_title_storage" : {
+      "comment" : "Side menu section title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Storage"
+          }
+        }
+      }
+    },
+    "menu_text_feedback" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report a problem"
+          }
+        }
+      }
+    },
+    "menu_text_logout" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign out"
+          }
+        }
+      }
+    },
+    "menu_text_my_files" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My files"
+          }
+        }
+      }
+    },
+    "menu_text_settings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        }
+      }
+    },
+    "menu_text_shared_by_me" : {
+      "comment" : "Shared by me items",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shared by me"
+          }
+        }
+      }
+    },
+    "menu_text_subscription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subscription"
+          }
+        }
+      }
+    },
+    "menu_text_total_usage" : {
+      "comment" : "Label text to show total drive storage usage ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Total usage"
+          }
+        }
+      }
+    },
+    "menu_text_trash" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trash"
+          }
+        }
+      }
+    },
+    "more_action_open_in" : {
+      "comment" : "Action to open file in some app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open in..."
+          }
+        }
+      }
+    },
+    "move_action_move_here" : {
+      "comment" : "Button in the move settings to indicate moving the selected file here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move here"
+          }
+        }
+      }
+    },
+    "new_document_title" : {
+      "comment" : "#@timestamp: String@#\nName for newly created document, timestamp is dynamic",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Untitled document %@"
+          }
+        }
+      }
+    },
+    "new_feature_doc_desc" : {
+      "comment" : "Message on new feature promotion popup to introduce doc feature ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap plus to create or collaborate on end-to-end encrypted documents on the go."
+          }
+        }
+      }
+    },
+    "new_feature_doc_title" : {
+      "comment" : "Title on new feature promotion popup to introduce doc feature ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proton Docs on Mobile"
+          }
+        }
+      }
+    },
+    "new_feature_sharing_desc" : {
+      "comment" : "Message on new feature promotion popup to introduce sharing feature ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invite others via email to view and edit your files, or create a public link for quick access"
+          }
+        }
+      }
+    },
+    "new_feature_sharing_title" : {
+      "comment" : "Title on new feature promotion popup to introduce sharing feature ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invite people to your files"
+          }
+        }
+      }
+    },
+    "new_feature_title" : {
+      "comment" : "Title for new feature promotion popup",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What's new!"
+          }
+        }
+      }
+    },
+    "no_space_open_storage_setting" : {
+      "comment" : "Button to redirect to storage setting page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go to local storage settings"
+          }
+        }
+      }
+    },
+    "no_space_subtitle_cloud_full" : {
+      "comment" : "No space warning",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not enough storage space to upload. Please consider upgrading your account or contact our customer support."
+          }
+        }
+      }
+    },
+    "no_space_subtitle_device_full" : {
+      "comment" : "No space warning",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There is not enough storage on your device to download all the files marked as offline available."
+          }
+        }
+      }
+    },
+    "no_space_title_device_is_packed" : {
+      "comment" : "No space warning",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your device is packed."
+          }
+        }
+      }
+    },
+    "no_space_title_limit_of_plan" : {
+      "comment" : "No space warning",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You reached the limit of your plan."
+          }
+        }
+      }
+    },
+    "notification_details" : {
+      "comment" : "Button to expand text view for error deteail",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Details"
+          }
+        }
+      }
+    },
+    "notification_issues" : {
+      "comment" : "#@num: Int@# \nError text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "There is %d issue"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "There are %d issues"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "notification_permission_enable_button_title" : {
+      "comment" : "Button to turn on notifications.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow notifications"
+          }
+        }
+      }
+    },
+    "notification_permission_files_description" : {
+      "comment" : "Message shown in the notification popup when files are uploading.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "We’ll notify you if there are any interruptions to your uploads or downloads."
+          }
+        }
+      }
+    },
+    "notification_permission_files_title" : {
+      "comment" : "Title shown in the notification popup when files are uploading.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn on notifications"
+          }
+        }
+      }
+    },
+    "notification_permission_photos_description" : {
+      "comment" : "Message shown in the notification popup when photos are uploading.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "We’ll only notify you if your action is required to complete backups and uploads."
+          }
+        }
+      }
+    },
+    "notification_permission_photos_title" : {
+      "comment" : "Title shown in the  popup when photos are uploading.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ensure seamless backups"
+          }
+        }
+      }
+    },
+    "notification_text_confirm_backup_success" : {
+      "comment" : "Notification text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check in with Proton Drive to confirm your photos are backed up and secure."
+          }
+        }
+      }
+    },
+    "notification_update_available" : {
+      "comment" : "Button to restart application",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update available. Click to restart Proton Drive."
+          }
+        }
+      }
+    },
+    "onboarding_button_get_started" : {
+      "comment" : "Button title shown on the onboarding page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get started"
+          }
+        }
+      }
+    },
+    "onboarding_button_next" : {
+      "comment" : "Button title shown on the onboarding page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next"
+          }
+        }
+      }
+    },
+    "onboarding_file_text" : {
+      "comment" : "Message shown in the app onboarding view",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upload and view your files on the go. Zero-access technology guarantees only you have access."
+          }
+        }
+      }
+    },
+    "onboarding_file_title" : {
+      "comment" : "Title shown in the app onboarding view",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All files at your fingertips"
+          }
+        }
+      }
+    },
+    "onboarding_photo_text" : {
+      "comment" : "Message shown in the app onboarding view",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ensure your memories are kept safe, private, and in their original quality for years to come."
+          }
+        }
+      }
+    },
+    "onboarding_photo_title" : {
+      "comment" : "Title shown in the app onboarding view",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic photo backups"
+          }
+        }
+      }
+    },
+    "onboarding_share_text" : {
+      "comment" : "Message shown in the app onboarding view",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add password protection to make your shared files even more secure."
+          }
+        }
+      }
+    },
+    "onboarding_share_title" : {
+      "comment" : "Title shown in the app onboarding view",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secure sharing"
+          }
+        }
+      }
+    },
+    "one_dollar_upsell_desc" : {
+      "comment" : "#@localPrice: String@#\nDescription of one dollar upsell popup",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you need a little more storage, but not a lot. Introducing Drive Lite, featuring 20 GB storage for only %@ a month."
+          }
+        }
+      }
+    },
+    "one_dollar_upsell_get_plan_button" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get Drive Lite"
+          }
+        }
+      }
+    },
+    "one_dollar_upsell_title" : {
+      "comment" : "#@localPrice: String@#\nTitle of one dollar upsell popup",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More storage for only %@"
+          }
+        }
+      }
+    },
+    "password_change_mailbox_password_title" : {
+      "comment" : "View title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change mailbox password"
+          }
+        }
+      }
+    },
+    "password_change_success_text" : {
+      "comment" : "Banner text shown after changing successfully",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Password changed successfully"
+          }
+        }
+      }
+    },
+    "password_change_title" : {
+      "comment" : "View title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change password"
+          }
+        }
+      }
+    },
+    "password_config_caption" : {
+      "comment" : "PIN config rule text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a PIN code with min 4 characters and max 21 characters."
+          }
+        }
+      }
+    },
+    "password_config_next_step" : {
+      "comment" : "Button in the config page to move to next page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next"
+          }
+        }
+      }
+    },
+    "password_config_textfield_title" : {
+      "comment" : "Title of textfield",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set your PIN code"
+          }
+        }
+      }
+    },
+    "password_config_title_use_pin" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use PIN code"
+          }
+        }
+      }
+    },
+    "photo_action_remove_item" : {
+      "comment" : "#@num: Int@# \nAction title in photos grid view ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Remove %d item"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Remove %d items"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "photo_backup_banner_in_progress" : {
+      "comment" : "Title shown in photo backup banner",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backup in progress. This may take a while."
+          }
+        }
+      }
+    },
+    "photo_backup_banner_title_e2ee" : {
+      "comment" : "Title shown in photo backup banner",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End-to-end encrypted"
+          }
+        }
+      }
+    },
+    "photo_feature_disable_alert_message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Are you sure you want to disable this feature? You can re-enable it later in settings if needed."
+          }
+        }
+      }
+    },
+    "photo_feature_disable_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disable photo backup feature"
+          }
+        }
+      }
+    },
+    "photo_feature_enable_alert_message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Are you sure you want to enable this feature? The photo backup will be activated and displayed again."
+          }
+        }
+      }
+    },
+    "photo_feature_enable_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable photo backup feature"
+          }
+        }
+      }
+    },
+    "photo_feature_explanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This will enable photo backup feature on this device. The Photos tab and feature settings will be displayed."
+          }
+        }
+      }
+    },
+    "photo_grid_error" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to fetch photos. Please try again later."
+          }
+        }
+      }
+    },
+    "photo_onboarding_button_enable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn on backup"
+          }
+        }
+      }
+    },
+    "photo_onboarding_e2e" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your photos are end-to-end encrypted, ensuring total privacy."
+          }
+        }
+      }
+    },
+    "photo_onboarding_effortless_backups" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effortless backups"
+          }
+        }
+      }
+    },
+    "photo_onboarding_keep_quality" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photos are backed up over WiFi in their original quality."
+          }
+        }
+      }
+    },
+    "photo_onboarding_protect_memories" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Protect your memories"
+          }
+        }
+      }
+    },
+    "photo_onboarding_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encrypt and back up your photos and videos"
+          }
+        }
+      }
+    },
+    "photo_permission_alert_button" : {
+      "comment" : "Button shown in the notification popup when photos are uploading.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Give access"
+          }
+        }
+      }
+    },
+    "photo_permission_alert_text" : {
+      "comment" : "Message shown in the popup when photos are uploading.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This ensures all your photos are backed up and available across your devices.\n\nIn the next screen, change your settings to allow Proton Drive access to All Photos."
+          }
+        }
+      }
+    },
+    "photo_permission_alert_title" : {
+      "comment" : "Title shown in the notification popup when user doesn't grant proper permission",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proton Drive needs full access to your photos"
+          }
+        }
+      }
+    },
+    "photo_preview_error_text" : {
+      "comment" : "Error text shown on the photo preview page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There was an error loading this photo"
+          }
+        }
+      }
+    },
+    "photo_preview_error_title" : {
+      "comment" : "Error title shown on the photo preview page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not load this photo"
+          }
+        }
+      }
+    },
+    "photo_storage_eighty_percent_title" : {
+      "comment" : "Title displayed on the photo storage banner. Use ** to denote bold text; please retain this syntax.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your storage is more than **80%** full"
+          }
+        }
+      }
+    },
+    "photo_storage_fifty_percent_title" : {
+      "comment" : "Title displayed on the photo storage banner. Use ** to denote bold text; please retain this syntax.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your storage is **50%** full"
+          }
+        }
+      }
+    },
+    "photo_storage_full_subtitle" : {
+      "comment" : "Subtitle displayed on the photo storage banner. ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To continue the process you need to upgrade your plan."
+          }
+        }
+      }
+    },
+    "photo_storage_full_title" : {
+      "comment" : "Title displayed on the photo storage banner. ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Storage full"
+          }
+        }
+      }
+    },
+    "photo_storage_item_left" : {
+      "comment" : "#@items: String@#\nText shown on the photo storage banner, e.g. 3 items left, 1 item left",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ left"
+          }
+        }
+      }
+    },
+    "photo_upload_interrupted_notification" : {
+      "comment" : "Notification text when photo is backing up but in the background",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photo backup is slower in the background. Open the app for quicker uploads."
+          }
+        }
+      }
+    },
+    "photo_upsell_subtitle" : {
+      "comment" : "Subtitle shown on the photo upsell popup",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upgrade now and keep all your memories encrypted and safe."
+          }
+        }
+      }
+    },
+    "photo_upsell_title" : {
+      "comment" : "Title shown on the photo upsell popup",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Never run out of storage"
+          }
+        }
+      }
+    },
+    "photos_picker_warning" : {
+      "comment" : "Warning text displayed in the photo picker.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importing the files. Please keep the app open to avoid interruptions."
+          }
+        }
+      }
+    },
+    "populate_loading_text" : {
+      "comment" : "Text indicating that data is loading.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Getting things ready..."
+          }
+        }
+      }
+    },
+    "prepare_preview_cancel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        }
+      }
+    },
+    "preview_burst_badge_text" : {
+      "comment" : "The text displayed in the badge at the top left when previewing burst",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Burst"
+          }
+        }
+      }
+    },
+    "preview_burst_cover" : {
+      "comment" : "A text label to indicate the image is cover of this burst",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cover"
+          }
+        }
+      }
+    },
+    "preview_burst_gallery_subtitle" : {
+      "comment" : "#@num: Int@# ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d photo in total"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d photos in total"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "preview_livePhoto_badge_text" : {
+      "comment" : "The text displayed in the badge at the top left when previewing a live photo",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LIVE"
+          }
+        }
+      }
+    },
+    "preview_loading_badge_text" : {
+      "comment" : "The text displayed in the badge at the top left while the asset is loading during the preview.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading"
+          }
+        }
+      }
+    },
+    "progress_status_downloaded" : {
+      "comment" : "#@percent: String@#\nText shown with progress bar",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ downloaded"
+          }
+        }
+      }
+    },
+    "progress_status_downloading" : {
+      "comment" : "Text to indicate this file is downloading",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading..."
+          }
+        }
+      }
+    },
+    "progress_status_item_left" : {
+      "comment" : "#@items: Int, roundingSign: String@# Banner text shown on photo backup page to indicate how many photos left e.g. 350+ items left",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%d%@ item left"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d%@ items left"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "progress_status_paused" : {
+      "comment" : "Text to indicate this file is downloading",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused"
+          }
+        }
+      }
+    },
+    "progress_status_upload_failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upload failed"
+          }
+        }
+      }
+    },
+    "progress_status_uploaded" : {
+      "comment" : "#@percent: String@#\nText shown with progress bar",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ uploaded..."
+          }
+        }
+      }
+    },
+    "progress_status_uploading" : {
+      "comment" : "Text to indicate this file is uploading",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uploading..."
+          }
+        }
+      }
+    },
+    "progress_status_waiting" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting..."
+          }
+        }
+      }
+    },
+    "protection_info_banner_text" : {
+      "comment" : "Information banner shown on protection setting page ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enabling auto-lock stops background processes unless set to \"After launch.\""
+          }
+        }
+      }
+    },
+    "protection_pin_caption_repeat_pin_code" : {
+      "comment" : "Text field caption",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repeat your PIN to confirm."
+          }
+        }
+      }
+    },
+    "protection_pin_title_repeat_pin_code" : {
+      "comment" : "Text field title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repeat your PIN code"
+          }
+        }
+      }
+    },
+    "protection_section_footer_protection" : {
+      "comment" : "Section footer for pin&faceID setting",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn this feature on to auto-lock and use a PIN code or biometric sensor to unlock it."
+          }
+        }
+      }
+    },
+    "protection_section_header_protection" : {
+      "comment" : "Section header for pin&faceID setting",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Protection"
+          }
+        }
+      }
+    },
+    "protection_timing_section_footer" : {
+      "comment" : "Section footer of protection auto lock setting",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The PIN code will be required after some minutes of the app being in the background or after exiting the app."
+          }
+        }
+      }
+    },
+    "protection_timings_section_header" : {
+      "comment" : "Section header of protection auto lock setting",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Timings"
+          }
+        }
+      }
+    },
+    "protection_use_biometry" : {
+      "comment" : "Option title to choose biometry as protection",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Biometry"
+          }
+        }
+      }
+    },
+    "protection_use_use_technology" : {
+      "comment" : "#@tech: String@# \ne.g. use FaceID, use TouchID",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use %@"
+          }
+        }
+      }
+    },
+    "proton_docs_download_error" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to download file"
+          }
+        }
+      }
+    },
+    "proton_docs_opening_error" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to open document editor"
+          }
+        }
+      }
+    },
+    "refresh_last_update" : {
+      "comment" : "#@time: String@# \nText shown with loading spinner",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last updated: %@"
+          }
+        }
+      }
+    },
+    "retry_error_explainer_cannot_connect_icloud" : {
+      "comment" : "Error message displayed on the photo backup issue page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to connect to iCloud"
+          }
+        }
+      }
+    },
+    "retry_error_explainer_connection_error" : {
+      "comment" : "Error message displayed on the photo backup issue page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Network connection error"
+          }
+        }
+      }
+    },
+    "retry_error_explainer_device_storage_full" : {
+      "comment" : "Error message displayed on the photo backup issue page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Device storage full"
+          }
+        }
+      }
+    },
+    "retry_error_explainer_encryption_error" : {
+      "comment" : "Error message displayed on the photo backup issue page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encryption failed"
+          }
+        }
+      }
+    },
+    "retry_error_explainer_failed_to_load_resource" : {
+      "comment" : "Error message displayed on the photo backup issue page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to load resource"
+          }
+        }
+      }
+    },
+    "retry_error_explainer_invalid_asset" : {
+      "comment" : "Error message displayed on the photo backup issue page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't access the original file."
+          }
+        }
+      }
+    },
+    "retry_error_explainer_missing_permissions" : {
+      "comment" : "Error message displayed on the photo backup issue page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Missing permissions"
+          }
+        }
+      }
+    },
+    "retry_error_explainer_name_validation" : {
+      "comment" : "Error message displayed on the photo backup issue page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name validation failed"
+          }
+        }
+      }
+    },
+    "retry_error_explainer_quote_exceeded" : {
+      "comment" : "Error message displayed on the photo backup issue page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drive storage full"
+          }
+        }
+      }
+    },
+    "retry_skip_alert_message" : {
+      "comment" : "Message shown when a user attempts to skip a photo that failed to back up.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Are you sure you want to skip photos that haven't been backed up? They will not be backed up."
+          }
+        }
+      }
+    },
+    "retry_skip_alert_title" : {
+      "comment" : "Title shown when a user attempts to skip a photo that failed to back up.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip backup for these photos?"
+          }
+        }
+      }
+    },
+    "retry_view_button_retry_all" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry all"
+          }
+        }
+      }
+    },
+    "retry_view_items_failed_to_backup" : {
+      "comment" : "#@count: Int@# \nSubtitle shown on the backup retry view",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%d item failed to backup"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d items failed to backup"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "retry_view_title" : {
+      "comment" : "Title shown on the backup retry view",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backup issues"
+          }
+        }
+      }
+    },
+    "setting_account" : {
+      "comment" : "Account setting section title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Account"
+          }
+        }
+      }
+    },
+    "setting_account_manage_account" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage account"
+          }
+        }
+      }
+    },
+    "setting_biometry" : {
+      "comment" : "Biometry protection setting title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biometry"
+          }
+        }
+      }
+    },
+    "setting_clear_local_cache" : {
+      "comment" : "Setting option to clear local cache",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear local cache"
+          }
+        }
+      }
+    },
+    "setting_export_logs" : {
+      "comment" : "Setting option to export log",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export logs"
+          }
+        }
+      }
+    },
+    "setting_get_help" : {
+      "comment" : "Get help section title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get help"
+          }
+        }
+      }
+    },
+    "setting_help_additional_help" : {
+      "comment" : "#@link: String@#\nThis is markdown text\nPlease move [support website](%@) together",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You will find additional help on our [support website](%@)"
+          }
+        }
+      }
+    },
+    "setting_help_report_encourage_text" : {
+      "comment" : "Label text to encourage user report issue",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If you are facing any problems, please report the issue."
+          }
+        }
+      }
+    },
+    "setting_help_report_issue" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report an issue"
+          }
+        }
+      }
+    },
+    "setting_help_show_logs" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show logs"
+          }
+        }
+      }
+    },
+    "setting_mac_version" : {
+      "comment" : "#@version: String@#\n",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version %@"
+          }
+        }
+      }
+    },
+    "setting_photo_backup" : {
+      "comment" : "Setting option to photo backup",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photos backup"
+          }
+        }
+      }
+    },
+    "setting_pin" : {
+      "comment" : "PIN protection setting title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PIN"
+          }
+        }
+      }
+    },
+    "setting_storage" : {
+      "comment" : "Storage setting section title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Storage"
+          }
+        }
+      }
+    },
+    "setting_storage_out_of_storage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Out of storage"
+          }
+        }
+      }
+    },
+    "setting_storage_out_of_storage_warning" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Syncing has been paused. Please upgrade or free up space to resume syncing."
+          }
+        }
+      }
+    },
+    "setting_storage_usage_info" : {
+      "comment" : "#@currentStorage: String, maxStorage: String@#\n\\(currentStorage) of \\(maxStorage) used",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ of %@ used"
+          }
+        }
+      }
+    },
+    "setting_system" : {
+      "comment" : "System setting section title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System"
+          }
+        }
+      }
+    },
+    "setting_system_checking_update" : {
+      "comment" : "Information text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking for update ..."
+          }
+        }
+      }
+    },
+    "setting_system_downloading" : {
+      "comment" : "Information text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading new version ..."
+          }
+        }
+      }
+    },
+    "setting_system_launch_on_startup" : {
+      "comment" : "Toggle title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Launch on startup"
+          }
+        }
+      }
+    },
+    "setting_system_new_version_available" : {
+      "comment" : "Information text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New version available"
+          }
+        }
+      }
+    },
+    "setting_system_up_to_date" : {
+      "comment" : "#@version: String@#\nInformation text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proton Drive is up to date: v%@"
+          }
+        }
+      }
+    },
+    "setting_system_update_button" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update now"
+          }
+        }
+      }
+    },
+    "setting_terms_and_condition" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terms and Conditions"
+          }
+        }
+      }
+    },
+    "settings_default_home_tab" : {
+      "comment" : "Title of default home tab setting",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Default home tab"
+          }
+        }
+      }
+    },
+    "share_action_copy_link" : {
+      "comment" : "The action for coping share link",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy link"
+          }
+        }
+      }
+    },
+    "share_action_copy_password" : {
+      "comment" : "The action for copying a password used to protect a shared item",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy password"
+          }
+        }
+      }
+    },
+    "share_action_link_settings" : {
+      "comment" : "The action for opening setting page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link settings"
+          }
+        }
+      }
+    },
+    "share_action_save_burst_photo" : {
+      "comment" : "Action to save burst photo",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save Burst"
+          }
+        }
+      }
+    },
+    "share_action_save_image" : {
+      "comment" : "Action to save image",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save Image"
+          }
+        }
+      }
+    },
+    "share_action_save_live_photo" : {
+      "comment" : "Action to save live photo",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save Live Photo"
+          }
+        }
+      }
+    },
+    "share_action_share" : {
+      "comment" : "The action for showing system share sheet",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share"
+          }
+        }
+      }
+    },
+    "share_action_stop_sharing" : {
+      "comment" : "The action for stopping sharing item",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop sharing"
+          }
+        }
+      }
+    },
+    "share_action_stop_sharing_desc" : {
+      "comment" : "Information text for stop sharing",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete link and remove access for everyone"
+          }
+        }
+      }
+    },
+    "share_empty_message" : {
+      "comment" : "Message of the share page when no items are shared",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create links and share files with others"
+          }
+        }
+      }
+    },
+    "share_empty_title" : {
+      "comment" : "Title of the share page when no items are shared",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share files with links"
+          }
+        }
+      }
+    },
+    "share_item" : {
+      "comment" : "#@name: String@# \nAppend the item name, for example: Share a.png, Share sample folder.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share %@"
+          }
+        }
+      }
+    },
+    "share_legacy_link_warning" : {
+      "comment" : "Warning text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This link was created with an old Drive version and can not be modified. Delete this link and create a new one to change the settings."
+          }
+        }
+      }
+    },
+    "share_link_button_delete_link" : {
+      "comment" : "Button displayed on the screen in case of failure",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete Link"
+          }
+        }
+      }
+    },
+    "share_link_drop_unsaved_change_action" : {
+      "comment" : "Action text shown in the unsaved changes alert",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave without saving"
+          }
+        }
+      }
+    },
+    "share_link_error_message" : {
+      "comment" : "Error message displayed on the screen in case of failure",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to generate a secure link. Try again later."
+          }
+        }
+      }
+    },
+    "share_link_past_date_error" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please select an expiration date in the future"
+          }
+        }
+      }
+    },
+    "share_link_save_changes" : {
+      "comment" : "Action text shown in the unsaved changes alert",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save changes"
+          }
+        }
+      }
+    },
+    "share_link_settings_updated" : {
+      "comment" : "Banner text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sharing settings updated"
+          }
+        }
+      }
+    },
+    "share_link_unsaved_change_alert_title" : {
+      "comment" : "Alert title shown in the unsaved changes alert",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your unsaved changes will be lost."
+          }
+        }
+      }
+    },
+    "share_link_updating_title" : {
+      "comment" : "Label text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Updating Settings"
+          }
+        }
+      }
+    },
+    "share_section_link_options" : {
+      "comment" : "Section header title for set public share link",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link options"
+          }
+        }
+      }
+    },
+    "share_stop_sharing" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop sharing"
+          }
+        }
+      }
+    },
+    "share_stop_sharing_alert_message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This will delete the link and remove access to your file or folder for anyone with the link. You can’t undo this action."
+          }
+        }
+      }
+    },
+    "share_via_custom_password_message" : {
+      "comment" : "Message shown in the share setting page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anyone with the link and password can access the file\/folder "
+          }
+        }
+      }
+    },
+    "share_via_default_password_message" : {
+      "comment" : "Message shown in the share setting page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anyone with this link can access your file\/folder"
+          }
+        }
+      }
+    },
+    "share_via_prepare_secure_link" : {
+      "comment" : "Preparing secure link for sharing",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparing secure link"
+          }
+        }
+      }
+    },
+    "shared_by_me_empty_message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Files and folders that you share with others will appear here"
+          }
+        }
+      }
+    },
+    "shared_by_me_empty_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shared by me"
+          }
+        }
+      }
+    },
+    "shared_by_me_screen_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shared by me"
+          }
+        }
+      }
+    },
+    "shared_screen_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shared"
+          }
+        }
+      }
+    },
+    "shared_with_me_empty_message" : {
+      "comment" : "Shared with me empty message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Files and folders that others shared with you will appear here"
+          }
+        }
+      }
+    },
+    "shared_with_me_empty_title" : {
+      "comment" : "Shared with me empty title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shared with me"
+          }
+        }
+      }
+    },
+    "shared_with_me_remove_me" : {
+      "comment" : "#@item: String@# Alert title shown when user attempts to remove his access to the file or folder",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You are about to leave \"%@\". You will not be able to access it again until the owner shares it with you. Are you sure you want to proceed?"
+          }
+        }
+      }
+    },
+    "shared_with_me_remove_me_confirmation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave"
+          }
+        }
+      }
+    },
+    "sharing_invitation_message_placeholder" : {
+      "comment" : "Placeholder text of invitation message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a message"
+          }
+        }
+      }
+    },
+    "sharing_invite_duplicated_member_error" : {
+      "comment" : "Banner text is shown when user try to invite address has invited",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Already a member of this share."
+          }
+        }
+      }
+    },
+    "sharing_member_access_removed" : {
+      "comment" : "Banner text shown after removing user's access",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Access removed"
+          }
+        }
+      }
+    },
+    "sharing_member_access_updated" : {
+      "comment" : "Banner text shown after updating the invitee's access permissions.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Access updated and shared"
+          }
+        }
+      }
+    },
+    "sharing_member_anyone_with_link" : {
+      "comment" : "Title of public link component to indicate that anyone with the link can edit or view.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anyone with the link"
+          }
+        }
+      }
+    },
+    "sharing_member_copy_invite_link" : {
+      "comment" : "Action title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy invite link"
+          }
+        }
+      }
+    },
+    "sharing_member_editor_added" : {
+      "comment" : "#@num: Int@# \nBanner text when added editor success",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%d editor added"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d editors added"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "sharing_member_error_already_invited" : {
+      "comment" : "Error message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The invitee has already been invited."
+          }
+        }
+      }
+    },
+    "sharing_member_error_group_not_support" : {
+      "comment" : "Error message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group sharing is not supported at the moment."
+          }
+        }
+      }
+    },
+    "sharing_member_error_insufficient_invitation_quota" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You’ve hit the limit for invites and members in this share. Consider removing someone to expand the share limit."
+          }
+        }
+      }
+    },
+    "sharing_member_error_insufficient_share_joined_quota" : {
+      "comment" : "Error message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This user is part of too many shares. Please ask them to leave a share before inviting them."
+          }
+        }
+      }
+    },
+    "sharing_member_error_invalid_address" : {
+      "comment" : "Error message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The invitee’s email is not associated with a Proton account, or you’re trying to invite yourself. Please check the email and try again."
+          }
+        }
+      }
+    },
+    "sharing_member_error_invalid_inviter_address" : {
+      "comment" : "Error message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your email doesn’t match the one used to share this content."
+          }
+        }
+      }
+    },
+    "sharing_member_error_invalid_key_packet" : {
+      "comment" : "Error message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid key packet detected. Please contact customer support"
+          }
+        }
+      }
+    },
+    "sharing_member_error_invalid_key_packet_signature" : {
+      "comment" : "Error message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid key packet signature. Please contact customer support"
+          }
+        }
+      }
+    },
+    "sharing_member_error_invited_with_different_email" : {
+      "comment" : "Error message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The user is already in this share with a different email."
+          }
+        }
+      }
+    },
+    "sharing_member_error_missing_key" : {
+      "comment" : "Error message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "We couldn’t find the email address or key for the invitee."
+          }
+        }
+      }
+    },
+    "sharing_member_error_not_allowed" : {
+      "comment" : "Error message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The current user does not have admin permission on this share"
+          }
+        }
+      }
+    },
+    "sharing_member_error_not_exist" : {
+      "comment" : "Error message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The invitation does not exist"
+          }
+        }
+      }
+    },
+    "sharing_member_error_temporarily_disabled" : {
+      "comment" : "Error message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sharing is temporarily disabled. Please try again later."
+          }
+        }
+      }
+    },
+    "sharing_member_include_message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Include message and file name in invite email"
+          }
+        }
+      }
+    },
+    "sharing_member_include_message_info" : {
+      "comment" : "Information text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Message and file name are stored with zero access encryption when included in the invite email."
+          }
+        }
+      }
+    },
+    "sharing_member_include_message_not_included" : {
+      "comment" : "Text to indicate invite message is not included",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "not included"
+          }
+        }
+      }
+    },
+    "sharing_member_include_message_section_title" : {
+      "comment" : "Section title to set invite message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Message for recipient"
+          }
+        }
+      }
+    },
+    "sharing_member_invite_button" : {
+      "comment" : "Button title to invite people to access file",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add people or group to share"
+          }
+        }
+      }
+    },
+    "sharing_member_invite_link_copied" : {
+      "comment" : "Banner text shown after coping invite link",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invite link copied"
+          }
+        }
+      }
+    },
+    "sharing_member_invite_send" : {
+      "comment" : "Invitation has been sent to the invitee.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invite sent"
+          }
+        }
+      }
+    },
+    "sharing_member_invitee_section_header" : {
+      "comment" : "Section header of invitee list",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shared with"
+          }
+        }
+      }
+    },
+    "sharing_member_link_created" : {
+      "comment" : "Banner text shown after creating public share link",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link to this item created"
+          }
+        }
+      }
+    },
+    "sharing_member_pending" : {
+      "comment" : "The invitation is still pending as the invitee has not yet responded.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pending"
+          }
+        }
+      }
+    },
+    "sharing_member_permission_can_edit" : {
+      "comment" : "Text to indicate invitee has write permission",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can edit"
+          }
+        }
+      }
+    },
+    "sharing_member_permission_can_view" : {
+      "comment" : "Text to indicate invitee has read permission",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can view"
+          }
+        }
+      }
+    },
+    "sharing_member_permission_section_title" : {
+      "comment" : "Section title to set access permission",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permission"
+          }
+        }
+      }
+    },
+    "sharing_member_placeholder" : {
+      "comment" : "Placeholder of text field",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add people or group"
+          }
+        }
+      }
+    },
+    "sharing_member_public_link_header" : {
+      "comment" : "Section header",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sharing options"
+          }
+        }
+      }
+    },
+    "sharing_member_remove_access" : {
+      "comment" : "Action title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove access"
+          }
+        }
+      }
+    },
+    "sharing_member_resend_invitation" : {
+      "comment" : "Banner text shown after resending invitation",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invitation's email was sent again"
+          }
+        }
+      }
+    },
+    "sharing_member_resend_invite" : {
+      "comment" : "Action title to resend invitation",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resend invite"
+          }
+        }
+      }
+    },
+    "sharing_member_role_editor" : {
+      "comment" : "The role of the sharing member is an editor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editor"
+          }
+        }
+      }
+    },
+    "sharing_member_role_viewer" : {
+      "comment" : "The role of the sharing member is a viewer.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Viewer"
+          }
+        }
+      }
+    },
+    "sharing_member_title_message_setting" : {
+      "comment" : "Action sheet title for enable\/disable invitation message ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Message setting"
+          }
+        }
+      }
+    },
+    "sharing_member_total_invitee" : {
+      "comment" : "#@num: Int@#\nInformation about how many people is invited",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "Sharing with %d person"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Sharing with %d people"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "sharing_member_viewer_added" : {
+      "comment" : "#@num: Int@# \nBanner text when added editor success",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%d viewer added"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d viewers added"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "sharing_members" : {
+      "comment" : "#@num: Int@# \nHow many members in the group",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d member"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d members"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "sign_up_succeed_text" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start using Proton Drive"
+          }
+        }
+      }
+    },
+    "sort_type_file_type" : {
+      "comment" : "Label text, sort files by file type",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File type"
+          }
+        }
+      }
+    },
+    "sort_type_last_modified" : {
+      "comment" : "Label text, sort files by last modified date",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last modified"
+          }
+        }
+      }
+    },
+    "sort_type_name" : {
+      "comment" : "Label text, sort files by file name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name"
+          }
+        }
+      }
+    },
+    "sort_type_size" : {
+      "comment" : "Label text, sort files by file size",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Size"
+          }
+        }
+      }
+    },
+    "state_at_risk_of_deletion" : {
+      "comment" : "Banner text on the state banner",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your account is at risk of deletion"
+          }
+        }
+      }
+    },
+    "state_at_risk_of_deletion_desc" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To avoid data loss, ask your admin to upgrade."
+          }
+        }
+      }
+    },
+    "state_backing_up" : {
+      "comment" : "Text shown on the state banner",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backing up..."
+          }
+        }
+      }
+    },
+    "state_backup_complete_title" : {
+      "comment" : "Banner text on the state banner when backup complete",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backup complete"
+          }
+        }
+      }
+    },
+    "state_backup_disabled_title" : {
+      "comment" : "Banner text on the state banner when backup is disabled",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backup is disabled"
+          }
+        }
+      }
+    },
+    "state_cellular_is_enabled" : {
+      "comment" : "Text shown when user enable cellular",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photos backup is now allowed also on mobile data"
+          }
+        }
+      }
+    },
+    "state_disconnection_title" : {
+      "comment" : "Banner text on the state banner when device doesn't have connection",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No internet connection"
+          }
+        }
+      }
+    },
+    "state_drive_storage_full" : {
+      "comment" : "Banner text on the state banner",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your Drive storage is full"
+          }
+        }
+      }
+    },
+    "state_encrypting" : {
+      "comment" : "Text shown on the state banner",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encrypting..."
+          }
+        }
+      }
+    },
+    "state_issues_detected_title" : {
+      "comment" : "Banner text on the state banner when backup issues detected ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backup: issues detected"
+          }
+        }
+      }
+    },
+    "state_mail_storage_full" : {
+      "comment" : "Banner text on the state banner",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your Mail storage is full"
+          }
+        }
+      }
+    },
+    "state_mail_storage_full_desc" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To send or receive emails, free up space or upgrade for more storage."
+          }
+        }
+      }
+    },
+    "state_need_wifi_title" : {
+      "comment" : "Banner text on the state banner when device doesn't connect to wifi",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wi-Fi needed for backup"
+          }
+        }
+      }
+    },
+    "state_permission_required_title" : {
+      "comment" : "Banner text on the state banner when lacking permission to access photos",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permission required for backup"
+          }
+        }
+      }
+    },
+    "state_ready_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Getting ready to back up"
+          }
+        }
+      }
+    },
+    "state_retry_button" : {
+      "comment" : "Button text on the state banner for retrying the backup",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        }
+      }
+    },
+    "state_settings_button" : {
+      "comment" : "Button text on the state banner for opening permission settings",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        }
+      }
+    },
+    "state_storage_full" : {
+      "comment" : "Banner text on the state banner ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your storage is full"
+          }
+        }
+      }
+    },
+    "state_storage_full_desc" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To upload files, free up space or upgrade for more storage."
+          }
+        }
+      }
+    },
+    "state_storage_full_title" : {
+      "comment" : "Banner text on the state banner when storage full",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Device storage full"
+          }
+        }
+      }
+    },
+    "state_subscription_has_ended" : {
+      "comment" : "Banner text on the state banner to indicate subscription is expired",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your subscription has ended"
+          }
+        }
+      }
+    },
+    "state_subscription_has_ended_desc" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upgrade to restore full access and to avoid data loss."
+          }
+        }
+      }
+    },
+    "state_temp_unavailable_title" : {
+      "comment" : "Banner text on the state banner when backend has problems ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The upload of photos is temporarily unavailable"
+          }
+        }
+      }
+    },
+    "state_turnOn_button" : {
+      "comment" : "Button text on the state banner for turning on backup",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn on"
+          }
+        }
+      }
+    },
+    "state_use_cellular_button" : {
+      "comment" : "Button text on the state banner for enabling cellular",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Cellular"
+          }
+        }
+      }
+    },
+    "stop_sharing_alert_message" : {
+      "comment" : "Alert message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This will delete the link and remove access to your file or folder for anyone with the link. You can’t undo this action."
+          }
+        }
+      }
+    },
+    "stop_sharing_alert_title" : {
+      "comment" : "Alert title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop sharing"
+          }
+        }
+      }
+    },
+    "stop_sharing_success_text" : {
+      "comment" : "Banner text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sharing removed"
+          }
+        }
+      }
+    },
+    "tab_bar_title_files" : {
+      "comment" : "Tab bar title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Files"
+          }
+        }
+      }
+    },
+    "tab_bar_title_photos" : {
+      "comment" : "Tab bar title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photos"
+          }
+        }
+      }
+    },
+    "tab_bar_title_shared" : {
+      "comment" : "Tab bar title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shared"
+          }
+        }
+      }
+    },
+    "tab_bar_title_shared_with_me" : {
+      "comment" : "Tab bar title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shared with me"
+          }
+        }
+      }
+    },
+    "take_new_photo_button" : {
+      "comment" : "Button for creating new photo",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take new photo"
+          }
+        }
+      }
+    },
+    "technical_error_placeholder" : {
+      "comment" : "label text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Something gone wrong, please try again later"
+          }
+        }
+      }
+    },
+    "trash_action_delete_file_button" : {
+      "comment" : "#@type: String@# \nButton title for deleting item. e.g. Delete file, Delete item, Delete folder..etc",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete %@"
+          }
+        }
+      }
+    },
+    "trash_action_delete_permanently_confirmation_title" : {
+      "comment" : "#@type: String@# \nAlert title shown when user attempts to delete file",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ will be deleted permanently.\nDelete anyway?"
+          }
+        }
+      }
+    },
+    "trash_action_empty_trash" : {
+      "comment" : "Button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empty trash"
+          }
+        }
+      }
+    },
+    "trash_action_restore" : {
+      "comment" : "#@type: String@# The type will be specified afterwards, e.g., 'Restore file,' 'Restore 2 folders,' etc.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore %@"
+          }
+        }
+      }
+    },
+    "trash_action_restore_all_files" : {
+      "comment" : "Action to restore all trashed files",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore all files"
+          }
+        }
+      }
+    },
+    "trash_action_restore_all_folders" : {
+      "comment" : "Action to restore all trashed files",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore all folders"
+          }
+        }
+      }
+    },
+    "trash_action_restore_all_items" : {
+      "comment" : "Action to restore all trashed items",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore all items"
+          }
+        }
+      }
+    },
+    "trash_action_restore_selected" : {
+      "comment" : "#@type: String@# The type will be specified afterwards, e.g., 'Restore selected 2 files,' 'Restore selected 1 folder,' etc.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore selected %@"
+          }
+        }
+      }
+    },
+    "trash_empty_message" : {
+      "comment" : "Message of the empty trash screen",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Items moved to the trash will stay here until deleted"
+          }
+        }
+      }
+    },
+    "trash_empty_title" : {
+      "comment" : "Title of the share folder when no items are trashed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trash is empty"
+          }
+        }
+      }
+    },
+    "unlock_app_title" : {
+      "comment" : "View title shown on unlock app page ",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock App"
+          }
+        }
+      }
+    },
+    "upload_disclaimer" : {
+      "comment" : "Information text shown when user uploading files",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For uninterrupted uploads, keep the app open. Uploads will pause when the app is in the background."
+          }
+        }
+      }
+    },
+    "upload_photo_button" : {
+      "comment" : "Button for uploading new photo",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upload a photo"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

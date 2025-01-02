@@ -37,7 +37,7 @@ class SideMenuViewController: UIViewController {
         super.viewDidLoad()
         view.clipsToBounds = true
         
-        let menuView = MenuView(vm: menuViewModel).environmentObject(TabBarViewModel())
+        let menuView = MenuView(vm: menuViewModel).environmentObject(TabBarViewViewModel())
         let menuViewController = UIHostingController(rootView: menuView)
         add(menuViewController)
 

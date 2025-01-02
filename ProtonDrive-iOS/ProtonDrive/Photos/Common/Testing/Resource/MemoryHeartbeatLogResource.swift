@@ -49,7 +49,7 @@ final class PhotosMemoryHeartbeatLogResource: MemoryHeartbeatLogResource {
             return
         }
 
-        let photosCount = storageManager.fetchPhotosCount(moc: managedObjectContext)
+        let photosCount = storageManager.fetchMyPhotosCount(moc: managedObjectContext)
         Log.info("Memory dump: using \(diagnostics.usedMB) MB, total: \(diagnostics.totalMB) MB, photos in DB: \(photosCount).", domain: .diagnostics)
     }
 }

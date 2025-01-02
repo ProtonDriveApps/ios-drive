@@ -48,7 +48,7 @@ final class MyFilesNotificationsPermissionsController: NotificationsPermissionsC
             }
             .filter { $0 }
             .sink { [unowned self] _ in
-                flowController.event.send(.open)
+                flowController.event.send(.openFileNotification)
             }
     }
 

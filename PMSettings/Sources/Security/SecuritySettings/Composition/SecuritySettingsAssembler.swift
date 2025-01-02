@@ -19,8 +19,9 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
-import UIKit
+import PDLocalization
 import SwiftUI
+import UIKit
 
 final class SecuritySettingsAssembler {
     static func assemble(locker: Locker, isPhotosEnabled: @escaping () -> Bool) -> UIViewController {
@@ -51,24 +52,25 @@ private extension SecuritySettingsAssembler {
 
     static func protectionSection(locker: Locker, router: SettingsSecurityRouter) -> PMSettingsSectionViewModel {
         return PMSettingsSectionBuilder()
-            .title("Protection")
+            .title(Localization.protection_section_header_protection)
             .appendRowIfAvailable(bioCell(with: locker, and: router))
             .appendRow(pinCell(with: locker, and: router))
-            .footer("Turn this feature on to auto-lock and use a PIN code or biometric sensor to unlock it.")
+            .footer(Localization.protection_section_footer_protection)
             .build()
     }
 
     static func autolockSection(locker: Locker, router: SettingsSecurityRouter) -> PMSettingsSectionViewModel {
         return PMSettingsSectionBuilder()
-            .title("Timings")
+            .title(Localization.protection_timings_section_header)
             .appendRow(autolockCell(with: locker, and: router))
-            .footer("The PIN code will be required after some minutes of the app being in the background or after exiting the app.")
+            .footer(Localization.protection_timing_section_footer)
             .build()
     }
 
     static var swiftUICellConfig: PMCellSuplier {
+        let text = Localization.protection_info_banner_text
         return SwiftUIHostCellConfiguration {
-            NotificationBanner(message: #"Enabling auto-lock stops background processes unless set to "After launch.""#, style: .inverted, padding: .bottom)
+            NotificationBanner(message: text, style: .inverted, padding: .bottom)
         }
     }
 
@@ -77,18 +79,20 @@ private extension SecuritySettingsAssembler {
         switch bioMode {
         case .none where locker.isBioProtected:
             let switcher = BioSwitcherDisabler(locker: locker)
-            return PMSwitchSecurityCellConfiguration(title: "Use Biometry", switcher: switcher)
+            let title = Localization.protection_use_biometry
+            return PMSwitchSecurityCellConfiguration(title: title, switcher: switcher)
         case .none:
             return nil
         default:
             let switcher = BioSwitcher(locker: locker)
-            return PMSwitchSecurityCellConfiguration(title: "Use " + bioMode.technologyName, switcher: switcher)
+            let title = Localization.protection_use_use_technology(tech: bioMode.technologyName)
+            return PMSwitchSecurityCellConfiguration(title: title, switcher: switcher)
         }
     }
 
     static func pinCell(with locker: Locker, and router: SettingsSecurityRouter) -> PMSwitchSecurityCellConfiguration {
         let switcher = PinSwitcher(locker: locker, router: router)
-        return PMSwitchSecurityCellConfiguration(title: "Use PIN code", switcher: switcher)
+        return PMSwitchSecurityCellConfiguration(title: Localization.password_config_title_use_pin, switcher: switcher)
     }
 
     static func autolockCell(with locker: AutoLocker, and router: SettingsSecurityRouter) -> PMCellSuplier {

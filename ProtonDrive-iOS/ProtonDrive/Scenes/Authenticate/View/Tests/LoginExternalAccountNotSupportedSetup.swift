@@ -18,6 +18,7 @@
 #if DEBUG
 import Foundation
 import OHHTTPStubs
+import OHHTTPStubsSwift
 
 final class LoginExternalAccountNotSupportedSetup {
     static func stop() {

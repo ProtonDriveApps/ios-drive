@@ -22,7 +22,7 @@ import ProtonCorePayments
 
 public struct Subscription: Codable {
     public let ID: String
-    public let invoiceID: String
+    public let invoiceID: String?
     public let cycle: Int
     public let periodStart: Int
     public let periodEnd: Int
@@ -32,7 +32,7 @@ public struct Subscription: Codable {
     public let plans: [Plan]
     public let renew: Int
     
-    public init(ID: String, invoiceID: String, cycle: Int, periodStart: Int, periodEnd: Int, couponCode: String?, currency: String, amount: Int, plans: [Plan], renew: Int) {
+    public init(ID: String, invoiceID: String?, cycle: Int, periodStart: Int, periodEnd: Int, couponCode: String?, currency: String, amount: Int, plans: [Plan], renew: Int) {
         self.ID = ID
         self.invoiceID = invoiceID
         self.cycle = cycle

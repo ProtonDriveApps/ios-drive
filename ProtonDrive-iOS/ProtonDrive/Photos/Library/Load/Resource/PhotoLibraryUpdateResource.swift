@@ -96,7 +96,7 @@ final class LocalPhotoLibraryUpdateResource: NSObject, PhotoLibraryIdentifiersRe
             debounceableEnqueueUpdateSubject.send((identifiers, fetchResultAfterChanges))
         } else {
             // In cases when the update comes at a later point, we try to process the identifiers right away. (Example: app being woken from suspended time)
-            Log.info("\(Self.self): will immediatelly process \(identifiers.count) identifiers", domain: .photosProcessing)
+            Log.info("\(Self.self): will immediately process \(identifiers.count) identifiers", domain: .photosProcessing)
             enqueueUpdate(identifiers: identifiers, fetchResultAfterChanges: fetchResultAfterChanges)
         }
     }

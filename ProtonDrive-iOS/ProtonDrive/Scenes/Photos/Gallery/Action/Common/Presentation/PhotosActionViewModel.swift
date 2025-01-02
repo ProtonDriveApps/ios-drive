@@ -18,6 +18,7 @@
 import Combine
 import Foundation
 import PDUIComponents
+import PDLocalization
 
 enum PhotosAction: Identifiable {
     var id: String {
@@ -26,8 +27,10 @@ enum PhotosAction: Identifiable {
 
     case trash
     case share
+    case newShare
     case shareNative
     case availableOffline
+    case info
 }
 
 protocol PhotosActionViewModelProtocol: ObservableObject {
@@ -44,18 +47,20 @@ final class PhotosActionViewModel: PhotosActionViewModelProtocol {
     private let selectionController: PhotosSelectionController
     private let fileContentController: FileContentController
     private let offlineAvailableController: OfflineAvailableController
+    private let featureFlagsController: FeatureFlagsControllerProtocol
     private var cancellables = Set<AnyCancellable>()
 
     @Published var isVisible = false
     @Published var currentAction: PhotosAction?
     @Published var actions = [PhotosAction]()
 
-    init(trashController: PhotosTrashController, coordinator: PhotosActionCoordinator, selectionController: PhotosSelectionController, fileContentController: FileContentController, offlineAvailableController: OfflineAvailableController) {
+    init(trashController: PhotosTrashController, coordinator: PhotosActionCoordinator, selectionController: PhotosSelectionController, fileContentController: FileContentController, offlineAvailableController: OfflineAvailableController, featureFlagsController: FeatureFlagsControllerProtocol) {
         self.trashController = trashController
         self.coordinator = coordinator
         self.selectionController = selectionController
         self.fileContentController = fileContentController
         self.offlineAvailableController = offlineAvailableController
+        self.featureFlagsController = featureFlagsController
         subscribeToUpdates()
         handleUpdate()
     }
@@ -88,8 +93,10 @@ final class PhotosActionViewModel: PhotosActionViewModelProtocol {
         let ids = selectionController.getIds()
         if ids.isEmpty {
             return []
+        } else if ids.count == 1 && featureFlagsController.hasSharing {
+            return [.newShare, .shareNative, .availableOffline, .info, .trash]
         } else if ids.count == 1 {
-            return [.share, .shareNative, .availableOffline, .trash]
+            return [.share, .shareNative, .availableOffline, .info, .trash]
         } else {
             return [.availableOffline, .trash]
         }
@@ -99,13 +106,15 @@ final class PhotosActionViewModel: PhotosActionViewModelProtocol {
         switch action {
         case .trash:
             currentAction = .trash
-        case .share:
+        case .share, .newShare:
             share()
         case .shareNative:
             shareNative()
         case .availableOffline:
             let ids = selectionController.getIds()
             offlineAvailableController.toggle(ids: ids)
+        case .info:
+            openPhotoInfo()
         }
     }
 
@@ -136,20 +145,17 @@ final class PhotosActionViewModel: PhotosActionViewModelProtocol {
 
     private func makeTrashDialogTitle() -> String {
         let count = selectionController.getIds().count
-        if count == 1 {
-            return "Are you sure you want to move this item to Trash?"
-        } else {
-            return "Are you sure you want to move \(count) items to Trash?"
-        }
+        return Localization.action_trash_items_alert_message(num: count)
     }
 
     private func makeTrashDialogButtonTitle() -> String {
         let count = selectionController.getIds().count
-        if count == 1 {
-            return "Remove item"
-        } else {
-            return "Remove \(count) items"
-        }
+        return Localization.photo_action_remove_item(num: count)
+    }
+    
+    private func openPhotoInfo() {
+        guard let id = getSingleId() else { return }
+        coordinator.openPhotoDetail(id: id)
     }
 }
 
@@ -163,15 +169,17 @@ extension PhotosActionViewModel {
 
     private func handleFileUpdate(_ content: FileContent?) {
         guard let content else { return }
-        guard
-            content.couldBeLivePhoto,
-            let videoURL = content.childrenURLs.first
-        else {
+
+        if content.couldBeLivePhoto, let videoURL = content.childrenURLs.first {
+            coordinator.openNativeShareForLivePhoto(imageURL: content.url, videoURL: videoURL) { [weak self] in
+                self?.fileContentController.clear()
+            }
+        } else if content.couldBeBurst {
+            coordinator.openNativeShareForBurstPhoto(urls: [content.url] + content.childrenURLs) { [weak self] in
+                self?.fileContentController.clear()
+            }
+        } else {
             share(url: content.url)
-            return
-        }
-        coordinator.openNativeShareForLivePhoto(imageURL: content.url, videoURL: videoURL) { [weak self] in
-            self?.fileContentController.clear()
         }
     }
 

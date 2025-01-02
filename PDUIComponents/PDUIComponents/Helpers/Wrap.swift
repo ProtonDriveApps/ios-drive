@@ -16,8 +16,11 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
+#if canImport(UIKit)
 import UIKit
+#endif
 
+#if os(iOS)
 struct Wrap<Wrapped: UIView>: UIViewRepresentable {
     typealias Updater = (Wrapped, Context) -> Void
 
@@ -51,3 +54,4 @@ extension Wrap {
         self.update = { _, _ in }
     }
 }
+#endif

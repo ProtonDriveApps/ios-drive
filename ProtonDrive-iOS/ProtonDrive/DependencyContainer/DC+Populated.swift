@@ -24,22 +24,21 @@ import ProtonCoreServices
 import ProtonCoreHumanVerification
 import ProtonCorePayments
 import PMSideMenu
+import ProtonCoreUIFoundations
 
 extension AuthenticatedDependencyContainer {
-    func makeHomeViewController(root: NodeIdentifier) -> UIViewController {
-        #if DEBUG
-        updateLocalSettingForUITest()
-        #endif
-        return makeSlidingViewController(root: root)
+    func makeHomeViewController() -> UIViewController {
+        makeSlidingViewController()
     }
 
-    func makeSlidingViewController(root: NodeIdentifier) -> UIViewController {
+    func makeSlidingViewController() -> UIViewController {
         let sideMenuViewController = makeSideMenuViewController()
-        let sideMenuCoordinator = makeSideMenuCoordinator(sideMenuViewController, root: root)
-        let slidingViewController = PMSlidingContainerComposer.makePMSlidingContainer(skeleton: UIViewController(),
-                                                                                      menu: sideMenuViewController,
-                                                                                      togglePublisher: DriveNotification.toggleSideMenu.publisher)
-        
+        let sideMenuCoordinator = makeSideMenuCoordinator(sideMenuViewController)
+        let slidingViewController = PMSlidingContainerComposer.makePMSlidingContainer(
+            skeleton: UIViewController(),
+            menu: sideMenuViewController,
+            togglePublisher: DriveNotification.toggleSideMenu.publisher
+        )
         sideMenuCoordinator.delegate = slidingViewController
         sideMenuViewController.onMenuDidSelect = sideMenuCoordinator.go(to:)
         slidingViewController.onMenuToggle = { isMenuOpen in
@@ -50,74 +49,101 @@ extension AuthenticatedDependencyContainer {
     }
 
     private func makeSideMenuViewController() -> SideMenuViewController {
+        guard let offlineSaver = tower.offlineSaver else { fatalError("offlineSaver must be non-nil in the iOS app") }
+
         let menuModel = MenuModel(sessionVault: tower.sessionVault)
-        
-        guard let offlineSaver = tower.offlineSaver else {
-            fatalError("offlineSaver must be non-nil in the iOS app")
-        }
-        #if HAS_BETA_FEATURES
-        let logLoader = FileLogContent()
-        #else
-        let logLoader: LogContentLoader? = nil
-        #endif
-        let menuViewModel = MenuViewModel(model: menuModel, offlineSaver: offlineSaver, logLoader: logLoader)
+        let menuViewModel = MenuViewModel(model: menuModel, offlineSaver: offlineSaver, featureFlagsController: featureFlagsController)
         return SideMenuViewController(menuViewModel: menuViewModel)
     }
 
-    private func makeSideMenuCoordinator(_ viewController: SideMenuViewController, root: NodeIdentifier) -> SideMenuCoordinator {
+    private func makeSideMenuCoordinator(_ viewController: SideMenuViewController) -> SideMenuCoordinator {
         SideMenuCoordinator(
             viewController: viewController,
-            myFilesFactory: { self.makeMyFilesViewControllerFactory(root: root) },
+            myFilesFactory: { self.makeTabBarViewControllerFactory() },
+            sharedByMeFactory: makeSharedViewController,
             trashFactory: makeTrashViewController,
             offlineAvailableFactory: makeOfflineAvailableViewController,
             settingsFactory: makeSettingsViewController,
-            accountFactory: makeAccountViewController,
             plansFactory: makePlansViewController
         )
     }
 
-    private func makeAccountViewController() -> UIViewController {
-        assertionFailure("This screen was pulled out from MVP, will be replaced by Core implementation in future")
-        return UIViewController()
+    private func makeTabBarViewControllerFactory() -> UIViewController {
+        let childrenFactory = makeChildrenFactory()
+        let coordinator = TabBarCoordinator(childrenFactory: childrenFactory.makeChildren)
+        let viewModel = TabBarViewModel(
+            isTabBarHiddenPublisher: NotificationCenter.default.getPublisher(for: FinderNotifications.tabBar.name, publishing: Bool.self).eraseToAnyPublisher(),
+            coordinator: coordinator,
+            localSettings: tower.localSettings,
+            volumeIdsController: tower.sharedVolumeIdsController,
+            featureFlagsController: featureFlagsController
+        )
+        let tabBarController = HidableTabBarController(viewModel: viewModel, children: childrenFactory.makeChildren())
+        coordinator.tabBarController = tabBarController
+        return tabBarController
     }
-    
-    private func makeMyFilesViewControllerFactory(root: NodeIdentifier) -> UIViewController {
-        let myFilesViewController = makeFilesViewControllerFactory(root: root)
-        factory.configureFilesTab(in: myFilesViewController)
 
-        let sharedViewController = makeSharedViewController(root: root)
-        factory.configureSharedTab(in: sharedViewController)
-
-        let viewControllers = [myFilesViewController, sharedViewController]
-        return factory.makeTabBarController(container: self, children: viewControllers)
+    private func makeChildrenFactory() -> TabBarChildrenFactoryProtocol {
+        return TabBarChildrenFactory(
+            featureFlagsController: featureFlagsController,
+            makeFilesViewControllerFactory: makeFilesViewControllerFactory,
+            makePhotosViewController: makePhotosViewController,
+            makeSharedViewController: makeSharedViewController,
+            makeSharedWithMeViewController: makeSharedWithMeViewController
+        )
     }
 
-    private func makeFilesViewControllerFactory(root: NodeIdentifier) -> UIViewController {
-        let coordinator = FinderCoordinator(tower: tower, photoPickerCoordinator: pickersContainer.getPhotoCoordinator())
-        let rootFolderView = RootFolderView(nodeID: root, coordinator: coordinator).any()
+    private func makeFilesViewControllerFactory() -> UIViewController {
+        let coordinator = FinderCoordinator(container: self, photoPickerCoordinator: pickersContainer.getPhotoCoordinator())
+        let myFilesRootFetcher = MyFilesRootFetcher(storage: tower.storage)
+        let rootFolderView = RootFolderView(nodeID: myFilesRootFetcher.getRoot(), coordinator: coordinator).any()
         let rootView = RootView(vm: RootViewModel(), activeArea: { rootFolderView })
-        let viewController = UIHostingController(rootView: rootView)
-        coordinator.rootViewController = viewController
-        return viewController
+        let vc = UIHostingController(rootView: rootView)
+        coordinator.rootViewController = vc
+        configureForTabBar(vc, tabBarItem: .files)
+        return vc
     }
-    
-    private func makeSharedViewController(root: NodeIdentifier) -> UIViewController {
-        let rootSharedView = RootSharedView(deeplink: nil, tower: tower)
+
+    private func makePhotosViewController() -> UIViewController {
+        let vc = photosContainer.makeRootViewController()
+        configureForTabBar(vc, tabBarItem: .photos)
+        return vc
+    }
+
+    private func makeSharedViewController() -> UIViewController {
+        let coordinator = FinderCoordinator(container: self)
+        let rootSharedView = RootSharedView(coordinator: coordinator)
         let rootView = RootView(vm: RootViewModel(), activeArea: { rootSharedView })
-        return UIHostingController(rootView: rootView)
+        let vc = UIHostingController(rootView: rootView)
+        coordinator.rootViewController = vc
+        configureForTabBar(vc, tabBarItem: .shared)
+        return vc
+    }
+
+    private func makeSharedWithMeViewController() -> UIViewController {
+        let coordinator = FinderCoordinator(container: self, isSharedWithMe: true, photoPickerCoordinator: pickersContainer.getPhotoCoordinator())
+        let view = RootSharedWithMeView(coordinator: coordinator)
+        let rootView = RootView(vm: RootViewModel(), activeArea: { view })
+        let vc = UIHostingController(rootView: rootView)
+        configureForTabBar(vc, tabBarItem: .sharedWithMe)
+        coordinator.rootViewController = vc
+        return vc
     }
 
     private func makeTrashViewController() -> UIViewController {
-        let trashView = TrashViewCoordinator().start(tower)
+        let trashView = TrashViewCoordinator().start(self)
         let rootView = RootView(vm: RootViewModel(), activeArea: { trashView })
         let rootViewController = UIHostingController(rootView: rootView)
         return UINavigationController(rootViewController: rootViewController)
     }
 
     private func makeOfflineAvailableViewController() -> UIViewController {
-        let rootOfflineAvailableView = RootOfflineAvailableView(deeplink: nil, tower: tower)
+        let coordinator = FinderCoordinator(container: self)
+        let rootOfflineAvailableView = RootOfflineAvailableView(coordinator: coordinator)
         let rootView = RootView(vm: RootViewModel(), activeArea: { rootOfflineAvailableView })
-        return UIHostingController(rootView: rootView)
+        let vc = UIHostingController(rootView: rootView)
+        coordinator.rootViewController = vc
+        return vc
     }
 
     private func makePlansViewController() -> UIViewController {
@@ -138,13 +164,11 @@ extension AuthenticatedDependencyContainer {
     }
 }
 
-#if DEBUG
 extension AuthenticatedDependencyContainer {
-    func updateLocalSettingForUITest() {
-        guard DebugConstants.commandLineContains(flags: [.uiTests, .filesAsDefaultTab]) else {
-            return
-        }
-        localSettings.defaultHomeTabTag = TabBarItem.files.tag
+    func configureForTabBar(_ viewController: UIViewController, tabBarItem: TabBarItem) {
+        viewController.tabBarItem.title = tabBarItem.title
+        viewController.tabBarItem.image = tabBarItem.icon
+        viewController.tabBarItem.accessibilityIdentifier = tabBarItem.identifierInTabBar
+        viewController.tabBarItem.tag = tabBarItem.tag
     }
 }
-#endif

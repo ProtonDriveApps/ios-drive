@@ -18,6 +18,7 @@
 import Combine
 import PDCore
 import UniformTypeIdentifiers
+import PDLocalization
 
 class NodeDetailsViewModel: ObservableObject {
     struct NodeDetailViewModel: Identifiable {
@@ -39,7 +40,7 @@ class NodeDetailsViewModel: ObservableObject {
             let size = ByteCountFormatter.storageSizeString(forByteCount: Int64(node.size))
             let modified = node.modifiedDate
             if modified >= date {
-                return "\(size) | Moments ago"
+                return Localization.file_detail_subtitle_moments_ago(size: size)
             } else {
                 let lastModified = self.timeIntervalFormatter.localizedString(for: node.modifiedDate, relativeTo: date)
                 return "\(size) | \(lastModified)"
@@ -48,7 +49,7 @@ class NodeDetailsViewModel: ObservableObject {
             return nil
         default:
             assert(false, "Undefined node type")
-            return "Details"
+            return Localization.file_detail_general_title
         }
     }
     
@@ -67,11 +68,11 @@ class NodeDetailsViewModel: ObservableObject {
     
     lazy var title: String = {
         switch self.node {
-        case is File:   return "File details"
-        case is Folder: return "Folder details"
+        case is File:   return Localization.file_detail_title
+        case is Folder: return Localization.folder_detail_title
         default:
             assert(false, "Undefined node type")
-            return "Details"
+            return Localization.file_detail_general_title
         }
     }()
     
@@ -89,33 +90,43 @@ class NodeDetailsViewModel: ObservableObject {
     private func makeFileDetails(with file: File) -> [NodeDetailViewModel] {
         var details = self.detailsFolder
         details.append(contentsOf: [
-            .init(id: "Extension", value: self.fileExtension ?? "－")
+            .init(id: Localization.file_detail_extension, value: self.fileExtension ?? "－")
         ])
         if !file.isProtonDocument {
             details.append(contentsOf: [
-                .init(id: "Size", value: ByteCountFormatter.storageSizeString(forByteCount: Int64(file.size)))
+                .init(id: Localization.file_detail_size, value: ByteCountFormatter.storageSizeString(forByteCount: Int64(file.size)))
             ])
         }
+        let shareStatus: String
+        if file.isNodeShared() {
+            shareStatus = Localization.file_detail_share_yes
+        } else {
+            shareStatus = Localization.file_detail_share_no
+        }
         details.append(contentsOf: [
-            .init(id: "Shared", value: file.isShared ? "Yes" : "No")
+            .init(id: Localization.file_detail_shared, value: shareStatus)
         ])
         return details
     }
     
     lazy var detailsFolder: [NodeDetailViewModel] = [
-        .init(id: "Name", value: node.decryptedName),
-        .init(id: "Uploaded by", value: self.editorAddress),
-        .init(id: "Location", value: self.path),
-        .init(id: "Modified", value: Self.dateFormatter.string(from: node.modifiedDate))
+        .init(id: Localization.file_detail_name, value: node.decryptedName),
+        .init(id: Localization.file_detail_uploaded_by, value: self.editorAddress),
+        .init(id: Localization.file_detail_location, value: self.path),
+        .init(id: Localization.file_detail_modified, value: Self.dateFormatter.string(from: node.modifiedDate))
     ]
-    
+
     lazy var fileExtension: String? = { [unowned self] in
         guard let fileUTI = UTType(tag: self.node.mimeType, tagClass: .mimeType, conformingTo: nil) else { return nil }
         return fileUTI.preferredFilenameExtension
     }()
     
     lazy var editorAddress: String = {
-        guard let signatureEmail = node.signatureEmail, let address = self.tower.sessionVault.getAddress(for: signatureEmail) else { return "－" }
+        guard 
+            let signatureEmail = node.signatureEmail,
+            let address = self.tower.sessionVault.getAddress(for: signatureEmail) else {
+            return Localization.file_detail_uploaded_by_anonymous
+        }
         if address.displayName.isEmpty {
             return "\(address.email)"
         } else {

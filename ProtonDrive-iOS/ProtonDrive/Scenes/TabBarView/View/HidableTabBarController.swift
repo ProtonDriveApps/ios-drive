@@ -17,48 +17,47 @@
 
 import Combine
 import UIKit
+import ProtonCoreUIFoundations
 
 final class HidableTabBarController: UITabBarController {
-    private let viewModel: TabsViewModel
     private var cancellable: Cancellable?
+    private var viewModel: TabBarViewModelProtocol
 
-    init(viewModel: TabsViewModel, children: [UIViewController]) {
+    init(viewModel: TabBarViewModelProtocol, children: [UIViewController]) {
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
-        viewControllers = children
+        setViewControllers(children, animated: false)
+        let homeTabTag = viewModel.defaultHomeTab
+        guard let selectedViewController = children.first(where: { $0.tabBarItem.tag == homeTabTag }) else { return }
+        self.selectedViewController = selectedViewController
     }
-    
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        cancellable = FinderNotifications.tabBar.publisher
-            .sink { [weak self] notification in
-                self?.updateTabBarVisibility(notification)
+
+        let tabBarAppearance: UITabBarAppearance = UITabBarAppearance()
+        tabBarAppearance.configureWithDefaultBackground()
+        tabBarAppearance.backgroundColor = ColorProvider.BackgroundNorm
+
+        UITabBar.appearance().tintColor = ColorProvider.BrandNorm
+        UITabBar.appearance().standardAppearance = tabBarAppearance
+        if #available(iOS 15.0, *) {
+            UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
+        }
+
+        cancellable = viewModel.isTabBarHidden
+            .sink { [weak self] isHidden in
+                self?.updateTabBarVisibility(isHidden)
             }
     }
 
-    func updateTabBarVisibility(_ notification: Notification) {
-        guard let isHidden = notification.userInfo?["tabBarHidden"] as? Bool else { return }
+    func updateTabBarVisibility(_ isHidden: Bool) {
         setTabBarHidden(isHidden)
     }
-
-    override func setViewControllers(_ viewControllers: [UIViewController]?, animated: Bool) {
-        super.setViewControllers(viewControllers, animated: animated)
-        
-        for tag in viewModel.defaultHomeTabTagPreferences {
-            guard let vc = viewControllers?.first(where: { $0.tabBarItem.tag == tag }) else {
-                continue
-            }
-            selectedViewController = vc
-            break
-        }
-    }
-}
-
-extension HidableTabBarController {
 
     func setTabBarHidden(_ hidden: Bool, animated: Bool = true, duration: TimeInterval = 0.3) {
         if tabBar.isHidden != hidden {
@@ -80,4 +79,7 @@ extension HidableTabBarController {
         }
     }
 
+    override func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
+        viewModel.selectTab(tag: item.tag)
+    }
 }

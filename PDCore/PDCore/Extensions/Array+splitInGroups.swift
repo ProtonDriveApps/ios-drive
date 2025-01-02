@@ -17,6 +17,9 @@
 
 extension Array {
     public func splitInGroups(of size: Int) -> [[Element]] {
+        guard size != .zero else {
+            return []
+        }
         return stride(from: 0, to: count, by: size).map {
             Array(self[$0 ..< Swift.min($0 + size, count)])
         }
@@ -37,47 +40,51 @@ extension Array {
 }
 
 extension Array where Element == NodeIdentifier {
-    public func splitIntoChunks() -> [(share: String, links: [String])] {
-        // Group nodeIdentifiers by shareID
-        let groupedById = Dictionary(grouping: self, by: { $0.shareID })
+    public func splitIntoChunks() -> [(share: String, volume: String, links: [String])] {
+        // Group nodeIdentifiers by a tuple of (shareID, volumeID)
+        let groupedByShareAndVolume = Dictionary(grouping: self, by: { ShareVolumeKey(shareID: $0.shareID, volumeID: $0.volumeID) })
 
-        // Transform NodeIdentifier to nodeID
-        let transformedGroup: [String: [String]] = groupedById.mapValues { $0.map { $0.nodeID } }
-
-        // Split each group into chunks of maximum size 150
-        var result: [(String, [String])] = []
-        for (shareID, nodeIDs) in transformedGroup {
-            let chunks = nodeIDs.splitInGroups(of: 150)
+        // Transform NodeIdentifier to nodeID and include both shareID and volumeID
+        var result: [(share: String, volume: String, links: [String])] = []
+        for (key, nodeIDs) in groupedByShareAndVolume {
+            let nodeIDStrings = nodeIDs.map { $0.nodeID }
+            let chunks = nodeIDStrings.splitInGroups(of: 150)
             for chunk in chunks {
-                result.append((shareID, chunk))
+                result.append((share: key.shareID, volume: key.volumeID, links: chunk))
             }
         }
 
         return result
     }
+
+    private struct ShareVolumeKey: Hashable {
+        let shareID: String
+        let volumeID: String
+    }
 }
 
 extension Array where Element == TrashingNodeIdentifier {
-    func splitIntoChunks() -> [(share: String, parent: String, links: [String])] {
+    func splitIntoChunks() -> [(volume: String, share: String, parent: String, links: [String])] {
         // Group TrashingNodeIdentifiers by shareID and parentID using a hashable struct
-        let groupedById = Dictionary(grouping: self) { Parent(shareID: $0.shareID, parentID: $0.parentID) }
+        let groupedById = Dictionary(grouping: self) { Parent(volumeID: $0.volumeID, shareID: $0.shareID, parentID: $0.parentID) }
 
         // Transform TrashingNodeIdentifier to nodeID
         let transformedGroup: [Parent: [String]] = groupedById.mapValues { $0.map { $0.nodeID } }
 
         // Split each group into chunks of maximum size 150
-        var result: [(share: String, parent: String, links: [String])] = []
+        var result: [(volume: String, share: String, parent: String, links: [String])] = []
         for (key, nodeIDs) in transformedGroup {
             let chunks = nodeIDs.splitInGroups(of: 150)
             for chunk in chunks {
-                result.append((key.shareID, key.parentID, chunk))
+                result.append((key.volumeID, key.shareID, key.parentID, chunk))
             }
         }
 
-        return result.sorted(by: { $0.share < $1.share }, { $0.parent < $1.parent })
+        return result
     }
 
     private struct Parent: Hashable {
+        let volumeID: String
         let shareID: String
         let parentID: String
     }

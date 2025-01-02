@@ -39,6 +39,7 @@ extension Node {
     @NSManaged public var nodePassphraseSignature: String
     @NSManaged public var permissionsMaskRaw: Int
     @NSManaged public var shareID: String
+    @NSManaged public var volumeID: String
     @NSManaged public var signatureEmail: String?
     @NSManaged public var nameSignatureEmail: String?
     @NSManaged public var size: Int
@@ -46,7 +47,75 @@ extension Node {
     @NSManaged public var parentLink: Folder?
     @NSManaged public var isToBeDeleted: Bool
     @NSManaged public var isShared: Bool
-    
+    @NSManaged public var isSharedWithMeRoot: Bool
+
+    public func getContextShare() throws -> Share {
+        // Traverse up to the root node
+        let rootNode = findRootNode()
+
+        // Return the first direct share found on the root node, if any
+        if let rootShare = rootNode.directShares.first {
+            return rootShare
+        }
+
+        // If no share is found, throw an error indicating the invalid state
+        throw invalidState("Root node has no associated context share.")
+    }
+
+    public func getContextShareAddressID() throws -> String {
+        let share = try getContextShare()
+        let addressID = try share.getAddressID()
+        return addressID
+    }
+
+    private func findRootNode() -> Node {
+        var currentNode: Node = self
+
+        // Traverse up the parent chain until the root node (node with no parent) is found
+        while let parentNode = currentNode.parentLink {
+            currentNode = parentNode
+        }
+
+        return currentNode
+    }
+
+    public func setShareID(_ shareID: String) {
+        self.shareID = shareID
+    }
+
+    public func isNodeShared() -> Bool {
+        guard let share = directShares.first, share.type == .standard else {
+            return false
+        }
+        return true
+    }
+
+    // Heavy operation, should only be used in case of error handling
+    public func isSignatureVerifiable() -> Bool {
+        // The root node of a main volume cannot be shared (will be `main` type).
+        // On the other hand, root share of a shared file must be `standard` type.
+        !findRootNode().isNodeShared()
+    }
+
+    public var shareId: String {
+        // Case of macOS and iOS my files + photos + devices (future)
+        if !self.shareID.isEmpty {
+            return shareID
+        }
+        // Case of files that are SharedWithMe
+        else {
+            do {
+                return try getContextShare().id
+            } catch {
+                Log.error(NukingCacheError(error), domain: .storage)
+                #if os(iOS)
+                NotificationCenter.default.post(name: .nukeCache)
+                #endif
+                return ""
+            }
+        }
+    }
+
     @NSManaged private var created: Date
     #warning("Provides safety but should be replaced by a non-Core Data clone of Node")
     // this adds safety to accessing complex data types such as Date when underlying Core Data object doesn't exist
@@ -75,7 +144,7 @@ extension Node {
     
     // transient
     @NSManaged internal var clearPassphrase: String?
-    @NSManaged internal var clearName: String?
+    @NSManaged public var clearName: String?
     
     @objc internal var isFolder: Bool {
         // This transient property is useful for fetch requests where we can not check the exact type of the node so we have no other choice. On the higher levels (apps) we'd better rely on the type of the object (is Folder, is File) because mimeType may have improper contents
@@ -84,7 +153,7 @@ extension Node {
     
     // Theoretically, only root node can have share with .main flag, and it should not be possible to create custom direct share for the root node. Let's prioritize such share thought for the sake of safety.
     public var primaryDirectShare: Share? {
-        directShares.first(where: \.isMain) ?? directShares.first
+        directShares.first(where: { $0.type == .main }) ?? directShares.first
     }
 }
 
@@ -108,5 +177,56 @@ public extension Node {
 public extension Node {
     var isDirty: Bool {
         dirtyIndex != 0
+    }
+}
+
+extension Node {
+    @objc(addDirectSharesObject:)
+    @NSManaged public func addToDirectShares(_ value: Share)
+
+    @objc(removeDirectSharesObject:)
+    @NSManaged public func removeFromDirectShares(_ value: Share)
+
+    @objc(addDirectShares:)
+    @NSManaged public func addToDirectShares(_ values: Set<Share>)
+
+    @objc(removeDirectShares:)
+    @NSManaged public func removeFromDirectShares(_ values: Set<Share>)
+}
+
+public enum Role: Int16, Comparable {
+    case viewer = 4
+    case editor = 6
+    case admin = 22
+
+    public static func < (lhs: Role, rhs: Role) -> Bool {
+        return lhs.rawValue < rhs.rawValue
+    }
+}
+
+extension Node {
+    public func getNodeRole() -> Role {
+        if let parentLink {
+            let parentRole = parentLink.getNodeRole()
+            let currentRole: Role
+            if let permissions = directShares.first?.members.first?.permissions,
+               let role = Role(rawValue: permissions) {
+                currentRole = role
+            } else {
+                currentRole = parentRole
+            }
+            return max(parentRole, currentRole)
+        } else {
+            if let permissions = directShares.first?.members.first?.permissions,
+               let role = Role(rawValue: permissions) {
+                return role
+            }
+            return .admin
+        }
+    }
+    
+    /// Has this item been shared with anyone?
+    public var hasDirectShare: Bool {
+        directShares.first == nil ? false : true
     }
 }

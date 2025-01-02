@@ -187,3 +187,4 @@ public extension File {
         return true
     }
 }
+// swiftlint:enable unused_optional_binding

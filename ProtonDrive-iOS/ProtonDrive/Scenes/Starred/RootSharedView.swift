@@ -22,13 +22,19 @@ import PDUIComponents
 struct RootSharedView: View {
     var coordinator: FinderCoordinator
     
-    init(deeplink: Deeplink?, tower: Tower) {
-        self.coordinator = FinderCoordinator(tower: tower, deeplink: deeplink)
-    }
-    
     var body: some View {
         RootDeeplinkableView(navigationTracker: coordinator) {
             coordinator.start(.shared)
+        }
+    }
+}
+
+struct RootSharedWithMeView: View {
+    var coordinator: FinderCoordinator
+
+    var body: some View {
+        RootDeeplinkableView(navigationTracker: coordinator) {
+            coordinator.start(.sharedWithMe)
         }
     }
 }

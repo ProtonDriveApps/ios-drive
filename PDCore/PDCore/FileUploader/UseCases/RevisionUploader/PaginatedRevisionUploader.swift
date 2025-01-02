@@ -18,7 +18,6 @@
 import CoreData
 
 final class PaginatedRevisionUploader: RevisionUploader {
-
     private let pageSize: Int
     private let parentProgress: Progress
     private let verifierFactory: (UploadingFileIdentifier) async throws -> UploadVerifier
@@ -26,8 +25,9 @@ final class PaginatedRevisionUploader: RevisionUploader {
     private let signersKitFactory: SignersKitFactoryProtocol
     private let queue: OperationQueue
     private let moc: NSManagedObjectContext
-    private var operationsContainer = OperationsContainer()
+    private let parallelEncryption: Bool
 
+    private var operationsContainer = OperationsContainer()
     private var isCancelled = false
 
     init(
@@ -37,7 +37,8 @@ final class PaginatedRevisionUploader: RevisionUploader {
         pageRevisionUploaderFactory: @escaping (RevisionPage) -> Operation,
         signersKitFactory: SignersKitFactoryProtocol,
         queue: OperationQueue,
-        moc: NSManagedObjectContext
+        moc: NSManagedObjectContext,
+        parallelEncryption: Bool
     ) {
         self.pageSize = pageSize
         self.parentProgress = parentProgress
@@ -46,6 +47,7 @@ final class PaginatedRevisionUploader: RevisionUploader {
         self.signersKitFactory = signersKitFactory
         self.queue = queue
         self.moc = moc
+        self.parallelEncryption = parallelEncryption
     }
 
     func upload(_ draft: FileDraft, verification: BlockVerification, completion: @escaping Completion) {
@@ -82,7 +84,11 @@ final class PaginatedRevisionUploader: RevisionUploader {
         try moc.performAndWait {
             let revision = try draft.getUploadableRevision()
             let identifier = try revision.uploadableIdentifier()
+#if os(macOS)
             let addressID = try signersKitFactory.make(forSigner: .address(identifier.signatureEmail)).address.addressID
+#else
+            let addressID = try revision.file.getContextShareAddressID()
+#endif
 
             let uploadBlocks = revision.blocks.compactMap(\.asUploadBlock).sorted { $0.index < $1.index }
             let nonUploadedBlocks = uploadBlocks.filter { !$0.isUploaded }
@@ -112,7 +118,9 @@ final class PaginatedRevisionUploader: RevisionUploader {
             }
 
             updateProgress(uploadedBlocks: uploadBlocks.count - nonUploadedBlocks.count)
+            #if os(iOS)
             updateProgress(uploadedBlocks: uploadThumbnails.count - nonUploadedThumbnails.count)
+            #endif
             return (pages, revision)
         }
     }
@@ -120,16 +128,32 @@ final class PaginatedRevisionUploader: RevisionUploader {
     func prepareVerification(_ draft: FileDraft) async throws -> BlockVerification {
         let uploadingFileIdentifier = try draft.getFileUploadingFileIdentifier()
         let verifier = try await verifierFactory(uploadingFileIdentifier)
-        let verification = try await getVerificationCodes(verifier: verifier, fileDraft: draft, uploadingFileIdentifier: uploadingFileIdentifier)
+        let verifiableBlocks = try getVerifiableBlocks(fileDraft: draft, uploadingFileIdentifier: uploadingFileIdentifier)
+        
+        let verification: BlockVerification
+
+        if parallelEncryption {
+            verification = try await Self.getVerificationCodesInParallel(verifier: verifier, verifiableBlocks: verifiableBlocks)
+        } else {
+            verification = try await Self.getVerificationCodes(verifier: verifier, verifiableBlocks: verifiableBlocks)
+        }
         return verification
     }
 
-    private func getVerificationCodes(verifier: UploadVerifier, fileDraft: FileDraft, uploadingFileIdentifier: UploadingFileIdentifier) async throws -> BlockVerification {
-        let verifiableBlocks = try getVerifiableBlocks(fileDraft: fileDraft, uploadingFileIdentifier: uploadingFileIdentifier)
+    private static func getVerificationCodes(verifier: UploadVerifier, verifiableBlocks: [VerifiableBlock]) async throws -> BlockVerification {
         let blocks = try await verifiableBlocks.asyncMap { block in
             let verificationToken = try await verifier.verify(block: block)
             return BlockVerification.Block(index: block.index, verificationToken: verificationToken)
         }
+        return BlockVerification(blocks: blocks)
+    }
+    
+    private static func getVerificationCodesInParallel(verifier: UploadVerifier, verifiableBlocks: [VerifiableBlock]) async throws -> BlockVerification {
+        let groupSize = Int(ceil(Double(verifiableBlocks.count) / Double(max(1, ProcessInfo.processInfo.activeProcessorCount))))
+        let blocks = try await verifiableBlocks
+            .splitInGroups(of: groupSize)
+            .parallelMap { try await Self.getVerificationCodes(verifier: verifier, verifiableBlocks: $0) }
+            .flatMap(\.blocks)
         return BlockVerification(blocks: blocks)
     }
 

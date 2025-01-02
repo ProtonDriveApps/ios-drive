@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
-import Foundation
+import PDCore
 
 final class ApplicationStateOperationsController {
     private let applicationStateResource: ApplicationRunningStateResource

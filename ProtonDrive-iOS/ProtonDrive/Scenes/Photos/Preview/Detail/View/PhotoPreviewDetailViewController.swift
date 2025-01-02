@@ -86,19 +86,17 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
     }
 
     private func handleUpdate() {
-        resetContent()
-
-        guard let state = viewModel.state else {
-            return
-        }
+        guard let state = viewModel.state else { return }
 
         switch state {
         case let .loading(loadingText, thumbnail):
+            resetContent()
             thumbnail.map { addThumbnailView(data: $0) }
             addLoading(text: loadingText)
         case let .preview(fullPreview):
             addFullPreview(fullPreview)
         case let .error(title: title, text: text):
+            resetContent()
             addError(title: title, text: text)
         }
     }
@@ -117,11 +115,15 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
     }
 
     private func addInteractiveImageView(with data: PreviewDataType) {
-        let imageView = InteractiveImageView(data: data, displayMode: displayMode)
-        contentView.addSubview(imageView)
-        imageView.fillSuperview()
-        interactiveView = imageView
-        addDefaultGestureRecognizers()
+        if let imageView = interactiveView {
+            imageView.setupLayout(with: data)
+        } else {
+            let imageView = InteractiveImageView(data: data, displayMode: displayMode, parentViewController: self)
+            contentView.addSubview(imageView)
+            imageView.fillSuperview()
+            interactiveView = imageView
+            addDefaultGestureRecognizers()
+        }
     }
 
     private func addVideoView(with url: URL) {
@@ -161,17 +163,29 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
     private func addFullPreview(_ preview: PhotoFullPreview) {
         switch preview {
         case let .thumbnail(data):
+            resetContent()
             addInteractiveImageView(with: .image(data))
         case let .image(url):
+            resetContent()
             let data = (try? Data(contentsOf: url)) ?? Data()
             addInteractiveImageView(with: .image(data))
         case let .gif(url):
+            resetContent()
             let data = (try? Data(contentsOf: url)) ?? Data()
             addInteractiveImageView(with: .gif(data))
         case let .video(url):
+            resetContent()
             addVideoView(with: url)
-        case let .livePhoto(photoURL, videoURL):
-            addInteractiveImageView(with: .livePhoto(photoURL, videoURL))
+        case let .livePhoto(photoURL, videoURL, isLoading):
+            if interactiveView == nil {
+                resetContent()
+            }
+            addInteractiveImageView(with: .livePhoto(photoURL, videoURL, isLoading))
+        case let .burstPhoto(photoURL, childrenURLs, isLoading):
+            if interactiveView == nil {
+                resetContent()
+            }
+            addInteractiveImageView(with: .burstPhoto(photoURL, childrenURLs, isLoading))
         }
     }
 

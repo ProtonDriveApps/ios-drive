@@ -62,13 +62,37 @@ public struct Revision: Codable {
     public let thumbnailHash: String?
     public let thumbnailDownloadUrl: URL?
     public let XAttr: String?
+
+    public init(ID: RevisionID, 
+                createTime: TimeInterval,
+                size: Int,
+                manifestSignature: String,
+                signatureAddress: String,
+                state: NodeState, 
+                blocks: [Block],
+                thumbnail: Int,
+                thumbnailHash: String?,
+                thumbnailDownloadUrl: URL?,
+                XAttr: String?) {
+        self.ID = ID
+        self.createTime = createTime
+        self.size = size
+        self.manifestSignature = manifestSignature
+        self.signatureAddress = signatureAddress
+        self.state = state
+        self.blocks = blocks
+        self.thumbnail = thumbnail
+        self.thumbnailHash = thumbnailHash
+        self.thumbnailDownloadUrl = thumbnailDownloadUrl
+        self.XAttr = XAttr
+    }
 }
 
 public struct Block: Codable {
     public let index: Int
     public let hash: String
     public let URL: URL
-    public let encSignature: String
+    public let encSignature: String?
     public let signatureEmail: String?
 }
 
@@ -77,6 +101,13 @@ public struct Thumbnail: Codable {
     public let type: Int
     public let hash: String
     public let size: Int
+
+    public init(thumbnailID: String, type: Int, hash: String, size: Int) {
+        self.thumbnailID = thumbnailID
+        self.type = type
+        self.hash = hash
+        self.size = size
+    }
 }
 
 public struct Photo: Codable {

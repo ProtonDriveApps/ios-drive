@@ -1,6 +1,0 @@
-framework module ProtonCoreDoh {
-  umbrella header "ProtonCore-Doh-dynamic-umbrella.h"
-
-  export *
-  module * { export * }
-}

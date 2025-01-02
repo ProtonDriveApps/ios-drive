@@ -40,7 +40,7 @@ public final class UnleashFeatureFlagConfigurationResolver: ExternalFeatureFlagC
     }
 
     public func makeConfiguration(refreshInterval: Int) throws -> ExternalFeatureFlagConfiguration {
-        let urlPath = configuration.host + "/feature/v2/frontend" // path "/api/feature/v2/frontend" throws 404 when used with ProtonCore
+        let urlPath = configuration.apiOrigin + "/feature/v2/frontend" // path "/api/feature/v2/frontend" throws 404 when used with ProtonCore
         guard let url = URL(string: urlPath) else {
             throw ExternalFeatureFlagConfigurationResolverError.invalidHost
         }

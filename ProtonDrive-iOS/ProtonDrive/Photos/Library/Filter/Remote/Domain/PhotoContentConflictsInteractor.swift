@@ -34,7 +34,7 @@ final class RemotePhotoContentConflictsInteractor: PhotoContentConflictsInteract
         var validCompounds = [PhotoAssetCompound]()
         var validPartialCompounds = [PartialPhotoAssetCompound]()
         var invalidCompounds = [PhotoAssetCompound]()
-        var failedCompounds = [PhotoAssetCompound]()
+        var failedCompounds = [PhotosFailedCompound]()
         var invalidAssets = [PhotoAsset]()
         for item in items {
             let compound = item.compound
@@ -53,9 +53,18 @@ final class RemotePhotoContentConflictsInteractor: PhotoContentConflictsInteract
                 }
             } catch {
                 Log.error(DriveError(withDomainAndCode: error, message: "\(self.self)"), domain: .photosProcessing)
-                failedCompounds.append(compound)
+                
+                // Errors from the validator are due to hash generation.
+                // Simplify by using encryption errors.
+                failedCompounds.append(.init(compound: compound, error: .encryptionFailed))
             }
         }
-        return FilteredPhotoCompoundsResult(validCompounds: validCompounds, validPartialCompounds: validPartialCompounds, invalidCompounds: invalidCompounds, invalidAssets: invalidAssets, failedCompounds: failedCompounds)
+        return FilteredPhotoCompoundsResult(
+            validCompounds: validCompounds,
+            validPartialCompounds: validPartialCompounds,
+            invalidCompounds: invalidCompounds,
+            invalidAssets: invalidAssets,
+            failedCompounds: failedCompounds
+        )
     }
 }

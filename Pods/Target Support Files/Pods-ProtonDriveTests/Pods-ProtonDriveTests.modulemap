@@ -1,6 +1,0 @@
-framework module Pods_ProtonDriveTests {
-  umbrella header "Pods-ProtonDriveTests-umbrella.h"
-
-  export *
-  module * { export * }
-}

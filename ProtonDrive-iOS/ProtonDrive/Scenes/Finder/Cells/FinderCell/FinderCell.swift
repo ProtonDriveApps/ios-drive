@@ -24,7 +24,7 @@ import Combine
 struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
     @Environment(\.acknowledgedNotEnoughStorage) var acknowledgedNotEnoughStorage
     @EnvironmentObject var coordinator: FinderCoordinator
-    @EnvironmentObject var tabBar: TabBarViewModel
+    @EnvironmentObject var tabBar: TabBarViewViewModel
     @EnvironmentObject var root: RootViewModel
 
     @ObservedObject var node: Node
@@ -38,10 +38,13 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
     private let isEnabled: Bool
     private let index: Int
 
-    init(node: Node, finderViewModel: ViewModel, deeplink: Binding<String?>,
-         presentedModal: Binding<FinderCoordinator.Destination?>,
-         presentedSheet: Binding<FinderCoordinator.Destination?>,
-         menuItem: Binding<FinderMenu?>, isList: Bool, index: Int) {
+    init(
+        node: Node,
+        finderViewModel: ViewModel, deeplink: Binding<String?>,
+        presentedModal: Binding<FinderCoordinator.Destination?>,
+        presentedSheet: Binding<FinderCoordinator.Destination?>,
+        menuItem: Binding<FinderMenu?>, isList: Bool, index: Int
+    ) {
         self.node = node
         self.index = index
         self.finderViewModel = finderViewModel
@@ -52,7 +55,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
         self.isList = isList
         self.isEnabled = !finderViewModel.childViewModel(for: node).isDisabled
     }
-    
+
     var body: some View {
         ZStack {
             Button(action: {}, label: {
@@ -139,7 +142,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                     vm?.selectionModel?.onLongPress()
                 }).any()
         default:
-            let vm = NodeCellPlaceholderConfiguration()
+            let vm = NodeCellPlaceholderConfiguration(featureFlagsController: coordinator.featureFlagsController)
             return FinderListCell(
                 vm: vm,
                 presentedModal: presentedModal,
@@ -185,7 +188,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                     vm?.selectionModel?.onLongPress()
                 }).any()
         default:
-            let vm = NodeCellPlaceholderConfiguration()
+            let vm = NodeCellPlaceholderConfiguration(featureFlagsController: coordinator.featureFlagsController)
             return FinderGridCell(
                 vm: vm,
                 presentedModal: presentedModal,
@@ -203,7 +206,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
 
     private func cellVM(for node: Node) -> NodeCellConfiguration {
         let cellViewModel = finderViewModel.childViewModel(for: node)
-        
+
         switch cellViewModel {
         case let vm as NodeCellSimpleConfiguration:
             return vm
@@ -231,7 +234,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
             return vm
 
         default:
-            let vm = NodeCellPlaceholderConfiguration()
+            let vm = NodeCellPlaceholderConfiguration(featureFlagsController: coordinator.featureFlagsController)
             return vm
         }
     }

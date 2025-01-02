@@ -17,6 +17,7 @@
 
 import Foundation
 import ProtonCoreDataModel
+import PDLocalization
 
 enum LockedStateAlertVisibility: Equatable {
     case mail
@@ -45,15 +46,15 @@ enum LockedStateAlertVisibility: Equatable {
     var bannerTitle: String? {
         switch self {
         case .mail:
-            return "Your Mail storage is full"
+            return Localization.state_mail_storage_full
         case .drive:
-            return "Your Drive storage is full"
+            return Localization.state_drive_storage_full
         case .storageFull:
-            return "Your storage is full"
+            return Localization.state_storage_full
         case .orgIssueForPrimaryAdmin:
-            return "Your subscription has ended"
+            return Localization.state_subscription_has_ended
         case .orgIssueForMember:
-            return "Your account is at risk of deletion"
+            return Localization.state_at_risk_of_deletion
         case .hidden:
             return nil
         }
@@ -62,13 +63,13 @@ enum LockedStateAlertVisibility: Equatable {
     var bannerDescription: String? {
         switch self {
         case .mail:
-            return "To send or receive emails, free up space or upgrade for more storage."
+            return Localization.state_mail_storage_full_desc
         case .drive, .storageFull:
-            return "To upload files, free up space or upgrade for more storage."
+            return Localization.state_storage_full_desc
         case .orgIssueForPrimaryAdmin:
-            return "Upgrade to restore full access and to avoid data loss."
+            return Localization.state_subscription_has_ended_desc
         case .orgIssueForMember:
-            return "To avoid data loss, ask your admin to upgrade."
+            return Localization.state_at_risk_of_deletion_desc
         case .hidden:
             return nil
         }
@@ -77,13 +78,13 @@ enum LockedStateAlertVisibility: Equatable {
     var bannerButtonTitle: String? {
         switch self {
         case .orgIssueForPrimaryAdmin:
-            return "Upgrade"
+            return Localization.general_upgrade
         case .orgIssueForMember:
-            return "Learn more"
+            return Localization.general_learn_more
         case .hidden:
             return nil
         default:
-            return "Get more storage"
+            return Localization.general_get_more_storage
         }
     }
 

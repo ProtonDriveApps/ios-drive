@@ -23,8 +23,24 @@ public enum RefreshMode {  // request all pages with children when opening the F
 
 public enum Constants {
     public static let runningInExtension = Bundle.main.bundlePath.hasSuffix(".appex")
-    static let developerGroup = "2SB5Z68H26."
-    public static let appGroup = "group.ch.protonmail.protondrive"
+    /// Are we running in an environment where we need to be very cautious about our RAM usage.
+    public static let runningInRAMContrainedProcess = {
+        #if os(macOS)
+        // On Mac, extensions have no constraints on RAM usage compared to any other process.
+        false
+        #else
+        // On iOS, extensions are severly limited in their RAM usage. Total amount depends on OS version.
+        runningInExtension
+        #endif
+    }()
+    public static let keychainGroup = "2SB5Z68H26.group.ch.protonmail.protondrive"
+    public static var appGroup: String {
+        #if os(macOS)
+        "2SB5Z68H26.ch.protonmail.protondrive"
+        #else
+        "group.ch.protonmail.protondrive"
+        #endif
+    }
     public static let humanVerificationSupportURL = URL(string: "https://protonmail.ch")!
     
     public static var clientVersion: String? = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
@@ -32,13 +48,28 @@ public enum Constants {
     // MARK: - Pagination - depends on BE capabilities
     public static let childrenRefreshStrategy: RefreshMode = .events
     
-    public static let pageSizeForRefreshes: Int = 150      // number of node children per page when opening the Folder screen
+    // The children page size. This number is used when:
+    // * fetching the folder's children from API — this is the API page size
+    // * enumerating the items in the FileProviderExtension — this is the size of one page that FP requests
+    // * opening the Folder screen — as number of node children per page
+    public static let pageSizeForChildrenFetchAndEnumeration: Int = 150
 
     // MARK: - FileUpload
     #if os(macOS)
     public static let maxCountOfConcurrentFileUploaderOperations = 16 // Highlevel limit of parallel file uploads
+    /// How many files can be downloaded at once, includes everything from preflight requests to final decryption.
+    /// Ideally, this value should match `NSExtensionFileProviderDownloadPipelineDepth` in the Info.plist
+    public static let maxConcurrentInflightFileDownloads = 6
+    /// How many blocks in an individual file can be downloaded at once.
+    public static let maxConcurrentBlockDownloadsPerFile = 4
+    public static let downloaderUsesSharedURLSession = false
     #else
     public static let maxCountOfConcurrentFileUploaderOperations = 5 // Highlevel limit of parallel file uploads
+    /// How many files can be downloaded at once, includes everything from preflight requests to final decryption
+    public static let maxConcurrentInflightFileDownloads = 3
+    /// How many blocks in an individual file can be downloaded at once
+    public static let maxConcurrentBlockDownloadsPerFile = 1
+    public static let downloaderUsesSharedURLSession = false
     #endif
     public static let maxChildrenInFolder = 32_000 // a bit under BE's 2^15 - 1 limit
     // Encryption
@@ -68,4 +99,8 @@ public enum Constants {
     public static let maxAccesses = 0
     public static let minSharedLinkRandomPasswordSize = 12
     public static let maxSharedLinkPasswordLength = 62
+
+    // MARK: - Build type
+    @available(*, deprecated, message: "Avoid using. Use injection to differentiate implementation in the top level target instead.")
+    public static var buildType = BuildType.prod
 }

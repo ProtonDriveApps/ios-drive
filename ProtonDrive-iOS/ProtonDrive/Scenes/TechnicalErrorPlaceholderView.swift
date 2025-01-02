@@ -18,10 +18,11 @@
 import SwiftUI
 import PDUIComponents
 import ProtonCoreUIFoundations
+import PDLocalization
 
 struct TechnicalErrorPlaceholderView: View {
     @EnvironmentObject var root: RootViewModel
-    var message: String = "Something gone wrong, please try again later"
+    var message: String = Localization.technical_error_placeholder
     
     var body: some View {
         ScrollView {

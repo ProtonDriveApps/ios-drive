@@ -16,20 +16,21 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDLocalization
 
 enum PhotosRetryViewAlert {
     case skipDialog
     
     var title: String {
-        "Skip backup for these photos?"
+        Localization.retry_skip_alert_title
     }
     var message: String {
-        "Are you sure you want to skip photos that haven't been backed up? They will not be backed up."
+        Localization.retry_skip_alert_message
     }
     var buttons: [(String, (PhotosRetryViewModel) -> Void)] {
         [
-            ("Skip", { $0.pushSkipAlertConfirmButton() }),
-            ("Go back", { $0.pushSkipAlertCancelButton() })
+            (Localization.general_skip, { $0.pushSkipAlertConfirmButton() }),
+            (Localization.general_go_back, { $0.pushSkipAlertCancelButton() })
         ]
     }
 }

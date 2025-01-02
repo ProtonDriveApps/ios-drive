@@ -25,6 +25,7 @@ extension SyncItem {
 
     @NSManaged public var id: String
     @NSManaged public var errorRetryCount: Int64
+    @NSManaged public var fileSize: NSNumber?
     @NSManaged public var modificationTime: Date
 
     /// FileProvider related

@@ -43,14 +43,29 @@ final class LaunchCoordinator {
 
     func launchApp() {
         let launcher = startViewControllerFactory()
+        for child in viewController.children {
+            child.remove()
+        }
         viewController.add(launcher)
     }
 
     func presentAlert(alert: FailingAlert) {
-        let vc = failingAlertFactory(alert)
-        
-        UIApplication.shared.rootViewController()?.presentedViewController?.dismiss(animated: false) // dismiss active modals, if any
-        UIApplication.shared.topViewController()?.present(vc, animated: true, completion: nil)
+        UIApplication.shared.rootViewController()?.presentedViewController?.dismiss(
+            animated: false,
+            completion: { [weak self] in
+                // Show login view again
+                self?.launchApp()
+                self?.present(alert: alert, withDelay: 1)
+            }
+        ) // dismiss active modals, if any
+    }
+    
+    private func present(alert: FailingAlert, withDelay: Double) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + withDelay) { [weak self] in
+            guard let self else { return }
+            let vc = self.failingAlertFactory(alert)
+            UIApplication.shared.topViewController()?.present(vc, animated: true, completion: nil)
+        }
     }
 
     func presentAccountRecovery(apiService: APIService) {

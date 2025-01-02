@@ -22,6 +22,7 @@ import PDUIComponents
 struct NodeListSecondLineView: View {
     let vm: NodeListSecondLine
     let parentIdentifier: String
+    let featureFlagsController: FeatureFlagsControllerProtocol
 
     var body: some View {
         Group {
@@ -44,6 +45,7 @@ struct NodeListSecondLineView: View {
             .padding(.trailing, 4)
 
             Text(vm.subtitle)
+                .lineLimit(1)
                 .accessibility(identifier: parentIdentifier)
                 .font(.caption)
                 .foregroundColor(vm.isFailedStyle ? ColorProvider.NotificationError : ColorProvider.TextWeak)
@@ -56,13 +58,20 @@ struct NodeListSecondLineView: View {
             RoundIconSmall(icon: IconProvider.cloud, color: ColorProvider.TextWeak)
                 .accessibilityIdentifier("\(parentIdentifier).RoundIconSmall.cloud")
         }
-        
+
+        if badges.contains(.sharedCollaboratively) {
+            RoundIconSmall(icon: IconProvider.users, color: ColorProvider.TextWeak)
+                .accessibilityIdentifier("\(parentIdentifier).RoundIconSmall.sharedCollaboratively")
+        }
+
         if badges.contains(.shared) {
-            RoundIconSmall(icon: IconProvider.link, color: ColorProvider.TextWeak)
+            let hasSharing = featureFlagsController.hasSharing
+            let icon: Image = hasSharing ? IconProvider.users : IconProvider.link
+            RoundIconSmall(icon: icon, color: ColorProvider.TextWeak)
                 .accessibilityIdentifier("\(parentIdentifier).RoundIconSmall.shared")
         }
 
-        if badges.contains(.offline(downloaded: true)) {
+        if badges.contains(.offline) {
             RoundIconSmall(icon: IconProvider.arrowDownCircle, color: ColorProvider.TextWeak)
                 .accessibilityIdentifier("\(parentIdentifier).RoundIconSmall.offline")
         }

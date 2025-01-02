@@ -29,16 +29,19 @@ public extension Share {
     func fulfill(from meta: PDClient.Share) {
         self.flags = meta.flags
         self.creator = meta.creator
-        
+
         self.addressID = meta.addressID
         self.key = meta.key
         self.passphrase = meta.passphrase
         self.passphraseSignature = meta.passphraseSignature
         self.type = ShareType(rawValue: Int16(meta.type.rawValue)) ?? .undefined
+        self.volumeID = meta.volumeID
     }
+
     func fulfill(from meta: PDClient.ShareShort) {
         self.flags = meta.flags
         self.creator = meta.creator
+        self.volumeID = meta.volumeID
     }
 }
 
@@ -59,9 +62,11 @@ public extension Node {
         self.mimeType = meta.MIMEType
         self.createdDate = Date(timeIntervalSince1970: meta.createTime)
         self.modifiedDate = Date(timeIntervalSince1970: meta.modifyTime)
-        self.isShared = meta.sharingDetails != nil
+        self.isShared = meta.sharingDetails?.shareUrl != nil
+        self.volumeID = meta.volumeID
     }
 }
+
 public extension File {
     func fulfill(from meta: PDClient.Link) {
         super.fulfillBase(from: meta)
@@ -69,7 +74,7 @@ public extension File {
         self.contentKeyPacket = meta.fileProperties?.contentKeyPacket
         self.contentKeyPacketSignature = meta.fileProperties?.contentKeyPacketSignature
     }
-    
+
     func fulfill(from newFileDetails: NewFile) {
         self.id = newFileDetails.ID
     }
@@ -80,6 +85,7 @@ public extension Folder {
         super.fulfillBase(from: meta)
         self.nodeHashKey = meta.folderProperties?.nodeHashKey
     }
+
     func fulfill(from newFolderDetails: NewFolder) {
         self.id = newFolderDetails.ID
     }
@@ -103,7 +109,7 @@ public extension Revision {
         self.size = meta.size
         self.state = meta.state
     }
-    
+
     func fulfill(from meta: PDClient.Revision) {
         self.signatureAddress = meta.signatureAddress
         self.created = Date(timeIntervalSince1970: meta.createTime)
@@ -158,6 +164,14 @@ public extension ShareURL {
         self.password = meta.password
         self.publicUrl = meta.publicUrl
         self.sharePassphraseKeyPacket = meta.sharePassphraseKeyPacket
+    }
+
+    func fulfill(from meta: ShareURLShortMeta) {
+        self.id = meta.shareUrlID
+        self.token = meta.token ?? ""
+        self.expirationTime = meta.expireTime
+        self.numAccesses = meta.numAccesses
+        self.createTime = meta.createTime
     }
 }
 

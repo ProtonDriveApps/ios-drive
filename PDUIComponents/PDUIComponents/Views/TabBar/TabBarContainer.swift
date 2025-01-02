@@ -18,13 +18,14 @@
 import SwiftUI
 import ProtonCoreUIFoundations
 
+#if os(iOS)
 public struct TabBarContainer: View {
-    public init(vm: TabBarViewModel, tabItems: [TabItem]) {
+    public init(vm: TabBarViewViewModel, tabItems: [TabItem]) {
         self.vm = vm
         self.items = tabItems
     }
     
-    @ObservedObject private var vm: TabBarViewModel
+    @ObservedObject private var vm: TabBarViewViewModel
     @EnvironmentObject private var root: RootViewModel
     private let items: [TabItem]
 
@@ -121,7 +122,7 @@ private struct UITabBarControllerWrapper<Content>: UIViewControllerRepresentable
 // MARK: - Previews
 
 struct TabBarContainer_Previews: PreviewProvider {
-    static var vm = TabBarViewModel(initialTab: .files)
+    static var vm = TabBarViewViewModel(initialTab: .files)
     static var children: [TabItem] = [
         .init(tab: .files, content: AnyView(ColorProvider.BackgroundNorm.edgesIgnoringSafeArea(.all))),
         .init(tab: .favorites, content: AnyView(ColorProvider.BackgroundNorm.edgesIgnoringSafeArea(.all))),
@@ -159,3 +160,4 @@ private extension UIImage {
         return image!
     }
 }
+#endif

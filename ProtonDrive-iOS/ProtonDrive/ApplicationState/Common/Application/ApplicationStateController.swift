@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import PDCore
 
 protocol ApplicationStateController {
     var state: AnyPublisher<ApplicationRunningState, Never> { get }

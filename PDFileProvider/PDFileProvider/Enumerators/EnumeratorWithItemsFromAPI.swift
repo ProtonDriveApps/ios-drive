@@ -28,6 +28,20 @@ extension EnumeratorWithItemsFromAPI {
     func fetchPageFromAPI(_ page: Int, observers: [NSFileProviderEnumerationObserver]) {
         self.model.prepareForRefresh(fromPage: page)
         self.fetchFromAPICancellable?.cancel()
+        
+        // This additional guard was introduced to work around a double enumeration issue, aka following scenario:
+        // 1. Enumerator 1 starts fetching page 0
+        // 2. Enumerator 1 finishes fetching page 0 and reports 150 items (150 total reported)
+        // 3. Enumerator 1 starts fetching page 1
+        // 4. Enumerator 2 starts fetching page 0
+        // 5. Enumerator 1 finishes fetching page 1 and reports 100 items (250 total reported)
+        // 6. Enumerator 1 sets model.node.isChildrenListFullyFetched = true and finishes enumeration
+        // 7. Enumerator 2 finishes fetching page 0 and reports 150 items (150 total reported)
+        // 8. Enumerator 2 finishes enumeration early because model.node.isChildrenListFullyFetched is true
+        // Outcome: system now thinks there are 150 items, because that's what was last reported
+        // To fix that, we skip the model.node.isChildrenListFullyFetched check if fetched page was not the last page
+        var receivedTheLastPage = false
+        
         self.fetchFromAPICancellable = self.model.fetchChildrenFromAPI(proceedTillLastPage: false)
         .receive(on: DispatchQueue.main)
         .sink { completion in
@@ -38,8 +52,10 @@ extension EnumeratorWithItemsFromAPI {
             } else {
                 Log.info("Finished fetching page \(page) from cloud", domain: .fileProvider)
 
-                guard let moc = self.model.node.moc,
-                      moc.performAndWait({ !self.model.node.isChildrenListFullyFetched }) else {
+                // if it fetched from the cloud, but it's not the last page, it should NOT finish here
+                if receivedTheLastPage, 
+                    let moc = self.model.node.moc,
+                    moc.performAndWait({ self.model.node.isChildrenListFullyFetched }) {
                     observers.forEach { $0.finishEnumerating(upTo: nil) }
                     return
                 }
@@ -48,9 +64,10 @@ extension EnumeratorWithItemsFromAPI {
                 let providerPage = NSFileProviderPage(nextPage)
                 observers.forEach { $0.finishEnumerating(upTo: providerPage) }
             }
-        } receiveValue: { nodes in
+        } receiveValue: { value in
             Log.info("Received page from cloud", domain: .fileProvider)
-
+            receivedTheLastPage = value.isLastPage
+            let nodes = value.nodes
             guard let moc = nodes.first?.managedObjectContext else {
                 return
             }

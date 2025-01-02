@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import CoreData
 import Foundation
 import PDCore
 
@@ -33,6 +34,7 @@ final class PhotosProcessingContainer {
         let scanningMeasurementRepository: DurationMeasurementRepository
         let duplicatesMeasurementRepository: DurationMeasurementRepository
         let photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>
+        let photosManagedObjectContext: NSManagedObjectContext
     }
 
     let processingController: PhotosProcessingController

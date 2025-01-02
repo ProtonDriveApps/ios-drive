@@ -38,7 +38,7 @@ final class DatabasePhotosFilterByIdResource: PhotosFilterByIdResource {
         // TODO: Only checking duplicates against unfinished uploads.
         // Otherwise they would be added to the queue, since BE doesn't know them yet (duplicity).
         // Need better strategy in the future.
-        let photos = storage.fetchPrimaryUploadingPhotos(moc: managedObjectContext)
+        let photos = storage.fetchMyPrimaryUploadingPhotos(moc: managedObjectContext)
         let photosAttributes = await managedObjectContext.perform { [weak self] in
             photos.compactMap { self?.getPhotosAttributes(from: $0) }
         }

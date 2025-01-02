@@ -70,7 +70,6 @@ extension Event: Decodable {
             self.link = Link.emptyDeletedLink(id: linkID)
         } catch let error {
             // if that did not help as well - throw encoding error
-            assert(false, error.localizedDescription)
             throw error
         }
     }

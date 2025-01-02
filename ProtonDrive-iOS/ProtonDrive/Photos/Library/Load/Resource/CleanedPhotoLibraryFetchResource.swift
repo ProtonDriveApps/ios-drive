@@ -73,11 +73,14 @@ final class CleanedPhotoLibraryFetchResource: PhotoLibraryIdentifiersResource {
     }
 
     private func processCleanedPhotos() {
-        Log.info("Processing failed items: \(cleanedUploadingStore.getCount())", domain: .photosProcessing)
-        measurementRepository.start()
-        cleanedUploadingStore.reset()
-        let identifiers = identifiersRepository.getIdentifiers()
-        updateSubject.send(.fullLoad(identifiers))
-        measurementRepository.stop()
+        Task { [weak self] in
+            guard let self else { return }
+            Log.info("Processing failed items: \(self.cleanedUploadingStore.getCount())", domain: .photosProcessing)
+            self.measurementRepository.start()
+            self.cleanedUploadingStore.reset()
+            let identifiers = await self.identifiersRepository.getIdentifiers()
+            self.updateSubject.send(.fullLoad(identifiers))
+            self.measurementRepository.stop()
+        }
     }
 }

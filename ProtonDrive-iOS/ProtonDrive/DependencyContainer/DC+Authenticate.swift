@@ -20,6 +20,7 @@ import ProtonCoreChallenge
 import ProtonCoreLoginUI
 import ProtonCoreServices
 import ProtonCoreEnvironment
+import PDLocalization
 
 extension DriveDependencyContainer {
     func makeAuthenticateViewController() -> AuthenticateViewController {
@@ -52,7 +53,7 @@ extension DriveDependencyContainer {
             parameters: SignupParameters(
                 separateDomainsButton: true,
                 passwordRestrictions: .default,
-                summaryScreenVariant: .screenVariant(.drive(SummaryStartButtonText("Start using Proton Drive")))
+                summaryScreenVariant: .screenVariant(.drive(SummaryStartButtonText(Localization.sign_up_succeed_text)))
             )
         )
         #else

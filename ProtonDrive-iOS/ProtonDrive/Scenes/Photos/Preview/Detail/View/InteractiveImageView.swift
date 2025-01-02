@@ -19,32 +19,44 @@ import Photos
 import PhotosUI
 import UIKit
 import ProtonCoreUIFoundations
+import PDLocalization
 
 enum PreviewDataType {
     case image(Data)
     case gif(Data)
-    /// PhotoURL, VideoURL
-    case livePhoto(URL, URL)
+    /// PhotoURL, VideoURL, isLoading
+    case livePhoto(URL, URL?, Bool)
+    /// PhotoURL, childrenURL, isLoading
+    case burstPhoto(URL, [URL], Bool)
 }
 
 final class InteractiveImageView: UIView, UIScrollViewDelegate {
     private let scrollView = UIScrollView()
     private var photoView: UIView?
     private var lastBounds = CGRect.zero
+    private weak var parentViewController: UIViewController?
 
-    private var livePhotoBadgeView: UIView?
+    var isAfterLivePhotoPlayed: Bool {
+        guard let view = photoView as? LivePhotoPreviewView else { return false }
+        return view.isAfterLivePhotoPlayed
+    }
     private var displayMode: PhotosPreviewMode {
-        didSet { updateLivePhotoBadgeHiddenStatus() }
+        didSet { updateBadgeHiddenStatus() }
     }
     private var zoomScale: CGFloat = 1 {
-        didSet { updateLivePhotoBadgeHiddenStatus() }
+        didSet { updateBadgeHiddenStatus() }
     }
+    private let factory: InteractivePhotoViewFactory
 
-    private(set) var isAfterLivePhotoPlayed: Bool = false
-    private var debounceTimer: Timer?
-
-    init(data: PreviewDataType, displayMode: PhotosPreviewMode) {
+    init(
+        data: PreviewDataType,
+        displayMode: PhotosPreviewMode,
+        factory: InteractivePhotoViewFactory = .init(),
+        parentViewController: UIViewController
+    ) {
         self.displayMode = displayMode
+        self.factory = factory
+        self.parentViewController = parentViewController
         super.init(frame: .zero)
         setupLayout(with: data)
     }
@@ -63,39 +75,34 @@ final class InteractiveImageView: UIView, UIScrollViewDelegate {
         scrollView.setZoomScale(1, animated: false)
         scrollView.safeAreaInsetsDidChange()
     }
-
-    private func setupLayout(with data: PreviewDataType) {
-        scrollView.minimumZoomScale = 1
-        scrollView.maximumZoomScale = 3
-        scrollView.showsHorizontalScrollIndicator = false
-        scrollView.showsVerticalScrollIndicator = false
-        scrollView.contentInsetAdjustmentBehavior = .never
-        scrollView.automaticallyAdjustsScrollIndicatorInsets = false
-        scrollView.delegate = self
+    
+    func setupLayout(with data: PreviewDataType) {
+        setupScrollView()
         switch data {
         case .image(let data):
-            setUpLayoutOfImageView(from: data)
+            let imageView = factory.makeStaticImageView(with: data)
+            setUpPhotoViewLayout(photoView: imageView, in: scrollView)
+            accessibilityIdentifier = "PhotoPreviewDetail.Image"
         case .gif(let data):
-            setUpLayoutOfImageView(from: data, isGif: true)
-        case let .livePhoto(photoURL, videoURL):
-            Task {
-                await handleLivePhotoData(photoURL: photoURL, videoURL: videoURL)
-            }
+            let gifView = factory.makeGIFView(with: data)
+            setUpPhotoViewLayout(photoView: gifView, in: scrollView)
+            accessibilityIdentifier = "PhotoPreviewDetail.gif"
+        case let .livePhoto(photoURL, videoURL, isLoading):
+            let livePhotoView = factory.makeLivePhotoPreview(photoURL: photoURL, videoURL: videoURL, isLoading: isLoading)
+            setUpPhotoViewLayout(photoView: livePhotoView, in: scrollView)
+            updateBadgeHiddenStatus()
+            accessibilityIdentifier = "PhotoPreviewDetail.LivePhoto"
+        case let .burstPhoto(coverURL, childrenURLs, isLoading):
+            let burstView = factory.makeBurstPhotoPreview(
+                coverURL: coverURL,
+                childrenURLs: childrenURLs,
+                isLoading: isLoading,
+                parentViewController: parentViewController
+            )
+            setUpPhotoViewLayout(photoView: burstView, in: scrollView)
+            updateBadgeHiddenStatus()
+            accessibilityIdentifier = "PhotoPreviewDetail.Burst"
         }
-    }
-
-    private func setUpPhotoViewLayout(photoView: UIView, in scrollView: UIScrollView) {
-        photoView.translatesAutoresizingMaskIntoConstraints = false
-        photoView.contentMode = .scaleAspectFit
-        scrollView.addSubview(photoView)
-        NSLayoutConstraint.activate([
-            photoView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
-            photoView.heightAnchor.constraint(equalTo: scrollView.heightAnchor),
-            photoView.centerXAnchor.constraint(equalTo: scrollView.centerXAnchor),
-            photoView.centerYAnchor.constraint(equalTo: scrollView.centerYAnchor),
-        ])
-        self.photoView = photoView
-        setAccessibilityIdentifier()
     }
 
     func handleDoubleTap() {
@@ -152,142 +159,44 @@ final class InteractiveImageView: UIView, UIScrollViewDelegate {
         let top = 0.5 * (isHeightOutOfBounds ? newHeight - photoView.frame.height : (scrollView.frame.height - scrollView.contentSize.height))
         scrollView.contentInset = UIEdgeInsets(top: top, left: left, bottom: top, right: left)
     }
-    
-    private func setAccessibilityIdentifier() {
-        if photoView is UIImageView {
-            accessibilityIdentifier = "PhotoPreviewDetail.Image"
-        } else if photoView is PHLivePhotoView {
-            accessibilityIdentifier = "PhotoPreviewDetail.LivePhoto"
-        }
-    }
 }
 
-// MARK: - Image
+// MARK: - View setup
 extension InteractiveImageView {
-    private func setUpLayoutOfImageView(from data: Data, isGif: Bool = false) {
-        let view = addImageView(with: data, isGif: isGif)
-        setUpPhotoViewLayout(photoView: view, in: scrollView)
-        photoView = view
-    }
-    
-    private func addImageView(with data: Data, isGif: Bool = false) -> UIView {
+    private func setupScrollView() {
+        scrollView.minimumZoomScale = 1
+        scrollView.maximumZoomScale = 3
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.contentInsetAdjustmentBehavior = .never
+        scrollView.automaticallyAdjustsScrollIndicatorInsets = false
+        scrollView.delegate = self
         addSubview(scrollView)
         scrollView.fillSuperview()
-        let imageView = UIImageView()
-        if isGif {
-            let cfData = data as CFData
-            CGAnimateImageDataWithBlock(cfData, nil) { [weak imageView, weak self] _, cgImage, stop in
-                guard self != nil else {
-                    stop.pointee = true
-                    return
-                }
-                imageView?.image = UIImage(cgImage: cgImage)
-            }
-        } else {
-            imageView.image = UIImage(data: data)
-        }
-        return imageView
-    }
-}
-
-// MARK: - Live photo
-extension InteractiveImageView {
-    private func handleLivePhotoData(photoURL: URL, videoURL: URL) async {
-        guard let livePhoto = await PHLivePhoto.load(resources: [photoURL, videoURL]) else {
-            let data = (try? Data(contentsOf: photoURL)) ?? Data()
-            await MainActor.run {
-                setUpLayoutOfImageView(from: data)
-            }
-            return
-        }
-        await MainActor.run {
-            setUpLayoutOfLivePhoto(from: livePhoto)
-        }
     }
     
-    private func setUpLayoutOfLivePhoto(from livePhoto: PHLivePhoto) {
-        let view = addLivePhotoView(with: livePhoto)
-        setUpPhotoViewLayout(photoView: view, in: scrollView)
-        photoView = view
-    }
-    
-    private func addLivePhotoView(with photo: PHLivePhoto) -> UIView {
-        addSubview(scrollView)
-        scrollView.fillSuperview()
-        let livePhotoView = PHLivePhotoView()
-        livePhotoView.livePhoto = photo
-        livePhotoView.delegate = self
-
-        setUpBadgeOfLivePhoto(livePhotoView: livePhotoView)
-        return livePhotoView
-    }
-    
-    private func livePhotoBadge() -> UIView {
-        let container = UIView()
-        container.backgroundColor = ColorProvider.BackgroundSecondary
-        
-        let icon = UIImage(named: "ic-live")
-        let iconView = UIImageView(image: icon)
-        iconView.tintColor = ColorProvider.IconHint
-        iconView.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(iconView)
-        
-        let label = UILabel("LIVE", font: .systemFont(ofSize: 11, weight: .medium), textColor: ColorProvider.Shade80)
-        label.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(label)
-        
+    private func setUpPhotoViewLayout(photoView: UIView, in scrollView: UIScrollView) {
+        photoView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(photoView)
         NSLayoutConstraint.activate([
-            iconView.widthAnchor.constraint(equalToConstant: 12),
-            iconView.heightAnchor.constraint(equalToConstant: 12),
-            iconView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 6),
-            iconView.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            iconView.topAnchor.constraint(equalTo: container.topAnchor, constant: 2),
-            iconView.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -2),
-            label.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 2),
-            label.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -6),
-            label.centerYAnchor.constraint(equalTo: container.centerYAnchor)
+            photoView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+            photoView.heightAnchor.constraint(equalTo: scrollView.heightAnchor),
+            photoView.centerXAnchor.constraint(equalTo: scrollView.centerXAnchor),
+            photoView.centerYAnchor.constraint(equalTo: scrollView.centerYAnchor),
         ])
-        container.roundCorner(8)
-        return container
+        if self.photoView != nil {
+            self.photoView?.removeFromSuperview()
+        }
+        self.photoView = photoView
     }
 
-    private func setUpBadgeOfLivePhoto(livePhotoView: PHLivePhotoView) {
-        guard let photoArea = livePhotoView.subviews.first?.subviews.first else { return }
-        let badge = livePhotoBadge()
-        livePhotoBadgeView = badge
-        badge.translatesAutoresizingMaskIntoConstraints = false
-        livePhotoView.addSubview(badge)
-        NSLayoutConstraint.activate([
-            badge.leadingAnchor.constraint(equalTo: photoArea.leadingAnchor, constant: 8),
-            badge.topAnchor.constraint(equalTo: photoArea.topAnchor, constant: 8)
-        ])
-        updateLivePhotoBadgeHiddenStatus()
-    }
-    
-    private func updateLivePhotoBadgeHiddenStatus() {
+    private func updateBadgeHiddenStatus() {
+        guard let badgeSupportView = photoView as? PreviewBadgeSupport else { return }
         if displayMode == .focus {
-            livePhotoBadgeView?.isHidden = true
+            badgeSupportView.updateLivePhotoBadgeHiddenStatus(isHidden: true)
         } else {
             let isMinimize = zoomScale == scrollView.minimumZoomScale
-            livePhotoBadgeView?.isHidden = !isMinimize
+            badgeSupportView.updateLivePhotoBadgeHiddenStatus(isHidden: !isMinimize)
         }
-    }
-}
-
-extension InteractiveImageView: PHLivePhotoViewDelegate {
-    func livePhotoView(_ livePhotoView: PHLivePhotoView, willBeginPlaybackWith playbackStyle: PHLivePhotoViewPlaybackStyle) {
-        livePhotoBadgeView?.isHidden = true
-    }
-    
-    func livePhotoView(_ livePhotoView: PHLivePhotoView, didEndPlaybackWith playbackStyle: PHLivePhotoViewPlaybackStyle) {
-        updateLivePhotoBadgeHiddenStatus()
-        
-        isAfterLivePhotoPlayed = true
-        debounceTimer?.invalidate()
-        debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: false, block: { [weak self] _ in
-            self?.debounceTimer?.invalidate()
-            self?.debounceTimer = nil
-            self?.isAfterLivePhotoPlayed = false
-        })
     }
 }

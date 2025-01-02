@@ -39,11 +39,14 @@ public protocol ConflictDetection {
 
 public protocol ConflictResolution {
 
+    // swiftlint:disable:next function_parameter_count
     func resolveConflict(
         tower: Tower,
         between item: NSFileProviderItem,
         with url: URL?,
         and conflictingNode: Node?,
-        applying action: ResolutionAction) async throws -> NSFileProviderItem
+        applying action: ResolutionAction,
+        progress: Progress?
+    ) async throws -> NSFileProviderItem
 
 }

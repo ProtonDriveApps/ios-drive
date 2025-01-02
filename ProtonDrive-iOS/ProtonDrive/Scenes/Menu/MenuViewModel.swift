@@ -19,6 +19,7 @@ import Foundation
 import PDCore
 import Combine
 import PDUIComponents
+import PDLocalization
 
 class MenuViewModel: ObservableObject, LogoutRequesting {
     typealias ProgressMenuSectionViewModel = ProgressMenuSectionViewModelGeneric<OfflineSaver>
@@ -26,7 +27,6 @@ class MenuViewModel: ObservableObject, LogoutRequesting {
     private let model: MenuModel
     private let offlineSaver: OfflineSaver
     let downloads: ProgressMenuSectionViewModel
-    private let logLoader: LogContentLoader?
 
     @Published var accountInfo: AccountInfo = .blank
     @Published var usagePercent: Double = 0.0
@@ -34,23 +34,40 @@ class MenuViewModel: ObservableObject, LogoutRequesting {
     @Published var isStorageButtonAvailable: Bool = false
     @Published var logsShareURL: URL?
     @Published var loadingLogs: Bool = false
+    @Published var hasSharing: Bool
 
     private var cancellables: Set<AnyCancellable> = []
     private let selectedScreenSubject = CurrentValueSubject<Destination, Never>(.myFiles)
+    private let featureFlagsController: FeatureFlagsController
     var selectedScreenPublisher: AnyPublisher<Destination, Never> {
         selectedScreenSubject.eraseToAnyPublisher()
     }
 
-    init(model: MenuModel, offlineSaver: OfflineSaver, logLoader: LogContentLoader?) {
+    init(model: MenuModel, offlineSaver: OfflineSaver, featureFlagsController: FeatureFlagsController) {
         self.model = model
         self.offlineSaver = offlineSaver
-        self.logLoader = logLoader
+        self.featureFlagsController = featureFlagsController
+        self.hasSharing = featureFlagsController.hasSharing
         self.downloads = ProgressMenuSectionViewModel(
             progressProvider: offlineSaver,
-            steadyTitle: "Available offline",
-            inProgressTitle: "Downloading files...",
+            steadyTitle: Localization.available_offline_title,
+            inProgressTitle: Localization.available_offline_downloading_files,
             iconName: "ic-availableoffline"
         )
+    }
+
+    private func subscribeToUpdates() {
+        featureFlagsController.updatePublisher
+            .map { [featureFlagsController] in
+                featureFlagsController.hasSharing
+            }
+            .filter { [weak self] value in
+                self?.hasSharing != value
+            }
+            .sink { [weak self] value in
+                self?.hasSharing = value
+            }
+            .store(in: &cancellables)
     }
 
     lazy var appVersion: String = {
@@ -72,7 +89,7 @@ class MenuViewModel: ObservableObject, LogoutRequesting {
             .receive(on: DispatchQueue.main)
             .sink { [unowned self] in apply(userInfo: $0) }
             .store(in: &cancellables)
-        
+
         model.accountInfoPublisher
             .receive(on: DispatchQueue.main)
             .sink { [unowned self] in self.accountInfo = $0 }
@@ -92,12 +109,12 @@ extension MenuViewModel {
     enum Destination: Equatable {
         case myFiles
         case servicePlans
-        case accountManager
         case trash
         case offlineAvailable
         case settings
         case feedback
         case logout
+        case sharedByMe
     }
 }
 

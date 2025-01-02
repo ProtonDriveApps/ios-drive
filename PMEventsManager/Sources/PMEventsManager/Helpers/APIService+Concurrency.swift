@@ -22,7 +22,7 @@ import ProtonCoreServices
 extension APIService {
     func exec<T>(route: Request) async throws -> T where T: Codable {
         try await withCheckedThrowingContinuation { continuation in
-            exec(route: route) { (result: Result<T, ResponseError>) in
+            perform(request: route, callCompletionBlockUsing: .immediateExecutor) { (_, result: Result<T, ResponseError>) in
                 switch result {
                 case let .failure(error):
                     continuation.resume(throwing: error)

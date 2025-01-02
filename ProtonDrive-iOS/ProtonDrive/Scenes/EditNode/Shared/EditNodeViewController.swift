@@ -63,6 +63,7 @@ final class EditNodeViewController: UIViewController {
             DispatchQueue.main.async {
                 self?.hideSpinner()
                 self?.showError(error)
+                self?.navigationItem.rightBarButtonItem?.isEnabled = true
             }
         }
     }
@@ -128,12 +129,12 @@ final class EditNodeViewController: UIViewController {
         DispatchQueue.main.async {
             self.textField.resignFirstResponder()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                self.dismiss(animated: true, completion: self.viewModel.onDismiss)
+                self.dismiss(animated: true, completion: self.viewModel.close)
             }
         }
     }
 
-    @objc func performButtonaction() {
+    @objc func performButtonAction() {
         guard let text = textField.text else {
             return
         }
@@ -150,7 +151,6 @@ final class EditNodeViewController: UIViewController {
 
         textField.attributedText = tfViewModel.attributed(newText)
         textField.selectedTextRange = textField.textRange(from: currentPosition, to: currentPosition)
-
     }
 }
 
@@ -159,7 +159,7 @@ extension EditNodeViewController {
         [.foregroundColor: UIColor(ColorProvider.TextNorm)]
     }
 
-    private var extensionAttributes: [NSAttributedString.Key: Any] {
+    static var extensionAttributes: [NSAttributedString.Key: Any] {
         [.foregroundColor: UIColor(ColorProvider.TextHint)]
     }
 }
@@ -180,7 +180,7 @@ extension EditNodeViewController {
         let button = UIBarButtonItem(title: viewModel.buttonText,
                                      style: .done,
                                      target: self,
-                                     action: #selector(performButtonaction))
+                                     action: #selector(performButtonAction))
         button.setTitleTextAttributes([.font: UIFont.preferredFont(forTextStyle: .headline),
                                        .foregroundColor: UIColor(ColorProvider.TextAccent)],
                                       for: .normal)

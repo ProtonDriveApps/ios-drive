@@ -17,6 +17,7 @@
 
 import Foundation
 import FileProvider
+import PDLoadTesting
 
 public enum SyncReportingControllerError: Error {
     case failedToResolveItem
@@ -42,6 +43,31 @@ public class SyncReportingController: SyncReporting, CommunicationServiceReporte
     public func post(update: ReportableSyncItem) throws {
         let moc = storage.mainContext
         try storage.upsert(update, in: moc)
+        if update.fileProviderOperation == .create {        
+            logItemUpload(update)
+        }
+    }
+
+    public func logItemUpload(_ item: ReportableSyncItem) {
+        guard LoadTesting.isEnabled else { return }
+        guard !item.isFolder else { return }
+        guard item.state != .undefined else { return }
+        let timestamp = ISO8601DateFormatter().string(from: item.modificationTime)
+        let status = item.state.logName
+        let path = item.location ?? ""
+        let formattedPath = path.replacingOccurrences(of: "\\", with: "/")
+        let logEntry = LoadTestingLogEntry(
+            timestamp: timestamp,
+            status: status,
+            path: formattedPath,
+            fileSize: item.fileSize,
+            operation: item.fileProviderOperation.name)
+
+        if let jsonData = try? JSONEncoder().encode(logEntry),
+           var jsonString = String(data: jsonData, encoding: .utf8) {
+            jsonString = jsonString.replacingOccurrences(of: "\\/", with: "/")
+            Log.info("\(jsonString)", domain: .loadTesting)
+        }
     }
 
     // MARK: - SyncReporting
@@ -78,7 +104,13 @@ public class SyncReportingController: SyncReporting, CommunicationServiceReporte
         }
     }
 
-    public func resolveTrash(id: String) throws {
+    public func updateTemporaryItem(id: String, with createdItem: ReportableSyncItem) throws {
+        let moc = storage.mainContext
+        try storage.updateTemporaryItem(id: id, with: createdItem, in: moc)
+        logItemUpload(createdItem)
+    }
+
+    public func resolveTrash(id: String) {
         do {
             let moc = storage.mainContext
             try storage.updateTrashState(identifier: id, state: .finished, in: moc)
@@ -96,4 +128,12 @@ public class SyncReportingController: SyncReporting, CommunicationServiceReporte
         try? storage.cleanUpSyncingItems(in: storage.mainContext)
     }
 
+}
+
+private struct LoadTestingLogEntry: Encodable {
+    let timestamp: String
+    let status: String
+    let path: String
+    let fileSize: Int?
+    let operation: String
 }

@@ -29,8 +29,9 @@ struct SharedLink: Equatable {
     let expirationDate: Date?
     let isCustom: Bool
     let isLegacy: Bool
+    let publicLinkIdentifier: PublicLinkIdentifier
 
-    init(id: String, shareID: String, publicUrl: String, fullPassword: String, expirationDate: Date?, isCustom: Bool, isLegacy: Bool) {
+    init(id: String, shareID: String, publicUrl: String, fullPassword: String, expirationDate: Date?, isCustom: Bool, isLegacy: Bool, publicLinkIdentifier: PublicLinkIdentifier) {
         let defaultPasswordSize = PDCore.Constants.minSharedLinkRandomPasswordSize
         self.id = id
         self.shareID = shareID
@@ -42,11 +43,12 @@ struct SharedLink: Equatable {
         self.link = publicUrl.appending("#" + invariantPassword)
         self.isCustom = isCustom
         self.isLegacy = isLegacy
+        self.publicLinkIdentifier = publicLinkIdentifier
     }
 
     init(shareURL: ShareURL) throws {
         let password = try shareURL.decryptPassword()
-        self = SharedLink(id: shareURL.id, shareID: shareURL.shareID, publicUrl: shareURL.publicUrl, fullPassword: password, expirationDate: shareURL.expirationTime, isCustom: shareURL.hasCustomPassword, isLegacy: !shareURL.hasNewFormat)
+        self = SharedLink(id: shareURL.id, shareID: shareURL.shareID, publicUrl: shareURL.publicUrl, fullPassword: password, expirationDate: shareURL.expirationTime, isCustom: shareURL.hasCustomPassword, isLegacy: !shareURL.hasNewFormat, publicLinkIdentifier: shareURL.identifier)
     }
 
 }
@@ -67,7 +69,8 @@ extension SharedLink {
             fullPassword: updatedPassword,
             expirationDate: updatedExpiration,
             isCustom: shareURL.hasCustomPassword,
-            isLegacy: isLegacy
+            isLegacy: isLegacy, 
+            publicLinkIdentifier: shareURL.identifier
         )
     }
 }

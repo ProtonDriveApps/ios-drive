@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-struct FullUploadableRevision {
+public struct FullUploadableRevision {
     let blocks: [FullUploadableBlock]
     let thumbnails: [FullUploadableThumbnail]
 }

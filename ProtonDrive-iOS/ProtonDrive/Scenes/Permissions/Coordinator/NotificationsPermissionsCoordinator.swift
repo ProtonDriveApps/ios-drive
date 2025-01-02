@@ -17,6 +17,7 @@
 
 import Combine
 import UIKit
+import PDCore
 
 final class NotificationsPermissionsCoordinator {
     private let windowScene: UIWindowScene
@@ -27,12 +28,20 @@ final class NotificationsPermissionsCoordinator {
     private weak var viewController: UIViewController?
     private weak var previousWindow: UIWindow?
     private var window: UIWindow?
+    private let type: NotificationsPermissionsType
     
-    init(windowScene: UIWindowScene, controller: NotificationsPermissionsFlowController, viewControllerFactory: @escaping (() -> UIViewController), transparentViewControllerFactory: @escaping (() -> UIViewController)) {
+    init(
+        windowScene: UIWindowScene,
+        controller: NotificationsPermissionsFlowController,
+        type: NotificationsPermissionsType,
+        viewControllerFactory: @escaping (() -> UIViewController),
+        transparentViewControllerFactory: @escaping (() -> UIViewController)
+    ) {
         self.windowScene = windowScene
         self.controller = controller
         self.viewControllerFactory = viewControllerFactory
         self.transparentViewControllerFactory = transparentViewControllerFactory
+        self.type = type
         setupObserving()
     }
     
@@ -50,7 +59,13 @@ final class NotificationsPermissionsCoordinator {
     
     private func handle(_ event: NotificationsPermissionsEvent) {
         switch event {
-        case .open:
+        case .openPhotoNotification:
+            guard type == .photos else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) { [weak self] in
+                self?.open()
+            }
+        case .openFileNotification:
+            guard type == .myFiles else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) { [weak self] in
                 self?.open()
             }

@@ -17,6 +17,7 @@
 
 import Foundation
 import PDCore
+import PDLocalization
 
 class OpenPhotosNotificatingBackgroundWorkController: BackgroundWorkController {
     let photosUploadWorker: WorkerState
@@ -46,6 +47,12 @@ class OpenPhotosNotificatingBackgroundWorkController: BackgroundWorkController {
 
 extension LocalNotification {
     static var remindOpenApp: LocalNotification {
-        LocalNotification(id: UUID().uuidString, title: "Proton Drive", body: "Check in with Proton Drive to confirm your photos are backed up and secure.", thread: "ch.protondrive.usernotification.photosUploadReminder", delay: .leastNonzeroMagnitude)
+        LocalNotification(
+            id: UUID().uuidString,
+            title: "Proton Drive",
+            body: Localization.notification_text_confirm_backup_success,
+            thread: "ch.protondrive.usernotification.photosUploadReminder",
+            delay: .leastNonzeroMagnitude
+        )
     }
 }

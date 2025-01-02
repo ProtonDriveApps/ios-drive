@@ -27,8 +27,4 @@ public enum FinderNotifications {
             return Notification.Name("FinderCoordinator.didEnterMultiSelection")
         }
     }
-
-    public var publisher: NotificationCenter.Publisher {
-        NotificationCenter.default.publisher(for: name, object: nil)
-    }
 }

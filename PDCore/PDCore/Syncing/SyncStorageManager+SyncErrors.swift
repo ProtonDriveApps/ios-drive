@@ -48,7 +48,7 @@ public extension SyncStorageManager {
         try await moc.perform {
             if let errorToDelete: SyncItem = self.existing(with: [id], in: moc).first {
                 moc.delete(errorToDelete)
-                try moc.saveWithParentLinkCheck()
+                try moc.saveOrRollback()
             }
         }
     }
@@ -72,7 +72,7 @@ public extension SyncStorageManager {
                 for  oldError in oldSyncErrors {
                     moc.delete(oldError)
                 }
-                try moc.saveWithParentLinkCheck()
+                try moc.saveOrRollback()
             }
             return oldSyncErrors
         }

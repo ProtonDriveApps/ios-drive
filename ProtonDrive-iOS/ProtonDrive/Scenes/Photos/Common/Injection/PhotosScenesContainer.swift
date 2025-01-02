@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import CoreData
 import PDCore
 import UIKit
 import PDUIComponents
@@ -22,6 +23,7 @@ import ProtonCoreServices
 import ProtonCoreKeymaker
 import SwiftUI
 import Combine
+import PDContacts
 
 final class PhotosScenesContainer {
     struct Dependencies {
@@ -46,9 +48,16 @@ final class PhotosScenesContainer {
         let retryTriggerController: PhotoLibraryLoadRetryTriggerController
         let constraintsController: PhotoBackupConstraintsController
         let photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>
+        let notificationsPermissionsFlowController: NotificationsPermissionsFlowController
+        let photoUpsellResultNotifier: PhotoUpsellResultNotifierProtocol
+        let photosManagedObjectContext: NSManagedObjectContext
+        let photoUploadedNotifier: PhotoUploadedNotifier
+        let contactsManager: ContactsManagerProtocol
+        let featureFlagsController: FeatureFlagsControllerProtocol
     }
-    private let dependencies: Dependencies
+    let dependencies: Dependencies
     private let rootViewModel: RootViewModel
+    private var photoUpsellFlowController: PhotoUpsellFlowController?
     private lazy var thumbnailsContainer = ThumbnailsControllersContainer(
         tower: dependencies.tower,
         photoSharesObserver: dependencies.photoSharesObserver
@@ -77,8 +86,13 @@ final class PhotosScenesContainer {
             authorizationController: dependencies.authorizationController,
             galleryController: getGalleryController(),
             selectionController: selectionController,
-            photosPagingLoadController: photosPagingLoadController
+            photosPagingLoadController: photosPagingLoadController,
+            photoUpsellFlowController: makePhotoUpsellController(
+                coordinator: coordinator,
+                notificationsPermissionsFlowController: dependencies.notificationsPermissionsFlowController
+            )
         )
+
         return factory.makeRootPhotosViewController(
             coordinator: coordinator,
             rootViewModel: rootViewModel,
@@ -95,11 +109,7 @@ final class PhotosScenesContainer {
 
     private func makeOnboardingView() -> some View {
         let factory = PhotosScenesFactory()
-        return factory.makeOnboardingView(
-            settingsController: dependencies.settingsController,
-            authorizationController: dependencies.authorizationController,
-            bootstrapController: dependencies.bootstrapController
-        )
+        return factory.makeOnboardingView(settingsController: dependencies.settingsController, authorizationController: dependencies.authorizationController, bootstrapController: dependencies.bootstrapController)
     }
 
     private func makeGalleryView(
@@ -132,6 +142,9 @@ final class PhotosScenesContainer {
             selectionController: selectionController,
             photosObserver: getUploadedPhotosObserver(), 
             photoSharesObserver: dependencies.photoSharesObserver,
+            photosManagedObjectContext: dependencies.photosManagedObjectContext,
+            photoUploadedNotifier: dependencies.photoUploadedNotifier,
+            featureFlagsController: dependencies.featureFlagsController,
             stateView: stateView,
             lockingBannerView: lockingBannerView,
             storageView: factory.makeStorageView(quotaStateController: dependencies.quotaStateController, progressController: dependencies.backupProgressController, coordinator: coordinator)
@@ -143,15 +156,31 @@ final class PhotosScenesContainer {
             id: id,
             tower: dependencies.tower,
             galleryController: getGalleryController(),
-            thumbnailsContainer: thumbnailsContainer
+            thumbnailsContainer: thumbnailsContainer,
+            photosManagedObjectContext: dependencies.photosManagedObjectContext,
+            photoUploadedNotifier: dependencies.photoUploadedNotifier
         )
         let container = PhotosPreviewContainer(dependencies: dependencies)
         return container.makeRootViewController(with: id)
     }
 
-    func makeShareViewController(id: PhotoId) -> UIViewController? {
+    func makeLegacyShareViewController(id: PhotoId) -> UIViewController? {
         let factory = PhotosScenesFactory()
         return factory.makeShareViewController(id: id, tower: dependencies.tower, rootViewModel: rootViewModel)
+    }
+
+    func makeShareViewController(id: PhotoId, rootVC: UIViewController) -> SharingMemberCoordinatorProtocol? {
+        let factory = PhotosScenesFactory()
+        return factory.makeNewShareViewController(
+            identifier: id,
+            storage: dependencies.tower.storage,
+            sessionVault: dependencies.tower.sessionVault,
+            client: dependencies.tower.client,
+            contactsManager: dependencies.contactsManager, 
+            entitlementsManager: dependencies.tower.entitlementsManager,
+            featureFlagsController: dependencies.featureFlagsController,
+            rootViewController: rootVC
+        )
     }
 
     func makeSubscriptionsViewController() -> UIViewController {
@@ -163,6 +192,23 @@ final class PhotosScenesContainer {
     func makeRetryViewController() -> UIViewController {
         PhotosScenesFactory().makeRetryViewController(
             deletedStoreResource: dependencies.failedPhotosResource, retryTriggerController: dependencies.retryTriggerController
+        )
+    }
+    
+    func makePhotoUpsellController(
+        coordinator: PhotosCoordinator,
+        notificationsPermissionsFlowController: NotificationsPermissionsFlowController
+    ) -> PhotoUpsellFlowController? {
+        let tower = dependencies.tower
+        guard tower.localSettings.isPhotoUpsellShown == false else { return nil }
+        
+        return ConcretePhotoUpsellFlowController(
+            coordinator: coordinator,
+            photoUploadedNotifier: dependencies.uploader.photoUploadedNotifier,
+            localSettings: dependencies.tower.localSettings,
+            userInfoController: UserInfoControllerFactory().makeController(sessionVault: tower.sessionVault),
+            notificationsPermissionsFlowController: notificationsPermissionsFlowController,
+            photoUpsellResultNotifier: dependencies.photoUpsellResultNotifier
         )
     }
 

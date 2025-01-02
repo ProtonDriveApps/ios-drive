@@ -39,7 +39,7 @@ public extension StorageManager {
             return (try? moc.fetch(request))?.first
         }
     }
-    
+
     // Results
     func volumes(moc: NSManagedObjectContext) -> [Volume] {
         var result: [Volume] = []
@@ -47,6 +47,82 @@ public extension StorageManager {
             result = (try? moc.fetch(self.requestVolumes())) ?? []
         }
         return result
+    }
+
+    func getVolumeIDs(in moc: NSManagedObjectContext) throws -> (myVolume: String, otherVolumes: [String]) {
+        var myVolumeID: String?
+        var otherVolumeIDs: [String] = []
+
+        moc.performAndWait {
+            let volumes = (try? moc.fetch(self.requestVolumes())) ?? []
+
+            // Find the volume with a 'main' share
+            if let myVolume = volumes.first(where: { $0.shares.contains(where: { $0.type == .main }) }) {
+                myVolumeID = myVolume.id
+                otherVolumeIDs = volumes.filter { $0 != myVolume }.map(\.id)
+            } else {
+                // In case there's no volume with a main share (although you said this is guaranteed)
+                otherVolumeIDs = volumes.map(\.id)
+            }
+        }
+
+        guard let myVolumeID = myVolumeID else {
+            throw DriveError("Session without a volume with a main share.")
+        }
+
+        return (myVolumeID, otherVolumeIDs)
+    }
+
+    func fetchOrphanedVolumes(in context: NSManagedObjectContext) throws -> [Volume] {
+        // Step 1: Fetch all volumes
+        let volumeFetchRequest: NSFetchRequest<Volume> = Volume.fetchRequest()
+        let allVolumes = try context.fetch(volumeFetchRequest)
+
+        // Step 2: Fetch all unique volume IDs referenced by shares
+        let shareFetchRequest: NSFetchRequest<NSFetchRequestResult> = Share.fetchRequest()
+        shareFetchRequest.resultType = .dictionaryResultType
+        shareFetchRequest.propertiesToFetch = ["volumeID"]
+        shareFetchRequest.returnsDistinctResults = true
+
+        // Fetch distinct volume IDs referenced by any share
+        let shareResults = try context.fetch(shareFetchRequest) as? [[String: Any]]
+        let referencedVolumeIDs = Set(shareResults?.compactMap { $0["volumeID"] as? String } ?? [])
+
+        // Step 3: Filter and return volumes that are not referenced by any share
+        let orphanedVolumes = allVolumes.filter { !referencedVolumeIDs.contains($0.id) }
+
+        return orphanedVolumes
+    }
+
+    func getMyVolumeId(in moc: NSManagedObjectContext) throws -> String {
+        let volumes = (try? moc.fetch(self.requestVolumes())) ?? []
+
+        // Find the volume with a 'main' share
+        guard let volumeID = volumes.first(where: { $0.shares.contains(where: { $0.type == .main }) })?.id else {
+            throw DriveError("Session without a volume with a main share.")
+        }
+        return volumeID
+    }
+
+    func getMainShares(in context: NSManagedObjectContext) -> [Share] {
+        let request = NSFetchRequest<Share>()
+        request.entity = Share.entity()
+        request.predicate = NSPredicate(format: "%K == %d", #keyPath(Share.type), Share.ShareType.main.rawValue)
+        return (try? context.fetch(request)) ?? []
+    }
+
+    func getMainShareAndVolume(in context: NSManagedObjectContext) throws -> (mainShare: Share, volume: Volume) {
+        // Fetch volumes and find the first volume with a 'main' share in one step
+        guard let volume = (try? context.fetch(self.requestVolumes()))?.first(where: { $0.shares.contains(where: { $0.type == .main }) }),
+              let mainShare = volume.shares.first(where: { $0.type == .main }) else {
+            throw DriveError("No volume with a main share found.")
+        }
+        return (mainShare, volume)
+    }
+
+    func getShareType(_ share: Share) -> Share.ShareType {
+        guard share.type == .undefined else { return share.type }
+        return .standard
     }
 
     /// Main share created by specific user and participating in volume
@@ -74,7 +150,7 @@ public extension StorageManager {
     func fetchShares(moc: NSManagedObjectContext) throws -> [Share] {
         return try moc.fetch(self.requestShares())
     }
-    
+
     func fetchSupportedShares(moc: NSManagedObjectContext) throws -> [Share] {
         let request = requestShares()
         request.predicate = NSPredicate(
@@ -124,23 +200,38 @@ public extension StorageManager {
             return try moc.count(for: fetchRequest)
         }
     }
-    
-    func fetchNode(id: NodeIdentifier, moc: NSManagedObjectContext) -> Node? {
+
+    func fetchNode(id identifier: NodeIdentifier, moc: NSManagedObjectContext) -> Node? {
         var node: Node?
         moc.performAndWait {
-            let fetchRequest = self.requestNode(node: id.nodeID, share: id.shareID, moc: moc)
-            node = try? moc.fetch(fetchRequest).first
+            if identifier.volumeID.isEmpty {
+                let fetchRequest = self.requestNode(node: identifier.nodeID, share: identifier.shareID, moc: moc)
+                node = try? moc.fetch(fetchRequest).first
+            } else {
+                let fetchRequest = self.requestNode(nodeID: identifier.nodeID, volumeID: identifier.volumeID, moc: moc)
+                node = try? moc.fetch(fetchRequest).first
+            }
         }
         return node
     }
-    
+
+    func fetchExisting<N: Node>(id: NodeIdentifier, moc: NSManagedObjectContext) throws -> N {
+        return try moc.performAndWait {
+            let fetchRequest = requestNode(node: id.nodeID, share: id.shareID, moc: moc)
+            guard let node = try moc.fetch(fetchRequest).first as? N else {
+                throw Node.InvalidState(message: "Missing node")
+            }
+            return node
+        }
+    }
+
     func fetchNodesCount(of share: String, moc: NSManagedObjectContext) async throws -> Int {
         try await moc.perform {
             let fetchRequest = self.requestNodes(share: share, sorting: .nameAscending, moc: moc)
             return try moc.count(for: fetchRequest)
         }
     }
-    
+
     func fetchDraft(localID: String, shareID: String, moc: NSManagedObjectContext) -> File? {
         var draft: File?
         moc.performAndWait {
@@ -158,7 +249,7 @@ public extension StorageManager {
         }
         return Set(nodes ?? [])
     }
-    
+
     func fetchNodes(of shareID: String, moc: NSManagedObjectContext) -> [Node] {
         var nodes: [Node]?
         moc.performAndWait {
@@ -167,13 +258,13 @@ public extension StorageManager {
         }
         return nodes ?? []
     }
-    
+
     func fetchDirtyNodes(of shareID: String, moc: NSManagedObjectContext) async throws -> [Node] {
         try await moc.perform {
             try moc.fetch(self.requestDirtyNodes(share: shareID, moc: moc))
         }
     }
-    
+
     func fetchDirtyNodesCount(share shareID: String, moc: NSManagedObjectContext) async throws -> Int {
         try await moc.perform {
             try moc.count(for: self.requestDirtyNodes(share: shareID, moc: moc))
@@ -188,7 +279,7 @@ public extension StorageManager {
         }
         return files
     }
-    
+
     func fetchFilesInterrupted(moc: NSManagedObjectContext) -> [File] {
         var files = [File]()
         moc.performAndWait {
@@ -205,17 +296,6 @@ public extension StorageManager {
             fetchRequest.resultType = .countResultType
             count = (try? moc.fetch(fetchRequest).first?.intValue) ?? 0
         }
-        
-        return count
-    }
-
-    func fetchTrashCount(moc: NSManagedObjectContext) -> Int {
-        var count = 0
-        moc.performAndWait {
-            let fetchRequest: NSFetchRequest<NSNumber> = self.requestTrashResult(moc: moc)
-            fetchRequest.resultType = .countResultType
-            count = (try? moc.fetch(fetchRequest).first?.intValue) ?? 0
-        }
 
         return count
     }
@@ -229,170 +309,29 @@ public extension StorageManager {
         return files
     }
 
-    func fetchWaitingPhotos(maxSize: Int) -> [ReuploadingPhoto] {
-        var photos = [ReuploadingPhoto]()
-        backgroundContext.performAndWait {
-            let fetchRequest = self.requestWaitingPhotos(maxSize: maxSize, moc: backgroundContext)
-            photos = ((try? backgroundContext.fetch(fetchRequest)) ?? []).map { ReuploadingPhoto(size: $0.size, photo: $0) }
-        }
-        return photos
-    }
+    func filterDownloadedLinks(_ links: [ShareLink], moc: NSManagedObjectContext) -> [ShareLink] {
+        guard !links.isEmpty else { return [] }
 
-    func fetchPhotos(ids: [String], moc: NSManagedObjectContext) -> [Photo] {
-        return moc.performAndWait {
-            let fetchRequest = requestPhotos(ids: ids, moc: moc)
-            return (try? moc.fetch(fetchRequest)) ?? []
-        }
-    }
+        // Fetch all share IDs
+        let shareIDs = links.map { $0.share }
 
-    func fetchLastPrimaryPhoto(moc: NSManagedObjectContext) -> Photo? {
-        let request = requestPrimaryPhotos()
-        request.fetchLimit = 1
+        // Fetch all relevant shares
+        let shareRequest: NSFetchRequest<Share> = NSFetchRequest(entityName: "Share")
+        shareRequest.predicate = NSPredicate(format: "id IN %@ AND type == %d", shareIDs, Share.ShareType.standard.rawValue)
 
-        return try? moc.fetch(request).first
-    }
-
-    func fetchOldestPrimaryUploadedPhotoId(moc: NSManagedObjectContext) -> NodeIdentifier? {
-        return moc.performAndWait {
-            let request = requestPrimaryUploadedPhotos(ascending: true)
-            request.fetchLimit = 1
-            return try? moc.fetch(request).first?.identifier
-        }
-    }
-
-    func fetchPrimaryPhotos(moc: NSManagedObjectContext) -> [Photo] {
-        return moc.performAndWait {
-            let fetchRequest = requestPrimaryPhotos()
-            return (try? moc.fetch(fetchRequest)) ?? []
-        }
-    }
-
-    func fetchPrimaryUploadedPhotos(moc: NSManagedObjectContext) -> [Photo] {
-        return moc.performAndWait {
-            let fetchRequest = requestPrimaryUploadedPhotos()
-            return (try? moc.fetch(fetchRequest)) ?? []
-        }
-    }
-
-    func fetchPhoto(id: NodeIdentifier, moc: NSManagedObjectContext) throws -> Photo {
-        let result = moc.performAndWait {
-            let fetchRequest = requestPhoto(id)
-            return try? moc.fetch(fetchRequest)
-        }
-        guard let photo = result?.first else {
-            throw Photo.noMOC()
-        }
-        return photo
-    }
-
-    func fetchPrimaryUploadingPhotos(moc: NSManagedObjectContext) -> [Photo] {
-        moc.performAndWait {
-            let fetchRequest = requestPrimaryUploadingPhotos()
-            return (try? moc.fetch(fetchRequest)) ?? []
-        }
-    }
-
-    func fetchUploadingPhotos(size: Int, moc: NSManagedObjectContext) -> [Photo] {
-        var fetchedPhotos: [Photo] = []
-        moc.performAndWait {
-            // Child photos that have their parents uploaded
-            if let photos = try? moc.fetch(requestChildPhotosWithUploadedParent(size: size)), !photos.isEmpty {
-                fetchedPhotos.append(contentsOf: photos)
-            }
-            guard fetchedPhotos.count < size else { return }
-
-            // Non uploaded main photos
-            let states: [Photo.State] = [.interrupted, .uploading, .cloudImpediment]
-            for state in states {
-                // Calculate the remaining number of photos to fetch
-                let remainingSize = size - fetchedPhotos.count
-                guard remainingSize > 0 else { break } // Stop if we have fetched the desired number of photos
-
-                if let photos = try? moc.fetch(requestPrimaryPhotos(ofState: state, size: remainingSize)) {
-                    fetchedPhotos.append(contentsOf: photos)
-                }
-            }
-        }
-        return fetchedPhotos
-    }
-
-    /// Checks if there is at least one `Photo` object in an uploading state in the local database.
-    ///
-    /// This method performs a synchronous fetch on the provided managed object context to determine if any `Photo` objects are currently in one of the specified uploading states: `.interrupted`, `.uploading`, or `.cloudImpediment`. 
-    /// The search is efficient, as it stops as soon as it finds the first photo in any of these states, minimizing database query time.
-    ///  At this point we don't care if the unfinished Photo is a parent or a child, the upload algorithms should pick up the incumbent Photo in it's correct form.
-    ///
-    /// - Parameters:
-    ///   - moc: The `NSManagedObjectContext` on which the fetch request is performed. The `NSManagedObjectContext` that should be used is the `photos` specific one.
-    ///
-    /// - Returns: A Boolean value indicating whether at least one `Photo` object is in an uploading state. Returns `true` if such a photo exists, otherwise returns `false`.
-    func hasUploadingPhotos(moc: NSManagedObjectContext) -> Bool {
-        var hasUploadingPhoto = false
-        let states: [Photo.State] = [.interrupted, .uploading, .cloudImpediment]
-
-        let fetchRequest = NSFetchRequest<Photo>(entityName: "Photo")
-        fetchRequest.predicate = NSPredicate(format: "%K IN %@", #keyPath(Photo.stateRaw), states.map { $0.rawValue })
-        fetchRequest.fetchLimit = 1
-
+        var validShareIDs: Set<String> = []
         moc.performAndWait {
             do {
-                let photos = try moc.count(for: fetchRequest)
-                if photos > 0 {
-                    hasUploadingPhoto = true
-                }
+                let shares = try moc.fetch(shareRequest)
+                validShareIDs = Set(shares.map { $0.id })
             } catch {
-                Log.error("Failed to fetch uploading photos: \(error)", domain: .backgroundTask)
+                Log.error("Error fetching shares: \(error)", domain: .storage)
             }
         }
-        return hasUploadingPhoto
-    }
 
-    private func requestPrimaryPhotos(ofState state: Photo.State, size: Int) -> NSFetchRequest<Photo> {
-        let fetchRequest = NSFetchRequest<Photo>(entityName: "Photo")
-        fetchRequest.sortDescriptors = [NSSortDescriptor(key: #keyPath(Photo.captureTime), ascending: false)]
-        fetchRequest.predicate = NSPredicate(
-            format: "%K == nil AND %K == %d",
-            #keyPath(Photo.parent),
-            #keyPath(Photo.stateRaw), state.rawValue
-        )
-        fetchRequest.fetchLimit = size
-        return fetchRequest
-    }
-
-    private func requestPrimaryPhotosWithNonUploadedChildren(size: Int) -> NSFetchRequest<Photo> {
-        let fetchRequest = NSFetchRequest<Photo>(entityName: "Photo")
-        fetchRequest.sortDescriptors = [NSSortDescriptor(key: #keyPath(Photo.captureTime), ascending: false)]
-        fetchRequest.predicate = NSPredicate(
-            format: "%K == nil AND %K == %d AND (ANY %K.%K == %d OR ANY %K.%K == %d OR ANY %K.%K == %d)",
-            #keyPath(Photo.parent),
-            #keyPath(Photo.stateRaw), Photo.State.active.rawValue,
-            #keyPath(Photo.children), #keyPath(Photo.stateRaw), Photo.State.uploading.rawValue,
-            #keyPath(Photo.children), #keyPath(Photo.stateRaw), Photo.State.cloudImpediment.rawValue,
-            #keyPath(Photo.children), #keyPath(Photo.stateRaw), Photo.State.interrupted.rawValue
-        )
-        fetchRequest.fetchLimit = size
-        return fetchRequest
-    }
-
-    private func requestChildPhotosWithUploadedParent(size: Int) -> NSFetchRequest<Photo> {
-        let fetchRequest = NSFetchRequest<Photo>(entityName: "Photo")
-        fetchRequest.sortDescriptors = [NSSortDescriptor(key: #keyPath(Photo.captureTime), ascending: false)]
-        fetchRequest.predicate = NSPredicate(
-            format: "%K != nil AND %K.%K == %d AND (%K == %d OR %K == %d OR %K == %d)",
-            #keyPath(Photo.parent),
-            #keyPath(Photo.parent), #keyPath(Photo.stateRaw), Photo.State.active.rawValue,
-            #keyPath(Photo.stateRaw), Photo.State.uploading.rawValue,
-            #keyPath(Photo.stateRaw), Photo.State.cloudImpediment.rawValue,
-            #keyPath(Photo.stateRaw), Photo.State.interrupted.rawValue
-        )
-        fetchRequest.fetchLimit = size
-        return fetchRequest
-    }
-
-    func fetchThumbnail(id: String, moc: NSManagedObjectContext) -> Thumbnail? {
-        return moc.performAndWait {
-            let fetchRequest = requestThumbnail(id: id)
-            return try? moc.fetch(fetchRequest).first
+        // Filter links based on valid share IDs
+        return links.filter { link in
+            validShareIDs.contains(link.share)
         }
     }
 
@@ -409,19 +348,11 @@ public extension StorageManager {
         return revision
     }
 
-    func isPhotoPresent(linkId: String, moc: NSManagedObjectContext) -> Bool {
-        return moc.performAndWait {
-            let fetchRequest = requestPhotoExists(id: linkId)
-            let count = try? moc.fetch(fetchRequest).count
-            return (count ?? 0) > 0
-        }
-    }
-    
     func clearDrafts(moc: NSManagedObjectContext,
                      deleteDraft: @escaping (File) -> Void,
                      deleteRevisionOnBE: @escaping (Revision) -> Void,
                      includingAlreadyUploadedFiles: Bool) throws -> Bool {
-        
+
         try moc.performAndWait {
             let fetchRequest: NSFetchRequest<File> = self.requestUploading(moc: moc)
             var didClearSomething = false
@@ -433,7 +364,7 @@ public extension StorageManager {
                     if file.isDraft() {
                         deleteDraft(file)
                         moc.delete(unuploadedRevision)
-                        try moc.saveWithParentLinkCheck()
+                        try moc.saveOrRollback()
                         didClearSomething = true
                         Log.info("Cleared draft \(fileID) with revision \(revisionID)", domain: .storage)
                     } else if includingAlreadyUploadedFiles {
@@ -447,92 +378,140 @@ public extension StorageManager {
         }
     }
 
-    func fetchPhotosCount(moc: NSManagedObjectContext) -> Int {
-        return moc.performAndWait {
-            let fetchRequest = requestPrimaryPhotos()
-            return (try? moc.count(for: fetchRequest)) ?? 0
-        }
-    }
-
     // MARK: Subscriptions
-
-    func subscriptionToPhotoShares(moc: NSManagedObjectContext) -> NSFetchedResultsController<Share> {
-        let request = requestShares()
-        request.predicate = NSPredicate(format: "%K == %d", #keyPath(Share.type), Share.ShareType.photos.rawValue)
-        return NSFetchedResultsController(fetchRequest: request, managedObjectContext: moc, sectionNameKeyPath: nil, cacheName: nil)
-    }
-
-    func subscriptionToUploadingPhotos(moc: NSManagedObjectContext) -> NSFetchedResultsController<Photo> {
-        return NSFetchedResultsController(fetchRequest: self.requestUploadingPhotos(),
-                                          managedObjectContext: moc,
-                                          sectionNameKeyPath: nil,
-                                          cacheName: nil)
-    }
-    
     func subscriptionToUploadingFiles() -> NSFetchedResultsController<File> {
         return NSFetchedResultsController(fetchRequest: self.requestUploading(moc: mainContext),
                                           managedObjectContext: mainContext,
                                           sectionNameKeyPath: nil,
                                           cacheName: nil)
     }
-    
+
     func subscriptionToRoots(moc: NSManagedObjectContext) -> NSFetchedResultsController<Share> {
         return NSFetchedResultsController(fetchRequest: self.requestShares(),
                                           managedObjectContext: moc,
                                           sectionNameKeyPath: nil,
                                           cacheName: nil)
     }
-    
+
     func subscriptionToNodes(share shareID: String, sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchedResultsController<Node> {
         return NSFetchedResultsController(fetchRequest: self.requestNodes(share: shareID, sorting: sorting, moc: moc),
                                           managedObjectContext: moc,
                                           sectionNameKeyPath: #keyPath(Node.stateRaw),
                                           cacheName: nil)
     }
-    
-    func subscriptionToChildren(node nodeID: String, share shareID: String, sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchedResultsController<Node> {
-        let fetchRequest = self.requestChildren(node: nodeID, share: shareID, sorting: sorting, moc: moc)
-        return NSFetchedResultsController(fetchRequest: fetchRequest,
-                                          managedObjectContext: moc,
-                                          sectionNameKeyPath: #keyPath(Node.stateRaw),
-                                          cacheName: nil)
-    }
 
-    func subscriptionToTrash(moc: NSManagedObjectContext) -> NSFetchedResultsController<Node> {
-        return NSFetchedResultsController(fetchRequest: self.requestTrashResult(moc: moc),
+    func subscriptionToNode(nodeIdentifier: NodeIdentifier, moc: NSManagedObjectContext) -> NSFetchedResultsController<Node> {
+        return NSFetchedResultsController(fetchRequest: self.requestNode(node: nodeIdentifier.nodeID, share: nodeIdentifier.shareID, moc: moc),
                                           managedObjectContext: moc,
                                           sectionNameKeyPath: nil,
                                           cacheName: nil)
     }
-    
+
+    func subscriptionToChildren(ofNode identifier: NodeIdentifier, sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchedResultsController<Node> {
+        if identifier.volumeID.isEmpty {
+            let fetchRequest = self.requestChildren(node: identifier.nodeID, share: identifier.shareID, sorting: sorting, moc: moc)
+            return NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: moc, sectionNameKeyPath: #keyPath(Node.stateRaw), cacheName: nil)
+        } else {
+            let fetchRequest = requestChildren(nodeID: identifier.nodeID, volumeID: identifier.volumeID, moc: moc)
+            return NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: moc, sectionNameKeyPath: #keyPath(Node.stateRaw), cacheName: nil)
+        }
+    }
+
+    func subscriptionToTrash(volumeID: String, moc: NSManagedObjectContext) -> NSFetchedResultsController<Node> {
+        return NSFetchedResultsController(fetchRequest: self.requestTrashResult(volumeID: volumeID, moc: moc), managedObjectContext: moc, sectionNameKeyPath: nil, cacheName: nil)
+    }
+
     func subscriptionToOfflineAvailable(withInherited: Bool, moc: NSManagedObjectContext) -> NSFetchedResultsController<Node> {
         return NSFetchedResultsController(fetchRequest: self.requestOfflineAvailable(withInherited: withInherited, moc: moc),
                                           managedObjectContext: moc,
                                           sectionNameKeyPath: #keyPath(Node.isFolder), // transient, requires MimeType to be cleartext in DB
                                           cacheName: nil)
     }
-    
+
     func subscriptionToStarred(share shareID: String, sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchedResultsController<Node> {
         return NSFetchedResultsController(fetchRequest: self.requestStarred(share: shareID, sorting: sorting, moc: moc),
                                           managedObjectContext: moc,
                                           sectionNameKeyPath: #keyPath(Node.stateRaw),
                                           cacheName: nil)
     }
-    
-    func subscriptionToShared(sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchedResultsController<Node> {
-        return NSFetchedResultsController(fetchRequest: self.requestShared(sorting: sorting, moc: moc),
+
+    func subscriptionToShared(volumeID: String, sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchedResultsController<Node> {
+        return NSFetchedResultsController(
+            fetchRequest: requestShared(volumeID: volumeID, sorting: sorting, moc: moc),
+            managedObjectContext: moc,
+            sectionNameKeyPath: #keyPath(Node.stateRaw),
+            cacheName: nil
+        )
+    }
+
+    func subscriptionToPublicLinkShared(sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchedResultsController<Node> {
+        return NSFetchedResultsController(fetchRequest: self.requestPublicLinkShared(sorting: sorting, moc: moc),
                                           managedObjectContext: moc,
                                           sectionNameKeyPath: #keyPath(Node.stateRaw),
                                           cacheName: nil)
     }
 
-    func subscriptionToPrimaryUploadedPhotos(moc: NSManagedObjectContext) -> NSFetchedResultsController<Photo> {
+    func fetchCachedSharedWithMe(moc: NSManagedObjectContext) -> [(node: Node, share: Share)] {
+        var items = [(node: Node, share: Share)]()
+        moc.performAndWait {
+            let fetchRequest = self.requestNodesSharedWithMeRoot(sorting: .nameAscending, moc: moc)
+            let nodes = (try? moc.fetch(fetchRequest)) ?? []
+
+            for node in nodes {
+                guard let share = node.directShares.first else {
+                    continue
+                }
+                items.append((node, share))
+            }
+        }
+        return items
+    }
+
+    func subscriptionToSharedWithMe(sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchedResultsController<Node> {
         return NSFetchedResultsController(
-            fetchRequest: requestPrimaryUploadedPhotos(),
+            fetchRequest: self.requestNodesSharedWithMeRoot(sorting: sorting, moc: moc),
             managedObjectContext: moc,
-            sectionNameKeyPath: #keyPath(Photo.monthIdentifier),
-            cacheName: "PhotoFetchCache"
+            sectionNameKeyPath: #keyPath(Node.stateRaw),
+            cacheName: nil
         )
+    }
+
+    func requestNodesSharedWithMeRoot(sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchRequest<Node> {
+        let fetchRequest = NSFetchRequest<Node>(entityName: "Node")
+        fetchRequest.sortDescriptors = [
+            .init(key: #keyPath(Node.stateRaw), ascending: true),
+            sorting.descriptor,
+            .init(key: #keyPath(Node.id), ascending: true)
+        ]
+
+        let isSharedWithMeRootPredicate = NSPredicate(format: "%K == YES", #keyPath(Node.isSharedWithMeRoot))
+        fetchRequest.predicate = isSharedWithMeRootPredicate
+
+        return fetchRequest
+    }
+
+    func subscriptionToSharedWithMeShares(moc: NSManagedObjectContext) -> NSFetchedResultsController<Share> {
+        return NSFetchedResultsController(
+            fetchRequest: self.requestShares(moc: moc),
+            managedObjectContext: moc,
+            sectionNameKeyPath: #keyPath(Node.stateRaw),
+            cacheName: nil
+        )
+    }
+
+    private func requestShares(moc: NSManagedObjectContext) -> NSFetchRequest<Share> {
+        let fetchRequest = NSFetchRequest<Share>()
+        fetchRequest.entity = Share.entity()
+
+        // Sorting by creation time in descending order
+        fetchRequest.sortDescriptors = [.init(key: #keyPath(Share.createTime), ascending: false)]
+
+        // Predicates to filter shares
+        let shareTypePredicate = NSPredicate(format: "%K == %d", #keyPath(Share.type), Share.ShareType.standard.rawValue)
+        let volumePredicate = NSPredicate(format: "%K == nil", #keyPath(Share.volume))
+        fetchRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [shareTypePredicate, volumePredicate])
+
+        return fetchRequest
     }
 
     func subscriptionToThumbnails(moc: NSManagedObjectContext, type: ThumbnailType) -> NSFetchedResultsController<Thumbnail> {
@@ -544,15 +523,6 @@ public extension StorageManager {
         )
     }
 
-    func subscriptionToPrimaryUploadingPhotos(moc: NSManagedObjectContext) -> NSFetchedResultsController<Photo> {
-        return NSFetchedResultsController(
-            fetchRequest: requestPrimaryUploadingPhotos(),
-            managedObjectContext: moc,
-            sectionNameKeyPath: nil,
-            cacheName: nil
-        )
-    }
-    
     // MARK: Requests
 
     private func requestDevices() -> NSFetchRequest<Device> {
@@ -568,7 +538,7 @@ public extension StorageManager {
         fetchRequest.sortDescriptors = [.init(key: #keyPath(Volume.id), ascending: true)]
         return fetchRequest
     }
-    
+
     private func requestSharesOfVolume() -> NSFetchRequest<Share> {
         let fetchRequest = NSFetchRequest<Share>()
         fetchRequest.entity = Share.entity()
@@ -576,7 +546,7 @@ public extension StorageManager {
         fetchRequest.predicate = NSPredicate(format: "%K != nil", #keyPath(Share.volume))
         return fetchRequest
     }
-    
+
     private func requestShares() -> NSFetchRequest<Share> {
         let fetchRequest = NSFetchRequest<Share>()
         fetchRequest.entity = Share.entity()
@@ -613,7 +583,25 @@ public extension StorageManager {
         fetchRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: subpredicates)
         return fetchRequest
     }
-    
+
+    private func requestChildren(nodeID: String, volumeID: String, hash: String? = nil, includeTrashed: Bool = false, moc: NSManagedObjectContext) -> NSFetchRequest<Node> {
+        let fetchRequest = NSFetchRequest<Node>()
+        fetchRequest.entity = Node.entity()
+        fetchRequest.sortDescriptors = [.init(key: #keyPath(Node.stateRaw), ascending: true), .init(key: #keyPath(Node.id), ascending: true)]
+
+        var subpredicates = [NSPredicate]()
+        subpredicates.append(NSPredicate(format: "%K == %@ AND %K == %@", #keyPath(Node.parentLink.id), nodeID, #keyPath(Node.volumeID), volumeID))
+        if let hash {
+            subpredicates.append(NSPredicate(format: "%K == %@", #keyPath(Node.nodeHash), hash))
+        }
+        if !includeTrashed {
+            subpredicates.append(NSPredicate(format: "%K != %d", #keyPath(Node.stateRaw), Node.State.deleted.rawValue))
+        }
+
+        fetchRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: subpredicates)
+        return fetchRequest
+    }
+
     private func requestNode(node nodeID: String, share shareID: String, moc: NSManagedObjectContext) -> NSFetchRequest<Node> {
         let fetchRequest = NSFetchRequest<Node>()
         fetchRequest.entity = Node.entity()
@@ -623,7 +611,14 @@ public extension StorageManager {
                                              #keyPath(Node.shareID), shareID)
         return fetchRequest
     }
-    
+
+    private func requestNode(nodeID: String, volumeID: String, moc: NSManagedObjectContext) -> NSFetchRequest<Node> {
+        let fetchRequest = NSFetchRequest<Node>()
+        fetchRequest.entity = Node.entity()
+        fetchRequest.predicate = NSPredicate(format: "%K == %@ AND %K == %@", #keyPath(Node.id), nodeID, #keyPath(Node.volumeID), volumeID)
+        return fetchRequest
+    }
+
     private func requestDraft(localID: String, share shareID: String, moc: NSManagedObjectContext) -> NSFetchRequest<File> {
         let fetchRequest = NSFetchRequest<File>()
         fetchRequest.entity = File.entity()
@@ -640,7 +635,7 @@ public extension StorageManager {
         fetchRequest.predicate = NSPredicate(format: "id IN %@", ids)
         return fetchRequest
     }
-    
+
     private func requestNodes(share shareID: String, sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchRequest<Node> {
         let fetchRequest = NSFetchRequest<Node>()
         fetchRequest.entity = Node.entity()
@@ -650,10 +645,10 @@ public extension StorageManager {
         fetchRequest.predicate = NSPredicate(format: "%K == %@ AND %K != nil",
                                              #keyPath(Node.shareID), shareID,
                                              #keyPath(Node.parentLink)) // this will exclude Root folders from the list
-        
+
         return fetchRequest
     }
-    
+
     private func requestDirtyNodes(share shareID: String, moc: NSManagedObjectContext) -> NSFetchRequest<Node> {
         let fetchRequest = NSFetchRequest<Node>()
         fetchRequest.entity = Node.entity()
@@ -663,7 +658,7 @@ public extension StorageManager {
                                              #keyPath(Node.dirtyIndex), 0)
         return fetchRequest
     }
-    
+
     private func requestUploading<Result: NSFetchRequestResult>(moc: NSManagedObjectContext) -> NSFetchRequest<Result> {
         let fetchRequest = NSFetchRequest<Result>()
         fetchRequest.entity = File.entity()
@@ -673,7 +668,7 @@ public extension StorageManager {
                                              #keyPath(Node.stateRaw), Node.State.cloudImpediment.rawValue,
                                              #keyPath(Node.stateRaw), Node.State.paused.rawValue,
                                              #keyPath(Node.stateRaw), Node.State.interrupted.rawValue)
-        
+
         return fetchRequest
     }
 
@@ -702,19 +697,20 @@ public extension StorageManager {
         return fetchRequest
     }
 
-    private func requestTrashResult<Result: NSFetchRequestResult>(moc: NSManagedObjectContext) -> NSFetchRequest<Result> {
+    private func requestTrashResult<Result: NSFetchRequestResult>(volumeID: String, moc: NSManagedObjectContext) -> NSFetchRequest<Result> {
         let fetchRequest = NSFetchRequest<Result>()
         fetchRequest.entity = Node.entity()
         let sorting = SortPreference.default
         fetchRequest.sortDescriptors = [sorting.descriptor]
         fetchRequest.predicate = NSPredicate(
-            format: "%K == %d AND %K == %d",
+            format: "%K == %d AND %K == %d AND %K == %@",
             #keyPath(Node.stateRaw), Node.State.deleted.rawValue,
-            #keyPath(Node.isToBeDeleted), false
+            #keyPath(Node.isToBeDeleted), false,
+            #keyPath(Node.volumeID), volumeID
         )
         return fetchRequest
     }
-    
+
     private func requestOfflineAvailable(withInherited: Bool, moc: NSManagedObjectContext) -> NSFetchRequest<Node> {
         let fetchRequest = NSFetchRequest<Node>()
         fetchRequest.entity = Node.entity()
@@ -722,12 +718,12 @@ public extension StorageManager {
         let sorting = SortPreference.modifiedDescending
         fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \Node.mimeType, ascending: true), // real
                                         .init(key: sorting.keyPath, ascending: sorting.isAscending)]
-        
+
         let marked = NSPredicate(format: "%K == TRUE AND %K != %d",
                                  #keyPath(Node.isMarkedOfflineAvailable),
                                  #keyPath(Node.stateRaw), Node.State.deleted.rawValue)
         let inherited = NSPredicate(format: "%K == TRUE", #keyPath(Node.isInheritingOfflineAvailable))
-        
+
         if withInherited {
             fetchRequest.predicate = NSCompoundPredicate(type: .or, subpredicates: [marked, inherited])
         } else {
@@ -735,7 +731,7 @@ public extension StorageManager {
         }
         return fetchRequest
     }
-    
+
     private func requestStarred<Result: NSFetchRequestResult>(share shareID: String, sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchRequest<Result> {
         let fetchRequest = NSFetchRequest<Result>()
         fetchRequest.entity = Node.entity()
@@ -748,8 +744,27 @@ public extension StorageManager {
                                              #keyPath(Node.isFavorite))
         return fetchRequest
     }
-    
-    private func requestShared<Result: NSFetchRequestResult>(sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchRequest<Result> {
+
+    private func requestShared<Result: NSFetchRequestResult>(volumeID: String, sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchRequest<Result> {
+        let fetchRequest = NSFetchRequest<Result>()
+        fetchRequest.entity = Node.entity()
+
+        let hasParentLink = NSPredicate(format: "%K != nil", #keyPath(Node.parentLink)) // Exclude Root folders
+        let belongToVolume = NSPredicate(format: "%K == %@", #keyPath(Node.volumeID), volumeID) // Match the provided volumeID
+        let nonEmptyDirectShare = NSPredicate(format: "%K.@count > 0", #keyPath(Node.directShares)) // Ensure non-empty directShares set
+
+        fetchRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [hasParentLink, belongToVolume, nonEmptyDirectShare])
+
+        fetchRequest.sortDescriptors = [
+            NSSortDescriptor(key: #keyPath(Node.stateRaw), ascending: true),
+            sorting.descriptor,
+            NSSortDescriptor(key: #keyPath(Node.id), ascending: true)
+        ]
+
+        return fetchRequest
+    }
+
+    private func requestPublicLinkShared<Result: NSFetchRequestResult>(sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchRequest<Result> {
         let fetchRequest = NSFetchRequest<Result>()
         fetchRequest.entity = Node.entity()
         fetchRequest.sortDescriptors = [
@@ -776,50 +791,6 @@ public extension StorageManager {
         return fetchRequest
     }
 
-    private func requestWaitingPhotos(maxSize: Int, moc: NSManagedObjectContext) -> NSFetchRequest<Photo> {
-        let fetchRequest = NSFetchRequest<Photo>()
-        fetchRequest.entity = Photo.entity()
-        fetchRequest.sortDescriptors = [
-            .init(key: Node.modifiedDateKeyPath, ascending: true),
-            .init(key: #keyPath(Node.size), ascending: true)
-        ]
-        fetchRequest.predicate = NSPredicate(
-            format: "%K < %i AND %K == %d",
-            #keyPath(Node.size), NSNumber(value: maxSize).intValue,
-            #keyPath(Node.stateRaw), Node.State.cloudImpediment.rawValue
-        )
-        return fetchRequest
-    }
-
-    private func requestPhotos(ids: [String], moc: NSManagedObjectContext) -> NSFetchRequest<Photo> {
-        let fetchRequest = NSFetchRequest<Photo>()
-        fetchRequest.entity = Photo.entity()
-        fetchRequest.sortDescriptors = [.init(key: #keyPath(Photo.captureTime), ascending: false)]
-        fetchRequest.predicate = NSPredicate(format: "id IN %@", ids)
-        return fetchRequest
-    }
-
-    private func requestPrimaryPhotos() -> NSFetchRequest<Photo> {
-        let fetchRequest = NSFetchRequest<Photo>()
-        fetchRequest.entity = Photo.entity()
-        fetchRequest.sortDescriptors = [.init(key: #keyPath(Photo.captureTime), ascending: false)]
-        fetchRequest.predicate = NSPredicate(format: "%K == nil", #keyPath(Photo.parent))
-        return fetchRequest
-    }
-
-    private func requestPrimaryUploadedPhotos(ascending: Bool = false) -> NSFetchRequest<Photo> {
-        let fetchRequest = NSFetchRequest<Photo>()
-        fetchRequest.entity = Photo.entity()
-        fetchRequest.sortDescriptors = [
-            .init(key: #keyPath(Photo.captureTime), ascending: ascending),
-            .init(key: #keyPath(Photo.id), ascending: false),
-        ]
-        fetchRequest.predicate = NSPredicate(format: "%K == nil AND %K == %d ",
-                                             #keyPath(Photo.parent),
-                                             #keyPath(Node.stateRaw), Node.State.active.rawValue)
-        return fetchRequest
-    }
-
     private func requestDownloadedThumbnails(type: ThumbnailType) -> NSFetchRequest<Thumbnail> {
         let fetchRequest = NSFetchRequest<Thumbnail>()
         fetchRequest.entity = Thumbnail.entity()
@@ -827,6 +798,236 @@ public extension StorageManager {
         fetchRequest.predicate = NSPredicate(format: "%K.%K != nil AND %K == %d",
                                              #keyPath(Thumbnail.blob), #keyPath(ThumbnailBlob.encrypted),
                                              #keyPath(Thumbnail.type), type.rawValue)
+        return fetchRequest
+    }
+}
+
+// Photos
+extension StorageManager {
+    public func fetchMyPhotosCount(moc: NSManagedObjectContext) -> Int {
+        return moc.performAndWait {
+            guard let volumeId = try? getMyVolumeId(in: moc) else { return 0 }
+            let fetchRequest = requestPrimaryPhotos(volumeId: volumeId)
+            return (try? moc.count(for: fetchRequest)) ?? 0
+        }
+    }
+
+    public func isPhotoPresent(identifier: NodeIdentifier, moc: NSManagedObjectContext) -> Bool {
+        return moc.performAndWait {
+            let fetchRequest = requestPhotoExists(identifier: identifier)
+            let count = try? moc.fetch(fetchRequest).count
+            return (count ?? 0) > 0
+        }
+    }
+
+    private func requestPhotoExists(identifier: NodeIdentifier) -> NSFetchRequest<Photo> {
+        let fetchRequest = NSFetchRequest<Photo>()
+        fetchRequest.entity = Photo.entity()
+        fetchRequest.predicate = NSPredicate(
+            format: "%K == %d AND %K == %@",
+            #keyPath(Photo.id), identifier.id,
+            #keyPath(Photo.volumeID), identifier.volumeID
+        )
+        fetchRequest.fetchLimit = 1
+        fetchRequest.resultType = .countResultType
+        return fetchRequest
+    }
+
+    public func fetchMyWaitingPhotos(maxSize: Int) -> [ReuploadingPhoto] {
+        var photos = [ReuploadingPhoto]()
+        backgroundContext.performAndWait {
+            guard let volumeId = try? self.getMyVolumeId(in: backgroundContext) else { return }
+            let fetchRequest = self.requestWaitingPhotos(volumeId: volumeId, maxSize: maxSize, moc: backgroundContext)
+            photos = ((try? backgroundContext.fetch(fetchRequest)) ?? []).map { ReuploadingPhoto(size: $0.size, photo: $0) }
+        }
+        return photos
+    }
+
+    public func fetchPhotos(identifiers: [NodeIdentifier], moc: NSManagedObjectContext) -> [Photo] {
+        let photoIDs = identifiers.map { $0.nodeID }
+        let volumeIDs = identifiers.map { $0.volumeID }
+
+        var fetchedPhotos: [Photo] = []
+
+        moc.performAndWait {
+            let fetchRequest: NSFetchRequest<Photo> = NSFetchRequest(entityName: "Photo")
+            fetchRequest.predicate = NSPredicate(
+                format: "%K IN %@ AND %K IN %@",
+                #keyPath(Photo.id), photoIDs,
+                #keyPath(Photo.volumeID), volumeIDs
+            )
+            fetchRequest.sortDescriptors = [.init(key: #keyPath(Photo.captureTime), ascending: false)]
+            fetchedPhotos = ((try? moc.fetch(fetchRequest)) ?? [])
+        }
+
+        return fetchedPhotos
+    }
+
+    func fetchLastPrimaryPhoto(volumeId: String, moc: NSManagedObjectContext) -> Photo? {
+        let request = requestPrimaryPhotos(volumeId: volumeId)
+        request.fetchLimit = 1
+
+        return try? moc.fetch(request).first
+    }
+
+    public func fetchMyOldestPrimaryUploadedPhotoId(volumeID: String, moc: NSManagedObjectContext) -> NodeIdentifier? {
+        moc.performAndWait {
+            let request = requestMyPrimaryUploadedPhotos(volumeID: volumeID, ascending: true)
+            request.fetchLimit = 1
+            return try? moc.fetch(request).first?.identifier
+        }
+    }
+
+    public func fetchPrimaryPhotos(inVolume volumeId: String, moc: NSManagedObjectContext) -> [Photo] {
+        return moc.performAndWait {
+            let fetchRequest = requestPrimaryPhotos(volumeId: volumeId)
+            return (try? moc.fetch(fetchRequest)) ?? []
+        }
+    }
+
+    public func fetchPhoto(id: NodeIdentifier, moc: NSManagedObjectContext) throws -> Photo {
+        let result = moc.performAndWait {
+            let fetchRequest = requestPhoto(id)
+            return try? moc.fetch(fetchRequest)
+        }
+        guard let photo = result?.first else {
+            throw Photo.noMOC()
+        }
+        return photo
+    }
+
+    public func fetchMyPrimaryUploadingPhotos(moc: NSManagedObjectContext) -> [Photo] {
+        moc.performAndWait {
+            let fetchRequest = requestMyPrimaryUploadingPhotos()
+            return (try? moc.fetch(fetchRequest)) ?? []
+        }
+    }
+
+    func fetchUploadingPhotos(volumeId: String, size: Int, moc: NSManagedObjectContext) -> [Photo] {
+        var fetchedPhotos: [Photo] = []
+        moc.performAndWait {
+            // Child photos that have their parents uploaded
+            if let photos = try? moc.fetch(requestChildPhotosWithUploadedParent(volumeId: volumeId, size: size)), !photos.isEmpty {
+                fetchedPhotos.append(contentsOf: photos)
+            }
+            guard fetchedPhotos.count < size else { return }
+
+            // Non uploaded main photos
+            let states: [Photo.State] = [.interrupted, .uploading, .cloudImpediment]
+            for state in states {
+                // Calculate the remaining number of photos to fetch
+                let remainingSize = size - fetchedPhotos.count
+                guard remainingSize > 0 else { break } // Stop if we have fetched the desired number of photos
+
+                if let photos = try? moc.fetch(requestPrimaryPhotos(volumeId: volumeId, ofState: state, size: remainingSize)) {
+                    fetchedPhotos.append(contentsOf: photos)
+                }
+            }
+        }
+        return fetchedPhotos
+    }
+
+    /// Checks if there is at least one `Photo` object in an uploading state in the local database.
+    ///
+    /// This method performs a synchronous fetch on the provided managed object context to determine if any `Photo` objects are currently in one of the specified uploading states: `.interrupted`, `.uploading`, or `.cloudImpediment`.
+    /// The search is efficient, as it stops as soon as it finds the first photo in any of these states, minimizing database query time.
+    ///  At this point we don't care if the unfinished Photo is a parent or a child, the upload algorithms should pick up the incumbent Photo in it's correct form.
+    ///
+    /// - Parameters:
+    ///   - moc: The `NSManagedObjectContext` on which the fetch request is performed. The `NSManagedObjectContext` that should be used is the `photos` specific one.
+    ///
+    /// - Returns: A Boolean value indicating whether at least one `Photo` object is in an uploading state. Returns `true` if such a photo exists, otherwise returns `false`.
+    func hasUploadingPhotos(moc: NSManagedObjectContext) -> Bool {
+        var hasUploadingPhoto = false
+        let states: [Photo.State] = [.interrupted, .uploading, .cloudImpediment]
+
+        let fetchRequest = NSFetchRequest<Photo>(entityName: "Photo")
+        fetchRequest.predicate = NSPredicate(format: "%K IN %@", #keyPath(Photo.stateRaw), states.map { $0.rawValue })
+        fetchRequest.fetchLimit = 1
+
+        moc.performAndWait {
+            do {
+                let photos = try moc.count(for: fetchRequest)
+                if photos > 0 {
+                    hasUploadingPhoto = true
+                }
+            } catch {
+                Log.error("Failed to fetch uploading photos: \(error)", domain: .backgroundTask)
+            }
+        }
+        return hasUploadingPhoto
+    }
+
+    private func requestPrimaryPhotos(volumeId: String, ofState state: Photo.State, size: Int) -> NSFetchRequest<Photo> {
+        let fetchRequest = NSFetchRequest<Photo>(entityName: "Photo")
+        fetchRequest.sortDescriptors = [NSSortDescriptor(key: #keyPath(Photo.captureTime), ascending: false)]
+        fetchRequest.predicate = NSPredicate(
+            format: "%K == nil AND %K == %d AND %K == %@",
+            #keyPath(Photo.parent),
+            #keyPath(Photo.stateRaw), state.rawValue,
+            #keyPath(Photo.volumeID), volumeId
+        )
+        fetchRequest.fetchLimit = size
+        return fetchRequest
+    }
+
+    private func requestChildPhotosWithUploadedParent(volumeId: String, size: Int) -> NSFetchRequest<Photo> {
+        let fetchRequest = NSFetchRequest<Photo>(entityName: "Photo")
+        fetchRequest.sortDescriptors = [NSSortDescriptor(key: #keyPath(Photo.captureTime), ascending: false)]
+        fetchRequest.predicate = NSPredicate(
+            format: "%K != nil AND %K.%K == %d AND (%K == %d OR %K == %d OR %K == %d) AND %K == %@",
+            #keyPath(Photo.parent),
+            #keyPath(Photo.parent), #keyPath(Photo.stateRaw), Photo.State.active.rawValue,
+            #keyPath(Photo.stateRaw), Photo.State.uploading.rawValue,
+            #keyPath(Photo.stateRaw), Photo.State.cloudImpediment.rawValue,
+            #keyPath(Photo.stateRaw), Photo.State.interrupted.rawValue,
+            #keyPath(Photo.volumeID), volumeId
+        )
+        fetchRequest.fetchLimit = size
+        return fetchRequest
+    }
+
+    private func requestWaitingPhotos(volumeId: String, maxSize: Int, moc: NSManagedObjectContext) -> NSFetchRequest<Photo> {
+        let fetchRequest = NSFetchRequest<Photo>()
+        fetchRequest.entity = Photo.entity()
+        fetchRequest.sortDescriptors = [
+            .init(key: Node.modifiedDateKeyPath, ascending: true),
+            .init(key: #keyPath(Node.size), ascending: true)
+        ]
+        fetchRequest.predicate = NSPredicate(
+            format: "%K < %i AND %K == %d AND %K == %@",
+            #keyPath(Node.size), NSNumber(value: maxSize).intValue,
+            #keyPath(Node.stateRaw), Node.State.cloudImpediment.rawValue,
+            #keyPath(Node.volumeID), volumeId
+        )
+        return fetchRequest
+    }
+
+    private func requestPrimaryPhotos(volumeId: String) -> NSFetchRequest<Photo> {
+        let fetchRequest = NSFetchRequest<Photo>()
+        fetchRequest.entity = Photo.entity()
+        fetchRequest.sortDescriptors = [.init(key: #keyPath(Photo.captureTime), ascending: false)]
+        fetchRequest.predicate = NSPredicate(format: "%K == nil", #keyPath(Photo.parent))
+        return fetchRequest
+    }
+
+    private func requestMyPrimaryUploadedPhotos(volumeID: String, ascending: Bool = false) -> NSFetchRequest<Photo> {
+        if volumeID.isEmpty {
+            Log.error("Empty VolumeID found", domain: .storage)
+        }
+
+        let fetchRequest = NSFetchRequest<Photo>()
+        fetchRequest.entity = Photo.entity()
+        fetchRequest.sortDescriptors = [
+            .init(key: #keyPath(Photo.captureTime), ascending: ascending),
+            .init(key: #keyPath(Photo.id), ascending: false),
+        ]
+        fetchRequest.predicate = NSPredicate(
+            format: "%K == nil AND %K == %d AND %K == %@",
+            #keyPath(Photo.parent),
+            #keyPath(Node.stateRaw), Node.State.active.rawValue,
+            #keyPath(Photo.volumeID), volumeID
+        )
         return fetchRequest
     }
 
@@ -837,12 +1038,13 @@ public extension StorageManager {
         fetchRequest.predicate = NSPredicate(
             format: "%K == %@ AND %K == %@",
             #keyPath(Photo.id), id.nodeID,
-            #keyPath(Photo.shareID), id.shareID
+            #keyPath(Photo.volumeID), id.volumeID
         )
         return fetchRequest
     }
 
-    func requestUploadingPhotos() -> NSFetchRequest<Photo> {
+    // We assume that we the only uploading photos are mine
+    public func requestUploadingPhotos() -> NSFetchRequest<Photo> {
         let fetchRequest = NSFetchRequest<Photo>()
         fetchRequest.entity = Photo.entity()
         fetchRequest.sortDescriptors = [.init(key: #keyPath(Photo.captureTime), ascending: false)]
@@ -855,7 +1057,8 @@ public extension StorageManager {
         return fetchRequest
     }
 
-    private func requestPrimaryUploadingPhotos() -> NSFetchRequest<Photo> {
+    // Uploading photos are mine
+    private func requestMyPrimaryUploadingPhotos() -> NSFetchRequest<Photo> {
         let fetchRequest = NSFetchRequest<Photo>(entityName: "Photo")
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: #keyPath(Photo.captureTime), ascending: false)]
         fetchRequest.predicate = NSPredicate(
@@ -871,20 +1074,37 @@ public extension StorageManager {
         return fetchRequest
     }
 
-    private func requestThumbnail(id: String) -> NSFetchRequest<Thumbnail> {
-        let fetchRequest = NSFetchRequest<Thumbnail>()
-        fetchRequest.entity = Thumbnail.entity()
-        fetchRequest.predicate = NSPredicate(format: "id == %@", id)
-        fetchRequest.fetchLimit = 1
-        return fetchRequest
+    // MARK: Photo Subscriptions
+    public func subscriptionToPhotoShares(moc: NSManagedObjectContext) -> NSFetchedResultsController<Share> {
+        let request = requestShares()
+        request.predicate = NSPredicate(format: "%K == %d", #keyPath(Share.type), Share.ShareType.photos.rawValue)
+        return NSFetchedResultsController(fetchRequest: request, managedObjectContext: moc, sectionNameKeyPath: nil, cacheName: nil)
     }
 
-    private func requestPhotoExists(id: String) -> NSFetchRequest<Photo> {
-        let fetchRequest = NSFetchRequest<Photo>()
-        fetchRequest.entity = Photo.entity()
-        fetchRequest.predicate = NSPredicate(format: "id == %@", id)
-        fetchRequest.fetchLimit = 1
-        fetchRequest.resultType = .countResultType
-        return fetchRequest
+    public func subscriptionToUploadingPhotos(moc: NSManagedObjectContext) -> NSFetchedResultsController<Photo> {
+        return NSFetchedResultsController(
+            fetchRequest: self.requestUploadingPhotos(),
+            managedObjectContext: moc,
+            sectionNameKeyPath: nil,
+            cacheName: nil
+        )
+    }
+
+    public func subscriptionToMyPrimaryUploadedPhotos(volumeID: String, moc: NSManagedObjectContext) -> NSFetchedResultsController<Photo> {
+        return NSFetchedResultsController(
+            fetchRequest: requestMyPrimaryUploadedPhotos(volumeID: volumeID),
+            managedObjectContext: moc,
+            sectionNameKeyPath: #keyPath(Photo.monthIdentifier),
+            cacheName: "PhotoFetchCache"
+        )
+    }
+
+    public func subscriptionToMyPrimaryUploadingPhotos(moc: NSManagedObjectContext) -> NSFetchedResultsController<Photo> {
+        return NSFetchedResultsController(
+            fetchRequest: requestMyPrimaryUploadingPhotos(),
+            managedObjectContext: moc,
+            sectionNameKeyPath: nil,
+            cacheName: nil
+        )
     }
 }

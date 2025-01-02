@@ -212,7 +212,7 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
         ) {
             Button(viewModel.photoFeatureAlertCancelTitle, action: { })
             Button(viewModel.photoFeatureAlertButtonTitle, action: {
-                viewModel.togglePhotoFeatureEnableStatus()
+//                viewModel.togglePhotoFeatureEnableStatus()
             })
         } message: {
             Text(viewModel.photoFeatureAlertMessage)
