@@ -30,7 +30,7 @@ CoreData (Nodes, Revisions, Blocks, Thumbnails, Shares, Volumes, ShareURLs) | **
 Encrypted files | **Low** | **Low** | **Low** | **Moderate**: poor UX
 Cleartext files | **Critical** | **Critical** | **Critical**: can pose an attack vector | **Moderate**: poor UX
 Account Private and Public Keys | **Critical**: allows decryption of messages caught in the air | **Critical**: allows decryption of old messages | **Critical**: in some circumstances can lead to impersonation | **Moderate**: objects will not be properly encrypted or decrypted
-Account detals | **Critical**: connects account to person | **Critical**: connects account to person | **Low** | **Low**
+Account details | **Critical**: connects account to person | **Critical**: connects account to person | **Low** | **Low**
 Authentication token | **High**: allows to steal session | **High**: session can be closed from website | **Low**: wrong token leads to correct logout | **Low**: no token leads to correct logout
 
 ### Default Data Protection
