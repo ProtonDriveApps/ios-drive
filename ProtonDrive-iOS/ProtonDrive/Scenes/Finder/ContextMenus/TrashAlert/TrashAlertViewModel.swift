@@ -75,3 +75,29 @@ final class RemoveMeAlertViewModel {
         model.removeMe(node, completion: completion)
     }
 }
+
+final class DeleteBookmarkAlertViewModel {
+    let node: CoreDataBookmark
+    let model: NodeEditionViewModel
+
+    init(node: CoreDataBookmark, model: NodeEditionViewModel) {
+        self.node = node
+        self.model = model
+    }
+
+    var title: String {
+        Localization.shared_with_me_bookmarks_delete_button(item: node.decryptedName)
+    }
+
+    var confirmationButton: String {
+        Localization.shared_with_me_bookmarks_delete_confirmation
+    }
+
+    var itemName: String {
+        node.decryptedName
+    }
+
+    func mainAction() {
+        model.removeBookmark(node)
+    }
+}

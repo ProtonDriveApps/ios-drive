@@ -59,7 +59,7 @@ final class PhotosBackupBackgroundStartTelemetryController: PhotosBackupBackgrou
     }
 
     private func handleProcessingStart() {
-        Log.debug("\(Self.self): handle background task start: send events and update storage.", domain: .telemetry)
+        Log.debug("handle background task start: send events and update storage.", domain: .telemetry)
         let telemetryData = dataFactory.makeData()
         telemetryController.send(data: telemetryData)
         // Store current run related data, which will be used in the subsequent runs
@@ -69,7 +69,7 @@ final class PhotosBackupBackgroundStartTelemetryController: PhotosBackupBackgrou
     }
 
     private func handleForegroundStart() {
-        Log.debug("\(Self.self): handle availability change.", domain: .telemetry)
+        Log.debug("handle availability change.", domain: .telemetry)
         // Will reset the background operation related data
         // The app is active now, so the next BG session will be first
         storage.lastActivityDate = dateResource.getDate()

@@ -18,6 +18,8 @@
 import CoreData
 import Foundation
 import PDCore
+import PDCoreIOS
+import PDPhotos
 
 final class PhotosProcessingContainer {
     struct Dependencies {
@@ -35,6 +37,8 @@ final class PhotosProcessingContainer {
         let duplicatesMeasurementRepository: DurationMeasurementRepository
         let photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>
         let photosManagedObjectContext: NSManagedObjectContext
+        let rootFolderRepository: PhotosRootFolderRepository
+        let featureFlagsController: FeatureFlagsControllerProtocol
     }
 
     let processingController: PhotosProcessingController

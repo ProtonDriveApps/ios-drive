@@ -18,7 +18,7 @@
 import Combine
 
 public protocol ThumbnailLoader {
-    typealias Identifier = NodeIdentifier
+    typealias Identifier = any VolumeIdentifiable
 
     var succeededId: AnyPublisher<Identifier, Never> { get }
     var failedId: AnyPublisher<Identifier, Never> { get }

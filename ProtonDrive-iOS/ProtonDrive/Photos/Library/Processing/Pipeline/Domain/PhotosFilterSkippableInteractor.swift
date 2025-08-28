@@ -27,7 +27,7 @@ final class PhotosFilterSkippableInteractor: AsynchronousExecution {
     }
 
     func execute() async {
-        Log.info("0️⃣ \(Self.self): executing", domain: .photosProcessing)
+        Log.info("0️⃣ executing", domain: .photosProcessing)
         let identifiers = await filterSkippableOut(Array(context.initialIdentifiers))
         context.completeIdentifiersValidation(identifiers: identifiers)
     }

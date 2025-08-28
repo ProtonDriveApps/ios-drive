@@ -39,6 +39,13 @@ public final class RemoteCachingShareDeleter: ShareDeleter {
             guard let share = Share.fetch(id: id, in: context) else { return }
             share.shareUrls.forEach(context.delete)
             context.delete(share)
+
+            if let album = share.root as? CoreDataAlbum, let listing = album.albumListing {
+                listing.shareID = nil
+            } else if let photo = share.root as? CoreDataPhoto {
+                photo.isShared = false
+                photo.directShares.remove(share)
+            }
             try context.saveOrRollback()
         }
     }

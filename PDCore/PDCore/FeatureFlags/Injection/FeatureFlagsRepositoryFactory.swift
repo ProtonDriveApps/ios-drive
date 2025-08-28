@@ -31,16 +31,7 @@ struct FeatureFlagsRepositoryFactory {
         let resource = UnleashFeatureFlagsResource(
             refreshInterval: getRefreshInterval(),
             session: session,
-            configurationResolver: configurationResolver,
-            logMessageHandler: { Log.info($0, domain: .featureFlags) },
-            logErrorHandler: {
-                if case .noResponse = $0 as? PollerError {
-                    // a no connection error, we can treat that as info
-                    Log.info($0.localizedDescription, domain: .featureFlags)
-                } else {
-                    Log.error($0.localizedDescription, domain: .featureFlags)
-                }
-            }
+            configurationResolver: configurationResolver
         )
         
         #if os(iOS)
@@ -54,6 +45,18 @@ struct FeatureFlagsRepositoryFactory {
         
         return resource
     }
+    
+    private func makeLegacyResource(
+        configuration: APIService.Configuration,
+        networking: CoreAPIService
+    ) -> ExternalFeatureFlagsResource {
+        let resource = LegacyFeatureFlagsResource(
+            configuration: configuration,
+            networking: networking,
+            refreshInterval: TimeInterval(getRefreshInterval())
+        )
+        return resource
+    }
 
     private func getRefreshInterval() -> Int {
         if Constants.buildType.isQaOrBelow {
@@ -65,6 +68,11 @@ struct FeatureFlagsRepositoryFactory {
 
     func makeRepository(configuration: APIService.Configuration, networking: CoreAPIService, store: ExternalFeatureFlagsStore) -> FeatureFlagsRepository {
         let externalResource = makeExternalResource(configuration: configuration, networking: networking)
-        return ExternalFeatureFlagsRepository(externalResource: externalResource, externalStore: store)
+        let legacyResource = makeLegacyResource(configuration: configuration, networking: networking)
+        return ExternalFeatureFlagsRepository(
+            externalResource: externalResource,
+            legacyResource: legacyResource,
+            externalStore: store
+        )
     }
 }

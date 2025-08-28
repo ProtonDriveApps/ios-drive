@@ -84,7 +84,7 @@ struct PhotosStorageView<ViewModel: PhotosStorageViewModelProtocol>: View {
     private func makeButtons(with data: PhotosStorageViewData) -> some View {
         HStack(spacing: 16) {
             Spacer()
-            data.closeButton.map { TextButton(title: $0, variant: .contained, action: viewModel.close) }
+            data.closeButton.map { TextButton(title: $0, action: viewModel.close) }
                 .accessibilityIdentifier("StorageView.close.button")
             makeDataButton(with: data)
                 .accessibilityIdentifier("StorageView.upgrade.button")
@@ -92,13 +92,10 @@ struct PhotosStorageView<ViewModel: PhotosStorageViewModelProtocol>: View {
     }
 
     private func makeDataButton(with data: PhotosStorageViewData) -> some View {
-        #if HAS_PAYMENTS
         BlueRectButton(title: data.storageButton, cornerRadius: .huge, action: viewModel.openStorageOptions)
             .fixedSize()
-        #else
-        BlueRectButton(title: data.storageButton, cornerRadius: .huge, action: {})
-            .fixedSize()
-            .environment(\.isEnabled, false)
-        #endif
+            .if(!PDCore.Constants.buildFeatures.hasPayments) {
+                $0.environment(\.isEnabled, false)
+            }
     }
 }

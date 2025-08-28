@@ -20,8 +20,27 @@ import PDClient
 import PDLocalization
 
 @objc public enum SortPreference: Int {
-    case modifiedDescending = 0, sizeDescending, mimeDescending, nameDescending
-    case modifiedAscending, sizeAscending, mimeAscending, nameAscending
+    case modifiedDescending = 0
+    case sizeDescending
+    case mimeDescending
+    case nameDescending
+
+    case modifiedAscending
+    case sizeAscending
+    case mimeAscending
+    case nameAscending
+
+    init(forcedFromValue value: Int?) {
+        self = SortPreference(fromValue: value) ?? Self.default
+    }
+
+    init?(fromValue value: Int?) {
+        if let value = value {
+            self = SortPreference(rawValue: value) ?? Self.default
+        } else {
+            return nil
+        }
+    }
 
     public static var `default`: SortPreference {
         .modifiedDescending

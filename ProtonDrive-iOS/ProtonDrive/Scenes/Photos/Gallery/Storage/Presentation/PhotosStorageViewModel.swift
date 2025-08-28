@@ -18,6 +18,7 @@
 import Combine
 import PDCore
 import PDUIComponents
+import PDPhotos
 
 protocol PhotosStorageViewModelProtocol: ObservableObject {
     var data: PhotosStorageViewData? { get }

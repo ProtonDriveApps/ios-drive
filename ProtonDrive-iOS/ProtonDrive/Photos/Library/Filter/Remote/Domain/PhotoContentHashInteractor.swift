@@ -24,18 +24,18 @@ protocol PhotoContentHashInteractor {
 
 final class LocalPhotoContentHashInteractor: PhotoContentHashInteractor {
     private let hashResource: FileHashResource
-    private let rootDataSource: PhotosRootEncryptingFolderDataSource
+    private let rootFolderRepository: PhotosRootFolderRepository
     private let encryptionResource: EncryptionResource
 
-    init(hashResource: FileHashResource, rootDataSource: PhotosRootEncryptingFolderDataSource, encryptionResource: EncryptionResource) {
+    init(hashResource: FileHashResource, rootFolderRepository: PhotosRootFolderRepository, encryptionResource: EncryptionResource) {
         self.hashResource = hashResource
-        self.rootDataSource = rootDataSource
+        self.rootFolderRepository = rootFolderRepository
         self.encryptionResource = encryptionResource
     }
 
     func makeContentHash(from url: URL) throws -> String {
         let sha1 = try hashResource.getHash(at: url)
-        let root = try rootDataSource.getEncryptingFolder()
+        let root = try rootFolderRepository.getEncryptionInfo()
         let sha1HexString = sha1.hexString()
         return try encryptionResource.makeHmac(string: sha1HexString, hashKey: root.hashKey)
     }

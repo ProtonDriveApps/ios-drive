@@ -17,7 +17,9 @@
 
 import SwiftUI
 import PDCore
+import PDCoreIOS
 import PDUIComponents
+import PDLocalization
 
 struct RootMoveView: View {
     @EnvironmentObject var externalRoot: RootViewModel // this is root of the parent hierarchy
@@ -49,11 +51,21 @@ struct RootMoveView: View {
     func actionBarAction(_ selected: ActionBarButtonViewModel?) {
         switch selected {
         case .createFolder:
-            self.createFolderIn = self.coordinator.topmostDescendant?.model?.folder ?? self.coordinator.model?.folder
+
+            if let currentFolder = currentFolder, currentFolder.isDeviceRoot {
+                let errorHandler = UserMessageHandler()
+                errorHandler.handleError(PlainMessageError(Localization.computers_error_new_folder))
+            } else {
+                self.createFolderIn = currentFolder
+            }
         case .cancel:
             self.externalRoot.closeCurrentSheet.send()
             
         default: break
         }
+    }
+
+    var currentFolder: Folder? {
+        self.coordinator.topmostDescendant?.model?.folder ?? self.coordinator.model?.folder
     }
 }

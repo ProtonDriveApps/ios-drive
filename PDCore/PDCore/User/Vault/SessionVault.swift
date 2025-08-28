@@ -194,7 +194,12 @@ public class SessionVault: CredentialProvider, ObservableObject {
             try _unauthorizedCredential.wipeValue()
             Log.info("Successfully complete migration of oldCredentialsStorage", domain: .encryption)
         } catch {
-            Log.error("Migration from single session to parent+child session failed, will cause force logout: " + error.localizedDescription, domain: .encryption)
+            Log
+                .error(
+                    "Migration from single session to parent+child session failed, will cause force logout",
+                    error: error,
+                    domain: .encryption
+                )
         }
     }
     
@@ -214,11 +219,11 @@ public class SessionVault: CredentialProvider, ObservableObject {
             try _salts.wipeValue()
             Log.info("Successfully wiped Salts", domain: .encryption)
         } catch {
-            Log.error("Wiping of salts failed, may cause leftovers in local storage: " + error.localizedDescription, domain: .encryption)
+            Log.error("Wiping of salts failed, may cause leftovers in local storage", error: error, domain: .encryption)
         }
     }
     
-    func set(passphrases: [AddressID: String]) {
+    public func set(passphrases: [AddressID: String]) {
         storePassphrases(passphrases)
     }
 
@@ -268,6 +273,7 @@ extension SessionVault: SessionStore {
         if let unauthorizedCredential {
             return unauthorizedCredential
         }
+        Log.debug("Query session credential: no available credential", domain: .application)
         return nil
     }
     
@@ -286,6 +292,10 @@ extension SessionVault: SessionStore {
         } else {
             // in a single user app, there's never a situation when we need to keep unauth credentials once we obtain auth credentials
             removeUnauthenticatedCredential()
+            var credentialToStore = credentialToStore
+            if credentialToStore.mailboxPassword.isEmpty {
+                credentialToStore.mailboxPassword = credential?.mailboxPassword ?? ""
+            }
             credential = credentialToStore
         }
     }
@@ -346,6 +356,28 @@ extension SessionVault: SessionStore {
             temporaryLockerStorageForFileProviderExtensionDDKChildSessionCredential = nil
         }
     }
+    
+    public func updateDDKSessionTokens(accessToken: String, refreshToken: String) {
+        guard Constants.runningInExtension else {
+            assertionFailure("""
+                             This method must only ever be called from the extension.
+                             It's the only place that has access to the DDK session storage.
+                             """)
+            return
+        }
+        guard var ddkCredentials = fileProviderExtensionDDKChildSessionCredential else {
+            Log.error(
+                "Trying to update DDK session tokens when there's no DDK session stored in the session vault",
+                error: nil,
+                domain: .sessionManagement
+            )
+            return
+        }
+        ddkCredentials.accessToken = accessToken
+        ddkCredentials.refreshToken = refreshToken
+        fileProviderExtensionDDKChildSessionCredential = ddkCredentials
+        Log.info("Updated DDK session tokens", domain: .sessionManagement)
+    }
 
     public func storeUser(_ user: User) {
         self.userInfo = user
@@ -379,6 +411,10 @@ extension SessionVault: SessionStore {
         try? _addressIDPublicKeys.wipeValue()
         #if os(iOS)
         try? mainKeyProvider.wipeMainKeyOrError()
+        // Bug in ProtonCore, `wipeMainKeyOrError` doesn't clean up BioProtection encryption keys, while
+        // `wipeMainKey` does. Wiping it fixes issue with invalid keys being used.
+        // Can be removed once ProtonCore is adjusted.
+        mainKeyProvider.wipeMainKey()
         #endif
         
         // inform observers about being signed out 
@@ -515,12 +551,12 @@ extension SessionVault {
     public func currentAddress() -> Address? {
         guard let userInfo else {
             assert(false, "Drive can not work with accounts without emails - they are needed for cryptography")
-            Log.error("User info is nil", domain: .sessionManagement)
+            Log.error("User info is nil", error: nil, domain: .sessionManagement)
             return nil
         }
         guard let email = userInfo.email else {
             assert(false, "Drive can not work with accounts without emails - they are needed for cryptography")
-            Log.error("User info doesn't have an email", domain: .sessionManagement)
+            Log.error("User info doesn't have an email", error: nil, domain: .sessionManagement)
             return nil
         }
         if email.isEmpty {
@@ -530,7 +566,7 @@ extension SessionVault {
 
         let address = getAddress(for: email)
         if address == nil {
-            Log.error("Address not found based on user's email. Number of addresses: \(String(describing: addresses?.count))", domain: .sessionManagement)
+            Log.error("Address not found based on user's email", domain: .sessionManagement, context: LogContext("Number of addresses: \(String(describing: addresses?.count))"))
         }
         return address
     }
@@ -623,7 +659,7 @@ extension SessionVault {
         guard let user = self.userInfo, let addresses = self.addresses else {
             return nil
         }
-        return .init(displayName: user.displayName, hideEmbeddedImages: nil, hideRemoteImages: nil, imageProxy: nil, maxSpace: user.maxSpace, maxBaseSpace: user.maxBaseSpace, maxDriveSpace: user.maxDriveSpace, notificationEmail: nil, signature: nil, usedSpace: user.usedSpace, usedBaseSpace: user.usedBaseSpace, usedDriveSpace: user.usedDriveSpace, userAddresses: addresses, autoSC: nil, language: nil, maxUpload: user.maxUpload, notify: nil, swipeLeft: nil, swipeRight: nil, role: user.role, delinquent: user.delinquent, keys: user.keys, userId: user.ID, sign: nil, attachPublicKey: nil, linkConfirmation: nil, credit: user.credit, currency: user.currency, createTime: user.createTime.map(Int64.init), pwdMode: nil, twoFA: nil, enableFolderColor: nil, inheritParentFolderColor: nil, subscribed: user.subscribed, groupingMode: nil, weekStart: nil, delaySendSeconds: nil, telemetry: nil, crashReports: nil, conversationToolbarActions: nil, messageToolbarActions: nil, listToolbarActions: nil, referralProgram: nil)
+        return .init(displayName: user.displayName, hideEmbeddedImages: nil, hideRemoteImages: nil, imageProxy: nil, maxSpace: user.maxSpace, maxBaseSpace: user.maxBaseSpace, maxDriveSpace: user.maxDriveSpace, notificationEmail: nil, signature: nil, usedSpace: user.usedSpace, usedBaseSpace: user.usedBaseSpace, usedDriveSpace: user.usedDriveSpace, userAddresses: addresses, autoSC: nil, language: nil, maxUpload: user.maxUpload, notify: nil, swipeLeft: nil, swipeRight: nil, role: user.role, delinquent: user.delinquent, keys: user.keys, userId: user.ID, sign: nil, attachPublicKey: nil, linkConfirmation: nil, credit: user.credit, currency: user.currency, createTime: user.createTime.map(Int64.init), pwdMode: nil, twoFA: nil, enableFolderColor: nil, inheritParentFolderColor: nil, subscribed: user.subscribed, groupingMode: nil, weekStart: nil, delaySendSeconds: nil, telemetry: nil, crashReports: nil, conversationToolbarActions: nil, messageToolbarActions: nil, listToolbarActions: nil, referralProgram: nil, edmOptOut: nil)
     }
 }
 
@@ -639,13 +675,13 @@ extension SessionVault: UploadClientUIDProvider {
     
     public func getUploadClientUID() -> String {
         guard let uploadClientUID else {
-            guard let sessionCredential, !sessionCredential.isForUnauthenticatedSession else {
-                let message = "Upload client UID requested when no auth credentials available"
+            guard let user = userInfo else {
+                let message = "Upload client UID requested when no userInfo available"
                 assertionFailure(message)
-                Log.error(message, domain: .storage)
+                Log.error(message, error: nil, domain: .storage)
                 return ""
             }
-            let rawUID = sessionCredential.userID + getDeviceUUID()
+            let rawUID = user.ID + getDeviceUUID()
             let hashedUID = clientPrefix() + rawUID.sha256
             self.uploadClientUID = hashedUID
             return hashedUID
@@ -718,7 +754,9 @@ public struct AccountInfo: Equatable {
     }
 }
 
-public struct UserInfo: Equatable {
+extension InvoiceUserState: Encodable {}
+
+public struct UserInfo: Equatable, Encodable {
     public let usedSpace: Double
     public let maxSpace: Double
     public let invoiceState: InvoiceUserState
@@ -744,6 +782,14 @@ public struct UserInfo: Equatable {
         case .delinquentMedium, .delinquentSevere:
             return true   
         }
+    }
+
+    public var isWarning: Bool {
+        usedSpace / maxSpace > 0.8
+    }
+
+    public var isFull: Bool {
+        availableStorage == 0
     }
 }
 

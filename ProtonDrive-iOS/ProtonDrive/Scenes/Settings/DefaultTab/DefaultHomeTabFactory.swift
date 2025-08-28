@@ -18,27 +18,31 @@
 import Foundation
 import PMSettings
 import PDCore
+import PDCoreIOS
 import ProtonCoreUIFoundations
 import UIKit
 import PDLocalization
+import ProtonCoreFeatureFlags
 
 struct DefaultHomeTabFactory {
 
     @MainActor
-    static func defaultHomeTabRow(tower: Tower) -> PMCellSuplier {
+    static func defaultHomeTabRow(tower: Tower, featureFlags: FeatureFlagsControllerProtocol) -> PMCellSuplier {
         let viewModel = DefaultHomeTabSettingViewModel(localSettings: tower.localSettings)
         let config = PMActionableDrillDownConfiguration(viewModel: viewModel) { tableView, indexPath in
             presentDefaultHomeTabSelectionSheet(
                 localSettings: tower.localSettings,
+                featureFlags: featureFlags,
                 tableView: tableView,
                 indexPath: indexPath
             )
         }
         return config
     }
-    
+
     private static func presentDefaultHomeTabSelectionSheet(
         localSettings: LocalSettings,
+        featureFlags: FeatureFlagsControllerProtocol,
         tableView: UITableView,
         indexPath: IndexPath
     ) {
@@ -53,7 +57,7 @@ struct DefaultHomeTabFactory {
         )
 
         var items: [PMActionSheetItem] = []
-        let tabs = availableTab(localSettings: localSettings)
+        let tabs = availableTabs(localSettings: localSettings, featureFlags: featureFlags)
 
         for option in tabs {
             let item = PMActionSheetItem(
@@ -69,7 +73,7 @@ struct DefaultHomeTabFactory {
             }
             items.append(item)
         }
-        
+
         let group = PMActionSheetItemGroup(
             title: Localization.default_home_tab_setting_sheet_title,
             items: items,
@@ -77,19 +81,35 @@ struct DefaultHomeTabFactory {
             style: .singleSelection
         )
         sheet = PMActionSheet(headerView: header, itemGroups: [group])
-        
+
         guard let topVC = UIApplication.shared.topViewController() else { return }
         sheet?.presentAt(topVC, hasTopConstant: false, animated: true)
     }
-    
-    private static func availableTab(localSettings: LocalSettings) -> [TabBarItem] {
-        var tabs: [TabBarItem] = [.files, .photos]
 
-        if localSettings.driveiOSSharing {
+    private static func availableTabs(localSettings: LocalSettings, featureFlags: FeatureFlagsControllerProtocol) -> [TabBarItem] {
+        let policy = VisibilityPolicy(responders: [
+            PhotosTabVisibilityResponder(localSettings: localSettings, repository: ProtonCoreFeatureFlags.FeatureFlagsRepository.shared),
+            ComputersTabVisibilityResponder(featureFlags: featureFlags),
+            SharedWithMeTabVisibilityResponder(featureFlags: featureFlags),
+            SharedTabVisibilityResponder(featureFlags: featureFlags)
+        ])
+
+        var tabs: [TabBarItem] = [.files]
+
+        if policy.shouldShow(.photosTab) {
+            tabs.append(.photos)
+        }
+
+        if policy.shouldShow(.computersTab) {
+            tabs.append(.computers)
+        }
+
+        if policy.shouldShow(.sharedWithMeTab) {
             tabs.append(.sharedWithMe)
-        } else {
+        } else if policy.shouldShow(.sharedTab) {
             tabs.append(.shared)
         }
+
         return tabs
     }
 }

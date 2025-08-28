@@ -1,0 +1,105 @@
+# By default uses relative path
+# Path starts from this file
+name: ProtonDrive-iOS
+options:
+  createIntermediateGroups: true
+  deploymentTarget:
+    iOS: "16.0"
+configs:
+  Debug: debug
+  Release-External: release
+  Release-Store: release
+  Release-QA: release
+settings:
+  base:
+    CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED: YES
+    LOCALIZED_STRING_SWIFTUI_SUPPORT: NO
+    SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""
+    VALIDATE_PRODUCT: YES
+  configs:
+    Debug:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+      VALIDATE_PRODUCT: NO
+fileGroups:
+  - "ProtonDriveTests/Info.plist"
+  - "ProtonDriveUITests/Info.plist"
+  - "ProtonDrive/Info.plist"
+  - "ProtonDriveFileProvider/Info.plist"
+  - "ProtonDriveFileProviderUI/Info.plist"
+  - "README.md"
+  - "TRUSTMODEL.md"
+packages:
+  fusion:
+    url: https://github.com/ProtonMail/apple-fusion.git
+    minVersion: 0.0.0
+    maxVersion: 99.0.0
+  ios-monkey:
+    url: https://gitlab.protontech.ch/tpe/ios-monkey.git
+    branch: master
+  OHHTTPStubs:
+    url: https://github.com/AliSoftware/OHHTTPStubs
+    minVersion: 0.0.0
+    maxVersion: 99.0.0
+  ProtonCore:
+    url: https://github.com/ProtonMail/protoncore_ios.git
+    exactVersion: 32.7.1
+  Sentry:
+    url: https://github.com/getsentry/sentry-cocoa.git
+    minVersion: 0.0.0
+    maxVersion: 99.0.0
+  SwiftLintPlugins:
+    url: https://github.com/SimplyDanny/SwiftLintPlugins
+    exactVersion: 0.57.0
+  TrustKit:
+    url: https://github.com/ProtonMail/TrustKit.git
+    exactVersion: 1.0.3
+  UnleashProxyClientSwift:
+    url: https://github.com/Unleash/unleash-proxy-client-swift.git
+    minVersion: 0.0.0
+    maxVersion: 99.0.0
+  Lottie:
+    url: https://github.com/airbnb/lottie-ios
+    minVersion: 4.3.3
+    maxVersion: 5.0.0
+  ZIPFoundation:
+    url: https://github.com/weichsel/ZIPFoundation.git
+    from: 0.9.0
+  PDCommonDependencies:
+    path: ../PDCommonDependencies
+  PDClient:
+    path: ../PDClient
+  PDCommonUITestUtils:
+    path: ../PDCommonUITestUtils
+  PDContacts:
+    path: ../PDContacts
+  PDCore:
+    path: ../PDCore
+  PDFileProvider:
+    path: ../PDFileProvider
+  PDLocalization:
+    path: ../PDLocalization
+  PDUIComponents:
+    path: ../PDUIComponents
+  PDUploadVerifier:
+    path: ../PDUploadVerifier
+  PMEventsManager:
+    path: ../PMEventsManager
+  PMSettings:
+    path: ../PMSettings
+  PMSideMenu:
+    path: ../PMSideMenu
+  PDPhotos:
+    path: ../PDPhotos
+include:
+  - path: ./XcodeGen/Spec/scheme_protondrive_ios.yml
+  - path: ./XcodeGen/Spec/scheme_protondrive_ios_external.yml
+  - path: ./XcodeGen/Spec/scheme_protondrive_ios_store.yml
+  - path: ./XcodeGen/Spec/scheme_protondrive_ios_QA.yml
+  - path: ./XcodeGen/Spec/scheme_fileprovider.yml
+  - path: ./XcodeGen/Spec/scheme_fileprovider_ui.yml
+  - path: ./XcodeGen/Spec/target_protondrive.yml
+  - path: ./XcodeGen/Spec/target_unit_tests.yml
+  - path: ./XcodeGen/Spec/target_ui_tests.yml
+  - path: ./XcodeGen/Spec/target_fileprovider.yml
+  - path: ./XcodeGen/Spec/target_fileprovider_ui.yml
+  

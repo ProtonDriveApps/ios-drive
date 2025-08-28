@@ -17,9 +17,12 @@
 
 import CoreData
 
+public typealias CoreDataDevice = Device
+
 @objc(Device)
-public class Device: NSManagedObject {
+public class Device: NSManagedObject, VolumeUnique {
     @NSManaged public var id: String
+    @NSManaged public var volumeID: String
     @NSManaged public var createTime: Date
     @NSManaged public var modifyTime: Date?
     @NSManaged public var lastSyncTime: Date?
@@ -34,11 +37,18 @@ public class Device: NSManagedObject {
         case windows = 1
         case macOS = 2
         case linux = 3
-        case photos = 4
     }
 
     @objc public enum SyncState: Int16 {
         case off = 0
         case on = 1
+    }
+
+    public func decryptedName() throws -> String {
+        guard let root = share.root else {
+            throw self.invalidState("Device name could not be decrypted, because it has no root defined")
+        }
+
+        return try root.decryptName()
     }
 }

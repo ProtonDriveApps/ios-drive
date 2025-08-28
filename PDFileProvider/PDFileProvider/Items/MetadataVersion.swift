@@ -18,7 +18,7 @@
 import FileProvider
 import Foundation
 
-struct MetadataVersion: Codable {
+struct MetadataVersion: Codable, Equatable {
     // For identifying uniqueness between important properties during conflict resolution
     let parentIdentifierHash: Data
     let filenameHash: Data

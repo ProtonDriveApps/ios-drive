@@ -28,7 +28,9 @@ public final class UnleashPollerSession: PollerSession {
     public func perform(_ request: URLRequest, completionHandler: @escaping (Data?, URLResponse?, Error?) -> Void) {
         let endpoint = UnleashEndpoint(request: request)
         var dataTask: URLSessionDataTask?
-        networking.perform(request: endpoint, dataTaskBlock: {
+        networking.perform(request: endpoint,
+                           callCompletionBlockUsing: .asyncExecutor(dispatchQueue: .global(qos: .userInitiated)),
+                           dataTaskBlock: {
             dataTask = $0
         }, completion: { task, result in
             let response = dataTask?.response ?? task?.response

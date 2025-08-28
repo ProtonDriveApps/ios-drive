@@ -37,9 +37,14 @@ public class UISlot {
     // MARK: - GET FROM DB
     
     public func getVolumeId() -> String? {
-        try? self.storage.getVolumeIDs(in: moc).myVolume
+        try? self.storage.getVolumeIDs(in: moc).main
     }
-    
+
+    public func getOwnVolumeIds() -> [String] {
+        let volumeIds = try? storage.getVolumeIDs(in: moc)
+        return [volumeIds?.main, volumeIds?.photo].compactMap { $0 }
+    }
+
     public func getRoots(handler: @escaping (Result<[Share], Error>) -> Void) {
         do {
             let result = try self.storage.fetchShares(moc: self.moc)
@@ -82,8 +87,8 @@ public class UISlot {
         self.storage.fetchNode(id: node, moc: self.moc)
     }
 
-    public func subscribeToTrash(volumeID: String) -> NSFetchedResultsController<Node> {
-        storage.subscriptionToTrash(volumeID: volumeID, moc: moc)
+    public func subscribeToTrash(volumeIDs: [String]) -> NSFetchedResultsController<Node> {
+        storage.subscriptionToTrash(volumeIDs: volumeIDs, moc: moc)
     }
     
     public func subscribeToOfflineAvailable() -> NSFetchedResultsController<Node> {
@@ -94,8 +99,8 @@ public class UISlot {
         storage.subscriptionToStarred(share: shareID, sorting: sorting, moc: moc)
     }
     
-    public func subscribeToShared(volumeID: String, sorting: SortPreference) -> NSFetchedResultsController<Node> {
-        storage.subscriptionToShared(volumeID: volumeID, sorting: sorting, moc: moc)
+    public func subscribeToShared(volumeIDs: [String], sorting: SortPreference) -> NSFetchedResultsController<Node> {
+        storage.subscriptionToShared(volumeIDs: volumeIDs, sorting: sorting, moc: moc)
     }
 
     public func subscribeToPublicLinkShared(sorting: SortPreference) -> NSFetchedResultsController<Node> {

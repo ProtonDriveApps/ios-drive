@@ -20,3 +20,7 @@ import Foundation
 public protocol LinksMetadataDataSource {
     func getLinksMetadata(with parameters: LinksMetadataParameters) async throws -> LinksResponse
 }
+
+public protocol PhotosListingDataSource {
+    func getPhotosList(with parameters: PhotosListRequestParameters) async throws -> PhotosListResponse
+}

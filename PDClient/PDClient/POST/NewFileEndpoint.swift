@@ -70,6 +70,11 @@ public struct NewFileEndpoint: Endpoint {
     public struct Response: Codable {
         var code: Int
         public var file: NewFile
+        
+        public init(code: Int, file: NewFile) {
+            self.code = code
+            self.file = file
+        }
     }
     
     public private(set) var request: URLRequest

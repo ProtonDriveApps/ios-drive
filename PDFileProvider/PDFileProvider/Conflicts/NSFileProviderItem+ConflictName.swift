@@ -17,6 +17,7 @@
 
 import Foundation
 import FileProvider
+import PDCore
 
 enum ItemConflictType {
     case nameClash
@@ -46,7 +47,7 @@ extension NSFileProviderItem {
             return conflictName
         } else {
             let nameWithoutExtension = filename.nameExcludingExtension
-            let fileExtension = filename.fileExtension()
+            let fileExtension = filename.fileExtension
             let conflictName = "\(nameWithoutExtension) (# \(type.name) \(dateString) \(String.randomAlphaNumeric(length: 7)) #).\(fileExtension)"
             return conflictName
         }

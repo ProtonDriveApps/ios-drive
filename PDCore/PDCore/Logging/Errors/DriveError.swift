@@ -20,19 +20,22 @@ import Foundation
 public struct DriveError: LocalizedError, CustomDebugStringConvertible {
     public let message: String
     public let file: String
-    public let line: String
+    public let function: String
+    public let line: Int
 
-    public init(_ message: String, file: String = #filePath, line: Int = #line) {
+    public init(_ message: String, file: String = #filePath, function: String = #function, line: Int = #line) {
         self.message = message
-        self.file = (file as NSString).lastPathComponent
-        self.line = String(line)
+        self.file = file
+        self.function = function
+        self.line = line
     }
 
-    public init(_ error: Error, file: String = #filePath, line: Int = #line) {
+    public init(_ error: Error, file: String = #filePath, function: String = #function, line: Int = #line) {
         self.init(error.localizedDescription, file: file, line: line)
     }
 
-    public init(withDomainAndCode error: Error, message: String? = nil, file: String = #filePath, line: Int = #line) {
+    public init(withDomainAndCode error: Error, message: String? = nil, file: String = #filePath, function: String = #function, line: Int = #line) {
+        Log.error(error: error, domain: .restricted, sendToSentryIfPossible: false, file: file, function: function, line: line)
         let error = error as NSError
         let message = "\(error.domain) \(error.code), message: \(message ?? "empty")"
         self.init(message, file: file, line: line)

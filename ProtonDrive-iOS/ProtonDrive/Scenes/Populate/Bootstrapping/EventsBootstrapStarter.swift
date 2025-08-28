@@ -50,7 +50,7 @@ final class EventsBootstrapStarter: AppBootstrapper {
             let volumeId = try await mainVolumeIdDataSource.getMainVolumeId()
             try await migrateVolumelessEvents(events: events, volumeId: volumeId)
         } catch {
-            Log.error("Events migration to volume based failed: \(error.localizedDescription)", domain: .events)
+            Log.error("Events migration to volume based failed", error: error, domain: .events)
             throw error
         }
     }

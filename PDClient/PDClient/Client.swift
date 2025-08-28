@@ -17,6 +17,7 @@
 
 import Foundation
 import ProtonCoreUtilities
+import ProtonCoreServices
 
 public protocol CredentialProvider: AnyObject {
     /// Obtaining credential optionally
@@ -43,7 +44,15 @@ public class Client {
     }
 
     public func credential() throws -> ClientCredential {
-        return try credentialProvider.getCredential()
+        do {
+            let credential = try credentialProvider.getCredential()
+            return credential
+        } catch {
+            #if os(iOS)
+            networking.authDelegate?.onAuthenticatedSessionInvalidated(sessionUID: "")
+            #endif
+            throw error
+        }
     }
 
     func request<E: Endpoint, Response>(_ endpoint: E, completionExecutor: CompletionBlockExecutor = .asyncMainExecutor, completion: @escaping (Result<Response, Error>) -> Void) where Response == E.Response {

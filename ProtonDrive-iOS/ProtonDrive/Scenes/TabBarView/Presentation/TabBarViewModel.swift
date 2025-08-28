@@ -18,6 +18,7 @@
 import Combine
 import Foundation
 import PDCore
+import PDCoreIOS
 
 protocol TabBarViewModelProtocol {
     var defaultHomeTab: Int { get }
@@ -29,9 +30,11 @@ final class TabBarViewModel: TabBarViewModelProtocol {
 
     private let coordinator: TabBarCoordinatorProtocol
     private var cancellables = Set<AnyCancellable>()
+    private let scrollToTopSubject: PassthroughSubject<TabBarItem, Never>
     private let localSettings: LocalSettings
     private let volumeIdsController: SharedVolumeIdsController
     private let featureFlagsController: FeatureFlagsControllerProtocol
+    private let ratingBoosterFlowController: RatingBoosterFlowControllerProtocol
     private var currentTabItem: TabBarItem?
     private var hasSharing: Bool
 
@@ -39,16 +42,20 @@ final class TabBarViewModel: TabBarViewModelProtocol {
 
     init(
         isTabBarHiddenPublisher: AnyPublisher<Bool, Never>,
+        scrollToTopSubject: PassthroughSubject<TabBarItem, Never>,
         coordinator: TabBarCoordinatorProtocol,
         localSettings: LocalSettings,
         volumeIdsController: SharedVolumeIdsController,
-        featureFlagsController: FeatureFlagsControllerProtocol
+        featureFlagsController: FeatureFlagsControllerProtocol,
+        ratingBoosterFlowController: RatingBoosterFlowControllerProtocol
     ) {
         self.isTabBarHidden = isTabBarHiddenPublisher
+        self.scrollToTopSubject = scrollToTopSubject
         self.coordinator = coordinator
         self.localSettings = localSettings
         self.volumeIdsController = volumeIdsController
         self.featureFlagsController = featureFlagsController
+        self.ratingBoosterFlowController = ratingBoosterFlowController
         currentTabItem = TabBarItem(rawValue: localSettings.defaultHomeTabTag)
         hasSharing = featureFlagsController.hasSharing
         subscribeToUpdates()
@@ -74,10 +81,10 @@ final class TabBarViewModel: TabBarViewModelProtocol {
     }
 
     func selectTab(tag: Int) {
+        guard let item = TabBarItem(rawValue: tag) else { return }
+        sendScrollToTopIfNeeded(item: item)
+        defer { currentTabItem = item }
         guard featureFlagsController.hasSharing else {
-            return
-        }
-        guard let item = TabBarItem(rawValue: tag) else {
             return
         }
 
@@ -85,6 +92,21 @@ final class TabBarViewModel: TabBarViewModelProtocol {
             // Moving away from sharedWithMe means no shared volume should be marked as active
             volumeIdsController.resignActiveSharedVolume()
         }
-        currentTabItem = item
+        ratingBoosterFlowController.navigationDidHappen()
+    }
+
+    private func sendScrollToTopIfNeeded(item: TabBarItem) {
+        guard currentTabItem == item else { return }
+        switch item.tag {
+        case TabBarItem.files.tag:
+            scrollToTopSubject.send(.files)
+        case TabBarItem.photos.tag:
+            scrollToTopSubject.send(.photos)
+        case TabBarItem.shared.tag:
+            scrollToTopSubject.send(.shared)
+        case TabBarItem.sharedWithMe.tag:
+            scrollToTopSubject.send(.sharedWithMe)
+        default: break
+        }
     }
 }

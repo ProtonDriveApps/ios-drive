@@ -17,7 +17,11 @@
 
 import Combine
 
+struct PhotosUploadingCount: Equatable {
+    let count: Int
+    let isInitialCount: Bool
+}
+
 protocol PhotoUploadsRepository {
-    var count: AnyPublisher<Int, Never> { get }
-    func getInitialCount() -> Int
+    var count: AnyPublisher<PhotosUploadingCount, Never> { get }
 }

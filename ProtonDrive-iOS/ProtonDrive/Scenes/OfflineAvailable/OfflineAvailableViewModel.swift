@@ -18,6 +18,7 @@
 import Foundation
 import Combine
 import PDCore
+import PDCoreIOS
 import PDUIComponents
 import PDLocalization
 
@@ -34,7 +35,9 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
     var childrenCancellable: AnyCancellable?
     var lockedStateCancellable: AnyCancellable?
     var lockedStateBannerVisibility: LockedStateAlertVisibility = .hidden
+    let scrollToTopPublisher: AnyPublisher<TabBarItem, Never>? = nil
     var isSharedWithMe: Bool = false
+    var isRoot: Bool = true
     let hasPlusFunctionality = false
     @Published var transientChildren: [NodeWrapper] = []
     @Published var permanentChildren: [NodeWrapper] = [] {
@@ -63,6 +66,7 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
 
     let supportsLayoutSwitch = true
     let featureFlagsController: FeatureFlagsControllerProtocol
+    @Published var topBanner: String?
 
     func refreshControlAction() {
         model.loadFromCache()
@@ -81,32 +85,56 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
     // MARK: HasMultipleSelection
     lazy var selection = MultipleSelectionModel(selectable: Set<NodeIdentifier>())
     @Published var listState: ListState = .active
-    
+    private let validator: iOSSupportedSharesValidator
+    private let warningViewModel: PhotosMigrationWarningViewModelProtocol
+
     // MARK: others
-    init(model: OfflineAvailableModel, featureFlagsController: FeatureFlagsControllerProtocol) {
+    init(model: OfflineAvailableModel, featureFlagsController: FeatureFlagsControllerProtocol, warningViewModel: PhotosMigrationWarningViewModelProtocol) {
         defer { self.model.loadFromCache() }
         self.model = model
         self.sorting = model.sorting
         self.layout = Layout(preference: model.layout)
         self.featureFlagsController = featureFlagsController
+        self.validator = iOSSupportedSharesValidator(storage: model.tower.storage)
+        self.warningViewModel = warningViewModel
 
         self.subscribeToChildren()
         self.subscribeToChildrenDownloading()
         self.selection.unselectOnEmpty(for: self)
         self.subscribeToLayoutChanges()
-        subscribeToErrors()
+        subscribeToUpdates()
     }
 
-    private func subscribeToErrors() {
+    private func subscribeToUpdates() {
         model.errorSubject
             .sink { [weak self] error in
                 self?.genericErrors.send(error)
             }
             .store(in: &cancellables)
+
+        warningViewModel.warning
+            .assign(to: &$topBanner)
     }
 
     func actionBarItems() -> [ActionBarButtonViewModel] {
         [.trashMultiple, .offlineAvailableMultiple]
+    }
+
+    func subscribeToChildren() {
+        self.childrenCancellable?.cancel()
+        self.childrenCancellable = self.model.children()
+            .filter { [weak self] _, _ in
+                // reordering is heavy operation, so we do not want to perform it on all the folders at once when the app-wide setting is changed
+                // instead we will call refreshOnAppear() when the view is back visible
+                self?.isVisible == true
+            }
+            .removeDuplicates(by: { previous, current in
+                return previous.0 == current.0 && previous.1 == current.1
+            })
+            .sink { [weak self] activeSorted, _ in
+                guard let self = self, self.isVisible else { return }
+                self.permanentChildren = activeSorted.filter { self.validator.isValid($0.shareID) }.map(NodeWrapper.init)
+            }
     }
 }
 

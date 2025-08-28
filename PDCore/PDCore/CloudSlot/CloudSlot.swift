@@ -108,7 +108,7 @@ public class CloudSlot: CloudSlotProtocol {
     private let client: Client
     private let sessionVault: SessionVault
 
-    private var moc: NSManagedObjectContext {
+    public var moc: NSManagedObjectContext {
         self.storage.backgroundContext
     }
 
@@ -151,7 +151,7 @@ public protocol CloudSlotProtocol: AnyObject,
     CloudFileCleaner,
     FolderCreatorProtocol,
     NodeRenamerProtocol,
-    NodeMoverProtocol,
+    CloudNodeMoverProtocol,
     CloudEventProvider,
     ThumbnailCloudClient,
     CloudAsyncVolumeCreatorProtocol,
@@ -164,7 +164,9 @@ public protocol CloudSlotProtocol: AnyObject,
     CloudUpdaterProtocol,
     CloudTrasherProtocol,
     ThumbnailsUpdateRepository
-{ }
+{
+    var moc: NSManagedObjectContext { get }
+}
 
 public protocol CloudShareScannerProtocol {
     func scanShare(shareID: String, handler: @escaping (Result<Share, Error>) -> Void)
@@ -195,8 +197,9 @@ public protocol CloudNodeScannerProtocol {
 }
 
 public protocol CloudRevisionScannerProtocol {
+    /// Legacy function, can be removed after 2025 Feb, once macOS migrated to DDK
     func scanRevision(_ revisionID: RevisionIdentifier, handler: @escaping (Result<Revision, Error>) -> Void)
-    
+    func scanRevision(_ revisionID: RevisionIdentifier) async throws -> Revision
 }
 
 public protocol CloudFileCleaner {
@@ -212,7 +215,7 @@ public protocol NodeRenamerProtocol {
     func rename(_ node: Node, to newName: String, mimeType: String?) async throws
 }
 
-public protocol NodeMoverProtocol {
+public protocol CloudNodeMoverProtocol {
     func move(node: Node, to newParent: Folder, name: String) async throws
 }
 
@@ -312,6 +315,8 @@ extension CloudSlot {
         guard let volume = volumes.first(where: { $0.state == .active }) else {
             return nil
         }
+        
+        update(volumes, in: moc)
 
         let mainShare = try await scanRootShare(volume.share.shareID)
         if isPhotosEnabled {
@@ -478,6 +483,19 @@ extension CloudSlot {
             }
         }
     }
+
+    public func scanRevision(_ revisionID: RevisionIdentifier) async throws -> Revision {
+        let revisionMeta = try await client.getRevision(
+            revisionID: revisionID.revision,
+            fileID: revisionID.file,
+            shareID: revisionID.share
+        )
+        return try await moc.perform {
+            let obj = self.update(revisionMeta, inFileID: revisionID.file, of: revisionID.share, in: self.moc)
+            try self.moc.saveOrRollback()
+            return obj
+        }
+    }
 }
 
 // MARK: - Delete Uploading files
@@ -571,7 +589,7 @@ extension CloudSlot {
                 self.client.postVolume(parameters: parameters) {
                     switch $0 {
                     case .failure(let error):
-                        Log.error(DriveError(error), domain: .networking)
+                        Log.error("CloudSlot postVolume failed", error: DriveError(error), domain: .networking)
                         handler(.failure(error))
 
                     case .success(let newVolume):
@@ -589,7 +607,7 @@ extension CloudSlot {
                 }
 
             } catch {
-                Log.error(DriveError(error), domain: .encryption)
+                Log.error("CloudSlot createVolume failed", error: DriveError(error), domain: .encryption)
                 handler(.failure(error))
             }
         }
@@ -699,7 +717,13 @@ extension CloudSlot {
         // Client platform and version
         var photoParameter: UpdateRevisionParameters.Photo?
         if let photo = revision.photo {
-            photoParameter = UpdateRevisionParameters.Photo(captureTime: photo.captureTime, mainPhotoLinkID: photo.mainPhotoLinkID, exif: nil, contentHash: photo.contentHash) // We don't upload exif until the format is aligned.
+            photoParameter = UpdateRevisionParameters.Photo(
+                captureTime: photo.captureTime,
+                mainPhotoLinkID: photo.mainPhotoLinkID,
+                exif: nil,
+                contentHash: photo.contentHash,
+                tags: photo.tags
+            ) // We don't upload exif until the format is aligned.
         }
         let parameters = UpdateRevisionParameters(
             manifestSignature: revision.manifestSignature,
@@ -763,6 +787,7 @@ public protocol CloudUpdaterProtocol {
 public protocol CloudTrasherProtocol {
     func trash(shareID: Client.ShareID, parentID: Client.LinkID, linkIDs: [Client.LinkID]) async throws
     func trash(_ nodes: [TrashingNodeIdentifier]) async throws
+    func trashVolume(nodeIDs: [AnyVolumeIdentifier]) async throws
     func delete(shareID: Client.ShareID, linkIDs: [Client.LinkID]) async throws
     func emptyTrash(shareID: Client.ShareID) async throws
     func restore(shareID: Client.ShareID, linkIDs: [Client.LinkID]) async throws -> [PartialFailure]
@@ -815,7 +840,7 @@ extension CloudSlot {
 
                 share?.setValue(node, forKey: #keyPath(ShareObj.root))
                 share?.setValue(volume, forKey: #keyPath(ShareObj.volume))
-                share?.fulfill(from: shareMeta)
+                share?.fulfillShare(with: shareMeta)
 
                 node?.directShares.insert(share!)
                 if shareMeta.flags.contains(.main) {
@@ -831,7 +856,7 @@ extension CloudSlot {
 
     // Not part of the interface created just for tests, delete if possible
     @discardableResult
-    func update(_ volumes: [VolumeMeta], in moc: NSManagedObjectContext) -> [VolumeObj] {
+    public func update(_ volumes: [VolumeMeta], in moc: NSManagedObjectContext) -> [VolumeObj] {
         var result: [VolumeObj] = []
 
         // switch to MOC's thread
@@ -845,7 +870,7 @@ extension CloudSlot {
             // set up share and relationships
             result = volumes.compactMap { volumeMeta in
                 let volume = uniqueVolumes.first { $0.id == volumeMeta.volumeID }
-                volume?.fulfill(from: volumeMeta)
+                volume?.fulfillVolume(with: volumeMeta)
                 return volume
             }
         }
@@ -855,9 +880,9 @@ extension CloudSlot {
 
     // Not part of the interface created just for tests, delete if possible
     @discardableResult
-    func update(_ shares: [ShareMeta], in moc: NSManagedObjectContext) -> [ShareObj] {
+    public func update(_ shares: [ShareMeta], in moc: NSManagedObjectContext) -> [ShareObj] {
         let result: [ShareObj] = self.update(shares.map(ShareShortMeta.init), in: moc)
-        zip(result, shares).forEach { $0.fulfill(from: $1) }
+        zip(result, shares).forEach { $0.fulfillShare(with: $1) }
         return result
     }
 
@@ -905,6 +930,10 @@ extension CloudSlot {
 
                 case .folder:
                     affectedIds.folders.insert(link.linkID)
+
+                case .album:
+                    Log.error("Trying to update Album by old update function", error: nil, domain: .metadata)
+                    assertionFailure("Shouldn't be used by iOS and Albums feature isn't supported on macOS")
                 }
             }
 
@@ -930,7 +959,7 @@ extension CloudSlot {
                     photo.addToRevisions(localRevision)
                     photo.photoRevision = localRevision
                     photo.activeRevision = localRevision
-                    localRevision.fulfill(link: link, revision: revisionResponse)
+                    localRevision.fulfillRevision(link: link, revision: revisionResponse)
 
                     if revisionResponse.hasThumbnail, let thumbnails = revisionResponse.thumbnails {
                         addThumbnails(thumbnails, revision: localRevision, in: moc)
@@ -945,7 +974,7 @@ extension CloudSlot {
                 {
                     fileObj.addToRevisions(localRevision)
                     fileObj.activeRevision = localRevision
-                    localRevision.fulfill(from: revisionResponse)
+                    localRevision.fulfillRevision(with: revisionResponse)
 
                     if revisionResponse.hasThumbnail, let thumbnails = revisionResponse.thumbnails {
                         addThumbnails(thumbnails, revision: localRevision, in: moc)
@@ -953,9 +982,17 @@ extension CloudSlot {
                 }
                 nodeObj?.setValue(parentLinkObj, forKey: #keyPath(NodeObj.parentLink))
                 nodeObj?.setValue(shareID, forKey: #keyPath(NodeObj.shareID))
-                (nodeObj as? FileObj)?.fulfill(from: link)
-                (nodeObj as? FolderObj)?.fulfill(from: link)
-                (nodeObj as? Photo)?.fulfillPhoto(from: link)
+
+                #if os(macOS)
+                // Important for when enumerating items of a kept downloaded parent
+                if let parentLinkObj, parentLinkObj.isAvailableOffline {
+                    nodeObj?.setValue(true, forKey: #keyPath(NodeObj.isInheritingOfflineAvailable))
+                }
+                #endif
+
+                (nodeObj as? FileObj)?.fulfillFile(with: link)
+                (nodeObj as? FolderObj)?.fulfillFolder(with: link)
+                (nodeObj as? Photo)?.fulfillPhoto(with: link)
 
                 directShares.forEach { share in
                     share.setValue(nodeObj, forKey: #keyPath(ShareObj.root))
@@ -1007,31 +1044,6 @@ extension CloudSlot {
     }
 
     @discardableResult
-    public func update(_ folder: LinkMeta, of shareID: ShareMeta.ShareID, in moc: NSManagedObjectContext) -> FolderObj {
-        var result: Folder!
-
-        // switch to MOC's thread
-        moc.performAndWait {
-            // set up share and relationships
-            let folderObj: FolderObj = self.storage.unique(with: Set([folder.linkID]), in: moc).first!
-
-            var parentLinkObj: FolderObj?
-            if let parentLinkID = folder.parentLinkID {
-                parentLinkObj = self.storage.unique(with: Set([parentLinkID]), in: moc).first!
-                parentLinkObj?.setValue(shareID, forKey: #keyPath(NodeObj.shareID))
-            }
-
-            folderObj.setValue(parentLinkObj, forKey: #keyPath(NodeObj.parentLink))
-            folderObj.setValue(shareID, forKey: #keyPath(NodeObj.shareID))
-            folderObj.fulfill(from: folder)
-
-            result = folderObj
-        }
-
-        return result
-    }
-
-    @discardableResult
     private func update(_ children: [LinkMeta],
                         under folderID: LinkMeta.LinkID,
                         of shareID: ShareMeta.ShareID,
@@ -1069,7 +1081,7 @@ extension CloudSlot {
         moc.performAndWait {
             // set up share and relationships
             let revisionObj: RevisionObj = self.storage.unique(with: Set([revision.ID]), allowSubclasses: true, in: moc).first!
-            revisionObj.fulfill(from: revision)
+            revisionObj.fulfillRevision(with: revision)
 
             let fileObj: File = self.storage.unique(with: Set([fileID]), allowSubclasses: true, in: moc).first!
             fileObj.setValue(shareID, forKey: #keyPath(NodeObj.shareID))
@@ -1081,7 +1093,7 @@ extension CloudSlot {
                                                          in: moc)
             newBlocks.forEach { block in
                 let meta = revision.blocks.first { $0.URL.absoluteString == block.downloadUrl }!
-                block.fulfill(from: meta)
+                block.fulfillBlock(with: meta)
                 block.setValue(revisionObj, forKey: #keyPath(BlockObj.revision))
             }
 
@@ -1120,22 +1132,13 @@ extension CloudSlot {
     private func update(_ newFileDetails: NewFile, file: FileObj) -> FileObj {
         let moc = file.managedObjectContext!
         moc.performAndWait {
-            file.fulfill(from: newFileDetails)
+            file.fulfillFile(with: newFileDetails)
 
             let revision: RevisionObj = self.storage.unique(with: Set([newFileDetails.revisionID]), in: moc).first!
             file.activeRevision = revision
             file.addToRevisions(revision)
         }
         return file
-    }
-
-    @discardableResult
-    private func update(_ newFolderDetails: NewFolder, folder: FolderObj) -> FolderObj {
-        let moc = folder.managedObjectContext!
-        moc.performAndWait {
-            folder.fulfill(from: newFolderDetails)
-        }
-        return folder
     }
 
     public func update(links: [PDClient.Link], shareId: String, managedObjectContext: NSManagedObjectContext) throws {
@@ -1162,6 +1165,10 @@ extension CloudSlot {
         try await client.trash(shareID: shareID, parentID: parentID, linkIDs: linkIDs)
     }
 
+    public func trashVolume(nodeIDs: [AnyVolumeIdentifier]) async throws {
+        fatalError("Not to be used on legacy CloudSlot")
+    }
+
     public func delete(shareID: Client.ShareID, linkIDs: [Client.LinkID]) async throws {
         try await client.deletePermanently(shareID: shareID, linkIDs: linkIDs)
     }
@@ -1176,6 +1183,24 @@ extension CloudSlot {
 
     public func removeMember(shareID: String, memberID: String) async throws {
         fatalError("Not defined in this context")
+    }
+}
+
+public struct DeviceIdentifier: VolumeIdentifiable, Equatable {
+    public let id: String
+    public let nodeID: String
+    public let shareID: String
+    public let volumeID: String
+
+    public init(id: String, nodeID: String, shareID: String, volumeID: String) {
+        self.id = id
+        self.nodeID = nodeID
+        self.shareID = shareID
+        self.volumeID = volumeID
+    }
+
+    public var nodeIdentifier: NodeIdentifier {
+        NodeIdentifier(nodeID, shareID, volumeID)
     }
 }
 
@@ -1206,7 +1231,17 @@ public class iOSSupportedSharesValidator: SupportedSharesValidator {
     }
 
     public func isValid(_ id: String) -> Bool {
-        supportedShares.contains(id)
+        if hasComputers {
+            return true
+        } else {
+            return supportedShares.contains(id)
+        }
+    }
+
+    private var hasComputers: Bool {
+        // We cannot use FeatureFlagsController directly anymore because the code was moved to PDCoreiOS,
+        // This code should exist for a limited amount of time, until, computers become fully part of iOS
+        LocalSettings.shared.driveiOSComputers && !LocalSettings.shared.driveiOSComputersDisabled
     }
 }
 

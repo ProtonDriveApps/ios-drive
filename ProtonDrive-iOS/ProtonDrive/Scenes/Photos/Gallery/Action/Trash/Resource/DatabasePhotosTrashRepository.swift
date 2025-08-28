@@ -24,10 +24,10 @@ final class DatabasePhotosTrashRepository: LocalPhotosTrashRepository {
 
     init(storageManager: StorageManager) {
         self.storageManager = storageManager
-        managedObjectContext = storageManager.newBackgroundContext()
+        managedObjectContext = storageManager.photosSecondaryBackgroundContext
     }
 
-    func trash(with identifiers: [NodeIdentifier]) async throws {
+    func trash(with identifiers: [PhotoId]) async throws {
         try managedObjectContext.performAndWait {
             let photos = storageManager.fetchPhotos(identifiers: identifiers, moc: managedObjectContext)
             photos.forEach { $0.state = .deleted }

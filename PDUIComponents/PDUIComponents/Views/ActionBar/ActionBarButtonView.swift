@@ -19,11 +19,25 @@ import SwiftUI
 import ProtonCoreUIFoundations
 
 #if os(iOS)
-struct ActionBarButtonView: View {
+struct ActionBarButtonView<ContextMenu: View>: View {
     var vm: ActionBarButtonViewModel
     @Binding var selection: ActionBarButtonViewModel?
-    
+    var contextMenu: ((ActionBarButtonViewModel) -> ContextMenu)?
+
     var body: some View {
+        if vm.isContextMenu {
+            Menu {
+                contextMenu?(vm)
+            } label: {
+                actionLabel
+            }
+            .accessibility(identifier: self.vm.accessibilityIdentifier)
+        } else {
+            actionItemView
+        }
+    }
+
+    private var actionItemView: some View {
         Button {
             withAnimation {
                 self.selection = self.vm
@@ -32,29 +46,33 @@ struct ActionBarButtonView: View {
                 #endif
             }
         } label: {
-            HStack(alignment: .center) {
-                if let icon = self.vm.icon {
-                    image(for: icon)
-                }
-                
-                if self.vm.title != nil {
-                    Text(self.vm.title!)
-                        .font(vm.isBold ? .body.bold() : .body)
-                        .foregroundColor(ColorProvider.BrandNorm)
-                        .frame(minHeight: ActionBarSize.height, alignment: .top)
-                }
-            }
-            .padding(.horizontal, self.vm.title != nil ? 12 : 8)
+            actionLabel
         }
         .accessibility(identifier: self.vm.accessibilityIdentifier)
     }
-    
+
+    private var actionLabel: some View {
+        HStack(alignment: .center) {
+            if let icon = self.vm.icon {
+                image(for: icon)
+            }
+
+            if self.vm.title != nil, vm.showTitle {
+                Text(self.vm.title!)
+                    .font(vm.isBold ? .body.bold() : .body)
+                    .foregroundColor(ColorProvider.BrandNorm)
+                    .frame(minHeight: ActionBarSize.height, alignment: .top)
+            }
+        }
+        .padding(.horizontal, self.vm.title != nil ? 12 : 8)
+    }
+
     var actionBarIndicator: some View {
         Circle()
             .fill(ColorProvider.FloatyPressed)
             .blendMode(.lighten) // chooses the lighest color for resulting pixel, so will let the white icon be visible
     }
-    
+
     private func image(for icon: Image) -> some View {
         icon
             .resizable()

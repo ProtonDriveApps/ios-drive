@@ -17,12 +17,14 @@
 
 import UIKit
 import PDCore
+import PDCoreIOS
 import Combine
 import PMSideMenu
 import PDUIComponents
 import ProtonCoreUIFoundations
 import ProtonCoreAccountRecovery
 import ProtonCoreServices
+import PDPhotos
 
 final class LaunchViewController: UIViewController {
     private var cancellables = Set<AnyCancellable>()
@@ -32,6 +34,7 @@ final class LaunchViewController: UIViewController {
     var onViewDidLoad: (() -> Void)?
     var onPresentAlert: ((FailingAlert) -> Void)?
     var onPresentAccountRecovery: ((APIService) -> Void)?
+    private var swiftUIActionBarIsVisible: Bool = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -72,6 +75,13 @@ final class LaunchViewController: UIViewController {
             }
             .store(in: &cancellables)
 
+        NotificationCenter.default.publisher(for: .actionBarVisibilityIsChanged)
+            .sink { [weak self] notification in
+                let isVisible = notification.userInfo?["isVisible"] as? Bool ?? false
+                self?.swiftUIActionBarIsVisible = isVisible
+            }
+            .store(in: &cancellables)
+
         NotificationCenter.default.post(.didDismissAlert)
     }
     
@@ -80,13 +90,37 @@ final class LaunchViewController: UIViewController {
     }
 
     func presentBanner(_ banner: BannerModel) {
-        // Longer duration for UI test to prevent test failed due to banner dismiss too early 
+        // Longer duration for UI test to prevent test failed due to banner dismiss too early
         let duration: TimeInterval = Constants.isUITest ? 10 : 4
         let banner = PMBanner(message: banner.message, style: banner.style, dismissDuration: duration)
         banner.accessibilityIdentifier = "Banner.bannerShown"
-        banner.show(at: .bottom, on: UIApplication.shared.topViewController()!)
+        let topView = UIApplication.shared.topViewController()!.view!
+        let toolbarHeight = toolbarHeight(view: topView)
+        banner.show(
+            at: .bottomCustom(UIEdgeInsets(top: CGFloat.infinity, left: 8, bottom: toolbarHeight, right: 8)),
+            on: UIApplication.shared.topViewController()!
+        )
     }
 
+    private func toolbarHeight(view: UIView) -> CGFloat {
+        let padding: CGFloat = 8
+
+        if swiftUIActionBarIsVisible {
+            return 48 + padding
+        }
+
+        var subViews: [UIView] = [view]
+        while !subViews.isEmpty {
+            let currentView = subViews.removeFirst()
+            subViews.append(contentsOf: currentView.subviews)
+            if currentView is UIToolbar, !currentView.isHidden {
+                return currentView.frame.height + padding
+            } else if currentView is UITabBar {
+                return 48 + padding
+            }
+        }
+        return padding
+    }
 }
 
 extension LaunchViewController: ContentHostingControllerProtocol {

@@ -18,6 +18,7 @@
 import Foundation
 import OSLog
 
+/// Writes logs to a file.
 public enum FileLog: String {
     case iOSApp
     case iOSFileProvider
@@ -39,12 +40,8 @@ public enum FileLog: String {
 }
 
 public final class FileLogger: FileLoggerProtocol {
-
     /// After log file size reaches 1MB in size it is moved to archive and new log file is created
     public let maxFileSize = 1024 * 1024
-
-    /// Maximum number of log files that were rotated. This number doesn't include the main log file where app is writing it's logs.
-    public let maxArchivedFilesCount = 1
 
     private var fileHandle: FileHandle?
 
@@ -61,12 +58,15 @@ public final class FileLogger: FileLoggerProtocol {
     
     private let compressedLogsDisabled: () -> Bool
 
-    private var fileURL: URL? {
-        guard let logsDirectory = try? PDFileManager.getLogsDirectory() else {
-            return nil
-        }
-        return logsDirectory.appendingPathComponent(fileLogName, isDirectory: false)
+    private var fileURL: URL {
+        return PDFileManager.logsDirectory.appendingPathComponent(fileLogName, isDirectory: false)
     }
+
+    /// Subdirectory to place the logs in
+    private let subdirectory: String?
+
+    /// Write all the logs for a single run of the application to a separate file.
+    private let oneFilePerRun: Bool
 
     // TODO: https://jira.protontech.ch/browse/DRVIOS-2126
     private var fileLogName: String {
@@ -76,7 +76,19 @@ public final class FileLogger: FileLoggerProtocol {
         } else {
             name += Platform.appRunningOniOS ? "iOS" : "Mac"
         }
-        return name + ".log"
+
+        if oneFilePerRun {
+            if let clientVersion = Constants.clientVersion {
+                name += "_v\(clientVersion)"
+            }
+            name += "_" + ProcessInfo.processInfo.processIdentifier.description
+        }
+
+        if let subdirectory, !subdirectory.isEmpty {
+            return subdirectory + "/" + name + ".log"
+        } else {
+            return name + ".log"
+        }
     }
     
     private let tempFileDateFormatter: DateFormatter = {
@@ -85,8 +97,10 @@ public final class FileLogger: FileLoggerProtocol {
         return dateFormatter
     }()
 
-    public init(process: FileLog, compressedLogsDisabled: @escaping () -> Bool) {
+    public init(process: FileLog, subdirectory: String? = nil, oneFilePerRun: Bool, compressedLogsDisabled: @escaping () -> Bool) {
         self.compressedLogsDisabled = compressedLogsDisabled
+        self.subdirectory = subdirectory ?? ""
+        self.oneFilePerRun = oneFilePerRun
     }
 
     deinit {
@@ -94,18 +108,16 @@ public final class FileLogger: FileLoggerProtocol {
     }
 
     // the file logger never sends to sentry, regardless of the parameter value
-    public func log(_ level: LogLevel, message: String, system: LogSystem, domain: LogDomain, sendToSentryIfPossible _: Bool) {
+    // swiftlint:disable:next function_parameter_count
+    public func log(_ level: LogLevel, message: String, system: LogSystem, domain: LogDomain, context: LogContext?, sendToSentryIfPossible _: Bool, file: String, function: String, line: Int) {
         self.queue.async { [weak self] in
-            let dateTime = ISO8601DateFormatter.fileLogFormatter.string(Date())!
-            var text = "\(dateTime)"
-            text += " | \(ProcessInfo.processInfo.processIdentifier)"
-            if let clientVersion = Constants.clientVersion {
-                text += " | v\(clientVersion) "
-            }
-            text += "| \(system.name) | \(domain.name.uppercased()) | \(level.description) | \(message)"
-
             let lineSeparator = "\n"
-            if let data = (text + lineSeparator).data(using: .utf8) {
+
+            var message = message
+            if let contextString = context?.debugDescription, !contextString.isEmpty {
+                message += "; \(contextString)"
+            }
+            if let data = ("\(message)\(lineSeparator)").data(using: .utf8) {
                 do {
                     guard let self = self else { return }
                     try self.getFileHandleAtTheEndOfFile()?.write(contentsOf: data)
@@ -118,24 +130,17 @@ public final class FileLogger: FileLoggerProtocol {
         }
     }
 
-    // the file logger never sends to sentry, regardless of the parameter value
-    public func log(_ error: NSError, system: LogSystem, domain: LogDomain, sendToSentryIfPossible _: Bool) {
-        let message = error.localizedDescription
-        log(.error, message: message, system: system, domain: domain, sendToSentryIfPossible: false)
-    }
-
     public func openFile() throws {
         try? closeFile()
-        guard let logsDirectory = try? PDFileManager.getLogsDirectory(), let fileURL = self.fileURL else {
-            return
-        }
 
-        if let recentTempFile = try? tempFiles().last {
+        if !oneFilePerRun, let recentTempFile = try? tempFiles().last {
             fileHandle = try FileHandle(forWritingTo: recentTempFile)
         } else {
             let tempFileURL = fileURL.deletingPathExtension().appendingPathExtension(tempFileDateFormatter.string(from: Date()) + ".log")
 
-            try fileManager.createDirectory(at: logsDirectory, withIntermediateDirectories: true, attributes: nil)
+            let logFileDirectory = fileURL.deletingLastPathComponent()
+
+            try fileManager.createDirectory(at: logFileDirectory, withIntermediateDirectories: true, attributes: nil)
 
             if !fileManager.fileExists(atPath: tempFileURL.path) {
                 fileManager.createFile(atPath: tempFileURL.path, contents: nil, attributes: nil)
@@ -157,12 +162,8 @@ public final class FileLogger: FileLoggerProtocol {
     }
 
     private func tempFiles() throws -> [URL] {
-        guard let fileURL = self.fileURL else {
-            return []
-        }
-        let logsDirectory = try PDFileManager.getLogsDirectory()
         let filenameWithoutExtension = fileURL.deletingPathExtension().pathComponents.last ?? "ProtonDrive"
-        let tempFiles = try fileManager.contentsOfDirectory(at: logsDirectory, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
+        let tempFiles = try filesInLogDirectory()
             .filter { $0.pathComponents.last?.hasMatches(for: "\(filenameWithoutExtension).\\d{15}.log") ?? false }
         return tempFiles.sorted(by: fileManager.fileCreationDateSort)
     }
@@ -180,6 +181,11 @@ public final class FileLogger: FileLoggerProtocol {
     }
 
     public func rotateLogFileIfNeeded() throws {
+        if oneFilePerRun {
+            // Don't rotate individual files.
+            return
+        }
+
         guard currentSize > maxFileSize else {
             return
         }
@@ -190,11 +196,9 @@ public final class FileLogger: FileLoggerProtocol {
     }
 
     private func moveToNextFile() throws {
-        guard let fileURL = self.fileURL else { return }
-        let logsDirectory = try PDFileManager.getLogsDirectory()
         let filenameWithoutExtension = fileURL.deletingPathExtension().pathComponents.last ?? "ProtonDrive"
 
-        let formattedFiles = try fileManager.contentsOfDirectory(at: logsDirectory, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
+        let formattedFiles = try filesInLogDirectory()
             .filter { $0.pathComponents.last?.hasMatches(for: "\(filenameWithoutExtension).\\d{15}.log") ?? false }
 
         guard let currentFileURL = formattedFiles.first else { return }
@@ -206,12 +210,8 @@ public final class FileLogger: FileLoggerProtocol {
     }
 
     private func removeOldFiles() throws {
-        guard let fileURL = self.fileURL else {
-            return
-        }
-        let logsDirectory = try PDFileManager.getLogsDirectory()
         let filenameWithoutExtension = fileURL.deletingPathExtension().pathComponents.last ?? "ProtonDrive"
-        let oldFiles = try fileManager.contentsOfDirectory(at: logsDirectory, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
+        let oldFiles = try filesInLogDirectory()
             .filter { $0.pathComponents.last?.hasMatches(for: "\(filenameWithoutExtension).\\d{15}.log") ?? false }
         let sortedFiles = oldFiles.sorted(by: fileManager.fileCreationDateSort)
         
@@ -219,20 +219,8 @@ public final class FileLogger: FileLoggerProtocol {
             try fileManager.removeItem(at: url)
         }
     }
-}
 
-private extension Logger {
-
-    func log(message: String, from level: LogLevel) {
-        switch level {
-        case .error:
-            error("\(message, privacy: .public)")
-        case .warning:
-            warning("\(message, privacy: .public)")
-        case .info:
-            notice("\(message, privacy: .public)")
-        case .debug:
-            debug("\(message, privacy: .public)")
-        }
+    private func filesInLogDirectory() throws -> [URL] {
+        return try fileManager.contentsOfDirectory(at: PDFileManager.logsDirectory, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
     }
 }

@@ -17,20 +17,23 @@
 
 import Foundation
 import ProtonCoreUtilities
+import PDCore
 
 public extension Progress {
     
     convenience init(totalUnitCount: Int64 = 0, oneTimeCancellationHandler: @escaping (Progress?) -> Void) {
         self.init(totalUnitCount: totalUnitCount)
-        _ = setOneTimeCancellationHandler(oneTimeCancellationHandler: oneTimeCancellationHandler)
+        setOneTimeCancellationHandler(oneTimeCancellationHandler: oneTimeCancellationHandler)
     }
     
+    @discardableResult
     func setOneTimeCancellationHandler(oneTimeCancellationHandler: @escaping (Progress?) -> Void) -> Progress {
         // optionality allows for nilling out the reference to oneTimeCancellationHandler after the first use
         // atomic ensures the oneTimeCancellationHandler is indeed called only once,
         // even in case of cancellation happening multiple times in a multi-threaded environment
         let oneTimeCancellationHandlerWrapper: Atomic<((Progress?) -> Void)?> = Atomic(oneTimeCancellationHandler)
         cancellationHandler = { [weak self] in
+            Log.trace("cancellationHandler called")
             oneTimeCancellationHandlerWrapper.mutate { [weak self] oneTimeCancellationHandler in
                 oneTimeCancellationHandler?(self)
                 oneTimeCancellationHandler = nil
@@ -39,7 +42,7 @@ public extension Progress {
         }
         return self
     }
-    
+
     func clearOneTimeCancellationHandler() {
         cancellationHandler = nil
     }

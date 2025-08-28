@@ -21,3 +21,7 @@ public protocol ThrowingAsynchronousInteractor {
 
     func execute(with input: Input) async throws -> Output
 }
+
+public protocol ThrowingAsynchronousWithoutDataInteractor {
+    func execute() async throws
+}

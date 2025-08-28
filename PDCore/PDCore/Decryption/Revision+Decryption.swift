@@ -55,14 +55,14 @@ extension Revision {
         do {
             try checkManifestSignatureForDownloadedRevisions()
         } catch {
-            Log.error(SignatureError(error, "Revision", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption, sendToSentryIfPossible: file.isSignatureVerifiable())
+            Log.error(error: SignatureError(error, "Revision", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption, sendToSentryIfPossible: file.isSignatureVerifiable())
         }
 
         if Constants.runningInRAMContrainedProcess {
             do {
                 return try decryptFileInStream(isCancelled: &isCancelled)
             } catch {
-                Log.error(DecryptionError(error, "Revision - stream", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption)
+                Log.error(error: DecryptionError(error, "Revision - stream", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption)
                 throw error
             }
         } else {
@@ -70,7 +70,7 @@ extension Revision {
                 let clearUrl = try clearURL()
                 return try decryptFileInMemory(toURL: clearUrl, isCancelled: &isCancelled)
             } catch {
-                Log.error(DecryptionError(error, "Revision", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption)
+                Log.error(error: DecryptionError(error, "Revision", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption)
                 throw error
             }
         }
@@ -80,7 +80,7 @@ extension Revision {
         do {
             return try decryptFileInMemory(toURL: url, isCancelled: &isCancelled)
         } catch {
-            Log.error(DecryptionError(error, "Revision", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption)
+            Log.error(error: DecryptionError(error, "Revision", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption)
             throw error
         }
     }
@@ -120,11 +120,17 @@ extension Revision {
             let signatureAddressIsEmpty = signatureAddress?.isEmpty ?? true
             let verificationKeys = signatureAddressIsEmpty ? [file.nodeKey] : addressKeys
 
-            let decrypted = try Decryptor.decryptAndVerifyXAttributes(
-                xAttributes,
-                decryptionKey: nodeDecryptionKey,
-                verificationKeys: verificationKeys
-            )
+            let decrypted: VerifiedBinary
+            do {
+                decrypted = try Decryptor.decryptAndVerifyXAttributes(
+                    xAttributes,
+                    decryptionKey: nodeDecryptionKey,
+                    verificationKeys: verificationKeys
+                )
+            } catch let error where !(error is Decryptor.Errors) {
+                DriveIntegrityErrorMonitor.reportMetadataError(for: file)
+                throw error
+            }
 
             switch decrypted {
             case .verified(let attributes):
@@ -133,7 +139,7 @@ extension Revision {
                 return xAttr
 
             case .unverified(let attributes, let error):
-                Log.error(SignatureError(error, "ExtendedAttributes", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption, sendToSentryIfPossible: file.isSignatureVerifiable())
+                Log.error(error: SignatureError(error, "ExtendedAttributes", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption, sendToSentryIfPossible: file.isSignatureVerifiable())
                 let xAttr = try JSONDecoder().decode(ExtendedAttributes.self, from: attributes)
                 clearXAttributes = xAttr
                 return xAttr
@@ -142,13 +148,18 @@ extension Revision {
         } catch Errors.noFileMeta {
             throw Errors.noFileMeta
         } catch {
-            Log.error(DecryptionError(error, "ExtendedAttributes", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption)
+            Log.error(error: DecryptionError(error, "ExtendedAttributes", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption)
             throw error
         }
     }
 
     internal func decryptContentSessionKey() throws -> Data {
-        try file.decryptContentKeyPacket()
+        do {
+            return try file.decryptContentKeyPacket()
+        } catch let error where !(error is Decryptor.Errors) {
+            DriveIntegrityErrorMonitor.reportMetadataError(for: file)
+            throw error
+        }
     }
     
     func decryptFileInMemory(toURL clearUrl: URL, isCancelled: inout Bool) throws -> URL {

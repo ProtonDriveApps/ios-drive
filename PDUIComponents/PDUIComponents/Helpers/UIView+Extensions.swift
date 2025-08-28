@@ -30,5 +30,18 @@ public extension UIView {
             rightAnchor.constraint(lessThanOrEqualTo: superview.safeAreaLayoutGuide.rightAnchor, constant: -padding)
         ])
     }
+
+    // when orientation change, screen can't provide correct size immediately
+    // Use this workaround to get correct size
+    func realScreenSize() -> CGSize? {
+        guard let scene = window?.windowScene else { return nil }
+        let screen = scene.screen
+
+        let lengthA = screen.bounds.height
+        let lengthB = screen.bounds.width
+        let screenWidth = scene.interfaceOrientation.isPortrait ? min(lengthA, lengthB) : max(lengthA, lengthB)
+        let screenHeight = screenWidth == lengthA ? lengthB : lengthA
+        return .init(width: screenWidth, height: screenHeight)
+    }
 }
 #endif

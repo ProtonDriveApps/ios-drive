@@ -17,10 +17,14 @@
 
 import SwiftUI
 import PDCore
+import PDCoreIOS
+import PDLocalization
+import PDUIComponents
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     private var container = DriveDependencyContainer()
     private let messageHandler = UserMessageHandler()
+    private var debugOverlayController: DebugOverlayController?
 
     var window: UIWindow?
     private lazy var blurringView = UIVisualEffectView.blurred
@@ -32,7 +36,16 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         let window = UIWindow(windowScene: windowScene)
         container.launchApp(on: window)
+        Localization.isUITest = Constants.isUITest
+        WindowKey.defaultValue = window
         self.window = window
+
+        // Delay showing overlay just a bit to avoid collision with showing the first screen
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            guard let self else { return }
+            let factory = BugReportFactory(apiService: self.container.networkService, sessionVault: self.container.sessionVault)
+            self.debugOverlayController = DebugOverlayController(localSettings: LocalSettings.shared, factory: factory)
+        }
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
@@ -49,6 +62,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneWillEnterForeground(_ scene: UIScene) {
         Log.info("sceneWillEnterForeground", domain: .application)
+        Log.info("App version: \(Constants.clientVersion)", domain: .application)
         NotificationCenter.default.post(.checkAuthentication)
         obfuscateAppView(false)
     }
@@ -68,6 +82,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let url = URLContexts.first?.url else {
             return
         }
+        if url.absoluteString == "protondrive://signin" { return }
         guard let authenticatedContainer = container.authenticatedContainer else {
             messageHandler.handleError(PlainMessageError("Please authenticate before opening the file."))
             return
@@ -76,7 +91,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             return
         }
 
-        let controller = authenticatedContainer.protonDocumentContainer.makeController(rootViewController: rootViewController)
+        let controller = authenticatedContainer.protonFileContainer.makeController(rootViewController: rootViewController)
         controller.openPreview(url)
     }
 

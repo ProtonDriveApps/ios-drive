@@ -55,7 +55,21 @@ extension Thumbnail: VolumeUnique {
             blob?.clearData = newValue
         }
     }
-    
+
+    public func clearBlob(in context: NSManagedObjectContext?, shouldSave: Bool = false) throws {
+        guard
+            let context = context ?? managedObjectContext,
+            let blob
+        else { return }
+        try context.performAndWait {
+            context.delete(blob)
+            self.blob = nil
+            if shouldSave {
+                try context.saveIfNeeded()
+            }
+        }
+    }
+
     private func makeBlobIfNeeded() {
         guard blob == nil, let moc = self.managedObjectContext else {
             return

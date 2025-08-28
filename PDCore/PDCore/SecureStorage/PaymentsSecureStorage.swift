@@ -43,6 +43,14 @@ public final class PaymentsSecureStorage: Keychain {
 }
 
 extension PaymentsSecureStorage: ServicePlanDataStorage {
+    public var iapSupportStatus: ProtonCorePayments.IAPSupportStatus {
+        get {
+            .disabled(localizedReason: nil)
+        }
+        set(newValue) {
+            
+        }
+    }
     
     public var servicePlansDetails: [Plan]? {
         get {

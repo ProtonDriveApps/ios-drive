@@ -36,7 +36,7 @@ extension ShareURL {
 
             return clearPassword
         } catch {
-            Log.error(DecryptionError(error, "ShareURL - (initial)", description: "ShareURLID: \(id), ShareID: \(share.id)"), domain: .encryption)
+            Log.error(error: DecryptionError(error, "ShareURL - (initial)", description: "ShareURLID: \(id), ShareID: \(share.id)"), domain: .encryption)
             do {
                 let keys = try getAllKeys()
                 let decryptionKeys = keys.map(\.decryptionKey)
@@ -46,7 +46,7 @@ extension ShareURL {
 
                 return clearPassword
             } catch {
-                Log.error(DecryptionError(error, "ShareURL", description: "ShareURLID: \(id), ShareID: \(share.id)"), domain: .encryption)
+                Log.error(error: DecryptionError(error, "ShareURL", description: "ShareURLID: \(id), ShareID: \(share.id)"), domain: .encryption)
                 throw error
             }
         }

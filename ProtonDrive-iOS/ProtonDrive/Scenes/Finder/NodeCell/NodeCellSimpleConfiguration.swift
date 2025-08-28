@@ -16,13 +16,14 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDCoreIOS
 import Combine
 import PDUIComponents
 import SwiftUI
 
 class NodeCellSimpleConfiguration: ObservableObject, NodeCellConfiguration {
     
-    var iconName: String
+    var iconName: FileAssetName
     var name: String
     var isFavorite: Bool
     var isAvailableOffline: Bool
@@ -41,6 +42,7 @@ class NodeCellSimpleConfiguration: ObservableObject, NodeCellConfiguration {
     var uploadWaiting: Bool = false
     var uploadPaused: Bool = false
     var isInProgress: Bool = false
+    var isBookmark: Bool = false
     let progressCompleted: Double = 0
     var progressDirection: ProgressTracker.Direction?
     let selectionModel: CellSelectionModel? = nil
@@ -52,7 +54,7 @@ class NodeCellSimpleConfiguration: ObservableObject, NodeCellConfiguration {
 
     init(
         from node: Node,
-        fileTypeAsset: FileTypeAsset = .shared,
+        fileTypeAsset: FileTypeAsset = FileTypeAsset.shared,
         disabled: Bool,
         loader: ThumbnailLoader,
         featureFlagsController: FeatureFlagsControllerProtocol

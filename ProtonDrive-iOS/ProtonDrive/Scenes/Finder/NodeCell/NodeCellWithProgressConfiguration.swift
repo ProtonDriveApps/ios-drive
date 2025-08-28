@@ -18,6 +18,7 @@
 import Foundation
 import Combine
 import PDCore
+import PDCoreIOS
 import PDUIComponents
 import SwiftUI
 import PDLocalization
@@ -38,7 +39,7 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
         self.progressTracker?.progress
     }
 
-    let iconName: String
+    let iconName: FileAssetName
     var name: String
     var isFavorite: Bool { node.isFavorite }
     var isAvailableOffline: Bool { node.isAvailableOffline }
@@ -126,6 +127,10 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
         nodeStatePolicy.isUploadPaused(for: node)
     }
 
+    var isBookmark: Bool {
+        self.node is CoreDataBookmark
+    }
+
     private static let percentFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .percent
@@ -182,7 +187,13 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
 
     var defaultSecondLineSubtitle: String {
         if isSharedWithMeRoot {
-            return "\(inviter)•\(sharingDate)"
+            if node is CoreDataBookmark {
+                let createdDate = DateStamper.stamp(for: node.createdDate)
+                let infoString = Localization.shared_with_me_bookmarks_second_line(date: createdDate)
+                return infoString
+            } else {
+                return "\(inviter)•\(sharingDate)"
+            }
         } else {
             let suffix = "Modified \(DateStamper.stamp(for: self.lastModified))"
             if nodeType == .file && self.size > 0 {

@@ -32,10 +32,8 @@ final class LocalPhotoThumbnailIdsRepository: PhotoThumbnailIdsRepository {
     }
 
     func getIds(photoIds: [PhotoId], type: ThumbnailType) -> [AnyVolumeIdentifier] {
-        let ids = Set(photoIds.map { AnyVolumeIdentifier(id: $0.nodeID, volumeID: $0.volumeID) })
         return managedObjectContext.performAndWait {
-            let photos = Photo.fetch(identifiers: ids, in: managedObjectContext)
-
+            let photos = Photo.fetch(identifiers: Set(photoIds), in: managedObjectContext)
             return photos.compactMap { getId(photo: $0, type: type) }
         }
     }
@@ -45,7 +43,7 @@ final class LocalPhotoThumbnailIdsRepository: PhotoThumbnailIdsRepository {
         if let id = thumbnail?.id {
             return AnyVolumeIdentifier(id: id, volumeID: photo.volumeID)
         } else {
-            Log.error("Failed to retrieve thumbnail id.", domain: .photosUI)
+            Log.error("Failed to retrieve thumbnail id.", error: nil, domain: .photosUI)
             return nil
         }
     }

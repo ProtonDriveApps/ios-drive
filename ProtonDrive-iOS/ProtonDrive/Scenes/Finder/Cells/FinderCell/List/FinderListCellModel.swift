@@ -30,6 +30,10 @@ extension NodeCellConfiguration {
     }
 
     private var figure: SecondLineFigure {
+        if isBookmark {
+            return .badges([.bookmark])
+        }
+
         if isInProgress && progressDirection == .downstream {
             return .spinner
         } else if isInProgress && progressDirection == .upstream {
@@ -41,28 +45,39 @@ extension NodeCellConfiguration {
         } else if uploadWaiting {
             return .spinner
         } else {
-            var badges: [Badge] = []
-
-            if isFavorite {
-                badges.append(.favorite)
-            }
-
-            if isAvailableOffline {
-                badges.append(.offline)
-            }
-
-            if isSharedCollaboratively && hasSharing {
-                badges.append(.sharedCollaboratively)
-            } else if isShared || (hasDirectShare && hasSharing) {
-                badges.append(.shared)
-            }
-
             return .badges(badges)
         }
     }
+    
+    var badges: [Badge] {
+        var badges: [Badge] = []
+
+        if isFavorite {
+            badges.append(.favorite)
+        }
+
+        if isAvailableOffline {
+            badges.append(.offline)
+        }
+
+        if isSharedCollaboratively && hasSharing {
+            badges.append(.sharedCollaboratively)
+        } else if isShared || (hasDirectShare && hasSharing) {
+            badges.append(.shared)
+        }
+
+        return badges
+    }
 
     var isSelecting: Bool {
-        selectionModel?.isMultipleSelectionEnabled ?? false
+        return selectionModel?.isMultipleSelectionEnabled ?? false
+    }
+
+    var canSelect: Bool {
+        guard !isBookmark else {
+            return false
+        }
+        return true
     }
 
     var isSelected: Bool {

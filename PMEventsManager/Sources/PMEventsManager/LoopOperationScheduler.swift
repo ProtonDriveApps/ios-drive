@@ -24,11 +24,15 @@ class LoopOperationScheduler<Loop: EventsLoop> {
     private let queue: OperationQueue
     
     init(loop: Loop, queue: OperationQueue) {
+        trace()
+
         self.loop = loop
         self.queue = queue
     }
     
     func addOperation() {
+        trace()
+
         let operation = LoopOperation(loop: loop, onDidReceiveMultiplePagesResponse: { [weak self] in
             self?.addOperation()
         })
@@ -36,6 +40,12 @@ class LoopOperationScheduler<Loop: EventsLoop> {
     }
 
     func removeAnchor() {
+        trace()
+
         loop.latestLoopEventId = nil
+    }
+
+    deinit {
+        trace()
     }
 }

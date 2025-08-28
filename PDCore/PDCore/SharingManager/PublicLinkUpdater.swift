@@ -19,7 +19,7 @@ import Foundation
 import PDClient
 
 public protocol PublicLinkUpdater {
-    func updatePublicLink(_ identifier: PublicLinkIdentifier, node: NodeIdentifier, with details: UpdateShareURLDetails) async throws
+    func updatePublicLink(_ identifier: PublicLinkIdentifier, with details: UpdateShareURLDetails) async throws
 }
 
 public final class RemoteCachingPublicLinkUpdater: PublicLinkUpdater {
@@ -34,8 +34,8 @@ public final class RemoteCachingPublicLinkUpdater: PublicLinkUpdater {
         self.signersKitFactory = signersKitFactory
     }
 
-    public func updatePublicLink(_ identifier: PublicLinkIdentifier, node: NodeIdentifier, with details: UpdateShareURLDetails) async throws {
-        Log.info("SharingManager.updateSecureLink, will update a secure link details \(node)", domain: .sharing)
+    public func updatePublicLink(_ identifier: PublicLinkIdentifier, with details: UpdateShareURLDetails) async throws {
+        Log.info("SharingManager.updateSecureLink, will update a secure link details \(identifier)", domain: .sharing)
         let context = storage.backgroundContext
 
         let shareURL = try await context.perform {
@@ -45,7 +45,7 @@ public final class RemoteCachingPublicLinkUpdater: PublicLinkUpdater {
             return shareURL
         }
 
-        let shareUrlMeta = try await updateShareURL(shareURL: shareURL, node: node, details: details)
+        let shareUrlMeta = try await updateShareURL(shareURL: shareURL, details: details)
 
         return try await context.perform {
             self.storage.updateShareURL(shareUrlMeta, in: context)
@@ -56,7 +56,6 @@ public final class RemoteCachingPublicLinkUpdater: PublicLinkUpdater {
     /// Internal for unit tests only, returns metadata
     private func updateShareURL(
         shareURL: ShareURL,
-        node: NodeIdentifier,
         details: UpdateShareURLDetails
     ) async throws -> ShareUrlMeta {
         let expirationParameter = makeExpirationParameter(duration: details.duration)

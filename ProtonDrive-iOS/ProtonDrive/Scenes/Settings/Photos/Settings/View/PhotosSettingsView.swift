@@ -19,21 +19,26 @@ import PDUIComponents
 import ProtonCoreUIFoundations
 import SwiftUI
 
-struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, DiagnosticView: View>: View {
+struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, QASettingsView: View>: View {
     @ObservedObject private var viewModel: ViewModel
-    @ViewBuilder var diagnosticsView: DiagnosticView
+    @ViewBuilder var qaSettingsView: QASettingsView
     @State private var isDiagnosticsPresented: Bool = false
     @State private var isPhotoFeatureAlertPresented = false
 
-    init(viewModel: ViewModel, diagnosticsView: DiagnosticView) {
+    init(viewModel: ViewModel, qaSettingsView: QASettingsView) {
         self.viewModel = viewModel
-        self.diagnosticsView = diagnosticsView
+        self.qaSettingsView = qaSettingsView
     }
 
     var body: some View {
         ZStack {
             content
-                .flatNavigationBar(viewModel.backupTitle, leading: EmptyView(), trailing: EmptyView())
+                .flatNavigationBar(
+                    viewModel.backupTitle,
+                    isRoot: false,
+                    leading: EmptyView(),
+                    trailing: EmptyView()
+                )
         }
         .background(ColorProvider.BackgroundNorm.edgesIgnoringSafeArea(.all))
     }
@@ -42,42 +47,22 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
     private var content: some View {
         VStack {
             VStack(spacing: 0) {
+                viewModel.topBanner.map {
+                    NotificationBanner(message: $0, style: .transparent, padding: .vertical)
+                }
                 backupEnabledRow
                     .separatedWithoutPadding()
                 mobileDataRow
             }
-            
-            #if HAS_QA_FEATURES
-            VStack(spacing: 0) {
-                qaSectionTitleRow
-                settingsImageRow
-                    .separatedWithoutPadding()
-                settingsVideoRow
-                    .separatedWithoutPadding()
-                HStack {
-                    settingsDateRow
-                    settingsDatePicker
-                }
-                .separatedWithoutPadding()
-                diagnosticsRow
-            }
-            .padding(.vertical, 12)
-            #endif
-            
+
+            qaSettingsView
+
             Spacer()
-//            if viewModel.shouldShowPhotoFeatureOption {
-//                photoFeatureRow
-//            }
+
+            if viewModel.shouldShowPhotoFeatureOption {
+                photoFeatureRow
+            }
         }
-    }
-    
-    @ViewBuilder
-    private var qaSectionTitleRow: some View {
-        Text("QA SECTION")
-            .font(.subheadline)
-            .foregroundColor(ColorProvider.TextWeak)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 16)
     }
 
     @ViewBuilder
@@ -107,74 +92,6 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
     }
 
     @ViewBuilder
-    private var settingsImageRow: some View {
-        PhotosSettingsToggle(
-            viewModel.imageTitle,
-            isOn: .init(
-                get: { viewModel.isImageEnabled },
-                set: { value in viewModel.setImageEnabled(value) }
-            ),
-            isDisabled: viewModel.isEnabled || viewModel.isPhotoFeatureDisabled
-        )
-        .accessibilityIdentifier("PhotosBackupSettings.ImageSwitch")
-    }
-    
-    @ViewBuilder
-    private var settingsVideoRow: some View {
-        PhotosSettingsToggle(
-            viewModel.videoTitle,
-            isOn: .init(
-                get: { viewModel.isVideoEnabled },
-                set: { value in viewModel.setVideoEnabled(value) }
-            ),
-            isDisabled: viewModel.isEnabled || viewModel.isPhotoFeatureDisabled
-        )
-        .accessibilityIdentifier("PhotosBackupSettings.VideoSwitch")
-    }
-    
-    @ViewBuilder
-    private var settingsDateRow: some View {
-        PhotosSettingsToggle(
-            viewModel.notOlderThanTitle,
-            isOn: .init(
-                get: { viewModel.isNotOlderThanEnabled },
-                set: { value in viewModel.setIsNotOlderThanEnabled(value) }
-            ),
-            isDisabled: viewModel.isEnabled || viewModel.isPhotoFeatureDisabled
-        )
-        .accessibilityIdentifier("PhotosBackupSettings.DateSwitch")
-    }
-    
-    @ViewBuilder
-    private var settingsDatePicker: some View {
-        DatePicker("", selection: .init(get: {
-            viewModel.notOlderThan
-        }, set: { value in
-            viewModel.setNotOlderThan(value)
-        }), displayedComponents: .date)
-        .padding(.horizontal, 16)
-        .datePickerStyle(.compact)
-        .disabled(viewModel.isEnabled || viewModel.isPhotoFeatureDisabled)
-        .disabled(!viewModel.isNotOlderThanEnabled)
-    }
-
-    @ViewBuilder
-    private var diagnosticsRow: some View {
-        Button(action: {
-            isDiagnosticsPresented = true
-        }, label: {
-            Text(viewModel.diagnosticsTitle)
-        })
-        .foregroundColor(ColorProvider.BrandNorm)
-        .padding(.vertical, 12)
-        .padding(.horizontal, 16)
-        .accessibilityIdentifier("PhotosBackupSettings.OpenDiagnosticsButton")
-        .sheet(isPresented: $isDiagnosticsPresented) {
-            diagnosticsView
-        }
-    }
-    
-    @ViewBuilder
     private var photoFeatureRow: some View {
         VStack(spacing: 0) {
             Rectangle()
@@ -184,7 +101,7 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
 
             photoFeatureButton
                 .separatedWithoutPadding()
-  
+
             Text(viewModel.photoFeatureExplanation)
                 .foregroundStyle(ColorProvider.TextHint)
                 .font(.system(size: 13))
@@ -194,13 +111,16 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
                 .accessibilityIdentifier("PhotosBackupSettings.PhotoFeatureExplanation")
         }
     }
-    
+
     @ViewBuilder
     private var photoFeatureButton: some View {
         Button {
             isPhotoFeatureAlertPresented = true
         } label: {
             Text(viewModel.photoFeatureTitle)
+            if viewModel.isPhotoFeatureToggleInProgress {
+                ProtonSpinner(size: .small)
+            }
         }
         .foregroundColor(viewModel.isPhotoFeatureDisabled ? ColorProvider.BrandNorm : ColorProvider.NotificationError)
         .padding(.vertical, 12)
@@ -212,32 +132,45 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, Diagnostic
         ) {
             Button(viewModel.photoFeatureAlertCancelTitle, action: { })
             Button(viewModel.photoFeatureAlertButtonTitle, action: {
-//                viewModel.togglePhotoFeatureEnableStatus()
+                Task {
+                    await viewModel.togglePhotoFeatureEnableStatus()
+                }
             })
+            .disabled(viewModel.isPhotoFeatureToggleInProgress)
         } message: {
             Text(viewModel.photoFeatureAlertMessage)
         }
     }
+}
+struct PhotosSettingsToggle: View {
+    var title: String
+    let subtitle: String?
+    var isOn: Binding<Bool>
+    var isDisabled: Bool
 
-    struct PhotosSettingsToggle: View {
-        var title: String
-        var isOn: Binding<Bool>
-        var isDisabled: Bool
-        
-        init(_ title: String, isOn: Binding<Bool>, isDisabled: Bool) {
-            self.title = title
-            self.isOn = isOn
-            self.isDisabled = isDisabled
+    init(_ title: String, subtitle: String? = nil, isOn: Binding<Bool>, isDisabled: Bool) {
+        self.title = title
+        self.subtitle = subtitle
+        self.isOn = isOn
+        self.isDisabled = isDisabled
+    }
+
+    var body: some View {
+        Toggle(isOn: isOn) {
+            VStack(alignment: .leading) {
+                Text(title)
+                    .font(.body)
+                subtitle.map {
+                    Text($0)
+                        .font(.caption)
+                }
+            }
+            .multilineTextAlignment(.leading)
         }
-        
-        var body: some View {
-            Toggle(title, isOn: isOn)
-            .toggleStyle(SwitchToggleStyle(tint: ColorProvider.InteractionNorm))
-            .font(.body)
-            .foregroundColor(isDisabled ? ColorProvider.TextDisabled : ColorProvider.TextNorm)
-            .padding(.vertical, 12)
-            .padding(.horizontal, 16)
-            .disabled(isDisabled)
-        }
+        .toggleStyle(SwitchToggleStyle(tint: ColorProvider.InteractionNorm))
+        .foregroundColor(isDisabled ? ColorProvider.TextDisabled : ColorProvider.TextNorm)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .disabled(isDisabled)
     }
 }

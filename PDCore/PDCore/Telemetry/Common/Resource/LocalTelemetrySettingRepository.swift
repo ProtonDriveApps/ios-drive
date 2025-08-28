@@ -17,14 +17,14 @@
 
 import Foundation
 
-final class LocalTelemetrySettingRepository: TelemetrySettingRepository {
+public final class LocalTelemetrySettingRepository: TelemetrySettingRepository {
     private let localSettings: LocalSettings
     
-    init(localSettings: LocalSettings) {
+    public init(localSettings: LocalSettings) {
         self.localSettings = localSettings
     }
     
-    func isTelemetryEnabled() -> Bool {
+    public func isTelemetryEnabled() -> Bool {
         !(localSettings.optOutFromTelemetry ?? true)
     }
 }

@@ -17,14 +17,14 @@
 
 import Foundation
 
-struct DeleteDeviceEndpoint: Endpoint {
+public struct DeleteDeviceEndpoint: Endpoint {
     public struct Response: Codable {
         var code: Int
     }
 
-    var request: URLRequest
+    public var request: URLRequest
 
-    init(deviceID: String, service: APIService, credential: ClientCredential) {
+    public init(deviceID: String, service: APIService, credential: ClientCredential) {
         // url
         var url = service.url(of: "/devices")
         url.appendPathComponent(deviceID)

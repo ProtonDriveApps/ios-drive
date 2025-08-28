@@ -16,15 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
-
-struct PhotosBackupProgress: Equatable {
-    let total: Int
-    let inProgress: Int
-
-    var isCompleted: Bool {
-        inProgress == 0
-    }
-}
+import PDPhotos
 
 protocol PhotosLoadProgressController {
     var progress: AnyPublisher<PhotosBackupProgress, Never> { get }

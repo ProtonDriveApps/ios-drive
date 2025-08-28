@@ -58,11 +58,13 @@ public final class FolderModel: FinderModel, FinderErrorModel, ThumbnailLoader, 
     public var lastFetchedPage = 0
     
     // MARK: others
-    
-    /// Constructor for main thead, uses UISlot for subscriptions
-    public init(tower: Tower, node: Folder, nodeID: NodeIdentifier) {
+    public let userInfoController: UserInfoController?
+
+    /// Constructor for main thread, uses UISlot for subscriptions
+    public init(tower: Tower, node: Folder, nodeID: NodeIdentifier, userInfoController: UserInfoController? = nil) {
         self.tower = tower
         self.node = node
+        self.userInfoController = userInfoController
 
         let children = tower.uiSlot!.subscribeToChildren(of: nodeID, sorting: tower.localSettings.nodesSortPreference)
         self.childrenObserver = FetchedObjectsObserver(children)
@@ -84,15 +86,21 @@ public final class FolderModel: FinderModel, FinderErrorModel, ThumbnailLoader, 
         }
     }
 
-    /// Constructor for background thead, uses fileSystemSlot for subscriptions
-    public init(tower: Tower, nodeID: NodeIdentifier) throws {
+    /// Constructor for background thread, uses fileSystemSlot for subscriptions
+    public init(tower: Tower, nodeID: NodeIdentifier, userInfoController: UserInfoController? = nil) throws {
         guard let fileSystemSlot = tower.fileSystemSlot else {
             throw Errors.noFileSystemSlot
         }
 
+#if os(macOS)
+        guard let node = fileSystemSlot.getNode(nodeID) ?? Self.fetchRemoteNode(tower: tower, nodeID: nodeID) else {
+            throw Errors.nodeIdNotFound(nodeID.rawValue)
+        }
+#else
         guard let node = fileSystemSlot.getNode(nodeID) else {
             throw Errors.nodeIdNotFound(nodeID.rawValue)
         }
+#endif
 
         guard let folder = node as? Folder else {
             throw Errors.nodeIdDoesNotBelongToFolder(nodeID.rawValue)
@@ -100,6 +108,7 @@ public final class FolderModel: FinderModel, FinderErrorModel, ThumbnailLoader, 
 
         self.tower = tower
         self.node = folder
+        self.userInfoController = userInfoController
 
         let children = tower.fileSystemSlot!.subscribeToChildren(of: nodeID)
         self.childrenObserver = FetchedObjectsObserver(children)
@@ -111,6 +120,24 @@ public final class FolderModel: FinderModel, FinderErrorModel, ThumbnailLoader, 
         
         self.sorting = self.tower.localSettings.nodesSortPreference
     }
+
+#if os(macOS)
+    /// Synchronously return remote node.
+    /// Needs to be synchronous because it will be indirectly called from `enumerateItems(for:startingAt:)`
+    private static func fetchRemoteNode(tower: Tower, nodeID: NodeIdentifier) -> Node? {
+        var result: Node?
+        let semaphore = DispatchSemaphore(value: 0)
+
+        assert(!Thread.isMainThread)
+        Task {
+            result = try await tower.cloudSlot.scanNode(nodeID, linkProcessingErrorTransformer: { $1 })
+            semaphore.signal()
+        }
+
+        semaphore.wait()
+        return result
+    }
+#endif
 
     public func loadThumbnail(with id: Identifier) {
         return tower.loadThumbnail(with: id)

@@ -53,11 +53,11 @@ class ScanNodeOperation: SynchronousOperation {
         super.start()
         guard !self.isCancelled else { return }
 
-        self.cloudSlot?.scanNode(self.nodeID, linkProcessingErrorTransformer: { $1 }) { [weak self] nodeResult in
+        self.cloudSlot?.scanNode(self.nodeID, linkProcessingErrorTransformer: { $1 }, handler: { [weak self] nodeResult in
             guard let self = self, !self.isCancelled else { return }
             switch nodeResult {
             case let .failure(error):
-                Log.error(error, domain: .networking)
+                Log.error("scanNode failed", error: error, domain: .networking)
                 self.completion?(.failure(error))
                 self.state = .finished
                 
@@ -69,7 +69,7 @@ class ScanNodeOperation: SynchronousOperation {
                 
             default: assert(false, "Should not scan File nodes in this operation")
             }
-        }
+        })
     }
     
     // Similar functionality is also implemented in iOS app's NodesFetching model
@@ -89,7 +89,7 @@ class ScanNodeOperation: SynchronousOperation {
             
             switch resultChildren {
             case let .failure(error):
-                Log.error("ScanChildren error: \(error)", domain: .networking)
+                Log.error("ScanChildren error", error: error, domain: .networking)
                 self.completion?(.failure(error))
                 self.state = .finished
                 

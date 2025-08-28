@@ -48,7 +48,7 @@ public final class ConcretePhotosSkippableCache: PhotosSkippableCache {
     public func markAsSkippable(_ identifier: Identifier, skippableFiles: Int) {
         let identifier = prepare(identifier)
         guard storage[identifier] != nil else {
-            Log.error("Tried to modify skippable status of \(identifier.rounded()) which can not be found in skippable table.", domain: .photosProcessing)
+            Log.error("Identifier not found in skippable table", domain: .photosProcessing, context: LogContext("Identifier: \(identifier.rounded())"))
             storage[identifier] = skippableFiles
             return
         }

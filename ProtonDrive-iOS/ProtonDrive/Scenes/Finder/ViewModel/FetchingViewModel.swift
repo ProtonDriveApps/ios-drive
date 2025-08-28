@@ -58,10 +58,17 @@ extension FetchingViewModel where Self: FinderViewModel, Self: SortingViewModel,
     }
 
     func fetchAllPagesFromAPI() {
-        if !self.isUpdating {
-            self.isUpdating = true
+        if isUpdating { return }
+        self.isUpdating = true
+
+        // Force to fetch latest event to handle possible delete events
+        let context = self.model.tower.storage.mainContext
+        let volumeID = context.performAndWait {
+            return try? self.model.tower.storage.getMyVolumeId(in: context)
         }
-        
+        if let volumeID {
+            self.model.tower.forcePolling(volumeIDs: [volumeID])
+        }
         self.model.prepareForRefresh(fromPage: 0)
         self.fetchFromAPICancellable?.cancel()
         self.fetchFromAPICancellable = self.model.fetchChildrenFromAPI(proceedTillLastPage: true)

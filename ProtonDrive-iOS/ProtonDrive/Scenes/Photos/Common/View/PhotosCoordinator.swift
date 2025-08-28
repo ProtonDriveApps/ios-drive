@@ -18,6 +18,8 @@
 import Combine
 import Foundation
 import PDCore
+import PDCoreIOS
+import PDPhotos
 import PDUIComponents
 import Photos
 import ProtonCoreFoundations
@@ -65,14 +67,14 @@ final class PhotosCoordinator: PhotosRootCoordinator, PhotosPermissionsCoordinat
     }
 
     func updateTabBar(isHidden: Bool) {
-        NotificationCenter.default.post(name: FinderNotifications.tabBar.name, object: isHidden)
+        NotificationCenter.default.post(name: DriveNotification.tabBar.name, object: isHidden)
     }
 
     func openShare(id: PhotoId) {
         let featureFlagsController = container.dependencies.featureFlagsController
 
         if featureFlagsController.hasSharing, let nc = navigationViewController {
-            container.makeShareViewController(id: id, rootVC: nc)?.openSharingConfig()
+            container.makeShareViewController(id: id, rootVC: nc)?.openSharingConfig(sharingType: .common)
         } else {
             guard let viewController = container.makeLegacyShareViewController(id: id) else {
                 return
@@ -212,15 +214,11 @@ final class PhotosCoordinator: PhotosRootCoordinator, PhotosPermissionsCoordinat
     func openUpsellView(photoUpsellResultNotifier: PhotoUpsellResultNotifierProtocol) {
         let navigationController = UINavigationController()
         navigationController.navigationBar.isHidden = true
-
-        let viewModel = PhotoUpsellViewModel(
-            photosCoordinator: self,
-            photoUpsellResultNotifier: photoUpsellResultNotifier
-        ) { [weak navigationController] in
-                navigationController?.dismiss(animated: false)
-        }
-        let view = PhotoUpsellView(viewModel: viewModel)
-        let viewController = UIHostingController(rootView: view)
+        let viewController = PhotoUpsellFactory().makeView(
+            coordinator: self,
+            photoUpsellResultNotifier: photoUpsellResultNotifier,
+            rootViewController: navigationController
+        )
         navigationController.setViewControllers([viewController], animated: false)
         rootViewController?.present(navigationController, animated: true)
     }

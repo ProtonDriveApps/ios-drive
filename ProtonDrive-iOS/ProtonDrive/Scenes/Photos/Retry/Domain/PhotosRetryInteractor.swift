@@ -18,6 +18,7 @@
 import Foundation
 import PDCore
 import PDLocalization
+import PDPhotos
 
 protocol PhotosRetryInteractorProtocol {
     func fetchAssets(ofSize size: CGSize) async -> ([FullPreview], Int)

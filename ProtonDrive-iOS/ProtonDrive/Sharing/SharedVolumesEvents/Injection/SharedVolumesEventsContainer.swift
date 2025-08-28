@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDCoreIOS
 
 final class SharedVolumesEventsContainer {
     let controller: SharedVolumesEventsControllerProtocol

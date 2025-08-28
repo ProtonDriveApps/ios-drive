@@ -27,8 +27,15 @@ extension View {
         let hostingAccessingView = environmentObject(provider)
         let hostingController = UIHostingController(rootView: hostingAccessingView)
         provider.viewController = hostingController
+        hostingController.sizingOptions = [.intrinsicContentSize]
         return hostingController
-      }
+    }
+
+    public func embeddedInTransparentHostingController() -> UIHostingController<some View> {
+        let viewController = embeddedInHostingController()
+        viewController.view.backgroundColor = .clear
+        return viewController
+    }
 }
 
 public final class ViewControllerProvider: ObservableObject {

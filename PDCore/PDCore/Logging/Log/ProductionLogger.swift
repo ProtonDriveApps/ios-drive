@@ -17,18 +17,13 @@
 
 import Foundation
 
-public final class ProductionLogger: LoggerProtocol {
+/// Writes logs to Sentry only.
+public final class ProductionLogger: StructuredLogger {
     public init() {}
-    
-    public func log(_ level: LogLevel, message: String, system: LogSystem, domain: LogDomain, sendToSentryIfPossible: Bool) {
-        if sendToSentryIfPossible {
-            SentryClient.shared.record(level: level, errorOrMessage: .right(message))
-        }
-    }
 
-    public func log(_ error: NSError, system: LogSystem, domain: LogDomain, sendToSentryIfPossible: Bool) {
-        if sendToSentryIfPossible {
-            SentryClient.shared.record(level: .error, errorOrMessage: .left(error))
+    public func log(_ logEntry: StructuredLogEntry) {
+        if logEntry.sendToSentryIfPossible {
+            SentryClient.shared.record(logEntry: logEntry)
         }
     }
 }

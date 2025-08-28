@@ -59,6 +59,27 @@ public struct GetShareBootstrapEndpoint: Endpoint {
         public let memberships: [Membership]
         public let rootLinkRecoveryPassphrase: String?
 
+        public init(code: Int, shareID: String, volumeID: String, type: Int, state: Int, creator: String, locked: Bool?, createTime: Int?, modifyTime: Int?, linkID: String, linkType: LinkType, key: String, passphrase: String, passphraseSignature: String, addressID: String, addressKeyID: String, memberships: [Membership], rootLinkRecoveryPassphrase: String?) {
+            self.code = code
+            self.shareID = shareID
+            self.volumeID = volumeID
+            self.type = type
+            self.state = state
+            self.creator = creator
+            self.locked = locked
+            self.createTime = createTime
+            self.modifyTime = modifyTime
+            self.linkID = linkID
+            self.linkType = linkType
+            self.key = key
+            self.passphrase = passphrase
+            self.passphraseSignature = passphraseSignature
+            self.addressID = addressID
+            self.addressKeyID = addressKeyID
+            self.memberships = memberships
+            self.rootLinkRecoveryPassphrase = rootLinkRecoveryPassphrase
+        }
+
         public struct Membership: Codable {
             public let memberID: String
             public let shareID: String

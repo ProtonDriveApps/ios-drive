@@ -92,6 +92,9 @@ final class GeneralEventsLoopProcessor: EventLoopProcessor {
         if let contacts = response.contacts {
             process(contacts)
         }
+        if let driveShareRefresh = response.driveShareRefresh {
+            process(driveShareRefresh)
+        }
 
         if isIntegrityCheckNeeded && !isAddressMissingBeforeUpdate && isAddressMissingInVault() {
             logMissingIntegrity(response: response)
@@ -181,9 +184,19 @@ final class GeneralEventsLoopProcessor: EventLoopProcessor {
             }
         }
     }
-    
+
+    func process(_ driveShareRefresh: DriveShareRefresh) {
+        switch driveShareRefresh.action {
+        case .update:
+            // When there is new invitation, accept invitation, removed from a shared
+            break
+        default:
+            assert(false, "Unexpected actions")
+        }
+    }
+
     func nukeCache() async {
-        NotificationCenter.default.post(name: .nukeCache, object: nil)
+        NotificationCenter.default.nukeCache(reason: "Receive cache is outdated event")
     }
 
     private func isAddressMissingInVault() -> Bool {
@@ -197,7 +210,7 @@ final class GeneralEventsLoopProcessor: EventLoopProcessor {
     private func logMissingIntegrity(response: Response) {
         // Verify that user update has email filled in
         if let user = response.user, user.email == nil {
-            Log.error("Received a user update with nil email", domain: .events)
+            Log.error("Received a user update with nil email", error: nil, domain: .events)
             return
         }
 
@@ -208,7 +221,7 @@ final class GeneralEventsLoopProcessor: EventLoopProcessor {
 
         let addresses = updates.compactMap(\.address)
         if !isContainingAddress(email: email, addresses: addresses) {
-            Log.error("Received a user update with non matching addresses. Updates count: \(updates.count), addresses count: \(addresses.count)", domain: .events)
+            Log.error("Received a user update with non-matching addresses", domain: .events, context: LogContext("Updates count: \(updates.count), addresses count: \(addresses.count)"))
         }
     }
 

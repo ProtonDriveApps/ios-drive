@@ -23,22 +23,37 @@ public struct PhotosListResponse: Codable, Equatable {
     public struct Photo: Codable, Equatable {
         public let linkID: String
         public let captureTime: Int
-        public let relatedPhotos: [RelatedPhoto]
-//        public let nameHash: String // TODO: next MR, BE not ready
+        /// nameHash
+        public let hash: String
+        public let contentHash: String
+        // TODO:album remove optional when backend ready
+        public let tags: [Int]?
 
-        public init(linkID: String, captureTime: Int, relatedPhotos: [RelatedPhoto] = []) {
+        public let relatedPhotos: [Photo]? // Optional to allow using the same type for related photos (which don't have it)
+        public let addedTime: Date?
+
+        public init(
+            linkID: String,
+            captureTime: Int,
+            addedTime: Date?,
+            hash: String,
+            contentHash: String,
+            relatedPhotos: [Photo] = [],
+            tags: [Int]? = nil
+        ) {
             self.linkID = linkID
             self.captureTime = captureTime
+            self.addedTime = addedTime
+            self.hash = hash
+            self.contentHash = contentHash
             self.relatedPhotos = relatedPhotos
+            self.tags = tags
         }
-    }
-
-    public struct RelatedPhoto: Codable, Equatable {
-        public let linkID: String
-        public let captureTime: Int
     }
 
     public init(photos: [Photo]) {
         self.photos = photos
     }
 }
+
+public typealias RemotePhotoListing = PhotosListResponse.Photo

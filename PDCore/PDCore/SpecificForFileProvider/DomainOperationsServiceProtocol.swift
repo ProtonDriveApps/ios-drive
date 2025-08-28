@@ -23,15 +23,18 @@ public struct CacheCleanupStrategy: OptionSet {
     public static let cleanMetadata = CacheCleanupStrategy(rawValue: 1 << 1)
     public static let cleanEvents = CacheCleanupStrategy(rawValue: 1 << 2)
     public static let cleanUserSpecificSettings = CacheCleanupStrategy(rawValue: 1 << 3)
+    public static let cleanBackupCache = CacheCleanupStrategy(rawValue: 1 << 4)
 
     public static let cleanEverything: CacheCleanupStrategy = [.cleanEvents, .cleanMetadata, .cleanUserSpecificSettings]
-    public static let cleanEverythingButUserSpecificSettings: CacheCleanupStrategy = [.cleanEvents, .cleanMetadata]
+    public static let cleanEverythingButUserSpecificSettings: CacheCleanupStrategy = [.cleanEvents, .cleanMetadata, .cleanBackupCache]
+    public static let cleanForClearCache: CacheCleanupStrategy = [.cleanEvents, .cleanMetadata, .cleanBackupCache]
     public static let cleanOnlyMetadataDB: CacheCleanupStrategy = [.cleanMetadata]
     public static let doNotCleanAnything: CacheCleanupStrategy = []
 
     var shouldCleanEvents: Bool { contains(.cleanEvents) }
     var shouldCleanMetadata: Bool { contains(.cleanMetadata) }
     var shouldCleanUserSpecificSettings: Bool { contains(.cleanUserSpecificSettings) }
+    var shouldCleanBackupCache: Bool { contains(.cleanBackupCache) }
 
     public let rawValue: Int
     

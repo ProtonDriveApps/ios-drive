@@ -48,7 +48,7 @@ final class CoreDataPhotoAdditionalInfoRepository: PhotoAdditionalInfoRepository
     }
 
     private func loadFromObserver(id: PhotoId) {
-        guard let photo = observer.getObjects().first(where: { $0.identifier == id }) else {
+        guard let photo = observer.getObjects().first(where: { $0.identifier.any() == id }) else {
             return
         }
 

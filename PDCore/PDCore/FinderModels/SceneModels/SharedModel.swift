@@ -31,7 +31,7 @@ public final class SharedModel: FinderModel, FinderErrorModel, NodesListing, Dow
     public private(set) var childrenObserver: FetchedObjectsObserver<Node>
     @Published public private(set) var sorting: SortPreference
 
-    private let volumeID: String
+    private let volumeIds: [String]
     private let scanner: PublicLinkScanner
 
     // MARK: FinderErrorModel
@@ -44,9 +44,9 @@ public final class SharedModel: FinderModel, FinderErrorModel, NodesListing, Dow
     }
 
     // MARK: others
-    public init(tower: Tower, volumeID: String) {
+    public init(tower: Tower, volumeIds: [String]) {
         self.tower = tower
-        self.volumeID = volumeID
+        self.volumeIds = volumeIds
         self.scanner = PublicLinkScanner(client: tower.client, storage: tower.storage)
         let children = tower.uiSlot!.subscribeToPublicLinkShared(sorting: tower.localSettings.nodesSortPreference)
         self.childrenObserver = FetchedObjectsObserver(children)
@@ -63,7 +63,9 @@ public final class SharedModel: FinderModel, FinderErrorModel, NodesListing, Dow
     }
 
     public func fetchSharedByUrl() async throws {
-        try await scanner.scanAllShareURL(volumeID: volumeID)
+        try await volumeIds.forEach { volumeId in
+            try await scanner.scanAllShareURL(volumeID: volumeId)
+        }
     }
 }
 

@@ -61,7 +61,10 @@ final class FeatureFlagsAwarePopulateViewModelDecorator: PopulateViewModelProtoc
             localSettings.driveEntitlementsUpdatedTimeValue = nil
         }
     }
-    
+
+    // This was initially for public edit sharing
+    // Although public edit sharing no longer requires entitlement
+    // It's kept for potential future features that might need entitlement
     private func updateEntitlement() async throws {
         if localSettings.driveDynamicEntitlementConfiguration {
             try await entitlementsManager.updateEntitlementsIfNeeded()

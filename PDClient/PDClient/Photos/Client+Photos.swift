@@ -19,27 +19,35 @@ import Foundation
 // MARK: - List Photos Share
 public protocol PhotoShareListing {
     func getPhotosRoot() async throws -> PhotosRoot
+    func getPhotosRoot(listing: ShareListing) async throws -> PhotosRoot
+    func getActivePhotoShares() async throws -> [ShareListing]
 }
 
 extension Client: PhotoShareListing {
     public func getPhotosRoot() async throws -> PhotosRoot {
         let response = try await listPhotoShares()
-        async let share = try bootstrapPhotosShare(shareID: response.shareID)
-        async let root = try bootstrapPhotosRoot(shareID: response.shareID, nodeID: response.linkID, breadcrumbs: .startCollecting())
+        return try await getPhotosRoot(listing: response)
+    }
 
+    public func getPhotosRoot(listing: ShareListing) async throws -> PhotosRoot {
+        async let share = try bootstrapPhotosShare(shareID: listing.shareID)
+        async let root = try bootstrapPhotosRoot(shareID: listing.shareID, nodeID: listing.linkID, breadcrumbs: .startCollecting())
         return try await PhotosRoot(link: root, share: share)
     }
 
-    public func listPhotoShares() async throws -> ListSharesEndpoint.Response.Share {
+    public func listPhotoShares() async throws -> ShareListing {
+        let shares = try await getActivePhotoShares()
+        guard let share = shares.first else {
+            throw NSError(domain: "No Photos Share found", code: 0)
+        }
+        return share
+    }
+
+    public func getActivePhotoShares() async throws -> [ShareListing] {
         let parameters = ListSharesEndpoint.Parameters(shareType: .photos, showAll: .default)
         let endpoint = ListSharesEndpoint(parameters: parameters, service: service, credential: try credential())
         let response = try await request(endpoint)
-
-        guard let shareDevice = response.shares.first(where: { $0.state == .active && $0.locked != true }) else {
-            throw NSError(domain: "No Photos Share found", code: 0)
-        }
-
-        return shareDevice
+        return response.shares.filter { $0.state == .active && $0.locked != true }
     }
 
     func bootstrapPhotosShare(shareID: String) async throws -> Share {
@@ -112,5 +120,39 @@ extension Client: PhotosDuplicatesRepository {
     public func getPhotosDuplicates(with parameters: FindDuplicatesParameters) async throws -> FindDuplicatesResponse {
         let endpoint = FindDuplicatesEndpoint(parameters: parameters, service: service, credential: try credential())
         return try await request(endpoint, completionExecutor: .asyncExecutor(dispatchQueue: backgroundQueue))
+    }
+}
+
+// MARK: - TagMigration
+public protocol TagsMigrationAPIClient {
+    func getTagsMigrationState(volumeID: String) async throws -> TagsMigrationState
+    func setTagsMigrationState(volumeID: String, request: TagsMigrationStateRequest) async throws
+}
+
+extension Client: TagsMigrationAPIClient {
+    public func getTagsMigrationState(volumeID: String) async throws -> TagsMigrationState {
+        let endpoint = GetTagsMigrationStateEndpoint(volumeID: volumeID, service: service, credential: try credential())
+        return try await request(endpoint).toDomain()
+    }
+
+    public func setTagsMigrationState(volumeID: String, request requestBody: TagsMigrationStateRequest) async throws {
+        let endpoint = SetTagsMigrationStateEndpoint(volumeID: volumeID, requestBody: requestBody, service: service, credential: try credential())
+        _ = try await request(endpoint)
+    }
+}
+
+extension GetTagsMigrationStateEndpoint.TagsMigrationStateResponse {
+    func toDomain() -> TagsMigrationState {
+        TagsMigrationState(
+            isFinished: self.finished,
+            anchor: anchor.map { response in
+                TagsMigrationState.Anchor(
+                    lastProcessedLinkID: response.lastProcessedLinkID,
+                    lastProcessedCaptureTime: Date(timeIntervalSince1970: TimeInterval(response.lastProcessedCaptureTime)),
+                    lastMigrationTimestamp: Date(timeIntervalSince1970: TimeInterval(response.lastMigrationTimestamp)),
+                    lastClientUID: response.lastClientUID
+                )
+            }
+        )
     }
 }

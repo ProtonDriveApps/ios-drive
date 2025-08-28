@@ -26,8 +26,11 @@ extension DownloadsListing {
         self.tower.downloader!.downloadProcessesAndErrors()
     }
     
-    public func download(node: Node) {
+    public func download(node: Node, useRefreshableDownloadOperation: Bool = false) {
         let file = node as! File // TODO: later will need to download folders as trees
-        tower.downloader?.scheduleDownloadWithBackgroundSupport(cypherdataFor: file) { _ in }
+        tower.downloader?.scheduleDownloadWithBackgroundSupport(
+            cypherdataFor: file,
+            useRefreshableDownloadOperation: useRefreshableDownloadOperation
+        ) { _ in }
     }
 }

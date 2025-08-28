@@ -24,5 +24,4 @@ public class PhotoUploaderOperation: FileUploaderOperation {
         NotificationCenter.default.post(name: .didUploadPhoto)
         super.main()
     }
-
 }

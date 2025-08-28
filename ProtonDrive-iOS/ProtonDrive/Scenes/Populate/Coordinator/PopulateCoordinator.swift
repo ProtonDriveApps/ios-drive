@@ -47,10 +47,13 @@ final class PopulateCoordinator: PopulateCoordinatorProtocol {
         let populated = populatedViewControllerFactory()
         viewController.navigationController?.pushViewController(populated, animated: false)
         if let modal = onboardingViewControllerFactory() {
+            Log.info("will Show Onboarding", domain: .application)
             viewController.present(modal, animated: true)
         } else if let modal = upsellFactory() {
+            Log.info("will Show Upsell", domain: .application)
             viewController.present(modal, animated: true)
         } else if let modal = newFeaturePromoteFactory() {
+            Log.info("will Show NewFeaturePromote", domain: .application)
             viewController.present(modal, animated: false)
         }
     }

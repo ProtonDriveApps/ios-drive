@@ -17,6 +17,7 @@
 
 import PDCore
 import PDLocalization
+import PDPhotos
 
 struct PhotosOnboardingViewData {
     let title: String

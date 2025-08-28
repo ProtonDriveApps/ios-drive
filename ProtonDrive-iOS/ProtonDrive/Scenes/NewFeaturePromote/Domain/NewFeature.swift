@@ -16,10 +16,14 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 enum NewFeature: String {
-    case doc
-    case sharing
+    case albums
+    case uiTest
 
     static var sortedCases: [NewFeature] {
-        return [.sharing, .doc]
+        if Constants.isUITest {
+            return [.uiTest]
+        } else {
+            return [.albums]
+        }
     }
 }

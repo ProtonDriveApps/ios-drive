@@ -21,33 +21,51 @@ import Combine
 
 public final class TrashEnumerator: NSObject, NSFileProviderEnumerator {
     private weak var tower: Tower!
+    internal let keepDownloadedManager: KeepDownloadedEnumerationManager
     private var cancellables: [AnyCancellable] = []
 
-    var changeObserver: FileProviderChangeObserver?
-    var shouldReenumerateItems: Bool = false
+    let enumerationObserver: EnumerationObserverProtocol?
 
-    public init(tower: Tower, changeObserver: FileProviderChangeObserver? = nil) {
+    let displayChangeEnumerationDetails: Bool
+
+    var shouldReenumerateItems: Bool = false {
+        didSet {
+            Log.trace("shouldReenumerateItems = \(shouldReenumerateItems)")
+        }
+    }
+
+    public init(tower: Tower,
+                keepDownloadedManager: KeepDownloadedEnumerationManager,
+                enumerationObserver: EnumerationObserverProtocol? = nil,
+                displayChangeEnumerationDetails: Bool) {
+        Log.trace()
         self.tower = tower
-        self.changeObserver = changeObserver
+        self.keepDownloadedManager = keepDownloadedManager
+        self.enumerationObserver = enumerationObserver
+        self.displayChangeEnumerationDetails = displayChangeEnumerationDetails
     }
     
     public func invalidate() {
+        Log.trace()
         self.cancellables.forEach { $0.cancel() }
     }
     
     // MARK: Enumeration
     
     public func enumerateItems(for observer: NSFileProviderEnumerationObserver, startingAt page: NSFileProviderPage) {
+        Log.trace()
         observer.finishEnumerating(upTo: nil)
     }
     
     // MARK: Changes
     
     public func currentSyncAnchor(completionHandler: @escaping (NSFileProviderSyncAnchor?) -> Void) {
+        Log.trace()
         self.currentSyncAnchor(completionHandler)
     }
     
     public func enumerateChanges(for observer: NSFileProviderChangeObserver, from syncAnchor: NSFileProviderSyncAnchor) {
+        Log.trace()
         observer.finishEnumeratingChanges(upTo: syncAnchor, moreComing: false)
     }
 }

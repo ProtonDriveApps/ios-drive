@@ -32,6 +32,10 @@ extension Folder {
     public var isRoot: Bool {
         self.directShares.contains(where: \.isMain)
     }
+
+    public var isDeviceRoot: Bool {
+        self.primaryDirectShare?.type == .device
+    }
 }
 
 // MARK: Generated accessors for children
@@ -58,7 +62,7 @@ extension Folder {
         for child in children {
             if child.isSharedWithMeRoot {
                 self.removeFromChildren(child)
-                child.parentLink = nil
+                child.parentFolder = nil
             } else if let childFolder = child as? Folder {
                 childFolder.isolateChildrenToPreventCascadeDeletion()
             }

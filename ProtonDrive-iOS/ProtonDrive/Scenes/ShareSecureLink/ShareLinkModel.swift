@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDCoreIOS
 import Combine
 
 final class ShareLinkModel {
@@ -88,10 +89,9 @@ final class ShareLinkModel {
 
     func updateSecureLink(values: UpdateShareURLDetails, completion: @escaping (Result<ShareURL, Error>) -> Void) {
         let identifier = shareURL.identifier
-        let nodeIdentifier = node.identifier
         Task {
             do {
-                try await repository.updatePublicLink(identifier, node: nodeIdentifier, with: values)
+                try await repository.updatePublicLink(identifier, with: values)
                 try await self.handleSuccess(identifier: identifier, values: values, completion: completion)
             } catch {
                 await self.handleError(error, completion: completion)

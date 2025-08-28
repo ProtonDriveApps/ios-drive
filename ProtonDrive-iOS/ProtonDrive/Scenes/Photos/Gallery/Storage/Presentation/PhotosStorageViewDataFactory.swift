@@ -17,6 +17,7 @@
 
 import PDCore
 import PDLocalization
+import PDPhotos
 
 protocol PhotosStorageViewDataFactory {
     func makeData(state: QuotaState, progress: PhotosBackupProgress?) -> PhotosStorageViewData
@@ -60,11 +61,19 @@ final class LocalizedPhotosStorageViewDataFactory: PhotosStorageViewDataFactory 
     }
 
     private func makeItems(from progress: PhotosBackupProgress?) -> String? {
-        if let count = progress?.inProgress {
-            let items = "**\(Localization.item_plural_type_with_num(num: count).lowercased())**"
-            return Localization.photo_storage_item_left(items: items)
-        } else {
+        guard let count = progress?.inProgress else {
             return nil
         }
+
+        // Count will be 0 when the pipeline is stopped and the user relaunched app.
+        // In such case, no ids were loaded and so we don't know how many is remaining.
+        // In order not to confuse users, we don't show this label at all.
+        // swiftlint:disable:next empty_count
+        guard count > 0 else {
+            return nil
+        }
+
+        let items = "**\(Localization.item_plural_type_with_num(num: count).lowercased())**"
+        return Localization.photo_storage_item_left(items: items)
     }
 }

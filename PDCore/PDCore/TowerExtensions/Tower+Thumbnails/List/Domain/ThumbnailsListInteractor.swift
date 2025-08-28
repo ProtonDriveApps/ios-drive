@@ -30,7 +30,7 @@ enum ThumbnailsListInteractorError: Error {
 }
 
 public protocol ThumbnailsListInteractor {
-    func execute(ids: [String], volumeId: String) async throws -> ThumbnailsList
+    func execute(ids: Set<AnyVolumeIdentifier>) async throws -> ThumbnailsList
 }
 
 final class RemoteThumbnailsListInteractor: ThumbnailsListInteractor {
@@ -41,7 +41,15 @@ final class RemoteThumbnailsListInteractor: ThumbnailsListInteractor {
         self.repository = repository
     }
 
-    func execute(ids: [String], volumeId: String) async throws -> ThumbnailsList {
+    func execute(ids: Set<AnyVolumeIdentifier>) async throws -> ThumbnailsList {
+        let idsSplitByVolumeId = Array(ids).splitIntoChunksByVolume()
+        let results = try await idsSplitByVolumeId.asyncMap { chunk in
+            try await execute(ids: chunk.nodeIds, volumeId: chunk.volumeId)
+        }
+        return results.flatMap { $0 }
+    }
+
+    private func execute(ids: [String], volumeId: String) async throws -> ThumbnailsList {
         let batches = ids.splitInGroups(of: maximalIdsCount)
         var result = [ThumbnailInfo]()
         for batch in batches {

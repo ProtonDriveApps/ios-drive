@@ -20,14 +20,12 @@ import Foundation
 public struct PhotoImportFactory {
     public init() {}
 
-    public func makeImporter(tower: Tower) -> PhotoCompoundImporter {
+    public func makeImporter(tower: Tower, rootFolderRepository: PhotosRootFolderRepository) -> PhotoCompoundImporter {
         let managedObjectContext = tower.storage.photosBackgroundContext
-        let repositoriesFactory = PhotosRepositoriesFactory()
-        let rootRepository = repositoriesFactory.makeRootFolderRepository(tower: tower)
         let photoImporter = CoreDataPhotoImporter(moc: managedObjectContext, signersKitFactory: tower.sessionVault, uploadClientUIDProvider: tower.sessionVault)
         let nodeCacheService = ClientNodeFetchAndCacheService(client: tower.client, cacher: tower.cloudSlot, context: tower.storage.photosBackgroundContext)
         let cachedPhotoRepository = CachedPhotoRepository(storageManager: tower.storage, photosContext: managedObjectContext)
         let existingPhotoRepository = RemoteCachingExistingPhotoCompoundRepository(nodeCacheService: nodeCacheService, cachedPhotoRepository: cachedPhotoRepository)
-        return CompoundPhotoCompoundImporter(importer: photoImporter, notificationCenter: NotificationCenter.default, moc: managedObjectContext, rootRepository: rootRepository, existingPhotoRepository: existingPhotoRepository)
+        return CompoundPhotoCompoundImporter(importer: photoImporter, notificationCenter: NotificationCenter.default, moc: managedObjectContext, rootRepository: rootFolderRepository, existingPhotoRepository: existingPhotoRepository)
     }
 }

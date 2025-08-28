@@ -19,5 +19,6 @@ import Foundation
 
 public protocol UserMessageHandlerProtocol {
     func handleError(_ error: LocalizedError)
+    func handleWarning(_ message: String)
     func handleSuccess(_ message: String)
 }

@@ -65,19 +65,22 @@ extension InviteProtonUserEndpoint.Parameters {
         public let keyPacket: String
         public let keyPacketSignature: String
         public let permissions: AccessPermission
-        
+        public let externalInvitationID: String?
+
         public init(
             inviteeEmail: String,
             inviterEmail: String,
             keyPacket: String,
             keyPacketSignature: String,
-            permissions: AccessPermission
+            permissions: AccessPermission,
+            externalInvitationID: String?
         ) {
             self.inviteeEmail = inviteeEmail
             self.inviterEmail = inviterEmail
             self.keyPacket = keyPacket
             self.keyPacketSignature = keyPacketSignature
             self.permissions = permissions
+            self.externalInvitationID = externalInvitationID
         }
     }
 }

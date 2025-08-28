@@ -17,39 +17,22 @@
 
 import Foundation
 import CoreData
+import ProtonCoreUtilities
 
 // MARK: - Persistent Container Management
 
-public class StorageManager: NSObject, ManagedStorage {
+public class StorageManager: NSObject, ManagedStorage, RecoverableStorage {
     private static var managedObjectModel: NSManagedObjectModel = {
-        // static linking
-        if let resources = Bundle.main.resourceURL?.appendingPathComponent("PDCoreResources").appendingPathExtension("bundle"),
-           let bundle = Bundle(url: resources)?.url(forResource: "Metadata", withExtension: "momd"),
-           let model = NSManagedObjectModel(contentsOf: bundle)
-        {
-            return model
-        }
-        
-        #if RESOURCES_ARE_IMPORTED_BY_SPM
-        if let bundle = Bundle.module.url(forResource: "Metadata", withExtension: "momd"),
-           let model = NSManagedObjectModel(contentsOf: bundle)
-        {
-            return model
-        }
-        #endif
-
-        // dynamic linking
-        if let bundle = Bundle(for: StorageManager.self).url(forResource: "Metadata", withExtension: "momd"),
-           let model = NSManagedObjectModel(contentsOf: bundle)
-        {
-            return model
-        }
-        
-        fatalError("Error loading Metadata from bundle")
+        return NSManagedObjectModel.makeModel()
     }()
+    
+    private static let databaseName = "Metadata"
+
+    static var metadataDBWasRecreated = false
+    public var previousRunWasInterrupted = false
 
     internal static func defaultPersistentContainer(suiteUrl: URL?) -> NSPersistentContainer {
-        let databaseName = "Metadata"
+
         var container = NSPersistentContainer(name: databaseName, managedObjectModel: managedObjectModel)
         
         let storeDirectoryUrl = suiteUrl ?? NSPersistentContainer.defaultDirectoryURL()
@@ -58,15 +41,18 @@ public class StorageManager: NSObject, ManagedStorage {
         do {
             try MigrationDetector().checkIfRequiresPostMigrationCleanup(storeAt: storeFileUrl, for: managedObjectModel)
         } catch { 
-            Log.error("Migration requirement check failed due to error: \(error.localizedDescription)",
-                      domain: .storage)
+            Log.error("Migration requirement check failed", error: error, domain: .storage)
         }
         
         let storeDescription = NSPersistentStoreDescription(url: storeFileUrl)
         storeDescription.shouldMigrateStoreAutomatically = true // Lightweight migration is enabled. Standard migrations from previous versions are to be handled below.
         storeDescription.shouldAddStoreAsynchronously = false
         container.persistentStoreDescriptions = [storeDescription]
-        
+
+        // If the file doesn't exist, a new one will be created.
+        // We need to know it was newly created, so that we populate it later.
+        Self.metadataDBWasRecreated = !FileManager.default.fileExists(atPath: storeFileUrl.path)
+
         // Completion handler is @escaping, but we do not feel that because it is executed synchronously by some reason
         // Possibility of race condition (ノಠ益ಠ)ノ彡┻━┻
         var loadError: Error?
@@ -79,42 +65,36 @@ public class StorageManager: NSObject, ManagedStorage {
                 assertionFailure(error.localizedDescription)
             }
         }
-        
+
         if let loadError = loadError as NSError? {
             let hashDigest = (try? MigrationDetector().hashDigest(storeAt: storeFileUrl)) ?? "UNREADABLE"
-            Log.error("Persistent coordinator creation failed with \(loadError.localizedDescription). Hash digest on disk: \(hashDigest)", domain: .storage)
-            
+            Log
+                .error(
+                    "Persistent coordinator creation failed",
+                    error: loadError, domain: .storage,
+                    context: LogContext("Hash digest on disk: \(hashDigest)")
+                )
+
             switch loadError.code {
-            case NSInferredMappingModelError, NSMigrationMissingMappingModelError: // Lightweight migration not possible.
-                fallthrough
-            case NSPersistentStoreIncompatibleVersionHashError:
-                #if os(iOS)
-                    // Delete any stored files, as their references will be lost with the persistent store being reset
-                    // Delete `Metadata.sqlite`
-                    deleteSQLite(storeDirectoryUrl: storeDirectoryUrl)
-                    PDFileManager.destroyPermanents()
-                    PDFileManager.destroyCaches()
+            case NSInferredMappingModelError,
+                NSMigrationMissingMappingModelError, // Lightweight migration not possible.
+                NSPersistentStoreIncompatibleVersionHashError,
+                NSPersistentStoreIncompatibleSchemaError,
+                11, // The operation couldn’t be completed. (NSSQLiteErrorDomain error 11.) (DB with 3 tables)
+                259: // / The file “Metadata.sqlite” couldn’t be opened because it isn’t in the correct format
 
-                    // Recreate directories
-                    PDFileManager.initializeIntermediateFolders()
+                // Delete any stored files, as their references will be lost with the persistent store being reset
+                // Delete `Metadata.sqlite`
+                deleteSQLite(storeDirectoryUrl: storeDirectoryUrl)
+                PDFileManager.destroyPermanents()
+                PDFileManager.destroyCaches()
+
+                // Recreate directories
+                PDFileManager.initializeIntermediateFolders()
                     
-                    container = StorageManager.defaultPersistentContainer(suiteUrl: suiteUrl)
-                #else
-                    do {
-                        // Delete any stored files, as their references will be lost with the persistent store being reset
-                        try container.persistentStoreCoordinator.destroyPersistentStore(at: storeFileUrl, ofType: NSSQLiteStoreType, options: nil)
-                        PDFileManager.destroyPermanents()
-                        PDFileManager.destroyCaches()
+                container = StorageManager.defaultPersistentContainer(suiteUrl: suiteUrl)
 
-                        // Recreate directories
-                        PDFileManager.initializeIntermediateFolders()
-                        
-                        container = StorageManager.defaultPersistentContainer(suiteUrl: suiteUrl)
-                    } catch {
-                        Log.error("Persistent coordinator destroying failed with \(loadError.localizedDescription)", domain: .storage)
-                        fatalError("Failed to destroy persistent store: \(error)")
-                    }
-                #endif
+                Self.metadataDBWasRecreated = true
             default:
                 /*
                  Typical reasons for an error here include:
@@ -130,7 +110,7 @@ public class StorageManager: NSObject, ManagedStorage {
         return container
     }
     
-    private static func deleteSQLite(storeDirectoryUrl: URL, databaseName: String = "Metadata") {
+    private static func deleteSQLite(storeDirectoryUrl: URL, databaseName: String = databaseName) {
         let exts = ["sqlite", "sqlite-shm", "sqlite-wal"]
         var destroyErrors: [Error] = []
         for ext in exts {
@@ -138,18 +118,28 @@ public class StorageManager: NSObject, ManagedStorage {
             do {
                 try FileManager.default.removeItem(at: storeFileUrl)
             } catch {
-                destroyErrors.append(error)
+                if (error as NSError).code != 4 /* No such file or directory */ {
+                    destroyErrors.append(error)
+                }
             }
         }
         if !destroyErrors.isEmpty {
             let description = destroyErrors.map(\.localizedDescription).joined(separator: ", ")
-            Log.error("Persistent coordinator destroying failed with \(description)", domain: .storage)
+            Log.error("Persistent coordinator destroying failed", domain: .storage, context: LogContext(description))
             fatalError("Failed to destroy persistent store: \(destroyErrors[0])")
         }
     }
 
-    internal static func inMemoryPersistantContainer() -> NSPersistentContainer {
-        let container = NSPersistentContainer(name: "Metadata", managedObjectModel: self.managedObjectModel)
+    // Tests only
+    public static func inMemoryPersistantContainer() -> NSPersistentContainer {
+        let managedObjectModel = NSManagedObjectModel.makeModel()
+        if managedObjectModel.versionIdentifiers != self.managedObjectModel.versionIdentifiers {
+            // Force fresh creation of model to account for variable context in tests (different models in different test cases)
+            // Otherwise keep using the same cached model, because reinitializing the model leads to entity ambiguity and crashes:
+            // `CoreData: warning: Multiple NSEntityDescriptions claim the NSManagedObject subclass '[Volume/File/etc]' so +entity is unable to disambiguate`
+            self.managedObjectModel = managedObjectModel
+        }
+        let container = NSPersistentContainer(name: databaseName, managedObjectModel: self.managedObjectModel)
         let description = NSPersistentStoreDescription()
         description.type = NSInMemoryStoreType
         description.shouldAddStoreAsynchronously = false // Make it simpler in test env
@@ -189,6 +179,38 @@ public class StorageManager: NSObject, ManagedStorage {
     private let persistentContainer: NSPersistentContainer
     let userDefaults: UserDefaults // Ideally, this should be replaced with @SettingsStorage
     
+    private static let recoveryDatabaseName = "Recovery_\(databaseName)"
+    private static let backupDatabaseName = "Backup_\(databaseName)"
+    let contexts: Atomic<[WeakReference<NSManagedObjectContext>]> = .init([])
+    public func disconnectExistingDB() throws -> PersistentStoreInfo {
+        try Self.disconnectExistingDB(named: Self.databaseName, using: persistentContainer, contexts: contexts)
+    }
+    public func createRecoveryDB(nextTo backup: PersistentStoreInfo) throws -> PersistentStoreInfo {
+        try Self.createRecoveryDB(named: Self.recoveryDatabaseName, nextTo: backup, using: persistentContainer)
+    }
+    public func reconnectExistingDBAndDiscardRecoveryIfNeeded(existing: PersistentStoreInfo, recovery: PersistentStoreInfo?) throws {
+        try Self.reconnectExistingDBAndDiscardRecoveryIfNeeded(existing: existing, recovery: recovery, using: persistentContainer, contexts: contexts)
+    }
+    public func replaceExistingDBWithRecovery(existing: PersistentStoreInfo, recovery: PersistentStoreInfo) throws {
+        try Self.replaceExistingDBWithRecovery(
+            backupName: Self.backupDatabaseName, existing: existing, recovery: recovery, using: persistentContainer, contexts: contexts
+        )
+    }
+    @discardableResult
+    public func cleanupLeftoversFromPreviousRecoveryAttempt() -> Bool {
+        Self.cleanupLeftoversFromPreviousRecoveryAttempt(
+            existingName: Self.databaseName, recoveryName: Self.recoveryDatabaseName, backupName: Self.backupDatabaseName, using: persistentContainer
+        )
+    }
+    public func moveExistingDBToBackup(existing: PersistentStoreInfo) throws -> PersistentStoreInfo {
+        try Self.moveExistingDBToBackup(
+            backupName: Self.backupDatabaseName, existing: existing, using: persistentContainer, contexts: contexts
+        )
+    }
+    public func restoreFromBackup() throws {
+        try Self.restoreFromBackup(backupName: Self.backupDatabaseName, existingName: Self.databaseName, using: persistentContainer)
+    }
+
     public convenience init(suite: SettingsStorageSuite, sessionVault: SessionVault) {
         switch suite {
         case let .inMemory(dataUrl):
@@ -204,21 +226,29 @@ public class StorageManager: NSObject, ManagedStorage {
     }
 
     /// Tests only (otherwise should be private)!
-    internal init(container: NSPersistentContainer, userDefaults: UserDefaults) {
+    public init(container: NSPersistentContainer, userDefaults: UserDefaults) {
         self.userDefaults = userDefaults
         self.persistentContainer = container
         self.persistentContainer.observeCrossProcessDataChanges()
-        
+
         super.init()
+        
+        do {
+            try restoreFromBackup()
+            self.previousRunWasInterrupted = cleanupLeftoversFromPreviousRecoveryAttempt()
+        } catch {
+            Log.error("Restoring from backup failed", error: error, domain: .storage)
+        }
         
         let center = NotificationCenter.default
         center.addObserver(self, selector: #selector(notifyOtherProcessesOfContextSaving), name: .NSManagedObjectContextDidSave, object: self.mainContext)
         center.addObserver(self, selector: #selector(notifyOtherProcessesOfContextSaving), name: .NSManagedObjectContextDidSave, object: self.backgroundContext)
         
         #if DEBUG
-        // swiftlint:disable no_print
-        print("💠 CoreData model located at: \(self.persistentContainer.persistentStoreCoordinator.persistentStores)")
-        // swiftlint:enable no_print
+        Log.debug(
+                "💠 CoreData model located at: \(self.persistentContainer.persistentStoreCoordinator.persistentStores)",
+                domain: .storage
+            )
         #endif
     }
 
@@ -245,7 +275,7 @@ public class StorageManager: NSObject, ManagedStorage {
             try? self.backgroundContext.saveOrRollback()
         }
     }
-    
+
     public lazy var mainContext: NSManagedObjectContext = {
         #if os(macOS)
         if Constants.runningInExtension {
@@ -254,12 +284,14 @@ public class StorageManager: NSObject, ManagedStorage {
             let context = self.persistentContainer.viewContext
             context.automaticallyMergesChangesFromParent = true
             context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
+            Self.keepWeakReferenceToContext(context, in: contexts)
             return context
         }
         #else
         let context = self.persistentContainer.viewContext
         context.automaticallyMergesChangesFromParent = true
         context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
+        Self.keepWeakReferenceToContext(context, in: contexts)
         return context
         #endif
     }()
@@ -268,17 +300,27 @@ public class StorageManager: NSObject, ManagedStorage {
         let context = self.persistentContainer.newBackgroundContext()
         context.automaticallyMergesChangesFromParent = true
         context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
+        Self.keepWeakReferenceToContext(context, in: contexts)
         return context
     }()
 
     public lazy var photosBackgroundContext: NSManagedObjectContext = {
         newBackgroundContext()
     }()
-    
-    public func newBackgroundContext() -> NSManagedObjectContext {
+
+    public lazy var photosSecondaryBackgroundContext: NSManagedObjectContext = {
+        newBackgroundContext()
+    }()
+
+    public lazy var eventsBackgroundContext: NSManagedObjectContext = {
+        newBackgroundContext()
+    }()
+
+    public func newBackgroundContext(mergePolicy: NSMergePolicy = .mergeByPropertyStoreTrump) -> NSManagedObjectContext {
         let context = self.persistentContainer.newBackgroundContext()
         context.automaticallyMergesChangesFromParent = true
-        context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
+        context.mergePolicy = mergePolicy
+        Self.keepWeakReferenceToContext(context, in: contexts)
         return context
     }
 
@@ -287,17 +329,17 @@ public class StorageManager: NSObject, ManagedStorage {
         child.parent = parent
         child.automaticallyMergesChangesFromParent = true
         child.mergePolicy = NSMergePolicy.mergeByPropertyObjectTrump
+        Self.keepWeakReferenceToContext(child, in: contexts)
         return child
     }
     
-    func clearUp() async {
+    public func cleanUp() async {
         finishedFetchingTrash = nil
         finishedFetchingSharedByMe = nil
         finishedFetchingSharedWithMe = nil
         finishedFetchingShareURLs = nil
 
         userDefaults.removeObject(forKey: UserDefaults.NotificationPropertyKeys.metadataDBUpdateKey.rawValue)
-        userDefaults.removeObject(forKey: UserDefaults.NotificationPropertyKeys.syncErrorDBUpdateKey.rawValue)
 
         await self.mainContext.perform {
             self.mainContext.reset()
@@ -313,7 +355,7 @@ public class StorageManager: NSObject, ManagedStorage {
             
             // in memory stores do not support the NSBatchDeleteRequest
             if hasInMemoryStore {
-                [Node.self, Block.self, Revision.self, Volume.self, Share.self, Thumbnail.self, ShareURL.self, Photo.self, Device.self, PhotoRevision.self, ThumbnailBlob.self].forEach { entity in
+                [Node.self, Block.self, Revision.self, Volume.self, Share.self, Thumbnail.self, ShareURL.self, Photo.self, Device.self, PhotoRevision.self, ThumbnailBlob.self, Invitation.self, CoreDataAlbum.self, CoreDataAlbumListing.self, CoreDataPhotoListing.self].forEach { entity in
                     let request = NSFetchRequest<NSManagedObject>(entityName: String(describing: entity))
                     do {
                         let result = try self.backgroundContext.fetch(request)
@@ -324,13 +366,34 @@ public class StorageManager: NSObject, ManagedStorage {
                     }
                 }
             } else {
-                [Node.self, Block.self, Revision.self, Volume.self, Share.self, Thumbnail.self, ShareURL.self, Photo.self, Device.self, PhotoRevision.self, ThumbnailBlob.self].forEach { entity in
-                    let request = NSBatchDeleteRequest(fetchRequest: NSFetchRequest<NSFetchRequestResult>(entityName: String(describing: entity)))
-                    request.resultType = .resultTypeObjectIDs
+                [CoreDataPhotoListing.self, CoreDataAlbumListing.self, Node.self, Block.self, Revision.self, Volume.self, Share.self, Thumbnail.self, ShareURL.self, Photo.self, Device.self, PhotoRevision.self, ThumbnailBlob.self, Invitation.self, CoreDataAlbum.self].forEach { entity in
+                    let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: String(describing: entity))
+                    let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
+                    deleteRequest.resultType = .resultTypeObjectIDs
                     do {
-                        _ = try self.persistentContainer.persistentStoreCoordinator.execute(request, with: self.backgroundContext)
+                        if let result = try self.persistentContainer.persistentStoreCoordinator.execute(deleteRequest, with: self.backgroundContext) as? NSBatchDeleteResult,
+                           let objectIDs = result.result as? [NSManagedObjectID] {
+                            let changes: [String: Any] = [NSDeletedObjectsKey: objectIDs]
+                            let activeContexts = self.contexts.value.compactMap { $0.reference }
+                            NSManagedObjectContext.mergeChanges(fromRemoteContextSave: changes, into: activeContexts)
+                        }
                     } catch {
-                        assert(false, "Could not perform batch deletion after logout")
+                        Log.error("Storage deletion error", error: error, domain: .storage)
+                        // fallback for batch deletion not working
+                        do {
+                            fetchRequest.resultType = .managedObjectResultType
+                            let results = try self.backgroundContext.fetch(fetchRequest)
+                            guard let objectsForDeletion = results as? [NSManagedObject] else {
+                                assert(false, "Could not perform batch deletion after logout")
+                                return
+                            }
+                            for object in objectsForDeletion {
+                                self.backgroundContext.delete(object)
+                            }
+                            try self.backgroundContext.save()
+                        } catch {
+                            assert(false, "Could not perform batch deletion after logout")
+                        }
                     }
                 }
             }

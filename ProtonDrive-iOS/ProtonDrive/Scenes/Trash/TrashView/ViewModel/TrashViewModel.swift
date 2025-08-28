@@ -18,6 +18,7 @@
 import Foundation
 import Combine
 import PDCore
+import PDCoreIOS
 import ProtonCoreNetworking
 import PDUIComponents
 import PDLocalization
@@ -37,11 +38,13 @@ final class TrashViewModel: ObservableObject, FinderViewModel, SortingViewModel,
         didSet { selection.updateSelectable(Set(permanentChildren.map(\.node.identifier))) }
     }
     var isVisible: Bool = true
+    var isRoot: Bool = true
     let genericErrors = ErrorRegulator()
     @Published var isUpdating = false
 
     var isSharedWithMe: Bool { false }
     let hasPlusFunctionality = false
+    let scrollToTopPublisher: AnyPublisher<TabBarItem, Never>? = nil
 
     var nodeName: String {
         let selectedText = Localization.general_selected(num: selection.selected.count)
@@ -62,6 +65,7 @@ final class TrashViewModel: ObservableObject, FinderViewModel, SortingViewModel,
 
     let supportsLayoutSwitch = true
     let featureFlagsController: FeatureFlagsControllerProtocol
+    @Published var topBanner: String?
 
     func refreshOnAppear() {
         model.loadFromCache()
@@ -83,18 +87,23 @@ final class TrashViewModel: ObservableObject, FinderViewModel, SortingViewModel,
     @Published var loading = false
 
     private var deleteRequest: AnyCancellable?
+    private let validator: iOSSupportedSharesValidator
+    private let warningViewModel: PhotosMigrationWarningViewModelProtocol
 
-    init(model: TrashModel, featureFlagsController: FeatureFlagsControllerProtocol) {
+    init(model: TrashModel, featureFlagsController: FeatureFlagsControllerProtocol, warningViewModel: PhotosMigrationWarningViewModelProtocol) {
         defer { self.model.loadFromCache() }
         self.model = model
         self.sorting = model.sorting
         self.layout = Layout(preference: model.layout)
+        self.validator = iOSSupportedSharesValidator(storage: model.tower.storage)
         self.featureFlagsController = featureFlagsController
+        self.warningViewModel = warningViewModel
 
         self.subscribeToSort()
         self.subscribeToChildren()
         self.selection.unselectOnEmpty(for: self)
         self.subscribeToLayoutChanges()
+        self.subscribeToWarning()
     }
 
     func subscribeToSort() {
@@ -118,8 +127,13 @@ final class TrashViewModel: ObservableObject, FinderViewModel, SortingViewModel,
             }
             .sink { [weak self] trash in
                 guard let self = self, self.isVisible else { return }
-                self.permanentChildren = trash.map(NodeWrapper.init)
+                self.permanentChildren = trash.filter { self.validator.isValid($0.shareID) }.map(NodeWrapper.init)
             }
+    }
+
+    private func subscribeToWarning() {
+        warningViewModel.warning
+            .assign(to: &$topBanner)
     }
 
     func subscribeToLayoutChanges() { }
@@ -145,13 +159,13 @@ final class TrashViewModel: ObservableObject, FinderViewModel, SortingViewModel,
 
     func restore(nodes: [NodeIdentifier], completion: @escaping () -> Void) {
         loading = true
-
+        let isUsingVolumeBasedEndpoint = isUsingVolumeBasedEndpoints()
         Task { [weak self] in
             do {
-                try await self?.model.restoreTrashed(nodes)
+                try await self?.model.restoreTrashed(nodes, isUsingVolumeBasedEndpoint: isUsingVolumeBasedEndpoint)
                 await self?.handleSuccess(completion: completion)
             } catch {
-                Log.error(error.localizedDescription, domain: .networking)
+                Log.error(error: error, domain: .networking)
                 await self?.handleFailure(error: error, completion: completion)
             }
         }
@@ -161,12 +175,13 @@ final class TrashViewModel: ObservableObject, FinderViewModel, SortingViewModel,
         Log.info("Delete - Nodes", domain: .networking)
         loading = true
 
+        let isUsingVolumeBasedEndpoint = isUsingVolumeBasedEndpoints()
         Task { [weak self] in
             do {
-                try await self?.model.deleteTrashed(nodes: nodes)
+                try await self?.model.deleteTrashed(nodes: nodes, isUsingVolumeBasedEndpoint: isUsingVolumeBasedEndpoint)
                 await self?.handleSuccess(completion: completion)
             } catch {
-                Log.error(error.localizedDescription, domain: .networking)
+                Log.error(error: error, domain: .networking)
                 await self?.handleFailure(error: error, completion: completion)
             }
         }
@@ -175,15 +190,22 @@ final class TrashViewModel: ObservableObject, FinderViewModel, SortingViewModel,
     func emptyTrash(nodes: [NodeIdentifier], completion: @escaping () -> Void) {
         loading = true
 
+        let isUsingVolumeBasedEndpoint = isUsingVolumeBasedEndpoints()
         Task { [weak self] in
             do {
-                try await self?.model.emptyTrash(nodes: nodes)
+                try await self?.model.emptyTrash(nodes: nodes, isUsingVolumeBasedEndpoint: isUsingVolumeBasedEndpoint)
                 await self?.handleSuccess(completion: completion)
             } catch {
-                Log.error(error.localizedDescription, domain: .networking)
+                Log.error(error: error, domain: .networking)
                 await self?.handleFailure(error: error, completion: completion)
             }
         }
+    }
+
+    private func isUsingVolumeBasedEndpoints() -> Bool {
+        // Until we had computers released, we had to operate by share
+        // Unless computers are killswitched, we should be good to use volume-based approach
+        return featureFlagsController.hasComputers
     }
 
     @MainActor

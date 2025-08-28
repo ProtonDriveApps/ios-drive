@@ -19,6 +19,7 @@ import UIKit
 import Combine
 import Foundation
 import PDCore
+import PDCoreIOS
 import ProtonCoreServices
 import ProtonCoreAccountDeletion
 

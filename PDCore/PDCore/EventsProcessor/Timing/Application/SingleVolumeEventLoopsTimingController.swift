@@ -20,8 +20,15 @@ import PMEventsManager
 /// There's just one volume (main) which should be polled every 90 seconds.
 /// No restrictions, this class keeps same functionality with the non-volume-migrated target.
 final class SingleVolumeEventLoopsTimingController: EventLoopsTimingController {
+
+    var interval: Double
+
+    init(interval: Double) {
+        self.interval = interval
+    }
+
     func getInterval() -> Double {
-        return 90
+        return interval
     }
 
     func getReadyLoops(possible: [LoopID]) -> [LoopID] {
@@ -31,5 +38,9 @@ final class SingleVolumeEventLoopsTimingController: EventLoopsTimingController {
 
     func setExecutedLoops(loopIds: [LoopID]) {
         // no-op
+    }
+
+    func updateHistoryForForcePolling(volumeIDs: [String]) {
+        
     }
 }

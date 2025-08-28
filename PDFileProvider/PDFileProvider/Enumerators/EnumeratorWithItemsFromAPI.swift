@@ -18,14 +18,18 @@
 import FileProvider
 import PDCore
 import Combine
+import ProtonCoreObservability
 
 protocol EnumeratorWithItemsFromAPI: AnyObject, EnumeratorWithItemsFromDB where Model: NodesFetching & NodesSorting {
     var fetchFromAPICancellable: AnyCancellable? { get set }
+    var displayEnumeratedItems: Bool { get }
 }
 
+/// "Item" enumerations are when listing the contents of a directory.
 extension EnumeratorWithItemsFromAPI {
     
     func fetchPageFromAPI(_ page: Int, observers: [NSFileProviderEnumerationObserver]) {
+        Log.trace()
         self.model.prepareForRefresh(fromPage: page)
         self.fetchFromAPICancellable?.cancel()
         
@@ -43,14 +47,13 @@ extension EnumeratorWithItemsFromAPI {
         var receivedTheLastPage = false
         
         self.fetchFromAPICancellable = self.model.fetchChildrenFromAPI(proceedTillLastPage: false)
-        .receive(on: DispatchQueue.main)
         .sink { completion in
             if case let .failure(error) = completion {
-                Log.error("Error fetching page: \(error.localizedDescription)", domain: .fileProvider)
+                Log.error("Error fetching page", error: error, domain: .enumerating)
                 let fsError = Errors.mapToFileProviderError(error) ?? error
                 observers.forEach { $0.finishEnumeratingWithError(fsError) }
             } else {
-                Log.info("Finished fetching page \(page) from cloud", domain: .fileProvider)
+                Log.info("Finished fetching page \(page) from cloud", domain: .enumerating)
 
                 // if it fetched from the cloud, but it's not the last page, it should NOT finish here
                 if receivedTheLastPage, 
@@ -65,17 +68,25 @@ extension EnumeratorWithItemsFromAPI {
                 observers.forEach { $0.finishEnumerating(upTo: providerPage) }
             }
         } receiveValue: { value in
-            Log.info("Received page from cloud", domain: .fileProvider)
+            Log.info("Received page from cloud", domain: .enumerating)
             receivedTheLastPage = value.isLastPage
             let nodes = value.nodes
             guard let moc = nodes.first?.managedObjectContext else {
                 return
             }
 
+            #if os(macOS)
+            self.sendSuccessfulFetchMetric(for: self.model.node)
+            #endif
+
             let items = moc.performAndWait {
                 nodes.filter { $0.state != .deleted }.compactMap {
                     do {
-                        return try NodeItem(node: $0)
+                        let node = try NodeItem(node: $0)
+                        if self.displayEnumeratedItems {
+                            self.model.reportEnumeratedItem(for: $0)
+                        }
+                        return node
                     } catch {
                         self.model.reportDecryptionError(for: $0, underlyingError: error)
                         return nil
@@ -84,5 +95,24 @@ extension EnumeratorWithItemsFromAPI {
             }
             observers.forEach { $0.didEnumerate(items) }
         }
+    }
+
+    @available(iOS, unavailable)
+    private func sendSuccessfulFetchMetric(for node: Node) {
+        guard let moc = node.moc else { return }
+
+        let offlineAvailabilty: Bool? = moc.performAndWait {
+            guard node.isAvailableOffline else { return nil }
+
+            return node.isMarkedOfflineAvailable
+        }
+
+        guard let offlineAvailabilty else { return }
+
+        let type: DriveKeepDownloadedAttributionType = offlineAvailabilty ? .direct : .inheriting
+
+        ObservabilityEnv.report(
+            ObservabilityEvent.keepDownloadedMetadataFetchEvent(type: type)
+        )
     }
 }

@@ -27,9 +27,12 @@ final class InterruptedUploadsInteractor: CommandInteractor {
     }
     
     func execute() {
-        let interruptedFiles = storage.fetchFilesInterrupted(moc: storage.newBackgroundContext())
-        for file in interruptedFiles.filter({ !($0 is Photo) }) {
-            fileUploader.upload(file)
+        storage.photosSecondaryBackgroundContext.perform { [weak self] in
+            guard let self else { return }
+            let interruptedFiles = storage.fetchFilesInterrupted(moc: storage.photosSecondaryBackgroundContext)
+            for file in interruptedFiles.filter({ !($0 is Photo) }) {
+                fileUploader.upload(file)
+            }
         }
     }
 }

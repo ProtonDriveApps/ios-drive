@@ -20,13 +20,18 @@ import CoreData
 import PMEventsManager
 import ProtonCoreServices
 
-public protocol EventsSystemManager: MainVolumeEventsReferenceProtocol {
+public protocol EventsTriggerController {
+    func forcePolling(volumeIDs: [String])
+}
+
+public protocol EventsSystemManager: MainVolumeEventsReferenceProtocol, EventsTriggerController {
     // event scheduler
-    func intializeEventsSystem(includeSharedVolumes: Bool)
+    func intializeEventsSystem(includeAllVolumes: Bool) throws
     func runEventsSystem()
     func pauseEventsSystem()
-    
+
     // event loops
+    func forcePolling(volumeIDs: [String])
     func forceProcessEvents()
     var eventProcessorIsRunning: Bool { get }
     
@@ -53,34 +58,41 @@ public protocol MainVolumeEventsReferenceProtocol {
 
 extension Tower: EventsSystemManager {
 
-    public func intializeEventsSystem(includeSharedVolumes: Bool) {
-        do {
-            let moc = storage.backgroundContext
-            let volumeIds = try moc.performAndWait {
-                try self.storage.getVolumeIDs(in: moc)
-            }
+    public func set(externalInvitationConverter: ExternalInvitationConvertProtocol) {
+#if os(iOS)
+        self.externalInvitationConverter = externalInvitationConverter
+#endif
+    }
 
-            #if os(macOS)
-            initializeSingleVolumeEventLoop(volumeId: volumeIds.myVolume)
-            #endif
-
-            #if os(iOS)
-            volumeIdsController.setMainVolume(id: volumeIds.myVolume)
-            volumeIdsController.addSharedVolumes(ids: volumeIds.otherVolumes)
-            initializeVolumeBasedEventLoop(mainVolumeId: volumeIds.myVolume)
-            if !Constants.runningInExtension && includeSharedVolumes {
-                // In FileProvider we don't need other volumes events, we only show main volume
-                // `includingSharedVolumes` should be true when FFs allow us to poll the shared volumes
-                appendSharedVolumesEventLoops(volumeIds: volumeIds.otherVolumes)
-            }
-            #endif
-        } catch {
-            Log.error("Events system failed to initialize", domain: .events)
+    public func intializeEventsSystem(includeAllVolumes: Bool) throws {
+        Log.trace()
+        let moc = storage.backgroundContext
+        let volumeIds = try moc.performAndWait {
+            try self.storage.getVolumeIDs(in: moc)
         }
+
+        #if os(macOS)
+        initializeSingleVolumeEventLoop(volumeId: volumeIds.main)
+        #endif
+
+        #if os(iOS)
+        volumeIdsController.setMainVolume(id: volumeIds.main)
+        volumeIdsController.addSharedVolumes(ids: volumeIds.other)
+        initializeVolumeBasedEventLoop(mainVolumeId: volumeIds.main)
+        if !Constants.runningInExtension && includeAllVolumes {
+            if let photoVolumeId = volumeIds.photo {
+                initializePhotoVolumeEventLoop(volumeId: photoVolumeId)
+            }
+            // In FileProvider we don't need other volumes events, we only show main volume
+            // `includingSharedVolumes` should be true when FFs allow us to poll the shared volumes
+            appendSharedVolumesEventLoops(volumeIds: volumeIds.other)
+        }
+        #endif
     }
 
     #if os(macOS)
     private func initializeSingleVolumeEventLoop(volumeId: String) {
+        Log.trace()
         let factory = EventsFactory()
         let legacyConveyor = factory.makeLegacyConveyor(tower: self)
         let loop = factory.makeEventsLoop(tower: self, conveyor: legacyConveyor, volumeId: volumeId)
@@ -100,17 +112,31 @@ extension Tower: EventsSystemManager {
         coreEventManager.enable(loop: loop, for: mainVolumeId)
     }
 
-    public func appendSharedVolumesEventLoops(volumeIds: [String]) {
+    public func initializePhotoVolumeEventLoop(volumeId: String) {
         guard let volumeEventsReferenceStorage else {
-            Log.error("Initializing shared volume loop before events storage", domain: .events)
+            Log.error("Initializing photo volume loop before events storage", error: nil, domain: .events)
             return
         }
 
-        Log.info("Adding shared volumes loops", domain: .events)
+        Log.info("Adding shared volumes loops \(volumeId)", domain: .events)
+        let factory = EventsFactory()
+        let volumeConveyor = factory.makeVolumeConveyor(tower: self, volumeId: volumeId, referenceStorage: volumeEventsReferenceStorage)
+        let loop = factory.makeEventsLoop(tower: self, conveyor: volumeConveyor, volumeId: volumeId)
+        coreEventManager.enable(loop: loop, for: volumeId)
+        volumeIdsController.setPhotoVolume(id: volumeId)
+    }
+
+    public func appendSharedVolumesEventLoops(volumeIds: [String]) {
+        guard let volumeEventsReferenceStorage else {
+            Log.error("Initializing shared volume loop before events storage", error: nil, domain: .events)
+            return
+        }
+
+        Log.info("Adding shared volumes loops \(volumeIds)", domain: .events)
         let factory = EventsFactory()
         volumeIds.forEach { volumeId in
-            let mainVolumeEventsConveyor = factory.makeVolumeConveyor(tower: self, volumeId: volumeId, referenceStorage: volumeEventsReferenceStorage)
-            let loop = factory.makeEventsLoop(tower: self, conveyor: mainVolumeEventsConveyor, volumeId: volumeId)
+            let volumeConveyor = factory.makeVolumeConveyor(tower: self, volumeId: volumeId, referenceStorage: volumeEventsReferenceStorage)
+            let loop = factory.makeEventsLoop(tower: self, conveyor: volumeConveyor, volumeId: volumeId)
             coreEventManager.enable(loop: loop, for: volumeId)
         }
         volumeIdsController.addSharedVolumes(ids: volumeIds)
@@ -132,35 +158,53 @@ extension Tower: EventsSystemManager {
 
     public func runEventsSystem() {
         guard isFetchEventsPossible() else {
+            Log.trace("guard")
             return
         }
+        Log.trace()
         coreEventManager.start()
     }
 
     private func isFetchEventsPossible() -> Bool {
         if Constants.buildType.isQaOrBelow {
+            Log.trace("\(shouldFetchEvents != false)")
             return shouldFetchEvents != false
         } else {
+            Log.trace("true")
             return true
         }
     }
 
     public var eventProcessorIsRunning: Bool {
-        coreEventManager.isRunning
+        Log.trace()
+        return coreEventManager.isRunning
     }
     
     public func pauseEventsSystem() {
+        Log.trace()
         coreEventManager.suspend()
     }
     
     public func forceProcessEvents() {
+        Log.trace()
         guard !coreEventManager.currentlyEnabledLoops().isEmpty else {
-            Log.error("No event loop(s) to process events", domain: .events)
+            Log.error("No event loop(s) to process events", error: nil, domain: .events)
             return
         }
 
         coreEventManager.currentlyEnabledLoops().forEach { loop in
             try? loop.performProcessing()
+        }
+    }
+
+    public func forcePolling(volumeIDs: [String]) {
+        if Thread.isMainThread {
+            Log.trace()
+            coreEventManager.forcePolling(volumeIDs: volumeIDs)
+        } else {
+            DispatchQueue.main.async {
+                self.forcePolling(volumeIDs: volumeIDs)
+            }
         }
     }
 

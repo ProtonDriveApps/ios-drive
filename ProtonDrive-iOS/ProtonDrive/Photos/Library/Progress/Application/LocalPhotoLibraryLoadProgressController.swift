@@ -17,6 +17,7 @@
 
 import Combine
 import PDCore
+import PDPhotos
 
 protocol PhotoLibraryLoadProgressController {
     func handle(_ action: PhotoLibraryLoadAction)

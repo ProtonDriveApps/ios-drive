@@ -16,9 +16,12 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import ProtonCoreUtilities
+import ProtonCoreServices
 
 /// DriveAPIService:
 /// Protocol that will allow us to decouple from Core's statically defined APIService and implement polymorphisim in a clean way
 public protocol DriveAPIService {
+    var authDelegate: AuthDelegate? { get }
+
     func request<E: Endpoint, R>(from endpoint: E, completionExecutor: CompletionBlockExecutor, completion: @escaping (Result<R, Error>) -> Void) where R == E.Response
 }

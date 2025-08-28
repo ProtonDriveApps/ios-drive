@@ -28,7 +28,9 @@ extension FinderView {
 
     @ViewBuilder
     func trailingBarButtons(_ items: [NavigationBarButton]) -> some View {
-        ForEach(items, content: navigationBarButton)
+        HStack {
+            ForEach(items, content: navigationBarButton)
+        }
     }
 
     func editSectionMenuItems(environment: EditSectionEnvironment) -> [ContextMenuItemGroup] {
@@ -50,6 +52,9 @@ extension FinderView {
     @ViewBuilder
     private func navigationBarButton(_ item: NavigationBarButton) -> some View {
         switch item {
+        case .virtualBack:
+            BackButton { NotificationCenter.default.post(.virtualBack) }.any()
+
         case .menu:
             MenuButton { NotificationCenter.default.post(.toggleSideMenu) }.any()
 
@@ -73,6 +78,7 @@ extension FinderView {
             }
             .accessibility(identifier: "RoundButtonView.Button.Plus_Button")
             .opacity(vm.node?.getNodeRole() == .viewer ? 0 : 1)
+            .disabled(vm.node?.getNodeRole() == .viewer)
 
         case .action where self.vm.node != nil:
             let environment = EditSectionEnvironment(
@@ -99,13 +105,14 @@ extension FinderView {
             .accessibility(identifier: "ContextMenuView.Button.Three_Dots_Horizontal")
 
         case let .apply(title, disabledInCurrentContext):
+            let formattedTitle = title.components(separatedBy: " ").map { $0.capitalized }.joined()
             TextNavigationBarButton(title: title)
             { [weak vm, weak root] in
                 vm?.applyAction {
                     root?.closeCurrentSheet.send()
                 }
             }
-            .accessibility(identifier: "FinderView.NavigationBarButton.TextButton.RightActionButton")
+            .accessibility(identifier: "FinderView.NavigationBarButton.TextButton.RightActionButton.\(formattedTitle)")
             .disabled(vm.isUpdating || disabledInCurrentContext)
 
         case .close:
@@ -118,6 +125,10 @@ extension FinderView {
                 (vm as? (any HasMultipleSelection))?.cancelSelection()
             }
             .fixedSize()
+        case .subscribe:
+            SubscriptionBarItem {
+                presentModal.wrappedValue = .servicePlans
+            }
 
         default:
             AssertionView("Unsupported NavigationBarButton requested")

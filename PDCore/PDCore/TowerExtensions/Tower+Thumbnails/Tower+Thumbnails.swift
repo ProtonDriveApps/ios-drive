@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import Combine
 
 extension Tower: ThumbnailLoader {
     public func loadThumbnail(with id: ThumbnailLoader.Identifier) {
@@ -24,5 +25,9 @@ extension Tower: ThumbnailLoader {
 
     public func cancelThumbnailLoading(_ id: ThumbnailLoader.Identifier) {
         thumbnailLoader.cancelThumbnailLoading(id)
+    }
+
+    public var succeededId: AnyPublisher<Identifier, Never> {
+        thumbnailLoader.succeededId
     }
 }

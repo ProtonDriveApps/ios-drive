@@ -19,6 +19,7 @@ import SwiftUI
 import UIKit
 import Combine
 import PDCore
+import PDCoreIOS
 import PDUIComponents
 import ProtonCoreNetworking
 import ProtonCoreDataModel
@@ -26,13 +27,23 @@ import ProtonCoreDataModel
 typealias ListState = TrashViewModel.ListState
 typealias ObservableFinderViewModel = FinderViewModel & ObservableObject
 
-protocol NodeEditionViewModel {
+protocol NodeEditionViewModel: BookmarManagingViewModel {
     var isSharedWithMeRoot: Bool { get }
     func setFavorite(_ favorite: Bool, nodes: [Node])
     func markOfflineAvailable(_ mark: Bool, nodes: [Node])
     func sendToTrash(_ currentNodes: [Node], completion: @escaping (Result<Void, Error>) -> Void)
     func removeMe(_ currentNode: Node, completion: @escaping (Result<Void, Error>) -> Void)
     func sendError(_ error: Error)
+}
+
+protocol BookmarManagingViewModel {
+    func removeBookmark(_ bookmark: CoreDataBookmark)
+    func copyBookmarkUrl(_ bookmark: CoreDataBookmark)
+}
+
+extension BookmarManagingViewModel {
+    func copyBookmarkUrl(_ bookmark: PDCore.CoreDataBookmark) { }
+    func removeBookmark(_ bookmark: CoreDataBookmark) { }
 }
 
 struct NodeWrapper: Identifiable, Equatable {
@@ -45,10 +56,11 @@ struct NodeWrapper: Identifiable, Equatable {
     }
 }
 
-protocol FinderViewModel: NodeEditionViewModel, FlatNavigationBarDelegate {
+protocol FinderViewModel: NodeEditionViewModel, FlatNavigationBarDelegate, ScrollToTopViewModel {
     associatedtype Model: FinderModel, NodesListing, ThumbnailLoader
     typealias ApplyActionCompletion = () -> Void
     var model: Model { get }
+    var provedEmpty: Bool { get }
 
     var sorting: SortPreference { get }
     var supportsSortingSwitch: Bool { get }
@@ -64,6 +76,7 @@ protocol FinderViewModel: NodeEditionViewModel, FlatNavigationBarDelegate {
     var permanentChildren: [NodeWrapper] { get set }
 
     var isVisible: Bool { get set }
+    var isRoot: Bool { get }
     var genericErrors: ErrorRegulator { get }
 
     var isSharedWithMeRoot: Bool { get }
@@ -75,6 +88,7 @@ protocol FinderViewModel: NodeEditionViewModel, FlatNavigationBarDelegate {
     var leadingNavBarItems: [NavigationBarButton] { get }
     var lastUpdated: Date { get }
     var featureFlagsController: FeatureFlagsControllerProtocol { get }
+    var topBanner: String? { get }
 
     func refreshOnAppear()
     func didScrollToBottom()
@@ -124,11 +138,11 @@ extension FinderViewModel {
         self.model.switchSorting(newValue)
     }
 
-    private var noChildren: Bool {
+    var noChildren: Bool {
         permanentChildren.isEmpty && transientChildren.isEmpty
     }
 
-    private var provedChildrenCount: Bool {
+    var provedChildrenCount: Bool {
         lastUpdated > .distantPast && !isUpdating
     }
 
@@ -144,11 +158,15 @@ extension FinderViewModel {
         return noChildren && !provedChildrenCount
     }
 
-    var emptyBackgroundConfig: EmptyViewConfiguration? {
+    var emptyBackgroundConfig: PlaceholderViewConfiguration? {
         guard provedEmpty else { return nil }
 
         switch self.model {
         case is NodesFetching:
+            if self is ComputerRootFolderViewModel {
+                return .emptyComputerRootFolder
+            }
+
             if hasPlusFunctionality {
                 return .folder
             } else {
@@ -350,11 +368,14 @@ extension FinderViewModel where Self.Model: NodesListing {
               file.activeRevisionDraft == nil else { return }
 
         guard node.state != .uploading else {
-            Log.error(DriveError(DriveFinderUpload()), domain: .application)
+            Log.error(error: DriveError(DriveFinderUpload()), domain: .application)
             return
         }
 
-        (self.model as? DownloadsListing)?.download(node: node)
+        (self.model as? DownloadsListing)?.download(
+            node: node,
+            useRefreshableDownloadOperation: featureFlagsController.hasRefreshableBlockDownloadLink
+        )
     }
 
     func setFavorite(_ favorite: Bool, nodes: [Node]) {
@@ -425,13 +446,13 @@ extension FinderViewModel where Self.Model: NodesListing {
 
             // Trash local nodes
             let trashingLocalNodes = localNodes.compactMap { (node: Node) -> TrashingNodeIdentifier? in
-                guard let parent = node.parentLink else { return nil }
+                guard let parent = node.parentNode else { return nil }
                 return TrashingNodeIdentifier(volumeID: node.volumeID, shareID: node.shareId, parentID: parent.id, nodeID: node.id)
             }
 
             // Trash remote nodes asynchronously
             let trashingRemoteNodes = remoteNodes.compactMap { (node: Node) -> TrashingNodeIdentifier? in
-                guard let parent = node.parentLink else { return nil }
+                guard let parent = node.parentNode else { return nil }
                 return TrashingNodeIdentifier(volumeID: node.volumeID, shareID: node.shareId, parentID: parent.id, nodeID: node.id)
             }
 

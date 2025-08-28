@@ -30,17 +30,16 @@ extension LocalSettings: ExternalFeatureFlagsStore {
         case .logsCompressionDisabled: logsCompressionDisabled = value
         case .domainReconnectionEnabled: domainReconnectionEnabled = value
         case .postMigrationJunkFilesCleanup: postMigrationJunkFilesCleanup = value
-        case .newTrayAppMenuEnabled: newTrayAppMenuEnabled = value
         case .pushNotificationIsEnabled: pushNotificationIsEnabled = value
         case .logCollectionEnabled: logCollectionEnabled = value
         case .logCollectionDisabled: logCollectionDisabled = value
         case .oneDollarPlanUpsellEnabled: oneDollarPlanUpsellEnabled = value
         case .driveDisablePhotosForB2B: driveDisablePhotosForB2B = value
         case .driveDDKEnabled: driveDDKEnabled = value
+        case .driveMacSyncRecoveryDisabled: driveMacSyncRecoveryDisabled = value
+        case .driveMacKeepDownloadedDisabled: driveMacKeepDownloadedDisabled = value
         // Sharing
         case .driveSharingMigration: driveSharingMigration = value
-        case .driveiOSSharing: driveiOSSharing = value
-        case .driveSharingDevelopment: driveSharingDevelopment = value
         case .driveSharingInvitations: driveSharingInvitations = value
         case .driveSharingExternalInvitations: driveSharingExternalInvitations = value
         case .driveSharingDisabled: driveSharingDisabled = value
@@ -48,11 +47,33 @@ extension LocalSettings: ExternalFeatureFlagsStore {
         case .driveSharingEditingDisabled: driveSharingEditingDisabled = value
         case .drivePublicShareEditMode: drivePublicShareEditMode = value
         case .drivePublicShareEditModeDisabled: drivePublicShareEditModeDisabled = value
+        case .driveMobileSharingInvitationsAcceptReject: driveMobileSharingInvitationsAcceptReject = value
+        case .driveShareURLBookmarking: driveShareURLBookmarking = value
+        case .driveShareURLBookmarksDisabled: driveShareURLBookmarksDisabled = value
+        // Album
+        case .driveAlbumsDisabled: driveAlbumsDisabled = value
+        case .driveCopyDisabled: driveCopyDisabled = value
+        case .drivePhotosTagsMigration: drivePhotosTagsMigration = value
+        case .drivePhotosTagsMigrationDisabled: drivePhotosTagsMigrationDisabled = value
+
         // ProtonDoc
-        case .driveDocsWebView: driveDocsWebView = value
         case .driveDocsDisabled: driveDocsDisabled = value
+        // Rating booster
+        // Legacy feature flags we used before migrating to Unleash
+        case .ratingIOSDrive: ratingIOSDrive = value
+        case .driveRatingBooster: driveRatingBooster = value
         // Entitlement
         case .driveDynamicEntitlementConfiguration: driveDynamicEntitlementConfiguration = value
+        // Refactor
+        case .driveiOSRefreshableBlockDownloadLink: driveiOSRefreshableBlockDownloadLink = value
+        // Computers
+        case .driveiOSComputers: driveiOSComputers = value
+        case .driveiOSComputersDisabled: driveiOSComputersDisabled = value
+        // Sheets
+        case .docsSheetsEnabled: docsSheetsEnabled = value
+        case .docsSheetsDisabled: docsSheetsDisabled = value
+        case .docsCreateNewSheetOnMobileEnabled: docsCreateNewSheetOnMobileEnabled = value
+        case .driveiOSDebugMode: driveiOSDebugMode = value
         }
     }
 
@@ -63,17 +84,16 @@ extension LocalSettings: ExternalFeatureFlagsStore {
         case .logsCompressionDisabled: return logsCompressionDisabled
         case .domainReconnectionEnabled: return domainReconnectionEnabled
         case .postMigrationJunkFilesCleanup: return postMigrationJunkFilesCleanup
-        case .newTrayAppMenuEnabled: return newTrayAppMenuEnabled
         case .pushNotificationIsEnabled: return pushNotificationIsEnabled
         case .logCollectionEnabled: return logCollectionEnabled
         case .logCollectionDisabled: return logCollectionDisabled
         case .oneDollarPlanUpsellEnabled: return oneDollarPlanUpsellEnabled
         case .driveDisablePhotosForB2B: return driveDisablePhotosForB2B
         case .driveDDKEnabled: return driveDDKEnabled
+        case .driveMacSyncRecoveryDisabled: return driveMacSyncRecoveryDisabled
+        case .driveMacKeepDownloadedDisabled: return driveMacKeepDownloadedDisabled
         // Sharing
         case .driveSharingMigration: return driveSharingMigration
-        case .driveiOSSharing: return driveiOSSharing
-        case .driveSharingDevelopment: return driveSharingDevelopment
         case .driveSharingInvitations: return driveSharingInvitations
         case .driveSharingExternalInvitations: return driveSharingExternalInvitations
         case .driveSharingDisabled: return driveSharingDisabled
@@ -81,11 +101,32 @@ extension LocalSettings: ExternalFeatureFlagsStore {
         case .driveSharingEditingDisabled: return driveSharingEditingDisabled
         case .drivePublicShareEditMode: return drivePublicShareEditMode
         case .drivePublicShareEditModeDisabled: return drivePublicShareEditModeDisabled
+        case .driveMobileSharingInvitationsAcceptReject: return driveMobileSharingInvitationsAcceptReject
+        case .driveShareURLBookmarking: return driveShareURLBookmarking
+        case .driveShareURLBookmarksDisabled: return driveShareURLBookmarksDisabled
+        // Album
+        case .driveAlbumsDisabled: return driveAlbumsDisabled
+        case .driveCopyDisabled: return driveCopyDisabled
+        case .drivePhotosTagsMigration: return drivePhotosTagsMigration
+        case .drivePhotosTagsMigrationDisabled: return drivePhotosTagsMigrationDisabled
         // ProtonDoc
-        case .driveDocsWebView: return driveDocsWebView
         case .driveDocsDisabled: return driveDocsDisabled
+        // Rating booster
+        // Legacy feature flags we used before migrating to Unleash
+        case .ratingIOSDrive: return ratingIOSDrive
+        case .driveRatingBooster: return driveRatingBooster
         // Entitlement
         case .driveDynamicEntitlementConfiguration: return driveDynamicEntitlementConfiguration
+        // Refactor
+        case .driveiOSRefreshableBlockDownloadLink: return driveiOSRefreshableBlockDownloadLink
+            // Computers
+        case .driveiOSComputers: return driveiOSComputers
+        case .driveiOSComputersDisabled: return driveiOSComputersDisabled
+        // Sheets
+        case .docsSheetsEnabled: return docsSheetsEnabled
+        case .docsSheetsDisabled: return docsSheetsDisabled
+        case .docsCreateNewSheetOnMobileEnabled: return docsCreateNewSheetOnMobileEnabled
+        case .driveiOSDebugMode: return driveiOSDebugMode
         }
     }
 }

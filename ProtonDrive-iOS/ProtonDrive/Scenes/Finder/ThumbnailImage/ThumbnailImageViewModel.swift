@@ -37,16 +37,17 @@ class ThumbnailImageViewModel {
     }
 
     func load() {
-        guard  clear == nil,
-               !startedDownload else {
-            return
-        }
+        guard thumbnail?.clearThumbnail == nil, !startedDownload else { return }
 
         self.loader?.loadThumbnail(with: self.id)
         startedDownload = true
     }
 
     var clear: Data? {
-        thumbnail?.clearThumbnail
+        let data = thumbnail?.clearThumbnail
+        if data == nil && !startedDownload {
+            load()
+        }
+        return data
     }
 }

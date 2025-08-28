@@ -20,19 +20,35 @@ import CoreData
 import Foundation
 
 public final class FetchResultControllerObserverPhotosBootstrapRepository: PhotosBootstrapRepository {
-    
+    private let queue = DispatchQueue.global(qos: .background)
+
     private let observer: FetchedResultsControllerObserver<Share>
 
     public init(observer: FetchedResultsControllerObserver<Share>) {
         self.observer = observer
     }
 
-    public var isPhotosRootReady: AnyPublisher<Bool, Never> {
-        observer.getPublisher().map { shares in
-            return shares.count >= 1
-        }
-        .receive(on: DispatchQueue.main)
-        .eraseToAnyPublisher()
+    public var state: AnyPublisher<PhotosShareState, Never> {
+        observer.getPublisher()
+            .receive(on: queue)
+            .map { [weak self] shares in
+                self?.getShareState(from: shares) ?? .notFound
+            }
+            .receive(on: DispatchQueue.main)
+            .removeDuplicates()
+            .eraseToAnyPublisher()
     }
 
+    private func getShareState(from shares: [Share]) -> PhotosShareState {
+        observer.fetchedResultsController.managedObjectContext.performAndWait {
+            guard !shares.isEmpty else {
+                return .notFound
+            }
+            if shares.first?.volume?.type == .photo {
+                return .photoVolume
+            } else {
+                return .legacyShare
+            }
+        }
+    }
 }

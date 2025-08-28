@@ -100,7 +100,7 @@ final class URLSessionDiscreteBlocksUploader: URLSessionDataTaskUploader, Conten
                 // If we fail to save the local state, even if the block is uploaded, we will retry again later
                 try moc.saveOrRollback()
             } catch {
-                Log.error(error, domain: .uploader)
+                Log.error("Saving uploaded state failed", error: error, domain: .uploader)
             }
         }
     }

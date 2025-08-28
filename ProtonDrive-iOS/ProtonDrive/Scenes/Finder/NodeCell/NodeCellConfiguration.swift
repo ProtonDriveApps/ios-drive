@@ -17,6 +17,7 @@
 
 import Foundation
 import PDCore
+import PDCoreIOS
 import Combine
 import PDUIComponents
 
@@ -46,13 +47,14 @@ struct NodeCellButton: Hashable {
 
 protocol NodeCellConfiguration: AnyObject {
     var nodeType: NodeType { get }
-    var iconName: String { get }
+    var iconName: FileAssetName { get }
     var name: String { get }
     var isFavorite: Bool { get }
     var isAvailableOffline: Bool { get }
     /// Public share link has been enabled
     var isShared: Bool { get }
     // Sharing feature is enabled
+    var isBookmark: Bool { get }
     var hasSharing: Bool { get }
     var hasDirectShare: Bool { get }
     var isSharedWithMeRoot: Bool { get }

@@ -17,14 +17,16 @@
 
 import Foundation
 import PDCore
+import PDCoreIOS
+import PDPhotos
 
 struct PhotosProcessingFactory {
     func makeProcessingController(dependencies: PhotosProcessingContainer.Dependencies) -> PhotosProcessingController {
         let factory = makeOperationsFactory(dependencies: dependencies)
         let processingResource = ConcretePhotosProcessingQueueResource(factory: factory)
         let subscriptionController = dependencies.tower.storage.subscriptionToMyPrimaryUploadingPhotos(moc: dependencies.photosManagedObjectContext)
-        let observer = FetchedResultsControllerObserver(controller: subscriptionController)
-        let repository = CoreDataPhotosUploadingCountRepository(observer: observer)
+        let observer = FetchedResultsControllerObserver(controller: subscriptionController, isAutomaticallyStarted: false)
+        let repository = DatabasePhotoUploadsRepository(observer: observer)
         let batchAvailableController = ConcretePhotosProcessingBatchAvailableController(repository: repository)
         let availableController = ConcretePhotosProcessingAvailableController(
             backupController: dependencies.backupController,
@@ -44,9 +46,17 @@ struct PhotosProcessingFactory {
     private func makeOperationsFactory(dependencies: PhotosProcessingContainer.Dependencies) -> PhotosProcessingOperationsFactory {
         return ConcretePhotosProcessingOperationsFactory(
             filterByIdResource: DatabasePhotosFilterByIdResource(storage: dependencies.tower.storage, policy: PhotoIdentifiersFilterPolicy()),
-            assetsResource: makeAssetsResource(settingsController: dependencies.settingsController),
-            conflictInteractor: PhotoRemoteFilterFactory().makeRemoteFilterInteractor(tower: dependencies.tower, circuitBreaker: dependencies.circuitBreaker, photoSharesObserver: dependencies.photoSharesObserver),
-            photosImporter: PhotoImportFactory().makeImporter(tower: dependencies.tower),
+            assetsResource: makeAssetsResource(settingsController: dependencies.settingsController, localSettings: dependencies.tower.localSettings),
+            conflictInteractor: PhotoRemoteFilterFactory().makeRemoteFilterInteractor(
+                tower: dependencies.tower,
+                circuitBreaker: dependencies.circuitBreaker,
+                photoSharesObserver: dependencies.photoSharesObserver,
+                rootFolderRepository: dependencies.rootFolderRepository
+            ),
+            photosImporter: PhotoImportFactory().makeImporter(
+                tower: dependencies.tower,
+                rootFolderRepository: dependencies.rootFolderRepository
+            ),
             progressRepository: dependencies.progressRepository,
             failedIdentifiersResource: dependencies.failedItemsResource,
             photoSkippableCache: dependencies.photoSkippableCache,
@@ -56,13 +66,19 @@ struct PhotosProcessingFactory {
         )
     }
 
-    private func makeAssetsResource(settingsController: PhotoBackupSettingsController) -> PhotoLibraryAssetsResource {
+    private func makeAssetsResource(
+        settingsController: PhotoBackupSettingsController,
+        localSettings: LocalSettings
+    ) -> PhotoLibraryAssetsResource {
         let contentResource = LocalPhotoLibraryFileContentResource()
         let assetFactory = LocalPhotoAssetFactory(nameStrategy: LocalPhotoLibraryFilenameStrategy())
-        // We don't upload exif until the format is aligned. `CoreImagePhotoLibraryExifResource(parser: CoreImagePhotoLibraryExifParser())`
-//        let exifResource = CoreImagePhotoLibraryExifResource(parser: CoreImagePhotoLibraryExifParser())
-        let exifResource = PartialPhotoLibraryExifResource()
-        let assetResource = LocalPhotoLibraryAssetResource(contentResource: contentResource, assetFactory: assetFactory, exifResource: exifResource)
+        let exifResource: PhotoLibraryExifResource
+        if localSettings.isEXIFUploadingDisabled && Constants.buildType.isQaOrBelow {
+            exifResource = PartialPhotoLibraryExifResource()
+        } else {
+            exifResource = CoreImagePhotoLibraryExifResource(parser: CoreImagePhotoLibraryExifParser())
+        }
+        let assetResource = LocalPhotoLibraryAssetResource(contentResource: contentResource, assetFactory: assetFactory, exifResource: exifResource, localSettings: localSettings)
         let nameResource = PHAssetNameResource()
         let liveCompoundResource = ConcretePhotoLibraryLivePairCompoundResource(assetResource: assetResource, nameResource: nameResource)
         let livePhotoResource = PhotoLibraryLivePhotoCompoundResource(liveCompoundResource: liveCompoundResource)

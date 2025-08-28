@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDCoreIOS
 
 struct NodeRowActionMenuViewModel {
     let node: Node
@@ -48,7 +49,7 @@ struct NodeRowActionMenuViewModel {
     }
 
     var subtitle: String? {
-        NodeDetailsViewModel.subtitle(for: node)
+        NodeSubtitleFactory().makeSubtitle(for: node)
     }
 }
 

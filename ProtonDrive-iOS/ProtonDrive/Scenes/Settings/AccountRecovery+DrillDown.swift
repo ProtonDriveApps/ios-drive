@@ -21,6 +21,7 @@ import ProtonCoreFeatureFlags
 import PMSettings
 import ProtonCoreServices
 import ProtonCoreDataModel
+import PDLocalization
 
 class AccountRecoverySettingsItem: PMDrillDownCellViewModel {
     var preview: String? { accountRecovery?.valueForSettingsItem }
@@ -42,5 +43,5 @@ class AccountRecoverySettingsItem: PMDrillDownCellViewModel {
 }
 
 extension AccountRecovery {
-    var title: String { "pmsettings-settings-account-settings-section" }
+    var title: String { Localization.setting_account_settings.uppercased() }
 }

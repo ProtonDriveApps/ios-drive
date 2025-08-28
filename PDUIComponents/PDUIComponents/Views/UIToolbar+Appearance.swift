@@ -46,4 +46,12 @@ extension UIToolbar {
         return appearance
     }
 }
+
+extension UIRefreshControl {
+    public static func setupApparance() {
+        let globalAppearance = UIRefreshControl.appearance()
+        globalAppearance.tintColor = ColorProvider.BrandNorm.withAlphaComponent(0.6)
+        globalAppearance.backgroundColor = .clear
+    }
+}
 #endif

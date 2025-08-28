@@ -20,8 +20,8 @@ import FileProvider
 
 extension Tower {
 
-    func nodeWithName(of item: NSFileProviderItem) throws -> Node? {
-        guard let parent = self.node(itemIdentifier: item.parentItemIdentifier) as? Folder,
+    func nodeWithName(of item: NSFileProviderItem) async throws -> Node? {
+        guard let parent = await self.node(itemIdentifier: item.parentItemIdentifier) as? Folder,
               let moc = parent.moc else {
             throw Errors.parentNotFound
         }
@@ -37,8 +37,8 @@ extension Tower {
         }
     }
 
-    public func rootFolder() throws -> Folder {
-        guard let root = node(itemIdentifier: .rootContainer) as? Folder else {
+    public func rootFolder() async throws -> Folder {
+        guard let root = await node(itemIdentifier: .rootContainer) as? Folder else {
             assertionFailure("Could not find rootContainer")
             throw NSFileProviderError(.noSuchItem)
         }
@@ -55,24 +55,40 @@ extension Tower {
         return NodeIdentifier(itemIdentifier)
     }
 
-    public func parentFolder(of item: NSFileProviderItem) -> Folder? {
-        node(itemIdentifier: item.parentItemIdentifier) as? Folder
+    public func parentFolder(of item: NSFileProviderItem) async -> Folder? {
+        await node(itemIdentifier: item.parentItemIdentifier) as? Folder
     }
 
-    func node(itemIdentifier: NSFileProviderItemIdentifier) -> Node? {
+    public func node(itemIdentifier: NSFileProviderItemIdentifier) async -> Node? {
         guard let nodeIdentifier = self.nodeIdentifier(for: itemIdentifier) else {
             return nil
         }
-        return fileSystemSlot?.getNode(nodeIdentifier)
+
+        /// Try fetching local node first...
+        let localNode = fileSystemSlot?.getNode(nodeIdentifier)
+
+        /// If found, return it...
+        if let localNode {
+            return localNode
+        }
+
+        /// ...otherwise fetch the remote node and return it.
+        do {
+            let remoteNode = try await cloudSlot.scanNode(nodeIdentifier) { $1 }
+            return remoteNode
+        } catch {
+            Log.error("Could not fetch node from API", domain: .clientNetworking, context: LogContext("nodeIdentifier: \(nodeIdentifier)"))
+            return nil
+        }
     }
-    
-    func draft(for item: NSFileProviderItem) -> File? {
-        guard let parent = parentFolder(of: item) else {
+
+    func draft(for item: NSFileProviderItem) async -> File? {
+        guard let parent = await parentFolder(of: item) else {
             return nil
         }
 
         guard let moc = parent.moc else {
-            Log.error("Attempting to fetch identifier when moc is nil (node has been deleted)", domain: .fileProvider)
+            Log.error("Attempting to fetch identifier when moc is nil (node has been deleted)", error: nil, domain: .fileProvider)
             fatalError()
         }
 

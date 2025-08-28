@@ -15,11 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+#if os(iOS)
 import SwiftUI
 import ProtonCoreUIFoundations
-#if canImport(UIKit)
 import UIKit
-#endif
 
 extension View {
 
@@ -34,6 +33,7 @@ extension View {
 
 private struct DialogContainerModifier<Item: Identifiable>: ViewModifier {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    @State private var currentWidth: CGFloat = 0
 
     @Binding var item: Item?
     let model: DialogSheetModel
@@ -43,39 +43,76 @@ private struct DialogContainerModifier<Item: Identifiable>: ViewModifier {
     }
 
     func body(content: Content) -> some View {
-
-        if horizontalSizeClass == .compact {
-            content
-                .confirmationDialog("", isPresented: isVisible) {
-                    ForEach(model.buttons) { button in
-                        Button(
-                            button.title,
-                            role: button.role == .destructive ? .destructive : nil,
-                            action: button.action
-                        )
-                    }
-                } message: {
-                    Text(model.title)
-                }
-        } else {
-            content
-                .alert("", isPresented: isVisible) {
-                    ForEach(model.buttons) { button in
-                        Button(
-                            button.title,
-                            role: button.role == .destructive ? .destructive : nil,
-                            action: button.action
-                        )
-                    }
-                } message: {
-                    Text(model.title)
-                }
+        Group {
+            if currentWidth == 0 {
+                content
+            } else if useCompactLayout() {
+                confirmationDialogLayout(content: content)
+            } else {
+                alertLayout(content: content)
+            }
         }
+        .modifier(
+            GetWidthModifier(
+                width: .init(
+                    get: { currentWidth },
+                    set: { newValue in
+                        // Somehow the width becomes 0 from time to time after splitting view
+                        if newValue == 0 { return }
+                        currentWidth = newValue
+                    }
+                )
+            )
+        )
     }
 
+    private func useCompactLayout() -> Bool {
+        // horizontalSizeClass on iPhone always compact
+        guard UIDevice.current.isIpad else { return true }
+        if horizontalSizeClass == .regular { return false }
+
+        // At least on iPad Pro(12.9), iOS 18.0+
+        // The horizontalSizeClass reports is incorrect, report compact rather than regular
+        let screenWidth = UIScreen.main.bounds.width
+        return currentWidth < screenWidth
+    }
+
+    @ViewBuilder
+    private func confirmationDialogLayout(content: Content) -> some View {
+        content
+            .confirmationDialog("", isPresented: isVisible) {
+                ForEach(model.buttons) { button in
+                    Button(
+                        button.title,
+                        role: button.role == .destructive ? .destructive : nil,
+                        action: button.action
+                    )
+                }
+            } message: {
+                Text(model.title)
+            }
+    }
+
+    @ViewBuilder
+    private func alertLayout(content: Content) -> some View {
+        content
+            .alert("", isPresented: isVisible) {
+                ForEach(model.buttons) { button in
+                    Button(
+                        button.title,
+                        role: button.role == .destructive ? .destructive : nil,
+                        action: button.action
+                    )
+                }
+            } message: {
+                Text(model.title)
+            }
+    }
 }
 
-public struct DialogSheetModel {
+public struct DialogSheetModel: Identifiable {
+    public let id = UUID()
+
     let title: String
     let buttons: [DialogButton]
 
@@ -107,3 +144,106 @@ public struct DialogButton: Identifiable {
     }
 
 }
+
+extension View {
+    @ViewBuilder
+    public func dialogConfirmationSheet(model: Binding<DialogSheetModel?>) -> some View {
+        self.modifier(DialogSheetContainerModifier(item: model))
+    }
+}
+
+private struct DialogSheetContainerModifier: ViewModifier {
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    @State private var currentWidth: CGFloat = 0
+
+    @Binding var item: DialogSheetModel?
+
+    var isVisible: Binding<Bool> {
+        Binding(
+            get: {
+                item != nil
+            },
+            set: { newValue in
+                if !newValue {
+                    item = nil
+                }
+            }
+        )
+    }
+
+    func body(content: Content) -> some View {
+        Group {
+            if currentWidth == 0 {
+                content
+            } else if useCompactLayout() {
+                confirmationDialogLayout(content: content)
+            } else {
+                alertLayout(content: content)
+            }
+        }
+        .modifier(
+            GetWidthModifier(
+                width: .init(
+                    get: { currentWidth },
+                    set: { newValue in
+                        // Somehow the width becomes 0 from time to time after splitting view
+                        if newValue == 0 { return }
+                        currentWidth = newValue
+                    }
+                )
+            )
+        )
+    }
+
+    private func useCompactLayout() -> Bool {
+        // horizontalSizeClass on iPhone always compact
+        guard UIDevice.current.isIpad else { return true }
+        if horizontalSizeClass == .regular { return false }
+
+        // At least on iPad Pro(12.9), iOS 18.0+
+        // The horizontalSizeClass reports is incorrect, report compact rather than regular
+        let screenWidth = UIScreen.main.bounds.width
+        return currentWidth < screenWidth
+    }
+
+    @ViewBuilder
+    private func confirmationDialogLayout(content: Content) -> some View {
+        content
+            .confirmationDialog("", isPresented: isVisible) {
+                if let item {
+                    ForEach(item.buttons) { button in
+                        Button(
+                            button.title,
+                            role: button.role == .destructive ? .destructive : nil,
+                            action: button.action
+                        )
+                    }
+                }
+            } message: {
+                if let item {
+                    Text(item.title)
+                }
+            }
+    }
+
+    @ViewBuilder
+    private func alertLayout(content: Content) -> some View {
+        content
+            .alert("", isPresented: isVisible) {
+                if let item {
+                    ForEach(item.buttons) { button in
+                        Button(
+                            button.title,
+                            role: button.role == .destructive ? .destructive : nil,
+                            action: button.action
+                        )
+                    }
+                }
+            } message: {
+                if let item {
+                    Text(item.title)
+                }
+            }
+    }
+}
+#endif

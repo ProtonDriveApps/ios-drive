@@ -20,6 +20,7 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import UIKit
+import PDLocalization
 
 @available(iOSApplicationExtension, unavailable)
 public extension PMSettingsSectionViewModel {
@@ -33,7 +34,7 @@ public extension PMSettingsSectionViewModel {
 
     static var about: PMSettingsSectionViewModel {
         PMSettingsSectionBuilder()
-            .title("pmsettings-settings-about-section".localized(in: PMSettings.bundle))
+            .title(Localization.setting_about.uppercased())
             .appendRow(PMAboutConfiguration.privacy)
             .appendRow(PMAboutConfiguration.terms)
             .build()

@@ -17,6 +17,7 @@
 
 import Combine
 import PDLocalization
+import PDCoreIOS
 
 protocol PhotosGalleryPlaceholderViewModelProtocol: ObservableObject {
     var title: String { get }

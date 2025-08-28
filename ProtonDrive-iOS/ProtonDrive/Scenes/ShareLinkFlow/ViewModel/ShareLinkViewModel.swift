@@ -100,16 +100,16 @@ final class ShareLinkViewModel: ObservableObject {
                 switch result {
                 case .success:
                     self?.state = .sharing
-                    NotificationCenter.default.post(name: .banner, object: BannerModel.success(Localization.share_link_settings_updated))
-                    
+                    NotificationCenter.default.postBanner(.success(Localization.share_link_settings_updated))
+
                 case .failure(let error):
                     self?.state = prevState
-                    NotificationCenter.default.post(name: .banner, object: BannerModel.failure(error))
+                    NotificationCenter.default.postBanner(.failure(error))
                 }
             }
         } catch {
             self.state = prevState
-            NotificationCenter.default.post(name: .banner, object: BannerModel.failure(error))
+            NotificationCenter.default.postBanner(.failure(error))
         }
     }
 
@@ -132,15 +132,15 @@ final class ShareLinkViewModel: ObservableObject {
                 self?.shouldClose = true
                 switch result {
                 case .success:
-                    NotificationCenter.default.post(name: .banner, object: BannerModel.success(Localization.share_link_settings_updated, delay: .delayed))
+                    NotificationCenter.default.postBanner(.success(Localization.share_link_settings_updated, delay: .delayed))
 
                 case .failure(let error):
-                    NotificationCenter.default.post(name: .banner, object: BannerModel.failure(error, delay: .delayed))
+                    NotificationCenter.default.postBanner(.failure(error, delay: .delayed))
                 }
             }
         } catch {
             self.shouldClose = true
-            NotificationCenter.default.post(name: .banner, object: BannerModel.failure(error, delay: .delayed))
+            NotificationCenter.default.postBanner(.failure(error, delay: .delayed))
         }
     }
 

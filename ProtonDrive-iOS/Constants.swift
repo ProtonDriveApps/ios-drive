@@ -61,21 +61,6 @@ enum Constants {
     static let oneDollarPlanDefaultPrice = "$0.99"
     static let oneDollarPlanID = "iosdrive_drivelite2024_1_usd_auto_renewing"
     
-    static let drivePlanIDs: Set<String> = [
-        "iosdrive_drive2022_12_usd_non_renewing",
-        "iosdrive_bundle2022_12_usd_non_renewing",
-    ]
-    
-    static let shownPlanNames: Set<String> = [
-        "drive2022",
-        "bundle2022",
-        "drivepro2022",
-        "family2022",
-        "visionary2022",
-        "bundlepro2022",
-        "enterprise2022",
-    ]
-    
     // MARK: - Background mode
     static let backgroundTaskIdentifier = "ch.protonmail.protondrive.processing"
     static let checkNewPhotoInGallery = "ch.protonmail.checkNewPhotoInGallery"
@@ -86,7 +71,6 @@ enum Constants {
     static let photosUploaderParallelProcessingCount = 2
     static let photosAssetsMaximalFolderSize = 200_000_000 // bytes count
     static let photosNecessaryFreeStorage = 2_000_000_000 // Space needed to proceed with photos backup. Bytes count. Arbitrary number.
-    static let photosPlaceholderAssetName = "emptyName" // Name seems to be empty for assets coming from `PHAssetSourceType.typeiTunesSynced`. We need to return some name, otherwise the process fails.
     enum Photos {
         static let minimalSpaceForAllowingUpload = 25 * 1024 * 1024 // bytes count (25 MB)
         static let maximalSpaceForShowingQuotaWarning = 100 * 1024 * 1024 * 1024 // bytes count (100 GB)
@@ -99,6 +83,9 @@ enum Constants {
 
     // MARK: - Build type
     static let buildType = getBuildType()
+
+    // MARK: - Build type features
+    static var buildFeatures: BuildFeatures = makeBuildTypeFeatures()
 }
 
 extension Constants {
@@ -111,7 +98,7 @@ extension Constants {
     /// Release-External |    ios-drive@1.3.2-beta+4379  |    ios-drive-fileprovider@1.3.2-beta+4379
     /// Release-Store      |    ios-drive@1.3.2+4379             |    ios-drive-fileprovider@1.3.2+4379
     ///
-    private static let clientVersion: String = {
+    static let clientVersion: String = {
         guard let info = Bundle.main.infoDictionary else {
             return "ios-drive@0.0.0"
         }
@@ -175,16 +162,7 @@ extension Constants {
     }
 
     private static func loadConfiguration() -> APIService.Configuration {
-        #if LOAD_TESTING
-        let domain = dynamicDomain ?? "https://localhost"
-        let environment: Environment
-        if domain.hasPrefix("http://") {
-            environment = Environment.customHttp(domain.replacingOccurrences(of: "http://", with: ""))
-        } else {
-            environment = Environment.custom(domain.replacingOccurrences(of: "https://", with: ""))
-        }
-        return Configuration(environment: environment, clientVersion: clientVersion)
-        #elseif DEBUG
+        #if DEBUG
         if let dynamicDomain = dynamicDomain, isUITest {
             return Configuration(environment: .custom(dynamicDomain), clientVersion: clientVersion)
         } else {
@@ -239,6 +217,14 @@ extension Constants {
         return false
     }
 
+    static var isUnitTest: Bool {
+        #if DEBUG
+        return ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        #else
+        return false
+        #endif
+    }
+
     private static var dynamicDomain: String? {
         if let domain = Bundle.main.infoDictionary?["DYNAMIC_DOMAIN"] as? String, !domain.isEmpty {
             persistDynamicDomainIfNeeded(domain)
@@ -283,5 +269,33 @@ extension Constants {
         #else
         return .prod
         #endif
+    }
+
+    private static func makeBuildTypeFeatures() -> BuildFeatures {
+        // We could just derive them from `buildType` instead of using config macros.
+        // Macros provide better protection, but are not possible to inject to lower level dependencies.
+        #if HAS_PAYMENTS
+        let hasPayments = true
+        #else
+        let hasPayments = false
+        #endif
+
+        #if SUPPORTS_UNLIMITED_PICKER_SELECTION
+        let hasUnlimitedPicker = true
+        #else
+        let hasUnlimitedPicker = false
+        #endif
+
+        #if HAS_SIGNUP
+        let hasSignUp = true
+        #else
+        let hasSignUp = false
+        #endif
+
+        return BuildFeatures(
+            hasPayments: hasPayments,
+            hasUnlimitedPicker: hasUnlimitedPicker,
+            hasSignUp: hasSignUp
+        )
     }
 }

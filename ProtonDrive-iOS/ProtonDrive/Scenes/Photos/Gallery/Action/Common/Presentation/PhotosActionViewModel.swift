@@ -17,8 +17,10 @@
 
 import Combine
 import Foundation
+import PDCoreIOS
 import PDUIComponents
 import PDLocalization
+import PDCore
 
 enum PhotosAction: Identifiable {
     var id: String {
@@ -103,6 +105,7 @@ final class PhotosActionViewModel: PhotosActionViewModelProtocol {
     }
 
     func handle(action: PhotosAction) {
+        Log.info("[PhotosAction] Did select: \(action)", domain: .userAction)
         switch action {
         case .trash:
             currentAction = .trash

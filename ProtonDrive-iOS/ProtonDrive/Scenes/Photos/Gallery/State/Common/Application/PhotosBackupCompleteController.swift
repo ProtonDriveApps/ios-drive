@@ -16,14 +16,13 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
-
-protocol PhotosBackupCompleteController {
-    var isComplete: AnyPublisher<Bool, Never> { get }
-}
+import PDPhotos
+import PDCoreIOS
 
 final class LocalPhotosBackupCompleteController: PhotosBackupCompleteController {
     private let progressController: PhotosBackupProgressController
     private let failuresController: PhotosBackupFailuresController
+    private let loadController: PhotoLibraryLoadController
     private let retryTriggerController: PhotoLibraryLoadRetryTriggerController
     private let timerFactory: TimerFactory
     private let subject = CurrentValueSubject<Bool, Never>(false)
@@ -34,9 +33,10 @@ final class LocalPhotosBackupCompleteController: PhotosBackupCompleteController 
         subject.eraseToAnyPublisher()
     }
 
-    init(progressController: PhotosBackupProgressController, failuresController: PhotosBackupFailuresController, retryTriggerController: PhotoLibraryLoadRetryTriggerController, timerFactory: TimerFactory) {
+    init(progressController: PhotosBackupProgressController, failuresController: PhotosBackupFailuresController, loadController: PhotoLibraryLoadController, retryTriggerController: PhotoLibraryLoadRetryTriggerController, timerFactory: TimerFactory) {
         self.progressController = progressController
         self.failuresController = failuresController
+        self.loadController = loadController
         self.retryTriggerController = retryTriggerController
         self.timerFactory = timerFactory
         subscribeToUpdates()
@@ -80,6 +80,7 @@ final class LocalPhotosBackupCompleteController: PhotosBackupCompleteController 
     }
 
     private func markComplete() {
+        loadController.handlePrematureCompletion()
         subject.send(true)
         timer = timerFactory.makeTimer(interval: 3)
             .sink { [weak self] in

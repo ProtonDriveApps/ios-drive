@@ -23,7 +23,7 @@ protocol PhotosProcessingBatchAvailableController {
 }
 
 final class ConcretePhotosProcessingBatchAvailableController: PhotosProcessingBatchAvailableController {
-    private let repository: PhotosUploadingCountRepository
+    private let repository: PhotoUploadsRepository
     private var subject = CurrentValueSubject<Bool, Never>(true)
     private var cancellables = Set<AnyCancellable>()
 
@@ -33,7 +33,7 @@ final class ConcretePhotosProcessingBatchAvailableController: PhotosProcessingBa
             .eraseToAnyPublisher()
     }
 
-    init(repository: PhotosUploadingCountRepository) {
+    init(repository: PhotoUploadsRepository) {
         self.repository = repository
         subscribeToUpdates()
     }
@@ -41,8 +41,9 @@ final class ConcretePhotosProcessingBatchAvailableController: PhotosProcessingBa
     private func subscribeToUpdates() {
         repository.count
             .map { count in
-                Log.info("PhotosProcessingBatchAvailableController count dropped to: \(count)", domain: .photosProcessing)
-                return count < Constants.photosLibraryProcessingBatchSize / 2
+                let numberOfUploadingPhotos = count.count
+                Log.info("PhotosProcessingBatchAvailableController count changed to: \(numberOfUploadingPhotos)", domain: .photosProcessing)
+                return numberOfUploadingPhotos < Constants.photosLibraryProcessingBatchSize / 2
             }
             .removeDuplicates()
             .sink { [weak self] isPossible in

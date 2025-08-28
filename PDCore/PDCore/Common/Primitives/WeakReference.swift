@@ -18,7 +18,7 @@
 public final class WeakReference<V: AnyObject> {
     public weak var reference: V?
 
-    public init(reference: V) {
+    public init(reference: V?) {
         self.reference = reference
     }
 }

@@ -25,18 +25,25 @@ public protocol GloballyUnique: NSManagedObject {
 extension GloballyUnique {
     // Method to fetch or create multiple entities based on a collection of IDs
     public static func fetchOrCreate(ids: Set<String>, allowSubclasses: Bool = false, in context: NSManagedObjectContext) -> [Self] {
+        fetchOrCreateIndicatingResult(ids: ids, allowSubclasses: allowSubclasses, in: context).map(\.value)
+    }
+    
+    // Method to fetch or create multiple entities based on a collection of IDs, passing the info whether the entity was fetched or created to caller
+    public static func fetchOrCreateIndicatingResult(
+        ids: Set<String>, allowSubclasses: Bool = false, in context: NSManagedObjectContext
+    ) -> [FetchOrCreateResult<Self>] {
         // Fetch existing entities that match the given IDs
         let existingEntities = fetch(ids: ids, allowSubclasses: allowSubclasses, in: context)
-        var resultEntities: [Self] = existingEntities
+        var resultEntities: [FetchOrCreateResult<Self>] = existingEntities.map(FetchOrCreateResult.fetched)
 
         // Determine which IDs are missing (i.e., don't have an existing entity)
-        let existingIDs = Set(existingEntities.compactMap { $0.value(forKey: "id") as? String })
+        let existingIDs = Set(existingEntities.map(\.id))
         let missingIDs = ids.subtracting(existingIDs)
 
         // Create new entities for the missing IDs
         for id in missingIDs {
             let newEntity = new(id: id, in: context)
-            resultEntities.append(newEntity)
+            resultEntities.append(.created(newEntity))
         }
 
         return resultEntities
@@ -44,34 +51,58 @@ extension GloballyUnique {
 
     // Method to fetch multiple entities based on a collection of IDs
     public static func fetch(ids: Set<String>, allowSubclasses: Bool = false, in context: NSManagedObjectContext) -> [Self] {
-        let fetchRequest = NSFetchRequest<Self>(entityName: entity().name!)
+        let entityName = entity().name!
+        let fetchRequest = NSFetchRequest<Self>(entityName: entityName)
 
         if allowSubclasses {
             fetchRequest.predicate = NSPredicate(format: "id IN %@", ids)
         } else {
-            fetchRequest.predicate = NSPredicate(format: "self.entity == %@ AND id IN %@", entity(), ids)
+            fetchRequest.predicate = NSPredicate(format: "id IN %@ AND self.entity == %@", ids, entity())
         }
 
-        return (try? context.fetch(fetchRequest)) ?? []
+        let results = (try? context.fetch(fetchRequest)) ?? []
+        
+        // wrapped in the check to avoid the performance penalty on fetch in the prod builds
+        if Constants.buildType.isBetaOrBelow {
+            let duplicateIds = Dictionary(grouping: results, by: \.id).filter { $1.count > 1 }.keys
+            duplicateIds.forEach {
+                assertionFailure("There should not be more than one globally unique entity with a particular id")
+                Log.warning("Multiple entities found for globally unique entity \(entityName) with id \($0)", domain: .metadata, sendToSentryIfPossible: true)
+            }
+        }
+        
+        return results
     }
 
     public static func fetchOrCreate(id: String, allowSubclasses: Bool = false, in context: NSManagedObjectContext) -> Self {
+        fetchOrCreateIndicatingResult(id: id, allowSubclasses: allowSubclasses, in: context).value
+    }
+    
+    public static func fetchOrCreateIndicatingResult(id: String, allowSubclasses: Bool = false, in context: NSManagedObjectContext) -> FetchOrCreateResult<Self> {
         if let existingEntity = fetch(id: id, allowSubclasses: allowSubclasses, in: context) {
-            return existingEntity
+            return .fetched(existingEntity)
         }
-        return new(id: id, in: context)
+        return .created(new(id: id, in: context))
     }
 
     public static func fetch(id: String, allowSubclasses: Bool = false, in context: NSManagedObjectContext) -> Self? {
-        let fetchRequest = NSFetchRequest<Self>(entityName: entity().name!)
-        fetchRequest.fetchLimit = 1
+        let entityName = entity().name!
+        let fetchRequest = NSFetchRequest<Self>(entityName: entityName)
 
         if allowSubclasses {
             fetchRequest.predicate = NSPredicate(format: "id == %@", id)
         } else {
-            fetchRequest.predicate = NSPredicate(format: "self.entity == %@ AND id == %@", entity(), id)
+            fetchRequest.predicate = NSPredicate(format: "id == %@ AND self.entity == %@", id, entity())
         }
-        return try? context.fetch(fetchRequest).first
+
+        guard let fetched = try? context.fetch(fetchRequest) else {
+            return nil
+        }
+        if fetched.count > 1 {
+            assertionFailure("There should not be more than one globally unique entity with a particular id")
+            Log.warning("Multiple entities found for globally unique entity \(entityName) with id \(id)", domain: .metadata, sendToSentryIfPossible: true)
+        }
+        return fetched.first
     }
 
     public static func new(id: String, in context: NSManagedObjectContext) -> Self {
@@ -80,4 +111,11 @@ extension GloballyUnique {
         return newEntity
     }
 
+    // Method to fetch an entity based on VolumeIdentifier, throwing an error if not found
+    public static func fetchOrThrow(id: String, allowSubclasses: Bool = false, in context: NSManagedObjectContext) throws -> Self {
+        guard let entity = fetch(id: id, allowSubclasses: allowSubclasses, in: context) else {
+            throw DriveError("with id \(id) should have been saved, but was not found in store.")
+        }
+        return entity
+    }
 }

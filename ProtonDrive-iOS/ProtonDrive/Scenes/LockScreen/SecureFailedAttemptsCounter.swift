@@ -35,13 +35,17 @@ public final class SecureFailedAttemptsCounter: FailedAttemptsCounter {
     }
     
     private func getNumber() -> Int {
-        guard let string = keychain.string(forKey: keychainKey), let number = Int(string) else {
+        guard let string = try? keychain.stringOrError(forKey: keychainKey), let number = Int(string) else {
             return 0
         }
         return number
     }
     
     private func setNumber(_ number: Int) {
-        keychain.set(String(number), forKey: keychainKey)
+        do {
+            try keychain.setOrError(String(number), forKey: keychainKey)
+        } catch {
+            Log.error("Set secure failed attempts counter fails", error: error, domain: .application)
+        }
     }
 }

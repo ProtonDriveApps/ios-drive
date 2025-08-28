@@ -37,10 +37,20 @@ public extension UIBarButtonItem {
 
     private static func makeButton(on target: Any?, action: Selector, image: UIImage?) -> UIBarButtonItem {
         let button = UIButton(frame: .zero)
-        button.setSizeContraint(height: 22, width: 22)
+        button.setSizeContraint(height: 24, width: 24)
         button.tintColor = ColorProvider.TextNorm
         button.setBackgroundImage(image, for: .normal)
         button.addTarget(target, action: action, for: .touchUpInside)
-        return UIBarButtonItem(customView: button)
+        button.translatesAutoresizingMaskIntoConstraints = false
+
+        let container = UIView()
+        container.addSubview(button)
+        NSLayoutConstraint.activate([
+            button.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            button.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            container.widthAnchor.constraint(equalToConstant: 40),
+            container.heightAnchor.constraint(equalToConstant: 40)
+        ])
+        return UIBarButtonItem(customView: container)
     }
 }

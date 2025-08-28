@@ -40,13 +40,27 @@ public struct ProtonSpinner: View {
     
     private let aspect: CGFloat
     private let style: Style
-    
-    public init(size: Size, style: Style = .regular) {
+    private let isHugging: Bool
+
+    public init(size: Size, style: Style = .regular, isHugging: Bool = false) {
         self.aspect = size.aspect
         self.style = style
+        self.isHugging = isHugging
     }
 
     public var body: some View {
+        if isHugging {
+            VStack {
+                Spacer()
+                progressView
+                Spacer()
+            }
+        } else {
+            progressView
+        }
+    }
+
+    private var progressView: some View {
         ProgressView()
             .progressViewStyle(CircularProgressViewStyle(tint: primaryColor))
             .scaleEffect(aspect)

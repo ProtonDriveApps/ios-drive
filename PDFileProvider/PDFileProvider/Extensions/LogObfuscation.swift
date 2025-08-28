@@ -38,7 +38,7 @@ extension NSFileProviderItem {
     }
 }
 
-extension NSFileProviderItemIdentifier: CustomDebugStringConvertible {
+extension NSFileProviderItemIdentifier: Swift.CustomDebugStringConvertible {
     public var debugDescription: String {
         switch self {
         case .rootContainer: return "ROOT"

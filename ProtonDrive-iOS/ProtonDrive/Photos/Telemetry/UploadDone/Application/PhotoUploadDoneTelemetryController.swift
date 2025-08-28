@@ -29,7 +29,7 @@ final class ConcretePhotoUploadDoneTelemetryController: PhotoUploadDoneTelemetry
     private var isBackgroundTask = false
     private var cancellables = Set<AnyCancellable>()
 
-    init(telemetryController: TelemetryController, computationAvailabilityController: ComputationalAvailabilityController, notifier: PhotoUploadDoneNotifier, storage: PhotosTelemetryStorage, userInfoResource: UserInfoResource, dataFactory: PhotoUploadDoneTelemetryDataFactory) {
+    init(telemetryController: TelemetryController, computationAvailabilityController: ComputationalAvailabilityController, notifier: PhotoUploadDoneNotifier, storage: PhotosTelemetryStorage, dataFactory: PhotoUploadDoneTelemetryDataFactory) {
         self.telemetryController = telemetryController
         self.computationAvailabilityController = computationAvailabilityController
         self.notifier = notifier

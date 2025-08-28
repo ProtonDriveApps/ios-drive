@@ -18,7 +18,9 @@
 import Foundation
 import CoreData
 
+public typealias CoreDataFolder = Folder
+
 @objc(Folder)
-public class Folder: Node {
+public class Folder: Node, NodeWithNodeHashKeyProtocol {
 
 }

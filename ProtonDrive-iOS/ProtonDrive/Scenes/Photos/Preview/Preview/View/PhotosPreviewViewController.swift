@@ -55,7 +55,7 @@ final class PhotosPreviewViewController<ViewModel: PhotosPreviewViewModelProtoco
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         if UIDevice.current.userInterfaceIdiom == .phone {
-            (UIApplication.shared.delegate as? AppDelegate)?.lockOrientationIfNeeded(in: .allButUpsideDown)
+            lockOrientationIfNeeded(in: .allButUpsideDown)
         }
     }
 
@@ -115,7 +115,7 @@ final class PhotosPreviewViewController<ViewModel: PhotosPreviewViewModelProtoco
 
     private func resetOrientation() {
         if UIDevice.current.userInterfaceIdiom == .phone {
-            (UIApplication.shared.delegate as? AppDelegate)?.lockOrientationIfNeeded(in: .portrait)
+            lockOrientationIfNeeded(in: .portrait)
         }
     }
 

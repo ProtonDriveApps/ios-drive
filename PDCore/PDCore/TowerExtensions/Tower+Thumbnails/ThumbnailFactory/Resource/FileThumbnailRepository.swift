@@ -24,13 +24,11 @@ final class FileNodeThumbnailRepository: NodeThumbnailRepository {
         self.store = store
     }
 
-    func fetchThumbnail(fileID: NodeIdentifier) throws -> Thumbnail {
+    func fetchThumbnail(fileID: any VolumeIdentifiable) throws -> Thumbnail {
         let moc = store.backgroundContext
 
         return try moc.performAndWait {
-            let node = self.store.fetchNode(id: fileID, moc: moc)
-
-            guard let file = node as? File else {
+            guard let file = File.fetch(identifier: fileID, in: moc) else {
                 throw ThumbnailLoaderError.nonRecoverable
             }
 

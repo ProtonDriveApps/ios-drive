@@ -48,7 +48,22 @@ public final class GeneralSettings {
             }
         }
     }
-    
+
+    private func fetchGeneralSettingsAsync() async throws -> GetGeneralSettingsResponse {
+        try await withCheckedThrowingContinuation { continuation in
+            let route = UserSettingsAPIRoutes.Router.getGeneralSettings
+
+            network.perform(request: route) { (_, result: Result<GetGeneralSettingsResponse, ResponseError>) in
+                switch result {
+                case .success(let response):
+                    continuation.resume(returning: response)
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
     public func storeUserSettings(_ userSettings: UserSettings) {
         self.userSettings = userSettings
         
@@ -118,5 +133,29 @@ extension UserSettings {
     
     var optOutFromCrashReports: Bool {
         crashReports == 0
+    }
+}
+
+extension GeneralSettings: ProtonUserSettingsStarterInteractorProtocol {
+    public func bootstrap() async throws {
+        let isFirstFetch = !(localSettings.didFetchProtonUserSettings ?? false)
+
+        if isFirstFetch {
+            try await fetchAndStoreUserSettings()
+            localSettings.didFetchProtonUserSettings = true
+        } else {
+            Task {
+                do {
+                    try await fetchAndStoreUserSettings()
+                } catch {
+                    Log.error("Fetch Proton user settings failed", error: error, domain: .application)
+                }
+            }
+        }
+    }
+
+    private func fetchAndStoreUserSettings() async throws {
+        let response: GetGeneralSettingsResponse = try await fetchGeneralSettingsAsync()
+        storeUserSettings(response.userSettings)
     }
 }

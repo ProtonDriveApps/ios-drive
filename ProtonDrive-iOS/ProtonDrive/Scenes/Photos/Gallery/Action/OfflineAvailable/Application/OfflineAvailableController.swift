@@ -46,7 +46,7 @@ final class UpdatingOfflineAvailableController: OfflineAvailableController {
     }
 
     func toggle(ids: PhotoIdsSet) {
-        relevantIds.formUnion(ids.map(\.nodeID))
+        relevantIds.formUnion(ids.map(\.id))
         resource.toggle(ids: ids)
     }
 }

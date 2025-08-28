@@ -51,18 +51,26 @@ class AsynchronousOperation: Operation {
 
     override func start() {
         guard !isCancelled else {
+            trace("guard")
             state = .finished
             return
         }
 
+        trace()
         state = .executing
         main()
     }
 
     override func cancel() {
+        trace()
+
         super.cancel()
 
         guard isExecuting else { return }
         state = .finished
+    }
+
+    deinit {
+        trace()
     }
 }

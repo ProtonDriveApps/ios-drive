@@ -16,12 +16,15 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDCoreIOS
 import PDClient
 import Combine
 import Foundation
 import BackgroundTasks
 import CoreData
 import ProtonCoreKeymaker
+import PDPhotos
+import ProtonCoreFeatureFlags
 
 struct PhotosFactory {
     func makeSettingsController(localSettings: LocalSettings) -> PhotoBackupSettingsController {
@@ -64,8 +67,25 @@ struct PhotosFactory {
         LocalPhotosRootDataSource(observer: observer)
     }
 
-    func makeBackupController(settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController, bootstrapController: PhotosBootstrapController, lockController: PhotoBackupConstraintController, populatedStateController: PopulatedStateControllerProtocol) -> PhotosBackupController {
-        return DrivePhotosBackupController(authorizationController: authorizationController, settingsController: settingsController, bootstrapController: bootstrapController, lockController: lockController, populatedStateController: populatedStateController)
+    // swiftlint:disable:next function_parameter_count
+    func makeBackupController(
+        settingsController: PhotoBackupSettingsController,
+        authorizationController: PhotoLibraryAuthorizationController,
+        bootstrapController: PhotosBootstrapController,
+        lockController: PhotoBackupConstraintController,
+        b2bUserConstraintController: PhotoBackupConstraintController,
+        populatedStateController: PopulatedStateControllerProtocol,
+        featureFlagsController: FeatureFlagsControllerProtocol
+    ) -> PhotosBackupController {
+        return DrivePhotosBackupController(
+            authorizationController: authorizationController,
+            settingsController: settingsController,
+            bootstrapController: bootstrapController,
+            lockController: lockController,
+            b2BUserController: b2bUserConstraintController,
+            populatedStateController: populatedStateController,
+            featureFlagsController: featureFlagsController
+        )
     }
 
     func makeCleanupController(tower: Tower, photosMoc: NSManagedObjectContext) -> PhotoLeftoversCleaner {
@@ -89,38 +109,52 @@ struct PhotosFactory {
             LocalPhotoLibraryUpdateResource(mappingResource: mappingResource, optionsFactory: optionsFactory, queueRepository: queueRepository, measurementRepository: measurementRepository),
             CleanedPhotoLibraryFetchResource(cleanedUploadingStore: cleanedUploadingStore, cleanedPhotosRetryEvent: cleanedPhotosRetryEvent, identifiersRepository: identifiersRepository, measurementRepository: measurementRepository)
         ])
-        return LocalPhotoLibraryLoadController(backupController: backupController, identifiersController: identifiersController, computationalAvailabilityController: computationalAvailabilityController, interactor: interactor)
+        let scheduler = DispatchQueue.main.eraseToAnyScheduler()
+        return LocalPhotoLibraryLoadController(backupController: backupController, identifiersController: identifiersController, computationalAvailabilityController: computationalAvailabilityController, interactor: interactor, scheduler: scheduler)
     }
 
-    func makeNetworkConstraintController(backupController: PhotosBackupController, settingsController: PhotoBackupSettingsController) -> PhotoBackupNetworkControllerProtocol {
-        let networkInteractor = ConnectedNetworkStateInteractor(resource: makeNetworkStateResource())
-        return PhotoBackupNetworkController(backupController: backupController, settingsController: settingsController, interactor: networkInteractor)
+    func makeNetworkConstraintController(settingsController: PhotoBackupSettingsController, connectionStateResource: ConnectionStateResource) -> PhotoBackupNetworkControllerProtocol {
+        let resource = makeNetworkStateResource(connectionStateResource: connectionStateResource)
+        return PhotoBackupNetworkController(settingsController: settingsController, interactor: resource)
     }
 
-    private func makeNetworkStateResource() -> NetworkStateResource {
+    private func makeNetworkStateResource(connectionStateResource: ConnectionStateResource) -> ConnectionStateResource {
         #if DEBUG
         if DebugConstants.commandLineContains(flags: [.uiTests, .mockCellularConnection]) {
-            return NetworkStateResourceMock(mockedState: .reachable(.cellular))
+            return ConnectionStateResourceSpy(state: .reachable(.cellular))
         } else if DebugConstants.commandLineContains(flags: [.uiTests, .mockNoConnection]) {
-            return NetworkStateResourceMock(mockedState: .unreachable)
+            return ConnectionStateResourceSpy(state: .unreachable)
         }
         #endif
-        return MonitoringNetworkStateResource()
+        return connectionStateResource
     }
 
-    func makePhotosBackupUploadAvailableController(backupController: PhotosBackupController, networkConstraintController: PhotoBackupConstraintController, quotaConstraintController: PhotoBackupConstraintController) -> PhotosBackupUploadAvailableController {
-        LocalPhotosBackupUploadAvailableController(backupController: backupController, networkConstraintController: networkConstraintController, quotaConstraintController: quotaConstraintController)
+    func makePhotosBackupUploadAvailableController(backupController: PhotosBackupController, networkConstraintController: PhotoBackupConstraintController, quotaConstraintController: PhotoBackupConstraintController, migrationConstraintController: PhotoBackupConstraintController) -> PhotosBackupUploadAvailableController {
+        LocalPhotosBackupUploadAvailableController(backupController: backupController, networkConstraintController: networkConstraintController, quotaConstraintController: quotaConstraintController, migrationConstraintController: migrationConstraintController)
     }
 
     // swiftlint:disable:next function_parameter_count
-    func makeConstraintsController(tower: Tower, backupController: PhotosBackupController, settingsController: PhotoBackupSettingsController, networkConstraintController: PhotoBackupConstraintController, quotaConstraintController: PhotoBackupConstraintController, availableSpaceController: PhotosAvailableSpaceController, circuitBreakerController: ConstraintController, throttlingMeasurementRepository: DurationMeasurementRepository) -> PhotoBackupConstraintsController {
-        let observer = FetchedResultsControllerObserver(controller: tower.storage.subscriptionToUploadingPhotos(moc: tower.storage.newBackgroundContext()))
+    func makeConstraintsController(
+        tower: Tower,
+        backupController: PhotosBackupController,
+        settingsController: PhotoBackupSettingsController,
+        networkConstraintController: PhotoBackupConstraintController,
+        quotaConstraintController: PhotoBackupConstraintController,
+        availableSpaceController: PhotosAvailableSpaceController,
+        circuitBreakerController: ConstraintController,
+        throttlingMeasurementRepository: DurationMeasurementRepository,
+        migrationConstraintController: PhotoBackupConstraintController,
+        featureFlagController: PhotoBackupConstraintController
+    ) -> PhotoBackupConstraintsController {
+        let observer = FetchedResultsControllerObserver(
+            controller: tower.storage.subscriptionToUploadingPhotos(moc: tower.storage.photosSecondaryBackgroundContext),
+            isAutomaticallyStarted: false
+        )
         let resource = UploadingPhotoAssetsStorageSizeResource(observer: observer)
         let interactor = LocalPhotoAssetsStorageConstraintInteractor(resource: resource)
         let storageController = PhotoAssetsStorageController(backupController: backupController, interactor: interactor)
         let thermalController = ThermalConstraintController(resource: ProcessThermalStateResource(), measurementRepository: throttlingMeasurementRepository)
-        let featureFlagController = makeFeatureFlagController(tower: tower)
-        return LocalPhotoBackupConstraintsController(storageController: storageController, networkController: networkConstraintController, quotaController: quotaConstraintController, thermalController: thermalController, availableSpaceController: availableSpaceController, featureFlagController: featureFlagController, circuitBreakerController: circuitBreakerController)
+        return LocalPhotoBackupConstraintsController(storageController: storageController, networkController: networkConstraintController, quotaController: quotaConstraintController, thermalController: thermalController, availableSpaceController: availableSpaceController, featureFlagController: featureFlagController, circuitBreakerController: circuitBreakerController, migrationController: migrationConstraintController)
     }
 
     func makeFeatureFlagController(tower: Tower) -> PhotoBackupConstraintController {
@@ -145,7 +179,7 @@ struct PhotosFactory {
 
     // swiftlint:disable:next function_parameter_count
     func makePhotoUploader(
-        tower: Tower, 
+        tower: Tower,
         keymaker: Keymaker,
         cleanedUploadingStore: DeletedPhotosIdentifierStoreResource,
         moc: NSManagedObjectContext,
@@ -178,7 +212,7 @@ struct PhotosFactory {
             blocksMeasurementRepository: blocksMeasurementRepository
         )
         let measurementRepositoryFactory = ConcretePhotoUploadMeasurementRepositoryFactory(notifier: uploadDoneNotifier)
-        
+
         return PhotoUploader(
             concurrentOperations: Constants.photosUploaderParallelProcessingCount,
             fileUploadFactory: photoUploadFactory.make(),
@@ -210,7 +244,7 @@ struct PhotosFactory {
     }
 
     func makeBackupProgressController(tower: Tower, libraryProgressController: PhotosLoadProgressController, loadController: PhotoLibraryLoadController, photosMoc: NSManagedObjectContext) -> PhotosBackupProgressController {
-        let observer = FetchedResultsControllerObserver(controller: tower.storage.subscriptionToMyPrimaryUploadingPhotos(moc: photosMoc))
+        let observer = FetchedResultsControllerObserver(controller: tower.storage.subscriptionToMyPrimaryUploadingPhotos(moc: photosMoc), isAutomaticallyStarted: false)
         let uploadsRepository = DatabasePhotoUploadsRepository(observer: observer)
         let uploadsController = LocalPhotosUploadsProgressController(repository: uploadsRepository)
         return LocalPhotosBackupProgressController(libraryLoadController: libraryProgressController, uploadsController: uploadsController, loadController: loadController, debounceResource: CommonLoopDebounceResource())
@@ -218,7 +252,7 @@ struct PhotosFactory {
 
     func makeQuotaStateController(tower: Tower) -> QuotaStateController {
         let quotaResource = MainQueueQuotaResource(backgroundResource: tower.sessionVault)
-        return UserQuotaStateController(resource: quotaResource)
+        return UserQuotaStateController(resource: quotaResource, setting: tower.localSettings)
     }
 
     func makeQuotaConstraintController(quotaStateController: QuotaStateController) -> PhotoBackupConstraintController {
@@ -241,8 +275,15 @@ struct PhotosFactory {
         return LockConstraintController(isLockedResource: keymaker.isLocked, removedMainKeyResource: removedMainKeyPublisher, obtainedMainKeyResource: obtainedMainKeyPublisher)
     }
 
+    func makeB2BUserConstraintController(tower: Tower, featureFlagsController: FeatureFlagsControllerProtocol) -> PhotoBackupConstraintController {
+        return B2BPhotosUploadConstraintController(localSettings: tower.localSettings, repository: ProtonCoreFeatureFlags.FeatureFlagsRepository.shared)
+    }
+
     func makeAvailableSpaceController(tower: Tower, backupController: PhotosBackupController, computationalAvailabilityController: ComputationalAvailabilityController) -> PhotosAvailableSpaceController {
-        let observer = FetchedResultsControllerObserver(controller: tower.storage.subscriptionToUploadingPhotos(moc: tower.storage.newBackgroundContext()))
+        let observer = FetchedResultsControllerObserver(
+            controller: tower.storage.subscriptionToUploadingPhotos(moc: tower.storage.photosSecondaryBackgroundContext),
+            isAutomaticallyStarted: false
+        )
         let resource = ConcretePhotosAvailableSpaceResource(observer: observer)
         let interactor = ConcretePhotosAvailableSpaceInteractor(resource: resource)
         return PhotosAvailableSpaceController(backupController: backupController, computationalAvailabilityController: computationalAvailabilityController, interactor: interactor)
@@ -253,10 +294,10 @@ struct PhotosFactory {
     }
 
     // swiftlint:disable:next function_parameter_count
-    func makeBackupStateController(progressController: PhotosBackupProgressController, failuresController: PhotosBackupFailuresController, settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController, networkController: PhotoBackupNetworkControllerProtocol, quotaController: PhotoBackupConstraintController, availableSpaceController: PhotoBackupConstraintController, featureFlagController: PhotoBackupConstraintController, retryTriggerController: PhotoLibraryLoadRetryTriggerController, computationalAvailabilityController: ComputationalAvailabilityController, loadController: PhotoLibraryLoadController) -> LocalPhotosBackupStateController {
-        let completeController = LocalPhotosBackupCompleteController(progressController: progressController, failuresController: failuresController, retryTriggerController: retryTriggerController, timerFactory: MainQueueTimerFactory())
+    func makeBackupStateController(progressController: PhotosBackupProgressController, failuresController: PhotosBackupFailuresController, settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController, networkController: PhotoBackupNetworkControllerProtocol, quotaController: PhotoBackupConstraintController, availableSpaceController: PhotoBackupConstraintController, featureFlagController: PhotoBackupConstraintController, retryTriggerController: PhotoLibraryLoadRetryTriggerController, computationalAvailabilityController: ComputationalAvailabilityController, loadController: PhotoLibraryLoadController, migrationConstraintController: PhotoBackupConstraintController) -> LocalPhotosBackupStateController {
+        let completeController = LocalPhotosBackupCompleteController(progressController: progressController, failuresController: failuresController, loadController: loadController, retryTriggerController: retryTriggerController, timerFactory: MainQueueTimerFactory())
         let applicationStateController = ApplicationStateBackupConstraintController(availabilityController: computationalAvailabilityController)
-        return LocalPhotosBackupStateController(progressController: progressController, failuresController: failuresController, completeController: completeController, settingsController: settingsController, authorizationController: authorizationController, networkController: networkController, quotaController: quotaController, availableSpaceController: availableSpaceController, featureFlagController: featureFlagController, applicationStateController: applicationStateController, loadController: loadController, strategy: PrioritizedPhotosBackupStateStrategy(), throttleResource: MainQueueThrottleResource())
+        return LocalPhotosBackupStateController(progressController: progressController, failuresController: failuresController, completeController: completeController, settingsController: settingsController, authorizationController: authorizationController, networkController: networkController, quotaController: quotaController, availableSpaceController: availableSpaceController, featureFlagController: featureFlagController, applicationStateController: applicationStateController, loadController: loadController, migrationController: migrationConstraintController, strategy: PrioritizedPhotosBackupStateStrategy(), throttleResource: MainQueueThrottleResource())
     }
 
     func makeComputationalAvailabilityController(extensionTaskController: BackgroundTaskStateController, processingTaskController: BackgroundTaskStateController) -> ComputationalAvailabilityController {
@@ -273,6 +314,29 @@ struct PhotosFactory {
         let openAppReminderphotoUploadsWorkerState = BackgroundPhotoUploadWorkObserverFactory().makeBackgroundUploadWorkerState(.init(scheduledPhotosUploadWorkerState: globalWorker, coredataLastPhotoRepository: coredataLastPhotoRepository, galleryLastPhotoRepository: GalleryLastPhotoRepository()))
         let openAppReminderTaskProcessor = BackgroundOpenAppReminderTaskProcessorFactory().makeOpenPhotosNotificationTaskProcessor(.init(photoUploadsWorkerState: openAppReminderphotoUploadsWorkerState, backgroundTaskScheduler: openAppReminderScheduler, backgroundWorkPolicy: photosEnabledPolicy))
         return OpenAppReminderContainer(controller: openAppReminderSchedulerController, processor: openAppReminderTaskProcessor)
+    }
+
+    func makePagingLoadController(
+        tower: Tower,
+        bootstrapController: PhotosBootstrapController,
+        networkConstraintController: PhotoBackupConstraintController,
+        photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>,
+        errorController: ErrorSetControllerProtocol
+    ) -> PhotosPagingLoadController {
+        let dataSource = makeLocalPhotosRootDataSource(observer: photoSharesObserver)
+        let volumeIdDataSource = DatabasePhotosVolumeIdDataSource(photoShareDataSource: dataSource)
+        let listInteractor = PhotosListLoadInteractor(volumeIdDataSource: volumeIdDataSource, listing: tower.client)
+        let listFacadeInteractor = AsyncPhotosListLoadResultInteractor(interactor: listInteractor)
+        let managedObjectContext = tower.storage.photosSecondaryBackgroundContext
+        let updateRepository = CoreDataLinksUpdateRepository(cloudSlot: tower.cloudSlot, managedObjectContext: managedObjectContext)
+        let metadataInteractor = PhotosMetadataLoadInteractor(shareIdDataSource: DatabasePhotoShareIdDataSource(dataSource: dataSource), listing: tower.client, updateRepository: updateRepository)
+        let metadataFacadeInteractor = AsyncPhotosMetadataLoadResultInteractor(interactor: metadataInteractor)
+        let interactor = RemotePhotosFullLoadInteractor(listInteractor: listFacadeInteractor, metadataInteractor: metadataFacadeInteractor)
+        return RemotePhotosPagingLoadController(bootstrapController: bootstrapController, interactor: interactor, errorController: errorController)
+    }
+
+    func makeMigrationConstraintController(errorControllers: [ErrorController]) -> PhotoBackupConstraintController {
+        return MigrationToPhotoVolumeConstraintController(errorControllers: errorControllers)
     }
 }
 

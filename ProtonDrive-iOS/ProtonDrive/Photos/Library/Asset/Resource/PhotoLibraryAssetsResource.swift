@@ -78,7 +78,21 @@ final class LocalPhotoLibraryAssetsResource: PhotoLibraryAssetsResource {
 
     private func execute(identifier: PhotoIdentifier, asset: PHAsset) async throws -> [PhotoAssetCompound] {
         if asset.mediaSubtypes.contains(.photoLive) {
-            return try await livePhotoResource.execute(with: identifier, asset: asset)
+            do {
+                return try await livePhotoResource.execute(with: identifier, asset: asset)
+            } catch {
+                if error is PhotoLibraryLivePhotoFilesResourceError {
+                    // Sometimes, the provided asset may not contain the correct resources
+                    // in which case we will fallback to uploading a plain photo instead of a live photo.
+                    Log.info(
+                        "Live photo asset does not contain live photo files, fallback to uploading a plain photo",
+                        domain: .photosProcessing
+                    )
+                    return try await plainResource.execute(with: identifier, asset: asset)
+                } else {
+                    throw error
+                }
+            }
         } else if asset.mediaSubtypes.contains(.photoDepthEffect) {
             return try await portraitPhotoResource.execute(with: identifier, asset: asset)
         } else if asset.mediaSubtypes.contains(.videoCinematic) {

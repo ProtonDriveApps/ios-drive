@@ -99,7 +99,7 @@ final class PhotosDiagnosticsInteractor: ThrowingAsynchronousStateInteractor {
             set(state: state)
             return try await repository.get()
         } catch {
-            Log.error("Failed to dump: \(error.localizedDescription)", domain: .diagnostics)
+            Log.error("Failed to dump", error: error, domain: .diagnostics)
             return Tree(root: Tree.Node(nodeTitle: "Error: \(error.localizedDescription)"))
         }
     }

@@ -181,7 +181,8 @@ extension LegacyEvent {
             eventID: eventID,
             eventType: eventType,
             createTime: createTime,
-            link: link.mapToLink()
+            link: link.mapToLink(),
+            data: nil
         )
     }
 }

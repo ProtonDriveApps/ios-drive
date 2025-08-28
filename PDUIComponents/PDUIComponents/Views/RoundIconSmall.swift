@@ -22,22 +22,32 @@ public struct RoundIconSmall: View {
     let icon: Image
     let color: Color
     let background: Color
+    let iconSize: CGFloat
+    let backgroundSize: CGFloat
 
-    public init(icon: Image, color: Color = .clear, background: Color = .clear) {
+    public init(
+        icon: Image,
+        color: Color = .clear,
+        background: Color = .clear,
+        iconSize: CGFloat = 12,
+        backgroundSize: CGFloat = 12
+    ) {
         self.icon = icon
         self.color = color
         self.background = background
+        self.iconSize = iconSize
+        self.backgroundSize = backgroundSize
     }
     
     public var body: some View {
         icon
             .resizable()
-            .frame(width: 12, height: 12)
+            .frame(width: iconSize, height: iconSize)
             .foregroundColor(color)
             .background(
                 Circle()
                     .fill(background)
-                    .frame(width: 12, height: 12)
+                    .frame(width: backgroundSize, height: backgroundSize)
             )
     }
 }

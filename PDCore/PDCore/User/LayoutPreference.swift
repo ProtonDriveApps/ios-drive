@@ -20,12 +20,24 @@ public enum LayoutPreference: Int {
     case list
     case grid
 
+    init(forcedFromValue value: Int?) {
+        self = LayoutPreference(fromValue: value) ?? Self.default
+    }
+
+    init?(fromValue value: Int?) {
+        if let value = value {
+            self = LayoutPreference(rawValue: value) ?? Self.default
+        } else {
+            return nil
+        }
+    }
+
     static var `default`: LayoutPreference {
         .list
     }
-
 }
 
+@available(*, deprecated, message: "Use LayoutPreference(value:)")
 extension LayoutPreference {
     init(cachedValue: Int?) {
         if let value = cachedValue {

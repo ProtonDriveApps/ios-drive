@@ -18,11 +18,16 @@
 import PDCore
 import FileProvider
 import Foundation
+import ProtonCoreUtilities
 
-struct ContentVersion: Codable {
+struct ContentVersion: Codable, Hashable {
     // A unique hash between any changes to an item
     let versionHash: Data
-    
+
+    private init(versionHash: Data) {
+        self.versionHash = versionHash
+    }
+
     init(node: Node) {
         // This logic is a workaround until BE will return activeRevision ID on GET /shares/ID/folders/ID/children endpoint:
         // node is File and has more than one revision in local metadata DB -> need to bump verison to id of active revision
@@ -31,7 +36,7 @@ struct ContentVersion: Codable {
             return
         }
 
-        guard MimeType(value: node.mimeType) != .protonDocument else {
+        guard !MimeType(value: node.mimeType).isProtonFile else {
             // Overwrites local edits with empty content, since the filesystem
             // only updates it's content if the content version changes
             self.versionHash = ItemVersionHasher.hash(for: UUID().uuidString)

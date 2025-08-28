@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import PDCoreIOS
 import SwiftUI
 import ProtonCoreUIFoundations
 import PDUIComponents
@@ -38,7 +39,12 @@ struct NodeListSecondLineView: View {
                     WarningBadgeView()
 
                 case .badges(let badges):
-                    badgeIcons(from: badges)
+                    BadgeGroupView(
+                        badges: badges,
+                        featureFlagsController: featureFlagsController,
+                        isGridView: false,
+                        parentIdentifier: parentIdentifier
+                    )
                 }
             }
             .frame(width: 16, height: 16)
@@ -49,31 +55,6 @@ struct NodeListSecondLineView: View {
                 .accessibility(identifier: parentIdentifier)
                 .font(.caption)
                 .foregroundColor(vm.isFailedStyle ? ColorProvider.NotificationError : ColorProvider.TextWeak)
-        }
-    }
-
-    @ViewBuilder
-    func badgeIcons(from badges: [Badge]) -> some View {
-        if badges.contains(.cloud) {
-            RoundIconSmall(icon: IconProvider.cloud, color: ColorProvider.TextWeak)
-                .accessibilityIdentifier("\(parentIdentifier).RoundIconSmall.cloud")
-        }
-
-        if badges.contains(.sharedCollaboratively) {
-            RoundIconSmall(icon: IconProvider.users, color: ColorProvider.TextWeak)
-                .accessibilityIdentifier("\(parentIdentifier).RoundIconSmall.sharedCollaboratively")
-        }
-
-        if badges.contains(.shared) {
-            let hasSharing = featureFlagsController.hasSharing
-            let icon: Image = hasSharing ? IconProvider.users : IconProvider.link
-            RoundIconSmall(icon: icon, color: ColorProvider.TextWeak)
-                .accessibilityIdentifier("\(parentIdentifier).RoundIconSmall.shared")
-        }
-
-        if badges.contains(.offline) {
-            RoundIconSmall(icon: IconProvider.arrowDownCircle, color: ColorProvider.TextWeak)
-                .accessibilityIdentifier("\(parentIdentifier).RoundIconSmall.offline")
         }
     }
 }

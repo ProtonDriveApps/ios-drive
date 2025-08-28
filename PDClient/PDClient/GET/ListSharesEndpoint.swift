@@ -52,7 +52,7 @@ public struct ListSharesEndpoint: Endpoint {
         let shareType: ShareType?
         let showAll: ShowAll?
 
-        init(addressId: String? = nil, shareType: ShareType? = nil, showAll: Parameters.ShowAll? = nil) {
+        public init(addressId: String? = nil, shareType: ShareType? = nil, showAll: Parameters.ShowAll? = nil) {
             self.addressId = addressId
             self.shareType = shareType
             self.showAll = showAll
@@ -74,33 +74,36 @@ public struct ListSharesEndpoint: Endpoint {
 
 extension ListSharesEndpoint {
     public struct Response: Codable {
+        public typealias Share = ShareListing
+
         public let shares: [Share]
         public let code: Int
+    }
+}
 
-        // MARK: - Share
-        public struct Share: Codable {
-            public let shareID: String
-            public let volumeID: String
-            public let type: ´Type´
-            public let state: State
-            public let creator: String
-            public let locked: Bool?
-            public let createTime: Int?
-            public let modifyTime: Int?
-            public let linkID: String
+// MARK: - Share Listing
 
-            public enum ´Type´: Int, Codable {
-                case main = 1
-                case standard = 2
-                case device = 3
-                case photos = 4
-            }
+public struct ShareListing: Codable {
+    public let shareID: String
+    public let volumeID: String
+    public let type: ´Type´
+    public let state: State
+    public let creator: String
+    public let locked: Bool?
+    public let createTime: Int?
+    public let modifyTime: Int?
+    public let linkID: String
 
-            public enum State: Int, Codable {
-                case active = 1
-                case deleted = 2
-                case restored = 3
-            }
-        }
+    public enum ´Type´: Int, Codable {
+        case main = 1
+        case standard = 2
+        case device = 3
+        case photos = 4
+    }
+
+    public enum State: Int, Codable {
+        case active = 1
+        case deleted = 2
+        case restored = 3
     }
 }

@@ -68,7 +68,7 @@ public struct Contact: Codable, Equatable {
         self.labelIDs = labelIDs
     }
     
-    mutating func append(contactEmail: ContactEmail) {
+    public mutating func append(contactEmail: ContactEmail) {
         if contactEmails.map(\.email).contains(contactEmail.email) { return }
         contactEmails.append(contactEmail)
         contactEmails.sort(by: { $0.lastUsedTime >= $1.lastUsedTime })

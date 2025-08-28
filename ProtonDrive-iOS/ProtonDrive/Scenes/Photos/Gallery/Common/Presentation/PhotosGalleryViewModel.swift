@@ -18,10 +18,13 @@
 import Combine
 import Foundation
 import PDCore
+import PDCoreIOS
+import PDPhotos
 
 protocol PhotosGalleryViewModelProtocol: ObservableObject {
     var content: PhotosGalleryViewContent { get }
     var error: PassthroughSubject<Error?, Never> { get }
+    var isMigrationNeeded: Bool { get }
 }
 
 enum PhotosGalleryViewContent {
@@ -34,15 +37,23 @@ final class PhotosGalleryViewModel: PhotosGalleryViewModelProtocol {
     private let galleryController: PhotosGalleryController
     private let settingsController: PhotoBackupSettingsController
     private let errorController: ErrorController
+    private let featureFlagsController: FeatureFlagsControllerProtocol
     private var cancellables = Set<AnyCancellable>()
 
     @Published var content: PhotosGalleryViewContent = .empty
     let error = PassthroughSubject<Error?, Never>()
+    @Published var isMigrationNeeded: Bool = false
 
-    init(galleryController: PhotosGalleryController, settingsController: PhotoBackupSettingsController, errorController: ErrorController) {
+    init(
+        galleryController: PhotosGalleryController,
+        settingsController: PhotoBackupSettingsController,
+        errorController: ErrorController,
+        featureFlagsController: FeatureFlagsControllerProtocol
+    ) {
         self.galleryController = galleryController
         self.settingsController = settingsController
         self.errorController = errorController
+        self.featureFlagsController = featureFlagsController
         subscribeToUpdates()
     }
 
@@ -68,5 +79,11 @@ final class PhotosGalleryViewModel: PhotosGalleryViewModelProtocol {
             }
             .store(in: &cancellables)
         #endif
+
+        featureFlagsController.makePublisher(keyPath: \.hasAlbums)
+            .sink { [weak self] hasAlbums in
+                self?.isMigrationNeeded = hasAlbums
+            }
+            .store(in: &cancellables)
     }
 }

@@ -17,6 +17,7 @@
 
 import CoreData
 import PDCore
+import PDCoreIOS
 import UIKit
 import PDUIComponents
 import ProtonCoreServices
@@ -24,6 +25,7 @@ import ProtonCoreKeymaker
 import SwiftUI
 import Combine
 import PDContacts
+import PDPhotos
 
 final class PhotosScenesContainer {
     struct Dependencies {
@@ -54,6 +56,11 @@ final class PhotosScenesContainer {
         let photoUploadedNotifier: PhotoUploadedNotifier
         let contactsManager: ContactsManagerProtocol
         let featureFlagsController: FeatureFlagsControllerProtocol
+        let rootFolderRepository: PhotosRootFolderRepository
+        let scrollToTopPublisher: AnyPublisher<TabBarItem, Never>
+        let pagingLoadController: PhotosPagingLoadController
+        let migrationController: PhotoVolumeMigrationControllerProtocol
+        let photoTagsMigrationController: PhotoTagsMigrationController
     }
     let dependencies: Dependencies
     private let rootViewModel: RootViewModel
@@ -66,7 +73,6 @@ final class PhotosScenesContainer {
     // We need to share same reference for multiple constructed scenes, but want them released when all screens are dismissed.
     private weak var galleryController: PhotosGalleryController?
     private weak var previewController: PhotosPreviewController?
-    private weak var loadController: PhotosPagingLoadController?
     private weak var uploadedPhotosObserver: FetchedResultsSectionsController<Photo>?
 
     init(dependencies: Dependencies) {
@@ -78,7 +84,7 @@ final class PhotosScenesContainer {
         let factory = PhotosScenesFactory()
         let coordinator = factory.makeCoordinator(container: self)
         let selectionController = factory.makeSelectionController()
-        let photosPagingLoadController = getLoadController()
+        let photosPagingLoadController = dependencies.pagingLoadController
 
         let photosRootVM = factory.makeRootViewModel(
             coordinator: coordinator,
@@ -90,7 +96,8 @@ final class PhotosScenesContainer {
             photoUpsellFlowController: makePhotoUpsellController(
                 coordinator: coordinator,
                 notificationsPermissionsFlowController: dependencies.notificationsPermissionsFlowController
-            )
+            ),
+            bootstrapController: dependencies.bootstrapController
         )
 
         return factory.makeRootPhotosViewController(
@@ -130,7 +137,11 @@ final class PhotosScenesContainer {
             backupStartController: backupStartController,
             settingsController: dependencies.settingsController
         )
-        let lockingBannerView = factory.makeLockingBannerView(notifier: dependencies.backupStateController, repository: dependencies.lockBannerRepository)
+        let lockingBannerView = LockingBannerFactory().makeLegacyBanner(
+            backupNotifier: dependencies.backupStateController,
+            tagMigrationNotifier: dependencies.photoTagsMigrationController,
+            repository: dependencies.lockBannerRepository
+        )
         return factory.makeGalleryView(
             tower: dependencies.tower,
             coordinator: coordinator,
@@ -141,13 +152,18 @@ final class PhotosScenesContainer {
             errorControllers: [dependencies.processingController, dependencies.uploader],
             selectionController: selectionController,
             photosObserver: getUploadedPhotosObserver(), 
-            photoSharesObserver: dependencies.photoSharesObserver,
+            rootFolderRepository: dependencies.rootFolderRepository,
             photosManagedObjectContext: dependencies.photosManagedObjectContext,
             photoUploadedNotifier: dependencies.photoUploadedNotifier,
             featureFlagsController: dependencies.featureFlagsController,
+            scrollToTopPublisher: dependencies.scrollToTopPublisher,
             stateView: stateView,
             lockingBannerView: lockingBannerView,
-            storageView: factory.makeStorageView(quotaStateController: dependencies.quotaStateController, progressController: dependencies.backupProgressController, coordinator: coordinator)
+            storageView: factory.makeStorageView(quotaStateController: dependencies.quotaStateController, progressController: dependencies.backupProgressController, coordinator: coordinator),
+            migrationView: factory.makeMigrationView(
+                migrationController: dependencies.migrationController,
+                featureFlagsController: dependencies.featureFlagsController
+            )
         )
     }
 
@@ -169,15 +185,13 @@ final class PhotosScenesContainer {
         return factory.makeShareViewController(id: id, tower: dependencies.tower, rootViewModel: rootViewModel)
     }
 
-    func makeShareViewController(id: PhotoId, rootVC: UIViewController) -> SharingMemberCoordinatorProtocol? {
+    func makeShareViewController(id: PhotoId, rootVC: UIViewController) -> SharingStartCoordinator? {
         let factory = PhotosScenesFactory()
         return factory.makeNewShareViewController(
             identifier: id,
+            tower: dependencies.tower,
             storage: dependencies.tower.storage,
-            sessionVault: dependencies.tower.sessionVault,
-            client: dependencies.tower.client,
-            contactsManager: dependencies.contactsManager, 
-            entitlementsManager: dependencies.tower.entitlementsManager,
+            contactsManager: dependencies.contactsManager,
             featureFlagsController: dependencies.featureFlagsController,
             rootViewController: rootVC
         )
@@ -199,15 +213,11 @@ final class PhotosScenesContainer {
         coordinator: PhotosCoordinator,
         notificationsPermissionsFlowController: NotificationsPermissionsFlowController
     ) -> PhotoUpsellFlowController? {
-        let tower = dependencies.tower
-        guard tower.localSettings.isPhotoUpsellShown == false else { return nil }
-        
-        return ConcretePhotoUpsellFlowController(
+        return PhotoUpsellFactory().makeController(
+            tower: dependencies.tower,
             coordinator: coordinator,
-            photoUploadedNotifier: dependencies.uploader.photoUploadedNotifier,
-            localSettings: dependencies.tower.localSettings,
-            userInfoController: UserInfoControllerFactory().makeController(sessionVault: tower.sessionVault),
             notificationsPermissionsFlowController: notificationsPermissionsFlowController,
+            photoUploadedNotifier: dependencies.uploader.photoUploadedNotifier,
             photoUpsellResultNotifier: dependencies.photoUpsellResultNotifier
         )
     }
@@ -224,17 +234,6 @@ final class PhotosScenesContainer {
         let previewController = previewController ?? PhotosScenesFactory().makePreviewController(galleryController: getGalleryController(), currentId: id)
         self.previewController = previewController
         return previewController
-    }
-
-    private func getLoadController() -> PhotosPagingLoadController {
-        let loadController = loadController ?? PhotosScenesFactory().makePagingLoadController(
-            tower: dependencies.tower,
-            bootstrapController: dependencies.bootstrapController,
-            networkConstraintController: dependencies.networkConstraintController,
-            photoSharesObserver: dependencies.photoSharesObserver
-        )
-        self.loadController = loadController
-        return loadController
     }
 
     private func getUploadedPhotosObserver() -> FetchedResultsSectionsController<Photo> {

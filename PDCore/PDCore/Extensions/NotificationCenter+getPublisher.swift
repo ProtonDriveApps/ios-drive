@@ -49,4 +49,8 @@ extension NotificationCenter {
     public func post(name aName: NSNotification.Name) {
         post(name: aName, object: Void())
     }
+    
+    public func nukeCache(reason: String) {
+        post(name: .nukeCache, object: nil, userInfo: ["reason": reason])
+    }
 }

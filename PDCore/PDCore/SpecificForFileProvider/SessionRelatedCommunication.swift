@@ -125,8 +125,7 @@ public final class SessionRelatedCommunicatorForMainApp: SessionRelatedCommunica
             try await fetchNewChildSession(parentSessionCredential: parentSessionCredentials)
             onChildSessionReady()
         } catch {
-            Log.error("Fetching new child session failed with error \(error.localizedDescription)",
-                      domain: .fileProvider)
+            Log.error("Fetching new child session failed", error: error, domain: .fileProvider)
         }
     }
     
@@ -156,11 +155,17 @@ public final class SessionRelatedCommunicatorForMainApp: SessionRelatedCommunica
                     continuation.resume()
                 case .failure(let error):
                     if Constants.buildType.isQaOrBelow {
-                        Log.error("Failed to fetch new child session of kind \(childSessionKind) with error \(error.localizedDescription)",
-                                  domain: .sessionManagement)
+                        Log.error(
+                            "Failed to fetch new child session of kind \(childSessionKind) ",
+                            error: error,
+                            domain: .sessionManagement
+                        )
                     } else {
-                        Log.error("Failed to fetch new child session of kind \(childSessionKind) becuse of error",
-                                  domain: .sessionManagement)
+                        Log.error(
+                            "Failed to fetch new child session of kind \(childSessionKind) because of error",
+                            error: nil,
+                            domain: .sessionManagement
+                        )
                     }
                     continuation.resume(throwing: error)
                 }

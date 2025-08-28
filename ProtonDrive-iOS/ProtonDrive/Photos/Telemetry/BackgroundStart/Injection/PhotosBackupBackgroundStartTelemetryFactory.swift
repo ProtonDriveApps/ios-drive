@@ -19,8 +19,14 @@ import PDCore
 
 struct PhotosBackupBackgroundStartTelemetryFactory {
     // swiftlint:disable:next function_parameter_count
-    func makeController(telemetryController: TelemetryController, availabilityController: ComputationalAvailabilityController, backupStorage: PhotosTelemetryStorage, userInfoResource: UserInfoResource, backgroundUploadStorage: PhotosBackupBackgroundTelemetryStorageProtocol, networkController: PhotoBackupNetworkControllerProtocol) -> PhotosBackupBackgroundStartTelemetryController {
-        let userInfoFactory = PhotosTelemetryFactory().makeUserInfoFactory(userInfoResource: userInfoResource)
+    func makeController(
+        telemetryController: TelemetryController,
+        availabilityController: ComputationalAvailabilityController,
+        backupStorage: PhotosTelemetryStorage,
+        userInfoFactory: PhotosTelemetryUserInfoFactory,
+        backgroundUploadStorage: PhotosBackupBackgroundTelemetryStorageProtocol,
+        networkController: PhotoBackupNetworkControllerProtocol
+    ) -> PhotosBackupBackgroundStartTelemetryController {
         let dataFactory = PhotosBackupBackgroundStartTelemetryDataFactory(userInfoFactory: userInfoFactory, dateResource: PlatformCurrentDateResource(), backupStorage: backupStorage, backgroundUploadStorage: backgroundUploadStorage)
         let dateResource = PlatformCurrentDateResource()
         return PhotosBackupBackgroundStartTelemetryController(telemetryController: telemetryController, availabilityController: availabilityController, dataFactory: dataFactory, storage: backgroundUploadStorage, dateResource: dateResource)

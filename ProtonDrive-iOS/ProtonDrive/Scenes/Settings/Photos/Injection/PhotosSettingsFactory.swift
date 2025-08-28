@@ -19,35 +19,54 @@ import PDCore
 import PMSettings
 import SwiftUI
 import UIKit
+import PDPhotos
 
 struct PhotosSettingsFactory {
     func makeSettingsCell(
-        settingsController: PhotoBackupSettingsController,
-        authorizationController: PhotoLibraryAuthorizationController,
-        bootstrapController: PhotosBootstrapController,
-        tower: Tower
+         settingsController: PhotoBackupSettingsController,
+         tower: Tower,
+         backupStartController: PhotosBackupStartController,
+         migrationController: PhotoVolumeMigrationControllerProtocol
     ) -> PMCellSuplier {
-        let viewModel = PhotosSettingsRowViewModel(settingsController: settingsController)
+        let warningViewModel = PhotosMigrationWarningViewModel(controller: migrationController)
+        let viewModel = PhotosSettingsRowViewModel(
+            settingsController: settingsController,
+            warningViewModel: warningViewModel
+        )
         return PMDrillDownConfiguration(viewModel: viewModel) {
-            makeSettingsView(settingsController: settingsController, authorizationController: authorizationController, bootstrapController: bootstrapController, tower: tower)
+            makeSettingsView(
+                settingsController: settingsController,
+                tower: tower,
+                backupStartController: backupStartController,
+                warningViewModel: warningViewModel
+            )
         }
     }
 
     private func makeSettingsView(
         settingsController: PhotoBackupSettingsController,
-        authorizationController: PhotoLibraryAuthorizationController,
-        bootstrapController: PhotosBootstrapController,
-        tower: Tower
+        tower: Tower,
+        backupStartController: PhotosBackupStartController,
+        warningViewModel: PhotosMigrationWarningViewModelProtocol
     ) -> UIViewController {
-        let startController = LocalPhotosBackupStartController(settingsController: settingsController, authorizationController: authorizationController, photosBootstrapController: bootstrapController)
-        let viewModel = PhotosSettingsViewModel(settingsController: settingsController, startController: startController, localSettings: tower.localSettings)
-        #if HAS_QA_FEATURES
-        let diagnosticsFactory = PhotosDiagnosticsFactory()
-        let diagnosticView = diagnosticsFactory.makeView(tower: tower, settingsController: settingsController)
-        let view = PhotosSettingsView(viewModel: viewModel, diagnosticsView: diagnosticView)
-        #else
-        let view = PhotosSettingsView(viewModel: viewModel, diagnosticsView: EmptyView())
-        #endif
-        return UIHostingController(rootView: view)
+
+        let viewModel = PhotosSettingsViewModel(
+            settingsController: settingsController,
+            startController: backupStartController,
+            localSettings: tower.localSettings,
+            warningViewModel: warningViewModel,
+            b2bSettingsUpdateDataSource: tower.client
+        )
+        if Constants.buildType.isQaOrBelow {
+            let diagnosticsFactory = PhotosDiagnosticsFactory()
+            let diagnosticView = diagnosticsFactory.makeView(tower: tower, settingsController: settingsController)
+            let qaSettingsViewModel = PhotosSettingsQAViewModel(settingsController: settingsController)
+            let qaSettingsView = PhotosSettingsQAView(viewModel: qaSettingsViewModel, diagnosticsView: diagnosticView)
+            let view = PhotosSettingsView(viewModel: viewModel, qaSettingsView: qaSettingsView)
+            return UIHostingController(rootView: view)
+        } else {
+            let view = PhotosSettingsView(viewModel: viewModel, qaSettingsView: EmptyView())
+            return UIHostingController(rootView: view)
+        }
     }
 }

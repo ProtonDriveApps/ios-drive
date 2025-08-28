@@ -25,7 +25,8 @@ protocol FileURLValidationResource {
 }
 
 enum FileURLValidationResourceError: Error {
-    case invalidURL
+    case unsupportedPhoto
+    case unsupportedVideo
 }
 
 final class PhotoURLValidationResource: FileURLValidationResource {
@@ -45,14 +46,14 @@ final class PhotoURLValidationResource: FileURLValidationResource {
     private func validateVideo(url: URL) async throws {
         let isPlayable = try await AVAsset(url: url).load(.isPlayable)
         if !isPlayable {
-            throw FileURLValidationResourceError.invalidURL
+            throw FileURLValidationResourceError.unsupportedPhoto
         }
     }
 
     private func validateImage(url: URL) async throws {
         let data = try Data(contentsOf: url)
         if UIImage(data: data) == nil {
-            throw FileURLValidationResourceError.invalidURL
+            throw FileURLValidationResourceError.unsupportedVideo
         }
     }
 }

@@ -101,29 +101,19 @@ extension BurstGalleryView {
                 ForEach(viewModel.urls.indices, id: \.self) { index in
                     let image = UIImage(data: viewModel.imageData(of: index)) ?? .init()
                     let url = viewModel.urls[index]
-                    if #available(iOS 16.0, *) {
-                        gridCell(image: image, isCover: index == 0)
-                            .aspectRatio(itemAspectRatio, contentMode: .fit)
-                            .contextMenu(
-                                menuItems: {
-                                    contextMenuItems(image: image, url: url)
-                                }, preview: {
-                                    // preview only available on iOS 16 and later
-                                    // remove else block after dropping iOS 15
-                                    Image(uiImage: image)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: geometry.size.width - 100)
-                                        .frame(maxHeight: geometry.size.height - 200)
-                                }
-                            )
-                    } else {
-                        gridCell(image: image, isCover: index == 0)
-                            .aspectRatio(itemAspectRatio, contentMode: .fit)
-                            .contextMenu {
+                    gridCell(image: image, isCover: index == 0)
+                        .aspectRatio(itemAspectRatio, contentMode: .fit)
+                        .contextMenu(
+                            menuItems: {
                                 contextMenuItems(image: image, url: url)
+                            }, preview: {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: geometry.size.width - 100)
+                                    .frame(maxHeight: geometry.size.height - 200)
                             }
-                    }
+                        )
                 }
             }
         }

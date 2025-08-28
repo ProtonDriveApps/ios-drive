@@ -59,7 +59,15 @@ struct PhotosPreviewFactory {
         let fullPreviewController = LocalPhotoFullPreviewController(id: id, detailController: detailController, fullThumbnailController: fullThumbnailController, smallThumbnailController: smallThumbnailController, contentController: fileContentController)
         let shareController = CachingPhotoPreviewDetailShareController(fileContentController: fileContentController, coordinator: coordinator, id: id)
         let viewModel = PhotoPreviewDetailViewModel(thumbnailController: smallThumbnailController, modeController: modeController, previewController: previewController, detailController: detailController, fullPreviewController: fullPreviewController, shareController: shareController, id: id, coordinator: coordinator)
-        return PhotoPreviewDetailViewController(viewModel: viewModel)
+        let loadingViewController = makeLoadingView(fullPreviewController: fullPreviewController)
+        return PhotoPreviewDetailViewController(viewModel: viewModel, loadingViewController: loadingViewController)
+    }
+
+    private func makeLoadingView(fullPreviewController: PhotoFullPreviewController) -> UIViewController {
+        let controller = PhotoPreviewLoadingStateController(previewController: fullPreviewController, debounceResource: CommonLoopDebounceResource())
+        let viewModel = PhotoPreviewLoadingStateViewModel(controller: controller)
+        let view = PhotoPreviewLoadingStateView(viewModel: viewModel)
+        return view.embeddedInTransparentHostingController()
     }
 
     func makePreviewController(galleryController: PhotosGalleryController, currentId: PhotoId) -> PhotosPreviewController {

@@ -42,13 +42,14 @@ extension UINavigationBar {
 public extension View {
     func flatNavigationBar<L, T>(
         _ title: String,
+        isRoot: Bool,
         displayMode: NavigationBarItem.TitleDisplayMode = .inline,
         delegate: FlatNavigationBarDelegate? = nil,
         leading: L?,
         trailing: T?
     ) -> some View where L: View, T: View {
 
-        let modifier = NavigationBarModifier(title: title, displayMode: displayMode, coordinator: delegate, leading: leading, trailing: trailing)
+        let modifier = NavigationBarModifier(title: title, isRoot: isRoot, displayMode: displayMode, coordinator: delegate, leading: leading, trailing: trailing)
         return ModifiedContent(content: self, modifier: modifier)
     }
 }
@@ -58,6 +59,7 @@ struct NavigationBarModifier<L, T>: ViewModifier where L: View, T: View {
     @Environment(\.colorScheme) var colorScheme
 
     let title: String
+    let isRoot: Bool
     var displayMode: NavigationBarItem.TitleDisplayMode
     var coordinator: FlatNavigationBarDelegate?
     let leading: L?
@@ -65,10 +67,17 @@ struct NavigationBarModifier<L, T>: ViewModifier where L: View, T: View {
 
     public func body(content: Content) -> some View {
         content
-            .navigationBarTitle(Text(title), displayMode: .inline)
+            .navigationBarTitle(Text(""), displayMode: .inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     leading
+                }
+
+                let placement: ToolbarItemPlacement = isRoot ? .topBarLeading : .principal
+                ToolbarItem(placement: placement) {
+                    Text(title)
+                        .font(isRoot ? .system(.title2) : .system(.body))
+                        .fontWeight(isRoot ? .bold : .semibold)
                 }
 
                 ToolbarItem(placement: .navigationBarTrailing) {

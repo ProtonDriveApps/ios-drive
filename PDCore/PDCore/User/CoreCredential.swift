@@ -89,7 +89,7 @@ public struct CoreCredential: Codable, Equatable {
 }
 
 extension PDCore.CoreCredential {
-    init(_ clientCredential: PDClient.ClientCredential) {
+    public init(_ clientCredential: PDClient.ClientCredential) {
         self.UID = clientCredential.UID
         self.accessToken = clientCredential.accessToken
         self.refreshToken = clientCredential.refreshToken

@@ -20,10 +20,14 @@ import PDClient
 import CoreData
 
 class VolumeDBCloudSlot: CloudSlotProtocol {
+    
     private let storage: StorageManager
     private let apiService: APIService
     private let client: PDClient.Client
     private let cloudSlot: CloudSlotProtocol
+    weak var downloader: DownloaderProtocol?
+
+    var moc: NSManagedObjectContext { storage.backgroundContext }
 
     init(
         storage: StorageManager,
@@ -35,6 +39,10 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
         self.apiService = apiService
         self.client = client
         self.cloudSlot = cloudSlot
+    }
+
+    func set(downloader: DownloaderProtocol) {
+        self.downloader = downloader
     }
 
     func scanShare(shareID: String, handler: @escaping (Result<Share, any Error>) -> Void) {
@@ -59,7 +67,7 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
     }
 
     func scanChildren(of parentID: NodeIdentifier, parameters: [PDClient.FolderChildrenEndpointParameters]?, handler: @escaping (Result<[Node], any Error>) -> Void) {
-        let context = storage.backgroundContext
+        let context = moc
         let mode: CloudSlot.UpdateMode = (parameters?.containsPagination() ?? false) ? .append : .replace
 
         self.client.getFolderChildren(parentID.shareID, folderID: parentID.nodeID, parameters: parameters) { result in
@@ -95,7 +103,7 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
         of parentID: NodeIdentifier,
         parameters: [PDClient.FolderChildrenEndpointParameters]?
     ) async throws -> [Node] {
-        let context = storage.backgroundContext
+        let context = moc
         let mode: CloudSlot.UpdateMode = (parameters?.containsPagination() ?? false) ? .append : .replace
         
         let childrenLinksMeta = try await client.getFolderChildren(
@@ -128,7 +136,7 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
         Task {
             do {
                 let node = try await scanNode(nodeID, linkProcessingErrorTransformer: linkProcessingErrorTransformer)
-                self.storage.backgroundContext.performAndWait {
+                self.moc.performAndWait {
                     handler(.success(node))
                 }
             } catch {
@@ -140,10 +148,21 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
     func scanNode(_ nodeID: NodeIdentifier, linkProcessingErrorTransformer: @escaping (Link, Error) -> Error) async throws -> Node {
         let scanner = NodeScanner(client: client, storage: storage)
         try await scanner.scanNode(nodeID)
-        let context = self.storage.backgroundContext
+        let context = self.moc
         // There are a lot of crashes in the Downloader if not done like this
         return try await context.perform {
             try Node.fetchOrThrow(identifier: nodeID, allowSubclasses: true, in: context)
+        }
+    }
+    
+    func scanRevision(_ revisionID: RevisionIdentifier) async throws -> Revision {
+        let identifier = revisionID
+        let scanner = RevisionScanner(client: client, storage: storage)
+        try await scanner.scanRevision(identifier)
+        let context = self.moc
+        // There are a lot of crashes in the Downloader if not done like this
+        return try await context.perform {
+            try Revision.fetchOrThrow(identifier: identifier, allowSubclasses: true, in: context)
         }
     }
 
@@ -153,7 +172,7 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
             do {
                 let scanner = RevisionScanner(client: client, storage: storage)
                 try await scanner.scanRevision(identifier)
-                let context = self.storage.backgroundContext
+                let context = self.moc
                 // There are a lot of crashes in the Downloader if not done like this
                 let revision: Revision = try await context.perform { try Revision.fetchOrThrow(identifier: identifier, allowSubclasses: true, in: context) }
                 context.performAndWait {
@@ -230,7 +249,7 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
     func update(_ links: [LinkMeta], of shareID: ShareMeta.ShareID, in moc: NSManagedObjectContext) -> [NodeObj] {
         var nodes: [Node] = []
         for link in links {
-            let node = storage.updateLink(link, in: moc)
+            let node = storage.updateLink(link, using: moc)
             nodes.append(node)
         }
         return nodes
@@ -239,15 +258,21 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
     func update(links: [PDClient.Link], shareId: String, managedObjectContext: NSManagedObjectContext) throws {
         try managedObjectContext.performAndWait {
             for link in links {
-                storage.updateLink(link, in: managedObjectContext)
+                storage.updateLink(link, using: managedObjectContext)
             }
             try managedObjectContext.saveOrRollback()
         }
     }
 
     func trash(_ nodes: [TrashingNodeIdentifier]) async throws {
-        let trasher = NodeTrasher(client: client, storage: storage)
+        let trasher = NodeTrasher(client: client, storage: storage, downloader: downloader)
         try await trasher.trash(nodes)
+    }
+
+    func trashVolume(nodeIDs: [AnyVolumeIdentifier]) async throws {
+        let localTrasher = LocalNodeTrasher(context: storage.backgroundContext)
+        let trasher = VolumeNodeTrasher(client: client, localTrasher: localTrasher)
+        try await trasher.trash(ids: nodeIDs)
     }
 
     func trash(shareID: Client.ShareID, parentID: Client.LinkID, linkIDs: [Client.LinkID]) async throws {
@@ -271,7 +296,7 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
     }
 
     func update(thumbnails: [ThumbnailURL]) throws {
-        let context = storage.backgroundContext
+        let context = moc
         let thumbnailsDictionary = Dictionary(uniqueKeysWithValues: thumbnails.map { (AnyVolumeIdentifier(id: $0.id, volumeID: $0.volumeID), $0.url.absoluteString) })
         let identifiers = Set(thumbnailsDictionary.keys)
 

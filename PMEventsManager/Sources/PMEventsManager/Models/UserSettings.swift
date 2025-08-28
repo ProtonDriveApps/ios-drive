@@ -21,7 +21,7 @@ public struct UserSettings: Codable, Equatable {
     
     enum CodingKeys: String, CodingKey {
         case password
-        case twoFA = "_2FA" // required for .decapitaliseFirstLetter in ProtonCoreUtilities
+        case twoFA = "_2FA" // required for .driveImplementationOfDecapitaliseFirstLetter in PDClient
         case news
         case locale
         case logAuth

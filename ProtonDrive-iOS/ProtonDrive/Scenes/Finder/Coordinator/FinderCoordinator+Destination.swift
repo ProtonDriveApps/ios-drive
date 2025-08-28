@@ -24,8 +24,9 @@ extension FinderCoordinator {
         case none // no changes to hierarchy
 
         case file(file: File, share: Bool), folder(Folder) // push to navigation controller
-        case protonDocument(file: File) // open proton document preview
+        case protonFile(file: File) // open proton document preview
         case openInBrowser(file: File) // open proton document in browser
+        case openBookmark(bookmark: CoreDataBookmark)
 
         case importPhoto, importDocument, camera // modals
         case nodeDetails(Node)
@@ -34,6 +35,8 @@ extension FinderCoordinator {
         case shareIn(url: URL)
         case configShareMember(node: Node)
         case createDocument(parentIdentifier: NodeIdentifier)
+        case createSheet(parentIdentifier: NodeIdentifier)
+        case servicePlans
 
         case noSpaceLeftLocally, noSpaceLeftCloud
     }
@@ -48,17 +51,19 @@ extension FinderCoordinator {
 
         case is File where (nextNode as? File)?.activeRevision?.blocksAreValid() == true: // cached file
             let file = nextNode as! File
-            if file.isProtonDocument {
+            if file.isProtonFile { // Either doc or sheet
                 // Proton doc has a separate logic for displaying preview
-                return .protonDocument(file: file)
+                return .protonFile(file: file)
             } else {
                 return .file(file: file, share: false)
             }
 
         case is File: // only metadata is locally available
-            if let file = nextNode as? File, file.isProtonDocument {
+            if let bookmark = nextNode as? CoreDataBookmark {
+                return .openBookmark(bookmark: bookmark)
+            } else if let file = nextNode as? File, file.isProtonFile {
                 // Proton doc has an empty revision, we can proceed with presentation
-                return .protonDocument(file: file)
+                return .protonFile(file: file)
             } else {
                 return .none
             }

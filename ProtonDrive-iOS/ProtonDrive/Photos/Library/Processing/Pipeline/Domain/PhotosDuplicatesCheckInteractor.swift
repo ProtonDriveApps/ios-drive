@@ -31,7 +31,7 @@ final class PhotosDuplicatesCheckInteractor: AsynchronousExecution {
     }
 
     func execute() async {
-        Log.info("3️⃣ \(Self.self): executing", domain: .photosProcessing)
+        Log.info("3️⃣ executing", domain: .photosProcessing)
         let compounds = context.createdCompounds
         guard !compounds.isEmpty else { return }
         measurementRepository.start()

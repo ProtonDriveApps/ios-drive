@@ -16,9 +16,11 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDCoreIOS
 import SwiftUI
 import PDUIComponents
 import ProtonCoreUIFoundations
+import PDLocalization
 
 private let horizontalInset: CGFloat = 16
 
@@ -77,7 +79,7 @@ struct FinderListCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
             
             HStack(spacing: .zero) {
 
-                if vm.isSelecting {
+                if vm.isSelecting, vm.canSelect {
                     selectionBox()
                         .frame(width: 40, height: 40)
                 }
@@ -115,6 +117,9 @@ struct FinderListCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
             .contentShape(Rectangle())
             .onTapGesture(perform: onTap)
             .onLongPressGesture(perform: onLongPress)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityLabel(Localization.accessibility_open_file(fileName: vm.name))
 
             if !vm.isSelecting {
                 actions
@@ -140,7 +145,7 @@ private extension FinderListCell {
     func thumbnail() -> some View {
         ZStack(alignment: .bottomTrailing) {
             ThumbnailImage(vm: vm.thumbnailViewModel) {
-                Image(vm.iconName)
+                FileAssetImageProvider.icon(for: vm.iconName)
                     .resizable()
                     .frame(width: 40, height: 40, alignment: .leading)
             } thumbnail: { thumbnail in
@@ -203,6 +208,7 @@ private extension FinderListCell {
                 }
             }
             .accessibility(identifier: "NodeCellButton.three-dots-horizontal.\(vm.name)")
+            .accessibilityLabel(Localization.accessibility_more_menu_action(fileName: vm.name))
         case .menu where vm.nodeType == .folder:
             ContextMenuView(icon: button.icon, viewModifier: ContextMenuListModifier()) {
                 ForEach(model.editSections(environment: environment)) { group in
@@ -211,6 +217,7 @@ private extension FinderListCell {
                 }
             }
             .accessibility(identifier: "NodeCellButton.three-dots-horizontal.\(vm.name)")
+            .accessibilityLabel(Localization.accessibility_more_menu_action(fileName: vm.name))
         case .cancel:
             defaultCellButton(button)
                 .accessibility(identifier: "NodeCellButton.cancel.\(vm.name)")

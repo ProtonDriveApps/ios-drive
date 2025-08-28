@@ -52,27 +52,27 @@ final class BackgroundUploadMeasurementsRepository: FileUploadFilesMeasurementRe
     }
 
     func trackFileUploadStart(id: String) {
-        Log.debug("\(Self.self).trackFileUploadStart", domain: .telemetry)
+        Log.debug("trackFileUploadStart", domain: .telemetry)
         uploadIds.insert(id)
     }
 
     func trackFileSuccess() {
-        Log.debug("\(Self.self).trackFileSuccess", domain: .telemetry)
+        Log.debug("trackFileSuccess", domain: .telemetry)
         succeededFilesCount += 1
     }
 
     func trackFileFailure() {
-        Log.debug("\(Self.self).trackFileFailure", domain: .telemetry)
+        Log.debug("trackFileFailure", domain: .telemetry)
         failedFilesCount += 1
     }
 
     func trackBlockUploadSuccess() {
-        Log.debug("\(Self.self).trackBlockUploadSuccess", domain: .telemetry)
+        Log.debug("trackBlockUploadSuccess", domain: .telemetry)
         succeededBlocksCount += 1
     }
 
     func reset() {
-        Log.debug("\(Self.self).reset", domain: .telemetry)
+        Log.debug("reset", domain: .telemetry)
         uploadIds.removeAll()
         succeededFilesCount = 0
         failedFilesCount = 0
@@ -81,7 +81,7 @@ final class BackgroundUploadMeasurementsRepository: FileUploadFilesMeasurementRe
     }
 
     func getMeasurements() -> BackgroundUploadMeasurements {
-        Log.debug("\(Self.self).getMeasurements", domain: .telemetry)
+        Log.debug("getMeasurements", domain: .telemetry)
         return BackgroundUploadMeasurements(
             startedFilesCount: uploadIds.count,
             failedFilesCount: failedFilesCount,
@@ -92,7 +92,7 @@ final class BackgroundUploadMeasurementsRepository: FileUploadFilesMeasurementRe
     }
 
     func setState(_ state: BackgroundTaskResultState) {
-        Log.debug("\(Self.self).setResult, \(state)", domain: .telemetry)
+        Log.debug("setResult, \(state)", domain: .telemetry)
         self.state = state
     }
 }

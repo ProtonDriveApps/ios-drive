@@ -31,7 +31,7 @@ class NodeScanner {
         let context = storage.backgroundContext
         let node = try await client.getNode(shareID: identifier.shareID, nodeID: identifier.nodeID)
         try await context.perform {
-            self.storage.updateLink(node, in: context)
+            self.storage.updateLink(node, using: context)
             try context.saveOrRollback()
         }
     }

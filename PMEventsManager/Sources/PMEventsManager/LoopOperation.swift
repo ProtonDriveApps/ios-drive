@@ -17,6 +17,17 @@
 
 import Foundation
 
+// MARK: - Log System for PMEventsManager
+public var log: ((String, String, String, Int) -> Void)?
+public func trace(
+    _ message: String = "",
+    file: String = #file,
+    function: String = #function,
+    line: Int = #line
+) {
+    log?(message, file, function, line)
+}
+
 enum EventsLoopError: Error {
     case cacheIsOutdated
     case missingLatestLoopEventID
@@ -28,6 +39,8 @@ final class LoopOperation<Loop: EventsLoop>: AsynchronousOperation {
     private var task: Task<Void, Never>?
     
     init(loop: Loop, onDidReceiveMultiplePagesResponse: @escaping () -> Void) {
+        trace()
+
         self.loop = loop
         self.onDidReceiveMultiplePagesResponse = onDidReceiveMultiplePagesResponse
     }
@@ -45,6 +58,7 @@ final class LoopOperation<Loop: EventsLoop>: AsynchronousOperation {
                 return
             }
             do {
+                trace("Task do")
                 let loopEventID = try self.getLatestLoopID()
                 let page = try await loop.poll(since: loopEventID)
 
@@ -60,9 +74,11 @@ final class LoopOperation<Loop: EventsLoop>: AsynchronousOperation {
 
                 loop.latestLoopEventId = page.lastEventID
                 if page.hasMorePages {
+                    trace("Task do.hasMorePages")
                     self.onDidReceiveMultiplePagesResponse()
                 }
             } catch {
+                trace("Task catch: \(error.localizedDescription)")
                 switch error {
                 case EventsLoopError.cacheIsOutdated:
                     await loop.nukeCache()
@@ -78,16 +94,24 @@ final class LoopOperation<Loop: EventsLoop>: AsynchronousOperation {
     }
     
     override func cancel() {
+        trace()
+
         task?.cancel()
         task = nil
         super.cancel()
     }
     
     func getLatestLoopID() throws -> String {
+        trace()
+
         if let loop, let eventID = loop.latestLoopEventId {
             return eventID
         } else {
             throw EventsLoopError.missingLatestLoopEventID
         }
+    }
+
+    deinit {
+        trace()
     }
 }

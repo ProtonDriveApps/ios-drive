@@ -19,11 +19,11 @@ import PDCore
 
 final class ForegroundTransitionFactory {
     func makeController(tower: Tower, pickerResource: PickerResource, populatedStateController: PopulatedStateControllerProtocol) -> ForegroundTransitionController {
-        var interactors: [CommandInteractor] = [
+        let interactors: [CommandInteractor] = [
             ChildSessionInteractor(sessionCommunicator: tower.sessionCommunicator)
         ]
 
-        var populatedInteractors: [CommandInteractor] = [
+        let populatedInteractors: [CommandInteractor] = [
             InterruptedUploadsInteractor(storage: tower.storage, fileUploader: tower.fileUploader),
             InterruptedImportsInteractor(resource: pickerResource),
         ]

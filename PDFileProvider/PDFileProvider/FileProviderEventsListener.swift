@@ -33,7 +33,7 @@ public class FileProviderEventsListener: EventsListener {
         
         let completion: (Error?) -> Void = {
             if let error = $0 {
-                Log.error(error.localizedDescription, domain: .fileProvider)
+                Log.error(error: error, domain: .fileProvider)
             } else {
                 Log.info("Signaled change", domain: .fileProvider)
             }

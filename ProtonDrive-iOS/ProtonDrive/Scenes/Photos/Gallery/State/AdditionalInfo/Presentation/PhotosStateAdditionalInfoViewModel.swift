@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import PDPhotos
 
 protocol PhotosStateAdditionalInfoViewModel: ObservableObject {
     var texts: [String]? { get }
@@ -57,6 +58,8 @@ final class ConcretePhotosStateAdditionalInfoViewModel: PhotosStateAdditionalInf
             return "Feature flags constraint"
         case .circuitBroken:
             return "The circuit was broken temporarily"
+        case .migrationToPhotoVolume:
+            return "Old photo share is (being) migrated"
         }
     }
 }

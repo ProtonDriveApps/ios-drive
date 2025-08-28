@@ -28,6 +28,14 @@ extension SyncItem {
     @NSManaged public var fileSize: NSNumber?
     @NSManaged public var modificationTime: Date
 
+    @NSManaged public var progress: Int
+    /// Automatically set in the didSet of "state"
+    @NSManaged public var inProgress: Bool
+
+    /// Order in which states are shown in the tray app.
+    /// Automatically set in the didSet of "state".
+    @NSManaged public var sortOrder: Int64
+
     /// FileProvider related
     @NSManaged public var filename: String?
     @NSManaged public var mimeType: String?

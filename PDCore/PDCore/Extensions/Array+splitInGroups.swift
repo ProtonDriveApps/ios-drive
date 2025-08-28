@@ -40,6 +40,7 @@ extension Array {
 }
 
 extension Array where Element == NodeIdentifier {
+    /// Splits by share and volume
     public func splitIntoChunks() -> [(share: String, volume: String, links: [String])] {
         // Group nodeIdentifiers by a tuple of (shareID, volumeID)
         let groupedByShareAndVolume = Dictionary(grouping: self, by: { ShareVolumeKey(shareID: $0.shareID, volumeID: $0.volumeID) })
@@ -87,5 +88,24 @@ extension Array where Element == TrashingNodeIdentifier {
         let volumeID: String
         let shareID: String
         let parentID: String
+    }
+}
+
+public extension Array where Element: VolumeIdentifiable {
+    func splitIntoChunksByVolume() -> [(volumeId: String, nodeIds: [String])] {
+        // Group nodeIdentifiers by volumeID
+        let groupedByShareAndVolume = Dictionary(grouping: self, by: { $0.volumeID })
+
+        // Transform NodeIdentifier to nodeID and include both shareID and volumeID
+        var result: [(volumeId: String, nodeIds: [String])] = []
+        for (key, nodeIDs) in groupedByShareAndVolume {
+            let nodeIDStrings = nodeIDs.map { $0.id }
+            let chunks = nodeIDStrings.splitInGroups(of: 150)
+            for chunk in chunks {
+                result.append((volumeId: key, nodeIds: chunk))
+            }
+        }
+
+        return result
     }
 }

@@ -20,7 +20,20 @@ import Foundation
 /// Providing similar functionality as `DriveError` while keeping the original `domain` and `code`
 /// `message` should not contain sensitive data.
 public class DomainCodeError: NSError {
-    public init(error: NSError, message: String? = nil, file: String = #filePath, line: Int = #line) {
+    public init(
+        error: NSError,
+        message: String? = nil,
+        file: String = #filePath,
+        function: String = #function,
+        line: Int = #line) {
+        Log.error(
+            error: error,
+            domain: .restricted,
+            sendToSentryIfPossible: false,
+            file: file,
+            function: function,
+            line: line
+        )
         let message = "\(error.domain) \(error.code), message: \(message ?? "empty")"
         super.init(domain: error.domain, code: error.code, userInfo: [NSLocalizedDescriptionKey: message])
     }

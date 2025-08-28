@@ -22,6 +22,7 @@ import UniformTypeIdentifiers
 #if canImport(CoreServices)
 import CoreServices
 #endif
+import PDCore
 
 public extension NSFileProviderItem {
     var isFolder: Bool {
@@ -34,5 +35,10 @@ public extension NSFileProviderItem {
             return false
         }
         #endif
+    }
+
+    var isProtonFile: Bool {
+        guard let contentType else { return false }
+        return ProtonFileType(uti: contentType.identifier) != nil
     }
 }

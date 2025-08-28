@@ -17,19 +17,11 @@
 
 import Combine
 import PDCore
-
-enum QuotaState {
-    case fiftyPercentFull
-    case eightyPercentFull
-    case full
-}
-
-protocol QuotaStateController {
-    var state: AnyPublisher<QuotaState?, Never> { get }
-}
+import PDPhotos
 
 final class UserQuotaStateController: QuotaStateController {
     private let resource: QuotaResource
+    private let setting: QuotaStateSettings
     private let subject = CurrentValueSubject<QuotaState?, Never>(nil)
     private var cancellables = Set<AnyCancellable>()
 
@@ -37,8 +29,9 @@ final class UserQuotaStateController: QuotaStateController {
         subject.eraseToAnyPublisher()
     }
 
-    init(resource: QuotaResource) {
+    init(resource: QuotaResource, setting: QuotaStateSettings) {
         self.resource = resource
+        self.setting = setting
         if let quota = resource.getQuota() {
             subject.value = mapQuota(quota)
         }
@@ -59,15 +52,26 @@ final class UserQuotaStateController: QuotaStateController {
 
     private func mapQuota(_ quota: Quota) -> QuotaState? {
         let ratio = Double(quota.used) / Double(quota.total)
+        let state: QuotaState?
         if quota.available < Constants.Photos.minimalSpaceForAllowingUpload {
-            return QuotaState.full
+            state = QuotaState.full
         } else if ratio > 0.8 {
-            return QuotaState.eightyPercentFull
-        } else if ratio >= 0.5 && quota.total < Constants.Photos.maximalSpaceForShowingQuotaWarning  {
+            state = QuotaState.eightyPercentFull
+        } else if ratio >= 0.5 && quota.total < Constants.Photos.maximalSpaceForShowingQuotaWarning {
             // Show fifty percent only to users with small total space.
-            return QuotaState.fiftyPercentFull
+            state = QuotaState.fiftyPercentFull
         } else {
-            return nil
+            state = nil
         }
+        if state == setting.quotaState, state != .full {
+            return nil
+        } else {
+            return state
+        }
+    }
+
+    func remindLater() {
+        setting.quotaState = subject.value
+        subject.send(nil)
     }
 }

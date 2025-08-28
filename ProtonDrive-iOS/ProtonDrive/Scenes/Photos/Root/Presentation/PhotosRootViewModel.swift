@@ -17,13 +17,16 @@
 
 import Combine
 import PDLocalization
+import PDPhotos
+import PDUIComponents
 
-enum PhotosRootState {
+enum PhotosRootState: Equatable {
     case loading
     case onboarding
     case permissions
     case gallery
     case disconnection
+    case error(PlaceholderViewConfiguration)
 }
 
 struct PhotosRootNavigation {
@@ -65,6 +68,7 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
     private let photoUpsellFlowController: PhotoUpsellFlowController?
     private var cancellables = Set<AnyCancellable>()
     private let photosPagingLoadController: PhotosPagingLoadController
+    private let bootstrapController: PhotosBootstrapController
     /// Is photos root view visible on the screen
     var isVisible: Bool { visibleSubject.value }
     private var visibleSubject = CurrentValueSubject<Bool, Never>(true)
@@ -82,7 +86,8 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
         galleryController: PhotosGalleryController,
         selectionController: PhotosSelectionController,
         photosPagingLoadController: PhotosPagingLoadController,
-        photoUpsellFlowController: PhotoUpsellFlowController?
+        photoUpsellFlowController: PhotoUpsellFlowController?,
+        bootstrapController: PhotosBootstrapController
     ) {
         self.coordinator = coordinator
         self.settingsController = settingsController
@@ -91,6 +96,7 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
         self.selectionController = selectionController
         self.photosPagingLoadController = photosPagingLoadController
         self.photoUpsellFlowController = photoUpsellFlowController
+        self.bootstrapController = bootstrapController
         subscribeToUpdates()
     }
 
@@ -131,9 +137,14 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
     ) -> PhotosRootState {
         if case .undetermined = photoLoadStatus, !hasPhotos, state == .loading {
             return .loading
-        }
-        
-        if case .disconnected = photoLoadStatus, !hasPhotos {
+        } else if case let .disabledDueToMigration(message) = photoLoadStatus {
+            let configuration = PlaceholderViewConfiguration(
+                image: .type(.updateRequired),
+                title: Localization.update_required_title,
+                message: message
+            )
+            return .error(configuration)
+        } else if case .disconnected = photoLoadStatus, !hasPhotos {
             return .disconnection
         } else if hasPhotos || (permissions == .full && isBackupEnabled) || photoLoadStatus.hasBackedUpPhoto {
             return .gallery
@@ -164,6 +175,9 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
     }
     
     func refreshIfNeeded() {
+        // We retry bootstrapping, only runs if previous try failed
+        bootstrapController.bootstrap()
+        // In case page load failed with network issues, we retry
         guard state == .disconnection else { return }
         photosPagingLoadController.loadNext()
     }

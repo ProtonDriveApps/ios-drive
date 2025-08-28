@@ -17,6 +17,18 @@
 
 import FileProvider
 import PDCore
+import CoreData
+
+public typealias CreateFilePerformerProvider = () async -> CreateFilePerformer
+
+public protocol CreateFilePerformer {
+    func createFile(tower: Tower,
+                    item: NSFileProviderItem,
+                    with contents: URL?,
+                    under parent: Folder,
+                    progress: Progress?,
+                    logOperation: Bool) async throws -> (Node, NSManagedObjectContext)
+}
 
 public typealias NewRevisionUploadPerformerProvider = () async -> NewRevisionUploadPerformer
 
@@ -32,11 +44,14 @@ public final class ItemActionsOutlet {
 
     private let fileProviderManager: NSFileProviderManager
     private let instanceIdentifier = UUID()
-    private let newRevisionUploadPerformerProvider: NewRevisionUploadPerformerProvider
+    let fileCreationProvider: CreateFilePerformerProvider
+    let newRevisionUploadPerformerProvider: NewRevisionUploadPerformerProvider
 
     public init(fileProviderManager: NSFileProviderManager,
+                fileCreationProvider: @escaping CreateFilePerformerProvider = { DefaultCreateFilePerformer() },
                 newRevisionUploadPerformProvider: @escaping NewRevisionUploadPerformerProvider = { DefaultNewRevisionUploadPerformer() }) {
         self.fileProviderManager = fileProviderManager
+        self.fileCreationProvider = fileCreationProvider
         self.newRevisionUploadPerformerProvider = newRevisionUploadPerformProvider
         Log.info("ItemActionsOutlet init: \(instanceIdentifier.uuidString)", domain: .syncing)
     }
@@ -55,7 +70,7 @@ public final class ItemActionsOutlet {
         Log.info("Delete item \(identifier)", domain: .fileProvider)
         guard let nodeID = NodeIdentifier(identifier) else {
             Log.info("Failed to delete item: node ID is invalid \(identifier)", domain: .fileProvider)
-            throw Errors.nodeNotFound
+            throw Errors.nodeIdentifierNotFound
         }
         let itemTemplate = ItemTemplate(itemIdentifier: identifier)
 
@@ -68,7 +83,7 @@ public final class ItemActionsOutlet {
                 #else
                 Log.info("Trashing item remotely, deleting locally...", domain: .fileProvider)
 
-                guard let node = tower.node(itemIdentifier: identifier) else {
+                guard let node = await tower.node(itemIdentifier: identifier) else {
                     Log.error("Node not found despite no conflict being found", domain: .fileProvider)
                     assertionFailure("Missing node in DB must be identified as a conflict")
                     throw Errors.nodeNotFound
@@ -77,7 +92,7 @@ public final class ItemActionsOutlet {
                 guard let moc = node.moc else { throw Node.noMOC() }
 
                 let parentID = try moc.performAndWait {
-                    guard let parent = node.parentLink else { throw Errors.parentNotFound }
+                    guard let parent = node.parentFolder else { throw Errors.parentNotFound }
                     return parent.id
                 }
 
@@ -114,10 +129,14 @@ public final class ItemActionsOutlet {
                            contents newContents: URL?,
                            options: NSFileProviderModifyItemOptions? = nil,
                            request: NSFileProviderRequest? = nil,
-                           changeObserver: SyncChangeObserver? = nil,
                            progress: Progress?) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool)
     {
-        Log.info("Modify item \(item.itemIdentifier) fields \(changedFields))", domain: .fileProvider)
+        #if os(macOS)
+        let mayAlreadyExist = options?.contains(.mayAlreadyExist) ?? false
+        #else
+        let mayAlreadyExist = false
+        #endif
+        Log.info("Modify item \(item.itemIdentifier) fields \(changedFields) mayAlreadyExist \(mayAlreadyExist)", domain: .fileProvider)
         if newContents != nil {
             Log.info("New cleartext content available at path \(newContents?.path ?? "-")", domain: .fileProvider)
         }
@@ -126,22 +145,14 @@ public final class ItemActionsOutlet {
             // If none of the above cases could be handled, then we either couldn't
             // find the node in our DB or we don't handle any of the change fields
             Log.info("Irrelevant changes", domain: .fileProvider)
-            guard let node = tower.node(itemIdentifier: item.itemIdentifier) else {
-                Log.error("Can't find item's node in metadata DB, expect item to be removed by system on next enumeration", domain: .fileProvider)
+            guard let node = await tower.node(itemIdentifier: item.itemIdentifier) else {
+                Log.error("Can't find item's node in metadata DB, expect item to be removed by system on next enumeration", error: nil, domain: .fileProvider)
                 throw Errors.nodeNotFound
             }
             return (try NodeItem(node: node), [], false)
         }
 
-        changeObserver?.incrementSyncCounter()
-        do {
-            let result = try await progressFunction(tower, item, version, changedFields, newContents, progress)
-            changeObserver?.decrementSyncCounter(type: .push, error: nil)
-            return result
-        } catch {
-            changeObserver?.decrementSyncCounter(type: .push, error: error)
-            throw error
-        }
+        return try await progressFunction(tower, item, version, changedFields, newContents, progress)
     }
     
     @discardableResult
@@ -163,7 +174,7 @@ public final class ItemActionsOutlet {
             return (resolvedItem, [], false)
         }
 
-        guard let parent = tower.parentFolder(of: itemTemplate) else { throw Errors.parentNotFound }
+        guard let parent = await tower.parentFolder(of: itemTemplate) else { throw Errors.parentNotFound }
         try checkFolderLimit(for: parent, storage: tower.storage)
 
         if itemTemplate.isFolder {
@@ -178,18 +189,22 @@ public final class ItemActionsOutlet {
             }
 
             // Delete the draft if it already exists before creating a new one
-            if let existingDraft = tower.draft(for: itemTemplate) {
+            if let existingDraft = await tower.draft(for: itemTemplate) {
                 existingDraft.delete()
             }
             
-            // we cannot create the proton docs file from macos client, so we exclude from sync
-            if itemTemplate.contentType?.identifier == ProtonDocumentConstants.uti {
+            // We do not support creating proton doc files from the macOS client.
+            // If one is created in the filesystem (e.g. copy/pasted), then we
+            // exclude it from sync.
+            if itemTemplate.isProtonFile {
                 throw Errors.excludeFromSync
             }
 
-            let file = try await createFile(tower: tower, item: itemTemplate, with: url, under: parent, progress: progress)
-            
-            return (try NodeItem(node: file), [], false)
+            let (file, context) = try await fileCreationProvider().createFile(tower: tower, item: itemTemplate, with: url, under: parent, progress: progress, logOperation: true)
+
+            return try await context.perform {
+                (try NodeItem(node: file), [], false)
+            }
         }
     }
 
@@ -207,7 +222,9 @@ public final class ItemActionsOutlet {
             return progressWithTrash
         }
 
-        if changedFields.contains(.parentItemIdentifier), let node = tower.node(itemIdentifier: item.itemIdentifier), let moc = node.moc {
+        if changedFields.contains(.parentItemIdentifier),
+           let node = await tower.node(itemIdentifier: item.itemIdentifier),
+           let moc = node.moc {
             var shouldProgressWithRestore = false
             await moc.perform {
                 shouldProgressWithRestore = (node.state == .deleted || node.isTrashInheriting) && item.parentItemIdentifier != .trashContainer
@@ -248,7 +265,7 @@ public final class ItemActionsOutlet {
         Log.info("Trashing item...", domain: .fileProvider)
 
         #if os(iOS)
-        guard let node = tower.node(itemIdentifier: item.itemIdentifier) else {
+        guard let node = await tower.node(itemIdentifier: item.itemIdentifier) else {
             throw Errors.nodeNotFound
         }
 
@@ -257,7 +274,7 @@ public final class ItemActionsOutlet {
         }
 
         let (volumeID, shareID, parentID, linkID, isLocalFile) = try moc.performAndWait {
-            guard let parent = node.parentLink else { throw node.invalidState("Trashing node should not be a root node.") }
+            guard let parent = node.parentNode else { throw node.invalidState("Trashing node should not be a root node.") }
             return (node.volumeID, node.shareId, parent.id, node.id, node.isLocalFile)
         }
 
@@ -304,9 +321,9 @@ public final class ItemActionsOutlet {
     {
         Log.info("Moving item...", domain: .fileProvider)
         guard let nodeID = NodeIdentifier(item.itemIdentifier) else {
-            throw Errors.nodeNotFound
+            throw Errors.nodeIdentifierNotFound
         }
-        guard let newParent = tower.parentFolder(of: item) else { throw Errors.parentNotFound }
+        guard let newParent = await tower.parentFolder(of: item) else { throw Errors.parentNotFound }
         try checkFolderLimit(for: newParent, storage: tower.storage)
 
         var pendingFields = changedFields
@@ -330,9 +347,9 @@ public final class ItemActionsOutlet {
     {
         Log.info("Renaming item...", domain: .fileProvider)
         guard let nodeID = NodeIdentifier(item.itemIdentifier) else {
-            throw Errors.nodeNotFound
+            throw Errors.nodeIdentifierNotFound
         }
-        guard tower.parentFolder(of: item) != nil else {
+        guard await tower.parentFolder(of: item) != nil else {
             throw Errors.parentNotFound
         }
 
@@ -344,7 +361,7 @@ public final class ItemActionsOutlet {
         if let updatedItem = try await findAndResolveConflictIfNeeded(tower: tower, item: item, changeType: actionChangeType, fields: changedFields, contentsURL: contents, progress: progress) {
             return (updatedItem, pendingFields, false)
         } else {
-            let node = try await tower.rename(node: nodeID, cleartextName: item.filename.filenameNormalizedForRemote())
+            let node = try await tower.rename(node: nodeID, cleartextName: item.filename.removingProtonExtensionIfNecessary())
             return (try NodeItem(node: node), pendingFields, false)
         }
     }
@@ -353,6 +370,9 @@ public final class ItemActionsOutlet {
         uploadNewRevision: @escaping (NSFileProviderItem, File, Tower, URL, Int, NSFileProviderItemFields, Progress?) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool)
     ) -> ProgressFunction {
         return { tower, item, version, changedFields, newContents, progress in
+            
+            try abortIfCancelled(progress: progress)
+
             var pendingFields = changedFields
             pendingFields.remove(.contents)
             pendingFields.remove(.contentModificationDate)
@@ -361,6 +381,8 @@ public final class ItemActionsOutlet {
             #endif
             
             if let updatedItem = try await self.findAndResolveConflictIfNeeded(tower: tower, item: item, changeType: .modifyContents(version: version, contents: newContents), fields: changedFields, contentsURL: newContents, progress: progress) {
+
+                try abortIfCancelled(progress: progress)
 
                 #if os(iOS)
                 return (updatedItem, pendingFields, false)
@@ -372,20 +394,35 @@ public final class ItemActionsOutlet {
                 return (updatedItem, pendingFields, shouldFetchContent)
                 #endif
             } else {
-                guard let file = tower.node(itemIdentifier: item.itemIdentifier) as? File else {
-                    Log.error("File not found despite no conflict being found", domain: .fileProvider)
+
+                try abortIfCancelled(progress: progress)
+
+                guard let file = await tower.node(itemIdentifier: item.itemIdentifier) as? File else {
+                    Log.error("File not found despite no conflict being found", error: nil, domain: .fileProvider)
                     assertionFailure("Missing file in DB must be identified as a conflict")
                     throw Errors.nodeNotFound
                 }
-                guard let fileSize = newContents?.fileSize, let copy = self.prepare(forUpload: item, from: newContents) else {
-                    throw Errors.emptyUrlForFileUpload
+
+                // fileCopy is the copy of the file that the system asked us to upload from the system-provided location
+                // (~/Library/Application\ Support/FileProvider/{domain_id}/wharf/wharf/propagate) to the app's temporary directory
+                // (obtained from FileManager.default.temporaryDirectory, see prepare(forUpload:from:))
+                guard let newContents else {
+                    try throwIfNotCancelled(progress: progress, error: Errors.urlForUploadIsNil)
                 }
-                
-                defer {
-                    try? FileManager.default.removeItem(at: copy.deletingLastPathComponent())
+                guard let fileSize = newContents.fileSize else {
+                    try throwIfNotCancelled(progress: progress, error: Errors.urlForUploadHasNoSize)
                 }
-                
-                return try await uploadNewRevision(item, file, tower, copy, fileSize, pendingFields, progress)
+                guard let fileCopy = try performIfNotCancelled(
+                    progress: progress, { try ItemActionsOutlet.prepare(forUpload: item, from: newContents) }
+                ) else {
+                    try throwIfNotCancelled(progress: progress, error: Errors.urlForUploadFailedCopying)
+                }
+
+                defer { try? FileManager.default.removeItem(at: fileCopy.deletingLastPathComponent()) }
+
+                return try await performIfNotCancelled(progress: progress, {
+                    return try await uploadNewRevision(item, file, tower, fileCopy, fileSize, pendingFields, progress)
+                })
             }
         }
     }
@@ -404,15 +441,17 @@ extension ItemActionsOutlet {
         #if os(iOS)
         return nil
         #else
-        let itemWithNormalizedFilename = NodeItem(item: item, filename: item.filename.filenameNormalizedForRemote())
+        let itemWithNormalizedFilename = NodeItem(item: item, filename: item.filename.removingProtonExtensionIfNecessary())
 
-        guard let (action, conflictingNode) = try identifyConflict(tower: tower, basedOn: itemWithNormalizedFilename, changeType: changeType, fields: fields) else {
+        guard let (action, conflictingNode) = try await identifyConflict(tower: tower, basedOn: itemWithNormalizedFilename, changeType: changeType, fields: fields) else {
             Log.info("No conflict identified", domain: .fileProvider)
             return nil // no conflict found
         }
 
         Log.info("Conflict identified: \(action)", domain: .fileProvider)
-        return try await resolveConflict(tower: tower, between: itemWithNormalizedFilename, with: contentsURL, and: conflictingNode, applying: action, progress: progress)
+        return try await resolveConflict(
+            tower: tower, between: itemWithNormalizedFilename, with: contentsURL, and: conflictingNode, applying: action, fields: fields, progress: progress
+        )
         #endif
     }
 
@@ -427,14 +466,50 @@ extension ItemActionsOutlet {
 }
 
 extension ItemActionsOutlet {
-    func createFile(tower: Tower, item: NSFileProviderItem, with url: URL?, under parent: Folder, progress: Progress?) async throws -> File {
-        guard let fileSize = url?.fileSize, let copy = self.prepare(forUpload: item, from: url) else {
-            #if os(macOS)
-            let fileInfoForEmptyURL = "Item type is: \(String(describing: item.contentType))\n"
-                                    + "Item filesystem flags: \(String(describing: item.fileSystemFlags))"
-            Log.info(fileInfoForEmptyURL, domain: .fileProvider, sendToSentryIfPossible: true)
-            #endif
-            throw Errors.emptyUrlForFileUpload
+    public static func prepare(forUpload itemTemplate: NSFileProviderItem, from url: URL?) throws -> URL? {
+        guard let url = url else { return nil }
+        // copy file from system temporary location to app temporary location so it will have correct mime and name
+        // TODO: inject mime and name directly into Uploader
+        let parentFolderUUID = getUUIDParentDirectory(url)
+        let copyParent = FileManager.default.temporaryDirectory.appendingPathComponent("Clear/\(parentFolderUUID)")
+        let copy = copyParent.appendingPathComponent(itemTemplate.filename)
+        try? FileManager.default.removeItem(atPath: copyParent.path) // best effort
+        try FileManager.default.createDirectory(at: copyParent, withIntermediateDirectories: true, attributes: nil)
+        try FileManager.default.copyItem(at: url, to: copy)
+        return copy
+    }
+
+    static func getUUIDParentDirectory(_ url: URL) -> String {
+        let parentFolderUUID = url.deletingLastPathComponent().lastPathComponent
+        if let uuid = UUID(uuidString: parentFolderUUID) {
+            return uuid.uuidString
+        } else {
+            return UUID().uuidString
+        }
+    }
+}
+
+public final class DefaultCreateFilePerformer: CreateFilePerformer {
+
+    public init() {}
+
+    public func createFile(tower: Tower, 
+                           item: NSFileProviderItem,
+                           with url: URL?,
+                           under parent: Folder,
+                           progress: Progress?,
+                           logOperation _: Bool) async throws -> (Node, NSManagedObjectContext) {
+
+        guard let url else {
+            throw Errors.urlForUploadIsNil
+        }
+
+        guard let fileSize = url.fileSize else {
+            throw Errors.urlForUploadHasNoSize
+        }
+
+        guard let copy = try? ItemActionsOutlet.prepare(forUpload: item, from: url) else {
+            throw Errors.urlForUploadFailedCopying
         }
 
         defer { try? FileManager.default.removeItem(at: copy.deletingLastPathComponent()) }
@@ -447,7 +522,7 @@ extension ItemActionsOutlet {
 
         #if os(iOS)
         do {
-            return try await tower.fileUploader.upload(draft)
+            return (try await tower.fileUploader.upload(draft), tower.fileUploader.moc)
         } catch {
             tower.fileUploader.deleteUploadingFile(draft, error: nil)
             throw error
@@ -455,34 +530,12 @@ extension ItemActionsOutlet {
         #else
         let fileUploader = SuspendableFileUploader(uploader: tower.fileUploader, progress: progress)
         do {
-            return try await fileUploader.upload(draft)
+            return (try await fileUploader.upload(draft), tower.fileUploader.moc)
         } catch {
             fileUploader.deleteUploadingFile(draft)
             throw error
         }
         #endif
-    }
-
-    public func prepare(forUpload itemTemplate: NSFileProviderItem, from url: URL?) -> URL? {
-        guard let url = url else { return nil }
-        // copy file from system temporary location to app temporary location so it will have correct mime and name
-        // TODO: inject mime and name directly into Uploader
-        let parentFolderUUID = getUUIDParentDirectory(url)
-        let copyParent = FileManager.default.temporaryDirectory.appendingPathComponent("Clear/\(parentFolderUUID)")
-        let copy = copyParent.appendingPathComponent(itemTemplate.filename)
-        try? FileManager.default.removeItem(atPath: copyParent.path)
-        try? FileManager.default.createDirectory(at: copyParent, withIntermediateDirectories: true, attributes: nil)
-        try? FileManager.default.copyItem(at: url, to: copy)
-        return copy
-    }
-
-    func getUUIDParentDirectory(_ url: URL) -> String {
-        let parentFolderUUID = url.deletingLastPathComponent().lastPathComponent
-        if let uuid = UUID(uuidString: parentFolderUUID) {
-            return uuid.uuidString
-        } else {
-            return UUID().uuidString
-        }
     }
 }
 

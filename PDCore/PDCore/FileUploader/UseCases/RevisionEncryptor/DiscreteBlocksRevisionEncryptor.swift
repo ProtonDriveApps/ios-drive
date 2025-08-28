@@ -182,7 +182,7 @@ extension DiscreteBlocksRevisionEncryptor {
                 digestBuilder.add(data)
                 let encryptedBlock = try Self.encryptBlock(pack, encryptionMetadata: encryptionMetadata)
                 let encSignature = try Self.encryptSignature(data, encryptionMetadata: encryptionMetadata, signersKit: signersKit)
-                let block = try Self.createBlockMetadata(draft.volumeID, encSignature, signersKit.address.email, encryptedBlock, pack)
+                let block = Self.createBlockMetadata(draft.volumeID, encSignature, signersKit.address.email, encryptedBlock, pack)
                 try Self.writeEncryptedData(encryptedBlock.cypherdata, for: block, localURLs: self.localURLs)
 
                 // A safeguard to ensure the expected number of blocks read
@@ -244,7 +244,7 @@ extension DiscreteBlocksRevisionEncryptor {
                             let pack = NewBlockDataCleartext(index: index, cleardata: data)
                             let encryptedBlock = try Self.encryptBlock(pack, encryptionMetadata: encryptionMetadata)
                             let encSignature = try Self.encryptSignature(data, encryptionMetadata: encryptionMetadata, signersKit: signersKit)
-                            let block = try Self.createBlockMetadata(draft.volumeID, encSignature, signersKit.address.email, encryptedBlock, pack)
+                            let block = Self.createBlockMetadata(draft.volumeID, encSignature, signersKit.address.email, encryptedBlock, pack)
                             try Self.writeEncryptedData(encryptedBlock.cypherdata, for: block, localURLs: self.localURLs)
                             
                             // A safeguard to ensure the expected number of blocks read
@@ -284,7 +284,7 @@ extension DiscreteBlocksRevisionEncryptor {
         return blocks
     }
 
-    private static func createBlockMetadata(_ volumeID: String, _ signature: String, _ signatureEmail: String, _ encrypted: NewBlockDataCyphertext, _ cleartext: NewBlockDataCleartext) throws -> UploadBlockMetadata {
+    private static func createBlockMetadata(_ volumeID: String, _ signature: String, _ signatureEmail: String, _ encrypted: NewBlockDataCyphertext, _ cleartext: NewBlockDataCleartext) -> UploadBlockMetadata {
         // we'll use these blocks later when we'll need to restore Operations
         return UploadBlockMetadata(
             volumeID: volumeID,

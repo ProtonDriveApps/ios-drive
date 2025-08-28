@@ -33,7 +33,7 @@ public protocol ConflictDetection {
         tower: Tower,
         basedOn item: NSFileProviderItem,
         changeType: ItemActionChangeType,
-        fields: NSFileProviderItemFields) throws -> (ResolutionAction, Node?)?
+        fields: NSFileProviderItemFields) async throws -> (ResolutionAction, Node?)?
 
 }
 
@@ -46,6 +46,7 @@ public protocol ConflictResolution {
         with url: URL?,
         and conflictingNode: Node?,
         applying action: ResolutionAction,
+        fields: NSFileProviderItemFields,
         progress: Progress?
     ) async throws -> NSFileProviderItem
 

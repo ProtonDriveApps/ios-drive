@@ -32,7 +32,8 @@ public struct GeneralLoopResponse: Codable {
     public let usedSpace: Double?
     public let contacts: [ContactEvent]?
     public let labels: [LabelEvent]?
-    
+    public let driveShareRefresh: DriveShareRefresh?
+
     public let addresses: [AddressUpdate]?
     
     /* Currently not used:

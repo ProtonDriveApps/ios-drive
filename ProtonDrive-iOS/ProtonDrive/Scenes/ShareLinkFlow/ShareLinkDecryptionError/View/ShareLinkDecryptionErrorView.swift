@@ -27,9 +27,9 @@ struct ShareLinkDecryptionErrorView: View {
 
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
-            EmptyFolderView(
-                viewModel: EmptyViewConfiguration(
-                    image: .genericError,
+            PlaceholderView(
+                viewModel: PlaceholderViewConfiguration(
+                    image: .type(.genericError),
                     title: "",
                     message: Localization.share_link_error_message),
                 footer: {

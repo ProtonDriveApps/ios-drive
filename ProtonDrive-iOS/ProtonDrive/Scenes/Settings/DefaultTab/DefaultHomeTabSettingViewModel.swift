@@ -18,6 +18,7 @@
 import Combine
 import Foundation
 import PDCore
+import PDCoreIOS
 import PMSettings
 import ProtonCoreUIFoundations
 import PDLocalization
@@ -44,8 +45,8 @@ final class DefaultHomeTabSettingViewModel: PMDrillDownCellViewModel {
 
         cancellable = localSettings
             .publisher(for: \.defaultHomeTabTag)
-            .sink { tag in
-                self.currentSelection = TabBarItem(rawValue: tag)
+            .sink { [weak self] tag in
+                self?.currentSelection = TabBarItem(rawValue: tag)
             }
     }
 }
@@ -61,6 +62,8 @@ extension TabBarItem {
             return "Shared"
         case .sharedWithMe:
             return "SharedWithMe"
+        case .computers:
+            return "Computers"
         }
     }
 }

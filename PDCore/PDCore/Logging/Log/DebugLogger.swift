@@ -18,20 +18,22 @@
 import Foundation
 import os.log
 
+/// Writes logs to the Xcode debugging console and Console.app.
+/// NOTE: Debug and Info levels are not shown in Console.app by default - select "Actions -> Include Debug Messages" or "Actions -> Include Info Messages" to view them.
+/// Also, you can right-click the column titles in Console.app and select "Category" to see log domains.
 public final class DebugLogger: LoggerProtocol {
     public init() {}
 
     // DebugLogger never sends to Sentry, regardless of the parameter's value
-    public func log(_ level: LogLevel, message: String, system: LogSystem, domain: LogDomain, sendToSentryIfPossible _: Bool) {
+    // swiftlint:disable:next function_parameter_count
+    public func log(_ level: LogLevel, message: String, system: LogSystem, domain: LogDomain, context: LogContext?, sendToSentryIfPossible _: Bool, file: String, function: String, line: Int) {
         let log = OSLog(subsystem: system.name, category: domain.name)
         let type = makeType(from: level)
-        os_log("%{public}@", log: log, type: type, message)
-    }
-
-    // DebugLogger never sends to Sentry, regardless of the parameter's value
-    public func log(_ error: NSError, system: LogSystem, domain: LogDomain, sendToSentryIfPossible _: Bool) {
-        let message = error.localizedDescription
-        log(.error, message: message, system: system, domain: domain, sendToSentryIfPossible: false)
+        var message = message
+        if let contextString = context?.debugDescription, !contextString.isEmpty {
+            message += "; \(contextString)"
+        }
+        os_log("%{public}@", log: log, type: type, "\(message)")
     }
 
     private func makeType(from level: LogLevel) -> OSLogType {
@@ -43,6 +45,8 @@ public final class DebugLogger: LoggerProtocol {
         case .info:
             return .info
         case .debug:
+            return .debug
+        case .trace:
             return .debug
         }
     }

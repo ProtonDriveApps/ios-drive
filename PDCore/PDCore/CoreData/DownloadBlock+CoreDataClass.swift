@@ -18,6 +18,8 @@
 import Foundation
 import CoreData
 
+public typealias CoreDataDownloadBlock = DownloadBlock
+
 @objc(DownloadBlock)
 public class DownloadBlock: Block {
 

@@ -53,11 +53,9 @@ struct ThumbnailsControllerFactory {
         photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>
     ) -> ThumbnailURLsController {
         let managedObjectContext = getManagedObjectContext(tower: tower)
-        let photoShareDataSource = PhotosFactory().makeLocalPhotosRootDataSource(observer: photoSharesObserver)
-        let volumeIdDataSource = DatabasePhotosVolumeIdDataSource(photoShareDataSource: photoShareDataSource)
         let idsDataSource = LocalPhotoThumbnailIdsRepository(managedObjectContext: managedObjectContext, storageManager: tower.storage)
         let listInteractor = ThumbnailsListFactory().makeInteractor(client: tower.client)
-        let interactor = RemoteThumbnailURLsInteractor(listInteractor: listInteractor, updateRepository: tower.cloudSlot, volumeIdDataSource: volumeIdDataSource, idsDataSource: idsDataSource, type: type)
+        let interactor = RemoteThumbnailURLsInteractor(listInteractor: listInteractor, updateRepository: tower.cloudSlot, idsDataSource: idsDataSource, type: type)
         let facade = ThumbnailURLsSerialFetchingFacade(interactor: interactor)
         return FetchingThumbnailURLsController(facade: facade)
     }

@@ -17,10 +17,13 @@
 
 import ProtonCoreServices
 
-extension ResponseError {
+public extension ResponseError {
     var isNoSpaceOnCloudError: Bool { code == 200002 }
     var isExpiredResource: Bool { (httpCode == 422 && code == 2501) || (httpCode == 404 && code == 2501) }
     var isFeatureDisabled: Bool { httpCode == 424 && code == 2032 }
+    var isPhotoVolumeMigrationError: Bool { isPhotoShareBeingMigratedError || isPhotoShareLegacyUsageError }
+    private var isPhotoShareBeingMigratedError: Bool { httpCode == 422 && code == 201100 }
+    private var isPhotoShareLegacyUsageError: Bool { httpCode == 422 && code == 201101 }
 
     var isRetryable: Bool {
         #if os(iOS)

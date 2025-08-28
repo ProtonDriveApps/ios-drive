@@ -44,8 +44,8 @@ protocol EventLoopPriorityPolicyProtocol {
 final class EventLoopPriorityPolicy: EventLoopPriorityPolicyProtocol {
     func getPriority(with data: EventLoopPriorityData) -> EventLoopExecutionPriority? {
         switch data.type {
-        case .main:
-            return getMainVolumePriority(with: data)
+        case .own:
+            return getOwnVolumePriority(with: data)
         case .activeShared:
             return getSharedVolumePriority(with: data, isActive: true)
         case .inactiveShared:
@@ -53,7 +53,7 @@ final class EventLoopPriorityPolicy: EventLoopPriorityPolicyProtocol {
         }
     }
 
-    private func getMainVolumePriority(with data: EventLoopPriorityData) -> EventLoopExecutionPriority? {
+    private func getOwnVolumePriority(with data: EventLoopPriorityData) -> EventLoopExecutionPriority? {
         if data.isRunningInBackground {
             // background
             return getPriority(data: data, tresholdDelayInSeconds: 1800, isHighPriority: true)

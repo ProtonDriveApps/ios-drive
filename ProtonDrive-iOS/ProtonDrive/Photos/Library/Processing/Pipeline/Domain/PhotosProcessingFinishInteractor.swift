@@ -32,13 +32,13 @@ final class PhotosProcessingFinishInteractor: AsynchronousExecution {
     }
 
     func execute() async {
-        Log.info("5️⃣ \(Self.self): executing", domain: .photosProcessing)
+        Log.info("5️⃣ executing", domain: .photosProcessing)
         context.failedIdentifiersAndError.forEach { failedIdentifiersResource.increment(cloudIdentifier: $0.key.cloudIdentifier, error: $0.value) }
         progressRepository.discard(context.invalidIdentifiers.count + context.missingIdentifiers.count)
         progressRepository.add(context.importedCompoundsDeltaCount)
         progressRepository.finish(context.importedCompoundsCount + context.failedIdentifiersAndError.count)
         deleteInvalidAssets(context.invalidAssets)
-        Log.info("5️⃣ \(Self.self): finished importing count: \(context.importedCompoundsCount), compoundsDelta: \(context.importedCompoundsDeltaCount)", domain: .photosProcessing)
+        Log.info("5️⃣ finished importing count: \(context.importedCompoundsCount), compoundsDelta: \(context.importedCompoundsDeltaCount)", domain: .photosProcessing)
     }
 
     private func deleteInvalidAssets(_ assets: [PhotoAsset]) {

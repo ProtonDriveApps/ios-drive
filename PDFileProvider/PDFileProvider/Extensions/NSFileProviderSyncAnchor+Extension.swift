@@ -51,7 +51,7 @@ extension NSFileProviderSyncAnchor {
     }
 }
 
-extension NSFileProviderSyncAnchor: CustomDebugStringConvertible {
+extension NSFileProviderSyncAnchor: Swift.CustomDebugStringConvertible {
     public var debugDescription: String {
         Emojifier.gothic.symbolicate(self[\.eventID] ?? "")
     }

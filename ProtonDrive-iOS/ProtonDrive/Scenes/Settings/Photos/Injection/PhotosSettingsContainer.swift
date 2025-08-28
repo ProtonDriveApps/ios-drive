@@ -18,13 +18,14 @@
 import PDCore
 import PMSettings
 import UIKit
+import PDPhotos
 
 final class PhotosSettingsContainer {
     struct Dependencies {
         let settingsController: PhotoBackupSettingsController
-        let authorizationController: PhotoLibraryAuthorizationController
-        let bootstrapController: PhotosBootstrapController
         let tower: Tower
+        let backupStartController: PhotosBackupStartController
+        let migrationController: PhotoVolumeMigrationControllerProtocol
     }
     private let dependencies: Dependencies
 
@@ -34,6 +35,6 @@ final class PhotosSettingsContainer {
 
     func makeSettingsCell() -> PMCellSuplier {
         let factory = PhotosSettingsFactory()
-        return factory.makeSettingsCell(settingsController: dependencies.settingsController, authorizationController: dependencies.authorizationController, bootstrapController: dependencies.bootstrapController, tower: dependencies.tower)
+        return factory.makeSettingsCell(settingsController: dependencies.settingsController, tower: dependencies.tower, backupStartController: dependencies.backupStartController, migrationController: dependencies.migrationController)
     }
 }

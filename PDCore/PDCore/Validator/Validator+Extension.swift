@@ -16,29 +16,30 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDLocalization
 
 public enum Validations {
     public static let nonEmptyString = Validator(nonEmpty: \String.self)
 }
 
 public enum NameValidations {
-    public static let nonEmpty = Validations.nonEmptyString.with(message: "Name must not be empty")
+    public static let nonEmpty = Validations.nonEmptyString.with(message: Localization.name_validation_non_empty)
 
-    public static let charCount = Validator(\String.self, where: { $0.utf8.count < 256 }, message: "Name is too long")
+    public static let charCount = Validator(\String.self, where: { $0.utf8.count < 256 }, message: Localization.name_validation_too_long)
 
-    public static let dotNotAllowed = Validator(\String.self, where: { $0 != "." }, message: #""." is not a valid name"#)
+    public static let dotNotAllowed = Validator(\String.self, where: { $0 != "." }, message: Localization.name_validation_dot)
 
-    public static let twoDotsNotAllowed = Validator(\String.self, where: { $0 != ".." }, message: #"".." is not a valid name"#)
+    public static let twoDotsNotAllowed = Validator(\String.self, where: { $0 != ".." }, message: Localization.name_validation_two_dot)
 
     public static let invalidCharacters = Validator(
         \String.self,
-        where: { !NSRegularExpression(#"\/|\\|[\u0000-\u001F]|[\u2000-\u200F]|[\u202E-\u202F]"#).matches($0) },
-        message: #"Name cannot include invisible characters, / or \."#
+         where: { !NSRegularExpression(#"\/|\\|[\u0000-\u001F]|[\u2000-\u200F]|[\u202E-\u202F]"#).matches($0) },
+         message: Localization.name_validation_invisible_chars
     )
 
-    public static let noleadingWhitespaces = Validator(\String.self, where: { !NSRegularExpression(#"^\s+"#).matches($0) }, message: "Name must not begin with a space")
+    public static let noleadingWhitespaces = Validator(\String.self, where: { !NSRegularExpression(#"^\s+"#).matches($0) }, message: Localization.name_validation_leading_white)
 
-    static let noTrailingWhitespaces = Validator(\String.self, where: { !NSRegularExpression(#"\s+$"#).matches($0) }, message: "Name must not end with a space")
+    static let noTrailingWhitespaces = Validator(\String.self, where: { !NSRegularExpression(#"\s+$"#).matches($0) }, message: Localization.name_validation_trailing_white)
 
     public static let userSelectedName = Validator(combining: [
                                         Self.nonEmpty,

@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="23231" systemVersion="23G93" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="1.50">
+    <entity name="Block" representedClassName="Block" isAbstract="YES" syncable="YES">
+        <attribute name="encSignature" optional="YES" attributeType="String"/>
+        <attribute name="id" attributeType="String" defaultValueString=""/>
+        <attribute name="index" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="localPath" optional="YES" attributeType="String"/>
+        <attribute name="sha256" attributeType="Binary"/>
+        <attribute name="signatureEmail" optional="YES" attributeType="Transformable" valueTransformerName="DriveStringCryptoTransformer" customClassName="NSString"/>
+        <attribute name="volumeID" attributeType="String" defaultValueString=""/>
+        <relationship name="revision" maxCount="1" deletionRule="Nullify" destinationEntity="Revision" inverseName="blocks" inverseEntity="Revision"/>
+    </entity>
+    <entity name="CoreDataAlbum" representedClassName="CoreDataAlbum" parentEntity="Node" syncable="YES">
+        <attribute name="coverLinkID" optional="YES" attributeType="String"/>
+        <attribute name="lastActivityTime" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="locked" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="nodeHashKey" optional="YES" attributeType="String"/>
+        <attribute name="photoCount" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="xAttributes" optional="YES" attributeType="String"/>
+        <relationship name="albumListing" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="CoreDataAlbumListing" inverseName="album" inverseEntity="CoreDataAlbumListing"/>
+        <relationship name="coverPhoto" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Photo"/>
+        <relationship name="photos" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Photo" inverseName="albums" inverseEntity="Photo"/>
+    </entity>
+    <entity name="CoreDataAlbumListing" representedClassName="CoreDataAlbumListing" syncable="YES">
+        <attribute name="coverLinkID" optional="YES" attributeType="String"/>
+        <attribute name="id" attributeType="String"/>
+        <attribute name="lastActivityTime" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="locked" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="photoCount" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="shareID" optional="YES" attributeType="String"/>
+        <attribute name="volumeID" attributeType="String"/>
+        <relationship name="album" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="CoreDataAlbum" inverseName="albumListing" inverseEntity="CoreDataAlbum"/>
+        <relationship name="photos" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="CoreDataPhotoListing" inverseName="album" inverseEntity="CoreDataPhotoListing"/>
+    </entity>
+    <entity name="CoreDataBookmark" representedClassName="CoreDataBookmark" parentEntity="File" syncable="YES">
+        <attribute name="encryptedUrlPassword" optional="YES" attributeType="String"/>
+        <attribute name="locallyEncryptedName" attributeType="Transformable" valueTransformerName="DriveStringCryptoTransformer" customClassName="NSString"/>
+        <attribute name="permissions" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="shareKey" optional="YES" attributeType="String"/>
+        <attribute name="sharePassphrase" optional="YES" attributeType="String"/>
+        <attribute name="sharePasswordSalt" optional="YES" attributeType="String"/>
+        <attribute name="token" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="CoreDataPhotoListing" representedClassName="CoreDataPhotoListing" syncable="YES">
+        <attribute name="addedTime" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="albumID" optional="YES" attributeType="String"/>
+        <attribute name="captureTime" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="contentHash" attributeType="String"/>
+        <attribute name="id" attributeType="String"/>
+        <attribute name="monthIdentifier" optional="YES" transient="YES" attributeType="String"/>
+        <attribute name="nameHash" attributeType="String"/>
+        <attribute name="tagsRaw" optional="YES" attributeType="String"/>
+        <attribute name="volumeID" attributeType="String"/>
+        <relationship name="album" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="CoreDataAlbumListing" inverseName="photos" inverseEntity="CoreDataAlbumListing"/>
+        <relationship name="photo" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Photo" inverseName="photoListings" inverseEntity="Photo"/>
+        <relationship name="primaryPhoto" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="CoreDataPhotoListing" inverseName="relatedPhotos" inverseEntity="CoreDataPhotoListing"/>
+        <relationship name="relatedPhotos" toMany="YES" deletionRule="Cascade" destinationEntity="CoreDataPhotoListing" inverseName="primaryPhoto" inverseEntity="CoreDataPhotoListing"/>
+    </entity>
+    <entity name="Device" representedClassName="Device" syncable="YES">
+        <attribute name="createTime" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="String"/>
+        <attribute name="lastSyncTime" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="modifyTime" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="syncState" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="type" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="volumeID" attributeType="String"/>
+        <relationship name="share" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Share" inverseName="device" inverseEntity="Share"/>
+        <relationship name="volume" maxCount="1" deletionRule="Nullify" destinationEntity="Volume"/>
+    </entity>
+    <entity name="DownloadBlock" representedClassName="DownloadBlock" parentEntity="Block" syncable="YES">
+        <attribute name="downloadUrl" attributeType="Transformable" valueTransformerName="DriveStringCryptoTransformer" customClassName="NSString"/>
+    </entity>
+    <entity name="File" representedClassName="File" parentEntity="Node" syncable="YES">
+        <attribute name="clientUID" optional="YES" attributeType="String"/>
+        <attribute name="contentKeyPacket" optional="YES" attributeType="String"/>
+        <attribute name="contentKeyPacketSignature" optional="YES" attributeType="String"/>
+        <attribute name="isUploading" transient="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="uploadID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="uploadIdRaw" optional="YES" attributeType="String"/>
+        <relationship name="activeRevision" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="Revision"/>
+        <relationship name="activeRevisionDraft" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="Revision"/>
+        <relationship name="revisions" toMany="YES" deletionRule="Cascade" destinationEntity="Revision" inverseName="file" inverseEntity="Revision"/>
+    </entity>
+    <entity name="Folder" representedClassName="Folder" parentEntity="Node" syncable="YES">
+        <attribute name="isChildrenListFullyFetched" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="nodeHashKey" optional="YES" attributeType="String"/>
+        <relationship name="children" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Node" inverseName="parentLink" inverseEntity="Node"/>
+    </entity>
+    <entity name="Invitation" representedClassName="Invitation" syncable="YES">
+        <attribute name="createTime" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="creatorEmail" optional="YES" attributeType="String"/>
+        <attribute name="id" attributeType="String"/>
+        <attribute name="inviteeEmail" optional="YES" attributeType="String"/>
+        <attribute name="inviterEmail" optional="YES" attributeType="String"/>
+        <attribute name="keyPacket" optional="YES" attributeType="String"/>
+        <attribute name="keyPacketSignature" optional="YES" attributeType="String"/>
+        <attribute name="linkID" optional="YES" attributeType="String"/>
+        <attribute name="mimeType" optional="YES" attributeType="String"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="passphrase" optional="YES" attributeType="String"/>
+        <attribute name="permissions" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="shareID" optional="YES" attributeType="String"/>
+        <attribute name="shareKey" optional="YES" attributeType="String"/>
+        <attribute name="type" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="volumeID" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="Membership" representedClassName="Membership" syncable="YES">
+        <attribute name="addressID" attributeType="String"/>
+        <attribute name="addressKeyID" attributeType="String"/>
+        <attribute name="createTime" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="String"/>
+        <attribute name="inviter" attributeType="String"/>
+        <attribute name="keyPacket" attributeType="String"/>
+        <attribute name="keyPacketSignature" attributeType="String"/>
+        <attribute name="modifyTime" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="permissions" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="sessionKeySignature" attributeType="String"/>
+        <attribute name="shareID" attributeType="String"/>
+        <attribute name="state" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="share" maxCount="1" deletionRule="Nullify" destinationEntity="Share" inverseName="members" inverseEntity="Share"/>
+    </entity>
+    <entity name="Node" representedClassName="Node" isAbstract="YES" syncable="YES">
+        <attribute name="attributesMaskRaw" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="clearName" optional="YES" transient="YES" attributeType="String"/>
+        <attribute name="clearPassphrase" optional="YES" transient="YES" attributeType="String"/>
+        <attribute name="created" attributeType="Date" defaultDateTimeInterval="-978314400" usesScalarValueType="NO"/>
+        <attribute name="dirtyIndex" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="String"/>
+        <attribute name="isFavorite" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="isFolder" optional="YES" transient="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="isInheritingOfflineAvailable" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="isMarkedOfflineAvailable" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="isShared" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="isSharedWithMeRoot" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="isToBeDeleted" transient="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="localID" optional="YES" attributeType="String"/>
+        <attribute name="mimeType" attributeType="String" valueTransformerName="StringCryptoTransformer" customClassName="String"/>
+        <attribute name="modified" attributeType="Date" defaultDateTimeInterval="-978314400" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="nameSignatureEmail" optional="YES" attributeType="Transformable" valueTransformerName="DriveStringCryptoTransformer" customClassName="NSString"/>
+        <attribute name="nodeHash" attributeType="String"/>
+        <attribute name="nodeKey" attributeType="String"/>
+        <attribute name="nodePassphrase" attributeType="String"/>
+        <attribute name="nodePassphraseSignature" attributeType="String"/>
+        <attribute name="permissionsMaskRaw" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="shareID" attributeType="String"/>
+        <attribute name="signatureEmail" optional="YES" attributeType="Transformable" valueTransformerName="DriveStringCryptoTransformer" customClassName="NSString"/>
+        <attribute name="size" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="stateRaw" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="volumeID" attributeType="String" defaultValueString=""/>
+        <relationship name="directShares" toMany="YES" deletionRule="Nullify" destinationEntity="Share" inverseName="root" inverseEntity="Share"/>
+        <relationship name="parentLink" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Folder" inverseName="children" inverseEntity="Folder"/>
+    </entity>
+    <entity name="Photo" representedClassName="Photo" parentEntity="File" syncable="YES">
+        <attribute name="captureTime" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="monthIdentifier" optional="YES" transient="YES" attributeType="String"/>
+        <attribute name="tags" optional="YES" attributeType="Transformable"/>
+        <attribute name="tempBase64Exif" optional="YES" attributeType="Transformable" valueTransformerName="DriveStringCryptoTransformer" customClassName="NSString"/>
+        <attribute name="tempBase64Metadata" optional="YES" attributeType="Transformable" valueTransformerName="DriveStringCryptoTransformer" customClassName="NSString"/>
+        <relationship name="albums" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="CoreDataAlbum" inverseName="photos" inverseEntity="CoreDataAlbum"/>
+        <relationship name="children" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Photo" inverseName="parent" inverseEntity="Photo"/>
+        <relationship name="parent" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Photo" inverseName="children" inverseEntity="Photo"/>
+        <relationship name="photoListings" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="CoreDataPhotoListing" inverseName="photo" inverseEntity="CoreDataPhotoListing"/>
+        <relationship name="photoRevision" maxCount="1" deletionRule="Cascade" destinationEntity="PhotoRevision" inverseName="photo" inverseEntity="PhotoRevision"/>
+    </entity>
+    <entity name="PhotoRevision" representedClassName="PhotoRevision" parentEntity="Revision" syncable="YES">
+        <attribute name="contentHash" optional="YES" attributeType="String"/>
+        <attribute name="exif" attributeType="String"/>
+        <attribute name="transientClearExif" optional="YES" transient="YES" attributeType="Binary"/>
+        <relationship name="photo" maxCount="1" deletionRule="Nullify" destinationEntity="Photo" inverseName="photoRevision" inverseEntity="Photo"/>
+        <relationship name="photoThumbnail" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="Thumbnail"/>
+    </entity>
+    <entity name="Revision" representedClassName="Revision" syncable="YES">
+        <attribute name="clearXAttributes" optional="YES" transient="YES" attributeType="Transformable"/>
+        <attribute name="created" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="String"/>
+        <attribute name="manifestSignature" optional="YES" attributeType="String"/>
+        <attribute name="requestedUpload" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="signatureAddress" optional="YES" attributeType="Transformable" valueTransformerName="DriveStringCryptoTransformer" customClassName="NSString"/>
+        <attribute name="size" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="stateRaw" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="uploadableResourceURL" optional="YES" attributeType="URI"/>
+        <attribute name="uploadSize" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="uploadState" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="volumeID" attributeType="String" defaultValueString=""/>
+        <attribute name="xAttributes" optional="YES" attributeType="String"/>
+        <relationship name="blocks" toMany="YES" deletionRule="Cascade" destinationEntity="Block" inverseName="revision" inverseEntity="Block"/>
+        <relationship name="file" maxCount="1" deletionRule="Nullify" destinationEntity="File" inverseName="revisions" inverseEntity="File"/>
+        <relationship name="thumbnails" toMany="YES" deletionRule="Cascade" destinationEntity="Thumbnail" inverseName="revision" inverseEntity="Thumbnail"/>
+    </entity>
+    <entity name="Share" representedClassName="Share" syncable="YES">
+        <attribute name="addressID" optional="YES" attributeType="String"/>
+        <attribute name="addressKeyID" optional="YES" attributeType="String"/>
+        <attribute name="clearPassphrase" optional="YES" transient="YES" attributeType="String"/>
+        <attribute name="createTime" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="creator" optional="YES" attributeType="Transformable" valueTransformerName="DriveStringCryptoTransformer" customClassName="NSString"/>
+        <attribute name="flagsRaw" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="String"/>
+        <attribute name="key" optional="YES" attributeType="String"/>
+        <attribute name="linkID" optional="YES" attributeType="String"/>
+        <attribute name="locked" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="modifyTime" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="passphrase" optional="YES" attributeType="String"/>
+        <attribute name="passphraseSignature" optional="YES" attributeType="String"/>
+        <attribute name="rootLinkRecoveryPassphrase" optional="YES" attributeType="String"/>
+        <attribute name="state" attributeType="Integer 16" defaultValueString="1" usesScalarValueType="YES"/>
+        <attribute name="type" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="volumeID" attributeType="String" defaultValueString=""/>
+        <relationship name="device" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="Device" inverseName="share" inverseEntity="Device"/>
+        <relationship name="members" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Membership" inverseName="share" inverseEntity="Membership"/>
+        <relationship name="root" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Node" inverseName="directShares" inverseEntity="Node"/>
+        <relationship name="shareUrls" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="ShareURL" inverseName="share" inverseEntity="ShareURL"/>
+        <relationship name="volume" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Volume" inverseName="shares" inverseEntity="Volume"/>
+    </entity>
+    <entity name="ShareURL" representedClassName="ShareURL" syncable="YES">
+        <attribute name="clearPassword" optional="YES" transient="YES" attributeType="String"/>
+        <attribute name="createTime" attributeType="Date" defaultDateTimeInterval="-978314400" usesScalarValueType="NO"/>
+        <attribute name="creatorEmail" attributeType="Transformable" valueTransformerName="DriveStringCryptoTransformer" customClassName="NSString"/>
+        <attribute name="expirationTime" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="flagsRaw" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="String"/>
+        <attribute name="lastAccessTime" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="maxAccesses" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="numAccesses" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="password" attributeType="String"/>
+        <attribute name="permissionsRaw" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="publicUrl" optional="YES" attributeType="Transformable" valueTransformerName="DriveStringCryptoTransformer" customClassName="NSString"/>
+        <attribute name="sharePassphraseKeyPacket" attributeType="String"/>
+        <attribute name="sharePasswordSalt" attributeType="String"/>
+        <attribute name="srpModulusID" attributeType="String"/>
+        <attribute name="srpVerifier" attributeType="String"/>
+        <attribute name="token" attributeType="String"/>
+        <attribute name="urlPasswordSalt" attributeType="String"/>
+        <relationship name="share" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Share" inverseName="shareUrls" inverseEntity="Share"/>
+    </entity>
+    <entity name="Thumbnail" representedClassName="Thumbnail" syncable="YES">
+        <attribute name="downloadURL" optional="YES" attributeType="String"/>
+        <attribute name="id" attributeType="String" defaultValueString=""/>
+        <attribute name="isUploaded" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="sha256" optional="YES" attributeType="Binary"/>
+        <attribute name="thumbnailHash" optional="YES" attributeType="String"/>
+        <attribute name="type" attributeType="Integer 16" defaultValueString="1" usesScalarValueType="YES"/>
+        <attribute name="uploadURL" optional="YES" attributeType="Transformable" valueTransformerName="DriveStringCryptoTransformer" customClassName="NSString"/>
+        <attribute name="volumeID" attributeType="String" defaultValueString=""/>
+        <relationship name="blob" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="ThumbnailBlob"/>
+        <relationship name="revision" maxCount="1" deletionRule="Nullify" destinationEntity="Revision" inverseName="thumbnails" inverseEntity="Revision"/>
+    </entity>
+    <entity name="ThumbnailBlob" representedClassName="ThumbnailBlob" syncable="YES">
+        <attribute name="clearData" optional="YES" transient="YES" attributeType="Binary"/>
+        <attribute name="encrypted" optional="YES" attributeType="Binary"/>
+    </entity>
+    <entity name="UploadBlock" representedClassName="UploadBlock" parentEntity="Block" syncable="YES">
+        <attribute name="clearSize" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="isUploaded" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="size" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="uploadToken" optional="YES" attributeType="String"/>
+        <attribute name="uploadUrl" optional="YES" attributeType="Transformable" valueTransformerName="DriveStringCryptoTransformer" customClassName="NSString"/>
+    </entity>
+    <entity name="Volume" representedClassName="Volume" syncable="YES">
+        <attribute name="id" attributeType="String"/>
+        <attribute name="maxSpace" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="restoreStatusRaw" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="stateRaw" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="type" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="usedSpace" attributeType="Integer 64" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <relationship name="shares" toMany="YES" deletionRule="Nullify" destinationEntity="Share" inverseName="volume" inverseEntity="Share"/>
+    </entity>
+</model>

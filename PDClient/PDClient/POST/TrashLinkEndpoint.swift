@@ -31,8 +31,8 @@ public struct TrashLinksParameters {
 
 /// Trash Children
 /// /shares/{enc_shareID}/folders/{enc_linkID}/trash_multiple
-struct TrashLinkEndpoint: Endpoint {
-    typealias Response = MultipleLinkResponse
+public struct TrashLinkEndpoint: Endpoint {
+    public typealias Response = MultipleLinkResponse
 
     struct Body: Encodable {
         let linkIDs: [Link.LinkID]
@@ -42,7 +42,7 @@ struct TrashLinkEndpoint: Endpoint {
         }
     }
 
-    var request: URLRequest
+    public var request: URLRequest
 
     init(parameters: TrashLinksParameters, service: APIService, credential: ClientCredential, breadcrumbs: Breadcrumbs) throws {
         var url = service.url(of: "/shares")
@@ -79,14 +79,29 @@ struct TrashLinkEndpoint: Endpoint {
 public struct MultipleLinkResponse: Codable {
     public let code: Int
     public let responses: [LinkResponse]
+    
+    public init(code: Int, responses: [LinkResponse]) {
+        self.code = code
+        self.responses = responses
+    }
 
     public struct LinkResponse: Codable {
         public let linkID: String
         public let response: ErrorResponse
+
+        public init(linkID: String, response: ErrorResponse) {
+            self.linkID = linkID
+            self.response = response
+        }
     }
 
     public struct ErrorResponse: Codable {
         public let code: Int
         public let error: String?
+
+        public init(code: Int, error: String?) {
+            self.code = code
+            self.error = error
+        }
     }
 }

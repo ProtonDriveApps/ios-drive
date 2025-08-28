@@ -55,7 +55,7 @@ public class MyFilesFileUploader: FileUploader {
         do {
             let draft = try FileDraft.extract(from: file)
             let uploadID = draft.uploadID
-            Log.info("1️⃣ file upload will start, retry: \(retryCount), UUID: \(uploadID), FileID \(file.id)", domain: .uploader)
+            Log.info("1️⃣ file upload will start, retry: \(retryCount), UUID: \(uploadID), FileID \(file.id), State: \(draft.state.rawValue)", domain: .uploader)
             initializeMeasurement(of: draft.uri)
 
             let operation = fileUploadFactory.getOperations(for: draft) { [weak self] result in
@@ -71,7 +71,13 @@ public class MyFilesFileUploader: FileUploader {
                     )
 
                 case .failure(let error):
-                    Log.error("2️⃣❌ file upload failure. Error: \(error.localizedDescription), retry: \(retryCount), UUID: \(uploadID)", domain: .uploader)
+                    Log
+                        .error(
+                            "2️⃣❌ file upload failure",
+                            error: error,
+                            domain: .uploader,
+                            context: LogContext("UUID: \(uploadID), retry: \(retryCount)")
+                        )
                     self.handleGlobalError(error, fileDraft: draft, retryCount: retryCount, completion: completion)
                 }
             }
@@ -101,12 +107,10 @@ public class MyFilesFileUploader: FileUploader {
         
         guard !didSignOut else { return }
         completion(.success(fileDraft.file))
-        ObservabilityEnv.report(
-            .uploadSuccessRateEvent(
-                status: .success,
-                retryCount: retryCount,
-                fileDraft: fileDraft
-            )
+        uploadSuccessRateMonitor.incrementSuccess(
+            identifier: fileDraft.file.identifier,
+            shareType: .from(fileDraft: fileDraft),
+            initiator: .from(fileDraft: fileDraft)
         )
     }
 
@@ -151,13 +155,10 @@ public class MyFilesFileUploader: FileUploader {
             file.makeUploadableAgain()
             handleDefaultError(error, completion: completion)
         }
-        
-        ObservabilityEnv.report(
-            .uploadSuccessRateEvent(
-                status: .failure,
-                retryCount: retryCount,
-                fileDraft: fileDraft
-            )
+        uploadSuccessRateMonitor.incrementFailure(
+            identifier: fileDraft.file.identifier,
+            shareType: .from(fileDraft: fileDraft),
+            initiator: .from(fileDraft: fileDraft)
         )
     }
 

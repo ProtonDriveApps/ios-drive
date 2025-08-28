@@ -17,6 +17,7 @@
 
 import Combine
 import PDCore
+import PDCoreIOS
 import SwiftUI
 import ProtonCoreNetworking
 import PDUIComponents
@@ -33,11 +34,13 @@ class SharedViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, 
     var childrenCancellable: AnyCancellable?
     var lockedStateCancellable: AnyCancellable?
     var lockedStateBannerVisibility: LockedStateAlertVisibility = .hidden
+    let scrollToTopPublisher: AnyPublisher<TabBarItem, Never>?
     @Published var transientChildren: [NodeWrapper] = []
     @Published var permanentChildren: [NodeWrapper] = []  {
         didSet { selection.updateSelectable(Set(permanentChildren.map(\.node.identifier))) }
     }
     var isVisible: Bool = true
+    let isRoot = false
     let genericErrors = ErrorRegulator()
     @Published var isUpdating: Bool = false
     private var isFetching = false
@@ -68,6 +71,7 @@ class SharedViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, 
 
     let supportsLayoutSwitch = true
     let featureFlagsController: FeatureFlagsControllerProtocol
+    @Published var topBanner: String?
 
     func refreshControlAction() {
         fetchAllPages(isManualAction: true)
@@ -96,29 +100,35 @@ class SharedViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, 
     // MARK: HasMultipleSelection
     lazy var selection = MultipleSelectionModel(selectable: Set<NodeIdentifier>())
     @Published var listState: ListState = .active
+    private let warningViewModel: PhotosMigrationWarningViewModelProtocol
 
     // MARK: others
-    init(model: SharedModel, featureFlagsController: FeatureFlagsControllerProtocol) {
+    init(model: SharedModel, featureFlagsController: FeatureFlagsControllerProtocol, scrollToTopPublisher: AnyPublisher<TabBarItem, Never>?, warningViewModel: PhotosMigrationWarningViewModelProtocol) {
         defer { self.model.loadFromCache() }
         self.model = model
         self.sorting = model.sorting
         self.layout = Layout(preference: model.layout)
+        self.scrollToTopPublisher = scrollToTopPublisher
         self.featureFlagsController = featureFlagsController
+        self.warningViewModel = warningViewModel
 
         self.subscribeToSort()
         self.subscribeToChildren()
         self.subscribeToChildrenDownloading()
         self.selection.unselectOnEmpty(for: self)
         self.subscribeToLayoutChanges()
-        subscribeToErrors()
+        subscribeToUpdates()
     }
 
-    private func subscribeToErrors() {
+    private func subscribeToUpdates() {
         model.errorSubject
             .sink { [weak self] error in
                 self?.genericErrors.send(error)
             }
             .store(in: &cancellables)
+
+        warningViewModel.warning
+            .assign(to: &$topBanner)
     }
 }
 

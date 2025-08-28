@@ -92,7 +92,8 @@ private struct InitialServicesKey: EnvironmentKey {
     static var defaultValue = InitialServices(
         userDefault: Constants.appGroup.userDefaults,
         clientConfig: Constants.clientApiConfig,
-        keymaker: Environment(\.keymaker).wrappedValue,
+        mainKeyProvider: Environment(\.keymaker).wrappedValue,
+        autoLocker: Environment(\.autolocker).wrappedValue,
         sessionRelatedCommunicatorFactory: { sessionStore, authenticator, _ in
             SessionRelatedCommunicatorForMainApp(
                 userDefaultsConfiguration: .forFileProviderExtension(userDefaults: Constants.appGroup.userDefaults),

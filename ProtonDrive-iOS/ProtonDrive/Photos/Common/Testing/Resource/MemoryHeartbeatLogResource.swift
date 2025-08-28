@@ -32,7 +32,7 @@ final class PhotosMemoryHeartbeatLogResource: MemoryHeartbeatLogResource {
     init(resource: MemoryDiagnosticsResource, storageManager: StorageManager) {
         self.resource = resource
         self.storageManager = storageManager
-        managedObjectContext = storageManager.newBackgroundContext()
+        managedObjectContext = storageManager.photosSecondaryBackgroundContext
         start()
     }
 

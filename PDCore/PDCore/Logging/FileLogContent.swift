@@ -59,7 +59,7 @@ public class FileLogContent: LogContentLoader {
             return []
         }
 
-        let filenameWithoutExtension = fileLog(for: source).name.fileName()
+        let filenameWithoutExtension = fileLog(for: source).name.fileName
         /// Check for `name.log` or `name.240125161127236.log` formats
         /// Example: `log-ProtonDriveiOS.log` and `log-ProtonDriveiOS.240125161127236.log`
         let regexp = "\(filenameWithoutExtension)(.\\d{15})*.log"

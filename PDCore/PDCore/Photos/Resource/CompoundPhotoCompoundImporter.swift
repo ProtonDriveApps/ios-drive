@@ -26,8 +26,6 @@ public final class CompoundPhotoCompoundImporter: PhotoCompoundImporter {
     private let rootRepository: PhotosRootFolderRepository
     private let existingPhotoRepository: ExistingPhotoCompoundRepository
 
-    @ThreadSafe private var encryptingFolder: EncryptingFolder?
-
     public init(
         importer: PhotoImporter, notificationCenter: NotificationCenter,
         moc: NSManagedObjectContext,
@@ -61,20 +59,22 @@ public final class CompoundPhotoCompoundImporter: PhotoCompoundImporter {
     }
     
     private func importCompounds(new newCompounds: [PhotoAssetCompound], existing rawExistingCompounds: [RawExistingCompound]) async throws {
-        let folder = try rootRepository.get()
         let encryptingFolder = try getEncryptingFolder()
-        
+        let rootIdentifier = encryptingFolder.identifier
+
         try await moc.perform { [weak self] in
             guard let self else { return }
-            let folder = folder.in(moc: self.moc)
-            
+            guard let folder: Folder = Folder.fetch(identifier: rootIdentifier, in: moc) else {
+                throw Folder.InvalidState(message: "Photos root not found with id: \(rootIdentifier)")
+            }
+
             var importedCompounds: [ImportedPhoto] = []
             for newCompound in newCompounds {
                 let importedCompound = try self.importNewCompound(newCompound, folder: folder, encryptingFolder: encryptingFolder)
                 importedCompounds.append(importedCompound)
             }
             try self.moc.saveOrRollback()
-            Log.info("\(Self.self): imported \(newCompounds.count) new compound/s. \(importedCompounds)", domain: .photosProcessing)
+            Log.info("imported \(newCompounds.count) new compound/s. \(importedCompounds)", domain: .photosProcessing)
             self.notificationCenter.post(name: .uploadPendingPhotos)
         }
         
@@ -84,13 +84,17 @@ public final class CompoundPhotoCompoundImporter: PhotoCompoundImporter {
         
         try await moc.perform { [weak self] in
             guard let self else { return }
-            
+
+            guard let folder: Folder = Folder.fetch(identifier: rootIdentifier, in: moc) else {
+                throw Folder.InvalidState(message: "Photos root not found with id: \(rootIdentifier)")
+            }
+
             for existingCompound in existingCompounds {
                 try self.importExistingCompound(existingCompound, folder: folder, encryptingFolder: encryptingFolder)
             }
             
             try self.moc.saveOrRollback()
-            Log.info("\(Self.self): imported missing items of \(existingCompounds.count) partially uploaded compound/s.", domain: .photosProcessing)
+            Log.info("imported missing items of \(existingCompounds.count) partially uploaded compound/s.", domain: .photosProcessing)
             self.notificationCenter.post(name: .uploadPendingPhotos)
         }
     }
@@ -123,15 +127,7 @@ public final class CompoundPhotoCompoundImporter: PhotoCompoundImporter {
     }
     
     private func getEncryptingFolder() throws -> EncryptingFolder {
-        if let encryptingFolder {
-            return encryptingFolder
-        }
-        let encryptingFolder = try moc.performAndWait { [weak self] in
-            guard let self else { throw Folder.noMOC() }
-            return try self.rootRepository.get().in(moc: self.moc).encrypting()
-        }
-        self.encryptingFolder = encryptingFolder
-        return encryptingFolder
+        try rootRepository.getEncryptionInfo()
     }
 
     private struct ImportedPhoto: CustomStringConvertible {

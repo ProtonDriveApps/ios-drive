@@ -76,7 +76,42 @@ extension File {
 }
 
 public extension File {
-    var isProtonDocument: Bool {
-        return MimeType(value: mimeType) == .protonDocument
+    var isProtonFile: Bool {
+        return MimeType(value: mimeType).isProtonFile
+    }
+
+    var isProtonDoc: Bool {
+        return MimeType(value: mimeType).isProtonDoc
+    }
+
+    var isProtonSheet: Bool {
+        return MimeType(value: mimeType).isProtonSheet
+    }
+
+    var protonFileType: ProtonFileType? {
+        if isProtonDoc {
+            return .doc
+        } else if isProtonSheet {
+            return .sheet
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension Node {
+    var presentableNodeSize: Int {
+        guard let file = self as? File, !file.isProtonFile else {
+            return size
+        }
+        if let activeRevision = file.activeRevision {
+            return activeRevision.presentableRevisionSize
+        } else if let mostRecentRevision = file.revisions.max(by: {
+            ($0.created?.timeIntervalSince1970 ?? 0) < ($1.created?.timeIntervalSince1970 ?? 0)
+        }) {
+            return mostRecentRevision.presentableRevisionSize
+        } else {
+            return file.size
+        }
     }
 }

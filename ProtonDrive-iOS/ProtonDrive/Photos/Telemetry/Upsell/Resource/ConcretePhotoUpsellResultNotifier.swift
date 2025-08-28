@@ -17,6 +17,7 @@
 
 import Combine
 import Foundation
+import PDPhotos
 
 final class PhotoUpsellResultNotifier: PhotoUpsellResultNotifierProtocol {
     private let subject = PassthroughSubject<PhotoUpsellResult, Never>()

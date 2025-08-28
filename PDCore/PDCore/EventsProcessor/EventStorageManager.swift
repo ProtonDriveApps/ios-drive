@@ -17,25 +17,29 @@
 
 import Foundation
 import CoreData
+import ProtonCoreUtilities
 
 // TODO: unify base class with StorageManager after PDFileSystemEvents.framework will be merged with PDCore
-public class EventStorageManager: NSObject {
+public class EventStorageManager: NSObject, RecoverableStorage {
     public typealias Entry = [String: Any]
     public typealias ProviderType = String
     public typealias ShareID = String
     public typealias EventID = String
     
+    private static let databaseName = "EventStorageModel"
+    public var previousRunWasInterrupted = false
+
     private static let managedObjectModel: NSManagedObjectModel = {
         // static linking
         if let resources = Bundle.main.resourceURL?.appendingPathComponent("PDCoreResources").appendingPathExtension("bundle"),
-           let bundle = Bundle(url: resources)?.url(forResource: "EventStorageModel", withExtension: "momd"),
+           let bundle = Bundle(url: resources)?.url(forResource: databaseName, withExtension: "momd"),
            let model = NSManagedObjectModel(contentsOf: bundle)
         {
             return model
         }
         
         #if RESOURCES_ARE_IMPORTED_BY_SPM
-        if let bundle = Bundle.module.url(forResource: "EventStorageModel", withExtension: "momd"),
+        if let bundle = Bundle.module.url(forResource: databaseName, withExtension: "momd"),
            let model = NSManagedObjectModel(contentsOf: bundle)
         {
             return model
@@ -43,7 +47,7 @@ public class EventStorageManager: NSObject {
         #endif
         
         // dynamic linking
-        if let bundle = Bundle(for: EventStorageManager.self).url(forResource: "EventStorageModel", withExtension: "momd"),
+        if let bundle = Bundle(for: EventStorageManager.self).url(forResource: databaseName, withExtension: "momd"),
            let model = NSManagedObjectModel(contentsOf: bundle)
         {
             return model
@@ -53,7 +57,6 @@ public class EventStorageManager: NSObject {
     }()
     
     internal static func defaultPersistentContainer(suiteUrl: URL?) -> NSPersistentContainer {
-        let databaseName = "EventStorageModel"
         let container = NSPersistentContainer(name: databaseName, managedObjectModel: self.managedObjectModel)
         
         let storeDirectoryUrl = suiteUrl ?? NSPersistentContainer.defaultDirectoryURL()
@@ -86,7 +89,7 @@ public class EventStorageManager: NSObject {
     }
 
     private static func inMemoryPersistantContainer() -> NSPersistentContainer {
-        let container = NSPersistentContainer(name: "EventStorageModel", managedObjectModel: self.managedObjectModel)
+        let container = NSPersistentContainer(name: databaseName, managedObjectModel: self.managedObjectModel)
         let description = NSPersistentStoreDescription()
         description.type = NSInMemoryStoreType
         description.shouldAddStoreAsynchronously = false // Make it simpler in test env
@@ -126,10 +129,45 @@ public class EventStorageManager: NSObject {
         let context = self.persistentContainer.newBackgroundContext()
         context.automaticallyMergesChangesFromParent = true
         context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
+#if os(macOS)
+        Self.keepWeakReferenceToContext(context, in: contexts)
+#endif
         return context
     }
+    
+    private static let recoveryDatabaseName = "Recovery_\(databaseName)"
+    static let backupDatabaseName = "Backup_\(databaseName)"
+    let contexts: Atomic<[WeakReference<NSManagedObjectContext>]> = .init([])
+    public func disconnectExistingDB() throws -> PersistentStoreInfo {
+        try Self.disconnectExistingDB(named: Self.databaseName, using: persistentContainer, contexts: contexts)
+    }
+    public func createRecoveryDB(nextTo backup: PersistentStoreInfo) throws -> PersistentStoreInfo {
+        try Self.createRecoveryDB(named: Self.recoveryDatabaseName, nextTo: backup, using: persistentContainer)
+    }
+    public func reconnectExistingDBAndDiscardRecoveryIfNeeded(existing: PersistentStoreInfo, recovery: PersistentStoreInfo?) throws {
+        try Self.reconnectExistingDBAndDiscardRecoveryIfNeeded(existing: existing, recovery: recovery, using: persistentContainer, contexts: contexts)
+    }
+    public func replaceExistingDBWithRecovery(existing: PersistentStoreInfo, recovery: PersistentStoreInfo) throws {
+        try Self.replaceExistingDBWithRecovery(
+            backupName: Self.backupDatabaseName, existing: existing, recovery: recovery, using: persistentContainer, contexts: contexts
+        )
+    }
+    @discardableResult
+    public func cleanupLeftoversFromPreviousRecoveryAttempt() -> Bool {
+        Self.cleanupLeftoversFromPreviousRecoveryAttempt(
+            existingName: Self.databaseName, recoveryName: Self.recoveryDatabaseName, backupName: Self.backupDatabaseName, using: persistentContainer
+        )
+    }
+    public func moveExistingDBToBackup(existing: PersistentStoreInfo) throws -> PersistentStoreInfo {
+        try Self.moveExistingDBToBackup(
+            backupName: Self.backupDatabaseName, existing: existing, using: persistentContainer, contexts: contexts
+        )
+    }
+    public func restoreFromBackup() throws {
+        try Self.restoreFromBackup(backupName: Self.backupDatabaseName, existingName: Self.databaseName, using: persistentContainer)
+    }
 
-    internal init(prePopulateFrom template: URL?) {
+    public init(prePopulateFrom template: URL?) {
         if let template {
             self.persistentContainer = Self.inMemoryPersistantContainer(prePopulatedFrom: template)
         } else {
@@ -141,6 +179,14 @@ public class EventStorageManager: NSObject {
     public init(suiteUrl: URL) {
         self.persistentContainer = Self.defaultPersistentContainer(suiteUrl: suiteUrl)
         super.init()
+        
+        do {
+            try restoreFromBackup()
+            cleanupLeftoversFromPreviousRecoveryAttempt()
+        } catch {
+            Log.error("Restoring from backup failed", error: error, domain: .storage)
+        }
+        
         #if DEBUG
         // swiftlint:disable no_print
         print("💠 EventsCoreData model located at: \(self.persistentContainer.persistentStoreCoordinator.persistentStores)")
@@ -295,8 +341,9 @@ extension EventStorageManager {
             #keyPath(PersistedEvent.volumeId), volumeId
         )
 
-        return try backgroundContext.performAndWait {
-            try backgroundContext.count(for: fetchRequest)
+        let context = self.persistentContainer.viewContext
+        return try context.performAndWait {
+            try context.count(for: fetchRequest)
         }
     }
     
@@ -393,10 +440,12 @@ extension EventStorageManager {
     public func eventsAwaitingEnumeration(since anchorID: EventID?, volumeId: String) throws -> [Entry] {
         var anchorTimestamp: TimeInterval?
         if let anchorID = anchorID {
-            guard let timestamp = try self.event(with: anchorID)?.eventEmittedAt else {
+            guard let event = try self.event(with: anchorID) else {
                 return []
             }
-            anchorTimestamp = timestamp
+            anchorTimestamp = self.backgroundContext.performAndWait {
+                event.eventEmittedAt
+            }
         }
         
         let fetchRequest = self.requestEvents(since: anchorTimestamp, excludeIsProcessedEqualTo: false, excludeIsEnumeratedEqualTo: true, volumeId: volumeId)

@@ -17,6 +17,8 @@
 
 import UIKit
 import PMSideMenu
+import PDCore
+import PMSettings
 
 final class SideMenuCoordinator {
     typealias Destination = MenuViewModel.Destination
@@ -25,29 +27,38 @@ final class SideMenuCoordinator {
     weak var viewController: SideMenuViewController!
     private weak var settingsVC: UIViewController?
 
+    private let ratingBoosterFlowController: RatingBoosterFlowControllerProtocol
     private let myFilesFactory: () -> UIViewController
     private let sharedByMeFactory: () -> UIViewController
     private let trashFactory: () -> UIViewController
     private let offlineAvailableFactory: () -> UIViewController
     private let settingsFactory: () -> UIViewController
     private let plansFactory: () -> UIViewController
+    private let storageBonusPromoFactory: () -> UIViewController
+    private let reportBugFactory: () -> UIViewController
 
     init(
         viewController: SideMenuViewController,
+        ratingBoosterFlowController: RatingBoosterFlowControllerProtocol,
         myFilesFactory: @escaping () -> UIViewController,
         sharedByMeFactory: @escaping () -> UIViewController,
         trashFactory: @escaping () -> UIViewController,
         offlineAvailableFactory: @escaping () -> UIViewController,
         settingsFactory: @escaping () -> UIViewController,
-        plansFactory: @escaping () -> UIViewController
+        plansFactory: @escaping () -> UIViewController,
+        storageBonusPromoFactory: @escaping () -> UIViewController,
+        reportBugFactory: @escaping () -> UIViewController
     ) {
         self.viewController = viewController
+        self.ratingBoosterFlowController = ratingBoosterFlowController
         self.myFilesFactory = myFilesFactory
         self.sharedByMeFactory = sharedByMeFactory
         self.trashFactory = trashFactory
         self.offlineAvailableFactory = offlineAvailableFactory
         self.settingsFactory = settingsFactory
         self.plansFactory = plansFactory
+        self.storageBonusPromoFactory = storageBonusPromoFactory
+        self.reportBugFactory = reportBugFactory
 
         NotificationCenter.default.addObserver(
             self,
@@ -58,6 +69,7 @@ final class SideMenuCoordinator {
     }
 
     func go(to destination: Destination) {
+        ratingBoosterFlowController.navigationDidHappen()
         switch destination {
         case .myFiles:
             showMyFiles()
@@ -75,6 +87,8 @@ final class SideMenuCoordinator {
             showLogout()
         case .sharedByMe:
             showSharedByMe()
+        case .storageBonusPromo:
+            showStorageBonusPromo()
         }
     }
 }
@@ -106,8 +120,16 @@ private extension SideMenuCoordinator {
         delegate.sideMenu(viewController, didSelectViewController: offlineAvailableFactory())
     }
 
+    func showStorageBonusPromo() {
+        let vc = storageBonusPromoFactory()
+        vc.modalPresentationStyle = .fullScreen
+        viewController.present(vc, animated: true)
+    }
+
     func showFeedback() {
-        UIApplication.shared.open(Constants.reportBugURL, options: [:], completionHandler: nil)
+        let vc = reportBugFactory()
+        vc.modalPresentationStyle = .fullScreen
+        viewController.present(vc, animated: true)
     }
 
     func showLogout() {
@@ -118,7 +140,7 @@ private extension SideMenuCoordinator {
             preferredStyle: .actionSheet
         )
 
-        let logout = UIAlertAction(title: vm.logoutButton, style: .destructive, handler: { _ in vm.requestLogout() })
+        let logout = UIAlertAction(title: vm.logoutButton, style: .destructive, handler: { _ in vm.startUserInitiatedLogout() })
         logout.accessibilityIdentifier = "SideMenu.logOut"
         let cancel = UIAlertAction(title: vm.cancelButton, style: .cancel, handler: nil)
 

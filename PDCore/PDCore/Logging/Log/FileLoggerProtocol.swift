@@ -17,7 +17,7 @@
 
 import Foundation
 
-public protocol FileLoggerProtocol: LoggerProtocol {
+protocol FileLoggerProtocol: LoggerProtocol {
     func openFile() throws
     func closeFile() throws
     func rotateLogFileIfNeeded() throws

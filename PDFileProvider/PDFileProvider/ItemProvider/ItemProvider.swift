@@ -17,23 +17,34 @@
 
 import Foundation
 import FileProvider
+import PDClient
 import PDCore
 import CoreData
+import ProtonCoreNetworking
 
 public final class ItemProvider {
     private let decryptor = RevisionDecryptor()
     
     public init() { }
     
+    /// Triggers fetching an item's metadata and returns a Progress object.
     @discardableResult
-    public func item(for identifier: NSFileProviderItemIdentifier,
-                     creatorAddresses: Set<String>,
-                     slot: FileSystemSlot,
-                     completionHandler: @escaping (NSFileProviderItem?, Error?) -> Void) -> Progress
+    public func itemProgress(
+        for identifier: NSFileProviderItemIdentifier,
+        creatorAddresses: Set<String>,
+        fileSystemSlot: FileSystemSlot,
+        cloudSlot: any CloudSlotProtocol,
+        completionHandler: @escaping (NSFileProviderItem?, Error?) -> Void
+    ) -> Progress
     {
         let task = Task { [weak self] in
             guard !Task.isCancelled else { return }
-            guard let (item, error) = self?.item(for: identifier, creatorAddresses: creatorAddresses, slot: slot)
+            guard let (item, error) = await self?.localOrRemoteItem(
+                for: identifier,
+                creatorAddresses: creatorAddresses,
+                fileSystemSlot: fileSystemSlot,
+                cloudSlot: cloudSlot
+            )
             else { return }
             guard !Task.isCancelled else { return }
             completionHandler(item, error)
@@ -45,13 +56,17 @@ public final class ItemProvider {
         }
     }
     
-    /// Creator is relevant only for root folder
-    public func item(
-        for identifier: NSFileProviderItemIdentifier, creatorAddresses: Set<String>, slot: FileSystemSlot) -> (NSFileProviderItem?, Error?) {
+    /// Synchronously returns a local item (or error, if item was not found locally).
+    /// Creator is relevant only for root folder.
+    public func localItem(
+        for identifier: NSFileProviderItemIdentifier,
+        creatorAddresses: Set<String>,
+        fileSystemSlot: FileSystemSlot
+    ) -> (NSFileProviderItem?, Error?) {
         switch identifier {
         case .rootContainer:
-            guard !creatorAddresses.isEmpty, let mainShare = slot.getMainShare(of: creatorAddresses), let root = slot.moc.performAndWait({ mainShare.root }) else {
-                Log.error(Errors.noMainShare.localizedDescription, domain: .fileProvider)
+            guard !creatorAddresses.isEmpty, let mainShare = fileSystemSlot.getMainShare(of: creatorAddresses), let root = fileSystemSlot.moc.performAndWait({ mainShare.root }) else {
+                Log.error(error: Errors.noMainShare, domain: .fileProvider)
                 return (nil, Errors.noMainShare)
             }
             Log.info("Got item ROOT", domain: .fileProvider)
@@ -69,10 +84,14 @@ public final class ItemProvider {
         case .trashContainer:
             Log.info("Getting item TRASH does not make sense", domain: .fileProvider)
             return (nil, Errors.requestedItemForTrash)
-        
+
         default:
-            guard let nodeId = NodeIdentifier(identifier), let node = slot.getNode(nodeId) else {
-                Log.error(Errors.nodeNotFound.localizedDescription, domain: .fileProvider)
+            guard let nodeId = NodeIdentifier(identifier) else {
+                Log.error(error: Errors.nodeIdentifierNotFound, domain: .fileProvider)
+                return (nil, Errors.nodeIdentifierNotFound)
+            }
+            guard let node = fileSystemSlot.getNode(nodeId) else {
+                Log.error(error: Errors.nodeNotFound, domain: .fileProvider)
                 return (nil, Errors.nodeNotFound)
             }
             guard node.state != .deleted && !node.isTrashInheriting else {
@@ -83,35 +102,152 @@ public final class ItemProvider {
 
             do {
                 let item = try NodeItem(node: node)
-                Log.info("Got item \(~item)", domain: .fileProvider)
+                Log.debug("Got item \(~item)", domain: .fileProvider)
                 return (item, nil)
             } catch {
                 return (nil, Errors.itemCannotBeCreated)
             }
         }
     }
-    
+
+    /// Returns a local item if available, otherwise fetches it remotely.
+    /// If neither is found, returns an error.
+    /// Creator is relevant only for root folder.
+    private func localOrRemoteItem(
+        for identifier: NSFileProviderItemIdentifier,
+        creatorAddresses: Set<String>,
+        fileSystemSlot: FileSystemSlot,
+        cloudSlot: any CloudSlotProtocol
+    ) async -> (NSFileProviderItem?, Error?) {
+        // Try locally...
+        let (localItem, error) = localItem(for: identifier, creatorAddresses: creatorAddresses, fileSystemSlot: fileSystemSlot)
+
+        // Ignore lookups for the working set and trash (which we don't support)
+        if case Errors.requestedItemForWorkingSet? = error {
+            return (nil, error)
+        }
+        if case Errors.requestedItemForTrash? = error {
+            return (nil, error)
+        }
+
+        // ...if item was found, don't try remote — we have metadata...
+        guard localItem == nil else {
+            return (localItem, error)
+        }
+
+        // ...if that doesn't work, try remotely.
+        guard let nodeId = NodeIdentifier(identifier) else {
+            Log.error("localOrRemoteItem - nodeIdentifierNotFound", error: Errors.nodeIdentifierNotFound, domain: .fileProvider, context: LogContext("Identifier: \(identifier)"))
+            return (nil, Errors.nodeIdentifierNotFound)
+        }
+
+        do {
+            let remoteNode = try await cloudSlot.scanNode(nodeId, linkProcessingErrorTransformer: { $1 })
+            
+            guard remoteNode.state != .deleted, !remoteNode.isTrashInheriting else {
+                // We don't want trashed items to display locally (disassociated items are
+                // no longer managed by the File Provider and so don't get asked for)
+                return (nil, Errors.nodeNotFound)
+            }
+            do {
+                let item = try NodeItem(node: remoteNode)
+                Log.debug("Got item \(~item)", domain: .fileProvider)
+                return (item, nil)
+            } catch {
+                return (nil, Errors.itemCannotBeCreated)
+            }
+        } catch {
+            if let responseError = error as? ResponseError,
+               responseError.responseCode == APIErrorCodes.itemOrItsParentDeletedErrorCode.rawValue {
+                return (nil, Errors.nodeNotFound)
+            } else {
+                return (nil, error)
+            }
+        }
+    }
+
+    /// Fetches contents, checking whether a node exists remotely if it doesn't exist locally, and asynchronously returns a Progress object.
+    // swiftlint:disable:next function_parameter_count
     @discardableResult
-    public func fetchContents(for itemIdentifier: NSFileProviderItemIdentifier,
-                              version requestedVersion: NSFileProviderItemVersion? = nil,
-                              slot: FileSystemSlot,
-                              downloader: Downloader,
-                              storage: StorageManager,
-                              completionHandler: @escaping (URL?, NSFileProviderItem?, Error?) -> Void) -> Progress
+    public func fetchContents(
+        for itemIdentifier: NSFileProviderItemIdentifier,
+        version requestedVersion: NSFileProviderItemVersion? = nil,
+        nodeFetcher: (NSFileProviderItemIdentifier) async -> Node?,
+        downloader: Downloader,
+        storage: StorageManager,
+        useRefreshableDownloadOperation: Bool,
+        completionHandler: @escaping (URL?, NSFileProviderItem?, Error?) -> Void) async -> Progress
     {
         Log.info("Start fetching contents for \(itemIdentifier)", domain: .fileProvider)
-        
+
         let moc = storage.newBackgroundContext()
-        guard let fileId = NodeIdentifier(itemIdentifier), let file = slot.getNode(fileId, moc: moc) as? File else {
-            Log.error(Errors.nodeNotFound, domain: .fileProvider)
+        guard let file = await nodeFetcher(itemIdentifier) as? File
+        else {
+            Log.error(error: Errors.nodeNotFound, domain: .fileProvider)
             completionHandler(nil, nil, Errors.nodeNotFound)
             return Progress { _ in
                 Log.info("Fetch contents for \(itemIdentifier) cancelled", domain: .fileProvider)
                 completionHandler(nil, nil, CocoaError(.userCancelled))
             }
         }
-        Log.info("- identifier \(itemIdentifier) stands for \(~file)", domain: .fileProvider)
-        
+
+        return getProgress(
+            for: file,
+            moc: moc,
+            downloader: downloader,
+            useRefreshableDownloadOperation: useRefreshableDownloadOperation,
+            completionHandler: completionHandler)
+    }
+
+    /// Fetches contents without checking whether a node exists remotely if it doesn't exist locally, and synchronously returns a Progress object.
+    // swiftlint:disable:next function_parameter_count
+    @discardableResult
+    public func legacyFetchContents(
+        for itemIdentifier: NSFileProviderItemIdentifier,
+        version requestedVersion: NSFileProviderItemVersion? = nil,
+        fileSystemSlot: FileSystemSlot,
+        downloader: Downloader,
+        storage: StorageManager,
+        useRefreshableDownloadOperation: Bool,
+        completionHandler: @escaping (URL?, NSFileProviderItem?, Error?) -> Void) -> Progress
+    {
+        Log.info("Start fetching contents for \(itemIdentifier)", domain: .fileProvider)
+
+        let moc = storage.newBackgroundContext()
+        guard let fileId = NodeIdentifier(itemIdentifier) else {
+            Log.error(error: Errors.nodeIdentifierNotFound, domain: .fileProvider)
+            completionHandler(nil, nil, Errors.nodeIdentifierNotFound)
+            return Progress { _ in
+                Log.info("Fetch contents for \(itemIdentifier) cancelled", domain: .fileProvider)
+                completionHandler(nil, nil, CocoaError(.userCancelled))
+            }
+        }
+        guard let file = fileSystemSlot.getNode(fileId, moc: moc) as? File else {
+            Log.error(error: Errors.nodeNotFound, domain: .fileProvider)
+            completionHandler(nil, nil, Errors.nodeNotFound)
+            return Progress { _ in
+                Log.info("Fetch contents for \(itemIdentifier) cancelled", domain: .fileProvider)
+                completionHandler(nil, nil, CocoaError(.userCancelled))
+            }
+        }
+
+        return getProgress(
+            for: file,
+            moc: moc,
+            downloader: downloader,
+            useRefreshableDownloadOperation: useRefreshableDownloadOperation,
+            completionHandler: completionHandler)
+    }
+
+    private func getProgress(
+        for file: File,
+        moc: NSManagedObjectContext,
+        downloader: Downloader,
+        useRefreshableDownloadOperation: Bool,
+        completionHandler: @escaping (URL?, NSFileProviderItem?, Error?) -> Void
+    ) -> Progress {
+        Log.info("- identifier \(file.identifier) stands for \(~file)", domain: .fileProvider)
+
         // check if cyphertext of active revision is already available locally
         if let revision = cachedRevision(for: file, on: moc) {
             let task = Task { [weak self] in
@@ -128,79 +264,96 @@ public final class ItemProvider {
                 } catch {
                     guard !Task.isCancelled else { return }
                     // if can not decrypted, proceed to download
-                    self?.downloadAndDecrypt(file, downloader: downloader, moc: moc, completionHandler: completionHandler)
+                    self?.downloadAndDecrypt(
+                        file,
+                        downloader: downloader,
+                        moc: moc,
+                        useRefreshableDownloadOperation: useRefreshableDownloadOperation,
+                        completionHandler: completionHandler
+                    )
                 }
             }
             return Progress { _ in
-                Log.info("Fetch contents for \(itemIdentifier) cancelled", domain: .fileProvider)
+                Log.info("Fetch contents for \(file.identifier) cancelled", domain: .fileProvider)
                 task.cancel()
                 completionHandler(nil, nil, CocoaError(.userCancelled))
             }
         } else {
             // if not cached, proceed to download
-            return downloadAndDecrypt(file, downloader: downloader, moc: moc, completionHandler: completionHandler)
+            return downloadAndDecrypt(
+                file,
+                downloader: downloader,
+                moc: moc,
+                useRefreshableDownloadOperation: useRefreshableDownloadOperation,
+                completionHandler: completionHandler
+            )
         }
     }
-    
+
     @discardableResult
-    private func downloadAndDecrypt(_ file: File,
-                                    downloader: Downloader,
-                                    moc: NSManagedObjectContext,
-                                    completionHandler: @escaping (URL?, NSFileProviderItem?, Error?) -> Void) -> Progress {
-        Log.info("Schedule download operation for \(~file)", domain: .fileProvider)
-        let operation = downloader.scheduleDownloadFileProvider(cypherdataFor: file) { [unowned self] result in
-            switch result {
-            case let .success(fileInOtherMoc):
-                let file = fileInOtherMoc.in(moc: moc)
+    private func downloadAndDecrypt(
+        _ file: File,
+        downloader: Downloader,
+        moc: NSManagedObjectContext,
+        useRefreshableDownloadOperation: Bool,
+        completionHandler: @escaping (URL?, NSFileProviderItem?, Error?) -> Void) -> Progress {
+            Log.info("Schedule download operation for \(~file)", domain: .fileProvider)
+            let operation = downloader.scheduleDownloadFileProvider(
+                cypherdataFor: file,
+                useRefreshableDownloadOperation: useRefreshableDownloadOperation
+            ) { [unowned self] result in
+                switch result {
+                case let .success(fileInOtherMoc):
+                    let file = fileInOtherMoc.in(moc: moc)
 
-                guard let revision = cachedRevision(for: file, on: moc) else {
-                    Log.error(Errors.revisionNotFound.localizedDescription, domain: .fileProvider)
-                    completionHandler(nil, nil, Errors.revisionNotFound)
-                    return
-                }
-                
-                Task { [weak self] in
-                    do {
-                        guard let url = try await self?.decryptor.decrypt(revision, on: moc) else { return }
-
-                        Log.info("Prepared cleartext content of \(~file) at temp location", domain: .fileProvider)
-                        let item = try NodeItem(node: file)
-
-                        moc.performAndWait {
-                        #if os(macOS)
-                            file.activeRevision?.removeOldBlocks(in: moc)
-                            try? moc.saveOrRollback()
-                        #else
-                            moc.reset()
-                        #endif
-                        }
-                        completionHandler(url, item, nil)
-                    } catch {
-                        Log.error(error.localizedDescription, domain: .fileProvider)
-                        completionHandler(nil, nil, error)
+                    guard let revision = cachedRevision(for: file, on: moc) else {
+                        Log.error(error: Errors.revisionNotFound, domain: .fileProvider)
+                        completionHandler(nil, nil, Errors.revisionNotFound)
+                        return
                     }
-                }
-                
-            case let .failure(error):
-                Log.error(error.localizedDescription, domain: .fileProvider)
-                completionHandler(nil, nil, error)
-            }
-        }
 
-        return (operation as? OperationWithProgress).map {
-            $0.progress.setOneTimeCancellationHandler { [weak operation] _ in
+                    Task { [weak self] in
+                        do {
+                            guard let url = try await self?.decryptor.decrypt(revision, on: moc) else { return }
+
+                            Log.info("Prepared cleartext content of \(~file) at temp location", domain: .fileProvider)
+                            let item = try NodeItem(node: file)
+
+                            moc.performAndWait {
+#if os(macOS)
+                                file.activeRevision?.removeOldBlocks(in: moc)
+                                try? moc.saveOrRollback()
+#else
+                                moc.reset()
+#endif
+                            }
+                            completionHandler(url, item, nil)
+                        } catch {
+                            Log.error(error: error, domain: .fileProvider)
+                            completionHandler(nil, nil, error)
+                        }
+                    }
+
+                case let .failure(error):
+                    Log.error(error: error, domain: .fileProvider)
+                    completionHandler(nil, nil, error)
+                }
+            }
+
+            return (operation as? OperationWithProgress).map {
+                $0.progress.setOneTimeCancellationHandler { [weak operation] _ in
+                    Log.info("Download and decrypt operation cancelled", domain: .fileProvider)
+                    operation?.cancel()
+                    completionHandler(nil, nil, CocoaError(.userCancelled))
+                }
+            } ?? Progress { [weak operation] _ in
                 Log.info("Download and decrypt operation cancelled", domain: .fileProvider)
                 operation?.cancel()
                 completionHandler(nil, nil, CocoaError(.userCancelled))
             }
-        } ?? Progress { [weak operation] _ in
-            Log.info("Download and decrypt operation cancelled", domain: .fileProvider)
-            operation?.cancel()
-            completionHandler(nil, nil, CocoaError(.userCancelled))
         }
-    }
     
-    private func cachedRevision(for file: File, on moc: NSManagedObjectContext) -> Revision? {
+    private func cachedRevision(for file: File, on moc: NSManagedObjectContext) -> PDCore.Revision? {
         return moc.performAndWait {
             if let revision = file.activeRevision, revision.blocksAreValid() {
                 return revision

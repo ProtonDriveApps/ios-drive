@@ -25,7 +25,7 @@ import PDLocalization
 public final class StartViewController: UIViewController {
     private var cancellables: Set<AnyCancellable> = []
 
-    let launchView = UILaunchView()
+    let launchScreenViewController = LaunchScreenViewController()
 
     private lazy var spinner: UIView = ViewHosting {
         SpinnerTextView(text: Localization.general_signing_out)
@@ -65,8 +65,7 @@ public final class StartViewController: UIViewController {
             }
             .store(in: &cancellables)
 
-        view.addSubview(launchView)
-        launchView.fillSuperview()
+        add(launchScreenViewController)
     }
 
     private func performAuthenticated() {
@@ -89,12 +88,12 @@ public final class StartViewController: UIViewController {
     }
 
     private func showLoggingOutUI() {
-        launchView.isHidden = true
+        launchScreenViewController.view.isHidden = true
         spinner.isHidden = false
     }
 
     private func hideLoggingOutUI() {
-        launchView.isHidden = false
+        launchScreenViewController.view.isHidden = false
         spinner.isHidden = true
     }
 }

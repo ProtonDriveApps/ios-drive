@@ -18,15 +18,15 @@
 import Foundation
 import ProtonCoreKeymaker
 
-final class KeychainProvider {
-    static let shared = KeychainProvider()
-    var keychain: DriveKeychainProtocol = DriveKeychain.shared
-    
+public final class KeychainProvider {
+    public static let shared = KeychainProvider()
+    public var keychain: DriveKeychainProtocol = DriveKeychain.shared
+
     private init() { }
 }
 
-protocol DriveKeychainProtocol {
-    
+public protocol DriveKeychainProtocol {
+
     @available(*, deprecated, message: "Please use the throwing alternative: dataOrError(forKey:) and handle the error")
     func data(forKey key: String, attributes: [CFString: Any]?) -> Data?
     
@@ -92,49 +92,49 @@ public final class TestKeychain: DriveKeychainProtocol {
     private let serialQueue = DispatchQueue(label: "test.keychain")
     var error: Error?
 
-    func data(forKey key: String, attributes: [CFString: Any]?) -> Data? {
+    public func data(forKey key: String, attributes: [CFString: Any]?) -> Data? {
         serialQueue.sync {
             dict[key]
         }
     }
     
-    func set(_ data: Data, forKey key: String, attributes: [CFString : Any]?) {
+    public func set(_ data: Data, forKey key: String, attributes: [CFString: Any]?) {
         try? setOrError(data, forKey: key, attributes: attributes)
     }
     
-    func set(_ string: String, forKey key: String, attributes: [CFString: Any]?) {
+    public func set(_ string: String, forKey key: String, attributes: [CFString: Any]?) {
         try? setOrError(string, forKey: key, attributes: attributes)
     }
 
-    func setOrError(_ data: Data, forKey key: String, attributes: [CFString: Any]?) throws {
+    public func setOrError(_ data: Data, forKey key: String, attributes: [CFString: Any]?) throws {
         try serialQueue.sync {
             if let error { throw error }
             dict[key] = data
         }
     }
     
-    func setOrError(_ string: String, forKey key: String, attributes: [CFString: Any]?) throws {
+    public func setOrError(_ string: String, forKey key: String, attributes: [CFString: Any]?) throws {
         try serialQueue.sync {
             if let error { throw error }
             dict[key] = Data(string.utf8)
         }
     }
     
-    func dataOrError(forKey key: String, attributes: [CFString: Any]?) throws -> Data? {
+    public func dataOrError(forKey key: String, attributes: [CFString: Any]?) throws -> Data? {
         try serialQueue.sync {
             if let error { throw error }
             return dict[key]
         }
     }
     
-    func removeOrError(forKey key: String) throws {
+    public func removeOrError(forKey key: String) throws {
         try serialQueue.sync {
             if let error { throw error }
             dict[key] = nil
         }
     }
     
-    func remove(forKey key: String) {
+    public func remove(forKey key: String) {
         serialQueue.sync {
             dict[key] = nil
         }

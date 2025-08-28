@@ -26,6 +26,8 @@ final class QuotaUpdatesController {
             .map(\.available)
             .filter { $0 >= 0 }
             .sink { [interactor] in
+                // We're relying on the fact the update comes on a BG queue. (the updates I saw were triggered only by events system)
+                // In case the thread changes, we'll block main thread since the interactor uses BG context.
                 interactor.availableSpaceDidChangeTo($0)
             }
     }

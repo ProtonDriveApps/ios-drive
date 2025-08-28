@@ -28,12 +28,18 @@ extension FileManager {
         do {
             attributes = try attributesOfItem(atPath: url.path)
         } catch let error {
-            Log.error("Failed to get attributes of file at \(url .path) with error \(error)", domain: .fileManager)
+            Log.error(
+                "Failed to get attributes",
+                error: error,
+                domain: .fileManager,
+                context: LogContext("File: \(url .path)"
+                                   )
+            )
             return nil
         }
 
         guard let date = attributes[.creationDate] as? Date else {
-            Log.error("Failed to get attributes of file at \(url .path)", domain: .fileManager)
+            Log.error("Failed to get creationDate attribute", domain: .fileManager, context: LogContext("File: \(url .path)"))
             return nil
         }
         return date

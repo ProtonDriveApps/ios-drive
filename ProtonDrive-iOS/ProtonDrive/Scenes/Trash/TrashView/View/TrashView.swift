@@ -38,6 +38,7 @@ struct TrashView: View {
             trashView
                 .flatNavigationBar(
                     vm.nodeName,
+                    isRoot: vm.isRoot,
                     leading: leadingBarButtons(vm.leadingNavBarItems),
                     trailing: trailingBarButtons(vm.trailingNavBarItems)
                 )
@@ -57,11 +58,11 @@ struct TrashView: View {
             if vm.permanentChildren.isEmpty && !vm.isUpdating {
                 HStack {
                     Spacer()
-                    EmptyFolderView(viewModel: .trash)
+                    PlaceholderView(viewModel: .trash)
                     Spacer()
                 }
             } else {
-                GridOrList(vm: vm) {
+                GridOrList(vm: vm, scrollToTopPublisher: nil) {
                     EmptyView()
                 } contents2: {
                     ForEach(vm.permanentChildren) { nodeWrapper in
@@ -69,8 +70,10 @@ struct TrashView: View {
                         let nodeRowViewModel = NodeRowActionMenuViewModel(node: nodeWrapper.node, model: vm)
                         let nodeVM = TrashCellViewModel(
                             node: nodeWrapper.node,
+                            tower: vm.model.tower,
                             selectionModel: svm,
                             nodeRowActionMenuViewModel: nodeRowViewModel,
+                            thumbnailLoader: vm.model,
                             featureFlagsController: vm.featureFlagsController
                         )
                         let cvm = addAction(to: nodeVM, menuItem: $menuItem)
@@ -149,11 +152,7 @@ extension TrashView {
 
     @ViewBuilder
     func leadingBarButtons(_ items: [NavigationBarButton]) -> some View {
-        HStack {
-            ForEach(items, content: navigationBarButton)
-
-            Spacer()
-        }
+        ForEach(items, content: navigationBarButton)
     }
 
     @ViewBuilder

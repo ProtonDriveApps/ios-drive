@@ -18,6 +18,7 @@
 import UIKit
 import ProtonCoreUIFoundations
 import PDLocalization
+import PDCoreIOS
 
 // This extension will act as an adapted version of the domain TabBarItem into a view model/UI version of it
 extension TabBarItem {
@@ -31,6 +32,8 @@ extension TabBarItem {
             return IconProvider.link
         case .sharedWithMe:
             return IconProvider.users
+        case .computers:
+            return IconProvider.tv
         }
     }
 
@@ -44,6 +47,8 @@ extension TabBarItem {
             return Localization.tab_bar_title_shared
         case .sharedWithMe:
             return Localization.tab_bar_title_shared_with_me
+        case .computers:
+            return Localization.computers_tab_buttonTittle
         }
     }
 
@@ -57,6 +62,8 @@ extension TabBarItem {
             return "TabBar.Shared"
         case .sharedWithMe:
             return "TabBar.SharedWithMe"
+        case .computers:
+            return "TabBar.Computers"
         }
     }
 

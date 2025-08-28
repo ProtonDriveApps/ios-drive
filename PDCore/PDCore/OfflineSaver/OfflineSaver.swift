@@ -16,7 +16,6 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import CoreData
-import Reachability
 import PDClient
 import Combine
 
@@ -24,8 +23,8 @@ public final class OfflineSaver: NSObject {
 
     weak var storage: StorageManager?
     weak var downloader: Downloader?
-    var reachability: Reachability?
-    
+    let connectionStateResource: ConnectionStateResource
+
     private var progress = Progress()
     private var fractionObservation: NSKeyValueObservation?
     @objc public dynamic var fractionCompleted: Double = 0
@@ -40,12 +39,13 @@ public final class OfflineSaver: NSObject {
         clientConfig: APIService.Configuration,
         storage: StorageManager,
         downloader: Downloader,
-        populatedStateController: PopulatedStateControllerProtocol
+        populatedStateController: PopulatedStateControllerProtocol,
+        connectionStateResource: ConnectionStateResource
     ) {
         self.storage = storage
         self.downloader = downloader
-        self.reachability = nil
-        
+        self.connectionStateResource = connectionStateResource
+
         super.init()
         
         self.trackReachability(toHost: clientConfig.apiOrigin)
@@ -74,22 +74,10 @@ public final class OfflineSaver: NSObject {
         storage?.backgroundContext.perform {
             self.subscribeToUpdates()
         }
-        
-        do {
-            try reachability?.startNotifier()
-        } catch let error {
-            assert(false, error.localizedDescription)
-            Log.error(error, domain: .networking)
-        }
     }
     
     func cleanUp() {
         self.isCleaningUp = true
-
-        self.reachability?.stopNotifier()
-        self.reachability?.whenReachable = nil
-        self.reachability?.whenUnreachable = nil
-        self.reachability = nil
 
         self.fractionObservation?.invalidate()
         self.fractionObservation = nil
@@ -97,7 +85,11 @@ public final class OfflineSaver: NSObject {
         self.frc?.delegate = nil
         self.frc = nil
     }
-    
+
+    func add(cancellable: AnyCancellable) {
+        cancelables.insert(cancellable)
+    }
+
     internal func markedFoldersAndFiles() -> (folders: [Folder], files: [File]) {
         let folders = frc?.sections?.first { info in
             info.indexTitle == NSNumber(value: true).stringValue
@@ -144,7 +136,7 @@ public final class OfflineSaver: NSObject {
                     self.move(file: file, to: .offlineAvailable)
                     Log.info("Offline available 1 file", domain: .downloader)
                 case .failure:
-                    Log.error("Failed to make offline available 1 file", domain: .downloader)
+                    Log.error("Failed to make offline available 1 file", error: nil, domain: .downloader)
                 }
             }
         }.forEach { operation in
@@ -175,7 +167,7 @@ public final class OfflineSaver: NSObject {
                 case .success:
                     Log.info("Scanned 1 folder", domain: .downloader)
                 case .failure:
-                    Log.error("Failed to complete scan of 1 folder", domain: .downloader)
+                    Log.error("Failed to complete scan of 1 folder", error: nil, domain: .downloader)
                 }
             })
         }.forEach { operation in
@@ -191,8 +183,11 @@ public final class OfflineSaver: NSObject {
             $0.setIsInheritingOfflineAvailable(false)
             self.move(file: $0, to: .temporary)
         }
-        
-        self.downloader?.cancel(operationsOf: files.map(\.identifier))
+
+        let identifiers = files
+            .filter { !$0.shareID.isEmpty || !$0.directShares.isEmpty }
+            .map(\.identifier)
+        self.downloader?.cancel(operationsOf: identifiers)
     }
     
     private func uncheckMarked(folders: [Folder]) {
@@ -231,7 +226,7 @@ extension OfflineSaver: NSFetchedResultsControllerDelegate {
             try frc.performFetch()
         } catch let error {
             assertionFailure(error.localizedDescription)
-            Log.error("Failed to fetch nodes marked for Offline Available", domain: .storage)
+            Log.error("Failed to fetch nodes marked for Offline Available", error: nil, domain: .storage)
         }
     }
     
@@ -279,7 +274,7 @@ extension OfflineSaver: NSFetchedResultsControllerDelegate {
         
         self.progress = Progress()
         self.downloader?.queue.operations
-            .filter { !$0.isCancelled && $0 is DownloadFileOperation }
+            .filter { !$0.isCancelled && $0 is LegacyDownloadFileOperation }
             .compactMap { $0 as? OperationWithProgress }
             .forEach {
                 self.progress.totalUnitCount += 1

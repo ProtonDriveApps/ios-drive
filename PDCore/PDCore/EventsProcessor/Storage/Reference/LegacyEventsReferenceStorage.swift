@@ -17,25 +17,25 @@
 
 import Foundation
 
-protocol LegacyEventsReferenceStorageProtocol {
+public protocol LegacyEventsReferenceStorageProtocol {
     var latestEventFetchTime: Date? { get set }
     var latestFetchedEventID: EventID? { get set }
     var referenceDate: Date? { get set }
     var referenceID: EventID? { get set }
 }
 
-final class LegacyEventsReferenceStorage: LegacyEventsReferenceStorageProtocol {
-    @SettingsStorage("EventsConveyor.latestEventFetchTime") var latestEventFetchTime: Date?
-    @SettingsStorage("EventsConveyor.latestFetchedEventID") var latestFetchedEventID: EventID?
-    @SettingsStorage("EventsConveyor.referenceDate") var referenceDate: Date?
-    @SettingsStorage("EventsConveyor.referenceID") var referenceID: EventID?
+public final class LegacyEventsReferenceStorage: LegacyEventsReferenceStorageProtocol {
+    @SettingsStorage("EventsConveyor.latestEventFetchTime") public var latestEventFetchTime: Date?
+    @SettingsStorage("EventsConveyor.latestFetchedEventID") public var latestFetchedEventID: EventID?
+    @SettingsStorage("EventsConveyor.referenceDate") public var referenceDate: Date?
+    @SettingsStorage("EventsConveyor.referenceID") public var referenceID: EventID?
 
     // Only needed for migration to shared AppGroud UserDefaults
     @FastStorage("lastEventFetchTime-Cloud") private var legacyLastEventFetchTime: Date?
     @FastStorage("lastKnownEventID-Cloud") private var legacyLastScannedEventID: EventID?
     @FastStorage("referenceDate-Cloud") private var legacyReferenceDate: Date?
 
-    init(suite: SettingsStorageSuite) {
+    public init(suite: SettingsStorageSuite) {
         self._latestEventFetchTime.configure(with: suite)
         self._latestFetchedEventID.configure(with: suite)
         self._referenceDate.configure(with: suite)

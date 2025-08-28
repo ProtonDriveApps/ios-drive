@@ -21,9 +21,6 @@ import FileProvider
 // Here we'll add some mocks to simplify code of PDFileProvider framework
 
 #if os(iOS)
-public extension NSFileProviderItemIdentifier {
-    static var trashContainer = NSFileProviderItemIdentifier("NSFileProviderTrashContainerItemIdentifier")
-}
 
 public struct NSFileProviderRequest {}
 
@@ -74,11 +71,14 @@ extension Errors: Equatable {
         case (deletionRejected(let lhsItem), deletionRejected(let rhsItem)):
             return lhsItem.itemIdentifier == rhsItem.itemIdentifier
         case (.noMainShare, .noMainShare): fallthrough
+        case (.nodeIdentifierNotFound, .nodeIdentifierNotFound): fallthrough
         case (.nodeNotFound, .nodeNotFound): fallthrough
         case (.rootNotFound, .rootNotFound): fallthrough
         case (.revisionNotFound, .revisionNotFound): fallthrough
         case (.parentNotFound, .parentNotFound): fallthrough
-        case (.emptyUrlForFileUpload, .emptyUrlForFileUpload): fallthrough
+        case (.urlForUploadIsNil, .urlForUploadIsNil): fallthrough
+        case (.urlForUploadHasNoSize, .urlForUploadHasNoSize): fallthrough
+        case (.urlForUploadFailedCopying, .urlForUploadFailedCopying): fallthrough
         case (.noAddressInTower, .noAddressInTower): fallthrough
         case (.couldNotProduceSyncAnchor, .couldNotProduceSyncAnchor): fallthrough
         case (.requestedItemForWorkingSet, .requestedItemForWorkingSet): fallthrough
@@ -88,12 +88,6 @@ extension Errors: Equatable {
         default:
             return false
         }
-    }
-}
-
-public extension NSError {
-    static func fileProviderErrorForRejectedDeletion(of updatedItem: NSFileProviderItem) -> NSError {
-        return NSError(domain: "PDFileProvider", code: 8756, localizedDescription: "This should never appear on iOS")
     }
 }
 

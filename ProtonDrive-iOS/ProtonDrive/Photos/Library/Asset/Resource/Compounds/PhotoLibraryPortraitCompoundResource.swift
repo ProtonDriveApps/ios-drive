@@ -17,6 +17,7 @@
 
 import PDCore
 import Photos
+import PDPhotos
 
 final class PhotoLibraryPortraitCompoundResource: PhotoLibraryCompoundResource {
     private let plainResource: PhotoLibraryCompoundResource
@@ -33,7 +34,7 @@ final class PhotoLibraryPortraitCompoundResource: PhotoLibraryCompoundResource {
         do {
             return try await executePortraitPhoto(with: identifier, asset: asset)
         } catch {
-            Log.error("\(Self.self) failed to load portrait photo, falling back to plain resource", domain: .photosProcessing)
+            Log.error("failed to load portrait photo, falling back to plain resource", error: nil, domain: .photosProcessing)
             return try await plainResource.execute(with: identifier, asset: asset)
         }
     }
@@ -59,7 +60,7 @@ final class PhotoLibraryPortraitCompoundResource: PhotoLibraryCompoundResource {
                 asset: asset,
                 resource: originalResource,
                 originalFilename: originalFilename,
-                fileExtension: try originalResource.getNormalizedFilename().fileExtension(),
+                fileExtension: try originalResource.getNormalizedFilename().fileExtension,
                 isOriginal: true
             )
             let resource = try await assetResource.executePhoto(with: adjustedResource)
@@ -73,7 +74,7 @@ final class PhotoLibraryPortraitCompoundResource: PhotoLibraryCompoundResource {
                         asset: asset,
                         resource: resource,
                         originalFilename: originalFilename,
-                        fileExtension: try resource.getNormalizedFilename().fileExtension(),
+                        fileExtension: try resource.getNormalizedFilename().fileExtension,
                         isOriginal: false
                     )
                 )

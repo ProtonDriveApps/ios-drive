@@ -18,6 +18,7 @@
 import Combine
 import Foundation
 import PDCore
+import PDCoreIOS
 
 protocol PhotoItemViewModelProtocol: ObservableObject {
     var duration: String? { get }
@@ -69,7 +70,7 @@ final class PhotoItemViewModel: PhotoItemViewModelProtocol {
     let burstChildrenCount: Int?
 
     init(item: PhotoGridViewItem, thumbnailController: ThumbnailController, coordinator: PhotoItemCoordinator, selectionController: PhotosSelectionController, infoController: PhotoAdditionalInfoController, durationFormatter: DurationFormatter, debounceResource: DebounceResource, loadController: PhotosPagingLoadController, featureFlagsController: FeatureFlagsControllerProtocol) {
-        id = PhotoId(item.photoId, item.shareId, item.volumeId)
+        id = PhotoId(id: item.photoId, volumeID: item.volumeId)
         self.item = item
         self.thumbnailController = thumbnailController
         self.coordinator = coordinator

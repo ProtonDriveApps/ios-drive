@@ -31,7 +31,7 @@ final class DatabasePhotosFilterByIdResource: PhotosFilterByIdResource {
     init(storage: StorageManager, policy: PhotoIdentifiersFilterPolicyProtocol) {
         self.storage = storage
         self.policy = policy
-        managedObjectContext = storage.newBackgroundContext()
+        managedObjectContext = storage.photosSecondaryBackgroundContext
     }
 
     func execute(with identifiers: PhotoIdentifiers) async -> PhotoIdentifiersFilterResult {

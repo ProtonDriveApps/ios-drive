@@ -17,6 +17,7 @@
 
 import PDCore
 import SwiftUI
+import PDCoreIOS
 
 final class MyFilesNotificationsPermissionsContainer {
     private let commonFactory = NotificationsPermissionsFactory()

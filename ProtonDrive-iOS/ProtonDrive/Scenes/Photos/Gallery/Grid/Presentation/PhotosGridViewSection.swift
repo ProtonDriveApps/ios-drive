@@ -33,7 +33,6 @@ struct PhotoGridViewItem: Identifiable, Hashable {
     }
 
     let photoId: String
-    let shareId: String
     let volumeId: String
     let isShared: Bool
     let hasDirectShare: Bool

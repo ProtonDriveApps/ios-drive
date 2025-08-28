@@ -22,17 +22,41 @@ import UniformTypeIdentifiers
 public extension CGImage {
     func jpegData(compressionQuality: CGFloat = 1) -> Data? {
         guard let mutableData = CFDataCreateMutable(nil, 0),
-                let destination = CGImageDestinationCreateWithData(mutableData, UTType.jpeg.identifier as CFString, 1, nil) else {
+              let destination = CGImageDestinationCreateWithData(mutableData, UTType.jpeg.identifier as CFString, 1, nil) else {
             return nil
         }
 
+        let image = removeAlpha()
         let options: NSDictionary = [kCGImageDestinationLossyCompressionQuality: compressionQuality]
-        CGImageDestinationAddImage(destination, self, options)
+        CGImageDestinationAddImage(destination, image, options)
 
         guard CGImageDestinationFinalize(destination) else {
             return nil
         }
 
         return mutableData as Data
+    }
+
+    private func removeAlpha() -> CGImage {
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+
+        // Use bitmapInfo WITHOUT alpha
+        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue)
+                .union(.byteOrder32Big)
+
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: bitmapInfo.rawValue
+        ) else {
+            return self
+        }
+
+        context.draw(self, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return context.makeImage() ?? self
     }
 }

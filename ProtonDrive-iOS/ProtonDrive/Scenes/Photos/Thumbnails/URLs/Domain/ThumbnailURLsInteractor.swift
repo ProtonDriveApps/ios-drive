@@ -27,14 +27,12 @@ protocol ThumbnailURLsInteractor {
 final class RemoteThumbnailURLsInteractor: ThumbnailURLsInteractor {
     private let listInteractor: ThumbnailsListInteractor
     private let updateRepository: ThumbnailsUpdateRepository
-    private let volumeIdDataSource: PhotosVolumeIdDataSource
     private let idsDataSource: PhotoThumbnailIdsRepository
     private let type: ThumbnailType
 
-    init(listInteractor: ThumbnailsListInteractor, updateRepository: ThumbnailsUpdateRepository, volumeIdDataSource: PhotosVolumeIdDataSource, idsDataSource: PhotoThumbnailIdsRepository, type: ThumbnailType) {
+    init(listInteractor: ThumbnailsListInteractor, updateRepository: ThumbnailsUpdateRepository, idsDataSource: PhotoThumbnailIdsRepository, type: ThumbnailType) {
         self.listInteractor = listInteractor
         self.updateRepository = updateRepository
-        self.volumeIdDataSource = volumeIdDataSource
         self.idsDataSource = idsDataSource
         self.type = type
     }
@@ -43,9 +41,8 @@ final class RemoteThumbnailURLsInteractor: ThumbnailURLsInteractor {
         /// Get thumbnail ids from given photos
         let ids = Array(ids)
         let thumbnailIds = idsDataSource.getIds(photoIds: ids, type: type)
-        /// Request thumbnail urls from a given volume
-        let volumeId = try await volumeIdDataSource.getVolumeId()
-        let urls = try await listInteractor.execute(ids: thumbnailIds.map(\.id), volumeId: volumeId)
+        /// Request thumbnail urls from remote
+        let urls = try await listInteractor.execute(ids: Set(thumbnailIds))
         /// Store urls to the repository
         try updateRepository.update(thumbnails: urls)
     }

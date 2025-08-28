@@ -36,8 +36,8 @@ final class RecursiveValidNameDiscoverer: ValidNameDiscoverer {
 
     private func findNextAvailableName(for file: FileNameCheckerModel, offset: Int, completion: @escaping (Result<NameHashPair, Error>) -> Void) {
         assert(offset >= 0)
-        let fileName = file.originalName.fileName()
-        let `extension` = file.originalName.fileExtension()
+        let fileName = file.originalName.fileName
+        let `extension` = file.originalName.fileExtension
         var possibleNamesHashPairs = [NameHashPair]()
 
         let lowerBound = offset + 1

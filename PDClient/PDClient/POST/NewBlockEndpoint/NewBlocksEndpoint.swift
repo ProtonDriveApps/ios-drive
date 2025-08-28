@@ -17,14 +17,20 @@
 
 import Foundation
 
-struct NewBlocksEndpoint: Endpoint {
+public struct NewBlocksEndpoint: Endpoint {
     public struct Response: Codable {
         let code: Int
         let uploadLinks: [ContentUploadLink]
         let thumbnailLinks: [ContentUploadLink]?
+        
+        public init(code: Int, uploadLinks: [ContentUploadLink], thumbnailLinks: [ContentUploadLink]?) {
+            self.code = code
+            self.uploadLinks = uploadLinks
+            self.thumbnailLinks = thumbnailLinks
+        }
     }
     
-    var request: URLRequest
+    public var request: URLRequest
     
     init(parameters: NewPhotoBlocksParameters, service: APIService, credential: ClientCredential) {
         // url

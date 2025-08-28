@@ -20,6 +20,10 @@ import FileProvider
 import UniformTypeIdentifiers
 #endif
 
+/// "ItemTemplate" is the name usually used by Apple for the NSFileProviderItem parameter in NSFileProvider-related method signatures - e.g.
+/// https://developer.apple.com/documentation/fileprovider/nsfileproviderreplicatedextension/createitem(basedon:fields:contents:options:request:completionhandler:)
+/// This class is used to create a placeholder representing an `NSFileProviderItem` when we don't have a real one.
+/// The only instance in which we use this for something other than testing is during deleting, to create an `NSFileProviderItem` when all we have is an itemIdentifier.
 public class ItemTemplate: NSObject, NSFileProviderItem {
     
     public init(itemIdentifier: NSFileProviderItemIdentifier? = nil, parentId: NSFileProviderItemIdentifier, filename: String, type: String) {

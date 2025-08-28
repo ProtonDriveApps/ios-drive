@@ -24,11 +24,14 @@ protocol EnumeratorWithItemsFromDB {
     func reinitializeModelIfNeeded() throws
 }
 
+/// "Item" enumerations are when listing the contents of a directory.
 extension EnumeratorWithItemsFromDB {
     
     func fetchPageFromDB(_ page: Int, pageSize: Int, observers: [NSFileProviderEnumerationObserver]) {
+        Log.trace()
+
         let allChildren = self.model.childrenObserver.fetchedObjects
-        Log.info("Fetched \(allChildren.count) nodes from DB", domain: .fileProvider)
+        Log.info("Fetched \(allChildren.count) nodes from DB", domain: .enumerating)
         
         let childrenGroups = allChildren.splitInGroups(of: pageSize)
         guard childrenGroups.count > page else {
@@ -42,38 +45,37 @@ extension EnumeratorWithItemsFromDB {
             return
         }
 
-        moc.perform {
-            
-            #if os(macOS)
+        #if os(macOS)
+        let originalChildrenCount = children.count
+        moc.performAndWait {
             // exclude drafts from enumeration
-            let originalChildrenCount = children.count
             children = children.filter {
                 guard let file = $0 as? File else { return true }
                 return !file.isDraft()
             }
-            let draftsCount = originalChildrenCount - children.count
-            #else
-            let draftsCount = 0
-            #endif
-            
-            let items = children.compactMap {
-                do {
-                    return try NodeItem(node: $0)
-                } catch {
-                    self.model.reportDecryptionError(for: $0, underlyingError: error)
-                    return nil
-                }
-            }
-            observers.forEach { $0.didEnumerate(items) }
-
-            guard (items.count + draftsCount) == pageSize else {
-                observers.forEach { $0.finishEnumerating(upTo: nil) }
-                return
-            }
-
-            let nextPage = page + 1
-            let providerPage = NSFileProviderPage(nextPage)
-            observers.forEach { $0.finishEnumerating(upTo: providerPage) }
         }
+        let draftsCount = originalChildrenCount - children.count
+        #else
+        let draftsCount = 0
+        #endif
+
+        let items = children.compactMap {
+            do {
+                return try NodeItem(node: $0)
+            } catch {
+                self.model.reportDecryptionError(for: $0, underlyingError: error)
+                return nil
+            }
+        }
+        observers.forEach { $0.didEnumerate(items) }
+
+        guard (items.count + draftsCount) == pageSize else {
+            observers.forEach { $0.finishEnumerating(upTo: nil) }
+            return
+        }
+
+        let nextPage = page + 1
+        let providerPage = NSFileProviderPage(nextPage)
+        observers.forEach { $0.finishEnumerating(upTo: providerPage) }
     }
 }

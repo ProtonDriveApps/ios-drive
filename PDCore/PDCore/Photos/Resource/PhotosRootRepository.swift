@@ -17,6 +17,8 @@
 
 import Foundation
 
+public typealias FolderEncryptionInfo = EncryptingFolder
+
 public protocol PhotosRootFolderRepository {
-    func get() throws -> Folder
+    func getEncryptionInfo() throws -> FolderEncryptionInfo
 }

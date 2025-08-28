@@ -58,14 +58,14 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
 
     var body: some View {
         ZStack {
-            Button(action: {}, label: {
+            VStack {
                 makeCellFor(node: node, isList: isList)
-                    .accessibilityElement(children: .contain)
-            })
+            }
             .buttonStyle(CellButtonStyle(isEnabled: isEnabled, background: ColorProvider.BackgroundSecondary))
 
             if destination != .none {
                 navigationLink
+                    .accessibilityHidden(true)
                 // Known issue in iOS 14.5 https://developer.apple.com/forums/thread/677333
                 // https://forums.swift.org/t/14-5-beta3-navigationlink-unexpected-pop/45279
                 // Adding an NavigationLink with empty label and destination fixes the issues in most cases.
@@ -74,9 +74,11 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                     NavigationLink(destination: EmptyView()) {
                         EmptyView()
                     }
+                    .accessibilityHidden(true)
                     NavigationLink(destination: EmptyView()) {
                         EmptyView()
                     }
+                    .accessibilityHidden(true)
                 }
             }
         }
@@ -123,7 +125,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 menuItem: menuItem,
                 index: index,
                 onTap: { [unowned vm] in
-                    onCellTap(cellViewModel: vm)
+                    onCellTap(cellViewModel: vm, node: node)
                 },
                 onLongPress: { [weak vm] in
                     vm?.selectionModel?.onLongPress()
@@ -136,7 +138,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 menuItem: menuItem,
                 index: index,
                 onTap: { [unowned vm] in
-                    onCellTap(cellViewModel: vm)
+                    onCellTap(cellViewModel: vm, node: node)
                 },
                 onLongPress: { [weak vm] in
                     vm?.selectionModel?.onLongPress()
@@ -150,7 +152,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 menuItem: menuItem,
                 index: index,
                 onTap: { [unowned vm] in
-                    onCellTap(cellViewModel: vm)
+                    onCellTap(cellViewModel: vm, node: node)
                 },
                 onLongPress: { [weak vm] in
                     vm?.selectionModel?.onLongPress()
@@ -169,7 +171,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 menuItem: menuItem,
                 index: index,
                 onTap: { [unowned vm] in
-                    onCellTap(cellViewModel: vm)
+                    onCellTap(cellViewModel: vm, node: node)
                 },
                 onLongPress: { [weak vm] in
                     vm?.selectionModel?.onLongPress()
@@ -182,7 +184,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 menuItem: menuItem,
                 index: index,
                 onTap: { [unowned vm] in
-                    onCellTap(cellViewModel: vm)
+                    onCellTap(cellViewModel: vm, node: node)
                 },
                 onLongPress: { [weak vm] in
                     vm?.selectionModel?.onLongPress()
@@ -196,7 +198,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 menuItem: menuItem,
                 index: index,
                 onTap: { [unowned vm] in
-                    onCellTap(cellViewModel: vm)
+                    onCellTap(cellViewModel: vm, node: node)
                 },
                 onLongPress: { [weak vm] in
                     vm?.selectionModel?.onLongPress()
@@ -239,34 +241,36 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
         }
     }
 
-    private func onCellTap(cellViewModel: NodeCellConfiguration) {
+    private func onCellTap(cellViewModel: NodeCellConfiguration, node: Node) {
         // This part is in charge of navigation and business logic that happen when user taps on the row.
         // There are three kinds of rows in this table: folder, file with only metadata, file with metadata and a downloaded revision
         // - tap on folder should cause a drilldown prowered by NavigationLink (if any)
         // - tap on a file without revision should invoke downloading of the revision
         // - tap on file with revision should navigate to presenter
 
-        guard !cellViewModel.isSelecting else {
+        if cellViewModel.isSelecting {
+            guard !(node is CoreDataBookmark) else {
+                return
+            }
             cellViewModel.selectionModel?.onTap(id: cellViewModel.id)
-            return
-        }
+        } else {
+            let destination = coordinator.destination(for: node)
 
-        let destination = coordinator.destination(for: node)
+            switch node {
+            case is File where destination != .none:
+                presentedModal.wrappedValue = destination
 
-        switch node {
-        case is File where destination != .none:
-            presentedModal.wrappedValue = destination
+            case is File where destination == .none:
+                // interaction with node row defaults the acknowledgement
+                acknowledgedNotEnoughStorage.wrappedValue = false
+                finderViewModel.download(node: node)
 
-        case is File where destination == .none:
-            // interaction with node row defaults the acknowledgement
-            acknowledgedNotEnoughStorage.wrappedValue = false
-            finderViewModel.download(node: node)
+            case is Folder:
+                deeplinkTo.wrappedValue = node.identifier.nodeID
 
-        case is Folder:
-            deeplinkTo.wrappedValue = node.identifier.nodeID
-
-        default:
-            assert(false, "unknown cell type")
+            default:
+                assert(false, "unknown cell type")
+            }
         }
     }
 }

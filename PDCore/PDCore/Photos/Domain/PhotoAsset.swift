@@ -24,13 +24,15 @@ public struct PhotoAsset: Equatable {
     public let mimeType: MimeType
     public let exif: Exif
     public let metadata: PhotoAssetMetadata
+    public let tags: [Int]
 
-    public init(url: URL, filename: String, mimeType: MimeType, exif: PhotoAsset.Exif, metadata: PhotoAssetMetadata) {
+    public init(url: URL, filename: String, mimeType: MimeType, exif: PhotoAsset.Exif, metadata: PhotoAssetMetadata, tags: [Int]) {
         self.url = url
         self.filename = filename
         self.mimeType = mimeType
         self.exif = exif
         self.metadata = metadata
+        self.tags = tags
     }
     
     public func copy(with newFileName: String) -> PhotoAsset {
@@ -39,7 +41,8 @@ public struct PhotoAsset: Equatable {
             filename: newFileName,
             mimeType: mimeType,
             exif: exif,
-            metadata: metadata
+            metadata: metadata,
+            tags: tags
         )
     }
     
@@ -48,7 +51,8 @@ public struct PhotoAsset: Equatable {
         return lhs.url == rhs.url &&
         lhs.mimeType == rhs.mimeType &&
         lhs.exif == rhs.exif &&
-        lhs.metadata == rhs.metadata
+        lhs.metadata == rhs.metadata &&
+        lhs.tags == rhs.tags
     }
 
     public typealias Exif = Data
@@ -83,19 +87,22 @@ public struct PhotoAssetMetadata: Equatable {
         public let modificationTime: Date?
         public let orientation: Int?
         public let subjectCoordinates: SubjectCoordinates?
+        public let isFrontCamera: Bool
 
         public init(
             captureTime: Date?,
             device: String?,
             modificationTime: Date? = nil,
             orientation: Int?,
-            subjectCoordinates: SubjectCoordinates?
+            subjectCoordinates: SubjectCoordinates?,
+            isFrontCamera: Bool
         ) {
             self.captureTime = captureTime
             self.device = device
             self.modificationTime = modificationTime
             self.orientation = orientation
             self.subjectCoordinates = subjectCoordinates
+            self.isFrontCamera = isFrontCamera
         }
     }
 

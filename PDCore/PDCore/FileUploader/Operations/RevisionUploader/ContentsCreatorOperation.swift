@@ -49,7 +49,13 @@ final class ContentsCreatorOperation: AsynchronousOperation {
 
             case .failure(let error):
                 Log.info("STAGE: 3.0 Content creator 🏞📦☁️ finished ❌. UUID: \(self.id.uuidString)", domain: .uploader)
-                Log.error("UUID: \(self.id.uuidString) ERROR: \(error)", domain: .uploader)
+                Log
+                    .error(
+                        "ContentsCreator create failed",
+                        error: error,
+                        domain: .uploader,
+                        context: LogContext("UUID: \(self.id.uuidString)")
+                    )
                 self.onError(error)
             }
         }

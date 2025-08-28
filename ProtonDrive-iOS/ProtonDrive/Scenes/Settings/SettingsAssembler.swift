@@ -19,7 +19,7 @@ import SwiftUI
 import PMSettings
 import ProtonCoreKeymaker
 import PDCore
-
+import PDCoreIOS
 import ProtonCoreAccountRecovery
 import ProtonCoreAccountDeletion
 import ProtonCoreDataModel
@@ -28,14 +28,15 @@ import ProtonCoreNetworking
 import ProtonCoreServices
 import ProtonCorePasswordChange
 import PDLocalization
+import LocalAuthentication
 
 final class SettingsAssembler {
 
     private init() { }
 
     @MainActor
-    static func assemble(apiService: APIService, tower: Tower, keymaker: Keymaker, photosContainer: PhotosSettingsContainer) -> UIViewController {
-        let appSettings = makeAppSettings(tower: tower, keymaker: keymaker, photosContainer: photosContainer)
+    static func assemble(apiService: APIService, tower: Tower, keymaker: Keymaker, photosContainer: PhotosSettingsContainer, featureFlagsController: FeatureFlagsControllerProtocol) -> UIViewController {
+        let appSettings = makeAppSettings(tower: tower, keymaker: keymaker, photosContainer: photosContainer, featureFlagsController: featureFlagsController)
 
         let about = PMSettingsSectionViewModel.about
             .amending()
@@ -43,7 +44,7 @@ final class SettingsAssembler {
             .amend()
 
         let accountSettings = PMSettingsSectionBuilder()
-            .title("pmsettings-settings-account-settings-section".localized(in: PMSettings.bundle))
+            .title(Localization.setting_account_settings.uppercased())
             .appendRowIfAvailable(
                 changePasswordRow(isLoginPassword: true, tower: tower, apiService: apiService)
             )
@@ -53,10 +54,16 @@ final class SettingsAssembler {
             .appendRowIfAvailable(
                 securityKeysRow(apiService: apiService)
             )
+            .appendRowIfAvailable(
+                signInToAnotherDeviceRow(tower: tower, apiService: apiService)
+            )
             .build()
 
         let localOptions = PMSettingsSectionBuilder()
+            .appendRowIfAvailable(seeLatestLogsButton(tower.localSettings))
+            .appendRowIfAvailable(enableDebugMode(tower.localSettings, featureFlagsController: featureFlagsController))
             .appendRowIfAvailable(exportLogsButton(tower.localSettings))
+            .appendRowIfAvailable(clearLogsButton(tower.localSettings))
             .appendRow(clearCacheButton)
             .build()
 
@@ -119,6 +126,35 @@ final class SettingsAssembler {
         return configuration
     }
 
+    static func clearLogsButton(_ featureFlags: LocalSettings) -> PMCellSuplier? {
+        guard featureFlags.driveiOSLogCollection == true else { return nil }
+        let configuration = PMLoadingLabelConfiguration(
+            text: Localization.setting_clear_logs,
+            action: {
+                NotificationCenter.default.post(name: .nukeLogs)
+            },
+            bundle: Bundle.main
+        )
+        return configuration
+    }
+
+    static func enableDebugMode(_ featureFlags: LocalSettings, featureFlagsController: FeatureFlagsControllerProtocol) -> PMCellSuplier? {
+        guard featureFlagsController.hasDebugMode else { return nil }
+        let viewModel = BaseDrillDownCellViewModel(title: Localization.setting_debug_mode, preview: nil)
+
+        return PMDrillDownConfiguration(viewModel: viewModel) {
+            let vm = DebugModeSettingsViewModel(localSettings: featureFlags)
+            let vc = UIHostingController(rootView: DebugModeSettingsView(viewModel: vm))
+            vc.title = Localization.setting_debug_mode
+            return vc
+        }
+    }
+
+    static func seeLatestLogsButton(_ featureFlags: LocalSettings) -> PMCellSuplier? {
+        guard featureFlags.driveiOSLogCollection == true && featureFlags.driveiOSLogCollectionDisabled == false else { return nil }
+        return LatestLogsAssembler.assemble()
+    }
+
     @MainActor
     static func presentShareViewController(logs: URL) {
         let shareActivity = UIActivityViewController(activityItems: [logs], applicationActivities: nil)
@@ -140,12 +176,13 @@ final class SettingsAssembler {
         topVC.present(shareActivity, animated: true)
     }
 
-    static var clearCacheButton: PMAboutConfiguration {
-        PMAboutConfiguration(
-            title: Localization.setting_clear_local_cache,
-            action: .perform({ NotificationCenter.default.post(name: .nukeCache, object: nil) }),
-            bundle: .main,
-            accessibilityIdentifier: "Clear local cache"
+    static var clearCacheButton: PMCellSuplier {
+        PMLoadingLabelConfiguration(
+            text: Localization.setting_clear_local_cache,
+            action: {
+                NotificationCenter.default.nukeCache(reason: "User clear cache")
+            },
+            bundle: .main
         )
     }
 
@@ -164,13 +201,41 @@ final class SettingsAssembler {
 
     /// Provides the Account Recovery row for the settings, provided the FF is enabled
     static func securityKeysRow(apiService: APIService) -> PMDrillDownConfiguration? {
-        guard FeatureFlagsRepository.shared.isEnabled(
-            CoreFeatureFlagType.fidoKeys
-        ) else { return nil }
-
         let item = SecurityKeysSettingsItem(apiService: apiService)
         return PMDrillDownConfiguration(viewModel: item,
                                         viewControllerFactory: { item.controller })
+    }
+
+    @MainActor
+    /// Provides the Sign in to another device row for the settings, provided the FF is enabled
+    static func signInToAnotherDeviceRow(tower: Tower, apiService: APIService) -> PMDrillDownConfiguration? {
+        guard let accountInfo = tower.sessionVault.getAccountInfo(),
+              let passphrase = try? tower.sessionVault.getUserPassphrase(),
+              let userInfo = buildCoreUserInfo(tower: tower),
+              isSignInToAnotherDeviceEnabled(userInfo: userInfo) else {
+            return nil
+        }
+
+        let item = SignInToAnotherDeviceItem(apiService: apiService, passphrase: passphrase, email: accountInfo.email)
+        return PMDrillDownConfiguration(viewModel: item,
+                                        viewControllerFactory: { item.controller })
+    }
+
+    static func isSignInToAnotherDeviceEnabled(userInfo: ProtonCoreDataModel.UserInfo?) -> Bool {
+        let qrLoginOptedOut = userInfo?.edmOptOut == 1
+        let qrLoginFeatureDisabled = FeatureFlagsRepository.shared.isEnabled(CoreFeatureFlagType.easyDeviceMigrationDisabled)
+        let isDeviceSecured: Bool = {
+#if targetEnvironment(simulator)
+            return true
+#else
+            let context = LAContext()
+            var error: NSError?
+
+            return context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
+#endif
+        }()
+
+        return !qrLoginOptedOut && !qrLoginFeatureDisabled && isDeviceSecured
     }
 }
 
@@ -180,14 +245,16 @@ extension SettingsAssembler {
     private static func makeAppSettings(
         tower: Tower,
         keymaker: Keymaker,
-        photosContainer: PhotosSettingsContainer
+        photosContainer: PhotosSettingsContainer,
+        featureFlagsController: FeatureFlagsControllerProtocol
     ) -> PMSettingsSectionViewModel {
         
         return PMSettingsSectionBuilder()
-            .title("pmsettings-settings-app-settings-section".localized(in: PMSettings.bundle))
+            .title(Localization.setting_app_settings.uppercased())
             .appendRow(makePinButton(tower: tower, keymaker: keymaker))
             .appendRow(photosContainer.makeSettingsCell())
-            .appendRow(DefaultHomeTabFactory.defaultHomeTabRow(tower: tower))
+            .appendRow(languageButton())
+            .appendRow(DefaultHomeTabFactory.defaultHomeTabRow(tower: tower, featureFlags: featureFlagsController))
             .build()
     }
     
@@ -198,13 +265,19 @@ extension SettingsAssembler {
             !(tower.localSettings.photosUploadDisabledValue == true)
         }
     }
+
+    private static func languageButton() -> PMCellSuplier {
+        let viewModel = BaseDrillDownCellViewModel(title: Localization.setting_language, preview: nil)
+        return PMActionableDrillDownConfiguration(viewModel: viewModel) { _, _ in
+            UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
+        }
+    }
 }
 
 // MARK: - Password Change
 extension SettingsAssembler {
     static func showAccountSection(coreCredential: CoreCredential?) -> Bool {
         isChangePasswordEnabled(coreCredential: coreCredential)
-        || FeatureFlagsRepository.shared.isEnabled(CoreFeatureFlagType.fidoKeys, reloadValue: true)
     }
 
     static func isChangePasswordEnabled(coreCredential: CoreCredential?) -> Bool {

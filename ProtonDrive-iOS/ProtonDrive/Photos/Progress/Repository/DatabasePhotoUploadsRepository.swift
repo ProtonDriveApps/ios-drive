@@ -22,20 +22,33 @@ import PDCore
 
 final class DatabasePhotoUploadsRepository: PhotoUploadsRepository {
     private let observer: FetchedResultsControllerObserver<Photo>
+    private let backgroundQueue = DispatchQueue.global(qos: .userInitiated)
     private var cancellables = Set<AnyCancellable>()
-    private let subject = PassthroughSubject<Int, Never>()
+    private let subject = PassthroughSubject<PhotosUploadingCount, Never>()
+    private var isInitialCount: Bool = true
 
-    var count: AnyPublisher<Int, Never> {
+    var count: AnyPublisher<PhotosUploadingCount, Never> {
         subject.eraseToAnyPublisher()
     }
 
     init(observer: FetchedResultsControllerObserver<Photo>) {
         self.observer = observer
         subscribeToUpdates()
+        // Start can be heavy in case of many objects. Shouldn't be performed on main queue.
+        // Initial count needs to be notified as a special case so the upload counters are correctly set up.
+        backgroundQueue.async { [weak self] in
+            guard let self else { return }
+            self.observer.start()
+            self.notifyInitialCount()
+        }
     }
 
-    func getInitialCount() -> Int {
-        observer.cache.count
+    private func notifyInitialCount() {
+        let count = observer.cache.count
+        DispatchQueue.main.async { [weak self] in
+            let count = PhotosUploadingCount(count: count, isInitialCount: true)
+            self?.subject.send(count)
+        }
     }
 
     private func subscribeToUpdates() {
@@ -46,7 +59,8 @@ final class DatabasePhotoUploadsRepository: PhotoUploadsRepository {
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] count in
-                self?.subject.send(count)
+                let uploadingCount = PhotosUploadingCount(count: count, isInitialCount: false)
+                self?.subject.send(uploadingCount)
             }
             .store(in: &cancellables)
     }

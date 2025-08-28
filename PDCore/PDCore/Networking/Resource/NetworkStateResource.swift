@@ -59,13 +59,13 @@ public final class MonitoringNetworkStateResource: NetworkStateResource {
 
     private func handleUpdate(_ path: NWPath) {
         guard path.status == .satisfied else {
-            Log.info("\(Self.self) update: is unreachable", domain: .networking)
+            Log.info("update: is unreachable", domain: .networking)
             stateSubject.send(.unreachable)
             return
         }
 
         #if os(macOS)
-        Log.info("\(Self.self) update: is reachable", domain: .networking)
+        Log.info("update: is reachable", domain: .networking)
         stateSubject.send(.reachable(.other))
         #else
 
@@ -88,7 +88,7 @@ public final class MonitoringNetworkStateResource: NetworkStateResource {
     private func logReachableUpdate(with path: NWPath) {
         let interfaces = path.availableInterfaces.map { makeInterfaceLog(path: path, interface: $0) }
         let interfacesString = interfaces.joined(separator: ", ")
-        Log.info("\(Self.self) update: is reachable. Available interfaces: \(interfacesString)", domain: .networking)
+        Log.info("update: is reachable. Available interfaces: \(interfacesString)", domain: .networking)
     }
 
     private func makeInterfaceLog(path: NWPath, interface: NWInterface) -> String {

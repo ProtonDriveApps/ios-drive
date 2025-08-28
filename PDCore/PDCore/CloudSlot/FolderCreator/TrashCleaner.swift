@@ -28,14 +28,14 @@ public final class TrashCleaner {
     }
 
     public func emptyTrash(_ nodes: [NodeIdentifier]) async throws {
-        Log.info("Empty Trash", domain: .networking)
+        Log.info("Empty trash via legacy share-based endpoint", domain: .networking)
 
         var tasks = [Task<Void, Error>]()
 
         for group in nodes.splitIntoChunks() {
             let task = Task {
                 try await client.emptyTrash(shareID: group.share)
-                try await setToBeDeleted(group.links.map { NodeIdentifier($0, group.share, group.volume) })
+                try await setToBeDeleted(group.links.map { AnyVolumeIdentifier(id: $0, volumeID: group.volume) })
             }
             tasks.append(task)
         }
@@ -45,7 +45,25 @@ public final class TrashCleaner {
         }
     }
 
-    private func setToBeDeleted(_ nodes: [NodeIdentifier]) async throws {
+    public func emptyTrashPerVolume(_ nodes: [NodeIdentifier]) async throws {
+        Log.info("Empty trash via volume-based endpoint", domain: .networking)
+
+        var tasks = [Task<Void, Error>]()
+
+        for group in nodes.splitIntoChunksByVolume() {
+            let task = Task {
+                try await client.emptyVolumeTrash(volumeId: group.volumeId)
+                try await setToBeDeleted(group.nodeIds.map { AnyVolumeIdentifier(id: $0, volumeID: group.volumeId) })
+            }
+            tasks.append(task)
+        }
+
+        for task in tasks {
+            try await task.value
+        }
+    }
+
+    private func setToBeDeleted(_ nodes: [AnyVolumeIdentifier]) async throws {
         let context = storage.mainContext
 
         try await context.perform {

@@ -73,7 +73,7 @@ final class LocalPhotoLibraryUpdateResource: NSObject, PhotoLibraryIdentifiersRe
     // MARK: - PHPhotoLibraryChangeObserver
 
     func photoLibraryDidChange(_ changeInstance: PHChange) {
-        Log.info("\(Self.self): PHPhotoLibraryChangeObserver.photoLibraryDidChange 🌊", domain: .photosProcessing)
+        Log.info("PHPhotoLibraryChangeObserver.photoLibraryDidChange 🌊", domain: .photosProcessing)
         guard let details = getChangeDetails(with: changeInstance) else {
             return
         }
@@ -84,7 +84,7 @@ final class LocalPhotoLibraryUpdateResource: NSObject, PhotoLibraryIdentifiersRe
 
         let identifiers = allIdentifiers.subtracting(processedIdentifiers)
         guard !identifiers.isEmpty else {
-            Log.info("\(Self.self): skipping duplicate identifiers", domain: .photosProcessing)
+            Log.info("skipping duplicate identifiers", domain: .photosProcessing)
             return
         }
 
@@ -92,11 +92,11 @@ final class LocalPhotoLibraryUpdateResource: NSObject, PhotoLibraryIdentifiersRe
             // This api `photoLibraryDidChange` sometimes gets triggered twice for the same PHAsset. The asset undergoes some kind of processing so it's actually changed
             // the second time (modificationDate is different) so we're unable to mark it as duplicate by checking its metadata and also the content is different.
             // In these cases we can debounce the calls and only process the latest changes thus avoiding duplicate processing.
-            Log.info("\(Self.self): will debounce \(identifiers.count) identifiers", domain: .photosProcessing)
+            Log.info("will debounce \(identifiers.count) identifiers", domain: .photosProcessing)
             debounceableEnqueueUpdateSubject.send((identifiers, fetchResultAfterChanges))
         } else {
             // In cases when the update comes at a later point, we try to process the identifiers right away. (Example: app being woken from suspended time)
-            Log.info("\(Self.self): will immediately process \(identifiers.count) identifiers", domain: .photosProcessing)
+            Log.info("will immediately process \(identifiers.count) identifiers", domain: .photosProcessing)
             enqueueUpdate(identifiers: identifiers, fetchResultAfterChanges: fetchResultAfterChanges)
         }
     }
@@ -117,7 +117,7 @@ final class LocalPhotoLibraryUpdateResource: NSObject, PhotoLibraryIdentifiersRe
     }
 
     private func handleUpdate(identifiers: Set<PhotoIdentifier>, fetchResult: PHFetchResult<PHAsset>) {
-        Log.debug("\(Self.self): processing new identifiers", domain: .photosProcessing)
+        Log.debug("processing new identifiers", domain: .photosProcessing)
         measurementRepository.start()
         processedIdentifiers.formUnion(identifiers)
         self.fetchResult = fetchResult
@@ -131,7 +131,7 @@ final class LocalPhotoLibraryUpdateResource: NSObject, PhotoLibraryIdentifiersRe
         DispatchQueue.main.async { [weak self] in
             self?.updateSubject.send(Array(result))
             self?.measurementRepository.stop()
-            Log.debug("\(Self.self): notified result", domain: .photosProcessing)
+            Log.info("Notified new identifiers (\(result.count))", domain: .photosProcessing)
         }
     }
 

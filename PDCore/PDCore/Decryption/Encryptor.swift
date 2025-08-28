@@ -44,10 +44,10 @@ public class Encryptor {
         try CoreEncryptor.encrypt(cleartext, key: key)
     }
 
-    static func encryptAndSign(_ cleartext: String,
-                               key: String,
-                               addressPassphrase: String,
-                               addressPrivateKey: String) throws -> String
+    public static func encryptAndSign(_ cleartext: String,
+                                      key: String,
+                                      addressPassphrase: String,
+                                      addressPrivateKey: String) throws -> String
     {
         try CoreEncryptor.encryptAndSign(cleartext, key: key, addressPassphrase: addressPassphrase, addressPrivateKey: addressPrivateKey)
     }
@@ -188,13 +188,28 @@ public class Encryptor {
 
         return try execute { newSplitMessage.getArmored(&$0) }
     }
+
+    public static func sign(
+        _ input: KeyPacket,
+        context: String,
+        privateKey: ArmoredKey,
+        passphrase: Passphrase
+    ) throws -> Data {
+        return try DriveCrypto.sign(input, context: context, privateKey: privateKey, passphrase: passphrase)
+    }
+}
+
+public struct NodeUpdatedCredentials {
+    public let nodePassphrase: String
+    public let signature: String
+
+    public init(nodePassphrase: String, signature: String) {
+        self.nodePassphrase = nodePassphrase
+        self.signature = signature
+    }
 }
 
 extension Encryptor {
-
-    struct NodeUpdatedCredentials {
-        public var nodePassphrase, signature: String
-    }
 
     static func generateNodeKeys(addressPassphrase: String,
                                  addressPrivateKey: String,
@@ -336,6 +351,10 @@ extension Encryptor: EncryptionResource {
         return try Encryptor.encryptAndSign(cleartext, key: key, addressPassphrase: addressPassphrase, addressPrivateKey: addressPrivateKey)
     }
 
+    public func encryptAndSignWithCompression(_ plainData: Data, encryptionKey: ArmoredKey, signingKey: ArmoredKey, passphrase: String) throws -> String {
+        try Encryptor.encryptAndSignWithCompression(plainData, encryptionKey: encryptionKey, signingKey: signingKey, passphrase: passphrase)
+    }
+
     public func makeHmac(string: String, hashKey: String) throws -> String {
         return try Encryptor.hmac(filename: string, parentHashKey: hashKey)
     }
@@ -343,11 +362,20 @@ extension Encryptor: EncryptionResource {
     public func generateNodeKeys(addressPassphrase: String, addressPrivateKey: String, parentKey: String) throws -> KeyCredentials {
         return try Encryptor.generateNodeKeys(addressPassphrase: addressPassphrase, addressPrivateKey: addressPrivateKey, parentKey: parentKey)
     }
-    
+
+    public func updateNodeKeys(
+        passphrase: String,
+        addressPassphrase: String,
+        addressPrivateKey: String,
+        parentKey: String
+    ) throws -> NodeUpdatedCredentials {
+        return try Encryptor.updateNodeKeys(passphraseString: passphrase, addressPassphrase: addressPassphrase, addressPrivateKey: addressPrivateKey, parentKey: parentKey)
+    }
+
     public func generateNodeHashKey(nodeKey: String, passphrase: String) throws -> String {
         return try Encryptor.generateNodeHashKey(nodeKey: nodeKey, passphrase: passphrase)
     }
-    
+
     public func generateContentKeys(nodeKey: ArmoredKey, nodePassphrase: Passphrase) throws -> RevisionContentKeys {
         return try Encryptor.generateContentKeys(nodeKey: nodeKey, nodePassphrase: nodePassphrase)
     }
@@ -379,5 +407,23 @@ extension Encryptor: EncryptionResource {
         passphrase: Passphrase
     ) throws -> Data {
         return try DriveCrypto.sign(text, context: .init(value: context, isCritical: true), privateKey: privateKey, passphrase: passphrase)
+    }
+
+    public func reencryptKeyPacket(
+        of encryptedMessage: String,
+        oldParentKey: String,
+        oldParentPassphrase: String,
+        newParentKey: String
+    ) throws -> String {
+        try Encryptor.reencryptKeyPacket(
+            of: encryptedMessage,
+            oldParentKey: oldParentKey,
+            oldParentPassphrase: oldParentPassphrase,
+            newParentKey: newParentKey
+        )
+    }
+
+    public func getPublicKey(fromPrivateKey privateKey: ArmoredKey) throws -> ArmoredKey {
+        try Encryptor.getPublicKey(fromPrivateKey: privateKey)
     }
 }

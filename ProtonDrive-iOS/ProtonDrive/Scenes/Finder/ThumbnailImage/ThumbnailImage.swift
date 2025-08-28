@@ -23,6 +23,8 @@ struct ThumbnailImage<Placeholder: View, Thumbnail: View>: View {
     private let vm: ThumbnailImageViewModel?
     private let placeholder: Placeholder
     private let thumbnail: (UIImage) -> Thumbnail
+    /// To make sure content loads clear data 
+    private let viewID: String
 
     init(
         vm: ThumbnailImageViewModel?,
@@ -32,11 +34,13 @@ struct ThumbnailImage<Placeholder: View, Thumbnail: View>: View {
         self.vm = vm
         self.placeholder = placeholder()
         self.thumbnail = thumbnail
+        self.viewID = UUID().uuidString
     }
 
     var body: some View {
         content()
             .onAppear(perform: vm?.load)
+            .id(viewID)
     }
 
     @ViewBuilder

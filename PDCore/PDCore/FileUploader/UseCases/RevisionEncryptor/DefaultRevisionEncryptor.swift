@@ -121,6 +121,7 @@ class DefaultRevisionEncryptor: RevisionEncryptor {
                 revision.normalizedUploadableResourceURL = nil
 
                 try self.moc.saveOrRollback()
+                Log.info("Switched revision.uploadState to .encrypted. UUID: \(draft.uploadID)", domain: .uploader)
                 completion(.success)
             } catch {
                 completion(.failure(error))

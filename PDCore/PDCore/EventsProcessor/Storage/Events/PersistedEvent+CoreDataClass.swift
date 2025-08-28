@@ -19,6 +19,8 @@
 import Foundation
 import CoreData
 
+public typealias CoreDataPersistedEvent = PersistedEvent
+
 @objc(PersistedEvent)
 public class PersistedEvent: NSManagedObject {
 

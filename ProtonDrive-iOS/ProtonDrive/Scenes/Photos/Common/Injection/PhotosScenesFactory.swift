@@ -17,12 +17,14 @@
 
 import CoreData
 import PDCore
+import PDCoreIOS
 import PDUIComponents
 import SwiftUI
 import UIKit
 import Combine
 import PDClient
 import PDContacts
+import PDPhotos
 
 struct PhotosScenesFactory {
 
@@ -60,7 +62,8 @@ struct PhotosScenesFactory {
         galleryController: PhotosGalleryController,
         selectionController: PhotosSelectionController,
         photosPagingLoadController: PhotosPagingLoadController,
-        photoUpsellFlowController: PhotoUpsellFlowController?
+        photoUpsellFlowController: PhotoUpsellFlowController?,
+        bootstrapController: PhotosBootstrapController
     ) -> any PhotosRootViewModelProtocol {
         PhotosRootViewModel(
             coordinator: coordinator,
@@ -69,7 +72,8 @@ struct PhotosScenesFactory {
             galleryController: galleryController,
             selectionController: selectionController,
             photosPagingLoadController: photosPagingLoadController,
-            photoUpsellFlowController: photoUpsellFlowController
+            photoUpsellFlowController: photoUpsellFlowController,
+            bootstrapController: bootstrapController
         )
     }
 
@@ -98,19 +102,22 @@ struct PhotosScenesFactory {
         errorControllers: [ErrorController],
         selectionController: PhotosSelectionController,
         photosObserver: FetchedResultsSectionsController<PDCore.Photo>,
-        photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>,
+        rootFolderRepository: PhotosRootFolderRepository,
         photosManagedObjectContext: NSManagedObjectContext,
         photoUploadedNotifier: PhotoUploadedNotifier,
         featureFlagsController: FeatureFlagsControllerProtocol,
+        scrollToTopPublisher: AnyPublisher<TabBarItem, Never>,
         stateView: some View,
         lockingBannerView: some View,
-        storageView: some View
+        storageView: some View,
+        migrationView: some View
     ) -> some View {
         let errorController = CompoundErrorController(controllers: errorControllers)
         let viewModel = PhotosGalleryViewModel(
             galleryController: galleryController,
             settingsController: settingsController,
-            errorController: errorController
+            errorController: errorController,
+            featureFlagsController: featureFlagsController
         )
         return PhotosGalleryView(
             viewModel: viewModel,
@@ -123,16 +130,18 @@ struct PhotosScenesFactory {
                     loadController: loadController,
                     selectionController: selectionController,
                     photosObserver: photosObserver,
-                    photoSharesObserver: photoSharesObserver,
+                    rootFolderRepository: rootFolderRepository,
                     photosManagedObjectContext: photosManagedObjectContext,
                     photoUploadedNotifier: photoUploadedNotifier,
-                    featureFlagsController: featureFlagsController
+                    featureFlagsController: featureFlagsController,
+                    scrollToTopPublisher: scrollToTopPublisher
                 )
             },
             placeholder: makeGalleryPlaceholderView,
             stateView: stateView,
             lockingBannerView: lockingBannerView,
-            storageView: storageView
+            storageView: storageView,
+            migrationView: migrationView
         )
     }
 
@@ -174,14 +183,7 @@ struct PhotosScenesFactory {
         let viewModel = PhotosStorageViewModel(quotaStateController: quotaStateController, progressController: progressController, dataFactory: LocalizedPhotosStorageViewDataFactory(), coordinator: coordinator)
         return PhotosStorageView(viewModel: viewModel)
     }
-
-    func makeLockingBannerView(notifier: WorkingNotifier, repository: ScreenLockingBannerRepository) -> some View {
-        let controller = UIApplicationScreenLockingResourceController(resource: UIApplication.shared)
-        let interactor = PhotosUploadingScreenLockInteractor(isUploading: notifier.isWorkingPublisher, controller: controller)
-        let viewModel = LockingBannerViewModel(interactor: interactor, repository: repository)
-        return LockingBannerView(viewModel: viewModel)
-    }
-
+    
     // swiftlint:disable:next function_parameter_count
     func makeGridView(
         tower: Tower, 
@@ -191,18 +193,20 @@ struct PhotosScenesFactory {
         loadController: PhotosPagingLoadController,
         selectionController: PhotosSelectionController,
         photosObserver: FetchedResultsSectionsController<PDCore.Photo>,
-        photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>,
+        rootFolderRepository: PhotosRootFolderRepository,
         photosManagedObjectContext: NSManagedObjectContext,
         photoUploadedNotifier: PhotoUploadedNotifier,
-        featureFlagsController: FeatureFlagsControllerProtocol
+        featureFlagsController: FeatureFlagsControllerProtocol,
+        scrollToTopPublisher: AnyPublisher<TabBarItem, Never>
     ) -> some View {
-        let offlineAvailableController = UpdatingOfflineAvailableController(resource: LocalOfflineAvailableResource(tower: tower, downloader: tower.downloader, storage: tower.storage, managedObjectContext: tower.storage.newBackgroundContext()))
+        let offlineAvailableController = UpdatingOfflineAvailableController(resource: LocalOfflineAvailableResource(tower: tower, downloader: tower.downloader, storage: tower.storage, managedObjectContext: tower.storage.photosSecondaryBackgroundContext))
 
         let monthFormatter = LocalizedMonthFormatter(dateResource: PlatformCurrentDateResource(), dateFormatter: PlatformMonthAndYearFormatter(), monthResource: PlatformMonthResource())
         let viewModel = PhotosGridViewModel(
             controller: galleryController,
             loadController: loadController,
-            monthFormatter: monthFormatter
+            monthFormatter: monthFormatter,
+            scrollToTopPublisher: scrollToTopPublisher
         )
         let infosController = ConcretePhotoAdditionalInfosController(repository: CoreDataPhotoAdditionalInfoRepository(observer: photosObserver))
         let actionView = makeActionView(
@@ -210,7 +214,7 @@ struct PhotosScenesFactory {
             selectionController: selectionController,
             coordinator: coordinator,
             offlineAvailableController: offlineAvailableController,
-            photoSharesObserver: photoSharesObserver,
+            rootFolderRepository: rootFolderRepository,
             photosManagedObjectContext: photosManagedObjectContext,
             photoUploadedNotifier: photoUploadedNotifier, 
             featureFlagsController: featureFlagsController
@@ -232,12 +236,12 @@ struct PhotosScenesFactory {
         selectionController: PhotosSelectionController,
         coordinator: PhotosCoordinator,
         offlineAvailableController: OfflineAvailableController,
-        photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>,
+        rootFolderRepository: PhotosRootFolderRepository,
         photosManagedObjectContext: NSManagedObjectContext,
         photoUploadedNotifier: PhotoUploadedNotifier,
         featureFlagsController: FeatureFlagsControllerProtocol
     ) -> some View {
-        let trashController = makeTrashController(tower: tower, photoSharesObserver: photoSharesObserver)
+        let trashController = makeTrashController(tower: tower, rootFolderRepository: rootFolderRepository)
         let fileContentController = makeFileContentController(
             tower: tower,
             moc: photosManagedObjectContext,
@@ -247,40 +251,22 @@ struct PhotosScenesFactory {
         return PhotosActionView(viewModel: viewModel)
     }
 
-    private func makeTrashController(tower: Tower, photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>) -> PhotosTrashController {
-        let remoteRepository = makeRemoteTrashRepository(tower: tower, photoSharesObserver: photoSharesObserver)
+    private func makeTrashController(tower: Tower, rootFolderRepository: PhotosRootFolderRepository) -> PhotosTrashController {
+        let remoteRepository = makeRemoteTrashRepository(tower: tower, rootFolderRepository: rootFolderRepository)
         let localRepository = DatabasePhotosTrashRepository(storageManager: tower.storage)
         let trashInteractor = PhotosTrashInteractor(remoteRepository: remoteRepository, localRepository: localRepository)
         let trashFacade = AsyncPhotosTrashFacade(interactor: trashInteractor)
         return LocalPhotosTrashController(facade: trashFacade)
     }
 
-    private func makeRemoteTrashRepository(tower: Tower, photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>) -> RemotePhotosTrashRepository {
-        let rootIdDataSource = DatabasePhotosFolderIdDataSource(repository: InMemoryCachingEncryptingPhotosRootRepository(datasource: LocalPhotosRootFolderDatasource(observer: photoSharesObserver)))
+    private func makeRemoteTrashRepository(tower: Tower, rootFolderRepository: PhotosRootFolderRepository) -> RemotePhotosTrashRepository {
+        let rootIdDataSource = DatabasePhotosFolderIdDataSource(repository: rootFolderRepository)
         return BackendRemotePhotosTrashRepository(client: tower.client, rootIdDataSource: rootIdDataSource)
-    }
-
-    func makePagingLoadController(
-        tower: Tower,
-        bootstrapController: PhotosBootstrapController,
-        networkConstraintController: PhotoBackupConstraintController,
-        photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>
-    ) -> PhotosPagingLoadController {
-        let dataSource = PhotosFactory().makeLocalPhotosRootDataSource(observer: photoSharesObserver)
-        let volumeIdDataSource = DatabasePhotosVolumeIdDataSource(photoShareDataSource: dataSource)
-        let listInteractor = PhotosListLoadInteractor(volumeIdDataSource: volumeIdDataSource, listing: tower.client)
-        let listFacadeInteractor = AsyncPhotosListLoadResultInteractor(interactor: listInteractor)
-        let managedObjectContext = tower.storage.newBackgroundContext()
-        let updateRepository = CoreDataLinksUpdateRepository(cloudSlot: tower.cloudSlot, managedObjectContext: managedObjectContext)
-        let metadataInteractor = PhotosMetadataLoadInteractor(shareIdDataSource: DatabasePhotoShareIdDataSource(dataSource: dataSource), listing: tower.client, updateRepository: updateRepository)
-        let metadataFacadeInteractor = AsyncPhotosMetadataLoadResultInteractor(interactor: metadataInteractor)
-        let interactor = RemotePhotosFullLoadInteractor(listInteractor: listFacadeInteractor, metadataInteractor: metadataFacadeInteractor)
-        return RemotePhotosPagingLoadController(bootstrapController: bootstrapController, interactor: interactor)
     }
 
     // swiftlint:disable:next function_parameter_count
     private func makeItemViewModel(item: PhotoGridViewItem, thumbnailsContainer: ThumbnailsControllersContainer, coordinator: PhotoItemCoordinator, selectionController: PhotosSelectionController, infosController: PhotoAdditionalInfosController, loadController: PhotosPagingLoadController, featureFlagsController: FeatureFlagsControllerProtocol) -> PhotoItemViewModel {
-        let id = PhotoId(item.photoId, item.shareId, item.volumeId)
+        let id = PhotoId(id: item.photoId, volumeID: item.volumeId)
         let infoController = ConcretePhotoAdditionalInfoController(id: id, controller: infosController)
         let thumbnailController = thumbnailsContainer.makeSmallThumbnailController(id: id)
         let viewModel = PhotoItemViewModel(item: item, thumbnailController: thumbnailController, coordinator: coordinator, selectionController: selectionController, infoController: infoController, durationFormatter: LocalizedDurationFormatter(), debounceResource: CommonLoopDebounceResource(), loadController: loadController, featureFlagsController: featureFlagsController)
@@ -296,15 +282,13 @@ struct PhotosScenesFactory {
 
     // swiftlint:disable:next function_parameter_count
     func makeNewShareViewController(
-        identifier: NodeIdentifier,
+        identifier: PhotoId,
+        tower: Tower,
         storage: StorageManager,
-        sessionVault: SessionVault,
-        client: Client,
         contactsManager: ContactsManagerProtocol,
-        entitlementsManager: EntitlementsManagerProtocol,
         featureFlagsController: FeatureFlagsControllerProtocol,
         rootViewController: UIViewController
-    ) -> SharingMemberCoordinatorProtocol? {
+    ) -> SharingStartCoordinator? {
 
         let photo = storage.mainContext.performAndWait {
             let photo: PDCore.Photo? = PDCore.Photo.fetch(identifier: identifier, in: storage.mainContext)
@@ -312,30 +296,22 @@ struct PhotosScenesFactory {
         }
 
         guard let photo else {
-            Log.error("Photo: \(identifier) could not be found.", domain: .photosProcessing)
+            Log.error("Photo: \(identifier) could not be found.", error: nil, domain: .photosProcessing)
             return nil
         }
 
-        let shareCreator = ShareCreator(
-            storage: storage,
-            sessionVault: sessionVault,
-            cloudShareCreator: client.createShare,
-            signersKitFactory: sessionVault,
-            moc: storage.backgroundContext
-        )
-        let dependencies = SharingMemberCoordinator.Dependencies(
-            baseHost: client.service.configuration.baseHost,
-            client: client,
+        let dependencies = SharingMemberStartDependencies(
+            tower: tower,
             contactsManager: contactsManager,
-            entitlementsManager: entitlementsManager,
             featureFlagsController: featureFlagsController,
-            node: photo,
-            rootViewController: rootViewController,
-            sessionVault: sessionVault,
-            shareCreator: shareCreator,
-            storage: storage
+            invitationResultController: nil,
+            rootViewController: rootViewController
         )
-        return SharingMemberCoordinator(dependencies: dependencies)
+        let sharingMemberFactory = SharingMemberStartFactory()
+        return sharingMemberFactory.makeCoordinator(
+            dependencies: dependencies,
+            node: photo
+        )
     }
 
     func makeRetryViewController(deletedStoreResource: DeletedPhotosIdentifierStoreResource, retryTriggerController: PhotoLibraryLoadRetryTriggerController) -> UIViewController {
@@ -345,6 +321,17 @@ struct PhotosScenesFactory {
         let viewModel = PhotosRetryViewModel(interactor: interactor, nameUnwrappingStrategy: strategyFactory.makeItemNameUnwrappingStrategy(), imageUnwrappingStrategy: strategyFactory.makeImageUnwrappingStrategy())
         let view = NavigationView { PhotosRetryView(viewModel: viewModel) }
         return UIHostingController(rootView: view)
+    }
+
+    func makeMigrationView(
+        migrationController: PhotoVolumeMigrationControllerProtocol,
+        featureFlagsController: FeatureFlagsControllerProtocol
+    ) -> some View {
+        let viewModel = PhotosMigrationBannerViewModel(
+            migrationController: migrationController,
+            featureFlagsController: featureFlagsController
+        )
+        return MigrationBannerView(viewModel: viewModel)
     }
 
     // MARK: - Controllers
@@ -378,7 +365,7 @@ struct PhotosScenesFactory {
     func makeUploadedPhotosObserver(tower: Tower) -> FetchedResultsSectionsController<PDCore.Photo> {
         // VolumeID fetched at this point to avoid potential locks
         let volumeID = tower.storage.mainContext.performAndWait { (try? tower.storage.getMyVolumeId(in: tower.storage.mainContext)) ?? "" }
-        let managedObjectContext = tower.storage.newBackgroundContext()
+        let managedObjectContext = tower.storage.photosSecondaryBackgroundContext
         let fetchedController = tower.storage.subscriptionToMyPrimaryUploadedPhotos(volumeID: volumeID, moc: managedObjectContext)
         return FetchedResultsSectionsController(controller: fetchedController)
     }

@@ -209,7 +209,7 @@ public final class PhotoUploader: MyFilesFileUploader {
 
     override public func deleteUploadingFile(_ file: File, error: PhotosFailureUserError? = nil) {
         guard let photo = file as? Photo else {
-            Log.error(file.invalidState("The File should be a Photo."), domain: .uploader)
+            Log.error(error: file.invalidState("The File should be a Photo."), domain: .uploader)
             assert(false, "The File should be a Photo.")
             return
         }
@@ -220,7 +220,7 @@ public final class PhotoUploader: MyFilesFileUploader {
     
     public func markUploadingFileAsSkippable(_ file: File) {
         guard let photo = file as? Photo else {
-            Log.error(file.invalidState("The File should be a Photo."), domain: .uploader)
+            Log.error(error: file.invalidState("The File should be a Photo."), domain: .uploader)
             assert(false, "The File should be a Photo.")
             return
         }

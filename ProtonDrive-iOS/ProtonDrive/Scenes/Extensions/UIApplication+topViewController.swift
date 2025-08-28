@@ -47,5 +47,28 @@ extension UIApplication {
         }
         return topViewController
     }
-    
+
+    func topMostViewControllerFromAppWindow() -> UIViewController? {
+        guard let windowScene = connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .first(where: { $0.activationState == .foregroundActive }),
+              let root = windowScene.windows.first?.rootViewController else {
+            return nil
+        }
+
+        return topViewController(from: root)
+    }
+
+    private func topViewController(from root: UIViewController) -> UIViewController {
+        if let nav = root as? UINavigationController {
+            return topViewController(from: nav.visibleViewController ?? nav)
+        } else if let tab = root as? UITabBarController,
+                  let selected = tab.selectedViewController {
+            return topViewController(from: selected)
+        } else if let presented = root.presentedViewController {
+            return topViewController(from: presented)
+        } else {
+            return root
+        }
+    }
 }

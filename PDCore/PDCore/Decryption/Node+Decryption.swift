@@ -20,8 +20,8 @@ import Foundation
 extension Node {
     
     func getDirectParentPack() throws -> (parentPassphrase: String, parentKey: String) {
-        guard let parentPassphrase = try (self.parentLink?.decryptPassphrase() ?? getMainDirectSharePassphrase()),
-              let parentKey = self.parentLink?.nodeKey ?? self.primaryDirectShare?.key else {
+        guard let parentPassphrase = try (self.parentNode?.decryptPassphrase() ?? getMainDirectSharePassphrase()),
+              let parentKey = self.parentNode?.nodeKey ?? self.primaryDirectShare?.key else {
                   throw Decryptor.Errors.noParentPacket
               }
         return (parentPassphrase, parentKey)
@@ -51,13 +51,13 @@ extension Node {
                 return passphrase
 
             case .unverified(let passphrase, let error):
-                Log.error(SignatureError(error, "Node", description: "LinkID: \(id) \nVolumeID: \(volumeID)"), domain: .encryption, sendToSentryIfPossible: isSignatureVerifiable())
+                Log.error(error: SignatureError(error, "Node", description: "LinkID: \(id) \nVolumeID: \(volumeID)"), domain: .encryption, sendToSentryIfPossible: isSignatureVerifiable())
                 self.clearPassphrase = passphrase
                 return passphrase
             }
 
         } catch {
-            Log.error(DecryptionError(error, "Node", description: "LinkID: \(id) \nVolumeID: \(volumeID)"), domain: .encryption)
+            Log.error(error: DecryptionError(error, "Node", description: "LinkID: \(id) \nVolumeID: \(volumeID)"), domain: .encryption)
             throw error
         }
     }
@@ -68,12 +68,18 @@ extension Node {
         let signatureEmailIsEmpty = signatureEmail?.isEmpty ?? true
         let verificationKeys = signatureEmailIsEmpty ? [parentNodeKey.privateKey] : addressKeys
 
-        let decrypted = try Decryptor.decryptAndVerifyNodePassphrase(
-            nodePassphrase,
-            armoredSignature: nodePassphraseSignature,
-            verificationKeys: verificationKeys,
-            decryptionKeys: [parentNodeKey]
-        )
+        let decrypted: VerifiedText
+        do {
+            decrypted = try Decryptor.decryptAndVerifyNodePassphrase(
+                nodePassphrase,
+                armoredSignature: nodePassphraseSignature,
+                verificationKeys: verificationKeys,
+                decryptionKeys: [parentNodeKey]
+            )
+        } catch let error where !(error is Decryptor.Errors) {
+            DriveIntegrityErrorMonitor.reportMetadataError(for: self)
+            throw error
+        }
 
         return decrypted
     }

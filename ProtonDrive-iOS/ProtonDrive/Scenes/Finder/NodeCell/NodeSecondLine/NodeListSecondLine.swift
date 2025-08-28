@@ -35,4 +35,5 @@ enum Badge: Equatable {
     case offline
     case shared
     case sharedCollaboratively
+    case bookmark
 }

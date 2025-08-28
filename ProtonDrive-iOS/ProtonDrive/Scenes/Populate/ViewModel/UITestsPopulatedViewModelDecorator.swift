@@ -18,6 +18,7 @@
 #if DEBUG
 import Foundation
 import PDCore
+import PDCoreIOS
 
 final class UITestsPopulatedViewModelDecorator: PopulateViewModelProtocol {
     private let viewModel: PopulateViewModelProtocol
@@ -79,6 +80,22 @@ struct NewFeaturePromoteFlowTestsManager {
         
         if DebugConstants.commandLineContains(flags: [.skipNewFeaturePromote]) {
             localSettings.append(promotedNewFeatures: NewFeature.sortedCases.map(\.rawValue))
+        }
+    }
+}
+
+struct PhotoUpsellFlowTestsManager {
+    static func setFlagForUITest(localSettings: LocalSettings) {
+        guard DebugConstants.commandLineContains(flags: [.uiTests]) else { return }
+
+        if DebugConstants.commandLineContains(flags: [.defaultPhotoUpsell]) {
+            localSettings.isPhotoUpsellShown = false
+            DebugConstants.removeCommandLine(flags: [.defaultPhotoUpsell])
+        }
+
+        if DebugConstants.commandLineContains(flags: [.skipPhotoUpsell]) {
+            localSettings.isPhotoUpsellShown = true
+            DebugConstants.removeCommandLine(flags: [.skipPhotoUpsell])
         }
     }
 }

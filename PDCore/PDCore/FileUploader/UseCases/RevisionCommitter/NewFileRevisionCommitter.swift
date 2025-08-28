@@ -90,11 +90,18 @@ class NewFileRevisionCommitter: RevisionCommitter {
                         let nodeDecryptionKey = DecryptionKey(privateKey: file.nodeKey, passphrase: filePassphrase)
                         let addressKeys = try file.activeRevisionDraft?.getAddressPublicKeysOfRevision() ?? []
 
-                        let decryptedRemote = try Decryptor.decryptAndVerifyXAttributes(
-                            xAttributesRemote,
-                            decryptionKey: nodeDecryptionKey,
-                            verificationKeys: addressKeys
-                        ).decrypted()
+                        let decryptedRemote: Data
+                        do {
+                            decryptedRemote = try Decryptor.decryptAndVerifyXAttributes(
+                                xAttributesRemote,
+                                decryptionKey: nodeDecryptionKey,
+                                verificationKeys: addressKeys
+                            ).decrypted()
+                        } catch let error where !(error is Decryptor.Errors) {
+                            DriveIntegrityErrorMonitor.reportMetadataError(for: file)
+                            throw error
+                        }
+
                         let xAttrRemote = try JSONDecoder().decode(ExtendedAttributes.self, from: decryptedRemote)
 
                         let remoteSHA1 = xAttrRemote.common?.digests?.sha1

@@ -17,12 +17,13 @@
 
 import Foundation
 import PDCore
+import PDCoreIOS
 import Combine
 import PDUIComponents
 import PDLocalization
 
 class NodeCellPlaceholderConfiguration: ObservableObject, NodeCellConfiguration {
-    var iconName: String
+    var iconName: FileAssetName
     var name: String
     var isFavorite: Bool = false
     var isAvailableOffline: Bool = false
@@ -45,13 +46,14 @@ class NodeCellPlaceholderConfiguration: ObservableObject, NodeCellConfiguration 
     var secondLineSubtitle: String { Localization.general_unknown }
     var selectionModel: CellSelectionModel?
     var id: NodeIdentifier = NodeIdentifier("", "", "")
-    
+    let isBookmark: Bool = false
+
     let thumbnailViewModel: ThumbnailImageViewModel?
     let nodeRowActionMenuViewModel: NodeRowActionMenuViewModel? = nil
     let featureFlagsController: FeatureFlagsControllerProtocol
 
     init(featureFlagsController: FeatureFlagsControllerProtocol) {
-        self.iconName = FileTypeAsset.FileAssetName.unknown.rawValue
+        self.iconName = FileAssetName.unknown
         self.name = Self.unknownNamePlaceholder
         self.thumbnailViewModel = nil
         self.featureFlagsController = featureFlagsController

@@ -50,7 +50,7 @@ public struct ContactGroup: Codable {
         self.color = color
     }
 
-    mutating func append(contentsOf contacts: [Contact]) {
+    public mutating func append(contentsOf contacts: [Contact]) {
         self.contacts.append(contentsOf: contacts)
     }
     

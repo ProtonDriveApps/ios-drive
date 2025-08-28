@@ -18,5 +18,5 @@
 import Foundation
 
 protocol NodeThumbnailRepository {
-    func fetchThumbnail(fileID: NodeIdentifier) throws -> Thumbnail
+    func fetchThumbnail(fileID: any VolumeIdentifiable) throws -> Thumbnail
 }

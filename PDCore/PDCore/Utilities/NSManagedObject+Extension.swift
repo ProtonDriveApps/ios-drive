@@ -67,7 +67,7 @@ public extension NSManagedObject {
         let file: String
         let message: String
 
-        internal init(message: String, file: String = #filePath, line: Int = #line) {
+        public init(message: String, file: String = #filePath, line: Int = #line) {
             self.message = message
             self.file = (file as NSString).lastPathComponent
             self.line = line
@@ -85,7 +85,7 @@ public extension NSManagedObject {
             }
         }
 
-        var localizedDescription: String {
+        public var localizedDescription: String {
             self.errorDescription ?? "An unexpected error occurred."
         }
     }

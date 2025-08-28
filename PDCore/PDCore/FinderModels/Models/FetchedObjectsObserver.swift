@@ -75,18 +75,4 @@ public final class FetchedObjectsObserver<ResultType: NSFetchRequestResult&Equat
         self.cache = fetchedResultsController.fetchedObjects ?? []
         return self.cache
     }
-
-    public func getSections() -> [[ResultType]] {
-        return fetchedResultsController.managedObjectContext.performAndWait {
-            sections
-        }
-    }
-
-    private var sections: [[ResultType]] {
-        // Use with caution, needs to be called on the moc's queue
-        let infos = fetchedResultsController.sections ?? []
-        return infos.map {
-            ($0.objects as? [ResultType]) ?? []
-        }
-    }
 }

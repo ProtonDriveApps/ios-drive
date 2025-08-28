@@ -19,8 +19,13 @@ import Foundation
 import PDClient
 import CoreData
 
-public final class NodeMover {
-    /// Typealias for one of the methods of PDCLient's Client.
+public protocol NodeMoverProtocol {
+    func move(_ node: Node, to newParent: Folder, name: String) async throws
+    func move(photo: CoreDataPhoto, from album: CoreDataAlbum, to photoRoot: Folder) async throws
+}
+
+public final class NodeMover: NodeMoverProtocol {
+    /// Typealias for one of the methods of PDClient's Client.
     public typealias CloudNodeMover = (Client.ShareID, Client.LinkID, MoveEntryEndpoint.Parameters) async throws -> Void
 
     private let moc: NSManagedObjectContext
@@ -67,13 +72,51 @@ public final class NodeMover {
                 node.signatureEmail = cryptoInfo.signersKit.address.email
             }
 
-            node.parentLink = newParent
+            node.parentFolder = newParent
 
             try self.moc.saveOrRollback()
         }
     }
 
-    private func readCryptoInfo(from node: Node, and newParent: Folder) async throws -> CryptoInfo {
+    public func move(photo: CoreDataPhoto, from album: CoreDataAlbum, to photoRoot: Folder) async throws {
+        let name = try await self.moc.perform { try photo.decryptName() }
+        let validatedNewName = try name.validateNodeName(validator: NameValidations.iosName)
+        let cryptoInfo = try await readCryptoInfo(from: photo, album: album, and: photoRoot)
+
+        let parameters = try prepareRequestParameter(
+            node: photo,
+            cryptoInfo: cryptoInfo,
+            validatedNewName: validatedNewName
+        )
+
+        try await cloudNodeMover(cryptoInfo.shareID, cryptoInfo.nodeID, parameters)
+
+        try await moc.perform {
+            let node = photo.in(moc: self.moc)
+            let newParent = photoRoot.in(moc: self.moc)
+
+            node.name = parameters.Name
+            node.nodeHash = parameters.Hash
+            node.nodePassphrase = parameters.NodePassphrase
+            if cryptoInfo.isAnonymous {
+                if let signature = parameters.NodePassphraseSignature {
+                    node.nodePassphraseSignature = signature
+                }
+                node.nameSignatureEmail = cryptoInfo.signersKit.address.email
+                node.signatureEmail = cryptoInfo.signersKit.address.email
+            }
+
+            node.parentFolder = newParent
+
+            try self.moc.saveOrRollback()
+        }
+    }
+
+    private func readCryptoInfo(
+        from node: Node,
+        album: CoreDataAlbum? = nil,
+        and newParent: Folder
+    ) async throws -> CryptoInfo {
         try await moc.perform {
             let node = node.in(moc: self.moc)
 #if os(macOS)
@@ -83,7 +126,7 @@ public final class NodeMover {
             let signersKit = try self.signersKitFactory.make(forAddressID: addressID)
 #endif
             let newParent = newParent.in(moc: self.moc)
-            guard let oldParent = node.parentLink else {
+            guard let oldParent = album ?? node.parentFolder else {
                 throw node.invalidState("The moving Node should have a parent.")
             }
             guard let oldNodeName = node.name else {
@@ -104,11 +147,21 @@ public final class NodeMover {
                 newParentKey: newParent.nodeKey,
                 newParentHashKey: try newParent.decryptNodeHashKey(),
                 newParentNodeID: newParent.id,
-                signersKit: signersKit
+                signersKit: signersKit,
+                contentDigest: try self.getContentDigest(for: node)
             )
         }
     }
-    
+
+    private func getContentDigest(for node: Node) throws -> FileContentDigest? {
+        // Only needed for photos
+        if let photo = node as? CoreDataPhoto {
+            return try photo.photoRevision.getContentDigest()
+        } else {
+            return nil
+        }
+    }
+
     private func prepareRequestParameter(
         node: Node,
         cryptoInfo: CryptoInfo,
@@ -169,10 +222,11 @@ public final class NodeMover {
             originalHash: cryptoInfo.oldNameHash,
             newShareID: nil,
             nodePassphraseSignature: nodePassphraseSignature,
-            signatureEmail: signatureEmail
+            signatureEmail: signatureEmail,
+            contentHash: try makeContentHash(info: cryptoInfo)
         )
     }
-    
+
     private func prepareRequestParameterForNormal(
         node: Node,
         cryptoInfo: CryptoInfo,
@@ -201,8 +255,23 @@ public final class NodeMover {
             parentLinkID: cryptoInfo.newParentNodeID,
             nameSignatureEmail: cryptoInfo.signersKit.address.email,
             originalHash: cryptoInfo.oldNameHash,
-            newShareID: nil
+            newShareID: nil,
+            contentHash: try makeContentHash(info: cryptoInfo)
         )
+    }
+
+    private func makeContentHash(info: CryptoInfo) throws -> String? {
+        switch info.contentDigest {
+        case let .contentDigest(digest):
+            return try Encryptor().makeHmac(string: digest, hashKey: info.newParentHashKey)
+        case let .contentHash(previousContentHash):
+            // We fall back to using the previous content hash in cases there's no original decrypted one.
+            // It doesn't prevent duplicates per se, but works for repeated move action.
+            return previousContentHash
+        case nil:
+            // Nil is valid for non-photo objects
+            return nil
+        }
     }
 }
 
@@ -223,5 +292,6 @@ extension NodeMover {
         let newParentHashKey: String
         let newParentNodeID: String
         let signersKit: SignersKit
+        let contentDigest: FileContentDigest?
     }
 }

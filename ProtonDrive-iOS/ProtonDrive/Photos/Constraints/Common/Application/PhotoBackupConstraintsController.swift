@@ -17,10 +17,7 @@
 
 import Combine
 import PDCore
-
-protocol PhotoBackupConstraintsController {
-    var constraints: AnyPublisher<PhotoBackupConstraints, Never> { get }
-}
+import PDPhotos
 
 final class LocalPhotoBackupConstraintsController: PhotoBackupConstraintsController {
     private let storageController: PhotoBackupConstraintController
@@ -30,6 +27,7 @@ final class LocalPhotoBackupConstraintsController: PhotoBackupConstraintsControl
     private let availableSpaceController: PhotoBackupConstraintController
     private let featureFlagController: PhotoBackupConstraintController
     private let circuitBreakerController: ConstraintController
+    private let migrationController: PhotoBackupConstraintController
     private let constraintsSubject: CurrentValueSubject<PhotoBackupConstraints, Never> = .init([])
     private var cancellables = Set<AnyCancellable>()
 
@@ -37,7 +35,7 @@ final class LocalPhotoBackupConstraintsController: PhotoBackupConstraintsControl
         constraintsSubject.eraseToAnyPublisher()
     }
 
-    init(storageController: PhotoBackupConstraintController, networkController: PhotoBackupConstraintController, quotaController: PhotoBackupConstraintController, thermalController: PhotoBackupConstraintController, availableSpaceController: PhotoBackupConstraintController, featureFlagController: PhotoBackupConstraintController, circuitBreakerController: ConstraintController) {
+    init(storageController: PhotoBackupConstraintController, networkController: PhotoBackupConstraintController, quotaController: PhotoBackupConstraintController, thermalController: PhotoBackupConstraintController, availableSpaceController: PhotoBackupConstraintController, featureFlagController: PhotoBackupConstraintController, circuitBreakerController: ConstraintController, migrationController: PhotoBackupConstraintController) {
         self.storageController = storageController
         self.networkController = networkController
         self.quotaController = quotaController
@@ -45,11 +43,12 @@ final class LocalPhotoBackupConstraintsController: PhotoBackupConstraintsControl
         self.availableSpaceController = availableSpaceController
         self.featureFlagController = featureFlagController
         self.circuitBreakerController = circuitBreakerController
+        self.migrationController = migrationController
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
-        let cloudPublisher = Publishers.CombineLatest3(quotaController.constraint, featureFlagController.constraint, circuitBreakerController.constraint)
+        let cloudPublisher = Publishers.CombineLatest4(quotaController.constraint, featureFlagController.constraint, circuitBreakerController.constraint, migrationController.constraint)
         let storagePublisher = Publishers.CombineLatest(storageController.constraint, availableSpaceController.constraint)
             .map { $0.0 || $0.1 }
         
@@ -58,19 +57,22 @@ final class LocalPhotoBackupConstraintsController: PhotoBackupConstraintsControl
                 let isQuotaExceeded = isBackendConstrained.0
                 let isFeatureFlagDisabled = isBackendConstrained.1
                 let isCircuitBroken = isBackendConstrained.2
-                self?.handleUpdate(isStorageConstrained: isStorageConstrained, isNetworkConstrained: isNetworkConstrained, isQuotaExceeded: isQuotaExceeded, isThermalStateConstranined: isThermalStateConstranined, isFeatureFlagDisabled: isFeatureFlagDisabled, isCircuitBroken: isCircuitBroken)
+                let isMigratingToPhotoVolume = isBackendConstrained.3
+                self?.handleUpdate(isStorageConstrained: isStorageConstrained, isNetworkConstrained: isNetworkConstrained, isQuotaExceeded: isQuotaExceeded, isThermalStateConstranined: isThermalStateConstranined, isFeatureFlagDisabled: isFeatureFlagDisabled, isCircuitBroken: isCircuitBroken, isMigratingToPhotoVolume: isMigratingToPhotoVolume)
             }
             .store(in: &cancellables)
     }
 
-    private func handleUpdate(isStorageConstrained: Bool, isNetworkConstrained: Bool, isQuotaExceeded: Bool, isThermalStateConstranined: Bool, isFeatureFlagDisabled: Bool, isCircuitBroken: Bool) {
+    // swiftlint:disable:next function_parameter_count
+    private func handleUpdate(isStorageConstrained: Bool, isNetworkConstrained: Bool, isQuotaExceeded: Bool, isThermalStateConstranined: Bool, isFeatureFlagDisabled: Bool, isCircuitBroken: Bool, isMigratingToPhotoVolume: Bool) {
         let constraints = [
             isStorageConstrained ? PhotoBackupConstraint.storage : nil,
             isNetworkConstrained ? .network : nil,
             isQuotaExceeded ? .quota : nil,
             isThermalStateConstranined ? .thermalState : nil,
             isFeatureFlagDisabled ? .featureFlag : nil,
-            isCircuitBroken ? .circuitBroken : nil
+            isCircuitBroken ? .circuitBroken : nil,
+            isMigratingToPhotoVolume ? .migrationToPhotoVolume : nil
         ].compactMap { $0 }
         let constraintsSet = Set(constraints)
         Log.info("Photos backup constraints: \(constraintsSet)", domain: .photosProcessing)

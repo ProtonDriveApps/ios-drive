@@ -19,5 +19,7 @@
 import Foundation
 import CoreData
 
+public typealias CoreDataThumbnailBlob = ThumbnailBlob
+
 @objc(ThumbnailBlob)
 public class ThumbnailBlob: NSManagedObject {}

@@ -58,6 +58,7 @@ public struct Share: Codable {
     public let type: ´Type´
 
     public enum ´Type´: Int, Codable {
+        case undefined = 0
         case main = 1
         case standard = 2
         case device = 3

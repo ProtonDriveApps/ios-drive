@@ -64,9 +64,25 @@ public extension MimeType {
     var isText: Bool {
         UTI(fromMimeType: value).isText
     }
-    
+
+    var isProtonFile: Bool {
+        UTI(fromMimeType: value).isProtonFile
+    }
+
+    var isProtonDoc: Bool {
+        UTI(fromMimeType: value).isProtonDoc
+    }
+
+    var isProtonSheet: Bool {
+        UTI(fromMimeType: value).isProtonSheet
+    }
+
     var isGif: Bool {
         UTI(fromMimeType: value).isGif
+    }
+
+    var isRaw: Bool {
+        UTI(fromMimeType: value).isRawImage
     }
 }
 
@@ -131,5 +147,6 @@ public extension MimeType {
     static let pages = MimeType(value: "application/vnd.apple.pages")
     static let numbers = MimeType(value: "application/vnd.apple.numbers")
     static let keynote = MimeType(value: "application/vnd.apple.keynote")
-    static let protonDocument = MimeType(value: ProtonDocumentConstants.mimeType)
+    static let protonDoc = MimeType(value: ProtonDocConstants.mimeType)
+    static let protonSheet = MimeType(value: ProtonSheetConstants.mimeType)
 }

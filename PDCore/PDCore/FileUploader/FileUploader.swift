@@ -22,6 +22,8 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
 
     let fileUploadFactory: FileUploadOperationsProvider
     let filecleaner: CloudFileCleaner
+    let uploadSuccessRateMonitor = UploadSuccessRateMonitor()
+    
     public let moc: NSManagedObjectContext
     var isEnabled = true {
         didSet { Log.info("\(type(of: self)) isEnabled will become \(isEnabled)", domain: .uploader) }
@@ -67,7 +69,7 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
             let clientUID = file.clientUID
 
             let shareID = file.shareId
-            guard let parentID = file.parentLink?.id else {
+            guard let parentID = file.parentNode?.id else {
                 throw file.invalidState("The file doesn't have a parentID")
             }
 
@@ -79,7 +81,7 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
 
                     let error = self.mapDefaultError(error)
                     NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
-                    Log.error("Upload error: \(error.localizedDescription)", domain: .uploader)
+                    Log.error("Upload error", error: error, domain: .uploader)
                     self.cancelOperation(id: uploadID)
                     completion(.failure(error))
                 }
@@ -174,7 +176,7 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
     public func performDeletionOfUploadingFileOutsideMOC(_ file: File) {
 
         guard let uploadID = file.uploadID,
-              let parentId = file.parentLink?.id else {
+              let parentId = file.parentNode?.id else {
             Log.info("\(type(of: self)).deleteUploadingFile: no uploadID or parentID ❌", domain: .uploader)
             return
         }
@@ -196,12 +198,18 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
                         try await self.filecleaner.deleteUploadingFile(shareId: shareID, parentId: parentID, linkId: fileID)
                         file.delete()
                     } catch let responseError as ResponseError {
-                        Log.error("\(String(describing: responseError.errorDescription)), UUID: \(uploadID)", domain: .uploader)
+                        Log.error("Deleting uploading files failed", error: responseError, domain: .uploader, context: LogContext("UUID: \(uploadID)"))
                         file.delete()
                     } catch CloudFileCleanerError.fileIsNotADraft {
-                        Log.error("\(CloudFileCleanerError.fileIsNotADraft)), UUID: \(uploadID)", domain: .uploader)
+                        Log.error("Deleting uploading files failed", error: CloudFileCleanerError.fileIsNotADraft, domain: .uploader, context: LogContext("UUID: \(uploadID)"))
                     } catch {
-                        Log.error("\(String(describing: error.localizedDescription)), UUID: \(uploadID)", domain: .uploader)
+                        Log
+                            .error(
+                                "Deleting uploading files failed",
+                                error: error,
+                                domain: .uploader,
+                                context: LogContext("UUID: \(uploadID)")
+                            )
                         file.delete()
                     }
                 }
@@ -233,7 +241,7 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
 
         let error = mapDefaultError(error)
         NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
-        Log.error(error.localizedDescription, domain: .uploader)
+        Log.error(error: error, domain: .uploader)
         errorStream.send(error)
         completion(.failure(error))
     }

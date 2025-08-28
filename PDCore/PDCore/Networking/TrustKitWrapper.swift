@@ -18,7 +18,6 @@
 import TrustKit
 import ProtonCoreEnvironment
 import ProtonCoreServices
-import PDLoadTesting
 
 public final class TrustKitFactory {
     public typealias Delegate = TrustKitDelegate
@@ -30,11 +29,7 @@ public final class TrustKitFactory {
         let trustKit = make(configuration: configuration, delegate: delegate)
         PMAPIService.trustKit = trustKit
         PMAPIService.noTrustKit = trustKit == nil
-        if LoadTesting.isEnabled {
-            return nil
-        } else {
-            return trustKit
-        }
+        return trustKit
     }
 
     private static func makeConfiguration(isHardfail: Bool) -> [String: Any] {

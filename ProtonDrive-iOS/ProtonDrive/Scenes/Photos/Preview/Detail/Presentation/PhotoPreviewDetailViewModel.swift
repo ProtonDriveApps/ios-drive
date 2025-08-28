@@ -30,7 +30,7 @@ protocol PhotoPreviewDetailViewModelProtocol: ObservableObject {
 }
 
 enum PhotoPreviewDetailState: Equatable {
-    case loading(text: String, thumbnail: Data?)
+    case loading(String)
     case preview(PhotoFullPreview)
     case error(title: String, text: String)
 }
@@ -103,11 +103,8 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
             .store(in: &cancellables)
 
         fullPreviewController.errorPublisher
-            .sink { [weak self] _ in
-                self?.state = .error(
-                    title: Localization.photo_preview_error_title,
-                    text: Localization.photo_preview_error_text
-                )
+            .sink { [weak self] error in
+                self?.handlePreviewError(error)
             }
             .store(in: &cancellables)
     }
@@ -122,13 +119,28 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
     private func makeNewState() -> PhotoPreviewDetailState {
         if let fullPreview = fullPreviewController.getPreview() {
             return .preview(fullPreview)
+        } else if let thumbnail = thumbnailController.getImage() {
+            return .preview(.thumbnail(thumbnail))
         } else {
-            return .loading(text: Localization.general_loading, thumbnail: thumbnailController.getImage())
+            return .loading(Localization.general_loading)
         }
     }
     
     func cleanup() {
         fullPreviewController.clear()
         thumbnailController.cancel()
+    }
+
+    private func handlePreviewError(_ error: PhotoFullPreviewError) {
+        switch error {
+        case .noPreviewAvailable:
+            state = .error(
+                title: Localization.photo_preview_error_title,
+                text: Localization.photo_preview_error_text
+            )
+        case .fullPreviewNotAvailable:
+            // no-op
+            break
+        }
     }
 }

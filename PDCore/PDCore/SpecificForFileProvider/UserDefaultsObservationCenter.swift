@@ -59,14 +59,14 @@ public final class UserDefaultsObservationCenter {
         let instanceIdentifier = self.instanceIdentifier
         let keyValueObservation = store.observe(key, options: [.new]) { _, change in
             if additionalLogging {
-                Log.debug("UserDefaultsObservationCenter \(instanceIdentifier.uuidString): change handler, value \(String(describing: change.newValue))", domain: .syncing)
+                Log.debug("UserDefaultsObservationCenter \(instanceIdentifier.uuidString) \(key): change handler, value \(String(describing: change.newValue))", domain: .syncing)
             }
             handler(change.newValue)
         }
         let observation = Observation(observer: observer, keyValueObservation: keyValueObservation)
         self.observations.append(observation)
         if additionalLogging {
-            Log.debug("UserDefaultsObservationCenter \(instanceIdentifier.uuidString): adding observation \(observation)", domain: .syncing)
+            Log.debug("UserDefaultsObservationCenter \(instanceIdentifier.uuidString) \(key): adding observation \(observation)", domain: .syncing)
         }
     }
 

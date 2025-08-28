@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "PDUIComponents",
     platforms: [
-        .iOS(.v15),
+        .iOS(.v16),
         .macOS(.v13),
     ],
     products: [
@@ -14,8 +14,7 @@ let package = Package(
     ],
     dependencies: [
         .package(name: "PDLocalization", path: "../PDLocalization"),
-        // exact version is defined by PDClient
-        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", .suitable),
+        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", exact: "32.7.1"),
     ],
     targets: [
         .target(
@@ -24,11 +23,10 @@ let package = Package(
                 .product(name: "ProtonCoreUIFoundations", package: "protoncore_ios"),
                 .product(name: "PDLocalization", package: "PDLocalization"),
             ],
-            path: "PDUIComponents"
+            path: "PDUIComponents",
+            resources: [
+                .process("Media.xcassets") // ✅ Include asset catalog
+            ]
         ),
     ]
 )
-
-extension Range where Bound == Version {
-    static let suitable = Self(uncheckedBounds: ("0.0.0", "99.0.0"))
-}

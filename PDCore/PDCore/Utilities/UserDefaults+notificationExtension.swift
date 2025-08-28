@@ -20,8 +20,6 @@ import Foundation
 public extension UserDefaults {
     enum NotificationPropertyKeys: String {
         case metadataDBUpdateKey = "metadataDBUpdate"
-        case syncErrorDBUpdateKey = "syncErrorDBUpdate"
-        case syncingKey = "syncing"
         case childSessionReadyKey = "childSessionReady"
         case childSessionExpiredKey = "childSessionExpired"
         case ddkSessionReadyKey = "ddkSessionReady"
@@ -32,14 +30,6 @@ public extension UserDefaults {
     // Keys and properties MUST MATCH one another
     @objc dynamic var metadataDBUpdate: TimeInterval {
         return double(forKey: NotificationPropertyKeys.metadataDBUpdateKey.rawValue)
-    }
-
-    @objc dynamic var syncErrorDBUpdate: TimeInterval {
-        return double(forKey: NotificationPropertyKeys.syncErrorDBUpdateKey.rawValue)
-    }
-
-    @objc dynamic var syncing: Bool {
-        return bool(forKey: NotificationPropertyKeys.syncingKey.rawValue)
     }
     
     @objc dynamic var childSessionReady: Bool {

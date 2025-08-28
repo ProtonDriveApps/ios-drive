@@ -18,21 +18,37 @@
 import Combine
 import Foundation
 import PDCore
+import PDPhotos
 import ProtonCoreNetworking
 
-enum RemotePhotoLoadStatus {
+enum RemotePhotoLoadStatus: Equatable {
     case undetermined
     case hasBackedUpPhoto
     case withoutBackedUpPhoto
     case failure
     case disconnected
-    
+    case disabledDueToMigration(error: String)
+
     var hasBackedUpPhoto: Bool {
         switch self {
         case .hasBackedUpPhoto: return true
         default: return false
         }
     }
+
+    var isDisabled: Bool {
+        if case .disabledDueToMigration = self {
+            return true
+        } else {
+            return false
+        }
+    }
+}
+
+public enum PaginationStatus: Equatable {
+    case loading
+    case finished
+    case error
 }
 
 protocol PhotosPagingLoadController: AnyObject, ErrorController {
@@ -40,21 +56,24 @@ protocol PhotosPagingLoadController: AnyObject, ErrorController {
     func loadNextIfNeeded(captureTime: Date)
     
     var loadStatus: AnyPublisher<RemotePhotoLoadStatus, Never> { get }
+    var paginationStatus: AnyPublisher<PaginationStatus, Never> { get }
 }
 
 final class RemotePhotosPagingLoadController: PhotosPagingLoadController {
     private let bootstrapController: PhotosBootstrapController
+    private let errorController: ErrorSetControllerProtocol
     private let interactor: PhotosFullLoadInteractor
     private var cancellables = Set<AnyCancellable>()
     private var currentId: PhotosListLoadId?
     private var lastId: PhotosListLoadId?
     private var captureTimeThreshold: Date?
     private var errorSubject = PassthroughSubject<Error, Never>()
-    private var linkIdsCanFetchNext: [String] = []
-    private var photoLoadStatusSubject = PassthroughSubject<RemotePhotoLoadStatus, Never>()
+    private var loadStatusSubject = CurrentValueSubject<RemotePhotoLoadStatus, Never>(.undetermined)
+    private var paginationSubject = CurrentValueSubject<PaginationStatus, Never>(.loading)
     private var isBootstrapped = false
-    private var status: RemotePhotoLoadStatus = .undetermined {
-        didSet { photoLoadStatusSubject.send(status) }
+    private var status: RemotePhotoLoadStatus {
+        get { loadStatusSubject.value }
+        set { loadStatusSubject.send(newValue) }
     }
 
     var errorPublisher: AnyPublisher<Error, Never> {
@@ -62,14 +81,18 @@ final class RemotePhotosPagingLoadController: PhotosPagingLoadController {
     }
     
     var loadStatus: AnyPublisher<RemotePhotoLoadStatus, Never> {
-        photoLoadStatusSubject.eraseToAnyPublisher()
+        loadStatusSubject.eraseToAnyPublisher()
     }
 
-    init(bootstrapController: PhotosBootstrapController, interactor: PhotosFullLoadInteractor) {
+    var paginationStatus: AnyPublisher<PaginationStatus, Never> {
+        paginationSubject.eraseToAnyPublisher()
+    }
+
+    init(bootstrapController: PhotosBootstrapController, interactor: PhotosFullLoadInteractor, errorController: ErrorSetControllerProtocol) {
         self.bootstrapController = bootstrapController
         self.interactor = interactor
+        self.errorController = errorController
         subscribeToUpdates()
-        bootstrapController.bootstrap()
     }
 
     private func subscribeToUpdates() {
@@ -79,19 +102,25 @@ final class RemotePhotosPagingLoadController: PhotosPagingLoadController {
             }
             .store(in: &cancellables)
 
-        bootstrapController.isReady
+        bootstrapController.state
             .removeDuplicates()
-            .sink { [weak self] isReady in
-                if isReady {
-                    self?.isBootstrapped = true
-                    self?.loadNext()
+            .filter { state in
+                switch state {
+                case .notFound:
+                    return false
+                case .legacyShare, .photoVolume:
+                    return true
                 }
+            }
+            .sink { [weak self] _ in
+                self?.isBootstrapped = true
+                self?.loadNext()
             }
             .store(in: &cancellables)
         
         bootstrapController.errorPublisher
             .sink { [weak self] error in
-                self?.status = error.isNetworkIssueError ? .disconnected : .failure
+                self?.setStatus(with: error)
             }
             .store(in: &cancellables)
     }
@@ -103,11 +132,24 @@ final class RemotePhotosPagingLoadController: PhotosPagingLoadController {
 
             let withoutPhoto = response.lastItem == nil && currentId?.photoId == nil
             status = withoutPhoto ? .withoutBackedUpPhoto : .hasBackedUpPhoto
+            paginationSubject.send(.finished)
         case let .failure(error):
             currentId = nil
             errorSubject.send(error)
-            Log.error(error, domain: .photosProcessing)
-            status = error.isNetworkIssueError ? .disconnected : .failure
+            errorController.setError(error)
+            Log.error(error: error, domain: .photosProcessing)
+            setStatus(with: error)
+            paginationSubject.send(.error)
+        }
+    }
+
+    private func setStatus(with error: Error) {
+        if let responseError = error as? ResponseError, responseError.isPhotoVolumeMigrationError {
+            status = .disabledDueToMigration(error: responseError.userFacingMessage ?? "")
+        } else if error.isNetworkIssueError {
+            status = .disconnected
+        } else {
+            status = .failure
         }
     }
 
@@ -120,6 +162,12 @@ final class RemotePhotosPagingLoadController: PhotosPagingLoadController {
     }
 
     func loadNext() {
+        guard !status.isDisabled else {
+            Log.info("PhotosPagingLoadController.loadNext, skipping load since the status is disabled", domain: .photosProcessing)
+            // We guard against bombing BE with redundant requests.
+            // Nothing can be listed anyway, the endpoint would return error again.
+            return
+        }
         guard isBootstrapped else {
             bootstrapController.bootstrap()
             return
@@ -133,6 +181,7 @@ final class RemotePhotosPagingLoadController: PhotosPagingLoadController {
 
         Log.info("PhotosPagingLoadController.loadNext, id: \(id.photoId ?? "empty")", domain: .photosProcessing)
         interactor.execute(with: id)
+        paginationSubject.send(.loading)
         currentId = id
     }
     

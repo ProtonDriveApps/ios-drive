@@ -17,15 +17,19 @@
 
 import Foundation
 import CoreData
+import ProtonCoreUtilities
 
 public enum SyncItemError: Error {
     case notFound
 }
 
-public final class SyncStorageManager: NSObject, ManagedStorage {
+/// Manages the Sync DB (object model, persistent container, etc.), which contains information about current and recently completed file operations.
+/// The DB is written to by the File Provider and read from by the app.
+public final class SyncStorageManager: NSObject, ManagedStorage, RecoverableStorage {
 
     private static let databaseName = "SyncModel"
-    
+    public var previousRunWasInterrupted = false
+
     private static let managedObjectModel: NSManagedObjectModel = {
         if let bundle = Bundle(for: SyncStorageManager.self).url(forResource: databaseName, withExtension: "momd"),
            let model = NSManagedObjectModel(contentsOf: bundle)
@@ -147,7 +151,7 @@ public final class SyncStorageManager: NSObject, ManagedStorage {
                 persistentStore.metadata = storeMetadata
             }
         } catch {
-            Log.error("Error on setting persistent history tracking: \(error.localizedDescription)", domain: .storage)
+            Log.error("Error on setting persistent history tracking", error: error, domain: .storage)
             completionHandler(error)
         }
     }
@@ -178,7 +182,7 @@ public final class SyncStorageManager: NSObject, ManagedStorage {
         }
     }
 
-    static func inMemoryPersistantContainer() -> NSPersistentContainer {
+    static func inMemoryPersistentContainer() -> NSPersistentContainer {
         let container = NSPersistentContainer(name: databaseName, managedObjectModel: self.managedObjectModel)
         let description = NSPersistentStoreDescription()
         description.type = NSInMemoryStoreType
@@ -206,6 +210,9 @@ public final class SyncStorageManager: NSObject, ManagedStorage {
             let context = self.persistentContainer.viewContext
             context.automaticallyMergesChangesFromParent = true
             context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
+#if os(macOS)
+            Self.keepWeakReferenceToContext(context, in: contexts)
+#endif
             return context
         }
     }()
@@ -214,44 +221,67 @@ public final class SyncStorageManager: NSObject, ManagedStorage {
         let context = self.persistentContainer.newBackgroundContext()
         context.automaticallyMergesChangesFromParent = true
         context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
+#if os(macOS)
+        Self.keepWeakReferenceToContext(context, in: contexts)
+#endif
         return context
     }()
+    
+    private static let recoveryDatabaseName = "Recovery_\(databaseName)"
+    private static let backupDatabaseName = "Backup_\(databaseName)"
+    let contexts: Atomic<[WeakReference<NSManagedObjectContext>]> = .init([])
+    public func disconnectExistingDB() throws -> PersistentStoreInfo {
+        try Self.disconnectExistingDB(named: Self.databaseName, using: persistentContainer, contexts: contexts)
+    }
+    public func createRecoveryDB(nextTo backup: PersistentStoreInfo) throws -> PersistentStoreInfo {
+        try Self.createRecoveryDB(named: Self.recoveryDatabaseName, nextTo: backup, using: persistentContainer)
+    }
+    public func reconnectExistingDBAndDiscardRecoveryIfNeeded(existing: PersistentStoreInfo, recovery: PersistentStoreInfo?) throws {
+        try Self.reconnectExistingDBAndDiscardRecoveryIfNeeded(existing: existing, recovery: recovery, using: persistentContainer, contexts: contexts)
+    }
+    public func replaceExistingDBWithRecovery(existing: PersistentStoreInfo, recovery: PersistentStoreInfo) throws {
+        try Self.replaceExistingDBWithRecovery(
+            backupName: Self.backupDatabaseName, existing: existing, recovery: recovery, using: persistentContainer, contexts: contexts
+        )
+    }
+    @discardableResult
+    public func cleanupLeftoversFromPreviousRecoveryAttempt() -> Bool {
+        Self.cleanupLeftoversFromPreviousRecoveryAttempt(
+            existingName: Self.databaseName, recoveryName: Self.recoveryDatabaseName, backupName: Self.backupDatabaseName, using: persistentContainer
+        )
+    }
+    public func moveExistingDBToBackup(existing: PersistentStoreInfo) throws -> PersistentStoreInfo {
+        try Self.moveExistingDBToBackup(
+            backupName: Self.backupDatabaseName, existing: existing, using: persistentContainer, contexts: contexts
+        )
+    }
+    public func restoreFromBackup() throws {
+        try Self.restoreFromBackup(backupName: Self.backupDatabaseName, existingName: Self.databaseName, using: persistentContainer)
+    }
 
     public init(suite: SettingsStorageSuite) {
         #if os(macOS)
         switch suite {
         case .inMemory:
-            self.persistentContainer = Self.inMemoryPersistantContainer()
+            self.persistentContainer = Self.inMemoryPersistentContainer()
         default:
             self.persistentContainer = Self.defaultPersistentContainer(suiteUrl: suite.directoryUrl)
         }
         #else
-        self.persistentContainer = Self.inMemoryPersistantContainer()
+        self.persistentContainer = Self.inMemoryPersistentContainer()
         #endif
+        
+        super.init()
+        
+        do {
+            try restoreFromBackup()
+            cleanupLeftoversFromPreviousRecoveryAttempt()
+        } catch {
+            Log.error("Restoring from backup failed", error: error, domain: .storage)
+        }
 
         #if DEBUG
         Log.debug("💠 Sync CoreData model located at: \(self.persistentContainer.persistentStoreCoordinator.persistentStores)", domain: .storage)
         #endif
     }
-
-    public func clearUp() async {
-        await self.mainContext.perform {
-            self.mainContext.reset()
-        }
-
-        await self.backgroundContext.perform {
-            self.backgroundContext.reset()
-
-            [SyncItem.self].forEach { entity in
-                let request = NSBatchDeleteRequest(fetchRequest: NSFetchRequest<NSFetchRequestResult>(entityName: String(describing: entity)))
-                request.resultType = .resultTypeObjectIDs
-                do {
-                    _ = try self.persistentContainer.persistentStoreCoordinator.execute(request, with: self.backgroundContext)
-                } catch {
-                    assert(false, "Could not perform batch deletion after logout")
-                }
-            }
-        }
-    }
-
 }

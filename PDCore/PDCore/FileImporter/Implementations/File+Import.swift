@@ -40,6 +40,10 @@ extension File {
         coreDataFile.nameSignatureEmail = file.signatureAddress
         coreDataFile.state = .interrupted
 
+        #if os(macOS)
+        coreDataFile.isInheritingOfflineAvailable = file.isInheritingOfflineAvailable
+        #endif
+
         coreDataFile.uploadID = file.uploadID
         coreDataFile.createdDate = Date()
         coreDataFile.modifiedDate = Date()

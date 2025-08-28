@@ -30,5 +30,9 @@ final class DebugEventLoopsTimingController: EventLoopsTimingController {
     func setExecutedLoops(loopIds: [LoopID]) {
         // no-op
     }
+
+    func updateHistoryForForcePolling(volumeIDs: [String]) {
+        
+    }
 }
 #endif

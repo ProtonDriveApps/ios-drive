@@ -33,13 +33,13 @@ final class DatabasePhotoInfoRepository: PhotoInfoRepository {
 
     init(storage: StorageManager) {
         self.storage = storage
-        managedObjectContext = storage.newBackgroundContext()
+        managedObjectContext = storage.photosSecondaryBackgroundContext
     }
 
     func execute(with id: PhotoId) {
         managedObjectContext.perform { [weak self] in
             guard let self, let photo = Photo.fetch(identifier: id, in: self.managedObjectContext) else {
-                Log.error("Photo with identifier:\(id) not found", domain: .photosUI)
+                Log.error("Photo with identifier:\(id) not found", error: nil, domain: .photosUI)
                 return
             }
 

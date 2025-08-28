@@ -39,7 +39,7 @@ final class CoreDataFileImporter: FileImporter {
             do {
                 let newFile = try makeEncryptedImportedFile(url, parent, localID)
                 let coreDataFile = File.`import`(newFile, moc: moc)
-                coreDataFile.parentLink = folder
+                coreDataFile.parentFolder = folder
                 try moc.saveOrRollback()
 
                 Log.info("STAGE: 0 Batch imported 🗂💾 finished ✅", domain: .uploader)
@@ -51,7 +51,7 @@ final class CoreDataFileImporter: FileImporter {
                 try? FileManager.default.removeItem(at: url)
 
                 Log.info("STAGE: 0 Batch imported 🗂💾 finished ❌", domain: .uploader)
-                Log.error(error, domain: .uploader)
+                Log.error("Batch import failed", error: error, domain: .uploader)
 
                 throw error
             }
@@ -91,6 +91,7 @@ final class CoreDataFileImporter: FileImporter {
             contentKeyPacketSignature: contentKeyPacket.contentKeyPacketSignature,
             parentLinkID: parent.id,
             clientUID: clientUID,
+            isInheritingOfflineAvailable: parent.availableOffline,
             shareID: parent.shareID,
             volumeID: parent.volumeID,
             uploadID: uuid,

@@ -17,7 +17,7 @@
 
 import FileProvider
 
-extension NSFileProviderItemIdentifier: Identifiable {
+extension NSFileProviderItemIdentifier: Swift.Identifiable {
     public var id: String {
         return self.rawValue
     }

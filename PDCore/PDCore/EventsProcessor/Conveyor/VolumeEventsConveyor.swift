@@ -63,8 +63,27 @@ final class VolumeEventsConveyor: EventsConveyor {
     }
 
     func record(_ events: [GenericEvent]) {
+        var processEvents: [GenericEvent] = []
+        for event in events {
+            guard let volumeEvent = event as? Event else { continue }
+            if event.genericType == .delete {
+                // Deleted event doesn't have volumeId, without it controller can't retrieve event from DB
+                let copiedEvent = Event(
+                    contextShareID: "",
+                    eventID: volumeEvent.eventId,
+                    eventType: volumeEvent.eventType,
+                    createTime: volumeEvent.createTime,
+                    link: .init(link: volumeEvent.link, volumeID: volumeId),
+                    data: volumeEvent.data
+                )
+                processEvents.append(copiedEvent)
+            } else {
+                processEvents.append(volumeEvent)
+            }
+            Log.debug("Persist event \(volumeEvent.eventId) to db", domain: .events)
+        }
         persistentQueue.persist(
-            events: zip(events, events.compactMap { try? serializer.serialize(event: $0) }),
+            events: zip(processEvents, processEvents.compactMap { try? serializer.serialize(event: $0) }),
             provider: String(describing: CloudSlot.self)
         )
     }
@@ -81,8 +100,20 @@ final class VolumeEventsConveyor: EventsConveyor {
             assert(false, "Failed to unpack Event contents")
             return nil
         }
-
-        return (event, shareId, objectID)
+        if event.genericType == .delete, let volumeEvent = event as? Event {
+            // Revert volumeID
+            let copiedEvent = Event(
+                contextShareID: "",
+                eventID: volumeEvent.eventId,
+                eventType: volumeEvent.eventType,
+                createTime: volumeEvent.createTime,
+                link: .init(link: volumeEvent.link, volumeID: ""),
+                data: volumeEvent.data
+            )
+            return (copiedEvent, shareId, objectID)
+        } else {
+            return (event, shareId, objectID)
+        }
     }
 
     func hasUnprocessedEvents() -> Bool {

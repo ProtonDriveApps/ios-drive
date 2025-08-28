@@ -19,25 +19,27 @@ import PDClient
 import PDCore
 final class SequentialSharedByMeLinksRepository: SharedByMeLinksRepository {
 
-    private let volumeId: String
+    private let volumeIds: [String]
     private let sharedByMeLinkIdsDataSource: SharedByMeLinkIdsDataSource
     private let linksMetadataDataSource: LinksMetadataDataSource
     private let storage: StorageManager
 
     init(
-        volumeId: String,
+        volumeIds: [String],
         sharedByMeLinkIdsDataSource: SharedByMeLinkIdsDataSource,
         linksMetadataDataSource: LinksMetadataDataSource,
         storage: StorageManager
     ) {
-        self.volumeId = volumeId
+        self.volumeIds = volumeIds
         self.sharedByMeLinkIdsDataSource = sharedByMeLinkIdsDataSource
         self.linksMetadataDataSource = linksMetadataDataSource
         self.storage = storage
     }
 
     func getLinks() async throws {
-        let sharedByMeLinkIds = try await fetchSharedByMeLinksIds()
+        let sharedByMeLinkIds = try await volumeIds.asyncFlatMap { volumeId in
+            try await fetchSharedByMeLinksIds(volumeId: volumeId)
+        }
 
         let groupedLinkMetadataParameters = sharedByMeLinkIds.toLinksMetadataParameters()
 
@@ -46,7 +48,7 @@ final class SequentialSharedByMeLinksRepository: SharedByMeLinksRepository {
         }
     }
 
-    private func fetchSharedByMeLinksIds() async throws -> [SharedByMeListResponse.Link] {
+    private func fetchSharedByMeLinksIds(volumeId: String) async throws -> [SharedByMeListResponse.Link] {
         var links = [SharedByMeListResponse.Link]()
         let validator = makeSupportedSharesValidator()
         var more = false

@@ -98,20 +98,20 @@ final class ConcretePhotosProcessingContext: PhotosProcessingContext {
     }
 
     func completeIdentifiersValidation(identifiers: PhotoIdentifiers) {
-        Log.info("\(Self.self).completeIdentifiersValidation, count: \(identifiers.count)", domain: .photosProcessing)
+        Log.info("completeIdentifiersValidation, count: \(identifiers.count)", domain: .photosProcessing)
         validIdentifiers = Set(identifiers)
         invalidIdentifiers = initialIdentifiers.subtracting(validIdentifiers)
     }
 
     func addCreated(compounds: [PhotoAssetCompound], identifier: PhotoIdentifier) {
-        Log.info("\(Self.self).addCreated, count: \(compounds.count)", domain: .photosProcessing)
+        Log.info("addCreated, count: \(compounds.count)", domain: .photosProcessing)
         compounds.forEach { compound in
             createdCompoundPairs.append(IdentifierCompoundPair(identifier: identifier, compound: compound))
         }
     }
 
     func completeCompoundsCreation() {
-        Log.info("\(Self.self).completeCompoundsCreation", domain: .photosProcessing)
+        Log.info("completeCompoundsCreation", domain: .photosProcessing)
         let processedIdentifiers = createdCompoundPairs.map(\.identifier) + failedIdentifiersAndError.keys + skippedIdentifiers + missingIdentifiers + replacedIdentifiers.keys
         let newSkippedIdentifiers = Set(validIdentifiers).subtracting(processedIdentifiers)
         skippedIdentifiers.formUnion(newSkippedIdentifiers)
@@ -124,22 +124,22 @@ final class ConcretePhotosProcessingContext: PhotosProcessingContext {
     }
 
     func addTemporaryError(identifier: PhotoIdentifier, error: Error) {
-        Log.info("\(Self.self).addTemporaryError: \(error.localizedDescription)", domain: .photosProcessing)
+        Log.info("addTemporaryError: \(error.localizedDescription)", domain: .photosProcessing)
         skippedIdentifiers.insert(identifier)
     }
 
     func addMissing(identifier: PhotoIdentifier) {
-        Log.info("\(Self.self).addMissing", domain: .photosProcessing)
+        Log.info("addMissing", domain: .photosProcessing)
         missingIdentifiers.insert(identifier)
     }
 
     func replace(initialIdentifier: PhotoIdentifier, updatedIdentifier: PhotoIdentifier) {
-        Log.info("\(Self.self).replace", domain: .photosProcessing)
+        Log.info("replace", domain: .photosProcessing)
         replacedIdentifiers[initialIdentifier] = updatedIdentifier
     }
 
     func completeCompoundsValidation(result: FilteredPhotoCompoundsResult) {
-        Log.info("\(Self.self).completeCompoundsValidation, validCompounds: \(result.validCompounds.count), validPartialCompounds: \(result.validPartialCompounds.count), invalidCompounds: \(result.invalidCompounds.count), failedCompounds: \(result.failedCompounds.count)", domain: .photosProcessing)
+        Log.info("completeCompoundsValidation, validCompounds: \(result.validCompounds.count), validPartialCompounds: \(result.validPartialCompounds.count), invalidCompounds: \(result.invalidCompounds.count), failedCompounds: \(result.failedCompounds.count)", domain: .photosProcessing)
         var validIdentifiers = Set<PhotoIdentifier>()
         result.validCompounds.forEach { compound in
             guard let pair = createdCompoundPairs.first(where: { $0.compound == compound }) else { return }
@@ -174,7 +174,7 @@ final class ConcretePhotosProcessingContext: PhotosProcessingContext {
     }
 
     func failValidation(compounds: [PhotoAssetCompound], error: Error) {
-        Log.error(error, domain: .photosProcessing)
+        Log.error(error: error, domain: .photosProcessing)
         compounds.forEach { compound in
             guard let pair = createdCompoundPairs.first(where: { $0.compound == compound }) else { return }
             invalidAssets += compound.allAssets
@@ -183,7 +183,7 @@ final class ConcretePhotosProcessingContext: PhotosProcessingContext {
     }
 
     func completeImport() {
-        Log.info("\(Self.self).completeImport, count: \(validatedCompoundPairs.count)", domain: .photosProcessing)
+        Log.info("completeImport, count: \(validatedCompoundPairs.count)", domain: .photosProcessing)
         importedCompoundPairs = validatedCompoundPairs
     }
 

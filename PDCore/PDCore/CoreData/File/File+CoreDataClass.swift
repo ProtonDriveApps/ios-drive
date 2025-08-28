@@ -18,6 +18,8 @@
 import Foundation
 import CoreData
 
+public typealias CoreDataFile = File
+
 @objc(File)
 public class File: Node {
 

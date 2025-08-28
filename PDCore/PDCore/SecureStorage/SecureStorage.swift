@@ -77,7 +77,7 @@ public final class SecureStorage<T: Codable> {
             } catch {
                 do {
                     if let keychainAccessError = error as? Keychain.AccessError {
-                        Log.error(keychainAccessError, domain: .storage)
+                        Log.error(error: keychainAccessError, domain: .storage)
                         fatalError("Crashing because of keychain access error \(keychainAccessError.localizedDescription)")
                     } else {
                         try persistentStore.wipe()
@@ -85,7 +85,13 @@ public final class SecureStorage<T: Codable> {
                     }
                     return nil
                 } catch {
-                    Log.error("has not wiped persistent store \(label) failed because of: \(error.localizedDescription)", domain: .storage)
+                    Log
+                        .error(
+                            "Wiping persistent store failed",
+                            error: error,
+                            domain: .storage,
+                            context: LogContext("Label: \(label)")
+                        )
                     return nil
                 }
             }
@@ -112,11 +118,11 @@ public final class SecureStorage<T: Codable> {
                         inMemoryStore?.update(newValue)
                         crossProcessNotifier?.post()
                     default:
-                        Log.error(keychainAccessError, domain: .storage)
+                        Log.error(error: keychainAccessError, domain: .storage)
                         fatalError("Crashing because of keychain access error \(keychainAccessError.localizedDescription)")
                     }
                 } else {
-                    Log.error(error, domain: .storage)
+                    Log.error(error: error, domain: .storage)
                     assert(false, "Failed to lock secured storage: " + error.localizedDescription)
                     inMemoryStore?.wipe()
                 }

@@ -17,6 +17,7 @@
 
 import Combine
 import PDCore
+import PDPhotos
 
 final class PhotoAssetsStorageController: PhotoBackupConstraintController {
     private let backupController: PhotosBackupController

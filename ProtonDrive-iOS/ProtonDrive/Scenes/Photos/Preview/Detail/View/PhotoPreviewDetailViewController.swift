@@ -21,21 +21,26 @@ import SwiftUI
 import UIKit
 import Photos
 import enum ProtonCoreUtilities.Either
+import PDUIComponents
 
 final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewModelProtocol>: UIViewController, PhotosPreviewItemView {
     private let viewModel: ViewModel
+    private let loadingViewController: UIViewController
     private var cancellables = Set<AnyCancellable>()
     private weak var rootViewController: UIViewController?
     private lazy var contentView = UIView()
     private weak var interactiveView: InteractiveImageView?
-    private var isContentUpdateNeeded = true
+    private weak var videoViewController: UIViewController?
+    private var isContentUpdateNeeded = false
+    private var isFirstLoading = true
     private var gestureRecognizers = [UIGestureRecognizer]()
     private var displayMode: PhotosPreviewMode = .default {
         didSet { interactiveView?.updateCurrentDisplayMode(mode: displayMode) }
     }
 
-    init(viewModel: ViewModel) {
+    init(viewModel: ViewModel, loadingViewController: UIViewController) {
         self.viewModel = viewModel
+        self.loadingViewController = loadingViewController
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -45,15 +50,12 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.addSubview(contentView)
-        contentView.fillSuperview()
-        subscribeToUpdates()
-        viewModel.viewDidLoad()
-        subscribeAppTermination()
+        prepareView()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        prepareView()
         if isContentUpdateNeeded {
             handleUpdate()
             isContentUpdateNeeded = false
@@ -64,6 +66,21 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
         super.viewDidDisappear(animated)
         isContentUpdateNeeded = true
         resetContent()
+    }
+
+    private func prepareView() {
+        // Needs to be called asap from `viewDidLoad` or `viewWillAppear`, whichever is called first
+        // They're not always called in correct order. 😱
+        guard isFirstLoading else {
+            return
+        }
+
+        isFirstLoading = false
+        view.addSubview(contentView)
+        contentView.fillSuperview()
+        subscribeToUpdates()
+        viewModel.viewDidLoad()
+        subscribeAppTermination()
     }
 
     private func subscribeToUpdates() {
@@ -83,15 +100,15 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
         children.forEach { $0.remove() }
         contentView.subviews.forEach { $0.removeFromSuperview() }
         gestureRecognizers.forEach { view.removeGestureRecognizer($0) }
+        videoViewController = nil
     }
 
     private func handleUpdate() {
         guard let state = viewModel.state else { return }
 
         switch state {
-        case let .loading(loadingText, thumbnail):
+        case let .loading(loadingText):
             resetContent()
-            thumbnail.map { addThumbnailView(data: $0) }
             addLoading(text: loadingText)
         case let .preview(fullPreview):
             addFullPreview(fullPreview)
@@ -101,12 +118,6 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
         }
     }
 
-    private func addThumbnailView(data: Data) {
-        let imageView = BlurredImageView(data: data)
-        contentView.addSubview(imageView)
-        imageView.fillSuperview()
-    }
-
     private func addLoading(text: String) {
         let loadingView = LoadingWithTextView(text: text)
         contentView.addSubview(loadingView)
@@ -114,27 +125,38 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
         addDefaultGestureRecognizers()
     }
 
-    private func addInteractiveImageView(with data: PreviewDataType) {
+    private func setupImageView(with data: PreviewDataType) {
+        if videoViewController != nil {
+            resetContent()
+        }
         if let imageView = interactiveView {
             imageView.setupLayout(with: data)
         } else {
-            let imageView = InteractiveImageView(data: data, displayMode: displayMode, parentViewController: self)
-            contentView.addSubview(imageView)
-            imageView.fillSuperview()
-            interactiveView = imageView
-            addDefaultGestureRecognizers()
+            addInteractiveImageView(with: data)
         }
+    }
+
+    private func addInteractiveImageView(with data: PreviewDataType) {
+        let loadingViewWrapper = UIView()
+        loadingViewWrapper.backgroundColor = .clear
+        let imageView = InteractiveImageView(data: data, displayMode: displayMode, parentViewController: self, loadingView: loadingViewWrapper)
+        contentView.addSubview(imageView)
+        imageView.fillSuperview()
+        interactiveView = imageView
+        add(loadingViewController, to: loadingViewWrapper)
+        addDefaultGestureRecognizers()
     }
 
     private func addVideoView(with url: URL) {
         let viewController = VideoContentViewController(url: url)
         add(viewController, to: contentView)
         addVideoGestureRecognizers()
+        videoViewController = viewController
     }
 
     private func addError(title: String, text: String) {
-        let configuration = EmptyViewConfiguration(image: .cloudError, title: title, message: text)
-        let viewController = UIHostingController(rootView: EmptyFolderView(viewModel: configuration))
+        let configuration = PlaceholderViewConfiguration(image: .type(.cloudError), title: title, message: text)
+        let viewController = UIHostingController(rootView: PlaceholderView(viewModel: configuration))
         add(viewController, to: contentView)
     }
 
@@ -163,29 +185,20 @@ final class PhotoPreviewDetailViewController<ViewModel: PhotoPreviewDetailViewMo
     private func addFullPreview(_ preview: PhotoFullPreview) {
         switch preview {
         case let .thumbnail(data):
-            resetContent()
-            addInteractiveImageView(with: .image(data))
+            setupImageView(with: .thumbnail(data))
         case let .image(url):
-            resetContent()
             let data = (try? Data(contentsOf: url)) ?? Data()
-            addInteractiveImageView(with: .image(data))
+            setupImageView(with: .image(data))
         case let .gif(url):
-            resetContent()
             let data = (try? Data(contentsOf: url)) ?? Data()
-            addInteractiveImageView(with: .gif(data))
+            setupImageView(with: .gif(data))
         case let .video(url):
             resetContent()
             addVideoView(with: url)
         case let .livePhoto(photoURL, videoURL, isLoading):
-            if interactiveView == nil {
-                resetContent()
-            }
-            addInteractiveImageView(with: .livePhoto(photoURL, videoURL, isLoading))
+            setupImageView(with: .livePhoto(photoURL, videoURL, isLoading))
         case let .burstPhoto(photoURL, childrenURLs, isLoading):
-            if interactiveView == nil {
-                resetContent()
-            }
-            addInteractiveImageView(with: .burstPhoto(photoURL, childrenURLs, isLoading))
+            setupImageView(with: .burstPhoto(photoURL, childrenURLs, isLoading))
         }
     }
 

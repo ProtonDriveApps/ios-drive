@@ -78,6 +78,10 @@ extension NodeRowActionMenuViewModel {
             return openInBrowser(type, vm: vm, environment: environment)
         case .removeMe: 
             return removeMe(type, vm: vm, environment: environment)
+        case .removeBookmark:
+            return removeBookmark(type, vm: vm, environment: environment)
+        case .copyBookmark:
+            return copyBookmark(type, vm: vm, environment: environment)
         }
     }
     
@@ -121,5 +125,13 @@ extension NodeRowActionMenuViewModel {
 
     private func removeMe(_ type: EditSectionItem, vm: EditSectionViewModel, environment: Environment) -> ContextMenuItem {
         ContextMenuItem(sectionItem: type, role: .destructive, handler: { environment.removeMeNode(of: self) })
+    }
+
+    private func removeBookmark(_ type: EditSectionItem, vm: EditSectionViewModel, environment: Environment) -> ContextMenuItem {
+        ContextMenuItem(sectionItem: type, role: .destructive, handler: { environment.removeBookmark(of: self) })
+    }
+
+    private func copyBookmark(_ type: EditSectionItem, vm: EditSectionViewModel, environment: Environment) -> ContextMenuItem {
+        ContextMenuItem(sectionItem: type, handler: { environment.copyBookmarkURL(vm: vm) })
     }
 }

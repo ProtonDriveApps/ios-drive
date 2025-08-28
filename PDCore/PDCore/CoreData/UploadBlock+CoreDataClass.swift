@@ -18,6 +18,8 @@
 import Foundation
 import CoreData
 
+public typealias CoreDataUploadBlock = UploadBlock
+
 @objc(UploadBlock)
 public class UploadBlock: Block {
 

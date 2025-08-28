@@ -38,3 +38,24 @@ public struct MenuButton: View {
         .accessibility(identifier: "Button.BurgerMenu")
     }
 }
+
+public struct BackButton: View {
+    private let action: () -> Void
+
+    public init(action: @escaping () -> Void) {
+        self.action = action
+    }
+
+    public var body: some View {
+        Button(action: {
+            action()
+        }, label: {
+            IconProvider.arrowLeft
+                .resizable()
+                .frame(width: 24, height: 24)
+                .foregroundColor(Color.IconNorm)
+        })
+        .frame(width: 40, height: 40, alignment: .leading)
+        .accessibility(identifier: "Button.BackButton")
+    }
+}

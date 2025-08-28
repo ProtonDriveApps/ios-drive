@@ -17,12 +17,17 @@
 
 import Combine
 import PDCore
+import PDCoreIOS
 import Foundation
+import PDLocalization
 
 protocol PhotosGridViewModelProtocol: ObservableObject {
     var sections: [PhotosGridViewSection] { get }
+    var paginationStatus: PaginationStatus { get }
     var error: PassthroughSubject<Error?, Never> { get }
+    var scrollToTopPublisher: AnyPublisher<TabBarItem, Never> { get }
     var footer: String { get }
+    var footerError: String { get }
     func didShowLastItem()
 }
 
@@ -33,13 +38,22 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
     private var cancellables = Set<AnyCancellable>()
 
     @Published var sections: [PhotosGridViewSection] = []
+    @Published var paginationStatus: PaginationStatus = .finished
     let error = PassthroughSubject<Error?, Never>()
-    let footer: String = "End-to-end encrypted"
+    let scrollToTopPublisher: AnyPublisher<TabBarItem, Never>
+    let footer: String = Localization.photos_screen_footer
+    let footerError: String = Localization.photos_screen_footer_error
 
-    init(controller: PhotosGalleryController, loadController: PhotosPagingLoadController, monthFormatter: MonthFormatter) {
+    init(
+        controller: PhotosGalleryController,
+        loadController: PhotosPagingLoadController,
+        monthFormatter: MonthFormatter,
+        scrollToTopPublisher: AnyPublisher<TabBarItem, Never>
+    ) {
         self.controller = controller
         self.monthFormatter = monthFormatter
         self.loadController = loadController
+        self.scrollToTopPublisher = scrollToTopPublisher
         subscribeToUpdates()
     }
 
@@ -56,12 +70,15 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
         
         loadController.errorPublisher
             .sink { [weak self] error in
-                Log.error(error, domain: .photosProcessing)
+                Log.error(error: error, domain: .photosProcessing)
                 #if HAS_QA_FEATURES
                 self?.error.send(PhotosGridError.failedFetch)
                 #endif
             }
             .store(in: &cancellables)
+
+        loadController.paginationStatus
+            .assign(to: &$paginationStatus)
     }
     
     private func handle(_ sections: [PhotosSection]) {
@@ -78,8 +95,7 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
 
     private func makePhoto(from photo: PhotosSection.Photo) -> PhotoGridViewItem {
         PhotoGridViewItem(
-            photoId: photo.id.nodeID,
-            shareId: photo.id.shareID,
+            photoId: photo.id.id,
             volumeId: photo.id.volumeID,
             isShared: photo.isShared,
             hasDirectShare: photo.hasDirectShare,

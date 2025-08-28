@@ -146,6 +146,12 @@ public extension Revision {
     }
 }
 
+public extension Revision {
+    var presentableRevisionSize: Int {
+        (try? decryptedExtendedAttributes().common?.size) ?? size
+    }
+}
+
 // MARK: Transient properties
 public extension Revision {
     @NSManaged var clearXAttributes: ExtendedAttributes?

@@ -47,13 +47,13 @@ extension ManagedStorage {
     {
         let existing: [Entity] = self.existing(with: ids, by: keyPath, allowSubclasses: allowSubclasses, in: moc)
         var presentObjects: [Entity] = existing
-        
+
         let presentIds = Set(presentObjects.compactMap { $0.value(forKey: keyPath) as? String })
         let newIds = Set(ids).subtracting(presentIds)
-        
+
         let newObjects: [Entity] = newIds.map { self.new(with: $0, by: keyPath, in: moc) }
         presentObjects.append(contentsOf: newObjects)
-        
+
         return presentObjects
     }
 
@@ -63,7 +63,7 @@ extension ManagedStorage {
         new.setValue(id, forKey: keyPath)
         return new as! Entity
     }
-    
+
     public func existing<Entity: NSManagedObject>(with ids: Set<String>, by keyPath: String = "id", allowSubclasses: Bool = false, in moc: NSManagedObjectContext) -> [Entity] {
         let fetchRequest = NSFetchRequest<Entity>()
         fetchRequest.entity = Entity.entity()
@@ -72,7 +72,7 @@ extension ManagedStorage {
             fetchRequest.predicate = NSPredicate(format: "(%K IN %@)", keyPath, ids)
         } else {
             // This allows only specific entity types
-            fetchRequest.predicate = NSPredicate(format: "(self.entity == %@ AND %K IN %@)", Entity.entity(), keyPath, ids)
+            fetchRequest.predicate = NSPredicate(format: "(%K IN %@ AND self.entity == %@)", keyPath, ids, Entity.entity())
         }
         return (try? moc.fetch(fetchRequest) ) ?? []
     }
@@ -84,7 +84,7 @@ extension ManagedStorage {
         if allowSubclasses {
             fetchRequest.predicate = NSPredicate(format: "(%K == %@)", "id", id)
         } else {
-            fetchRequest.predicate = NSPredicate(format: "(self.entity == %@ AND %K == %@)", Entity.entity(), "id", id)
+            fetchRequest.predicate = NSPredicate(format: "(%K == %@ AND self.entity == %@)", "id", id, Entity.entity())
         }
         fetchRequest.fetchLimit = 1 // Limit the fetch to only one object
         return try moc.fetch(fetchRequest).first
@@ -99,13 +99,15 @@ extension ManagedStorage {
         fetchRequest.predicate = NSPredicate(format: "(%K IN %@)", keyPath, [id])
         fetchRequest.includesSubentities = true
         fetchRequest.resultType = .countResultType
-        
-        do {
-            let count = try moc.fetch(fetchRequest)
-            return count.first?.intValue != 0
-        } catch let error {
-            assert(false, error.localizedDescription)
-            return false
+
+        return moc.performAndWait {
+            do {
+                let count = try moc.fetch(fetchRequest)
+                return count.first?.intValue != 0
+            } catch let error {
+                assert(false, error.localizedDescription)
+                return false
+            }
         }
     }
 }
@@ -127,7 +129,7 @@ extension ManagedStorage {
         fetchRequest.fetchLimit = 1
         fetchRequest.predicate = allowSubclasses
             ? NSPredicate(format: "%K == %@", keyPath, id)
-            : NSPredicate(format: "self.entity == %@ AND %K == %@", Entity.entity(), keyPath, id)
+            : NSPredicate(format: "%K == %@ AND self.entity == %@", keyPath, id, Entity.entity())
 
         return try? context.fetch(fetchRequest).first
     }

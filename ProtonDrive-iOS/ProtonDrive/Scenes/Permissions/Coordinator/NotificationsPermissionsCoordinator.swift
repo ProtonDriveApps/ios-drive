@@ -18,6 +18,7 @@
 import Combine
 import UIKit
 import PDCore
+import PDCoreIOS
 
 final class NotificationsPermissionsCoordinator {
     private let windowScene: UIWindowScene

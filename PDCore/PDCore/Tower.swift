@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Combine
 import Foundation
 import CoreData
 import PDClient
@@ -37,7 +38,7 @@ public class Tower: NSObject {
     public let revisionImporter: RevisionImporter
     public let uploadVerifierFactory: UploadVerifierFactory
     public let downloader: Downloader!
-    public let refresher: RefreshingNodesService
+    public let refresher: RefreshingNodesServiceProtocol
     public let uiSlot: UISlot!
     public let cloudSlot: CloudSlotProtocol!
     public let fileSystemSlot: FileSystemSlot!
@@ -46,6 +47,7 @@ public class Tower: NSObject {
     public let localSettings: LocalSettings
     public let paymentsStorage: PaymentsSecureStorage
     public let offlineSaver: OfflineSaver?
+    public let connectionStateResource: ConnectionStateResource
 
     public var photoUploader: FileUploader?
 
@@ -59,8 +61,10 @@ public class Tower: NSObject {
     public let featureFlags: FeatureFlagsRepository
     public let parallelEncryption: Bool
     public let entitlementsManager: EntitlementsManagerProtocol
+    private var cancellables = Set<AnyCancellable>()
 
     // internal for Tower+Events.swift
+    var externalInvitationConverter: ExternalInvitationConvertProtocol?
     var storageSuite: SettingsStorageSuite
     var mainVolumeEventsConveyor: EventsConveyor?
     var volumeEventsReferenceStorage: VolumeEventsReferenceStorageProtocol?
@@ -101,7 +105,7 @@ public class Tower: NSObject {
                 syncStorage: SyncStorageManager? = nil,
                 eventStorage: EventStorageManager,
                 appGroup: SettingsStorageSuite,
-                mainKeyProvider: Keymaker,
+                mainKeyProvider: MainKeyProvider,
                 sessionVault: SessionVault,
                 sessionCommunicator: SessionRelatedCommunicatorBetweenMainAppAndExtensions,
                 authenticator: Authenticator,
@@ -109,11 +113,15 @@ public class Tower: NSObject {
                 network: PMAPIService,
                 eventObservers: [EventsListener],
                 eventProcessingMode: DriveEventsLoopMode,
+                eventLoopInterval: Double,
                 networkSpy: DriveAPIService? = nil,
                 uploadVerifierFactory: UploadVerifierFactory,
                 localSettings: LocalSettings,
-                populatedStateController: PopulatedStateControllerProtocol
+                populatedStateController: PopulatedStateControllerProtocol,
+                connectionStateResource: ConnectionStateResource
     ) {
+        Log.trace("eventLoopInterval: \(eventLoopInterval)")
+
         self.storage = storage
         self.syncStorage = syncStorage
         self.uiSlot = UISlot(storage: storage)
@@ -131,6 +139,7 @@ public class Tower: NSObject {
         let client = Client(credentialProvider: self.sessionVault, service: api, networking: networkSpy ?? network)
         client.errorMonitor = ErrorMonitor(Log.deserializationErrors)
         self.client = client
+        self.connectionStateResource = connectionStateResource
 
         #if os(macOS)
         self.cloudSlot = CloudSlot(client: client, storage: storage, sessionVault: sessionVault)
@@ -142,6 +151,11 @@ public class Tower: NSObject {
         let endpointFactory = DriveEndpointFactory(service: api, credentialProvider: sessionVault)
         let downloader = Downloader(cloudSlot: cloudSlot, storage: storage, endpointFactory: endpointFactory)
         self.downloader = downloader
+        #if os(iOS)
+        if let slot = cloudSlot as? VolumeDBCloudSlot {
+            slot.set(downloader: downloader)
+        }
+        #endif
 
         self.featureFlags = FeatureFlagsRepositoryFactory().makeRepository(
            configuration: clientConfig,
@@ -173,7 +187,7 @@ public class Tower: NSObject {
         #elseif os(iOS)
         eventsTimingController = eventsFactory.makeMultipleVolumesTimingController(volumeIdsController: volumeIdsController)
         #else
-        eventsTimingController = eventsFactory.makeSingleVolumeTimingController()
+        eventsTimingController = eventsFactory.makeSingleVolumeTimingController(interval: eventLoopInterval)
         #endif
         self.coreEventManager = eventsFactory.makeCoreEventsSystem(appGroup: appGroup, sessionVault: sessionVault, generalSettings: generalSettings, paymentsSecureStorage: paymentsStorage, network: network, timingController: eventsTimingController, contactAdapter: contactAdapter, entitlementsManager: entitlementsManager)
         eventStorageManager = eventStorage
@@ -207,7 +221,13 @@ public class Tower: NSObject {
                 filecleaner: cloudSlot,
                 moc: storage.backgroundContext
             )
-            self.offlineSaver = OfflineSaver(clientConfig: clientConfig, storage: storage, downloader: downloader, populatedStateController: populatedStateController)
+            self.offlineSaver = OfflineSaver(
+                clientConfig: clientConfig,
+                storage: storage,
+                downloader: downloader,
+                populatedStateController: populatedStateController,
+                connectionStateResource: connectionStateResource
+            )
         }
         #endif
 
@@ -221,8 +241,17 @@ public class Tower: NSObject {
             _shouldFetchEvents.configure(with: .group(named: Constants.appGroup))
         }
 
+        #if os(macOS)
         NotificationCenter.default.addObserver(self, selector: #selector(reloadCache), name: .nukeCache, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(cleanLogs), name: .nukeLogs, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(reloadCacheExcludingEvents), name: .nukeCacheExcludingEvents, object: nil)
+
+        // iOS uses `subscribeToCleanUpNotifications`
+        #endif
+    }
+
+    deinit {
+        Log.info("Deinitializing Tower", domain: .application)
     }
 
     public func cleanUpLockedVolumeIfNeeded(using domainManager: DomainOperationsServiceProtocol) async throws {
@@ -299,10 +328,11 @@ public class Tower: NSObject {
             discardEventsPolling(for: coreEventManager)
         }
         if cleanupStrategy.shouldCleanMetadata {
-            await storage.clearUp()
+            await storage.cleanUp()
         }
     }
 
+    #if os(iOS)
     @MainActor
     public func signOut(cacheCleanupStrategy: CacheCleanupStrategy) async {
         if let userId = sessionVault.userInfo?.ID {
@@ -311,13 +341,14 @@ public class Tower: NSObject {
         }
         await destroyCache(strategy: cacheCleanupStrategy)
         featureFlags.stop() // stop when logged out
-        await removeSessionInBE() // Before sessionVault clean to have the credential
+        await Self.removeSessionInBE(sessionVault: sessionVault, authenticator: authenticator) // Before sessionVault clean to have the credential
         sessionVault.signOut()
         sessionCommunicator.clearStateOnSignOut()
     }
+    #endif
 
     @MainActor
-    private func destroyCache(strategy cacheCleanupStrategy: CacheCleanupStrategy) async {
+    public func destroyCache(strategy cacheCleanupStrategy: CacheCleanupStrategy) async {
         photoUploader?.didSignOut = true
         photoUploader?.cancelAllOperations()
         fileUploader.didSignOut = true
@@ -340,25 +371,33 @@ public class Tower: NSObject {
         generalSettings.cleanUp()
 
         if cacheCleanupStrategy.shouldCleanMetadata {
-            await storage.clearUp()
+            await storage.cleanUp()
         }
-        await syncStorage?.clearUp()
+        await syncStorage?.cleanUp()
 
         PDFileManager.destroyPermanents()
         PDFileManager.destroyCaches()
-        PDFileManager.clearLogsDirectory()
 
+        #if os(macOS)
         UserDefaults.standard.dictionaryRepresentation().forEach { key, _ in
             UserDefaults.standard.removeObject(forKey: key)
         }
-        URLCache.shared.removeAllCachedResponses()
-
-        #if os(iOS)
-        try? PDFileManager.bootstrapLogDirectory()
+        #elseif os(iOS)
+        PDFileManager.destroyFPCaches()
+        var keys: Set<String> = Set(UserDefaults.standard.dictionaryRepresentation().keys)
+        if !cacheCleanupStrategy.shouldCleanBackupCache {
+            let excludedKeys = SettingsStorageKey.keysExcludedFromWiping.map { $0.value }
+            keys.subtract(excludedKeys)
+        }
+        keys.subtract(AppDefaultKey.keysExcludedFromWiping.map(\.value))
+        keys.forEach {
+            UserDefaults.standard.removeObject(forKey: $0)
+        }
         #endif
+        URLCache.shared.removeAllCachedResponses()
     }
 
-    private func removeSessionInBE() async {
+    public static func removeSessionInBE(sessionVault: SessionVault, authenticator: Authenticator) async {
         Log.info("Attempting logout", domain: .networking)
         guard let coreCredential = sessionVault.sessionCredential else { return }
         let credential = Credential(coreCredential)
@@ -370,27 +409,10 @@ public class Tower: NSObject {
                     Log.info("Logout successful", domain: .networking)
                     continuation.resume(returning: Void())
                 case .failure(let error):
-                    Log.error(error, domain: .networking)
+                    Log.error(error: error, domain: .networking)
                     continuation.resume(returning: Void())
                 }
             }
-        }
-    }
-
-    /// Clears local cache without clearing the user session
-    @objc private func reloadCache() {
-        Task {
-            await destroyCache(strategy: .cleanEverythingButUserSpecificSettings)
-            Log.info("Tower - nuked Cache", domain: .application)
-            NotificationCenter.default.post(name: .restartApplication, object: nil)
-        }
-    }
-
-    @objc private func reloadCacheExcludingEvents() {
-        Task {
-            await destroyCache(strategy: .cleanOnlyMetadataDB)
-            Log.info("Tower - nuked CacheExcludingEvent", domain: .application)
-            NotificationCenter.default.post(name: .restartApplication, object: nil)
         }
     }
 
@@ -402,11 +424,13 @@ public class Tower: NSObject {
         }
 
         public static let runEventsProcessor = StartOptions(rawValue: 1 << 0)
-        public static let initializeSharedVolumes = StartOptions(rawValue: 1 << 1)
+        public static let initializeAllVolumes = StartOptions(rawValue: 1 << 1)
     }
 
     // things we need to do on every start
     public func start(options: StartOptions) {
+        Log.trace()
+        
         // Clean old events from Events Storage
         // Cleans all events no matter the volumeId
         try? eventStorageManager.periodicalCleanup()
@@ -415,8 +439,12 @@ public class Tower: NSObject {
         offlineSaver?.start()
 
         // Events
-        let includeSharedVolumes = options.contains(.initializeSharedVolumes)
-        intializeEventsSystem(includeSharedVolumes: includeSharedVolumes)
+        let includeAllVolumes = options.contains(.initializeAllVolumes)
+        do {
+            try intializeEventsSystem(includeAllVolumes: includeAllVolumes)
+        } catch {
+            Log.error("Events system failed to initialize", error: nil, domain: .events)
+        }
         if options.contains(.runEventsProcessor) {
             runEventsSystem()
         }
@@ -440,7 +468,7 @@ public class Tower: NSObject {
     }
 
     @available(*, deprecated, message: "Only used in tests")
-    func updateUserInfo(_ handler: @escaping (Result<UserInfo, Error>) -> Void) {
+    public func updateUserInfo(_ handler: @escaping (Result<UserInfo, Error>) -> Void) {
         self.addressManager.fetchUserInfo { [weak self] in
             switch $0 {
             case .failure(let error):
@@ -524,6 +552,60 @@ extension Tower {
         } else {
             throw CloudSlot.Errors.noSharesAvailable
         }
+    }
+}
+
+// MARK: - Notification
+extension Tower {
+    public func subscribeToCleanUpNotifications() {
+        NotificationCenter.default.publisher(for: .nukeCache)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                self?.reloadCache(notification: notification)
+            }
+            .store(in: &cancellables)
+        NotificationCenter.default.publisher(for: .nukeCacheExcludingEvents)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.reloadCacheExcludingEvents()
+            }
+            .store(in: &cancellables)
+        NotificationCenter.default.publisher(for: .nukeLogs)
+            .throttle(for: 3, scheduler: DispatchQueue.main, latest: true)
+            .sink { [weak self] _ in
+                self?.cleanLogs()
+            }
+            .store(in: &cancellables)
+    }
+
+    /// Clears local cache without clearing the user session
+    @objc private func reloadCache(notification: Notification) {
+        cancellables.removeAll()
+        let reason = notification.userInfo?["reason"]
+        Task {
+            await destroyCache(strategy: .cleanEverythingButUserSpecificSettings)
+            if let reason {
+                Log.info("Tower - nuked Cache due to \(reason)", domain: .application)
+            } else {
+                Log.info("Tower - nuked Cache", domain: .application)
+            }
+            NotificationCenter.default.post(name: .restartApplication, object: nil)
+        }
+    }
+
+    @objc private func reloadCacheExcludingEvents() {
+        cancellables.removeAll()
+        Task {
+            await destroyCache(strategy: .cleanOnlyMetadataDB)
+            Log.info("Tower - nuked CacheExcludingEvent", domain: .application)
+            NotificationCenter.default.post(name: .restartApplication, object: nil)
+        }
+    }
+
+    @objc private func cleanLogs() {
+        PDFileManager.clearLogsDirectory()
+        try? PDFileManager.bootstrapLogDirectory()
+        Log.info("Tower - clean logs", domain: .application)
     }
 }
 

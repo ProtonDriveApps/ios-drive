@@ -17,6 +17,7 @@
 
 import Combine
 import PDCore
+import PDPhotos
 
 enum BootstrapStatus {
     case photosRootNotReady
@@ -42,10 +43,10 @@ final class MonitoringBootstrapController: PhotosBootstrapController {
         self.repository = repository
     }
 
-    var isReady: AnyPublisher<Bool, Never> {
-        repository.isPhotosRootReady
+    var state: AnyPublisher<PhotosShareState, Never> {
+        repository.state
     }
-    
+
     var errorPublisher: AnyPublisher<Error, Never> {
         errorSubject.eraseToAnyPublisher()
     }
@@ -60,12 +61,22 @@ final class MonitoringBootstrapController: PhotosBootstrapController {
             }
             return
         }
-        cancellable = repository.isPhotosRootReady
+        cancellable = repository.state
             .removeDuplicates()
-            .sink { [weak self] isReady in
-                guard !isReady else { return }
-                self?.status = .bootstrapping
-                self?.bootstrapPhotos()
+            .sink { [weak self] state in
+                switch state {
+                case .notFound:
+                    // No local photo share, can create/fetch legacy photo share.
+                    self?.status = .bootstrapping
+                    self?.bootstrapPhotos()
+                case .photoVolume:
+                    // Photo volume is lazily bootstrapped in separate object, no need to do anything here,
+                    // only observe the change.
+                    self?.status = .bootstrapped
+                case .legacyShare:
+                    // Bootstrapping finished, just set correct state.
+                    self?.status = .bootstrapped
+                }
             }
     }
 
@@ -83,7 +94,7 @@ final class MonitoringBootstrapController: PhotosBootstrapController {
                     status = .bootstrapError
                 }
                 // Unify errors to be displayed to the user
-                Log.error("Bootstrap photos experienced error: \(error.localizedDescription)", domain: .photosProcessing)
+                Log.error("Bootstrap photos experienced error", error: error, domain: .photosProcessing)
             }
         }
     }

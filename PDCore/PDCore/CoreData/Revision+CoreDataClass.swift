@@ -19,6 +19,8 @@ import Foundation
 import CoreData
 import PDClient
 
+public typealias CoreDataRevision = Revision
+
 @objc(Revision)
 public class Revision: NSManagedObject {
     public typealias NodeState = PDClient.NodeState
@@ -50,5 +52,14 @@ public extension Revision {
         let oldThumbnails = thumbnails
         thumbnails = Set([])
         oldThumbnails.forEach(moc.delete)
+    }
+
+    // Photos grid only use small thumbnail to display
+    // Storing large thumbnails in the database consumes a significant amount of storage space.
+    func removeBigThumbnails(in moc: NSManagedObjectContext) {
+        let thumbnails = thumbnails.filter { $0.type == .photos }
+        for thumbnail in thumbnails {
+            try? thumbnail.clearBlob(in: moc)
+        }
     }
 }

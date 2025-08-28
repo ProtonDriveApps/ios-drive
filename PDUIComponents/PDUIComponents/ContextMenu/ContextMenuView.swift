@@ -19,9 +19,9 @@ import SwiftUI
 import ProtonCoreUIFoundations
 import PDLocalization
 
-public struct ContextMenuView<Content: View, Modifier: ViewModifier>: View {
-    
-    private let icon: Image
+public struct ContextMenuView<Label: View, Content: View, Modifier: ViewModifier>: View {
+
+    private let labelView: Label
     private let color: Color?
     private let viewModifier: Modifier
     private let content: Content
@@ -30,19 +30,31 @@ public struct ContextMenuView<Content: View, Modifier: ViewModifier>: View {
         icon: Image,
         color: Color = ColorProvider.TextNorm,
         viewModifier: Modifier,
-        @ViewBuilder content: () -> Content) {
-            self.icon = icon
-            self.color = color
-            self.viewModifier = viewModifier
-            self.content = content()
+        @ViewBuilder content: () -> Content
+    ) where Label == Image {
+        self.color = color
+        self.labelView = icon // The Label is an Image
+        self.viewModifier = viewModifier
+        self.content = content()
     }
     
+    public init(
+        color: Color = ColorProvider.TextNorm,
+        @ViewBuilder label: () -> Label,
+        @ViewBuilder content: () -> Content
+    ) where Modifier == EmptyModifier {
+        self.color = color
+        self.labelView = label()
+        self.viewModifier = EmptyModifier()
+        self.content = content()
+    }
+
     public var body: some View {
         Menu {
             content
         } label: {
-            icon
-                .tint(color)
+            labelView
+                .tint(color)       // Remove if you don’t need automatic coloring
                 .modifier(viewModifier)
         }
     }

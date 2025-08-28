@@ -17,6 +17,7 @@
 
 import SwiftUI
 import PDCore
+import PDCoreIOS
 import ProtonCoreUIFoundations
 import PDUIComponents
 import PDLocalization
@@ -42,19 +43,41 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
 
     let errorToastSize: CGFloat = 56
 
+    private let invitationViewsFactory: PendingInvitationsListViewFactory?
+
+    init(
+        vm: ViewModel,
+        coordinator: FinderCoordinator,
+        presentModal: Binding<FinderCoordinator.Destination?>,
+        drilldownTo: Binding<Node.ID?>,
+        invitationViewsFactory: PendingInvitationsListViewFactory? = nil
+    ) {
+        self.vm = vm
+        self.coordinator = coordinator
+        self.presentModal = presentModal
+        self.drilldownTo = drilldownTo
+        self.invitationViewsFactory = invitationViewsFactory
+    }
+
     var body: some View {
         ZStack {
             VStack {
                 if vm.lockedStateBannerVisibility != .hidden {
                     lockedStateBannerView
                 }
-                
+                vm.topBanner.map {
+                    NotificationBanner(message: $0, style: .transparent, padding: .none)
+                }
+
                 finderView
             }
-            .flatNavigationBar(vm.nodeName,
-                               delegate: vm,
-                               leading: leadingBarButtons(vm.leadingNavBarItems),
-                               trailing: trailingBarButtons(vm.trailingNavBarItems))
+            .flatNavigationBar(
+                vm.nodeName,
+                isRoot: vm.isRoot,
+                delegate: vm,
+                leading: leadingBarButtons(vm.leadingNavBarItems),
+                trailing: trailingBarButtons(vm.trailingNavBarItems)
+            )
         }
         .navigationBarBackButtonHidden(multipleSelectionIsSelecting)
         .background(ColorProvider.BackgroundNorm.edgesIgnoringSafeArea(.all))
@@ -62,7 +85,7 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
             // vm.isVisible is set by FinderCoordinator because this method is called unreliably for Grid
             root.stateRestorationActivity = coordinator.buildStateRestorationActivity()
         }
-        .errorToast(location: .bottomWithOffset(errorToastSize), errors: errorsWithToast)
+        .errorToast(location: .bottomWithOffset(12), errors: errorsWithToast)
         .presentView(item: $presentedSheet, style: .sheet) {
             self.coordinator.go(to: $0).environmentObject(root).environmentObject(TabBarViewViewModel())
         }
@@ -92,7 +115,7 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
 
     @ViewBuilder var finderView: some View {
         ZStack {
-            GridOrList(vm: vm) {
+            GridOrList(vm: vm, scrollToTopPublisher: vm.scrollToTopPublisher, contents1: {
                 if !vm.transientChildren.isEmpty {
                     Section(header: uploadingBar, footer: Spacer(minLength: 30)) {
                         uploadDisclaimer
@@ -101,22 +124,22 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
                         }
                     }
                 }
-            } contents2: {
+            }, contents2: {
                 if !vm.permanentChildren.isEmpty {
                     Section(header: listHeader, footer: listFooter) {
                         ForEach(vm.permanentChildren.indices, id: \.self) { index in
-                            nodeRow(vm.permanentChildren[index], isList: vm.layout == .list, index: index)
+                            nodeRow(isList: vm.layout == .list, index: index)
                         }
                     }
                 }
-            }
+            }, invitationViewsFactory: invitationViewsFactory)
 
             if vm.needsNoConnectionBackground {
-                NoConnectionFolderView(isUpdating: $vm.isUpdating, refresh: vm.refreshOnAppear)
+                NoConnectionView(isUpdating: $vm.isUpdating, refresh: vm.refreshOnAppear)
             }
 
-            if vm.emptyBackgroundConfig != nil {
-                EmptyFolderView(viewModel: vm.emptyBackgroundConfig!)
+            if let emptyConfig = vm.emptyBackgroundConfig {
+                PlaceholderView(viewModel: emptyConfig)
                     .opacity(vm.provedEmpty ? 1 : 0)
             }
 
@@ -149,6 +172,15 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
                 padding: .vertical,
                 closeBlock: vm.closeUploadDisclaimer
             )
+        }
+    }
+
+    @ViewBuilder
+    private func nodeRow(isList: Bool, index: Int) -> some View {
+        // There are crash reports with invalid index, that's why we try to access it safely.
+        // Not sure what's the root cause, possibly `permanentChildren` gets changed by another thread.
+        vm.permanentChildren[safe: index].map {
+            nodeRow($0, isList: isList, index: index)
         }
     }
 
@@ -203,6 +235,15 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
             return nodeVM.makeTrashAlert(environment: .init(menuItem: $menuItem, presentationMode: isNavigationMenu ? presentationMode : nil, cancelSelection: (vm as? (any HasMultipleSelection))?.cancelSelection))
         case let .removeMe(vm: nodeVM):
             return nodeVM.makeRemoveMeAlert(
+                environment: .init(
+                    menuItem: $menuItem,
+                    presentationMode: nil,
+                    cancelSelection: (vm as? (any HasMultipleSelection))?.cancelSelection
+                )
+            )
+
+        case let .removeBookmark(vm: nodeVM):
+            return nodeVM.makeRemoveBookmarkAlert(
                 environment: .init(
                     menuItem: $menuItem,
                     presentationMode: nil,

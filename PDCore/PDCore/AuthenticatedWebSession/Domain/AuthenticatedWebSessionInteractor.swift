@@ -26,7 +26,7 @@ public protocol AuthenticatedWebSessionInteractor {
     func execute() async throws -> AuthenticatedWebSessionData
 }
 
-final class ProtonDocumentAuthenticatedWebSessionInteractor: AuthenticatedWebSessionInteractor {
+final class ProtonFileAuthenticatedWebSessionInteractor: AuthenticatedWebSessionInteractor {
     private let sessionStore: SessionStore
     private let selectorRepository: ChildSessionSelectorRepositoryProtocol
     private let encryptionResource: AESGCMEncryptionResource

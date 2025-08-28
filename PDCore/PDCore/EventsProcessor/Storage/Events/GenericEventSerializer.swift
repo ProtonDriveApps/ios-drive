@@ -39,7 +39,7 @@ public final class ClientEventSerializer: GenericEventSerializer {
     public func serialize(event: GenericEvent) throws -> Data {
         guard let event = event as? PDClient.Event else {
             assert(false, "Wrong event type sent to \(#file)")
-            Log.error("Serializing wrong type of GenericEvent", domain: .events)
+            Log.error("Serializing wrong type of GenericEvent", error: nil, domain: .events)
             throw EventSerializerError.invalidEvent
         }
         return try encoder.encode(event)
@@ -52,7 +52,7 @@ public final class ClientEventSerializer: GenericEventSerializer {
             if let event = try? decoder.decode(LegacyEvent.self, from: data) {
                 return event.mapToEvent()
             } else {
-                Log.error("Deserialization of event failed: \(error.localizedDescription)", domain: .events)
+                Log.error("Deserialization of event failed", error: error, domain: .events)
                 throw EventSerializerError.invalidData
             }
         }

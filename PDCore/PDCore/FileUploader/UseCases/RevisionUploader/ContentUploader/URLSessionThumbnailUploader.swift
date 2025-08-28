@@ -95,7 +95,7 @@ final class URLSessionThumbnailUploader: URLSessionDataTaskUploader, ContentUplo
                 try moc.saveOrRollback()
                 moc.refresh(thumbnail, mergeChanges: false)
             } catch {
-                Log.error(error, domain: .uploader)
+                Log.error("Saving uploaded state", error: error, domain: .uploader)
             }
         }
     }

@@ -17,10 +17,7 @@
 
 import Combine
 import PDCore
-
-protocol PhotosBackupProgressController: WorkingNotifier {
-    var progress: AnyPublisher<PhotosBackupProgress?, Never> { get }
-}
+import PDPhotos
 
 final class LocalPhotosBackupProgressController: PhotosBackupProgressController {
     private let libraryLoadController: PhotosLoadProgressController

@@ -15,8 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import ProtonCoreLoginUI
-
 public enum DriveCoreAlert: Equatable {
     case logout
     case trustKitFailure
@@ -45,7 +43,7 @@ public enum DriveCoreAlert: Equatable {
     public var message: String {
         switch self {
         case .logout:
-            return LUITranslation.info_session_expired.l10n
+            return "Your session has expired. Please log in again."
         case .trustKitFailure:
             return "TLS certificate validation failed. Your connection may be monitored and the app is temporarily blocked for your safety.\n\nswitch  networks immediately"
         case .trustKitHardFailure:

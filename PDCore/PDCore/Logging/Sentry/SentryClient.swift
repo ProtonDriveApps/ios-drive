@@ -17,15 +17,18 @@
 
 import Foundation
 import Sentry
-import ProtonCoreUtilities
 import PDClient
+import ProtonCoreUtilities
+
+public enum ExceptionMessagesExcludedFromSentryCrashReport: String, CaseIterable {
+    case appCoordinatorErrorWhileStartingApp = "Terminate after domains disconnection"
+}
 
 public class SentryClient {
     typealias Event = Sentry.Event
     public static let shared = SentryClient()
     
     private var localSettings: LocalSettings?
-    private let serializer: SentryErrorSerializer = SanitizedErrorSerializer()
     private var optOutFromCrashReports: Bool {
         localSettings?.optOutFromCrashReports == true
     }
@@ -42,10 +45,16 @@ public class SentryClient {
     }
     
     private var environment: String {
+#if DEBUG
+        "dev_001"
+#else
         "production"
+#endif
     }
-    
-    public func start(localSettings: LocalSettings, clientGetter: @escaping () -> PDClient.Client?) {
+
+    private var isSendingEvent: Atomic<Bool> = .init(false)
+
+    public func start(localSettings: LocalSettings) {
         self.localSettings = localSettings
 
         SentrySDK.start { [optOutFromCrashReports, sentryEndpoint, environment] options in
@@ -59,34 +68,63 @@ public class SentryClient {
             options.enableAutoBreadcrumbTracking = false
             options.debug = false
             options.beforeSend = { event in
-                guard let client = clientGetter(),
-                      let credential = client.credentialProvider.clientCredential() else {
+                #if os(macOS)
+                let exceptionMessagesToIgnore = ExceptionMessagesExcludedFromSentryCrashReport.allCases.map(\.rawValue)
+                if let exceptions = event.exceptions {
+                    let exception = exceptions.first { exception in
+                        exceptionMessagesToIgnore.contains { exception.value.contains($0) }
+                    }
+                    if let exception {
+                        Log.info("Crash report not sent to Sentry because it contains the following message: \(exception.value)",
+                                 domain: .diagnostics)
+                        return nil
+                    }
+                }
+                #endif
+                
+                // It's critical that we avoid Sentry being reliant on the keychain so
+                // that we can report errors even when the keychain is inaccessible.
+                guard let userId = localSettings.userId else {
                     return event
                 }
-
-                event.user = User(userId: credential.userID)
+                event.user = User(userId: userId)
                 return event
             }
         }
     }
-    
-    func record(level: LogLevel, errorOrMessage: Either<NSError, String>) {
+
+    func record(logEntry: StructuredLogEntry) {
+        let event = Event(level: logEntry.level.toSentryLevel)
+        event.message = SentryMessage(formatted: logEntry.message)
+        event.extra = logEntry.context?.context ?? [:]
+        event.environment = environment
+        
+        record(event)
+    }
+
+    func recordError(_ message: String) {
+        let event = Event(level: LogLevel.error.toSentryLevel)
+        event.message = SentryMessage(formatted: message)
+        event.environment = environment
+        
+        record(event)
+    }
+
+    private func record(_ event: Event) {
         guard !optOutFromCrashReports else { return }
-        
-        let event = Event(level: level.toSentryLevel)
-        switch errorOrMessage {
-        case .left(let error):
-            event.message = SentryMessage(formatted: error.localizedDescription)
-            event.extra = [
-                "Code": error.code,
-                "Description": serializer.serialize(error: error),
-                "Underlying": error.underlyingErrors.map { serializer.serialize(error: $0 as NSError) }
-            ]
-        case .right(let message):
-            event.message = SentryMessage(formatted: message)
+        guard !isSendingEvent.value else {
+            return
         }
-        
-        SentrySDK.capture(event: event)
+
+        isSendingEvent.mutate { $0 = true }
+        defer {
+            isSendingEvent.mutate { $0 = false }
+        }
+
+        let id = SentrySDK.capture(event: event)
+        if id == SentryId.empty {
+            Log.info("Sending to Sentry failed. Event: \(event.message ?? event.eventId)", domain: .diagnostics)
+        }
     }
 
     func recordTelemetry() {
@@ -103,6 +141,7 @@ private extension LogLevel {
         case .warning: return .warning
         case .info: return .info
         case .debug: return .debug
+        case .trace: return .none // Traces are never sent to Sentry
         }
     }
 }

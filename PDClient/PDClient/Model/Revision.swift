@@ -17,17 +17,17 @@
 
 import Foundation
 
-public struct RevisionShort: Codable {
-    public let ID: Revision.RevisionID
-    public let createTime: TimeInterval
-    public let size: Int
-    public let manifestSignature: String? // can be nil if revision is a draft
-    public let signatureAddress: String
-    public let state: NodeState
-    public let thumbnailDownloadUrl: URL?
-    private let thumbnail: Int
-    public let thumbnails: [Thumbnail]?
-    public let photo: Photo?
+public struct RevisionShort: Codable, Equatable {
+    public var ID: Revision.RevisionID
+    public var createTime: TimeInterval
+    public var size: Int
+    public var manifestSignature: String? // can be nil if revision is a draft
+    public var signatureAddress: String
+    public var state: NodeState
+    public var thumbnailDownloadUrl: URL?
+    private var thumbnail: Int
+    public var thumbnails: [Thumbnail]?
+    public var photo: Photo?
 
     public var hasThumbnail: Bool {
         NSNumber.init(value: thumbnail).boolValue
@@ -51,17 +51,17 @@ public struct RevisionShort: Codable {
 public struct Revision: Codable {
     public typealias RevisionID = String
 
-    public let ID: RevisionID
-    public let createTime: TimeInterval
-    public let size: Int
-    public let manifestSignature: String
-    public let signatureAddress: String
-    public let state: NodeState
-    public let blocks: [Block]
-    public let thumbnail: Int
-    public let thumbnailHash: String?
-    public let thumbnailDownloadUrl: URL?
-    public let XAttr: String?
+    public var ID: RevisionID
+    public var createTime: TimeInterval
+    public var size: Int
+    public var manifestSignature: String
+    public var signatureAddress: String
+    public var state: NodeState
+    public var blocks: [Block]
+    public var thumbnail: Int
+    public var thumbnailHash: String?
+    public var thumbnailDownloadUrl: URL?
+    public var XAttr: String?
 
     public init(ID: RevisionID, 
                 createTime: TimeInterval,
@@ -89,18 +89,18 @@ public struct Revision: Codable {
 }
 
 public struct Block: Codable {
-    public let index: Int
-    public let hash: String
-    public let URL: URL
-    public let encSignature: String?
-    public let signatureEmail: String?
+    public var index: Int
+    public var hash: String
+    public var URL: URL
+    public var encSignature: String?
+    public var signatureEmail: String?
 }
 
-public struct Thumbnail: Codable {
-    public let thumbnailID: String
-    public let type: Int
-    public let hash: String
-    public let size: Int
+public struct Thumbnail: Codable, Equatable {
+    public var thumbnailID: String
+    public var type: Int
+    public var hash: String
+    public var size: Int
 
     public init(thumbnailID: String, type: Int, hash: String, size: Int) {
         self.thumbnailID = thumbnailID
@@ -110,10 +110,13 @@ public struct Thumbnail: Codable {
     }
 }
 
-public struct Photo: Codable {
-    public let linkID: String
-    public let captureTime: TimeInterval
-    public let mainPhotoLinkID: String?
-    public let hash: String
-    public let exif: String?
+public struct Photo: Codable, Equatable {
+    public var linkID: String
+    public var captureTime: TimeInterval
+    public var addedTime: Date?
+    public var mainPhotoLinkID: String?
+    public var relatedPhotosLinkIDs: [String]?
+    public var hash: String // name hash
+    public var contentHash: String? // optional due to backward compatibility of events
+    public var exif: String?
 }

@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDCoreIOS
 import ProtonCoreChallenge
 import ProtonCoreLoginUI
 import ProtonCoreServices
@@ -32,34 +33,13 @@ extension DriveDependencyContainer {
     private func makeAuthenticatorViewModel() -> AuthenticateViewModel {
         AuthenticateViewModel(sessionStore: sessionVault,
                               sessionCommunicator: sessionCommunicator,
-                              coordinator: AuthenticateCoordinator())
+                              coordinator: AuthenticateCoordinator(),
+                              localSettings: localSettings)
     }
 
     private func makeAuthenticator() -> DriveLoginAndSignupAuthenticator {
-        #if HAS_PAYMENTS
-        let paymentsAvailability = PaymentsAvailability.available(
-            parameters: PaymentsParameters(
-                listOfIAPIdentifiers: Constants.drivePlanIDs,
-                listOfShownPlanNames: Constants.shownPlanNames,
-                reportBugAlertHandler: nil
-            )
-        )
-        #else
-        let paymentsAvailability = PaymentsAvailability.notAvailable
-        #endif
-        
-        #if HAS_SIGNUP
-        let signUpAvailability = LoginFeatureAvailability.available(
-            parameters: SignupParameters(
-                separateDomainsButton: true,
-                passwordRestrictions: .default,
-                summaryScreenVariant: .screenVariant(.drive(SummaryStartButtonText(Localization.sign_up_succeed_text)))
-            )
-        )
-        #else
-        let signUpAvailability = LoginFeatureAvailability<SignupParameters>.notAvailable
-        #endif
-        
+        let paymentsAvailability = makePaymentsAvailability()
+        let signUpAvailability = makeSignUpAvailability()
         let authenticator = LoginAndSignup(appName: "ProtonDrive",
                               clientApp: .drive,
                               apiService: networkService,
@@ -68,5 +48,33 @@ extension DriveDependencyContainer {
                               paymentsAvailability: paymentsAvailability,
                               signupAvailability: signUpAvailability)
         return DriveLoginAndSignupAuthenticator(authenticator: authenticator)
+    }
+
+    private func makePaymentsAvailability() -> PaymentsAvailability {
+        if Constants.buildFeatures.hasPayments {
+            return .available(
+                parameters: PaymentsParameters(
+                    listOfIAPIdentifiers: SubscriptionConstants.drivePlanIDs,
+                    listOfShownPlanNames: SubscriptionConstants.shownPlanNames,
+                    reportBugAlertHandler: nil
+                )
+            )
+        } else {
+            return .notAvailable
+        }
+    }
+
+    private func makeSignUpAvailability() -> LoginFeatureAvailability<SignupParameters> {
+        if Constants.buildFeatures.hasSignUp {
+            return .available(
+                parameters: SignupParameters(
+                    separateDomainsButton: true,
+                    passwordRestrictions: .default,
+                    summaryScreenVariant: .screenVariant(.drive(SummaryStartButtonText(Localization.sign_up_succeed_text)))
+                )
+            )
+        } else {
+            return .notAvailable
+        }
     }
 }

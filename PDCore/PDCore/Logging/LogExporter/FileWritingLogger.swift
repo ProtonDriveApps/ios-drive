@@ -28,6 +28,7 @@ public protocol FileLogExporter {
 public final class FileWritingLogger: LoggerProtocol {
     private let fileManager = FileManager.default
     private let workingDirectory = PDFileManager.logsWorkingDirectory
+    private let formatter: ISO8601DateFormatter
 
     private let system: LogSystem
     private let maxFileSize: UInt64
@@ -42,32 +43,42 @@ public final class FileWritingLogger: LoggerProtocol {
         logSystem: LogSystem,
         maxFileSize: UInt64,
         rotator: FileLogRotator,
+        formatter: ISO8601DateFormatter = .fileLogFormatter,
         dateProvider: @escaping () -> Date = Date.init
     ) {
         self.system = logSystem
         self.maxFileSize = maxFileSize
         self.logsFileURL = workingDirectory.appendingPathComponent(logSystem.name + ".log", isDirectory: false)
         self.rotator = rotator
+        self.formatter = formatter
         self.dateProvider = dateProvider
 
         openFile()
-
     }
 
-    public func log(_ level: LogLevel, message: String, system: LogSystem, domain: LogDomain, sendToSentryIfPossible _: Bool) {
-        let logEntry = formatLogEntry(level: level, message: message, domain: domain)
+    public func log(
+        _ level: LogLevel,
+        message: String,
+        system: LogSystem,
+        domain: LogDomain,
+        context: LogContext? = nil,
+        sendToSentryIfPossible _: Bool, 
+        file: String = #filePath,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        let logEntry = formatLogEntry(level: level, message: message, domain: domain, context: context)
         writeLogEntry(logEntry)
     }
 
-    public func log(_ error: NSError, system: LogSystem, domain: LogDomain, sendToSentryIfPossible _: Bool) {
-        let message = error.localizedDescription
-        log(.error, message: message, system: system, domain: domain, sendToSentryIfPossible: false)
-    }
-
-    private func formatLogEntry(level: LogLevel, message: String, domain: LogDomain) -> String {
-        let dateTime = ISO8601DateFormatter.fileLogFormatter.string(from: getDate())
+    private func formatLogEntry(level: LogLevel, message: String, domain: LogDomain, context: LogContext?) -> String {
+        let dateTime = formatter.string(from: getDate())
         let version = Constants.clientVersion.map { " | v\($0)" } ?? " | v?.?.?"
-        return "\(dateTime)\(version) | \(system.name) | \(domain.name.uppercased()) | \(level.description) | \(message)\n"
+        var logLine = "\(dateTime)\(version) | \(domain.name.uppercased()) | \(level.description) | \(message)"
+        if let context, !context.debugDescription.isEmpty {
+            logLine += " | " + context.debugDescription
+        }
+        return logLine + "\n"
     }
 
     private func writeLogEntry(_ entry: String) {
@@ -87,7 +98,7 @@ public final class FileWritingLogger: LoggerProtocol {
         } catch {
             // If for some reason we cannot write to the file, we should recreate it
             recreateLostFile()
-            Log.error("Error writing to log file: \(error.localizedDescription)", domain: .logs)
+            Log.error("Error writing to log file", error: error, domain: .logs)
         }
     }
 

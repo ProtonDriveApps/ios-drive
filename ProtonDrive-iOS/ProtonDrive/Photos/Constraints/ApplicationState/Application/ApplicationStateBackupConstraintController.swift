@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import PDPhotos
 
 final class ApplicationStateBackupConstraintController: PhotoBackupConstraintController {
     private let availabilityController: ComputationalAvailabilityController

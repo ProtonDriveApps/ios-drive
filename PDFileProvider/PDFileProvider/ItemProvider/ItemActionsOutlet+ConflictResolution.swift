@@ -21,12 +21,12 @@ import PDCore
 extension ItemActionsOutlet: ConflictResolution {
 
     // swiftlint:disable:next function_parameter_count
-    public func resolveConflict(tower: Tower, between item: NSFileProviderItem, with url: URL?, and conflictingNode: Node?, applying action: ResolutionAction, progress: Progress?) async throws -> NSFileProviderItem {
+    public func resolveConflict(tower: Tower, between item: NSFileProviderItem, with url: URL?, and conflictingNode: Node?, applying action: ResolutionAction, fields: NSFileProviderItemFields, progress: Progress?) async throws -> NSFileProviderItem {
         switch action {
         case .ignore:
             // if the conflict is direct, then `conflictingNode` will be the remote version of item,
             // however in the case of indirect conflicts, will represent a different node
-            guard let remoteNode = tower.node(itemIdentifier: item.itemIdentifier) else {
+            guard let remoteNode = await tower.node(itemIdentifier: item.itemIdentifier) else {
                 guard let conflictingNode else {
                     throw Errors.itemDeleted
                 }
@@ -43,28 +43,36 @@ extension ItemActionsOutlet: ConflictResolution {
             return try NodeItem(node: remoteNode)
 
         case .recreate:
-            guard let parent = tower.parentFolder(of: item) else {
+            guard let parent = await tower.parentFolder(of: item) else {
                 throw Errors.parentNotFound
             }
             if item.isFolder {
                 let recreatedFolder = try await tower.createFolder(named: item.filename, under: parent)
                 return try NodeItem(node: recreatedFolder)
             } else {
-                let recreatedFile = try await createFile(tower: tower, item: item, with: url, under: parent, progress: progress)
-                return try NodeItem(node: recreatedFile)
+                let (recreatedFile, context) = try await fileCreationProvider().createFile(
+                    tower: tower, item: item, with: url, under: parent, progress: progress, logOperation: true
+                )
+                return try await context.perform {
+                    try NodeItem(node: recreatedFile)
+                }
             }
 
         case .createWithUniqueSuffix:
             let newItem = NodeItem(item: item, filename: item.conflictName(with: (conflictingNode != nil) ? .nameClash : .edit))
-            guard let parent = tower.parentFolder(of: item) else {
+            guard let parent = await tower.parentFolder(of: item) else {
                 throw Errors.parentNotFound
             }
             if item.isFolder {
                 let createdNode = try await tower.createFolder(named: newItem.filename, under: parent)
                 return try NodeItem(node: createdNode)
             } else {
-                let createdFile = try await createFile(tower: tower, item: newItem, with: url, under: parent, progress: progress)
-                return try NodeItem(node: createdFile)
+                let (createdFile, context) = try await fileCreationProvider().createFile(
+                    tower: tower, item: newItem, with: url, under: parent, progress: progress, logOperation: true
+                )
+                return try await context.perform {
+                    try NodeItem(node: createdFile)
+                }
             }
 
         case .renameWithUniqueSuffix:
@@ -85,7 +93,7 @@ extension ItemActionsOutlet: ConflictResolution {
                 throw NSFileProviderError(.noSuchItem)
             }
 
-            guard let newParent = tower.parentFolder(of: newItem) else {
+            guard let newParent = await tower.parentFolder(of: newItem) else {
                 throw Errors.parentNotFound
             }
 

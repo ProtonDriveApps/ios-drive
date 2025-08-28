@@ -17,6 +17,8 @@
 
 import Combine
 import PDCore
+import PDCoreIOS
+import Foundation
 
 final class PhotosLocalNotificationsPermissionsController: NotificationsPermissionsController {
     private let flowController: NotificationsPermissionsFlowController
@@ -41,12 +43,16 @@ final class PhotosLocalNotificationsPermissionsController: NotificationsPermissi
 
         uploadCancellable = backupAvailableController.isAvailable
             .filter { $0 }
-            .flatMap { [unowned self] _ in
-                resource.isRequestable()
+            .delay(for: 5, scheduler: RunLoop.main)
+            .flatMap { [weak self] _ in
+                guard let self else {
+                    return Just(false).eraseToAnyPublisher()
+                }
+                return self.resource.isRequestable()
             }
             .filter { $0 }
-            .sink { [unowned self] _ in
-                flowController.event.send(.openPhotoNotification)
+            .sink { [weak self] _ in
+                self?.flowController.event.send(.openPhotoNotification)
             }
     }
 

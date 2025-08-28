@@ -47,6 +47,8 @@ extension NodeRowActionMenuViewModel {
             return importFile(type, vm: vm, environment: environment)
         case .createDocument:
             return createDocument(type, vm: vm, environment: environment)
+        case .createSheet:
+            return createSheet(type, vm: vm, environment: environment)
         }
     }
     
@@ -77,6 +79,12 @@ extension NodeRowActionMenuViewModel {
     private func createDocument(_ type: UploadSectionItem, vm: UploadSectionViewModel, environment: Environment) -> ContextMenuItem {
         ContextMenuItem(sectionItem: type, handler: {
             environment.createDocument(with: vm.folder.identifier)
+        })
+    }
+
+    private func createSheet(_ type: UploadSectionItem, vm: UploadSectionViewModel, environment: Environment) -> ContextMenuItem {
+        ContextMenuItem(sectionItem: type, handler: {
+            environment.createSheet(with: vm.folder.identifier)
         })
     }
 

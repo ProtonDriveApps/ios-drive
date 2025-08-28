@@ -18,6 +18,7 @@
 import Foundation
 import Combine
 import PDCore
+import PDPhotos
 
 final class FeatureFlagConstraintController<Store: PhotosUploadDisabledFeatureFlagStore>: PhotoBackupConstraintController where Store: NSObject {
     private let resource: Store

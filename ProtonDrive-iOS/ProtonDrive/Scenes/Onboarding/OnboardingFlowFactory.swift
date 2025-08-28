@@ -30,7 +30,9 @@ struct OnboardingFlowFactory {
         guard !settings.isOnboarded else {
             return nil
         }
-        guard settings.isB2BUser != true else {
+
+        // We don't show onboarding to B2B users
+        guard !settings.isB2BUser else {
             return nil
         }
         return make(settings: settings)

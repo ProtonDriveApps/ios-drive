@@ -35,7 +35,7 @@ public final class FetchedResultsSectionsController<ResultType: NSFetchRequestRe
         do {
             try controller.performFetch()
         } catch let error {
-            Log.error(error, domain: .storage)
+            Log.error("Starting fecthedResultsSectionsController failed", error: error, domain: .storage)
         }
         objectWillChange.send()
     }
@@ -52,6 +52,12 @@ public final class FetchedResultsSectionsController<ResultType: NSFetchRequestRe
     public func getObjects() -> [ResultType] {
         return controller.managedObjectContext.performAndWait {
             return controller.fetchedObjects ?? []
+        }
+    }
+
+    public func isEmpty() -> Bool {
+        return controller.managedObjectContext.performAndWait {
+            return controller.fetchedObjects?.isEmpty ?? true
         }
     }
 

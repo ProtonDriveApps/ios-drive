@@ -21,9 +21,11 @@ public enum SettingsStorageSuite {
     
     private static var groupUserDefaultInstances: [String: UserDefaults] = [:]
     
-    case standard
+    case standard(customUrl: URL? = nil)
     case group(named: String)
     case inMemory(initialContentFrom: URL)
+    
+    public static var standard: Self { .standard() }
 
     public var directoryUrl: URL {
         switch self {
@@ -34,8 +36,8 @@ public enum SettingsStorageSuite {
             }
             return fileContainer
             
-        case .standard:
-            return FileManager.default.temporaryDirectory
+        case .standard(let customUrl):
+            return customUrl ?? FileManager.default.temporaryDirectory
         case let .inMemory(databaseUrl):
             return databaseUrl
         }
@@ -49,7 +51,7 @@ public enum SettingsStorageSuite {
             }
             guard let customDefaults = UserDefaults(suiteName: name) else {
                 let message = "Shared UserDefaults for \(name) could not be created"
-                Log.error(message, domain: .storage)
+                Log.error(message, error: nil, domain: .storage)
                 assertionFailure(message)
                 return .standard
             }
@@ -91,9 +93,9 @@ public class SettingsStorage<T> {
             }
             if additionalLogging {
                 if let oldValue = suite.userDefaults.object(forKey: label) as? T {
-                    Log.info("SettingsStorage: replacing \(oldValue) with \(newValue) for key: \(label)", domain: .syncing)
+                    Log.info("SettingsStorage: replacing value '\(oldValue)' with '\(newValue)' for key: \(label)", domain: .syncing)
                 } else {
-                    Log.info("SettingsStorage: creating (first time) \(newValue) for key: \(label)", domain: .syncing)
+                    Log.info("SettingsStorage: setting value '\(newValue)' for non-existing key: \(label)", domain: .syncing)
                 }
             }
             suite.userDefaults.set(newValue, forKey: label)

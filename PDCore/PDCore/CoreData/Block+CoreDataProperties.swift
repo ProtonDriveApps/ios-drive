@@ -56,13 +56,18 @@ extension Block: VolumeUnique {
     
     func move(to newBase: Downloader.DownloadLocation) throws {
         switch newBase {
-        case .offlineAvailable where localUrl != nil && permanentUrl != nil:
-            try FileManager.default.moveItem(at: localUrl!, to: permanentUrl!)
-        case .temporary where localUrl != nil && permanentUrl != nil:
-            try FileManager.default.moveItem(at: localUrl!, to: temporaryUrl!)
-        case .oblivion where localUrl != nil:
-            try FileManager.default.removeItem(at: localUrl!)
-        default: break
+        case .offlineAvailable:
+            if let localUrl, let permanentUrl {
+                try FileManager.default.moveItem(at: localUrl, to: permanentUrl)
+            }
+        case .temporary:
+            if let localUrl, let temporaryUrl, permanentUrl != nil {
+                try FileManager.default.moveItem(at: localUrl, to: temporaryUrl)
+            }
+        case .oblivion:
+            if let localUrl {
+                try FileManager.default.removeItem(at: localUrl)
+            }
         }
     }
 }

@@ -19,7 +19,7 @@ import Foundation
 import CoreData
 import PDClient
 
-class TreeParsingOperation<ReturnType>: SynchronousOperation, OperationWithProgress {
+class TreeParsingOperation<ReturnType>: SynchronousOperation, OperationWithProgress, @unchecked Sendable {
     typealias Completion = (Result<ReturnType, Error>) -> Void
     typealias Enumeration = Downloader.Enumeration
     
@@ -105,7 +105,7 @@ class TreeParsingOperation<ReturnType>: SynchronousOperation, OperationWithProgr
 }
 
 /// Downloads whole tree of Drive objects under a Folder, including ecnrypted blocks of active revisions of files
-class DownloadTreeOperation: TreeParsingOperation<Folder> {
+class DownloadTreeOperation: TreeParsingOperation<Folder>, @unchecked Sendable {
     
     override fileprivate func scanNodeAndChildrenOperation(of currentNode: Folder) -> Operation {
         self.output = currentNode
@@ -124,6 +124,7 @@ class DownloadTreeOperation: TreeParsingOperation<Folder> {
                     // need to download only files that are not downloaded yet
                     file.activeRevision?.blocksAreValid() != true
                 }.map { file in
+#if os(iOS)
                     DownloadFileOperation(file, cloudSlot: self.cloudSlot, endpointFactory: self.endpointFactory, storage: self.storage) { [weak self] in
                         // remember error or execute enumeration block
                         switch $0 {
@@ -133,6 +134,18 @@ class DownloadTreeOperation: TreeParsingOperation<Folder> {
                             self?.recursiveScanErrors.append(error)
                         }
                     }
+#else
+                    /// Legacy for mac, can be removed after 2025 Feb, once macOS migrated to DDK
+                    LegacyDownloadFileOperation(file, cloudSlot: self.cloudSlot, endpointFactory: self.endpointFactory, storage: self.storage) { [weak self] in
+                        // remember error or execute enumeration block
+                        switch $0 {
+                        case .success(let node):
+                            self?.enumeration?(node)
+                        case .failure(let error):
+                            self?.recursiveScanErrors.append(error)
+                        }
+                    }
+#endif
                 }
                 downloadFiles.forEach(self.finish.addDependency)
                 self.internalQueue.addOperations(downloadFiles, waitUntilFinished: false)
@@ -148,20 +161,23 @@ class DownloadTreeOperation: TreeParsingOperation<Folder> {
     }
 }
 
-class ScanTreesOperation: TreeParsingOperation<[Node]> {
+class ScanTreesOperation: TreeParsingOperation<[Node]>, @unchecked Sendable {
     
     private let nodes: [Folder]
+    private let shouldIncludeDeletedItems: Bool
     
     init(folders: [Folder],
          cloudSlot: CloudSlotProtocol,
          storage: StorageManager,
          enumeration: @escaping TreeParsingOperation.Enumeration,
          endpointFactory: EndpointFactory,
-         completion: @escaping TreeParsingOperation<[Node]>.Completion) {
+         shouldIncludeDeletedItems: Bool = true,
+         completion: @escaping TreeParsingOperation<[Node]>.Completion) throws {
         guard let node = folders.first else {
-            fatalError("This operation must be called with at least a single node")
+            throw NSError(domain: "DownloadTreeOperation", code: -1, userInfo: [NSLocalizedDescriptionKey: "This operation must be called with at least a single node"])
         }
         self.nodes = folders
+        self.shouldIncludeDeletedItems = shouldIncludeDeletedItems
         super.init(node: node, cloudSlot: cloudSlot, storage: storage, enumeration: enumeration, endpointFactory: endpointFactory, completion: completion)
         self.output = []
         internalQueue.maxConcurrentOperationCount = 6
@@ -183,16 +199,17 @@ class ScanTreesOperation: TreeParsingOperation<[Node]> {
         self.output.append(node)
         let operation = ScanNodeOperation(node.identifier,
                                           cloudSlot: self.cloudSlot,
-                                          shouldIncludeDeletedItems: true) { [weak self] result in
+                                          shouldIncludeDeletedItems: shouldIncludeDeletedItems) { [weak self] result in
             guard let self = self, !self.isCancelled else { return }
             
+            // this enumerates the folder
             self.enumeration?(node)
             
             switch result {
             case .failure(let error):
                 self.progress.complete(units: 1)
                 if let responseError = error as? ResponseError,
-                    responseError.responseCode == 2501 {
+                   responseError.responseCode == APIErrorCodes.itemOrItsParentDeletedErrorCode.rawValue {
                     /* ignore because this can happen for the permanently deleted file */
                 } else {
                     self.recursiveScanErrors.append(error)
@@ -200,6 +217,9 @@ class ScanTreesOperation: TreeParsingOperation<[Node]> {
                 
             case .success(let children):
                 children.forEach { self.output.append($0) }
+                // only files are marked for enumeration, because for each folder we will perform an operation,
+                // and folder is enumerated as part of this operation
+                children.filter { $0 is File }.forEach { self.enumeration?($0) }
                 let scanSubfolders = children.compactMap { $0 as? Folder }.map(self.scanNodeAndChildrenOperation)
                 scanSubfolders.forEach(self.finish.addDependency)
                 self.progress.increaseTotalUnitsOfWork(by: scanSubfolders.count)
@@ -211,7 +231,7 @@ class ScanTreesOperation: TreeParsingOperation<[Node]> {
     }
 }
 
-class ScanChildrenOperation: TreeParsingOperation<Folder> {
+class ScanChildrenOperation: TreeParsingOperation<Folder>, @unchecked Sendable {
     
     override fileprivate func scanNodeAndChildrenOperation(of currentNode: Folder) -> Operation {
         self.output = currentNode

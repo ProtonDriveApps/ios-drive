@@ -47,10 +47,12 @@ struct EventsFactory {
     #endif
 
     func makeEventsLoop(tower: Tower, conveyor: EventsConveyor, volumeId: String) -> DriveEventsLoop {
+        Log.trace()
         let processor = DriveEventsLoopProcessor(
             cloudSlot: tower.cloudSlot,
             conveyor: conveyor,
-            storage: tower.storage
+            storage: tower.storage,
+            externalInvitationConverter: tower.externalInvitationConverter
         )
         return DriveEventsLoop(
             volumeID: volumeId,
@@ -58,17 +60,14 @@ struct EventsFactory {
             processor: processor,
             conveyor: conveyor,
             observers: tower.eventObservers,
-            mode: tower.eventProcessingMode
+            mode: tower.eventProcessingMode,
+            eventsSystemManager: tower
         )
     }
 
-    func makeVolumeIdsController() -> VolumeIdsControllerProtocol {
-        VolumeIdsController()
-    }
-
-    func makeSingleVolumeTimingController() -> EventLoopsTimingController {
-        // Legacy events system 
-        SingleVolumeEventLoopsTimingController()
+    func makeSingleVolumeTimingController(interval: Double) -> EventLoopsTimingController {
+        // Legacy events system
+        SingleVolumeEventLoopsTimingController(interval: interval)
     }
 
     #if os(iOS)
@@ -105,7 +104,7 @@ struct EventsFactory {
             processor: processor,
             userDefaults: appGroup.userDefaults,
             logError: {
-                Log.error($0, domain: .events)
+                Log.error(error: $0, domain: .events)
             }
         )
         return EventPeriodicScheduler<GeneralEventsLoopWithProcessor, DriveEventsLoop>(

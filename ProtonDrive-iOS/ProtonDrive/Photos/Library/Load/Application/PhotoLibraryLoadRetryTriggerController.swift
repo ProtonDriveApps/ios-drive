@@ -16,11 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
-
-protocol PhotoLibraryLoadRetryTriggerController {
-    var updatePublisher: AnyPublisher<Void, Never> { get }
-    func retry()
-}
+import PDPhotos
 
 final class ConcretePhotoLibraryLoadRetryTriggerController: PhotoLibraryLoadRetryTriggerController {
     private let subject = ObservableObjectPublisher()

@@ -16,16 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
-
-enum NotificationsPermissionsEvent {
-    case openFileNotification
-    case openPhotoNotification
-    case close
-}
-
-protocol NotificationsPermissionsFlowController {
-    var event: PassthroughSubject<NotificationsPermissionsEvent, Never> { get }
-}
+import PDCoreIOS
 
 final class NotificationsPermissionsFlowControllerImpl: NotificationsPermissionsFlowController {
     private let signOutPublisher: AnyPublisher<Void, Never>

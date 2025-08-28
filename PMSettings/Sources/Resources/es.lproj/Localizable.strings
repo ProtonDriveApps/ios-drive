@@ -1,5 +1,4 @@
 "pmsettings-settings-title" = "";
-"pmsettings-settings-app-settings-section" = "";
 "pmsettings-settings-system-settings-section" = "";
 "pmsettings-settings-system-settings-language-title" = "";
 "pmsettings-settings-system-settings-language-description" = "";
@@ -7,8 +6,6 @@
 "pmsettings-settings-system-settings-notifications-title" = "";
 "pmsettings-settings-system-settings-notifications-description" = "";
 "pmsettings-settings-system-settings-notifications-button" = "";
-"pmsettings-settings-about-section" = "";
-"pmsettings-settings-about-acknowledgements" = "";
-"pmsettings-settings-about-privacy" = "";
-"pmsettings-settings-about-terms" = "";
+
+
 "pmsettings-settings-footer" = "%@";

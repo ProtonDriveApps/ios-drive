@@ -17,6 +17,8 @@
 
 import CoreData
 
+public typealias CoreDataSyncItem = SyncItem
+
 @objc(SyncItem)
 public class SyncItem: NSManagedObject {
 
@@ -25,14 +27,38 @@ public class SyncItem: NSManagedObject {
     @NSManaged public var fileProviderOperationRaw: Int64
     @NSManaged public var stateRaw: Int64
 
-    @ManagedEnum(raw: #keyPath(fileProviderOperationRaw)) public var fileProviderOperation: FileProviderOperation!
+    var state: SyncItemState {
+        get {
+            SyncItemState(rawValue: Int(stateRaw)) ?? .undefined
+        }
+        set {
+            stateRaw = Int64(newValue.rawValue)
+            inProgress = stateRaw == SyncItemState.inProgress.rawValue
+            sortOrder = newValue.sortOrder
+        }
+    }
 
-    @ManagedEnum(raw: #keyPath(stateRaw)) public var state: State!
+    var fileProviderOperation: FileProviderOperation {
+        get {
+            FileProviderOperation(rawValue: Int(fileProviderOperationRaw)) ?? .undefined
+        }
+        set {
+            fileProviderOperationRaw = Int64(newValue.rawValue)
+        }
+    }
+}
 
-    // dangerous, see https://developer.apple.com/documentation/coredata/nsmanagedobject
-    override public init(entity: NSEntityDescription, insertInto context: NSManagedObjectContext?) {
-        super.init(entity: entity, insertInto: context)
-        self._fileProviderOperation.configure(with: self)
-        self._state.configure(with: self)
+extension SyncItemState {
+    /// Order in which states are shown in the tray app.
+    /// Values lower than 0 are hidden.
+    fileprivate var sortOrder: Int64 {
+        switch self {
+        case .inProgress: 100
+        case .errored: 50
+        case .cancelled: 0
+        case .excludedFromSync: 0
+        case .finished: 0
+        case .undefined: -1
+        }
     }
 }

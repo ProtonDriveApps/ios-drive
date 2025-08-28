@@ -17,7 +17,7 @@
 
 import Foundation
 
-public struct ReportableSyncItem: Identifiable, Hashable, Equatable {
+public struct ReportableSyncItem: Encodable {
 
     public let id: String
     public let modificationTime: Date
@@ -28,7 +28,8 @@ public struct ReportableSyncItem: Identifiable, Hashable, Equatable {
     public let fileSize: Int?
     public let fileProviderOperation: FileProviderOperation
     public let state: SyncItemState
-    public var description: String?
+    public let progress: Int
+    public var errorDescription: String?
 
     // this is the initializer for the app side
     public init(item: SyncItem) {
@@ -41,11 +42,21 @@ public struct ReportableSyncItem: Identifiable, Hashable, Equatable {
         self.fileSize = item.fileSize?.intValue
         self.fileProviderOperation = item.fileProviderOperation
         self.state = item.state
-        self.description = item.errorDescription
+        self.progress = item.progress
+        self.errorDescription = item.errorDescription?.split(separator: "\n").first?.description
     }
 
     // this is the initializer for the file provider side
-    public init(id: String, modificationTime: Date, filename: String?, location: String?, mimeType: String?, fileSize: Int?, operation: FileProviderOperation, state: SyncItemState, description: String? = nil) {
+    public init(id: String,
+                modificationTime: Date,
+                filename: String?,
+                location: String?,
+                mimeType: String?,
+                fileSize: Int?,
+                operation: FileProviderOperation,
+                state: SyncItemState,
+                progress: Int,
+                errorDescription: String? = nil) {
         self.id = id
         self.modificationTime = modificationTime
         self.objectIdentifier = ""
@@ -55,13 +66,55 @@ public struct ReportableSyncItem: Identifiable, Hashable, Equatable {
         self.fileSize = fileSize
         self.fileProviderOperation = operation
         self.state = state
-        self.description = description
+        self.progress = progress
+        self.errorDescription = errorDescription
+    }
+
+    public var isFolder: Bool {
+        mimeType == Folder.mimeType
     }
 }
 
-public extension ReportableSyncItem {
+extension ReportableSyncItem: Identifiable, Hashable, Equatable {
+    public static func == (lhs: ReportableSyncItem, rhs: ReportableSyncItem) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.modificationTime == rhs.modificationTime &&
+        lhs.objectIdentifier == rhs.objectIdentifier &&
+        lhs.filename == rhs.filename &&
+        lhs.location == rhs.location &&
+        lhs.mimeType == rhs.mimeType &&
+        lhs.fileSize == rhs.fileSize &&
+        lhs.fileProviderOperation == rhs.fileProviderOperation &&
+        lhs.state == rhs.state &&
+        lhs.progress == rhs.progress &&
+        lhs.errorDescription == rhs.errorDescription
+    }
 
-    var isFolder: Bool {
-        mimeType == Folder.mimeType
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(modificationTime)
+        hasher.combine(objectIdentifier)
+        hasher.combine(filename)
+        hasher.combine(location)
+        hasher.combine(mimeType)
+        hasher.combine(fileSize)
+        hasher.combine(fileProviderOperation)
+        hasher.combine(state)
+        hasher.combine(progress)
+        hasher.combine(errorDescription)
+    }
+}
+
+extension ReportableSyncItem: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        "fileName: \(String(describing: filename))\n" +
+        "location: \(String(describing: location))\n" +
+        "mimeType: \(String(describing: mimeType))\n" +
+        "fileSize: \(String(describing: fileSize))\n" +
+        "modificationTime: \(modificationTime)\n" +
+        "operation: \(fileProviderOperation)\n" +
+        "state: \(state)\n" +
+        "progress: \(progress.description)\n" +
+        "error: \(errorDescription ?? "n/a")\n"
     }
 }

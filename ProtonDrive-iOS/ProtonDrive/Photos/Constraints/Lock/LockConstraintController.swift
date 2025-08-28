@@ -17,6 +17,7 @@
 
 import Combine
 import PDCore
+import PDPhotos
 
 final class LockConstraintController: PhotoBackupConstraintController {
     private let isLockedSubject: CurrentValueSubject<Bool, Never>

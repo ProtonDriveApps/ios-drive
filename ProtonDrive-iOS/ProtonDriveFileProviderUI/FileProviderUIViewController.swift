@@ -36,7 +36,7 @@ class FileProviderUIViewController: FPUIActionExtensionViewController {
     override func prepare(forError error: Error) {
         let errorCaught = error as NSError
 
-        Log.error(error, domain: .fileProvider)
+        Log.info("Opening FP failed: \(errorCaught.localizedDescription)", domain: .fileProvider)
 
         switch errorCaught.userInfo[CrossProcessErrorExchange.UnderlyingMessageKey] as? String {
         case .some(CrossProcessErrorExchange.notAuthenticated), .some(CrossProcessErrorExchange.childSessionExpired):
@@ -58,6 +58,9 @@ class FileProviderUIViewController: FPUIActionExtensionViewController {
                                       message: Localization.file_provider_signIn_alert_message,
                                       preferredStyle: .alert)
         let close = UIAlertAction(title: Localization.general_ok, style: .default) { _ in
+            if let url = URL(string: "protondrive://signin") {
+                self.extensionContext.open(url)
+            }
             self.extensionContext.cancelRequest(withError: CrossProcessErrorExchange.cancelError)
         }
         alert.addAction(close)

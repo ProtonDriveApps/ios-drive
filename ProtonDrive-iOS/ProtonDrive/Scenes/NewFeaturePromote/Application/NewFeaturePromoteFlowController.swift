@@ -17,6 +17,7 @@
 
 import Foundation
 import PDCore
+import PDCoreIOS
 import UIKit
 import PDUIComponents
 
@@ -71,18 +72,20 @@ final class NewFeaturePromoteFlowController: NewFeaturePromoteFlowControllerProt
 
     private func isFeatureFlagEnabled(feature: NewFeature) -> Bool {
         switch feature {
-        case .doc:
-            return featureFlagsController.hasProtonDocumentCreation
-        case .sharing:
-            return featureFlagsController.hasSharing
+        case .albums:
+            return featureFlagsController.hasAlbums
+        case .uiTest:
+            return Constants.isUITest
         }
     }
 
     private func getReleaseDate(for feature: NewFeature) -> Date {
         switch feature {
-        case .doc, .sharing:
-            // Fri Nov 01 2024 00:00:00 GMT+0000
-            return Date(timeIntervalSince1970: 1730419200)
+        case .albums:
+            // Wed May 07 2025 10:00:00 GMT+0000
+            return Date(timeIntervalSince1970: 1746612000)
+        case .uiTest:
+            return Date()
         }
     }
 }

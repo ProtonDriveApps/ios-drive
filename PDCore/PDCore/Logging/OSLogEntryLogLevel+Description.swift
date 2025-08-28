@@ -17,7 +17,7 @@
 
 import OSLog
 
-extension OSLogEntryLog.Level: CustomStringConvertible {
+extension OSLogEntryLog.Level: Swift.CustomStringConvertible {
 
     public var description: String {
         switch self {

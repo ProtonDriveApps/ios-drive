@@ -29,11 +29,14 @@ public final class StorageUploadingPhotosRepository: UploadingPrimaryPhotosRepos
     public func getPhotos() -> [Photo] {
         moc.performAndWait {
             do {
-                let volumeId = try storage.getMyVolumeId(in: moc)
-                let photos = storage.fetchUploadingPhotos(volumeId: volumeId, size: Constants.processingPhotoUploadsBatchSize, moc: moc)
-                return photos
+                if let photoVolumeId = storage.getPhotosVolumeId(in: moc) {
+                    return storage.fetchUploadingPhotos(volumeId: photoVolumeId, size: Constants.processingPhotoUploadsBatchSize, moc: moc)
+                } else {
+                    let volumeId = try storage.getMyVolumeId(in: moc)
+                    return storage.fetchUploadingPhotos(volumeId: volumeId, size: Constants.processingPhotoUploadsBatchSize, moc: moc)
+                }
             } catch {
-                Log.error(error.localizedDescription, domain: .photosUI)
+                Log.error(error: error, domain: .photosUI)
                 return []
             }
         }

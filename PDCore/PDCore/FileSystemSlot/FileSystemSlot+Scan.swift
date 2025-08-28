@@ -61,7 +61,11 @@ public class FileSystemSlot {
     public func getNode(_ identifier: NodeIdentifier, moc: NSManagedObjectContext? = nil) -> Node? {
         self.storage.fetchNode(id: identifier, moc: moc ?? self.moc)
     }
-    
+
+    public func getNodes(_ identifiers: [NodeIdentifier], moc: NSManagedObjectContext? = nil) -> [Node] {
+        self.storage.fetchNodes(identifiers: identifiers, moc: moc ?? self.moc)
+    }
+
     public func getDraft(_ localID: String, shareID: String) -> File? {
         self.storage.fetchDraft(localID: localID, shareID: shareID, moc: self.moc)
     }
@@ -93,7 +97,7 @@ extension FileSystemSlot {
         
         var node: Node? = tail
         while node != nil {
-            if let next = node!.parentLink {
+            if let next = node!.parentNode {
                 intermediateNodes.append(next.filesystemName)
             } else {
                 intermediateNodes.append(node!.primaryDirectShare!.filesystemName) // root folder

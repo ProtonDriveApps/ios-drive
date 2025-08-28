@@ -18,28 +18,39 @@
 import Foundation
 import Combine
 import PDCore
+import PDCoreIOS
 import PDUIComponents
+import PDLocalization
 
 class SharedWithMeViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, SortingViewModel, HasMultipleSelection, HasRefreshControl {
     typealias Identifier = NodeIdentifier
 
     @Published var layout: Layout
     var cancellables = Set<AnyCancellable>()
-    private let starter: SharedWithMeStarter
+    private let starter: SharedWithMeStarter & SharedLinkIdDataSource
     private let retriever: SharedLinkRetriever
+    private let bookmarksScanner: BookmarksScannerInteractorProtocol
     private let volumeIdsController: SharedVolumeIdsController
     private var isLoadingIndicatorNeeded = true
 
     // MARK: FinderViewModel
     let model: SharedWithMeModel
+    private let pendingInvitationsContainer: PendingInvitationsStatusContainer
+    private let bookmarksContainer: BookmarkContainer
+    let pendingInvitationsViewModel: PendingInvitationsStatusViewModel
     var childrenCancellable: AnyCancellable?
     var lockedStateCancellable: AnyCancellable?
     var lockedStateBannerVisibility: LockedStateAlertVisibility = .hidden
+    let scrollToTopPublisher: AnyPublisher<TabBarItem, Never>?
     @Published var transientChildren: [NodeWrapper] = []
     @Published var permanentChildren: [NodeWrapper] = []  {
-        didSet { selection.updateSelectable(Set(permanentChildren.map(\.node.identifier))) }
+        didSet {
+            let selectable = Set(permanentChildren.map(\.node.identifier).filter(\.isNotBookmark))
+            selection.updateSelectable(selectable)
+        }
     }
     var isVisible: Bool = true
+    let isRoot = true
     let genericErrors = ErrorRegulator()
     @Published var isUpdating: Bool = false
 
@@ -49,7 +60,7 @@ class SharedWithMeViewModel: ObservableObject, FinderViewModel, DownloadingViewM
     private var isUpdatingSilent: Bool = false
 
     var nodeName: String {
-        self.listState.isSelecting ? self.titleDuringSelection() : "Shared with me"
+        self.listState.isSelecting ? self.titleDuringSelection() : Localization.tab_bar_title_shared_with_me
     }
 
     var trailingNavBarItems: [NavigationBarButton] {
@@ -79,32 +90,76 @@ class SharedWithMeViewModel: ObservableObject, FinderViewModel, DownloadingViewM
         /* nothing, as this screen does not support per-page fetching */
     }
 
-    var featureFlagsController: FeatureFlagsControllerProtocol
+    var provedEmpty: Bool {
+        noChildren && provedChildrenCount && pendingInvitationsViewModel.viewState == nil
+    }
+
+    let featureFlagsController: FeatureFlagsControllerProtocol
+    let topBanner: String? = nil
 
     // MARK: HasMultipleSelection
     lazy var selection = MultipleSelectionModel(selectable: Set<NodeIdentifier>())
     @Published var listState: ListState = .active
 
     // MARK: others
-    init(model: SharedWithMeModel, starter: SharedWithMeStarter, retriever: SharedLinkRetriever, featureFlagsController: FeatureFlagsControllerProtocol, volumeIdsController: SharedVolumeIdsController) {
+    init(
+        model: SharedWithMeModel,
+        starter: SharedWithMeStarter & SharedLinkIdDataSource,
+        retriever: SharedLinkRetriever,
+        pendingInvitationsContainer: PendingInvitationsStatusContainer,
+        bookmarksContainer: BookmarkContainer,
+        featureFlagsController: FeatureFlagsControllerProtocol,
+        volumeIdsController: SharedVolumeIdsController,
+        scrollToTopPublisher: AnyPublisher<TabBarItem, Never>
+    ) {
         defer { self.model.loadFromCache() }
         self.model = model
         self.starter = starter
         self.retriever = retriever
+        self.bookmarksScanner = bookmarksContainer.makeBookmarksScanner()
         self.sorting = model.sorting
         self.layout = Layout(preference: model.layout)
         self.featureFlagsController = featureFlagsController
         self.volumeIdsController = volumeIdsController
+        self.pendingInvitationsContainer = pendingInvitationsContainer
+        self.pendingInvitationsViewModel = pendingInvitationsContainer.makePendingInvitationsStatusViewModel()
+        self.bookmarksContainer = bookmarksContainer
 
+        self.scrollToTopPublisher = scrollToTopPublisher
         self.subscribeToSort()
         self.subscribeToChildren()
         self.subscribeToChildrenDownloading()
         self.selection.unselectOnEmpty(for: self)
         self.subscribeToLayoutChanges()
-        subscribeToErrors()
+        subscribeToUpdate()
     }
 
-    private func subscribeToErrors() {
+    func subscribeToChildren() {
+        self.childrenCancellable?.cancel()
+        self.childrenCancellable = self.model.children()
+            .filter { [weak self] _, _ in
+                // reordering is heavy operation, so we do not want to perform it on all the folders at once when the app-wide setting is changed
+                // instead we will call refreshOnAppear() when the view is back visible
+                self?.isVisible == true
+            }
+            .removeDuplicates(by: { previous, current in
+                return previous.0 == current.0 && previous.1 == current.1
+            })
+            .sink { [weak self] activeSorted, _ in
+                guard let self = self, self.isVisible else { return }
+                self.permanentChildren = activeSorted.filter(dropBookmarksIfDisabled).map(NodeWrapper.init)
+            }
+    }
+
+    private func dropBookmarksIfDisabled(_ node: Node) -> Bool {
+        guard node is CoreDataBookmark else {
+            return true
+        }
+
+        return featureFlagsController.hasBookmarks
+    }
+
+    private func subscribeToUpdate() {
         model.errorSubject
             .sink { [weak self] error in
                 self?.genericErrors.send(error)
@@ -134,8 +189,10 @@ class SharedWithMeViewModel: ObservableObject, FinderViewModel, DownloadingViewM
             await showLoadingIndicator()
 
             do {
+                await pendingInvitationsViewModel.onViewDidAppear()
                 try await starter.bootstrap()
-                try await retriever.retrieve()
+                try await retriever.retrieve(dataSource: starter)
+                try await bookmarksScanner.scan()
                 await handleListingSuccess()
             } catch {
                 await handleListingError(error)
@@ -160,7 +217,9 @@ class SharedWithMeViewModel: ObservableObject, FinderViewModel, DownloadingViewM
     private func fetchUpdateMetadata() async {
         do {
             await showLoadingIndicatorIfNeeded()
-            try await retriever.retrieve()
+            try await retriever.retrieve(dataSource: starter)
+            try await bookmarksScanner.scan()
+            await pendingInvitationsViewModel.onViewDidAppear()
             await hideLoadingIndicator()
             await handleListingSuccess()
         } catch {
@@ -227,5 +286,29 @@ extension SharedWithMeModel: LayoutChanging {
 
     public func changeLayoutPreference(to newLayout: LayoutPreference) {
         tower.changeLayoutPreference(to: newLayout)
+    }
+}
+
+extension SharedWithMeViewModel {
+    func removeBookmark(_ bookmark: PDCore.CoreDataBookmark) {
+        bookmarksContainer
+            .makeBookmarkManagerViewMode(for: bookmark)
+            .deleteBookmark()
+    }
+
+    func copyBookmarkUrl(_ bookmark: PDCore.CoreDataBookmark) {
+        bookmarksContainer
+            .makeBookmarkManagerViewMode(for: bookmark)
+            .copyBookmarkUrl()
+    }
+}
+
+private extension NodeIdentifier {
+    var isBookmark: Bool {
+        volumeID == "bookmark"
+    }
+
+    var isNotBookmark: Bool {
+        !isBookmark
     }
 }

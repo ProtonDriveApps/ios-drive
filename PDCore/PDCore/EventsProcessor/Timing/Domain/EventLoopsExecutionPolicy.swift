@@ -18,7 +18,7 @@
 import Foundation
 
 struct EventLoopsExecutionData {
-    let mainLoop: LoopData?
+    let ownLoops: [LoopData]
     let sharedLoops: [LoopData]
     let possibleIds: [String]
 
@@ -31,7 +31,7 @@ struct EventLoopsExecutionData {
     }
 
     enum LoopType {
-        case main
+        case own
         case activeShared
         case inactiveShared
     }
@@ -54,10 +54,13 @@ final class EventLoopsExecutionPolicy: EventLoopsExecutionPolicyProtocol {
         // Same for shared loop, plus the highest priority one gets the privilege
         var resultLoops = [VolumeID]()
 
-        // Main loop
-        if let mainLoop = data.mainLoop, getPriority(data: data, loop: mainLoop) != nil {
-            resultLoops.append(mainLoop.volumeId)
-        }
+        // Own loops
+        data.ownLoops
+            .forEach { loop in
+                if let priority = getPriority(data: data, loop: loop) {
+                    resultLoops.append(loop.volumeId)
+                }
+            }
 
         // Shared loop
         let sortedSharedLoops = data.sharedLoops

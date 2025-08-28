@@ -52,7 +52,7 @@ final class RemotePhotoContentConflictsInteractor: PhotoContentConflictsInteract
                     invalidAssets += invalidCompoundAssets
                 }
             } catch {
-                Log.error(DriveError(withDomainAndCode: error, message: "\(self.self)"), domain: .photosProcessing)
+                Log.error(error: DriveError(withDomainAndCode: error, message: "\(self.self)"), domain: .photosProcessing)
                 
                 // Errors from the validator are due to hash generation.
                 // Simplify by using encryption errors.

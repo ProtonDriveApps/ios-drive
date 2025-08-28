@@ -19,12 +19,13 @@ import Foundation
 import PMSettings
 import ProtonCoreServices
 import ProtonCoreLoginUI
+import PDLocalization
 
 class SecurityKeysSettingsItem: PMDrillDownCellViewModel {
     var accessibilityIdentifier: String { "Security_keys" }
     
     var preview: String? { nil }
-    var title: String { "Security keys" }
+    var title: String { Localization.setting_security_key }
     let apiService: APIService
 
     init(apiService: APIService) {

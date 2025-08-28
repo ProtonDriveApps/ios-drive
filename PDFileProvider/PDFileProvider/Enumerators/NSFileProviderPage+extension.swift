@@ -16,9 +16,11 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import FileProvider
+import PDCore
 
 public extension NSFileProviderPage {
     init(_ int: Int) {
+        Log.trace()
         let pageData = withUnsafeBytes(of: (int)) { Data($0) }
         self.init(rawValue: pageData)
     }

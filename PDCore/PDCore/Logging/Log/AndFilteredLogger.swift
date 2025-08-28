@@ -17,31 +17,25 @@
 
 import Foundation
 
+/// Filters logs based on logLevel AND domain.
 public final class AndFilteredLogger: LoggerProtocol {
     private let logger: LoggerProtocol
     private let domains: Set<LogDomain>
     private let levels: Set<LogLevel>
 
-    public init(logger: LoggerProtocol, domains: Set<LogDomain> = LogDomain.default, levels: Set<LogLevel> = LogLevel.default) {
+    public init(logger: LoggerProtocol, domains: Set<LogDomain>, levels: Set<LogLevel>) {
         self.logger = logger
         self.domains = domains
         self.levels = levels
     }
 
-    public func log(_ level: LogLevel, message: String, system: LogSystem, domain: LogDomain, sendToSentryIfPossible: Bool) {
+    // swiftlint:disable:next function_parameter_count
+    public func log(_ level: LogLevel, message: String, system: LogSystem, domain: LogDomain, context: LogContext?, sendToSentryIfPossible: Bool, file: String, function: String, line: Int) {
         guard isValid(level: level, domain: domain) else {
             return
         }
 
-        logger.log(level, message: message, system: system, domain: domain, sendToSentryIfPossible: sendToSentryIfPossible)
-    }
-
-    public func log(_ error: NSError, system: LogSystem, domain: LogDomain, sendToSentryIfPossible: Bool) {
-        guard isValid(level: .error, domain: domain) else {
-            return
-        }
-
-        logger.log(error, system: system, domain: domain, sendToSentryIfPossible: sendToSentryIfPossible)
+        logger.log(level, message: message, system: system, domain: domain, context: context, sendToSentryIfPossible: sendToSentryIfPossible, file: file, function: function, line: line)
     }
 
     private func isValid(level: LogLevel, domain: LogDomain) -> Bool {

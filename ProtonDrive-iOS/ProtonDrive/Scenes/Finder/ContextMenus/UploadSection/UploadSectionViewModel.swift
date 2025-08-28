@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDCoreIOS
 import SwiftUI
 import PDLocalization
 import PDUIComponents
@@ -35,7 +36,7 @@ final class UploadSectionViewModel {
             return [[]]
         }
         let firstSection = [photo, takePhoto, .importFile].compactMap { $0 }
-        let secondSection = [.createFolder, newDocument].compactMap { $0 }
+        let secondSection = [.createFolder, newDocument, newSheet].compactMap { $0 }
         return [firstSection, secondSection].filter { !$0.isEmpty }
     }
 
@@ -54,12 +55,20 @@ final class UploadSectionViewModel {
         return .createDocument
     }
 
+    private var newSheet: UploadSectionItem? {
+        guard featureFlagsController.hasProtonSheetCreation else {
+            return nil
+        }
+        return .createSheet
+    }
+
     enum UploadSectionItem: String, CaseIterable, SectionItemDisplayable {
         case importFile
         case uploadPhoto
         case takePhoto
         case createFolder
         case createDocument
+        case createSheet
 
         var text: String  {
             let name: String
@@ -69,6 +78,7 @@ final class UploadSectionViewModel {
             case .takePhoto: name = Localization.take_new_photo_button
             case .createFolder: name = Localization.create_folder_title
             case .createDocument: name = Localization.create_document_button
+            case .createSheet: name = Localization.create_sheet_button
             }
             return name
         }
@@ -84,7 +94,9 @@ final class UploadSectionViewModel {
             case .createFolder:
                 return IconProvider.folderPlus
             case .createDocument:
-                return Image("ic-brand-proton-docs").renderingMode(.template)
+                return Image("ic-brand-proton-docs")
+            case .createSheet:
+                return Image("ic-brand-proton-sheet")
             }
         }
 

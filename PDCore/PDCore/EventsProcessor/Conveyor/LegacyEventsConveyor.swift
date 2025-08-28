@@ -20,7 +20,7 @@ import CoreData
 import PDClient
 
 /// Accepts unordered events from different sources and returns in a chronological order
-final class LegacyEventsConveyor: EventsConveyor {
+public final class LegacyEventsConveyor: EventsConveyor {
     private static let serializer = ClientEventSerializer()
     // Legacy events system is used with unmigrated data - DB nodes have volumeId empty.
     private let volumeId = ""
@@ -30,17 +30,17 @@ final class LegacyEventsConveyor: EventsConveyor {
     private lazy var controller = self.persistentQueue.queue(volumeId: volumeId)
     private var entriesToProcess = [EventStorageManager.Entry]()
 
-    init(storage: EventStorageManager, referenceStorage: LegacyEventsReferenceStorageProtocol) {
+    public init(storage: EventStorageManager, referenceStorage: LegacyEventsReferenceStorageProtocol) {
         self.persistentQueue = storage
         self.referenceStorage = referenceStorage
     }
     
-    func prepareForProcessing() {
+    public func prepareForProcessing() {
         try? self.controller.performFetch()
         self.entriesToProcess = self.controller.fetchedObjects as! [EventStorageManager.Entry]
     }
     
-    func next() -> EventPack? {
+    public func next() -> EventPack? {
         guard !self.entriesToProcess.isEmpty else {
             return nil
         }
@@ -49,19 +49,19 @@ final class LegacyEventsConveyor: EventsConveyor {
         return self.makeEventPack(from: next)
     }
     
-    func disregard(_ id: NSManagedObjectID) {
+    public func disregard(_ id: NSManagedObjectID) {
         self.persistentQueue.disregard(id)
     }
     
-    func completeProcessing(of id: NSManagedObjectID) {
+    public func completeProcessing(of id: NSManagedObjectID) {
         self.persistentQueue.discard(id)
     }
     
-    func clearUp() {
+    public func clearUp() {
         self.persistentQueue.clearUp(volumeId: volumeId)
     }
 
-    func record(_ events: [GenericEvent]) {
+    public func record(_ events: [GenericEvent]) {
         persistentQueue.persist(
             events: zip(events, events.compactMap(Self.pack)),
             provider: String(describing: CloudSlot.self)
@@ -92,7 +92,7 @@ final class LegacyEventsConveyor: EventsConveyor {
         try? serializer.deserialize(data: package)
     }
     
-    func hasUnprocessedEvents() -> Bool {
+    public func hasUnprocessedEvents() -> Bool {
         do {
             return try self.persistentQueue.unprocessedEventCount(volumeId: volumeId) > 0
         } catch {
@@ -107,7 +107,7 @@ extension LegacyEventsConveyor {
     }
 
     /// Latest event that's been both used to update the metadata DB and enumerated
-    func lastFullyHandledEvent() -> GenericEvent? {
+    public func lastFullyHandledEvent() -> GenericEvent? {
         do {
             guard let entry = try self.persistentQueue.lastFullyHandledEvent(volumeId: volumeId),
                   let pack = makeEventPack(from: entry) else {
@@ -120,11 +120,11 @@ extension LegacyEventsConveyor {
         }
     }
     
-    func lastEventAwaitingEnumeration() -> GenericEvent? {
+    public func lastEventAwaitingEnumeration() -> GenericEvent? {
         lastEvent(awaitingEnumerationOnly: true)
     }
 
-    func lastReceivedEvent() -> GenericEvent? {
+    public func lastReceivedEvent() -> GenericEvent? {
         lastEvent(awaitingEnumerationOnly: false)
     }
 
@@ -141,7 +141,7 @@ extension LegacyEventsConveyor {
         }
     }
     
-    func history(since anchor: EventID?) throws -> [EventPack] {
+    public func history(since anchor: EventID?) throws -> [EventPack] {
         let persistedEvents = try self.persistentQueue.eventsAwaitingEnumeration(since: anchor, volumeId: volumeId)
         let events = persistedEvents.compactMap(self.makeEventPack)
         guard events.count == persistedEvents.count else {
@@ -150,28 +150,28 @@ extension LegacyEventsConveyor {
         return events
     }
     
-    func setEnumerated(_ objectIDs: [NSManagedObjectID]) {
+    public func setEnumerated(_ objectIDs: [NSManagedObjectID]) {
         self.persistentQueue.setEnumerated(objectIDs)
     }
 
     // MARK: Reference data accessors
 
-    var latestEventFetchTime: Date? {
+    public var latestEventFetchTime: Date? {
         get { referenceStorage.latestEventFetchTime }
         set { referenceStorage.latestEventFetchTime = newValue }
     }
 
-    var latestFetchedEventID: EventID? {
+    public var latestFetchedEventID: EventID? {
         get { referenceStorage.latestFetchedEventID }
         set { referenceStorage.latestFetchedEventID = newValue }
     }
 
-    var referenceDate: Date? {
+    public var referenceDate: Date? {
         get { referenceStorage.referenceDate }
         set { referenceStorage.referenceDate = newValue }
     }
 
-    var referenceID: EventID? {
+    public var referenceID: EventID? {
         get { referenceStorage.referenceID }
         set { referenceStorage.referenceID = newValue }
     }

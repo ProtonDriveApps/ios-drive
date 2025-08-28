@@ -19,16 +19,16 @@ import Foundation
 
 extension Date {
 
-    struct Past {
-        static func sixHours(from date: Date = Date()) -> Date {
+    public struct Past {
+        public static func sixHours(from date: Date = Date()) -> Date {
             date.addingTimeInterval(-TimeInterval(6 * 3600))
         }
 
-        static func twentyFourHours(from date: Date = Date()) -> Date {
+        public static func twentyFourHours(from date: Date = Date()) -> Date {
             date.addingTimeInterval(-TimeInterval(24 * 3600))
         }
 
-        static func threeDays(from date: Date = Date()) -> Date {
+        public static func threeDays(from date: Date = Date()) -> Date {
             date.addingTimeInterval(-TimeInterval(3 * 24 * 3600))
         }
     }

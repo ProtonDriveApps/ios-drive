@@ -22,10 +22,17 @@ import PDCore
 public final class RootEnumerator: FolderEnumerator {
 
     public init(tower: Tower,
+                keepDownloadedManager: KeepDownloadedEnumerationManager,
                 rootID: NodeIdentifier,
-                changeObserver: FileProviderChangeObserver? = nil,
+                enumerationObserver: EnumerationObserverProtocol? = nil,
+                displayEnumeratedItems: Bool = false,
                 shouldReenumerateItems: Bool = false) {
-        super.init(tower: tower, changeObserver: changeObserver, nodeID: rootID,
+        Log.trace()
+        super.init(tower: tower,
+                   keepDownloadedManager: keepDownloadedManager,
+                   nodeID: rootID,
+                   enumerationObserver: enumerationObserver,
+                   displayEnumeratedItems: displayEnumeratedItems,
                    shouldReenumerateItems: shouldReenumerateItems)
     }
 }

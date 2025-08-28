@@ -45,6 +45,6 @@ public struct ContentHeightPreferenceKey: PreferenceKey {
     public static var defaultValue: Value = .zero
     
     public static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
+        value += nextValue()
     }
 }

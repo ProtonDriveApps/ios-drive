@@ -47,7 +47,7 @@ public final class BackgroundProcessingTaskScheduler: BackgroundTaskScheduler {
             try submitTask(request)
             Log.info("1️⃣🗓️ Did schedule \(id) BG task.", domain: .backgroundTask)
         } catch {
-            Log.error("1️⃣🗓️ Could not schedule \(id) BG task: \(error).", domain: .backgroundTask)
+            Log.error("1️⃣🗓️ Could not schedule \(id) BG task", error: error, domain: .backgroundTask)
         }
     }
 

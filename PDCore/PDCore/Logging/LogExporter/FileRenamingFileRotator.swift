@@ -42,7 +42,7 @@ public final class FileRenamingFileRotatorDecorator: FileLogRotator {
             try fileManager.moveItem(at: oldURL, to: newURL)
             return newURL
         } catch {
-            SentryClient.shared.record(level: .error, errorOrMessage: .right("LogCollectionError 😵🗂️. Failed to rename file: \(error)"))
+            SentryClient.shared.recordError("LogCollectionError 😵🗂️. Failed to rename file: \(error)")
             return oldURL
         }
     }

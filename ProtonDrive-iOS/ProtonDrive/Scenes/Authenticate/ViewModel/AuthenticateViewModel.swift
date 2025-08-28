@@ -25,14 +25,17 @@ public final class AuthenticateViewModel {
     private let sessionStore: SessionStore
     private let sessionCommunicator: SessionRelatedCommunicatorBetweenMainAppAndExtensions
     private let coordinator: AuthenticateCoordinator
+    private let localSettings: LocalSettings
     private var hasAuthenticatonCompleted = false
 
     init(sessionStore: SessionStore,
          sessionCommunicator: SessionRelatedCommunicatorBetweenMainAppAndExtensions,
-         coordinator: AuthenticateCoordinator) {
+         coordinator: AuthenticateCoordinator,
+         localSettings: LocalSettings) {
         self.sessionStore = sessionStore
         self.sessionCommunicator = sessionCommunicator
         self.coordinator = coordinator
+        self.localSettings = localSettings
     }
 
     var welcomeBody: String {
@@ -53,6 +56,8 @@ public final class AuthenticateViewModel {
                 sessionStore.storeAddresses(userData.addresses)
                 sessionStore.storePassphrases(userData.passphrases)
                 completeAuthentication()
+
+                localSettings.userId = parentSessionCredential.userID
                 await sessionCommunicator.onChildSessionReady()
             } catch {
                 errorBlock(error)

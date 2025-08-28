@@ -28,8 +28,7 @@ public class NodeItem: NSObject, NSFileProviderItem {
     // swiftlint:disable:next function_body_length
     public init(node: Node) throws {
         guard let moc = node.moc else {
-            Log.error("Attempting to create NodeItem when node's moc is nil (node has been deleted)", domain: .fileProvider)
-            fatalError()
+            throw Node.noMOC()
         }
 
         var itemIdentifier: NSFileProviderItemIdentifier!
@@ -46,9 +45,14 @@ public class NodeItem: NSObject, NSFileProviderItem {
         var contentModificationDate: Date!
         var documentSize: NSNumber!
         var isShared: Bool!
+#if os(macOS)
+        var decorations: [NSFileProviderItemDecorationIdentifier]!
+        var contentPolicy: NSFileProviderContentPolicy!
+#endif
         var childItemCount: NSNumber!
         var capabilities: NSFileProviderItemCapabilities!
         var contentVersion: Data!
+        var userInfo = [AnyHashable: Any]()
 
         try moc.performAndWait {
             #if os(macOS)
@@ -56,7 +60,13 @@ public class NodeItem: NSObject, NSFileProviderItem {
             #else
             filename = try node.decryptName()
             #endif
-            filesystemFilename = filename.filenameNormalizedForFilesystem(basedOn: node.mimeType)
+            filesystemFilename = filename.filenameSanitizedForFilesystem()
+            filesystemFilename = filesystemFilename.appendingProtonExtensionIfNecessary(basedOn: node.mimeType)
+
+            guard !filesystemFilename.isEmpty else {
+                Log.debug("Filename must not be empty. Node: \(node)", domain: .fileProvider)
+                throw Errors.invalidFilename(filename: filename)
+            }
 
             if let folder = node as? Folder, folder.isRoot { // root
                 itemIdentifier = .rootContainer
@@ -66,7 +76,7 @@ public class NodeItem: NSObject, NSFileProviderItem {
                 // this is a workaround so that the deleted items are not visible anywhere
                 // neither in the trash nor in the domain
                 parentItemIdentifier = .init(rawValue: "")
-            } else if node.parentLink?.parentLink == nil { // in root
+            } else if node.parentNode?.parentNode == nil { // in root
                 itemIdentifier = .init(node.identifier)
                 parentItemIdentifier = .rootContainer
             } else { // in folder
@@ -77,7 +87,7 @@ public class NodeItem: NSObject, NSFileProviderItem {
             let defaultMIME = "application/octet-stream"
             let uti: UTType
             if node.mimeType == defaultMIME {
-                uti = UTType(filenameExtension: filename.fileExtension()) ?? .data
+                uti = UTType(filenameExtension: filename.fileExtension) ?? .data
             } else {
                 uti = UTType(mimeType: node.mimeType) ?? .data
             }
@@ -92,7 +102,7 @@ public class NodeItem: NSObject, NSFileProviderItem {
             creationDate = node.createdDate
 
             let activeRevision = (node as? File)?.activeRevision
-            if MimeType(value: node.mimeType) != MimeType.protonDocument,
+            if MimeType(value: node.mimeType) != MimeType.protonDoc,
                let activeRevision,
                let created = try? ISO8601DateFormatter().date(activeRevision.decryptedExtendedAttributes().common?.modificationTime) ?? activeRevision.created {
                 contentModificationDate = created
@@ -100,23 +110,21 @@ public class NodeItem: NSObject, NSFileProviderItem {
                 contentModificationDate = node.modifiedDate
             }
 
-            if MimeType(value: node.mimeType) != MimeType.protonDocument,
-               let activeRevision,
-               let size = try? activeRevision.decryptedExtendedAttributes().common?.size {
-                documentSize = NSNumber(value: size)
-            } else {
-                documentSize = NSNumber(value: node.size)
-            }
+            documentSize = NSNumber(value: node.presentableNodeSize)
 
-            // Root item should not be a shared item
-            isShared = node.directShares.first(where: \.isMain) == nil
-                ? !node.directShares.isEmpty
-                : false
+            isShared = NodeItem.isShared(node)
 
             if let folder = node as? Folder {
                 childItemCount = .init(value: folder.children.count)
             }
 
+            userInfo["keep_downloaded"] = node.isMarkedOfflineAvailable
+            userInfo["inherit_keep_downloaded"] = node.isInheritingOfflineAvailable
+
+#if os(macOS)
+            decorations = NodeItem.decorations(node)
+            contentPolicy = NodeItem.contentPolicy(node)
+#endif
             capabilities = NodeItem.capabilities(node)
 
             contentVersion = ContentVersion(node: node).encoded()
@@ -143,20 +151,15 @@ public class NodeItem: NSObject, NSFileProviderItem {
         self.creationDate = creationDate
         self.contentModificationDate = contentModificationDate
         self.documentSize = documentSize
+
+        self.userInfo = userInfo
+
         #if os(macOS)
         // properties related to being shared are set to false because of Apple's bug mentioning "iCloud" as the file provider
         // see https://forums.developer.apple.com/forums/thread/755818
         self.isShared = false
-        if isShared && node is Folder {
-            self.decorations = [
-                .init(rawValue: "me.proton.drive.fileproviderdecorations.shared.label"),
-                .init(rawValue: "me.proton.drive.fileproviderdecorations.shared.folderBadge")
-            ]
-        } else if isShared && node is File {
-            self.decorations = [
-                .init(rawValue: "me.proton.drive.fileproviderdecorations.shared.file")
-            ]
-        }
+        self.decorations = decorations
+        self.contentPolicy = contentPolicy
         #else
         self.isShared = isShared
         #endif
@@ -176,6 +179,9 @@ public class NodeItem: NSObject, NSFileProviderItem {
         self.parentItemIdentifier = item.parentItemIdentifier
 
         self.capabilities = item.capabilities ?? []
+        #if os(macOS)
+        self.contentPolicy = item.contentPolicy ?? .inherited
+        #endif
         self.contentType = item.contentType ?? .folder
         self.isUploaded = item.isUploaded ?? false
         self.creationDate = item.creationDate ?? Date()
@@ -191,8 +197,8 @@ public class NodeItem: NSObject, NSFileProviderItem {
         
         #if os(macOS)
         self.itemVersion = item.itemVersion ?? NSFileProviderItemVersion()
-        #elseif os(iOS)
-        if #available(iOS 16.0, *), let itemVersion = item.itemVersion {
+        #else
+        if let itemVersion = item.itemVersion {
             self.itemVersion = NSFileProviderItemVersion(contentVersion: itemVersion.contentVersion, metadataVersion: itemVersion.metadataVersion)
         } else {
             self.itemVersion = NSFileProviderItemVersion()
@@ -206,6 +212,7 @@ public class NodeItem: NSObject, NSFileProviderItem {
     public var isShared: Bool
     #if os(macOS)
     public var decorations: [NSFileProviderItemDecorationIdentifier]?
+    public var contentPolicy: NSFileProviderContentPolicy
     #endif
     public var creationDate: Date?
     public var contentModificationDate: Date?
@@ -217,12 +224,49 @@ public class NodeItem: NSObject, NSFileProviderItem {
     public var itemVersion: NSFileProviderItemVersion
     public var capabilities: NSFileProviderItemCapabilities
     public var contentType: UTType
+    public var userInfo: [AnyHashable: Any]?
 
     #if os(iOS)
     public var isTrashed: Bool
     public var isDownloaded: Bool
     #endif
-    
+
+    private static let decorationPrefix = "me.proton.drive.fileproviderdecorations"
+    private static let sharedDecorationPrefix = "\(decorationPrefix).shared"
+    private static let badgeDecorationPrefix = "\(decorationPrefix).badge"
+    private static let sharedLabelDecoration = NSFileProviderItemDecorationIdentifier(rawValue: "\(sharedDecorationPrefix).label")
+    private static let sharedFolderDecoration = NSFileProviderItemDecorationIdentifier(rawValue: "\(sharedDecorationPrefix).folderBadge")
+    private static let sharedFileDecoration = NSFileProviderItemDecorationIdentifier(rawValue: "\(sharedDecorationPrefix).file")
+    private static let keepDownloadedDecoration = NSFileProviderItemDecorationIdentifier(rawValue: "\(badgeDecorationPrefix).checkmark")
+
+    private static func decorations(_ node: Node) -> [NSFileProviderItemDecorationIdentifier]? {
+        let isShared = NodeItem.isShared(node)
+        var decorations = [NSFileProviderItemDecorationIdentifier]()
+        if isShared && node is Folder {
+            decorations = [
+                sharedLabelDecoration,
+                sharedFolderDecoration
+            ]
+        } else if isShared && node is File {
+            decorations = [
+                sharedFileDecoration
+            ]
+        }
+
+        if node.isAvailableOffline {
+            decorations.append(keepDownloadedDecoration)
+        }
+
+        return !decorations.isEmpty ? decorations : nil
+    }
+
+    private static func isShared(_ node: Node) -> Bool {
+        // Root item should not be a shared item
+        return node.directShares.first(where: \.isMain) == nil
+            ? !node.directShares.isEmpty
+            : false
+    }
+
     private static func capabilities(_ node: PDCore.Node) -> NSFileProviderItemCapabilities {
         // all but writing
         var capabilities: NSFileProviderItemCapabilities = [.allowsReading, .allowsReparenting, .allowsRenaming, .allowsTrashing, .allowsDeleting]
@@ -239,9 +283,7 @@ public class NodeItem: NSObject, NSFileProviderItem {
             //  writing needs to be fixed later
             //
             #if os(macOS)
-            capabilities.insert(.allowsEvicting)
-
-            if MimeType(value: node.mimeType) != .protonDocument {
+            if !MimeType(value: node.mimeType).isProtonFile {
                 capabilities.insert(.allowsWriting)
             }
             #endif
@@ -249,7 +291,21 @@ public class NodeItem: NSObject, NSFileProviderItem {
             return capabilities
         }
     }
-    
+
+    private static func contentPolicy(_ node: Node) -> NSFileProviderContentPolicy {
+        #if os(macOS)
+        if node.isMarkedOfflineAvailable {
+            return .downloadEagerlyAndKeepDownloaded
+        } else if node.isInheritingOfflineAvailable {
+            return .inherited
+        } else {
+            return .downloadLazily
+        }
+        #else
+        return .inherited
+        #endif
+    }
+
     #if os(macOS)
     override public var debugDescription: String {
         """
@@ -275,3 +331,30 @@ public class NodeItem: NSObject, NSFileProviderItem {
 #if os(macOS)
 extension NodeItem: NSFileProviderItemDecorating {}
 #endif
+
+public extension NodeItem {
+
+    static func areEqualPropertyWise(lhs: NodeItem, rhs: NodeItem, ignoringCreationDate: Bool = false) -> Bool {
+        let areBaseFieldsSame = lhs.isUploaded == rhs.isUploaded &&
+            lhs.isShared == rhs.isShared &&
+            lhs.contentModificationDate == rhs.contentModificationDate &&
+            lhs.documentSize == rhs.documentSize &&
+            lhs.childItemCount == rhs.childItemCount &&
+            lhs.itemIdentifier == rhs.itemIdentifier &&
+            lhs.parentItemIdentifier == rhs.parentItemIdentifier &&
+            lhs.filename == rhs.filename &&
+            lhs.capabilities == rhs.capabilities &&
+            lhs.contentType == rhs.contentType
+        let isCreationDateSame = ignoringCreationDate ? true : lhs.creationDate == rhs.creationDate
+#if os(macOS)
+        return areBaseFieldsSame &&
+            isCreationDateSame &&
+            lhs.decorations == rhs.decorations &&
+            lhs.itemVersion.contentVersion == rhs.itemVersion.contentVersion &&
+            MetadataVersion(from: lhs.itemVersion.metadataVersion)! == MetadataVersion(from: rhs.itemVersion.metadataVersion)!
+#endif
+#if os(iOS)
+        return areBaseFieldsSame && isCreationDateSame && lhs.isTrashed == rhs.isTrashed && lhs.isDownloaded == rhs.isDownloaded
+#endif
+    }
+}

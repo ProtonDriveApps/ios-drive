@@ -17,6 +17,7 @@
 
 import UIKit
 import PDCore
+import PDCoreIOS
 import ProtonCoreKeymaker
 import ProtonCoreServices
 import ProtonCoreHumanVerification
@@ -36,7 +37,8 @@ extension DriveDependencyContainer {
             windowScene: windowScene,
             settingsSuite: appGroup,
             authenticator: authenticator,
-            populatedStateController: populatedController
+            populatedStateController: populatedController,
+            autoLocker: autoLocker
         )
         
         self.authenticatedContainer = authenticatedContainer
@@ -45,7 +47,9 @@ extension DriveDependencyContainer {
     }
 
     func initializeTowerInBackgroundQueue(populatedController: PopulatedStateControllerProtocol) async -> Tower {
+        Log.info("Initializing Tower", domain: .application)
         let storageManager = StorageManager(suite: Constants.appGroup, sessionVault: sessionVault)
+        
         let tower = Tower(
             storage: storageManager,
             eventStorage: EventStorageManager(suiteUrl: appGroup.directoryUrl),
@@ -58,9 +62,11 @@ extension DriveDependencyContainer {
             network: networkService,
             eventObservers: [],
             eventProcessingMode: .full,
+            eventLoopInterval: 90,
             uploadVerifierFactory: ConcreteUploadVerifierFactory(),
             localSettings: localSettings,
-            populatedStateController: populatedController
+            populatedStateController: populatedController,
+            connectionStateResource: connectionStateResource
         )
         return tower
     }

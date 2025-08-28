@@ -19,6 +19,7 @@ import Foundation
 import Combine
 import PDCore
 import ProtonCoreNetworking
+import PDPhotos
 
 protocol CircuitBreakerController: ConstraintController {
     func handleError(_ error: Error)

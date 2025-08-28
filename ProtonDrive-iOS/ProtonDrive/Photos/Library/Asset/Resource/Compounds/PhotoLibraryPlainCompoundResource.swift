@@ -17,6 +17,7 @@
 
 import PDCore
 import Photos
+import PDPhotos
 
 final class PhotoLibraryPlainCompoundResource: PhotoLibraryCompoundResource {
     private let livePhotoResource: PhotoLibraryCompoundResource
@@ -82,7 +83,7 @@ final class PhotoLibraryPlainCompoundResource: PhotoLibraryCompoundResource {
 
     private func loadAsset(identifier: PhotoIdentifier, asset: PHAsset, resource: PHAssetResource, originalFilename: String, filename: String) async throws -> PhotoAssetCompound {
         let isOriginal = resource.isOriginalImage() || resource.isOriginalVideo()
-        let data = PhotoAssetData(identifier: identifier, asset: asset, resource: resource, originalFilename: originalFilename, fileExtension: filename.fileExtension(), isOriginal: isOriginal)
+        let data = PhotoAssetData(identifier: identifier, asset: asset, resource: resource, originalFilename: originalFilename, fileExtension: filename.fileExtension, isOriginal: isOriginal)
         let asset = try await loadAsset(with: data, isVideo: resource.isVideo())
         return PhotoAssetCompound(primary: asset, secondary: [])
     }

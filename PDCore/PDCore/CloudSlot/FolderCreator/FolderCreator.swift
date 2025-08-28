@@ -71,7 +71,16 @@ public class FolderCreator {
         let nodeKeyPack = try Encryptor.generateNodeKeys(addressPassphrase: signersKit.addressPassphrase, addressPrivateKey: signersKit.addressKey.privateKey, parentKey: parentFolder.nodeKey)
         let hashKey = try Encryptor.generateNodeHashKey(nodeKey: nodeKeyPack.key, passphrase: nodeKeyPack.passphraseRaw)
 
-        let createdFolder = CreatedFolder(volumeID: parentFolder.volumeID, shareID: parentFolder.shareID, name: encryptedName, nameSignatureEmail: signersKit.address.email, nameHash: nameHash, nodeKey: nodeKeyPack.key, nodePassphrase: nodeKeyPack.passphrase, nodePassphraseSignature: nodeKeyPack.signature, nodeHashKey: hashKey)
+        let createdFolder = CreatedFolder(volumeID: parentFolder.volumeID,
+                                          shareID: parentFolder.shareID,
+                                          name: encryptedName,
+                                          nameSignatureEmail: signersKit.address.email,
+                                          nameHash: nameHash,
+                                          nodeKey: nodeKeyPack.key,
+                                          nodePassphrase: nodeKeyPack.passphrase,
+                                          nodePassphraseSignature: nodeKeyPack.signature,
+                                          nodeHashKey: hashKey,
+                                          isInheritingOfflineAvailable: parentFolder.availableOffline)
 
         let parameters = NewFolderParameters(
             name: createdFolder.name,
@@ -88,7 +97,7 @@ public class FolderCreator {
 
         return try await moc.perform {
             let newFolder = Folder.make(from: createdFolder, id: newFolderID, moc: self.moc)
-            newFolder.parentLink = parent.in(moc: self.moc)
+            newFolder.parentFolder = parent.in(moc: self.moc)
 
             try self.moc.saveOrRollback()
 
@@ -109,13 +118,23 @@ private struct CreatedFolder {
     let nodePassphrase: String
     let nodePassphraseSignature: String
     let nodeHashKey: String
+
+    let isInheritingOfflineAvailable: Bool
 }
 
 private extension Folder {
     /// Create a new File from the `EncryptedImportedFile` model
     static func make(from createdFolder: CreatedFolder, id: String, moc: NSManagedObjectContext) -> Folder {
         // Create new Folder
-        let coreDataFolder = Folder.fetchOrCreate(id: id, volumeID: createdFolder.volumeID, in: moc)
+        let coreDataFolder: Folder
+        switch Folder.fetchOrCreateIndicatingResult(id: id, volumeID: createdFolder.volumeID, in: moc) {
+        case .created(let folder):
+            coreDataFolder = folder
+        case .fetched(let folder):
+            assertionFailure("New folder should not exist yet")
+            Log.warning("A folder node with the identifier of the newly created folder found", domain: .metadata, sendToSentryIfPossible: true)
+            coreDataFolder = folder
+        }
         coreDataFolder.setShareID(createdFolder.shareID)
 
         coreDataFolder.name = createdFolder.name
@@ -127,6 +146,10 @@ private extension Folder {
         coreDataFolder.nodePassphraseSignature = createdFolder.nodePassphraseSignature
         coreDataFolder.signatureEmail = createdFolder.nameSignatureEmail // Created at the same time as the nameSignatureEmail, no distinction between them
         coreDataFolder.nodeHashKey = createdFolder.nodeHashKey
+
+        #if os(macOS)
+        coreDataFolder.isInheritingOfflineAvailable = createdFolder.isInheritingOfflineAvailable
+        #endif
 
         coreDataFolder.state = .active
         coreDataFolder.mimeType = Folder.mimeType

@@ -30,7 +30,7 @@ public final class SharedByMeModel: FinderModel, FinderErrorModel, NodesListing,
     public private(set) weak var tower: Tower!
     public private(set) var childrenObserver: FetchedObjectsObserver<Node>
     @Published public private(set) var sorting: SortPreference
-    private let volumeID: String
+    private let volumeIds: [String]
     private let interactor: SharedByMeLinksScannerInteractorProtocol
     // MARK: FinderErrorModel
     public var errorSubject = PassthroughSubject<Error, Never>()
@@ -40,12 +40,12 @@ public final class SharedByMeModel: FinderModel, FinderErrorModel, NodesListing,
         self.$sorting
     }
 
-    public init(tower: Tower, volumeID: String) {
+    public init(tower: Tower, volumeIds: [String]) {
         self.tower = tower
-        self.volumeID = volumeID
-        let repository = SequentialSharedByMeLinksRepository(volumeId: volumeID, sharedByMeLinkIdsDataSource: tower.client, linksMetadataDataSource: tower.client, storage: tower.storage)
+        self.volumeIds = volumeIds
+        let repository = SequentialSharedByMeLinksRepository(volumeIds: volumeIds, sharedByMeLinkIdsDataSource: tower.client, linksMetadataDataSource: tower.client, storage: tower.storage)
         interactor = SharedByMeLinksScannerInteractor(repository: repository)
-        let children = tower.uiSlot!.subscribeToShared(volumeID: volumeID, sorting: tower.localSettings.nodesSortPreference)
+        let children = tower.uiSlot!.subscribeToShared(volumeIDs: volumeIds, sorting: tower.localSettings.nodesSortPreference)
         self.childrenObserver = FetchedObjectsObserver(children)
         self.sorting = self.tower.localSettings.nodesSortPreference
 
@@ -54,7 +54,7 @@ public final class SharedByMeModel: FinderModel, FinderErrorModel, NodesListing,
             .sink { [weak self] sort in
                 guard let self = self else { return }
                 self.sorting = sort
-                let children = tower.uiSlot!.subscribeToShared(volumeID: volumeID, sorting: tower.localSettings.nodesSortPreference)
+                let children = tower.uiSlot!.subscribeToShared(volumeIDs: volumeIds, sorting: tower.localSettings.nodesSortPreference)
                 self.childrenObserver.inject(fetchedResultsController: children)
             }
     }

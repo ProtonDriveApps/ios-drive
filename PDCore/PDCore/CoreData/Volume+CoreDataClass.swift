@@ -19,6 +19,8 @@ import Foundation
 import CoreData
 import PDClient
 
+public typealias CoreDataVolume = Volume
+
 @objc(Volume)
 public class Volume: NSManagedObject, GloballyUnique {
     public typealias RestoreStatus = PDClient.Volume.RestoreStatus

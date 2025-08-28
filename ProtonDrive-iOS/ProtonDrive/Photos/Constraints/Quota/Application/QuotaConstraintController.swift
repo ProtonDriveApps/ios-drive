@@ -17,6 +17,7 @@
 
 import Combine
 import PDCore
+import PDPhotos
 
 final class QuotaConstraintController: PhotoBackupConstraintController {
     private let quotaController: QuotaStateController

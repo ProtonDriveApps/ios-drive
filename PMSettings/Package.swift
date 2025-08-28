@@ -7,15 +7,14 @@ let package = Package(
     name: "PMSettings",
     defaultLocalization: "en",
     platforms: [
-        .iOS(.v15)
+        .iOS(.v16)
     ],
     products: [
         .library(name: "PMSettings", targets: ["PMSettings"]),
     ],
     dependencies: [
         .package(name: "PDLocalization", path: "../PDLocalization"),
-        // exact version is defined by PDClient
-        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", .suitable),
+        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", exact: "32.7.1"),
     ],
     targets: [
         .target(
@@ -31,7 +30,3 @@ let package = Package(
         ),
     ]
 )
-
-extension Range where Bound == Version {
-    static let suitable = Self(uncheckedBounds: ("0.0.0", "99.0.0"))
-}

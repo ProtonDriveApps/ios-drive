@@ -19,36 +19,27 @@ import Foundation
 import PDCore
 
 class AditionalSettingsStarter: AppBootstrapper {
-    let generalSettings: GeneralSettings
-    let settingsUpdater: TabbarSettingUpdaterProtocol
-    let storage: StorageManager
+    let driveSettingsInitializer: DriveUserSettingsInitializerInteractorProtocol
+    let protonSettingsInitializer: ProtonUserSettingsStarterInteractorProtocol
+    let b2bUserStatusStarter: B2BUserStatusStarterProtocol
+    let checklistBootstrapper: DriveChecklistBootstrapper
 
-    init(generalSettings: GeneralSettings, storage: StorageManager, settingsUpdater: TabbarSettingUpdaterProtocol) {
-        self.generalSettings = generalSettings
-        self.storage = storage
-        self.settingsUpdater = settingsUpdater
+    init(
+        driveSettingsInitializer: DriveUserSettingsInitializerInteractorProtocol,
+        protonSettingsInitializer: ProtonUserSettingsStarterInteractorProtocol,
+        b2bUserStatusStarter: B2BUserStatusStarter,
+        checklistBootstrapper: DriveChecklistBootstrapper
+    ) {
+        self.driveSettingsInitializer = driveSettingsInitializer
+        self.protonSettingsInitializer = protonSettingsInitializer
+        self.b2bUserStatusStarter = b2bUserStatusStarter
+        self.checklistBootstrapper = checklistBootstrapper
     }
 
     func bootstrap() async throws {
-        bootstrapGeneralSettings()
-        try await bootstrapTabbarSettings()
-    }
-
-    /// opportunistic, no need to abort the boot if this call fails/
-    private func bootstrapGeneralSettings() {
-        generalSettings.fetchUserSettings()
-    }
-
-    private func bootstrapTabbarSettings() async throws {
-        let context = storage.backgroundContext
-        let mainShare = try await context.perform {
-            // The original implementation used the photos share, but at the end the only thing needed is the volumeID.
-            guard let mainShare = self.storage.getMainShares(in: context).first else {
-                throw NukingCacheError("The main share existence is a compulsory requirement")
-            }
-            return mainShare
-        }
-
-        await settingsUpdater.updateTabSettingBasedOnUserPlan(share: mainShare)
+        try await driveSettingsInitializer.bootstrap()
+        try await protonSettingsInitializer.bootstrap()
+        try await b2bUserStatusStarter.bootstrap()
+        try? await checklistBootstrapper.bootstrap()
     }
 }

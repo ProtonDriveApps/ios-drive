@@ -18,4 +18,4 @@
 import SwiftUI
 import PDCore
 
-extension Node: Identifiable {}
+extension Node: Swift.Identifiable {}

@@ -17,6 +17,8 @@
 
 import CoreData
 
+public typealias CoreDataMembership = Membership
+
 @objc(Membership)
 public class Membership: NSManagedObject, GloballyUnique {
     @NSManaged public var id: String

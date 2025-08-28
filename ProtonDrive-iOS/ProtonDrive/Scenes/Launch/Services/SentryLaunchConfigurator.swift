@@ -21,17 +21,14 @@ import PDClient
 final class SentryLaunchConfigurator: LaunchConfigurator {
     let sentryClient: SentryClient
     let localSettings: LocalSettings
-    let clientGetter: () -> Client?
 
     init(sentryClient: SentryClient,
-         localSettings: LocalSettings,
-         clientGetter: @escaping () -> Client?) {
+         localSettings: LocalSettings) {
         self.sentryClient = sentryClient
         self.localSettings = localSettings
-        self.clientGetter = clientGetter
     }
 
     func onDriveLaunch() {
-        sentryClient.start(localSettings: localSettings, clientGetter: clientGetter)
+        sentryClient.start(localSettings: localSettings)
     }
 }

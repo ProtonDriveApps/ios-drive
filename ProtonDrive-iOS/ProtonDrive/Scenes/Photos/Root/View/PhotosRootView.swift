@@ -73,11 +73,13 @@ struct PhotosRootView<
     private var content: some View {
         switch viewModel.state {
         case .disconnection:
-            NoConnectionFolderView(isUpdating: .constant(false), config: .noConnectionInPhoto) { [weak viewModel] in
+            NoConnectionView(isUpdating: .constant(false), config: .noConnectionInPhoto) { [weak viewModel] in
                 viewModel?.refreshIfNeeded()
             }
+        case let .error(configuration):
+            PlaceholderView(viewModel: configuration)
         case .loading:
-            ProtonSpinner(size: .medium, style: .regular)
+            ProtonSpinner(size: .medium, isHugging: true)
         case .onboarding:
             onboarding()
         case .permissions:

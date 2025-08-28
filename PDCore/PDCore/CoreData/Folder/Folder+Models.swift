@@ -19,25 +19,32 @@ import Foundation
 
 // MARK: - EncryptingParent
 
+public typealias EncryptingFolder = EncryptingParent
+
 /// DTO that represents a Folder and gives the minimum data required for creating new File within said Folder.
-public struct EncryptingFolder {
+public struct EncryptingParent: Equatable {
     public let id: String
     public let shareID: String
     public let volumeID: String
     public let hashKey: HashKey
     public let nodeKey: ArmoredKey
+    public let availableOffline: Bool
+
+    public var identifier: NodeIdentifier {
+        NodeIdentifier(id, shareID, volumeID)
+    }
 }
 
-extension Folder {
-    public func encrypting() throws -> EncryptingFolder {
+extension NodeWithNodeHashKeyProtocol where Self: Node {
+    public func encrypting() throws -> EncryptingParent {
         let nodeHashKey = try decryptNodeHashKey()
-
-        return EncryptingFolder(
+        return EncryptingParent(
             id: id,
             shareID: shareId,
             volumeID: volumeID,
             hashKey: nodeHashKey,
-            nodeKey: nodeKey
+            nodeKey: nodeKey,
+            availableOffline: isAvailableOffline
         )
     }
 }

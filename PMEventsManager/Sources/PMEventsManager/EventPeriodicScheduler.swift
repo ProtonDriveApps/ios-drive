@@ -37,6 +37,8 @@ public class EventPeriodicScheduler<GeneralEventsLoop: EventsLoop, SpecialEvents
     private let timingController: EventLoopsTimingController
 
     public init(generalLoop: GeneralEventsLoop, timingController: EventLoopsTimingController) {
+        trace()
+
         self.queue = OperationQueue()
         self.queue.maxConcurrentOperationCount = 1
         self.queue.qualityOfService = .utility
@@ -48,12 +50,16 @@ public class EventPeriodicScheduler<GeneralEventsLoop: EventsLoop, SpecialEvents
     }
     
     public func start() {
+        trace()
+
         queue.isSuspended = false
 
         let timer = Timer(timeInterval: refillPeriod, repeats: true) { [weak self] _ in
             self?.refillQueueIfNeeded()
         }
+        // Invalidate the previous timer.
         self.timer?.invalidate()
+        // Set the new one.
         self.timer = timer
 
         RunLoop.main.add(timer, forMode: .common)
@@ -65,9 +71,13 @@ public class EventPeriodicScheduler<GeneralEventsLoop: EventsLoop, SpecialEvents
     deinit {
         timer?.invalidate()
         timer = nil
+
+        trace()
     }
     
     private func refillQueueIfNeeded() {
+        trace()
+
         let enqueuedIds = getEnqueuedLoopIds()
 
         // General loop is added only if not enqueued. (Isn't constrained by timing)
@@ -90,7 +100,16 @@ public class EventPeriodicScheduler<GeneralEventsLoop: EventsLoop, SpecialEvents
         timingController.setExecutedLoops(loopIds: Array(readyLoops.keys))
     }
 
+    public func forcePolling(volumeIDs: [String]) {
+        timingController.updateHistoryForForcePolling(volumeIDs: volumeIDs)
+        DispatchQueue.main.async { [weak self] in
+            self?.refillQueueIfNeeded()
+        }
+    }
+
     public func suspend() {
+        trace()
+
         queue.isSuspended = true
         queue.cancelAllOperations()
         
@@ -98,11 +117,15 @@ public class EventPeriodicScheduler<GeneralEventsLoop: EventsLoop, SpecialEvents
     }
     
     public func reset() {
+        trace()
+
         suspend()
         specialLoops.removeAll()
     }
     
     public func destroyAnchors() {
+        trace()
+
         generalLoopScheduler.removeAnchor()
         specialLoops.forEach { _, scheduler in
             scheduler.removeAnchor()
@@ -110,16 +133,22 @@ public class EventPeriodicScheduler<GeneralEventsLoop: EventsLoop, SpecialEvents
     }
     
     public func enable(loop: SpecialEventsLoop, for loopID: LoopID) {
+        trace()
+
         specialLoops[loopID] = LoopOperationScheduler(loop: loop, queue: self.queue)
     }
 
     public func removeLoops(with loopIds: [LoopID]) {
+        trace()
+
         loopIds.forEach {
             specialLoops[$0] = nil
         }
     }
 
     public func disable(loopFor loopID: LoopID) {
+        trace()
+        
         // stop operations in queue
         queue.operations
             .compactMap { $0 as? LoopOperation<SpecialEventsLoop> }

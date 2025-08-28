@@ -35,7 +35,7 @@ final class FileSystemCleanPhotoLeftoverCommand: Command {
                 try fileManager.removeItem(at: fileURL)
             }
         } catch let error as NSError {
-            Log.error(DriveError(withDomainAndCode: error), domain: .uploader)
+            Log.error(error: DriveError(withDomainAndCode: error), domain: .uploader)
         }
     }
 }

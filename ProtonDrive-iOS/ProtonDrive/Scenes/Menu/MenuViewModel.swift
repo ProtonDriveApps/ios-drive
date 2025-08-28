@@ -17,6 +17,7 @@
 
 import Foundation
 import PDCore
+import PDCoreIOS
 import Combine
 import PDUIComponents
 import PDLocalization
@@ -38,12 +39,23 @@ class MenuViewModel: ObservableObject, LogoutRequesting {
 
     private var cancellables: Set<AnyCancellable> = []
     private let selectedScreenSubject = CurrentValueSubject<Destination, Never>(.myFiles)
-    private let featureFlagsController: FeatureFlagsController
+    private let featureFlagsController: FeatureFlagsControllerProtocol
+    private let showStorageBonusPromoInteractor: ShowStorageBonusPromoInteractorProtocol
+
     var selectedScreenPublisher: AnyPublisher<Destination, Never> {
         selectedScreenSubject.eraseToAnyPublisher()
     }
 
-    init(model: MenuModel, offlineSaver: OfflineSaver, featureFlagsController: FeatureFlagsController) {
+    var hasStoragePromoButton: Bool {
+        showStorageBonusPromoInteractor.isStorageBonusEligible()
+    }
+
+    init(
+        model: MenuModel,
+        offlineSaver: OfflineSaver,
+        featureFlagsController: FeatureFlagsControllerProtocol,
+        showStorageBonusPromoInteractor: ShowStorageBonusPromoInteractorProtocol
+    ) {
         self.model = model
         self.offlineSaver = offlineSaver
         self.featureFlagsController = featureFlagsController
@@ -54,6 +66,7 @@ class MenuViewModel: ObservableObject, LogoutRequesting {
             inProgressTitle: Localization.available_offline_downloading_files,
             iconName: "ic-availableoffline"
         )
+        self.showStorageBonusPromoInteractor = showStorageBonusPromoInteractor
     }
 
     private func subscribeToUpdates() {
@@ -115,7 +128,8 @@ extension MenuViewModel {
         case feedback
         case logout
         case sharedByMe
+        case storageBonusPromo
     }
 }
 
-extension OfflineSaver: ProgressFractionCompletedProvider {}
+extension OfflineSaver: PDUIComponents.ProgressFractionCompletedProvider {}

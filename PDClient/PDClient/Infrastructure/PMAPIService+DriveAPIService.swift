@@ -20,7 +20,8 @@ import ProtonCoreServices
 import ProtonCoreUtilities
 
 // MARK: - Log System for PDClient
-public var log: ((String) -> Void)?
+public var logInfo: ((String) -> Void)?
+public var logError: ((String) -> Void)?
 
 extension PMAPIService: DriveAPIService {
     public func request<E, Response>(from endpoint: E, completionExecutor: CompletionBlockExecutor, completion: @escaping (Result<Response, Error>) -> Void) where E: Endpoint, Response == E.Response {
@@ -36,33 +37,33 @@ extension DriveAPIService {
         completionExecutor: CompletionBlockExecutor,
         completion: @escaping (Result<Response, Error>) -> Void
     ) where E: Endpoint, Response == E.Response {
-        log?(endpoint.prettyDescription)
-        
+        logInfo?(endpoint.prettyDescription)
+
         apiService.perform(request: endpoint, callCompletionBlockUsing: completionExecutor) { task, result in
             switch result {
             case .failure(let responseError):
-                log?(endpoint.networkingError(responseError))
+                logError?(endpoint.networkingError(responseError))
                 return completion(.failure(responseError))
 
             case .success(let responseDict):
                 guard let responseData = try? JSONSerialization.data(withJSONObject: responseDict, options: .prettyPrinted) else {
-                    log?(endpoint.unknownError())
+                    logError?(endpoint.unknownError())
                     return completion(.failure(URLError(.unknown)))
                 }
 
                 let decoder = endpoint.decoder
                 if let serverError = try? decoder.decode(PDClient.ErrorResponse.self, from: responseData) {
                     let error = NSError(serverError)
-                    log?(endpoint.serverError(error))
+                    logError?(endpoint.serverError(error))
                     return completion(.failure(error))
                 }
 
                 do {
                     let response = try decoder.decode(E.Response.self, from: responseData)
-                    log?(endpoint.prettyResponse(responseData))
+                    logInfo?(endpoint.prettyResponse(responseData))
                     return completion(.success(response))
                 } catch {
-                    log?(endpoint.deserializingError(error))
+                    logError?(endpoint.deserializingError(error))
                     return completion(.failure(error))
                 }
             }

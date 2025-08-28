@@ -32,6 +32,7 @@ struct EncryptedImportedFile {
     let contentKeyPacketSignature: String
     let parentLinkID: String
     let clientUID: String
+    let isInheritingOfflineAvailable: Bool
 
     let shareID: String
     let volumeID: String

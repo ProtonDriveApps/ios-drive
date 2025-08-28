@@ -23,6 +23,7 @@ public protocol PhotosSkippableStorage {
 
     func checkSkippableStatus(identifier: Identifier) -> SkippableStatus
     func batchMarkAsSkippable(data: [Identifier: Int])
+    func clean()
 }
 
 public enum SkippableStatus {
@@ -40,7 +41,7 @@ public class UserDefaultsPhotosSkippableStorage: PhotosSkippableStorage {
     typealias Store = [String: Int]
     private static let delimiter = "@"
     
-    @SettingsStorage("skippable-icloud-ids") private var store: Store?
+    @SettingsStorage(SettingsStorageKey.photosSkippableCacheKey.value) private var store: Store?
     private let queue = DispatchQueue(label: "SkippableStorage", qos: .userInteractive, attributes: .concurrent)
     private var inMemorySet: Set<InMemoryData> = Set()
     
@@ -92,7 +93,14 @@ public class UserDefaultsPhotosSkippableStorage: PhotosSkippableStorage {
             return .needsDoubleCheck
         }
     }
-    
+
+    public func clean() {
+        store = [:]
+        queue.sync {
+            self.inMemorySet = self.loadSetFromStore()
+        }
+    }
+
     private func loadSetFromStore() -> Set<InMemoryData> {
         var set: Set<InMemoryData> = Set()
         

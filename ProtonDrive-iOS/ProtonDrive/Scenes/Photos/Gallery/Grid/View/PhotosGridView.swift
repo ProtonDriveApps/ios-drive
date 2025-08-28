@@ -37,19 +37,28 @@ struct PhotosGridView<ViewModel: PhotosGridViewModelProtocol, ActionView: View, 
 
     var body: some View {
         GeometryReader { geometry in
-            ScrollView {
-                LazyVGrid(columns: columns(width: geometry.size.width), alignment: .leading, spacing: spacing) {
-                    ForEach(viewModel.sections) {
-                        view(from: $0)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    EmptyView()
+                        .id("top")
+                    LazyVGrid(columns: columns(width: geometry.size.width), alignment: .leading, spacing: spacing) {
+                        ForEach(viewModel.sections) {
+                            view(from: $0)
+                        }
                     }
+                    Spacer(minLength: 32)
+                    LazyVGrid(columns: [.init()]) {
+                        bottomView
+                            .modifier(StretchModifier(containerFrame: geometry.frame(in: .global)))
+                    }
+                    .padding(.bottom, ActionBarSize.height)
                 }
-                Spacer(minLength: 32)
-                LazyVGrid(columns: [.init()]) {
-                    bottomView
-                        .modifier(StretchModifier(containerFrame: geometry.frame(in: .global)))
+                .onReceive(viewModel.scrollToTopPublisher) { tab in
+                    guard tab == .photos else { return }
+                    proxy.scrollTo("top", anchor: .top)
                 }
-                .padding(.bottom, ActionBarSize.height)
             }
+
         }
         .errorToast(location: .bottom, errors: viewModel.error)
         .overlay {
@@ -82,6 +91,24 @@ struct PhotosGridView<ViewModel: PhotosGridViewModelProtocol, ActionView: View, 
     }
 
     private var bottomView: some View {
+        VStack(spacing: 0) {
+            switch viewModel.paginationStatus {
+            case .finished:
+                EmptyView()
+            case .loading:
+                ProtonSpinner(size: .small)
+                    .padding(.bottom)
+            case .error:
+                Text(viewModel.footerError)
+                    .tint(ColorProvider.NotificationError)
+                    .padding(.bottom)
+            }
+
+            endToEndEncrypted
+        }
+    }
+
+    private var endToEndEncrypted: some View {
         HStack(alignment: .center, spacing: 6) {
             Spacer()
             IconProvider.lockCheckFilled

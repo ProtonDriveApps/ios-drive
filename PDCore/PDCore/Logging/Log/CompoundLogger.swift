@@ -17,22 +17,40 @@
 
 import Foundation
 
-public final class CompoundLogger: LoggerProtocol {
-    private let loggers: [LoggerProtocol]
+/// Manages a collection of loggers and forwards log events to all of them.
+public final class CompoundLogger: StructuredLogger {
 
-    public init(loggers: [LoggerProtocol]) {
+    private var loggers: [any LoggerProtocol]
+
+    public init(loggers: [any LoggerProtocol]) {
         self.loggers = loggers
     }
 
-    public func log(_ level: LogLevel, message: String, system: LogSystem, domain: LogDomain, sendToSentryIfPossible: Bool) {
+    public func log(_ logEntry: StructuredLogEntry) {
         loggers.forEach {
-            $0.log(level, message: message, system: system, domain: domain, sendToSentryIfPossible: sendToSentryIfPossible)
+            if let structuredLogger = $0 as? any StructuredLogger {
+                structuredLogger.log(logEntry)
+            } else {
+                $0.log(
+                    logEntry.level,
+                    message: logEntry.formattedMessage,
+                    system: logEntry.system,
+                    domain: logEntry.domain,
+                    context: logEntry.context,
+                    sendToSentryIfPossible: logEntry.sendToSentryIfPossible,
+                    file: logEntry.file,
+                    function: logEntry.function,
+                    line: logEntry.line
+                )
+            }
         }
     }
 
-    public func log(_ error: NSError, system: LogSystem, domain: LogDomain, sendToSentryIfPossible: Bool) {
-        loggers.forEach {
-            $0.log(error, system: system, domain: domain, sendToSentryIfPossible: sendToSentryIfPossible)
-        }
+    public func removeAll(where shouldBeRemoved: (LoggerProtocol) -> Bool) {
+        loggers.removeAll(where: shouldBeRemoved)
+    }
+
+    public func append(logger: any LoggerProtocol) {
+        loggers.append(logger)
     }
 }

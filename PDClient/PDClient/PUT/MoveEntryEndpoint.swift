@@ -28,6 +28,8 @@ public struct MoveEntryEndpoint: Endpoint {
         public let NewShareID: String?
         public let NodePassphraseSignature: String?
         public let SignatureEmail: String?
+        /// Optional, except when moving a Photo-Link.
+        public let ContentHash: String?
 
         public init(
             name: String,
@@ -38,7 +40,8 @@ public struct MoveEntryEndpoint: Endpoint {
             originalHash: String,
             newShareID: String?,
             nodePassphraseSignature: String? = nil,
-            signatureEmail: String? = nil
+            signatureEmail: String? = nil,
+            contentHash: String? = nil
         ) {
             self.Name = name
             self.NodePassphrase = nodePassphrase
@@ -49,11 +52,16 @@ public struct MoveEntryEndpoint: Endpoint {
             self.OriginalHash = originalHash
             self.NewShareID = newShareID
             self.SignatureEmail = signatureEmail
+            self.ContentHash = contentHash
         }
     }
 
     public struct Response: Codable {
         var code: Int
+        
+        public init(code: Int) {
+            self.code = code
+        }
     }
 
     public var request: URLRequest

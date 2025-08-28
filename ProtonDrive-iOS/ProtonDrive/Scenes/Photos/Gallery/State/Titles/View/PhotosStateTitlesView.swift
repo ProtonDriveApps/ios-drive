@@ -37,6 +37,8 @@ struct PhotosStateTitlesView<ViewModel: PhotosStateTitlesViewModelProtocol>: Vie
             Text(item.title)
                 .foregroundColor(ColorProvider.TextNorm)
                 .font(.body)
+                .truncationMode(.tail)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .animation(isAnimating ? .default : nil, value: viewModel.item)
         .onAppear {

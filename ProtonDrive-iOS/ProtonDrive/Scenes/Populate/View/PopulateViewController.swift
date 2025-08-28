@@ -23,7 +23,7 @@ import ProtonCoreUIFoundations
 import SwiftUI
 import UIKit
 
-final class PopulateViewController: UIViewController, NukeCacheRequesting, LogoutRequesting {
+final class PopulateViewController: UIViewController, LogoutRequesting {
     private lazy var spinner = ViewHosting {
         SpinnerTextView(text: Localization.populate_loading_text)
     }
@@ -43,10 +43,10 @@ final class PopulateViewController: UIViewController, NukeCacheRequesting, Logou
             do {
                 try await viewModel.populate()
             } catch let error as NukingCacheError {
-                Log.error(error, domain: .application)
-                requestCacheNuke()
+                Log.error(error: error, domain: .application)
+                NotificationCenter.default.nukeCache(reason: error.localizedDescription)
             } catch {
-                Log.error(error, domain: .application)
+                Log.error(error: error, domain: .application)
                 requestLogout()
             }
         }

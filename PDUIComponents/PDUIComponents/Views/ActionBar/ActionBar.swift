@@ -23,8 +23,8 @@ public struct ActionBarSize {
 }
 
 #if os(iOS)
-public struct ActionBar<Content: View>: View {
-    
+public struct ActionBar<Content: View, ContextMenu: View>: View {
+
     @Binding var selection: ActionBarButtonViewModel?
 
     private let content: Content
@@ -32,47 +32,91 @@ public struct ActionBar<Content: View>: View {
     private let items: [ActionBarButtonViewModel]
     private let leadingItems: [ActionBarButtonViewModel]
     private let trailingItems: [ActionBarButtonViewModel]
-    
-    public init(onSelection: @escaping (ActionBarButtonViewModel?) -> Void,
-                items: [ActionBarButtonViewModel] = [],
-                leadingItems: [ActionBarButtonViewModel] = [],
-                trailingItems: [ActionBarButtonViewModel] = [],
-                @ViewBuilder content: () -> Content) {
+    private let isLoading: Bool
+    private let isContainedInVStack: Bool
+    private var contextMenu: ((ActionBarButtonViewModel) -> ContextMenu)?
+
+    public init(
+        onSelection: @escaping (ActionBarButtonViewModel?) -> Void,
+        items: [ActionBarButtonViewModel] = [],
+        leadingItems: [ActionBarButtonViewModel] = [],
+        trailingItems: [ActionBarButtonViewModel] = [],
+        isLoading: Bool = false,
+        isContainedInVStack: Bool = false,
+        @ViewBuilder content: () -> Content,
+        contextMenu: @escaping ((ActionBarButtonViewModel) -> ContextMenu) = { _ in EmptyView() }
+    ) {
         self._selection = .init(get: { nil }, set: onSelection) // because .onChange is not available on iOS 13
         self.items = items
         self.leadingItems = leadingItems
         self.trailingItems = trailingItems
+        self.isLoading = isLoading
+        self.isContainedInVStack = isContainedInVStack
         self.content = content()
+        self.contextMenu = contextMenu
     }
 
-    public init(onSelection: @escaping (ActionBarButtonViewModel?) -> Void,
-                items: [ActionBarButtonViewModel] = [],
-                leadingItems: [ActionBarButtonViewModel] = [],
-                trailingItems: [ActionBarButtonViewModel] = []) where Content == EmptyView {
+    public init(
+        onSelection: @escaping (ActionBarButtonViewModel?) -> Void,
+        items: [ActionBarButtonViewModel] = [],
+        leadingItems: [ActionBarButtonViewModel] = [],
+        trailingItems: [ActionBarButtonViewModel] = [],
+        isLoading: Bool = false,
+        isContainedInVStack: Bool = false,
+        contextMenu: @escaping ((ActionBarButtonViewModel) -> ContextMenu) = { _ in EmptyView() }
+    ) where Content == EmptyView {
         self.init(
             onSelection: onSelection,
             items: items,
             leadingItems: leadingItems,
             trailingItems: trailingItems,
-            content: EmptyView.init
+            isLoading: isLoading,
+            isContainedInVStack: isContainedInVStack,
+            content: EmptyView.init,
+            contextMenu: contextMenu
         )
     }
 
     public var body: some View {
-        VStack {
-            Spacer()
-            VStack {
-                Divider()
-                ActionBarRow(selection: self.$selection,
-                             items: self.items,
-                             leadingItems: self.leadingItems,
-                             trailingItems: self.trailingItems,
-                             content: { self.content }
-                )
-                .frame(height: ActionBarSize.height)
+        if isContainedInVStack {
+            ZStack(alignment: .bottom) {
+                contentView
             }
-            .background(ColorProvider.BackgroundNorm)
+        } else {
+            VStack {
+                Spacer()
+                contentView
+            }
         }
+    }
+
+    private var contentView: some View {
+        VStack {
+            Divider()
+            innerView
+                .frame(height: ActionBarSize.height)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .background(ColorProvider.BackgroundNorm)
+        
+    }
+
+    @ViewBuilder
+    private var innerView: some View {
+        ActionBarRow(selection: self.$selection,
+                     items: self.items,
+                     leadingItems: self.leadingItems,
+                     trailingItems: self.trailingItems,
+                     content: { self.content },
+                     contextMenu: contextMenu,
+                     isLoading: isLoading
+        )
+    }
+}
+
+public extension Notification.Name {
+    static var actionBarVisibilityIsChanged: Notification.Name {
+        Notification.Name("ch.protondrive.actionBar.visibility.changed")
     }
 }
 #endif

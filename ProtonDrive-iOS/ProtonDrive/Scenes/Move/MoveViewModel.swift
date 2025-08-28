@@ -18,6 +18,7 @@
 import Combine
 import Foundation
 import PDCore
+import PDCoreIOS
 import PDLocalization
 import PDUIComponents
 import ProtonCoreNetworking
@@ -38,9 +39,12 @@ class MoveViewModel: ObservableObject, FinderViewModel, HasRefreshControl, Fetch
     var isVisible: Bool = true // otherwise changes in onAppear will break deeplinking
     let genericErrors = ErrorRegulator()
     let featureFlagsController: FeatureFlagsControllerProtocol
+    let scrollToTopPublisher: AnyPublisher<TabBarItem, Never>? = nil
 
     let isSharedWithMe = false
+    let isRoot: Bool = false
     let hasPlusFunctionality = false
+    let topBanner: String? = nil
 
     var nodeName: String {
         guard let node = node else {
@@ -50,7 +54,7 @@ class MoveViewModel: ObservableObject, FinderViewModel, HasRefreshControl, Fetch
     }
 
     lazy var trailingNavBarItems: [NavigationBarButton] = [
-        .apply(title: Localization.move_action_move_here, disabled: self.model.node.identifier.nodeID == self.model.nodeToMoveParentId.nodeID)
+        .apply(title: Localization.move_action_move_here, disabled: isMoveHereDisabled)
     ]
 
     lazy var leadingNavBarItems: [NavigationBarButton] = [.apply(title: "", disabled: true)]
@@ -59,6 +63,18 @@ class MoveViewModel: ObservableObject, FinderViewModel, HasRefreshControl, Fetch
     var permanentChildrenSectionTitle = ""
 
     var supportsLayoutSwitch: Bool { false }
+
+    var isMoveHereDisabled: Bool {
+        isMoveToItself || isMoveToDeviceRoot
+    }
+
+    private var isMoveToItself: Bool {
+        self.model.node.identifier.nodeID == self.model.nodeToMoveParentId.nodeID
+    }
+
+    private var isMoveToDeviceRoot: Bool {
+        self.model.node.isDeviceRoot
+    }
 
     func refreshOnAppear() {
         self.model.loadFromCache()

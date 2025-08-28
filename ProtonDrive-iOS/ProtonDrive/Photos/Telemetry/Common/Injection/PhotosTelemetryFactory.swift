@@ -16,17 +16,31 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDPhotos
 
 struct PhotosTelemetryFactory {
-    func makeSettingController(tower: Tower, settingsController: PhotoBackupSettingsController, telemetryController: TelemetryController) -> PhotosTelemetrySettingController {
-        let userInfoFactory = makeUserInfoFactory(userInfoResource: tower.sessionVault)
-        return ConcretePhotosTelemetrySettingController(telemetryController: telemetryController, settingsController: settingsController, userInfoFactory: userInfoFactory)
+    func makeSettingController(
+        userInfoFactory: PhotosTelemetryUserInfoFactory,
+        settingsController: PhotoBackupSettingsController,
+        telemetryController: TelemetryController
+    ) -> PhotosTelemetrySettingController {
+        return ConcretePhotosTelemetrySettingController(
+            telemetryController: telemetryController,
+            settingsController: settingsController,
+            userInfoFactory: userInfoFactory
+        )
     }
 
     // swiftlint:disable:next function_parameter_count
-    func makeStopController(tower: Tower, stateController: PhotosBackupStateController, telemetryController: TelemetryController, storage: PhotosTelemetryStorage, loadController: PhotoLibraryLoadController, failedPhotosResource: DeletedPhotosIdentifierStoreResource) -> PhotosBackupStopTelemetryController {
+    func makeStopController(
+        userInfoFactory: PhotosTelemetryUserInfoFactory,
+        stateController: PhotosBackupStateController,
+        telemetryController: TelemetryController,
+        storage: PhotosTelemetryStorage,
+        loadController: PhotoLibraryLoadController,
+        failedPhotosResource: DeletedPhotosIdentifierStoreResource
+    ) -> PhotosBackupStopTelemetryController {
         let durationController = makeDurationController(backupStateController: stateController, storage: storage)
-        let userInfoFactory = makeUserInfoFactory(userInfoResource: tower.sessionVault)
         let dataFactory = ConcretePhotosBackupStopTelemetryDataFactory(storage: storage, userInfoFactory: userInfoFactory, failedPhotosResource: failedPhotosResource)
         return ConcretePhotosBackupStopTelemetryController(stateController: stateController, telemetryController: telemetryController, durationController: durationController, dataFactory: dataFactory, storage: storage, loadController: loadController)
     }

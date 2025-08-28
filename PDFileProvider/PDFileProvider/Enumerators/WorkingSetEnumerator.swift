@@ -20,8 +20,11 @@ import PDCore
 
 public final class WorkingSetEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWithItemsFromDB {
 
-    private weak var tower: Tower!
+    @SettingsStorage(UserDefaults.FileProvider.workingSetEnumerationInProgressKey.rawValue) var workingSetEnumerationInProgress: Bool?
     
+    private weak var tower: Tower!
+    internal let keepDownloadedManager: KeepDownloadedEnumerationManager
+
     private var _model: ActivityModel! // backing property
     internal private(set) var model: ActivityModel! {
         get {
@@ -37,43 +40,71 @@ public final class WorkingSetEnumerator: NSObject, NSFileProviderEnumerator, Enu
     
     private let pageSize: Int
 
-    var shouldReenumerateItems: Bool
-    let changeObserver: FileProviderChangeObserver?
+    var shouldReenumerateItems: Bool = false
+    let enumerationObserver: EnumerationObserverProtocol?
+
+    let displayChangeEnumerationDetails: Bool
 
     public init(tower: Tower,
+                keepDownloadedManager: KeepDownloadedEnumerationManager,
                 pageSize: Int = 5_000,
-                changeObserver: FileProviderChangeObserver? = nil,
+                enumerationObserver: EnumerationObserverProtocol? = nil,
+                displayChangeEnumerationDetails: Bool = false,
                 shouldReenumerateItems: Bool = false) {
+        Log.trace()
         self.tower = tower
+        self.keepDownloadedManager = keepDownloadedManager
         self.pageSize = pageSize
-        self.changeObserver = changeObserver
-        self.shouldReenumerateItems = shouldReenumerateItems
+        self.enumerationObserver = enumerationObserver
+        self.displayChangeEnumerationDetails = displayChangeEnumerationDetails
+        
+        super.init()
+        
+        _workingSetEnumerationInProgress.configure(with: SettingsStorageSuite.group(named: Constants.appGroup))
+        
+        self.shouldReenumerateItems = workingSetEnumerationInProgress == true ? true : shouldReenumerateItems
     }
 
     public func invalidate() {
+        Log.trace()
         self.model = nil
     }
 
     func reinitializeModelIfNeeded() throws {
-        guard _model == nil else { return }
+        guard _model == nil else {
+            Log.trace("guard")
+            return
+        }
+        
+        Log.trace()
         self.model = try ActivityModel(tower: tower)
     }
 
     // MARK: Enumeration
 
     public func enumerateItems(for observer: NSFileProviderEnumerationObserver, startingAt page: NSFileProviderPage) {
-        let observers = [observer, changeObserver].compactMap { $0 }
-        changeObserver?.incrementSyncCounter()
+        defer {
+            if workingSetEnumerationInProgress == true {
+                workingSetEnumerationInProgress = false
+            }
+        }
         
+        Log.trace()
+        let observers: [NSFileProviderEnumerationObserver] = [observer, enumerationObserver?.items as? NSFileProviderEnumerationObserver].compactMap { $0 }
+
+        let pageNumber = page.rawValue.first ?? 0
+
+        enumerationObserver?.items.didStartEnumeratingItems(name: "Page \(pageNumber.description)")
+
         do {
             try self.reinitializeModelIfNeeded()
         } catch {
             observer.finishEnumeratingWithError(Errors.mapToFileProviderError(Errors.failedToCreateModel)!)
-            Log.error("Failed to enumerate items due to model failing to be created", domain: .fileProvider)
+            Log.error("Failed to enumerate items due to model failing to be created", error: nil, domain: .enumerating)
             // if we cannot create a model, there's no point in accessing the model for enumeration later
             return
         }
-        Log.info("Enumerating items for Working Set", domain: .fileProvider)
+        Log.info("Enumerating items for Working Set", domain: .enumerating)
         self.model.loadFromCache()
         self.fetchPageFromDB(page.int, pageSize: pageSize, observers: observers)
     }
@@ -81,11 +112,13 @@ public final class WorkingSetEnumerator: NSObject, NSFileProviderEnumerator, Enu
     // MARK: Changes
 
     public func currentSyncAnchor(completionHandler: @escaping (NSFileProviderSyncAnchor?) -> Void) {
+        Log.trace()
         self.currentSyncAnchor(completionHandler)
     }
 
     public func enumerateChanges(for observer: NSFileProviderChangeObserver, from syncAnchor: NSFileProviderSyncAnchor) {
-        let observers = [observer, changeObserver].compactMap { $0 }
+        Log.trace()
+        let observers = [observer, enumerationObserver?.changes as? NSFileProviderChangeObserver].compactMap { $0 }
         self.enumerateChanges(observers, syncAnchor)
     }
 }

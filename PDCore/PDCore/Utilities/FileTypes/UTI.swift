@@ -93,12 +93,25 @@ public extension UTI {
         return isLivePhoto || value == "com.apple.live-photo-bundle"
     }
 
-    var isProtonDocument: Bool {
-        value == ProtonDocumentConstants.uti
+    var isProtonFile: Bool {
+        [ProtonDocConstants.uti, ProtonSheetConstants.uti].contains(value)
     }
-    
+
+    var isProtonDoc: Bool {
+        value == ProtonDocConstants.uti
+    }
+
+    var isProtonSheet: Bool {
+        value == ProtonSheetConstants.uti
+    }
+
     var isGif: Bool {
         guard let type = UTType(value) else { return false }
         return type.conforms(to: .gif)
+    }
+
+    var isRawImage: Bool {
+        guard let type = UTType(value) else { return false }
+        return type.conforms(to: .rawImage)
     }
 }

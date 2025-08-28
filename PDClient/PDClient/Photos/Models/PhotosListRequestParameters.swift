@@ -21,10 +21,12 @@ public struct PhotosListRequestParameters {
     public let volumeId: String
     public let lastId: String?
     public let pageSize: Int
+    public let tag: Int?
 
-    public init(volumeId: String, lastId: String?, pageSize: Int) {
+    public init(volumeId: String, lastId: String?, pageSize: Int, tag: Int?) {
         self.volumeId = volumeId
         self.lastId = lastId
         self.pageSize = pageSize
+        self.tag = tag
     }
 }

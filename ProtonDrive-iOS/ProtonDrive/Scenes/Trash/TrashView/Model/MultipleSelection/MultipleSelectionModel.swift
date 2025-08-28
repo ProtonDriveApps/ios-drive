@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDCoreIOS
 
 final class MultipleSelectionModel<Identifier: Hashable> {
     
@@ -62,6 +63,6 @@ final class MultipleSelectionModel<Identifier: Hashable> {
     }
 
     func hideTabBar(_ hidden: Bool) {
-        NotificationCenter.default.post(name: FinderNotifications.tabBar.name, object: hidden)
+        NotificationCenter.default.post(name: DriveNotification.tabBar.name, object: hidden)
     }
 }

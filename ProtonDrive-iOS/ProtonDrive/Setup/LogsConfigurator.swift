@@ -15,25 +15,30 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Foundation
 import PDCore
 import PDClient
+import ProtonCoreDoh
 import ProtonCoreLog
 import ProtonCoreFeatureFlags
+import PMEventsManager
 import Combine
 
 final class LogsConfigurator {
     private var cancellables: Set<AnyCancellable> = []
 
-    private var featureFlags: LocalSettings
+    private var localSettings: LocalSettings
     private var logSystem: LogSystem
+    private var defaultHost: String
 
-    init(logSystem: LogSystem, featureFlags: LocalSettings) {
+    init(logSystem: LogSystem, localSettings: LocalSettings, defaultHost: String) {
         self.logSystem = logSystem
-        self.featureFlags = featureFlags
-        configureLogger()
+        self.localSettings = localSettings
+        self.defaultHost = defaultHost
+        self.configureLogger()
 
         // Creates the logger exporter the first time the users logs in into the app
-        featureFlags.publisher(for: \.logCollectionEnabled)
+        localSettings.publisher(for: \.logCollectionEnabled)
             .removeDuplicates()
             .filter { $0 == true } // Only if we go from not enabled to enabled, roll-out flag
             .removeDuplicates() // Just once
@@ -46,26 +51,32 @@ final class LogsConfigurator {
     }
 
     private func configureLogger() {
-        Log.configuration = LogConfiguration(system: logSystem)
+        Log.logSystem = logSystem
         #if DEBUG
         Log.logger = makeDebugBuildLogger()
         #else
         Log.logger = makeProductionBuildLogger()
         #endif
-        PDClient.log = { Log.info($0, domain: .clientNetworking) }
-        PMLog.setEnvironment(environment: appEnvironment)
+        PDClient.logInfo = { Log.info($0, domain: .clientNetworking) }
+        PDClient.logError = { Log.error($0, error: nil, domain: .clientNetworking) }
+        DispatchQueue.main.async { [defaultHost] in
+            PMLog.setExternalLoggerHost(defaultHost)
+        }
     }
 
     private func makeProductionBuildLogger() -> LoggerProtocol {
+        // Trace level logs are not consistently sanitixed, exclude them at the moment
+        let levels: [LogLevel] = [.info, .error, .warning, .debug]
+
         let compoundLogger = CompoundLogger(loggers: [
             makeFeatureFlagEnabledLogger(),
             ProductionLogger(),
-        ])
+        ].compactMap { $0 })
 
         return AndFilteredLogger(
             logger: compoundLogger,
-            domains: LogDomain.default,
-            levels: [.info, .error, .warning]
+            domains: LogDomain.iOSDomains,
+            levels: Set(levels)
         )
     }
 
@@ -73,18 +84,18 @@ final class LogsConfigurator {
         let compoundLogger = CompoundLogger(loggers: [
             makeFeatureFlagEnabledLogger(),
             DebugLogger(),
-        ])
+        ].compactMap { $0 })
 
         return AndFilteredLogger(
             logger: compoundLogger,
-            domains: LogDomain.default,
+            domains: LogDomain.iOSDomains,
             levels: [.info, .error, .warning, .debug]
         )
     }
 
-    private func makeFeatureFlagEnabledLogger() -> LoggerProtocol {
-        guard featureFlags.logCollectionEnabled == true && !(featureFlags.logCollectionDisabled == true) else {
-            return SilentLogger()
+    private func makeFeatureFlagEnabledLogger() -> LoggerProtocol? {
+        guard localSettings.logCollectionEnabled == true && !(localSettings.logCollectionDisabled == true) else {
+            return nil
         }
 
         // The maximum size of the log file is set to 10MB
@@ -98,11 +109,11 @@ final class LogsConfigurator {
                 rotator: makeFileLogsRotator()
             )
             Log.exporter = makeExporter(fileWritingLogger: fileLogger)
-            let featureFlagsEnabledLogger = FeatureFlagsEnablesLogsCollectionLoggerDecorator(decoratee: fileLogger, store: featureFlags)
+            let featureFlagsEnabledLogger = FeatureFlagsEnablesLogsCollectionLoggerDecorator(decoratee: fileLogger, store: localSettings)
             return LogsQueueDispatchingLogger(logger: featureFlagsEnabledLogger, queue: .logsQueue)
         } catch {
             // If the log directory cannot be created, we should fall back to a silent logger
-            return SilentLogger()
+            return nil
         }
     }
 
@@ -110,19 +121,20 @@ final class LogsConfigurator {
         // The maximum size of the log archive is set to 100MB
         let maximumArchiveSize = 100 * 1024 * 1024
 
-        if PDCore.Constants.runningInExtension {
-            // In extensions, we don't compress the logs, we just prepare them for the app to compress them.
-            return CleaningFileLogRotatorDecorator(
-                maximumArchiveSize: maximumArchiveSize,
-                rotator: FileRenamingFileRotatorDecorator(rotator: BlankFileRotator())
+        #if TARGET_IS_EXTENSION
+        // In extensions, we don't compress the logs, we just prepare them for the app to compress them.
+        return CleaningFileLogRotatorDecorator(
+            maximumArchiveSize: maximumArchiveSize,
+            rotator: FileRenamingFileRotatorDecorator(rotator: BlankFileRotator())
+        )
+        #else
+        return CleaningFileLogRotatorDecorator(
+            maximumArchiveSize: maximumArchiveSize,
+            rotator: FileRenamingFileRotatorDecorator(
+                rotator: LZFSEToZipMigrator(rotator: ArchivingFileCompressor())
             )
-        } else {
-            // In the main app, we compress the logs to save space.
-            return CleaningFileLogRotatorDecorator(
-                maximumArchiveSize: maximumArchiveSize,
-                rotator: FileRenamingFileRotatorDecorator(rotator: ArchivingFileCompressor())
-            )
-        }
+        )
+        #endif
     }
 
     // The exporter requires the FileWritingLogger because it writes

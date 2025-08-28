@@ -17,6 +17,7 @@
 
 import UIKit
 import PDCore
+import PDCoreIOS
 import Combine
 import SwiftUI
 import PDUIComponents
@@ -39,12 +40,12 @@ enum ShareLinkIdFlowCoordinatorError: Error {
 }
 
 final class ShareLinkIdFlowCoordinator {
-    typealias Context = (id: NodeIdentifier, tower: Tower, rootViewModel: RootViewModel)
+    typealias Context = (id: any VolumeIdentifiable, tower: Tower, rootViewModel: RootViewModel)
 
     @discardableResult
     func start(_ context: Context) throws -> some View {
         let tower = context.tower
-        guard let node = tower.storage.fetchNode(id: context.id, moc: tower.storage.mainContext) else {
+        guard let node = Node.fetch(identifier: context.id, allowSubclasses: true, in: tower.storage.mainContext) else {
             throw ShareLinkIdFlowCoordinatorError.missingNode
         }
         return AuxiliaryView(node: node, tower: tower)
@@ -140,6 +141,7 @@ private struct RepresentableShareLinkViewController: UIViewControllerRepresentab
         )
     }
 
+    // swiftlint:disable:next function_parameter_count
     private func getShareLinkView(
         _ shareURL: ShareURL,
         _ repository: SharedLinkRepository,

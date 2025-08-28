@@ -26,18 +26,13 @@ import ProtonCoreCryptoGoInterface
 import ProtonCoreCryptoPatchedGoImplementation
 import ProtonCoreFeatureFlags
 import ProtonCorePushNotifications
-import PDLoadTesting
-
-#if LOAD_TESTING && SSL_PINNING
-#error("Load testing requires turning off SSL pinning, so it cannot be set for SSL-pinning targets")
-#endif
+import PDPhotos
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate, hasPushNotificationService {
     @SettingsStorage("firstLaunchHappened") private var firstLaunchHappened: Bool?
     private var logConfigurator: LogsConfigurator?
 
-    private var orientationLock = UIInterfaceOrientationMask.allButUpsideDown
     public var pushNotificationService: PushNotificationServiceProtocol?
 
     override init() {
@@ -48,7 +43,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, hasPushNotificationServic
 
     func application(_ application: UIApplication, willFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         // the feature flags are not available at this point. The Log.setup call will be repeated in the SceneDelegate because of that
-        self.logConfigurator = LogsConfigurator(logSystem: .iOSApp, featureFlags: LocalSettings.shared)
+        let defaultHost = Constants.clientApiConfig.environment.doh.defaultHost
+        self.logConfigurator = LogsConfigurator(logSystem: .iOSApp, localSettings: LocalSettings.shared, defaultHost: defaultHost)
         Log.info("application willFinishLaunchingWithOptions", domain: .application)
         return true
     }
@@ -56,15 +52,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate, hasPushNotificationServic
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         Log.info("application didFinishLaunchingWithOptions", domain: .application)
 
-        lockOrientationIfNeeded(in: .portrait)
+        UIViewController.lockOrientationIfNeeded(in: .portrait)
         inject(cryptoImplementation: ProtonCoreCryptoPatchedGoImplementation.CryptoGoMethodsImplementation.instance)
         // Inject build type to enable build differentiation. (Build macros don't work in SPM)
         PDCore.Constants.buildType = Constants.buildType
-        #if LOAD_TESTING && !SSL_PINNING
-        LoadTesting.enableLoadTesting()
-        #endif
+        PDCore.Constants.buildFeatures = Constants.buildFeatures
+        PDPhotosConstants.buildType = Constants.buildType
 
         UINavigationBar.setupFlatNavigationBarSystemWide()
+        UIRefreshControl.setupApparance()
         UIToolbar.setupApparance()
         UNUserNotificationCenter.current().delegate = self
 
@@ -73,6 +69,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, hasPushNotificationServic
             UIView.setAnimationsEnabled(false)
         }
         setupUITestsMocks()
+        // Override FF values for dynamic plans and easy device migration, just after launch
+        let featureFlagsRepository = ProtonCoreFeatureFlags.FeatureFlagsRepository.shared
+        featureFlagsRepository.setFlagOverride(CoreFeatureFlagType.dynamicPlan, true)
+        featureFlagsRepository.resetFlagOverride(CoreFeatureFlagType.easyDeviceMigrationDisabled)
         #endif
         BackgroundModesRegistry.register()
         return true
@@ -96,7 +96,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, hasPushNotificationServic
     func applicationDidReceiveMemoryWarning(_ application: UIApplication) {
         #if HAS_BETA_FEATURES
         // We only want to send errors to sentry from beta builds to see the occurrence of the issue.
-        Log.error("application applicationDidReceiveMemoryWarning ⚠️", domain: .application)
+        Log.error("application applicationDidReceiveMemoryWarning ⚠️", error: nil, domain: .application)
         #else
         Log.warning("application applicationDidReceiveMemoryWarning ⚠️", domain: .application)
         #endif
@@ -129,15 +129,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, hasPushNotificationServic
 extension AppDelegate {
     func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
         if UIDevice.current.userInterfaceIdiom == .phone {
-            return orientationLock
+            return UIViewController.orientationLock
         } else {
             return [.allButUpsideDown]
-        }
-    }
-
-    func lockOrientationIfNeeded(in orientation: UIInterfaceOrientationMask) {
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            orientationLock = orientation
         }
     }
 

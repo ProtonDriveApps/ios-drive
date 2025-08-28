@@ -24,33 +24,35 @@ public final class CleaningFileLogRotatorDecorator: FileLogRotator {
     private let fileManager = FileManager.default
 
     public let maximumArchiveSize: Int
+    public let maxLogAgeDays: Int
 
     public init(
         maximumArchiveSize: Int,
+        maxLogAgeDays: Int = 30,
         rotator: FileLogRotator,
         dateProvider: @escaping () -> Date = Date.init
     ) {
         self.maximumArchiveSize = maximumArchiveSize
+        self.maxLogAgeDays = maxLogAgeDays
         self.rotator = rotator
         self.dateProvider = dateProvider
     }
 
     public func rotate(_ file: URL) {
-        deleteOlderThanSevenDaysFiles()
+        deleteOlderThanMaxAgeFiles()
         pruneFilesToMaintainDirectorySizeLimit()
         rotator.rotate(file)
     }
 
-    /// Delete files older than 7 days
-    private func deleteOlderThanSevenDaysFiles() {
+    private func deleteOlderThanMaxAgeFiles() {
         do {
-            let sevenDaysAgo = dateProvider().addingTimeInterval(-7 * 24 * 60 * 60)
-            let oldFiles = try getAllArchivedFiles().filter { $0.lastModificationDate < sevenDaysAgo }
+            let expirationDate = dateProvider().addingTimeInterval(-TimeInterval(maxLogAgeDays * 24 * 60 * 60))
+            let oldFiles = try getAllArchivedFiles().filter { $0.lastModificationDate < expirationDate }
             for oldFile in oldFiles {
                 try fileManager.removeItem(at: oldFile)
             }
         } catch {
-            SentryClient.shared.record(level: .error, errorOrMessage: .right("LogCollectionError 😵🗂️. Failed deleteOlderThanSevenDaysFiles: \(error)"))
+            SentryClient.shared.recordError("LogCollectionError 😵🗂️. Failed to delete old files: \(error)")
         }
     }
 
@@ -67,7 +69,7 @@ public final class CleaningFileLogRotatorDecorator: FileLogRotator {
                 try fileManager.removeItem(at: file)
             }
         } catch {
-            SentryClient.shared.record(level: .error, errorOrMessage: .right("LogCollectionError 😵🗂️. Failed pruneFilesToMaintainDirectorySizeLimit: \(error)"))
+            SentryClient.shared.recordError("LogCollectionError 😵🗂️. Failed to prune files by size: \(error)")
         }
     }
 

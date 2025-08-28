@@ -18,7 +18,7 @@
 import Foundation
 
 protocol ThumbnailOperationsFactory {
-    typealias Identifier = NodeIdentifier
+    typealias Identifier = any VolumeIdentifiable
     typealias ClearThumbnail = Data
     typealias Result = Swift.Result<Void, ThumbnailLoaderError>
     typealias Completion = (Result) -> Void

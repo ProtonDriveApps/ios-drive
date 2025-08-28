@@ -17,6 +17,7 @@
 
 import Photos
 import PDCore
+import PDPhotos
 
 enum PhotoLibraryBurstCompoundResourceError: Error {
     case resourceMissing
@@ -109,26 +110,26 @@ final class PhotoLibraryBurstCompoundResource: PhotoLibraryCompoundResource {
         guard !modifiedResources.isEmpty else {
             return []
         }
-        let filename = try nameResource.getFilename(from: resources.resources).fileName()
+        let filename = try nameResource.getFilename(from: resources.resources).fileName
         return modifiedResources.map { modifiedResource in
             // Resource's filename consists of primary filename (e.g. `IMG_123`) and concrete extension (e.g. `jpg`)
-            let resourceName = filename + "." + modifiedResource.originalFilename.fileExtension()
+            let resourceName = filename + "." + modifiedResource.originalFilename.fileExtension
             return AssetResource(asset: resources.asset, resource: modifiedResource, filename: resourceName)
         }
     }
 
     private func loadOriginalCompound(identifier: PhotoIdentifier, burstAsset: BurstAsset) async throws -> PhotoAssetCompound {
-        let primaryData = PhotoAssetData(identifier: identifier, asset: burstAsset.primaryResource.asset, resource: burstAsset.primaryResource.resource, originalFilename: burstAsset.primaryResource.filename, fileExtension: burstAsset.primaryResource.filename.fileExtension(), isOriginal: true)
+        let primaryData = PhotoAssetData(identifier: identifier, asset: burstAsset.primaryResource.asset, resource: burstAsset.primaryResource.resource, originalFilename: burstAsset.primaryResource.filename, fileExtension: burstAsset.primaryResource.filename.fileExtension, isOriginal: true)
         let primaryAsset = try await assetResource.executePhoto(with: primaryData)
         let secondaryAssets = try await burstAsset.secondaryResources.asyncMap { secondaryResource in
-            let data = PhotoAssetData(identifier: identifier, asset: secondaryResource.asset, resource: secondaryResource.resource, originalFilename: secondaryResource.filename, fileExtension: secondaryResource.filename.fileExtension(), isOriginal: true)
+            let data = PhotoAssetData(identifier: identifier, asset: secondaryResource.asset, resource: secondaryResource.resource, originalFilename: secondaryResource.filename, fileExtension: secondaryResource.filename.fileExtension, isOriginal: true)
             return try await assetResource.executePhoto(with: data)
         }
         return PhotoAssetCompound(primary: primaryAsset, secondary: secondaryAssets)
     }
 
     private func loadModifiedCompound(identifier: PhotoIdentifier, resource: AssetResource) async throws -> PhotoAssetCompound {
-        let data = PhotoAssetData(identifier: identifier, asset: resource.asset, resource: resource.resource, originalFilename: resource.filename, fileExtension: resource.filename.fileExtension(), isOriginal: false)
+        let data = PhotoAssetData(identifier: identifier, asset: resource.asset, resource: resource.resource, originalFilename: resource.filename, fileExtension: resource.filename.fileExtension, isOriginal: false)
         let asset = try await assetResource.executePhoto(with: data)
         return PhotoAssetCompound(primary: asset, secondary: [])
     }

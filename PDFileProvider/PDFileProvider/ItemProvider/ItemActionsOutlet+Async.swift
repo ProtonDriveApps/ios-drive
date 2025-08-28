@@ -36,18 +36,27 @@ extension ItemActionsOutlet {
         let cancellingProgress = Progress { _ in
             Log.info("Delete item cancelled", domain: .fileProvider)
             taskCancellation()
-            completionHandler(CocoaError(.userCancelled))
         }
         let task = Task { [weak self, weak cancellingProgress] in
             do {
-                guard !Task.isCancelled else { return }
-                try await self?.deleteItem(tower: tower, identifier: identifier, baseVersion: version, options: options, request: request, progress: cancellingProgress)
+                guard !Task.isCancelled, cancellingProgress?.isCancelled != true else {
+                    completionHandler(CocoaError(.userCancelled))
+                    return
+                }
+                guard let self else { return }
+                try await self.deleteItem(tower: tower, identifier: identifier, baseVersion: version, options: options, request: request, progress: cancellingProgress)
                 Log.info("Successfully deleted item", domain: .fileProvider)
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, cancellingProgress?.isCancelled != true else {
+                    completionHandler(CocoaError(.userCancelled))
+                    return
+                }
                 completionHandler(nil)
             } catch {
-                guard !Task.isCancelled else { return }
-                Log.error("Delete item error: \(error.localizedDescription)", domain: .fileProvider)
+                guard !Task.isCancelled, cancellingProgress?.isCancelled != true else {
+                    completionHandler(CocoaError(.userCancelled))
+                    return
+                }
+                Log.error("Delete item error", error: error, domain: .fileProvider)
                 completionHandler(error)
             }
         }
@@ -63,7 +72,6 @@ extension ItemActionsOutlet {
                            contents newContents: URL?,
                            options: NSFileProviderModifyItemOptions? = nil,
                            request: NSFileProviderRequest? = nil,
-                           changeObserver: SyncChangeObserver? = nil,
                            completionHandler: @escaping Completion) -> Progress
     {
         let version = version ?? NSFileProviderItemVersion()
@@ -75,23 +83,32 @@ extension ItemActionsOutlet {
             totalUnitCount = 0
         }
         let cancellingProgress = Progress(totalUnitCount: totalUnitCount) { _ in
-            Log.info("Modify item cancelled", domain: .fileProvider)
+            Log.info("Modify item — cancelled", domain: .fileProvider)
             taskCancellation()
-            completionHandler(nil, [], false, CocoaError(.userCancelled))
         }
         let task = Task { [weak self, weak cancellingProgress] in
             do {
-                guard !Task.isCancelled else { return }
-                guard let (item, fields, needUpload) = try await self?.modifyItem(
+                guard !Task.isCancelled, cancellingProgress?.isCancelled != true else {
+                    completionHandler(nil, [], false, CocoaError(.userCancelled))
+                    return
+                }
+                guard let self else { return }
+                let (item, fields, needUpload) = try await self.modifyItem(
                     tower: tower, item: item, baseVersion: version, changedFields: changedFields,
-                    contents: newContents, options: options, request: request, changeObserver: changeObserver, progress: cancellingProgress
-                ) else { return }
-                Log.info("Successfully modified item", domain: .fileProvider)
-                guard !Task.isCancelled else { return }
+                    contents: newContents, options: options, request: request, progress: cancellingProgress
+                )
+                Log.info("Modify item — successfully modified item", domain: .fileProvider)
+                guard !Task.isCancelled, cancellingProgress?.isCancelled != true else {
+                    completionHandler(nil, [], false, CocoaError(.userCancelled))
+                    return
+                }
                 completionHandler(item, fields, needUpload, nil)
             } catch {
-                Log.error("Modify item error: \(error.localizedDescription)", domain: .fileProvider)
-                guard !Task.isCancelled else { return }
+                Log.error("Modify item — error", error: error, domain: .fileProvider)
+                guard !Task.isCancelled, cancellingProgress?.isCancelled != true else {
+                    completionHandler(nil, [], false, CocoaError(.userCancelled))
+                    return
+                }
                 completionHandler(nil, [], false, error)
             }
         }
@@ -106,29 +123,38 @@ extension ItemActionsOutlet {
                            contents url: URL?,
                            options: NSFileProviderCreateItemOptions = [],
                            request: NSFileProviderRequest? = nil,
-                           completionHandler: @escaping (NSFileProviderItem?, NSFileProviderItemFields, Bool, Error?) -> Void) -> Progress
+                           completionHandler: @escaping (NSFileProviderItem?, NSFileProviderItemFields, Bool, Swift.Error?) -> Void) -> Progress
     {
         var taskCancellation: () -> Void = {}
         let totalUnitCount = itemTemplate.documentSize?.flatMap { $0.int64Value } ?? 0
         let cancellingProgress = Progress(totalUnitCount: totalUnitCount) { _ in
             Log.info("Create item cancelled", domain: .fileProvider)
             taskCancellation()
-            completionHandler(nil, [], false, CocoaError(.userCancelled))
         }
         cancellingProgress.kind = .file
         cancellingProgress.fileOperationKind = .uploading
         let task = Task { [weak self, weak cancellingProgress] in
             do {
-                guard let self, !Task.isCancelled else { return }
+                guard !Task.isCancelled, cancellingProgress?.isCancelled != true else {
+                    completionHandler(nil, [], false, CocoaError(.userCancelled))
+                    return
+                }
+                guard let self else { return }
                 let (item, fields, needUpload) = try await self.createItem(
                     tower: tower, basedOn: itemTemplate, fields: fields, contents: url, options: options, request: request, progress: cancellingProgress
                 )
                 Log.info("Successfully created item", domain: .fileProvider)
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, cancellingProgress?.isCancelled != true else {
+                    completionHandler(nil, [], false, CocoaError(.userCancelled))
+                    return
+                }
                 completionHandler(item, fields, needUpload, nil)
             } catch {
-                Log.error("Create item error: \(error.localizedDescription)", domain: .fileProvider)
-                guard !Task.isCancelled else { return }
+                Log.error("Create item error", error: error, domain: .fileProvider)
+                guard !Task.isCancelled, cancellingProgress?.isCancelled != true else {
+                    completionHandler(nil, [], false, CocoaError(.userCancelled))
+                    return
+                }
                 completionHandler(nil, [], false, error)
             }
         }

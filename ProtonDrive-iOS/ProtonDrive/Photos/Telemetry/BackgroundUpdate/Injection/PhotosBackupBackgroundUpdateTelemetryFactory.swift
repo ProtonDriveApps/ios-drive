@@ -19,8 +19,15 @@ import PDCore
 
 struct PhotosBackupBackgroundUpdateTelemetryFactory {
     // swiftlint:disable:next function_parameter_count
-    func makeController(telemetryController: TelemetryController, taskController: BackgroundTaskStateController, backupStorage: PhotosTelemetryStorage, backgroundUploadStorage: PhotosBackupBackgroundTelemetryStorageProtocol, userInfoResource: UserInfoResource, uploadMeasurementsRepository: BackgroundUploadMeasurementsRepositoryProtocol, networkController: PhotoBackupNetworkControllerProtocol) -> PhotosBackupBackgroundUpdateTelemetryController {
-        let userInfoFactory = PhotosTelemetryFactory().makeUserInfoFactory(userInfoResource: userInfoResource)
+    func makeController(
+        telemetryController: TelemetryController,
+        taskController: BackgroundTaskStateController,
+        backupStorage: PhotosTelemetryStorage,
+        backgroundUploadStorage: PhotosBackupBackgroundTelemetryStorageProtocol,
+        userInfoFactory: PhotosTelemetryUserInfoFactory,
+        uploadMeasurementsRepository: BackgroundUploadMeasurementsRepositoryProtocol,
+        networkController: PhotoBackupNetworkControllerProtocol
+    ) -> PhotosBackupBackgroundUpdateTelemetryController {
         let connectionFactory = PhotosTelemetryConnectionFactory(networkController: networkController)
         let dataFactory = ConcretePhotosBackupBackgroundUpdateTelemetryDataFactory(userInfoFactory: userInfoFactory, dateResource: PlatformCurrentDateResource(), storage: backupStorage, hourFormatter: FoundationHourValueFormatter(), connectionFactory: connectionFactory)
         let durationMeasurementRepository = TelemetryMeasurementsFactory().makeSerialDurationRepository()

@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import ProtonCoreNetworking
 
 // MARK: - Request
 extension Endpoint {
@@ -65,13 +66,39 @@ extension Endpoint {
     }
 
     internal func networkingError(_ error: Error) -> String {
-        """
-        \(responseHeader)
-        \(line)
-        \(printableUrl)
-        "|Networking Error ❌: \(error.localizedDescription)"
-        \(footer)
-        """
+        var messages = [
+            responseHeader,
+            line,
+            printableUrl,
+            "|Networking Error ❌: \(error.localizedDescription)"
+        ]
+        if let responseError = error as? ResponseError {
+            if let underlyingError = responseError.underlyingError {
+                messages.append("|-UNDERLYING ERROR:")
+                messages.append(contentsOf: readMessage(from: underlyingError))
+            }
+        } else {
+            let nsError = error as NSError
+            let underlyingErrors = nsError.underlyingErrors.map { $0 as NSError }
+            if !underlyingErrors.isEmpty {
+                messages.append("|-UNDERLYING ERROR:")
+                for underlyingError in underlyingErrors {
+                    messages.append(contentsOf: readMessage(from: underlyingError))
+                }
+            }
+        }
+
+        messages.append(footer)
+        return messages.joined(separator: "\n")
+    }
+
+    private func readMessage(from underlyingError: NSError) -> [String] {
+        var messages = [underlyingError.localizedDescription]
+        for error in underlyingError.underlyingErrors {
+            let nsError = error as NSError
+            messages.append(contentsOf: readMessage(from: nsError))
+        }
+        return messages
     }
 
     internal func unknownError() -> String {

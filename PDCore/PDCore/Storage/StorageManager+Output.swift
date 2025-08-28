@@ -31,16 +31,6 @@ public extension StorageManager {
     }
 
     // Results
-    func photosDevice(moc: NSManagedObjectContext) -> Device? {
-        let request = requestDevices()
-        request.predicate = NSPredicate(format: "%K == %d", #keyPath(Device.type), Device.´Type´.photos.rawValue)
-
-        return moc.performAndWait {
-            return (try? moc.fetch(request))?.first
-        }
-    }
-
-    // Results
     func volumes(moc: NSManagedObjectContext) -> [Volume] {
         var result: [Volume] = []
         moc.performAndWait {
@@ -49,28 +39,54 @@ public extension StorageManager {
         return result
     }
 
-    func getVolumeIDs(in moc: NSManagedObjectContext) throws -> (myVolume: String, otherVolumes: [String]) {
-        var myVolumeID: String?
-        var otherVolumeIDs: [String] = []
+    struct VolumeIDs {
+        let main: VolumeID
+        let photo: VolumeID?
+        let other: [VolumeID]
+    }
 
-        moc.performAndWait {
-            let volumes = (try? moc.fetch(self.requestVolumes())) ?? []
+    func getVolumeIDs(in moc: NSManagedObjectContext) throws -> VolumeIDs {
+        return try moc.performAndWait {
+            var volumes = (try? moc.fetch(self.requestVolumes())) ?? []
 
-            // Find the volume with a 'main' share
-            if let myVolume = volumes.first(where: { $0.shares.contains(where: { $0.type == .main }) }) {
-                myVolumeID = myVolume.id
-                otherVolumeIDs = volumes.filter { $0 != myVolume }.map(\.id)
-            } else {
-                // In case there's no volume with a main share (although you said this is guaranteed)
-                otherVolumeIDs = volumes.map(\.id)
+            guard let mainVolumeIndex = volumes.firstIndex(where: { $0.shares.contains(where: { $0.type == .main }) }) else {
+                throw DriveError("Session without a volume with a main share.")
             }
-        }
+            let mainVolume = volumes.remove(at: mainVolumeIndex)
 
-        guard let myVolumeID = myVolumeID else {
-            throw DriveError("Session without a volume with a main share.")
+            var photoVolume: Volume?
+            if let photoVolumeIndex = volumes.firstIndex(where: { $0.shares.contains(where: { $0.type == .photos }) }) {
+                photoVolume = volumes.remove(at: photoVolumeIndex)
+            }
+            return VolumeIDs(main: mainVolume.id, photo: photoVolume?.id, other: volumes.map(\.id))
         }
+    }
 
-        return (myVolumeID, otherVolumeIDs)
+    func getPhotosVolumeId(in managedObjectContext: NSManagedObjectContext) -> String? {
+        return managedObjectContext.performAndWait {
+            return getPhotosVolume(in: managedObjectContext)?.id
+        }
+    }
+
+    // Returns either photo volume root OR legacy photo share root
+    func getPhotoStreamRootFolderId(in managedObjectContext: NSManagedObjectContext) -> AnyVolumeIdentifier? {
+        return managedObjectContext.performAndWait {
+            return getPhotoStreamRootFolder(in: managedObjectContext)?.identifier.any()
+        }
+    }
+
+    // Returns either photo volume root OR legacy photo share root
+    func getPhotoStreamRootFolder(in managedObjectContext: NSManagedObjectContext) -> Folder? {
+        return managedObjectContext.performAndWait {
+            return try? fetchShares(moc: managedObjectContext).first(where: { $0.type == .photos })?.root as? Folder
+        }
+    }
+
+    /// Uses `Volume.VolumeType` as a predicate. Should not be used until `Volume`s have been bootstrapped.
+    private func getPhotosVolume(in managedObjectContext: NSManagedObjectContext) -> Volume? {
+        return managedObjectContext.performAndWait {
+            return try? managedObjectContext.fetch(self.requestVolumes(type: .photo)).first
+        }
     }
 
     func fetchOrphanedVolumes(in context: NSManagedObjectContext) throws -> [Volume] {
@@ -97,11 +113,14 @@ public extension StorageManager {
     func getMyVolumeId(in moc: NSManagedObjectContext) throws -> String {
         let volumes = (try? moc.fetch(self.requestVolumes())) ?? []
 
-        // Find the volume with a 'main' share
-        guard let volumeID = volumes.first(where: { $0.shares.contains(where: { $0.type == .main }) })?.id else {
-            throw DriveError("Session without a volume with a main share.")
+        return try moc.performAndWait {
+            
+            // Find the volume with a 'main' share
+            guard let volumeID = volumes.first(where: { $0.shares.contains(where: { $0.type == .main }) })?.id else {
+                throw DriveError("Session without a volume with a main share.")
+            }
+            return volumeID
         }
-        return volumeID
     }
 
     func getMainShares(in context: NSManagedObjectContext) -> [Share] {
@@ -241,6 +260,20 @@ public extension StorageManager {
         return draft
     }
 
+    func fetchNodes(identifiers: [NodeIdentifier], moc: NSManagedObjectContext) -> [Node] {
+        let nodeIDsGroupedByShare = Dictionary(grouping: identifiers, by: { $0.shareID }).mapValues { $0.map(\.nodeID) }
+
+        var nodes = [Node]()
+        moc.performAndWait {
+            nodeIDsGroupedByShare.forEach { shareID, nodeIDs in
+                let fetchRequest = self.requestNodes(with: nodeIDs, on: shareID, moc: moc)
+                nodes += (try? moc.fetch(fetchRequest)) ?? []
+            }
+        }
+        return nodes
+    }
+
+    @available(*, deprecated, message: "Can encounter collisions across volumes. Use fetchNodes(identifiers:) instead")
     func fetchNodes(ids: [String], moc: NSManagedObjectContext) -> Set<Node> {
         var nodes: [Node]?
         moc.performAndWait {
@@ -309,11 +342,11 @@ public extension StorageManager {
         return files
     }
 
-    func filterDownloadedLinks(_ links: [ShareLink], moc: NSManagedObjectContext) -> [ShareLink] {
+    func filterDownloadedLinks(_ links: [SharedWithMeLink], moc: NSManagedObjectContext) -> [SharedWithMeLink] {
         guard !links.isEmpty else { return [] }
 
         // Fetch all share IDs
-        let shareIDs = links.map { $0.share }
+        let shareIDs = links.map { $0.shareId }
 
         // Fetch all relevant shares
         let shareRequest: NSFetchRequest<Share> = NSFetchRequest(entityName: "Share")
@@ -325,13 +358,13 @@ public extension StorageManager {
                 let shares = try moc.fetch(shareRequest)
                 validShareIDs = Set(shares.map { $0.id })
             } catch {
-                Log.error("Error fetching shares: \(error)", domain: .storage)
+                Log.error("Error fetching shares", error: error, domain: .storage)
             }
         }
 
         // Filter links based on valid share IDs
         return links.filter { link in
-            validShareIDs.contains(link.share)
+            validShareIDs.contains(link.shareId)
         }
     }
 
@@ -378,7 +411,76 @@ public extension StorageManager {
         }
     }
 
+    func getInvitation(id: String, in context: NSManagedObjectContext) throws -> Invitation {
+        guard let invitation = Invitation.fetch(id: id, in: context) else {
+            throw DriveError("No invitation found for invitationID: \(id)")
+        }
+
+        return invitation
+    }
+
+    func requestInvitations(moc: NSManagedObjectContext, fetchLimit: Int? = nil, linkTypes: Set<LinkType>? = nil) -> NSFetchRequest<Invitation> {
+        let fetchRequest = NSFetchRequest<Invitation>(entityName: String(describing: Invitation.self))
+        fetchRequest.sortDescriptors = [.init(key: #keyPath(Invitation.createTime), ascending: false)]
+
+        // Set the fetch limit if provided
+        if let limit = fetchLimit {
+            fetchRequest.fetchLimit = limit
+        }
+        // Filter by link types if provided
+        if let linkTypes {
+            let rawTypes = linkTypes.map(\.rawValue)
+            fetchRequest.predicate = NSPredicate(format: "%K IN %@", #keyPath(Invitation.type), rawTypes)
+        }
+
+        return fetchRequest
+    }
+
+    func fetchInvitationIds(moc: NSManagedObjectContext) -> [String] {
+        var ids = [String]()
+        let fetchRequest = NSFetchRequest<NSDictionary>(entityName: String(describing: Invitation.self))
+        fetchRequest.propertiesToFetch = ["id"]
+        fetchRequest.resultType = .dictionaryResultType
+
+        if let results = try? moc.fetch(fetchRequest) {
+            ids = results.compactMap { $0["id"] as? String }
+        }
+
+        return ids
+    }
+
+    func fetchInvitations(with ids: [String], in context: NSManagedObjectContext) -> [Invitation] {
+        guard !ids.isEmpty else { return [] }
+
+        var invitations: [Invitation] = []
+
+        let fetchRequest: NSFetchRequest<Invitation> = NSFetchRequest(entityName: String(describing: Invitation.self))
+        fetchRequest.predicate = NSPredicate(format: "id IN %@", ids)
+
+        do {
+            invitations = try context.fetch(fetchRequest)
+        } catch {
+            Log
+                .error(
+                    "Failed to fetch invitations",
+                    error: error,
+                    domain: .sharing,
+                    context: LogContext("ids: \(ids)")
+                )
+        }
+
+        return invitations
+    }
+
     // MARK: Subscriptions
+
+    func subscriptionToPendingInvitations(linkTypes: Set<LinkType>) -> NSFetchedResultsController<Invitation> {
+        return NSFetchedResultsController(fetchRequest: self.requestInvitations(moc: mainContext, linkTypes: linkTypes),
+                                          managedObjectContext: mainContext,
+                                          sectionNameKeyPath: nil,
+                                          cacheName: nil)
+    }
+
     func subscriptionToUploadingFiles() -> NSFetchedResultsController<File> {
         return NSFetchedResultsController(fetchRequest: self.requestUploading(moc: mainContext),
                                           managedObjectContext: mainContext,
@@ -417,8 +519,8 @@ public extension StorageManager {
         }
     }
 
-    func subscriptionToTrash(volumeID: String, moc: NSManagedObjectContext) -> NSFetchedResultsController<Node> {
-        return NSFetchedResultsController(fetchRequest: self.requestTrashResult(volumeID: volumeID, moc: moc), managedObjectContext: moc, sectionNameKeyPath: nil, cacheName: nil)
+    func subscriptionToTrash(volumeIDs: [String], moc: NSManagedObjectContext) -> NSFetchedResultsController<Node> {
+        return NSFetchedResultsController(fetchRequest: self.requestTrashResult(volumeIDs: volumeIDs, moc: moc), managedObjectContext: moc, sectionNameKeyPath: nil, cacheName: nil)
     }
 
     func subscriptionToOfflineAvailable(withInherited: Bool, moc: NSManagedObjectContext) -> NSFetchedResultsController<Node> {
@@ -435,9 +537,9 @@ public extension StorageManager {
                                           cacheName: nil)
     }
 
-    func subscriptionToShared(volumeID: String, sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchedResultsController<Node> {
+    func subscriptionToShared(volumeIDs: [String], sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchedResultsController<Node> {
         return NSFetchedResultsController(
-            fetchRequest: requestShared(volumeID: volumeID, sorting: sorting, moc: moc),
+            fetchRequest: requestShared(volumeIDs: volumeIDs, sorting: sorting, moc: moc),
             managedObjectContext: moc,
             sectionNameKeyPath: #keyPath(Node.stateRaw),
             cacheName: nil
@@ -467,6 +569,17 @@ public extension StorageManager {
         return items
     }
 
+    func subscriptionToDevices(moc: NSManagedObjectContext) -> NSFetchedResultsController<Device> {
+        let fetchRequest = NSFetchRequest<Device>()
+        fetchRequest.entity = Device.entity()
+        fetchRequest.sortDescriptors = [
+            NSSortDescriptor(key: #keyPath(Device.createTime), ascending: false),
+            NSSortDescriptor(key: #keyPath(Device.id), ascending: true)
+        ]
+
+        return NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: moc, sectionNameKeyPath: nil, cacheName: nil)
+    }
+
     func subscriptionToSharedWithMe(sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchedResultsController<Node> {
         return NSFetchedResultsController(
             fetchRequest: self.requestNodesSharedWithMeRoot(sorting: sorting, moc: moc),
@@ -485,7 +598,10 @@ public extension StorageManager {
         ]
 
         let isSharedWithMeRootPredicate = NSPredicate(format: "%K == YES", #keyPath(Node.isSharedWithMeRoot))
-        fetchRequest.predicate = isSharedWithMeRootPredicate
+        let notAlbum = NSPredicate(format: "self.entity != %@", CoreDataAlbum.entity())
+        fetchRequest.predicate = NSCompoundPredicate(
+            andPredicateWithSubpredicates: [isSharedWithMeRootPredicate, notAlbum]
+        )
 
         return fetchRequest
     }
@@ -532,10 +648,13 @@ public extension StorageManager {
         return fetchRequest
     }
 
-    private func requestVolumes() -> NSFetchRequest<Volume> {
+    func requestVolumes(type: Volume.VolumeType? = nil) -> NSFetchRequest<Volume> {
         let fetchRequest = NSFetchRequest<Volume>()
         fetchRequest.entity = Volume.entity()
         fetchRequest.sortDescriptors = [.init(key: #keyPath(Volume.id), ascending: true)]
+        if let type {
+            fetchRequest.predicate = NSPredicate(format: "%K == %d", #keyPath(Volume.type), type.rawValue)
+        }
         return fetchRequest
     }
 
@@ -629,6 +748,16 @@ public extension StorageManager {
         return fetchRequest
     }
 
+    private func requestNodes(with ids: [String], on shareID: String, moc: NSManagedObjectContext) -> NSFetchRequest<Node> {
+        let fetchRequest = NSFetchRequest<Node>()
+        fetchRequest.entity = Node.entity()
+        fetchRequest.predicate = NSPredicate(format: "id IN %@ AND %K == %@",
+                                             ids,
+                                             #keyPath(Node.shareID), shareID)
+        return fetchRequest
+    }
+
+    @available(*, deprecated, message: "Can encounter collisions across volumes. Use requestNodes(with ids:) instead")
     private func requestNodesOf(ids: [String], moc: NSManagedObjectContext) -> NSFetchRequest<Node> {
         let fetchRequest = NSFetchRequest<Node>()
         fetchRequest.entity = Node.entity()
@@ -697,16 +826,16 @@ public extension StorageManager {
         return fetchRequest
     }
 
-    private func requestTrashResult<Result: NSFetchRequestResult>(volumeID: String, moc: NSManagedObjectContext) -> NSFetchRequest<Result> {
+    private func requestTrashResult<Result: NSFetchRequestResult>(volumeIDs: [String], moc: NSManagedObjectContext) -> NSFetchRequest<Result> {
         let fetchRequest = NSFetchRequest<Result>()
         fetchRequest.entity = Node.entity()
         let sorting = SortPreference.default
         fetchRequest.sortDescriptors = [sorting.descriptor]
         fetchRequest.predicate = NSPredicate(
-            format: "%K == %d AND %K == %d AND %K == %@",
+            format: "%K == %d AND %K == %d AND %K IN %@",
             #keyPath(Node.stateRaw), Node.State.deleted.rawValue,
             #keyPath(Node.isToBeDeleted), false,
-            #keyPath(Node.volumeID), volumeID
+            #keyPath(Node.volumeID), volumeIDs
         )
         return fetchRequest
     }
@@ -745,15 +874,16 @@ public extension StorageManager {
         return fetchRequest
     }
 
-    private func requestShared<Result: NSFetchRequestResult>(volumeID: String, sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchRequest<Result> {
+    private func requestShared<Result: NSFetchRequestResult>(volumeIDs: [String], sorting: SortPreference, moc: NSManagedObjectContext) -> NSFetchRequest<Result> {
         let fetchRequest = NSFetchRequest<Result>()
         fetchRequest.entity = Node.entity()
 
         let hasParentLink = NSPredicate(format: "%K != nil", #keyPath(Node.parentLink)) // Exclude Root folders
-        let belongToVolume = NSPredicate(format: "%K == %@", #keyPath(Node.volumeID), volumeID) // Match the provided volumeID
+        let belongToVolume = NSPredicate(format: "%K IN %@", #keyPath(Node.volumeID), volumeIDs) // Match any of the provided volumeIDs
         let nonEmptyDirectShare = NSPredicate(format: "%K.@count > 0", #keyPath(Node.directShares)) // Ensure non-empty directShares set
+        let isNotAlbum = NSPredicate(format: "entity != %@", CoreDataAlbum.entity()) // Exclude albums
 
-        fetchRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [hasParentLink, belongToVolume, nonEmptyDirectShare])
+        fetchRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [hasParentLink, belongToVolume, nonEmptyDirectShare, isNotAlbum])
 
         fetchRequest.sortDescriptors = [
             NSSortDescriptor(key: #keyPath(Node.stateRaw), ascending: true),
@@ -772,11 +902,11 @@ public extension StorageManager {
             sorting.descriptor,
             .init(key: #keyPath(Node.id), ascending: true)
         ]
-        fetchRequest.predicate = NSPredicate(
-            format: "%K != nil AND %K == TRUE",
-            #keyPath(Node.parentLink),  // this will exclude Root folders from the list
-            #keyPath(Node.isShared)
-        )
+        fetchRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
+            NSPredicate(format: "%K != nil", #keyPath(Node.parentLink)),  // exclude Root folders from the list
+            NSPredicate(format: "%K == TRUE", #keyPath(Node.isShared)),  // is shared
+            NSPredicate(format: "entity != %@", CoreDataAlbum.entity()) // Exclude albums
+        ])
         return fetchRequest
     }
 
@@ -843,8 +973,8 @@ extension StorageManager {
         return photos
     }
 
-    public func fetchPhotos(identifiers: [NodeIdentifier], moc: NSManagedObjectContext) -> [Photo] {
-        let photoIDs = identifiers.map { $0.nodeID }
+    public func fetchPhotos(identifiers: [any VolumeIdentifiable], moc: NSManagedObjectContext) -> [Photo] {
+        let photoIDs = identifiers.map { $0.id }
         let volumeIDs = identifiers.map { $0.volumeID }
 
         var fetchedPhotos: [Photo] = []
@@ -952,7 +1082,7 @@ extension StorageManager {
                     hasUploadingPhoto = true
                 }
             } catch {
-                Log.error("Failed to fetch uploading photos: \(error)", domain: .backgroundTask)
+                Log.error("Failed to fetch uploading photos", error: error, domain: .backgroundTask)
             }
         }
         return hasUploadingPhoto
@@ -1013,7 +1143,7 @@ extension StorageManager {
 
     private func requestMyPrimaryUploadedPhotos(volumeID: String, ascending: Bool = false) -> NSFetchRequest<Photo> {
         if volumeID.isEmpty {
-            Log.error("Empty VolumeID found", domain: .storage)
+            Log.error("Empty VolumeID found", error: nil, domain: .storage)
         }
 
         let fetchRequest = NSFetchRequest<Photo>()

@@ -18,8 +18,7 @@
 import Combine
 import Foundation
 import PDCore
-
-protocol PhotosProcessingController: ErrorController {}
+import PDPhotos
 
 final class ConcretePhotosProcessingController: PhotosProcessingController {
     private let identifiersController: PhotoLibraryIdentifiersController

@@ -19,6 +19,10 @@ import Foundation
 
 public protocol UploadOperation: IdentifiableOperation, OperationWithProgress, RecordableOperation { }
 
+public protocol DownloadOperation: OperationWithProgress {
+    var identifier: AnyVolumeIdentifier { get }
+}
+
 public protocol OperationWithProgress where Self: Operation {
     var progress: Progress { get }
     

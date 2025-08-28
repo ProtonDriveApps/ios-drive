@@ -16,10 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-
-protocol PhotosBackupStartController {
-    func start()
-}
+import PDPhotos
 
 final class LocalPhotosBackupStartController: PhotosBackupStartController {
     private let settingsController: PhotoBackupSettingsController

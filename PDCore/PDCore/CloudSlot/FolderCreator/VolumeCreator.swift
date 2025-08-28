@@ -63,6 +63,7 @@ public final class VolumeCreator: VolumeCreatingProtocol {
 
         return try await context.perform {
             let volume = Volume.fetchOrCreate(id: newVolume.ID, in: context)
+            volume.type = .main
 
             let share = Share.fetchOrCreate(id: newVolume.share.ID, in: context)
             share.volumeID = newVolume.ID

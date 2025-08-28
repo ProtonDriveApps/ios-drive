@@ -67,7 +67,7 @@ public extension Node {
 
 public extension File {
     var fileIdentifier: FileIdentifier {
-        guard let pid = parentLink?.id else { fatalError("A file must have a parent link!") }
+        guard let pid = parentNode?.id else { fatalError("A file must have a parent link!") }
         return FileIdentifier(fileID: id, parentID: pid, shareID: shareId)
     }
 }

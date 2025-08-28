@@ -26,9 +26,11 @@ final class BackendRemotePhotosTrashRepository: RemotePhotosTrashRepository {
         self.rootIdDataSource = rootIdDataSource
     }
 
+    // TODO: `Albums` related - Warning, code below only works for photos in stream.
+    // To make it work globally, the correct share id of each item needs to be fetched.
     func trash(with data: PhotosTrashData) async throws -> RemotePhotosTrashResult {
-        let rootId = try rootIdDataSource.getRootId()
-        let parameters = TrashLinksParameters(shareId: data.shareId, parentLinkId: rootId, linkIds: data.nodeIds)
+        let rootIdentifier = try rootIdDataSource.getRootId()
+        let parameters = TrashLinksParameters(shareId: rootIdentifier.shareID, parentLinkId: rootIdentifier.nodeID, linkIds: data.nodeIds)
         let response = try await client.trashNodes(parameters: parameters, breadcrumbs: .startCollecting())
         let ids = response.responses.compactMap { $0.response.error == nil ? $0.linkID : nil }
         return RemotePhotosTrashResult(trashed: ids)

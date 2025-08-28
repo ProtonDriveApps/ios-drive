@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDCoreIOS
 
 extension NotificationCenter {
     func post(_ notification: DriveNotification) {

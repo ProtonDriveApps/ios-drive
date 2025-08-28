@@ -19,6 +19,8 @@ import Foundation
 import CoreData
 import PDClient
 
+public typealias CoreDataShareURL = ShareURL
+
 @objc(ShareURL)
 public class ShareURL: NSManagedObject {
     public typealias Permissions = ShareURLMeta.Permissions
@@ -81,7 +83,7 @@ extension StorageManager {
     @discardableResult
     public func updateShareURL(_ shareURLMeta: ShareURLMeta, in context: NSManagedObjectContext) -> ShareURL {
         let shareUrl = ShareURL.fetchOrCreate(id: shareURLMeta.shareURLID, in: context)
-        shareUrl.fulfill(from: shareURLMeta)
+        shareUrl.fulfillShareURL(with: shareURLMeta)
 
         let share = Share.fetchOrCreate(id: shareURLMeta.shareID, in: context)
         share.type = .standard
@@ -94,7 +96,7 @@ extension StorageManager {
     @discardableResult
     public func updateShareURL(_ shareURLMeta: ShareURLShortMeta, in context: NSManagedObjectContext) -> ShareURL {
         if let shareUrl = ShareURL.fetch(id: shareURLMeta.shareUrlID, in: context) {
-            shareUrl.fulfill(from: shareURLMeta)
+            shareUrl.fulfillShareURL(with: shareURLMeta)
 
             let share = Share.fetchOrCreate(id: shareURLMeta.shareID, in: context)
             share.type = .standard
@@ -105,7 +107,7 @@ extension StorageManager {
 
         } else {
             let shareUrl = ShareURL.new(id: shareURLMeta.shareUrlID, in: context)
-            shareUrl.fulfill(from: shareURLMeta)
+            shareUrl.fulfillShareURL(with: shareURLMeta)
             shareUrl.creatorEmail = ""
             shareUrl.password = ""
             shareUrl.sharePassphraseKeyPacket = ""

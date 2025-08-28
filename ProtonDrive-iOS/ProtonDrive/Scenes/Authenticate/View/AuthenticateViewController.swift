@@ -20,6 +20,7 @@ import PDCore
 import ProtonCoreLogin
 import ProtonCoreLoginUI
 import ProtonCoreUIFoundations
+import ProtonCoreFeatureFlags
 
 final class AuthenticateViewController: UIViewController {
     private let viewModel: AuthenticateViewModel
@@ -38,6 +39,11 @@ final class AuthenticateViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = ColorProvider.BackgroundNorm
+
+        // Override FF values for dynamic plans and easy device migration, just before sign in / sign up
+        let featureFlagsRepository = ProtonCoreFeatureFlags.FeatureFlagsRepository.shared
+        featureFlagsRepository.setFlagOverride(CoreFeatureFlagType.dynamicPlan, true)
+        featureFlagsRepository.resetFlagOverride(CoreFeatureFlagType.easyDeviceMigrationDisabled)
 
         authenticator.authenticate(
             over: self,

@@ -33,10 +33,10 @@ public final class iOSApplicationRunningStateResource: ApplicationRunningStateRe
         case .background:
             return .background
         case .inactive:
-            Log.error("Requesting state while in suspended state", domain: .application)
+            // Can happen due to race condition during transition or perhaps during extension BG mode.
             return .background
         @unknown default:
-            Log.error("Unknown application state", domain: .application)
+            Log.error("Unknown application state", error: nil, domain: .application)
             return .foreground
         }
     }

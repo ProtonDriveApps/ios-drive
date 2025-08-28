@@ -28,7 +28,10 @@ public extension Tower {
         let moc = storage.backgroundContext
         moc.performAndWait {
             let newNodes = storage.fetchNodes(ids: ids, moc: moc)
-            newNodes.forEach { $0.state = .deleted }
+            newNodes.forEach { node in
+                node.state = .deleted
+                node.isMarkedOfflineAvailable = false
+            }
             try? moc.saveOrRollback()
         }
     }
@@ -42,7 +45,10 @@ public extension Tower {
 
         try context.performAndWait {
             let newNodes = Node.fetch(identifiers: Set(nodes), allowSubclasses: true, in: context)
-            newNodes.forEach { $0.state = .deleted }
+            newNodes.forEach { node in
+                node.state = .deleted
+                node.isMarkedOfflineAvailable = false
+            }
             try context.saveOrRollback()
         }
     }

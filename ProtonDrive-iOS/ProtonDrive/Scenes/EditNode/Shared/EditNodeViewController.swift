@@ -146,11 +146,6 @@ final class EditNodeViewController: UIViewController {
         let validations = viewModel.validate(newText)
         navigationItem.rightBarButtonItem?.isEnabled = validations.isEmpty
         caption.text = validations.first?.message
-
-        let currentPosition = textField.selectedTextRange?.end ?? textField.beginningOfDocument
-
-        textField.attributedText = tfViewModel.attributed(newText)
-        textField.selectedTextRange = textField.textRange(from: currentPosition, to: currentPosition)
     }
 }
 

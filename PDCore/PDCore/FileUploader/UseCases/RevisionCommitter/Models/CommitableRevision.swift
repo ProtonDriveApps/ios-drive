@@ -32,5 +32,6 @@ public struct CommitableRevision {
         let captureTime: Int
         let exif: String?
         let contentHash: String
+        let tags: [Int]
     }
 }

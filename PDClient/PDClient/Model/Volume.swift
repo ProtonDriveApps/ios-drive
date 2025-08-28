@@ -46,6 +46,11 @@ public struct Volume: Codable {
         }
     }
 
+    public enum VolumeType: Int, Codable {
+        case main = 1
+        case photo = 2
+    }
+
     public var volumeID: VolumeID
     public var createTime: TimeInterval?
     public var modifyTime: TimeInterval?
@@ -55,10 +60,11 @@ public struct Volume: Codable {
     public var state: State?
     public var share: Share
     public var restoreStatus: RestoreStatus?
-    
+    public let type: VolumeType
+
     public init(volumeID: VolumeID, createTime: TimeInterval? = nil, modifyTime: TimeInterval? = nil,
                 uploadedBytes: Int, maxSpace: Int? = nil, usedSpace: Int? = nil, state: State? = nil,
-                share: Share, restoreStatus: RestoreStatus? = nil) {
+                share: Share, restoreStatus: RestoreStatus? = nil, type: VolumeType = .main) {
         self.volumeID = volumeID
         self.createTime = createTime
         self.modifyTime = modifyTime
@@ -68,5 +74,6 @@ public struct Volume: Codable {
         self.state = state
         self.share = share
         self.restoreStatus = restoreStatus
+        self.type = type
     }
 }

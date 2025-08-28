@@ -33,6 +33,10 @@ public struct RevisionEndpoint: Endpoint {
         url.appendPathComponent(fileID)
         url.appendPathComponent("/revisions")
         url.appendPathComponent(revisionID)
+        // A random query parameter to call request rather than get cache
+        url.append(queryItems: [
+            .init(name: "random", value: "\(Int.random(in: 0...100))")
+        ])
         
         // request
         var request = URLRequest(url: url)

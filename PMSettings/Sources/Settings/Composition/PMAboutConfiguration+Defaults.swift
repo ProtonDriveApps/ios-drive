@@ -20,12 +20,13 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import UIKit
+import PDLocalization
 
 @available(iOSApplicationExtension, unavailable)
 extension PMAboutConfiguration {
     public static var privacy: PMAboutConfiguration {
         PMAboutConfiguration(
-            title: "pmsettings-settings-about-privacy",
+            title: Localization.setting_privacy_policy,
             action: .perform(openPrivacyPolicy),
             bundle: PMSettings.bundle,
             accessibilityIdentifier: "privacy_policy"
@@ -34,7 +35,7 @@ extension PMAboutConfiguration {
 
     public static var terms: PMAboutConfiguration {
         PMAboutConfiguration(
-            title: "pmsettings-settings-about-terms",
+            title: Localization.setting_terms_of_service,
             action: .perform(openTermsOfService),
             bundle: PMSettings.bundle,
             accessibilityIdentifier: "terms_of_service"
@@ -59,7 +60,7 @@ extension PMAboutConfiguration {
 extension PMAcknowledgementsConfiguration {
     public static func acknowledgements(url: URL) -> PMAcknowledgementsConfiguration {
         PMAcknowledgementsConfiguration(
-            title: "pmsettings-settings-about-acknowledgements",
+            title: Localization.setting_acknowledgments,
             url: url,
             bundle: PMSettings.bundle,
             accessibilityIdentifier: "acknowledgements"

@@ -50,22 +50,28 @@ public struct UpdateRevisionParameters: Codable {
         public let MainPhotoLinkID: String?
         public let Exif: String?
         public let ContentHash: String
+        public let Tags: [Int]
 
-        public init(captureTime: Int, mainPhotoLinkID: String?, exif: String?, contentHash: String) {
+        public init(captureTime: Int, mainPhotoLinkID: String?, exif: String?, contentHash: String, tags: [Int] = []) {
             self.CaptureTime = captureTime
             self.MainPhotoLinkID = mainPhotoLinkID
             self.Exif = exif
             self.ContentHash = contentHash
+            self.Tags = tags
         }
     }
 }
 
-struct UpdateRevisionEndpoint: Endpoint {
+public struct UpdateRevisionEndpoint: Endpoint {
     public struct Response: Codable {
         var code: Int
+        
+        public init(code: Int) {
+            self.code = code
+        }
     }
     
-    var request: URLRequest
+    public var request: URLRequest
     
     init(shareID: Share.ShareID, fileID: Link.LinkID, revisionID: Revision.RevisionID, parameters: UpdateRevisionParameters, service: APIService, credential: ClientCredential) {
         // url

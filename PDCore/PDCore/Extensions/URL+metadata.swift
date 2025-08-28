@@ -54,4 +54,8 @@ public extension URL {
         let modificationDate = try? resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
         return modificationDate ?? Date(timeIntervalSince1970: .zero)
     }
+
+    var creationDate: Date {
+        (try? resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .distantPast
+    }
 }

@@ -53,7 +53,7 @@ extension File {
 
         moc.performAndWait {
             guard let activeRevisionDraft, self.activeRevision.isNotNil, !self.revisions.isEmpty else {
-                Log.error("Attempted to delete revision of file without any completed revisions", domain: .uploader)
+                Log.error("Attempted to delete revision of file without any completed revisions", error: nil, domain: .uploader)
                 assertionFailure("Attempted to delete revision of file without any completed revisions")
                 return
             }
@@ -96,7 +96,7 @@ extension Revision {
             guard let url = normalizedUploadableResourceURL else { return }
             try FileManager.default.removeItemIncludingUniqueDirectory(at: url)
         } catch {
-            Log.error(DriveError("A file couldn’t be removed.").localizedDescription, domain: .uploader)
+            Log.error(error: DriveError("A file couldn’t be removed."), domain: .uploader)
         }
     }
 }

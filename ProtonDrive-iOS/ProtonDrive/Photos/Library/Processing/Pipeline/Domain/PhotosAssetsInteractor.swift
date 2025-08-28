@@ -52,7 +52,7 @@ actor PhotosAssetsInteractor: AsynchronousExecution {
     }
 
     func execute() async {
-        Log.info("2️⃣ \(Self.self): executing", domain: .photosProcessing)
+        Log.info("2️⃣ executing", domain: .photosProcessing)
         measurementRepository.start()
         for identifier in context.validIdentifiers {
             if isCancelled { break }
@@ -62,13 +62,13 @@ actor PhotosAssetsInteractor: AsynchronousExecution {
             if isCancelled { break }
 
             if isSizeOverLimit() {
-                Log.info("2️⃣ \(Self.self): cancelling others, size exceeded.", domain: .photosProcessing)
+                Log.info("2️⃣ cancelling others, size exceeded.", domain: .photosProcessing)
                 break
             }
         }
         context.completeCompoundsCreation()
         measurementRepository.stop()
-        Log.info("2️⃣ \(Self.self): finished", domain: .photosProcessing)
+        Log.info("2️⃣ finished", domain: .photosProcessing)
     }
 
     private func isSizeOverLimit() -> Bool {
@@ -90,13 +90,13 @@ actor PhotosAssetsInteractor: AsynchronousExecution {
         switch errorPolicy.map(error: error) {
         case .temporaryError:
             if retryCount < Self.maximumRetryTime {
-                Log.error("Fetch resource failed, current retry count: \(retryCount), error: \(error.localizedDescription)", domain: .photosProcessing)
+                Log.error("Fetch resource failed, current retry count: \(retryCount)", error: error, domain: .photosProcessing)
                 let delayInSeconds = ExponentialBackoffWithJitter.getDelay(attempt: retryCount)
                 let delayInNanoSeconds = delayInSeconds * Double(10 ^ 9)
                 try? await Task.sleep(nanoseconds: UInt64(delayInNanoSeconds))
                 await execute(identifier, retryCount: retryCount + 1)
             } else {
-                Log.error("Failed to retry fetch resource \(Self.maximumRetryTime) times, skip it", domain: .photosProcessing)
+                Log.error("Failed to retry fetch resource \(Self.maximumRetryTime) times, skip it", error: nil, domain: .photosProcessing)
                 report(error: error, identifier: identifier)
             }
         case .missingAsset:
@@ -113,7 +113,7 @@ actor PhotosAssetsInteractor: AsynchronousExecution {
     }
     
     private func report(error: Error, identifier: PhotoIdentifier) {
-        Log.error(error, domain: .photosProcessing)
+        Log.error(error: error, domain: .photosProcessing)
         let userError = errorMappingPolicy.map(error: error)
         context.addGenericError(identifier: identifier, error: userError)
     }

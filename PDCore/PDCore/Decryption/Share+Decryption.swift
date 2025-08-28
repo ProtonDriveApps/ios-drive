@@ -52,7 +52,7 @@ extension Share {
                 } catch is MemberDecryptableShareError {
                     return try memberDecryptedPassphrase(sharePassphrase, signature)
                 } catch {
-                    Log.error(DecryptionError(error, "Share Passphrase", description: "ShareID: \(id) - Migrated share could not be decrypted 💔"), domain: .encryption)
+                    Log.error(error: DecryptionError(error, "Share Passphrase", description: "ShareID: \(id) - Migrated share could not be decrypted 💔"), domain: .encryption)
                     return try memberDecryptedPassphrase(sharePassphrase, signature)
                 }
             } else {
@@ -60,7 +60,7 @@ extension Share {
                 return try memberDecryptedPassphrase(sharePassphrase, signature)
             }
         } catch {
-            Log.error(DecryptionError(error, "Share Passphrase", description: "ShareID: \(id)"), domain: .encryption)
+            Log.error(error: DecryptionError(error, "Share Passphrase", description: "ShareID: \(id)"), domain: .encryption)
             throw error
         }
     }
@@ -69,12 +69,18 @@ extension Share {
         let addressKeys = try getAddressKeys()
         let verificationKeys = addressKeys.map(\.publicKey)
         let decryptionKeys = addressKeys.map(\.decryptionKey)
-        let decrypted = try Decryptor.decryptAndVerifySharePassphrase(
-            sharePassphrase,
-            armoredSignature: signature,
-            verificationKeys: verificationKeys,
-            decryptionKeys: decryptionKeys
-        )
+        let decrypted: VerifiedText
+        do {
+            decrypted = try Decryptor.decryptAndVerifySharePassphrase(
+                sharePassphrase,
+                armoredSignature: signature,
+                verificationKeys: verificationKeys,
+                decryptionKeys: decryptionKeys
+            )
+        } catch let error where !(error is Decryptor.Errors) {
+            DriveIntegrityErrorMonitor.reportError(for: self)
+            throw error
+        }
 
         switch decrypted {
         case .verified(let clearSharePassphrase):
@@ -82,7 +88,7 @@ extension Share {
             return clearSharePassphrase
 
         case .unverified(let clearSharePassphrase, let error):
-            Log.error(SignatureError(error, "Share Passphrase", description: "ShareID: \(id)"), domain: .encryption, sendToSentryIfPossible: isSignatureVerifiable())
+            Log.error(error: SignatureError(error, "Share Passphrase", description: "ShareID: \(id)"), domain: .encryption, sendToSentryIfPossible: isSignatureVerifiable())
             self.clearPassphrase = clearSharePassphrase
             return clearSharePassphrase
         }
@@ -92,15 +98,21 @@ extension Share {
         let verificationKeys = try getAddressKeys().map(\.publicKey)
 
         guard let node = root else { throw invalidState("Share should have a root with NodeKey") }
-        guard node.parentLink != nil else { throw MemberDecryptableShareError() }
+        guard node.parentNode != nil else { throw MemberDecryptableShareError() }
         let nodePassphrase = try node.decryptPassphrase()
 
-        let decrypted = try Decryptor.decryptAndVerifySharePassphrase(
-            sharePassphrase,
-            armoredSignature: signature,
-            verificationKeys: verificationKeys,
-            decryptionKeys: [DecryptionKey(privateKey: node.nodeKey, passphrase: nodePassphrase)]
-        )
+        let decrypted: VerifiedText
+        do {
+            decrypted = try Decryptor.decryptAndVerifySharePassphrase(
+                sharePassphrase,
+                armoredSignature: signature,
+                verificationKeys: verificationKeys,
+                decryptionKeys: [DecryptionKey(privateKey: node.nodeKey, passphrase: nodePassphrase)]
+            )
+        } catch let error where !(error is Decryptor.Errors) {
+            DriveIntegrityErrorMonitor.reportError(for: self)
+           throw error
+       }
 
         switch decrypted {
         case .verified(let clearSharePassphrase):
@@ -108,7 +120,7 @@ extension Share {
             return clearSharePassphrase
 
         case .unverified(let clearSharePassphrase, let error):
-            Log.error(SignatureError(error, "Share Passphrase", description: "ShareID: \(id)"), domain: .encryption, sendToSentryIfPossible: isSignatureVerifiable())
+            Log.error(error: SignatureError(error, "Share Passphrase", description: "ShareID: \(id)"), domain: .encryption, sendToSentryIfPossible: isSignatureVerifiable())
             self.clearPassphrase = clearSharePassphrase
             return clearSharePassphrase
         }

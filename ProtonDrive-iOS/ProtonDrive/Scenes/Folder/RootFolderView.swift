@@ -47,7 +47,9 @@ class MyFilesRootFetcher {
             let shares = storage.getMainShares(in: storage.mainContext)
             guard let share = shares.first,
                   let linkID = share.linkID else {
-                NotificationCenter.default.post(name: .nukeCache)
+                let hasShare = !shares.isEmpty
+                let reason = "Get root failed: \(hasShare ? "No share" : "No linkID")"
+                NotificationCenter.default.nukeCache(reason: reason)
                 return NodeIdentifier("", "", "")
             }
             return NodeIdentifier(linkID, share.id, share.volumeID)

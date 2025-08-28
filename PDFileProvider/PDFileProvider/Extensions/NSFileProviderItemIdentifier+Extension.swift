@@ -45,14 +45,23 @@ public extension NSFileProviderItemIdentifier {
     }
 
     private func makeFilename(item: NSFileProviderItem) -> String {
-            let filename = item.filename
-            guard let contentType = item.contentType, UTI(value: contentType.identifier).isProtonDocument else {
-                return filename
-            }
-            // This url is used by OS to determine if the file should be opened in place or transferred.
-            // Unless we add the extension, it won't be recognized.
-            // Also it can be used to validate incoming URL in the main app to quickly verify that a proton doc is being requested.
-            // Adding an extension shouldn't be a problem since the inverse function (`NSFileProviderItemIdentifier.init(_ url: URL)`) doesn't use it.
-            return filename + "." + ProtonDocumentConstants.fileExtension
+        let filename = item.filename
+        guard let contentType = item.contentType else {
+            return filename
         }
+
+        // This url is used by OS to determine if the file should be opened in place or transferred.
+        // Unless we add the extension, it won't be recognized.
+        // Also it can be used to validate incoming URL in the main app to quickly verify that a proton doc is being requested.
+        // Adding an extension shouldn't be a problem since the inverse function (`NSFileProviderItemIdentifier.init(_ url: URL)`) doesn't use it.
+        let uti = UTI(value: contentType.identifier)
+        switch uti.value {
+        case ProtonDocConstants.uti:
+            return filename + "." + ProtonDocConstants.fileExtension
+        case ProtonSheetConstants.uti:
+            return filename + "." + ProtonSheetConstants.fileExtension
+        default:
+            return filename
+        }
+    }
 }

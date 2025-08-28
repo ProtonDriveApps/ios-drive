@@ -35,7 +35,7 @@ public extension PostLoginServices {
                 } catch {
                     let domainError = DomainOperationErrors.removeDomainFailed(error)
                     let errorMessage: String = domainError.errorDescription ?? ""
-                    Log.error(errorMessage, domain: .fileProvider)
+                    Log.error(errorMessage, error: nil, domain: .fileProvider)
                     finalError = domainError
                 }
             }
@@ -45,7 +45,7 @@ public extension PostLoginServices {
             }
         } catch {
             let domainError = DomainOperationErrors.getDomainsFailed(error)
-            Log.error(domainError.errorDescription ?? "", domain: .fileProvider)
+            Log.error(error: domainError, domain: .fileProvider)
             throw domainError
         }
     }

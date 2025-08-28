@@ -17,11 +17,13 @@
 
 import Combine
 import PDCore
+import PDPhotos
 
 final class LocalPhotosBackupUploadAvailableController: PhotosBackupUploadAvailableController {
     private let backupController: PhotosBackupController
     private let networkConstraintController: PhotoBackupConstraintController
     private let quotaConstraintController: PhotoBackupConstraintController
+    private let migrationConstraintController: PhotoBackupConstraintController
     private var cancellables = Set<AnyCancellable>()
     private let subject = CurrentValueSubject<Bool, Never>(false)
 
@@ -32,20 +34,27 @@ final class LocalPhotosBackupUploadAvailableController: PhotosBackupUploadAvaila
     init(
         backupController: PhotosBackupController,
         networkConstraintController: PhotoBackupConstraintController,
-        quotaConstraintController: PhotoBackupConstraintController
+        quotaConstraintController: PhotoBackupConstraintController,
+        migrationConstraintController: PhotoBackupConstraintController
     ) {
         self.backupController = backupController
         self.networkConstraintController = networkConstraintController
         self.quotaConstraintController = quotaConstraintController
+        self.migrationConstraintController = migrationConstraintController
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
-        Publishers.CombineLatest3(backupController.isAvailable, networkConstraintController.constraint, quotaConstraintController.constraint)
-            .map { availability, isNetworkConstrained, isQuotaConstrained -> Bool in
+        Publishers.CombineLatest4(
+            backupController.isAvailable,
+            networkConstraintController.constraint,
+            quotaConstraintController.constraint,
+            migrationConstraintController.constraint
+        )
+            .map { availability, isNetworkConstrained, isQuotaConstrained, isMigrationConstrained -> Bool in
                 switch availability {
                 case .available:
-                    return !isNetworkConstrained && !isQuotaConstrained
+                    return !isNetworkConstrained && !isQuotaConstrained && !isMigrationConstrained
                 case .unavailable, .locked:
                     return false
                 }

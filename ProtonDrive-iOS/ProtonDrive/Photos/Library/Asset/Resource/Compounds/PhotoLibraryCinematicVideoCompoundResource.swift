@@ -17,6 +17,7 @@
 
 import PDCore
 import Photos
+import PDPhotos
 
 final class PhotoLibraryCinematicVideoCompoundResource: PhotoLibraryCompoundResource {
     private let plainResource: PhotoLibraryCompoundResource
@@ -38,7 +39,7 @@ final class PhotoLibraryCinematicVideoCompoundResource: PhotoLibraryCompoundReso
         do {
             return try await executeCinematicVideo(with: identifier, asset: asset)
         } catch {
-            Log.error("\(Self.self) failed to load cinematic video, falling back to plain resource", domain: .photosProcessing)
+            Log.error("failed to load cinematic video, falling back to plain resource", error: nil, domain: .photosProcessing)
             return try await plainResource.execute(with: identifier, asset: asset)
         }
     }
@@ -65,10 +66,10 @@ final class PhotoLibraryCinematicVideoCompoundResource: PhotoLibraryCompoundReso
                 asset: asset,
                 resource: originalResource,
                 originalFilename: originalFilename,
-                fileExtension: try originalResource.getNormalizedFilename().fileExtension(),
+                fileExtension: try originalResource.getNormalizedFilename().fileExtension,
                 isOriginal: true
             )
-            let resource = try await assetResource.executePhoto(with: adjustedResource)
+            let resource = try await assetResource.executeVideo(with: adjustedResource)
             return [resource]
         } else {
             var photoAssetData = [PhotoAssetData]()
@@ -79,13 +80,13 @@ final class PhotoLibraryCinematicVideoCompoundResource: PhotoLibraryCompoundReso
                         asset: asset,
                         resource: resource,
                         originalFilename: originalFilename,
-                        fileExtension: try resource.getNormalizedFilename().fileExtension(),
+                        fileExtension: try resource.getNormalizedFilename().fileExtension,
                         isOriginal: false
                     )
                 )
             }
             return try await photoAssetData.asyncMap {
-                return try await assetResource.executePhoto(with: $0)
+                return try await assetResource.executeVideo(with: $0)
             }
         }
 

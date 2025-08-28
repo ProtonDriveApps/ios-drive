@@ -40,7 +40,7 @@ public class ExtendedAttributes: NSObject, Codable {
         case iOSPhotos = "iOS.photos"
     }
     
-    public struct Common: Codable {
+    public struct Common: Codable, Equatable {
         public let modificationTime: String?
         public let size: Int?
         public let blockSizes: [Int]?
@@ -54,7 +54,7 @@ public class ExtendedAttributes: NSObject, Codable {
         }
     }
     
-    public struct Digests: Codable {
+    public struct Digests: Codable, Equatable {
         public let sha1: String?
         
         enum CodingKeys: String, CodingKey {
@@ -62,7 +62,7 @@ public class ExtendedAttributes: NSObject, Codable {
         }
     }
 
-    public struct Location: Codable {
+    public struct Location: Codable, Equatable {
         public let latitude: Double
         public let longitude: Double
 
@@ -70,9 +70,20 @@ public class ExtendedAttributes: NSObject, Codable {
             case latitude = "Latitude"
             case longitude = "Longitude"
         }
+
+        public init(latitude: Double, longitude: Double) {
+            self.latitude = latitude
+            self.longitude = longitude
+        }
+
+        public init?(location: PhotoAssetMetadata.Location?) {
+            guard let location else { return nil }
+            self.latitude = location.latitude
+            self.longitude = location.longitude
+        }
     }
     
-    public struct Camera: Codable {
+    public struct Camera: Codable, Equatable {
         public let captureTime: String?
         public let device: String?
         public let orientation: Int?
@@ -84,9 +95,16 @@ public class ExtendedAttributes: NSObject, Codable {
             case orientation = "Orientation"
             case subjectCoordinates = "SubjectCoordinates"
         }
+
+        public init(captureTime: String?, device: String?, orientation: Int?, subjectCoordinates: SubjectCoordinates?) {
+            self.captureTime = captureTime
+            self.device = device
+            self.orientation = orientation
+            self.subjectCoordinates = subjectCoordinates
+        }
     }
 
-    public struct SubjectCoordinates: Codable {
+    public struct SubjectCoordinates: Codable, Equatable {
         public let top: Int
         public let left: Int
         public let bottom: Int
@@ -98,9 +116,17 @@ public class ExtendedAttributes: NSObject, Codable {
             case bottom = "Bottom"
             case right = "Right"
         }
+
+        public init?(subjectCoordinates: PhotoAssetMetadata.SubjectCoordinates?) {
+            guard let subjectCoordinates else { return nil }
+            self.top = subjectCoordinates.top
+            self.left = subjectCoordinates.left
+            self.bottom = subjectCoordinates.bottom
+            self.right = subjectCoordinates.right
+        }
     }
     
-    public struct Media: Codable {
+    public struct Media: Codable, Equatable {
         public let width: Int?
         public let height: Int?
         public let duration: Double?
@@ -112,7 +138,7 @@ public class ExtendedAttributes: NSObject, Codable {
         }
     }
     
-    public struct iOSPhotos: Codable {
+    public struct iOSPhotos: Codable, Equatable {
         public let iCloudID: String?
         public let modificationTime: String?
         
@@ -122,7 +148,7 @@ public class ExtendedAttributes: NSObject, Codable {
         }
     }
 
-    func encoded() throws -> Data {
+    public func encoded() throws -> Data {
         let encoder = JSONEncoder()
         return try encoder.encode(self)
     }

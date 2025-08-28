@@ -36,22 +36,22 @@ protocol PhotoAssetIdentifiersInteractor {
 }
 
 final class LocalPhotoAssetIdentifiersInteractor: PhotoAssetIdentifiersInteractor {
-    private let rootDataSource: PhotosRootEncryptingFolderDataSource
+    private let rootRepository: PhotosRootFolderRepository
     private let encryptionResource: EncryptionResource
     private let nameCorrectionPolicy: NameCorrectionPolicy
 
     init(
-        rootDataSource: PhotosRootEncryptingFolderDataSource,
+        rootRepository: PhotosRootFolderRepository,
         encryptionResource: EncryptionResource,
         nameCorrectionPolicy: NameCorrectionPolicy
     ) {
-        self.rootDataSource = rootDataSource
+        self.rootRepository = rootRepository
         self.encryptionResource = encryptionResource
         self.nameCorrectionPolicy = nameCorrectionPolicy
     }
 
     func getIdentifiers(from compound: PhotoAssetCompound) throws -> PhotosFilterItem {
-        let root = try rootDataSource.getEncryptingFolder()
+        let root = try rootRepository.getEncryptionInfo()
         return try makeIdentifiers(from: compound, key: root.hashKey)
     }
 

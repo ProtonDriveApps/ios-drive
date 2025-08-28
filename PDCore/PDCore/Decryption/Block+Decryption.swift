@@ -43,12 +43,17 @@ extension Block {
             // It means the upload is anonymous and should not include a signature.
             let isAnonymous = (signatureEmail?.isEmpty ?? true)
             if isAnonymous {
-                return try Decryptor.decryptBlock(blockDataPacket, sessionKey: contentSessionKey)
+                do {
+                    return try Decryptor.decryptBlock(blockDataPacket, sessionKey: contentSessionKey)
+                } catch let error where !(error is Decryptor.Errors) {
+                    DriveIntegrityErrorMonitor.reportContentError(for: revision.file)
+                    throw error
+                }
             } else {
                 return try decryptAndVerifyBlock(blockDataPacket: blockDataPacket, contentSessionKey: contentSessionKey)
             }
         } catch {
-            Log.error(DecryptionError(error, "Block", description: "RevisionID: \(revision.id) \nLinkID: \(revision.file.id) \nVolumeID: \(revision.file.volumeID)"), domain: .encryption)
+            Log.error(error: DecryptionError(error, "Block", description: "RevisionID: \(revision.id) \nLinkID: \(revision.file.id) \nVolumeID: \(revision.file.volumeID)"), domain: .encryption)
             throw error
         }
     }
@@ -62,20 +67,33 @@ extension Block {
         let nodePassphrase = try revision.file.decryptPassphrase()
         let nodeDecryptionKey = DecryptionKey(privateKey: nodeKey, passphrase: nodePassphrase)
 
-        let decryptedBlockSignature = try Decryptor.decryptBlockSignature(encryptedBlockSignature, nodeDecryptionKey)
+        let decryptedBlockSignature: ArmoredSignature
+        do {
+            decryptedBlockSignature = try Decryptor.decryptBlockSignature(encryptedBlockSignature, nodeDecryptionKey)
+        } catch let error where !(error is Decryptor.Errors) {
+            DriveIntegrityErrorMonitor.reportMetadataError(for: revision.file)
+            throw error
+        }
+
         let addressKeys = try getAddressPublicKeysOfBlockCreator()
-        let decrypted = try Decryptor.decryptAndVerifyBlock(
-            blockDataPacket,
-            sessionKey: contentSessionKey,
-            signature: decryptedBlockSignature,
-            verificationKeys: addressKeys
-        )
+        let decrypted: VerifiedBinary
+        do {
+            decrypted = try Decryptor.decryptAndVerifyBlock(
+                blockDataPacket,
+                sessionKey: contentSessionKey,
+                signature: decryptedBlockSignature,
+                verificationKeys: addressKeys
+            )
+        } catch let error where !(error is Decryptor.Errors) {
+            DriveIntegrityErrorMonitor.reportContentError(for: revision.file)
+            throw error
+        }
 
         switch decrypted {
         case .verified(let clearData):
             return clearData
         case .unverified(let clearData, let error):
-            Log.error(SignatureError(error, "Block", description: "RevisionID: \(revision.id) \nLinkID: \(revision.file.id) \nVolumeID: \(revision.file.volumeID)"), domain: .encryption, sendToSentryIfPossible: revision.file.isSignatureVerifiable())
+            Log.error(error: SignatureError(error, "Block", description: "RevisionID: \(revision.id) \nLinkID: \(revision.file.id) \nVolumeID: \(revision.file.volumeID)"), domain: .encryption, sendToSentryIfPossible: revision.file.isSignatureVerifiable())
             return clearData
         }
     }
@@ -104,7 +122,7 @@ extension Block {
             try Decryptor.decryptStream(localUrl, clearUrl, [blockDecryptionKey], keyPacket, verificationKeys, signature, isSignatureVerifiable: file.isSignatureVerifiable)
 
         } catch {
-            Log.error(DecryptionError(error, "Block - stream", description: "RevisionID: \(revision.id) \nLinkID: \(revision.file.id) \nVolumeID: \(revision.file.volumeID)"), domain: .encryption)
+            Log.error(error: DecryptionError(error, "Block - stream", description: "RevisionID: \(revision.id) \nLinkID: \(revision.file.id) \nVolumeID: \(revision.file.volumeID)"), domain: .encryption)
             throw error
         }
     }

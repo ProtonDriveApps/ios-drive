@@ -46,9 +46,7 @@ extension TrashListing {
 }
 
 public final class TrashModel: FinderModel, TrashListing, NodesListing, ThumbnailLoader  {
-    
-    public let shareID: String
-    private let volumeID: String
+    private let volumeIDs: [String]
     private let restorer: TrashedNodeRestorer
     private let deleter: TrashedNodeDeleter
     private let trashCleaner: TrashCleaner
@@ -65,10 +63,11 @@ public final class TrashModel: FinderModel, TrashListing, NodesListing, Thumbnai
         self.restorer = restorer
         self.deleter = deleter
         self.trashCleaner = trashCleaner
-        self.volumeID = tower.uiSlot.getVolumeId()! // A volume must always exist
-        self.shareID = tower.rootFolderIdentifier()!.shareID
+        volumeIDs = tower.uiSlot.getOwnVolumeIds()
+        assert(!volumeIDs.isEmpty, "A volume must always exist")
+        Log.info("Initialized TrashModel with volumeIds: \(volumeIDs)", domain: .scenes)
 
-        let children = tower.uiSlot!.subscribeToTrash(volumeID: volumeID)
+        let children = tower.uiSlot!.subscribeToTrash(volumeIDs: volumeIDs)
         self.childrenObserver = FetchedObjectsObserver(children)
         
         self.sorting = self.tower.localSettings.nodesSortPreference
@@ -78,7 +77,7 @@ public final class TrashModel: FinderModel, TrashListing, NodesListing, Thumbnai
             .sink { [weak self] sort in
                 guard let self = self else { return }
                 self.sorting = sort
-                let children = tower.uiSlot!.subscribeToTrash(volumeID: volumeID)
+                let children = tower.uiSlot!.subscribeToTrash(volumeIDs: volumeIDs)
                 self.childrenObserver.inject(fetchedResultsController: children)
             }
     }
@@ -104,20 +103,39 @@ public final class TrashModel: FinderModel, TrashListing, NodesListing, Thumbnai
     }
     
     public func fetchTrash() async throws {
-        try await tower.cloudSlot.scanAllTrashed(volumeID: volumeID)
+        try await volumeIDs.forEach { volumeID in
+            try await tower.cloudSlot.scanAllTrashed(volumeID: volumeID)
+        }
         self.didFetchAllTrash = true
     }
 
-    public func deleteTrashed(nodes: [NodeIdentifier]) async throws {
-        try await deleter.delete(nodes)
+    public func deleteTrashed(nodes: [NodeIdentifier], isUsingVolumeBasedEndpoint: Bool) async throws {
+        if isUsingVolumeBasedEndpoint {
+            try await deleter.deletePerVolume(nodes)
+        } else {
+            try await deleter.delete(nodes)
+        }
     }
 
-    public func emptyTrash(nodes: [NodeIdentifier]) async throws {
-        try await trashCleaner.emptyTrash(nodes)
+    public func emptyTrash(nodes: [NodeIdentifier], isUsingVolumeBasedEndpoint: Bool) async throws {
+        if isUsingVolumeBasedEndpoint {
+            try await trashCleaner.emptyTrashPerVolume(nodes)
+        } else {
+            try await trashCleaner.emptyTrash(nodes)
+        }
     }
 
-    public func restoreTrashed(_ nodes: [NodeIdentifier]) async throws {
-        try await restorer.restore(nodes)
+    public func restoreTrashed(_ nodes: [NodeIdentifier], isUsingVolumeBasedEndpoint: Bool) async throws {
+        if isUsingVolumeBasedEndpoint {
+            try await restorer.restoreVolume(nodes: nodes)
+        } else {
+            try await restorer.restore(nodes)
+        }
+        await MainActor.run {
+            // To immediately refresh nodes' states
+            // Special case for photos - we need to get update event to recreate CoreDataPhotoListing objects
+            tower.forcePolling(volumeIDs: volumeIDs)
+        }
     }
 }
 

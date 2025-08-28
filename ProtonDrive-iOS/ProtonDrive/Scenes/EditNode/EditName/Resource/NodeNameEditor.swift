@@ -52,13 +52,13 @@ final class NodeNameEditor: NodeNameEditorProtocol {
     }
 
     private func makeMimeType(node: Node, name: String) -> String? {
-        let isProtonDocument = managedObjectContext.performAndWait {
-            (node as? File)?.isProtonDocument ?? false
+        let isProtonFile = managedObjectContext.performAndWait {
+            (node as? File)?.isProtonFile ?? false
         }
 
         if node is Folder {
             return Folder.mimeType
-        } else if name.fileExtension().isEmpty || isProtonDocument {
+        } else if name.fileExtension.isEmpty || isProtonFile {
             // Preserve the previous MIME type in case:
             // 1. The user removed it when renaming; or
             // 2. It's a Proton Document, which doesn't have an extension on other platforms

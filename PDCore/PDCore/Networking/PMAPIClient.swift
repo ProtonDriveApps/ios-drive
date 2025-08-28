@@ -21,10 +21,10 @@ import ProtonCoreAuthentication
 import ProtonCoreDataModel
 import ProtonCoreEnvironment
 import ProtonCoreFeatureFlags
-import ProtonCoreHumanVerification
 import ProtonCoreServices
 import ProtonCoreNetworking
 import ProtonCoreCryptoGoInterface
+import ProtonCoreKeymaker
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -52,6 +52,7 @@ public class PMAPIClient: NSObject, APIServiceDelegate {
     public weak var responseDelegateForLoginAndSignup: HumanVerifyResponseDelegate?
     public weak var paymentDelegateForLoginAndSignup: HumanVerifyPaymentDelegate?
     public weak var authSessionInvalidatedDelegateForLoginAndSignup: AuthSessionInvalidatedDelegate?
+    private weak var autoLocker: Autolocker?
 
     // To be observed by UI layer in order to communicate with the user
     @objc public internal(set) dynamic var currentActivity: NSUserActivity = Activity.none
@@ -64,12 +65,14 @@ public class PMAPIClient: NSObject, APIServiceDelegate {
          authenticator: AuthenticatorInterface,
          generalReachability: Reachability?,
          sessionRelatedCommunicator: SessionRelatedCommunicatorBetweenMainAppAndExtensions,
+         autoLocker: Autolocker?,
          settingsStorage: SettingsStorageSuite = .group(named: Constants.appGroup)) {
         self.appVersion = version
         self.sessionStore = sessionVault
         self.apiService = apiService
         self.authenticator = authenticator
         self.generalReachability = generalReachability
+        self.autoLocker = autoLocker
         self.sessionRelatedCommunicator = sessionRelatedCommunicator
         self.observationCenter = UserDefaultsObservationCenter(userDefaults: settingsStorage.userDefaults)
         super.init()
@@ -92,7 +95,7 @@ public class PMAPIClient: NSObject, APIServiceDelegate {
         #if os(iOS)
         return "ProtonDrive/\(Bundle.main.majorVersion) (\(UIDevice.current.systemName) \(UIDevice.current.systemVersion); \(self.deviceName()))"
         #elseif os(macOS)
-        return "ProtonDrive/\(Bundle.main.majorVersion) (macOS \(ProcessInfo.processInfo.operatingSystemVersionString); \(DarwinVersion()))"
+        return "ProtonDrive/\(Bundle.main.majorVersion) (\(ProcessInfo.processInfo.operatingSystemVersion.description); \(DarwinVersion()))"
         #endif
     }
 
@@ -147,6 +150,10 @@ extension PMAPIClient: AuthDelegate {
     }
 
     public func onAuthenticatedSessionInvalidated(sessionUID: String) {
+        if let autoLocker, autoLocker.shouldAutolockNow() {
+            Log.debug("Ignore session invalidation because auto locker is enabled", domain: .networking)
+            return
+        }
         sessionStore.removeAuthenticatedCredential()
         apiService.setSessionUID(uid: "")
         Task {
@@ -284,5 +291,11 @@ extension PMAPIClient {
         Task {
             try? await ProtonCoreFeatureFlags.FeatureFlagsRepository.shared.fetchFlags()
         }
+    }
+}
+
+private extension OperatingSystemVersion {
+    var description: String {
+        "macOS \(majorVersion).\(minorVersion).\(patchVersion)"
     }
 }

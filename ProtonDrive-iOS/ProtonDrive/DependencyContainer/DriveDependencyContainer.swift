@@ -27,21 +27,28 @@ import ProtonCoreServices
 
 public class DriveDependencyContainer {
     private let initialServices: InitialServices
+    private let driveKeymaker: Keymaker
 
     var appGroup: SettingsStorageSuite { Constants.appGroup }
     var authenticatedContainer: AuthenticatedDependencyContainer?
     var windowScene: UIWindowScene!
     let hvHelper: HumanCheckHelper
+    private(set) var autoLocker: Autolocker?
 
     public init() {
+        let autolocker = Autolocker(lockTimeProvider: DriveKeychain.shared)
+        self.autoLocker = autolocker
+        let keymaker = DriveKeymaker(autolocker: autolocker, keychain: DriveKeychain.shared)
+
+        self.driveKeymaker = keymaker
+
         func makeInitialServices() -> InitialServices {
             let config = Constants.clientApiConfig
-            let autolocker = Autolocker(lockTimeProvider: DriveKeychain.shared)
-            let keymaker = DriveKeymaker(autolocker: autolocker, keychain: DriveKeychain.shared)
             return InitialServices(
                 userDefault: Constants.appGroup.userDefaults,
                 clientConfig: config,
-                keymaker: keymaker,
+                mainKeyProvider: keymaker,
+                autoLocker: autolocker,
                 sessionRelatedCommunicatorFactory: { sessionStore, authenticator, _ in
                     SessionRelatedCommunicatorForMainApp(
                         userDefaultsConfiguration: .forFileProviderExtension(userDefaults: Constants.appGroup.userDefaults),
@@ -79,7 +86,7 @@ public class DriveDependencyContainer {
     }
 
     var keymaker: Keymaker {
-        initialServices.keymaker
+        driveKeymaker
     }
 
     var authenticator: Authenticator {
@@ -109,7 +116,11 @@ public class DriveDependencyContainer {
     var localSettings: LocalSettings {
         initialServices.localSettings
     }
-    
+
+    var connectionStateResource: ConnectionStateResource {
+        initialServices.connectionStateResource
+    }
+
     private func setPushNotificationService() {
         guard
             !Constants.isUITest,

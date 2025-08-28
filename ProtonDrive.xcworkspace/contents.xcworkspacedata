@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <FileRef
+      location = "group:ProtonDrive-iOS/ProtonDrive-iOS.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:PMEventsManager">
+   </FileRef>
+   <FileRef
+      location = "group:PMSideMenu">
+   </FileRef>
+   <FileRef
+      location = "group:PMSettings">
+   </FileRef>
+   <FileRef
+      location = "group:PDLocalization">
+   </FileRef>
+   <FileRef
+      location = "group:PDCore">
+   </FileRef>
+   <FileRef
+      location = "group:PDClient">
+   </FileRef>
+   <FileRef
+      location = "group:PDContacts">
+   </FileRef>
+   <FileRef
+      location = "group:PDPhotos">
+   </FileRef>
+   <FileRef
+      location = "group:PDUploadVerifier">
+   </FileRef>
+   <FileRef
+      location = "group:PDFileProvider">
+   </FileRef>
+   <FileRef
+      location = "group:PDUIComponents">
+   </FileRef>
+   <FileRef
+      location = "group:.swiftlint.yml">
+   </FileRef>
+   <FileRef
+      location = "group:LICENSE">
+   </FileRef>
+   <FileRef
+      location = "group:ProtonDrive-iOS/README.md">
+   </FileRef>
+</Workspace>

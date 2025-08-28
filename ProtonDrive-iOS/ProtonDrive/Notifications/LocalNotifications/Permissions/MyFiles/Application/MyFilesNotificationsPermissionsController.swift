@@ -17,6 +17,7 @@
 
 import Combine
 import PDCore
+import PDCoreIOS
 
 final class MyFilesNotificationsPermissionsController: NotificationsPermissionsController {
     private let flowController: NotificationsPermissionsFlowController

@@ -18,6 +18,7 @@
 import Combine
 import Foundation
 import PDCore
+import PDCoreIOS
 
 final class ProtectViewModel: LogoutRequesting {
     private let controller: LockedStateControllerProtocol

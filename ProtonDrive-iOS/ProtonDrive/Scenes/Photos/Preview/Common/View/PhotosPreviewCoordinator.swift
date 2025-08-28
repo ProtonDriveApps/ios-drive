@@ -98,11 +98,7 @@ final class PhotosPreviewCoordinator: PhotosPreviewListCoordinator, PhotosPrevie
 
         let viewController = UIActivityViewController(activityItems: items, applicationActivities: activities)
         viewController.excludedActivityTypes = excludedActivities
-        if #available(iOS 16.0, *) {
-            viewController.popoverPresentationController?.sourceItem = item
-        } else {
-            viewController.popoverPresentationController?.barButtonItem = item
-        }
+        viewController.popoverPresentationController?.sourceItem = item
         viewController.popoverPresentationController?.sourceView = view
         activityVC = viewController
         rootViewController.present(viewController, animated: true, completion: nil)
@@ -116,11 +112,7 @@ final class PhotosPreviewCoordinator: PhotosPreviewListCoordinator, PhotosPrevie
                 let popover = self.activityVC?.popoverPresentationController,
                 let item = self.sourceItemForActivity()
             else { return }
-            if #available(iOS 16.0, *) {
-                popover.sourceItem = item
-            } else {
-                popover.barButtonItem = item
-            }
+            popover.sourceItem = item
         }
     }
     

@@ -17,33 +17,73 @@
 
 import Foundation
 import PDCore
+import ZIPFoundation
 
 class LogExporter {
     func export() async -> URL {
-        // Will synchronously compress the logs and leave them in the archive directory
+        Log.info("Will export logs", domain: .logs)
+
         Log.exporter.export()
 
         let archiveDirectory = PDFileManager.logsArchiveDirectory
         let exportDirectory = PDFileManager.logsExportDirectory
+        let exportZip = exportDirectory.appendingPathComponent("ProtonDriveLogs.zip")
 
-        // Ensure the export directory exists
-        try? FileManager.default.createDirectory(at: exportDirectory, withIntermediateDirectories: true, attributes: nil)
-
-        // Retrieve and unarchive each non-hidden file individually
-        unarchiveFilesIndividually(from: archiveDirectory, to: exportDirectory)
-        return exportDirectory
-    }
-
-    private func unarchiveFilesIndividually(from sourceDirectory: URL, to destinationDirectory: URL) {
         let fileManager = FileManager.default
-        do {
-            let directoryContents = try fileManager.contentsOfDirectory(at: sourceDirectory, includingPropertiesForKeys: nil)
 
-            for file in directoryContents where !file.isHiddenFile {
-                try Archiver.unarchive(file, to: destinationDirectory)
+        try? fileManager.removeItem(at: exportZip)
+        try? fileManager.createDirectory(at: exportDirectory, withIntermediateDirectories: true)
+
+        do {
+            let finalArchive = try Archive(url: exportZip, accessMode: .create)
+            let zipFiles = try fileManager.contentsOfDirectory(at: archiveDirectory, includingPropertiesForKeys: nil)
+                .filter { !$0.isHiddenFile && $0.pathExtension == "zip" }
+                .sorted { $0.creationDate < $1.creationDate }
+
+            for zipFile in zipFiles {
+                guard let archive = try? Archive(url: zipFile, accessMode: .read) else { continue }
+
+                for entry in archive {
+                    // Only decompress `.log` entries
+                    guard entry.path.hasSuffix(".log") else { continue }
+
+                    // Write to a temp file
+                    let tempURL = exportDirectory.appendingPathComponent(UUID().uuidString + ".log")
+                    _ = try archive.extract(entry, to: tempURL)
+
+                    // Add to final zip
+                    try finalArchive.addEntry(with: entry.path, fileURL: tempURL, compressionMethod: .deflate)
+
+                    // Delete temp file
+                    try? fileManager.removeItem(at: tempURL)
+                }
             }
         } catch {
-            Log.error("Failed to unarchive log file: \(error.localizedDescription)", domain: .logs)
+            Log.error("Failed to export final logs zip", error: error, domain: .logs)
         }
+
+        return exportZip
+    }
+
+    private func zipDirectory(_ directory: URL, into zipFile: URL) {
+        do {
+            let archive = try Archive(url: zipFile, accessMode: .create)
+            let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            for file in files {
+                try archive.addEntry(with: file.lastPathComponent, fileURL: file)
+            }
+        } catch {
+            Log.error("Failed to create export zip", error: error, domain: .logs)
+        }
+    }
+}
+
+extension LogExporter {
+    /// Ensures the logs archive directory only contains `.zip` files.
+    /// Converts any remaining `.lzfse` legacy logs to `.zip`.
+    /// Returns the archive directory path.
+    func prepareArchivedLogsDirectory() -> URL {
+        Log.exporter.export()
+        return PDFileManager.logsArchiveDirectory
     }
 }

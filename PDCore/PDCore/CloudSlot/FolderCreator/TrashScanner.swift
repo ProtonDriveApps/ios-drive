@@ -60,8 +60,13 @@ public final class TrashScanner {
             }
         }
 
-        guard !response.trash.isEmpty else { return }
+        guard !isLastPage(response) else { return }
         try await fetchTrashMyVolume(volumeID, atPage: page + 1, validator: validator)
+    }
+
+    private func isLastPage(_ response: ListVolumeTrashEndpoint.Response) -> Bool {
+        // BE sends either empty array, or entries with empty linkIDs
+        return response.trash.isEmpty || response.trash.flatMap(\.linkIDs).isEmpty
     }
 
     private func makeSupportedSharesValidator() -> SupportedSharesValidator {

@@ -51,7 +51,7 @@ final class PhotosMetadataLoadInteractor: ThrowingAsynchronousInteractor {
     }
 
     private func updateLocalLinks(with list: PhotosList, shareId: String) async throws {
-        let linkIds = list.photos.flatMap { [$0.linkID] + $0.relatedPhotos.map(\.linkID) }
+        let linkIds = list.photos.flatMap { [$0.linkID] + ($0.relatedPhotos ?? []).map(\.linkID) }
         let chunks = linkIds.splitInGroups(of: 150)
         var allLinks: [Link] = []
         for chunk in chunks {

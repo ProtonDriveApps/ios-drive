@@ -19,8 +19,8 @@ import Foundation
 
 public struct LinksResponse: Codable {
     public var code: Int
-    public let links: [Link]
-    public let parents: [Link]
+    public var links: [Link]
+    public var parents: [Link]
 
     public init(code: Int, links: [Link], parents: [Link]) {
         self.code = code
@@ -34,7 +34,7 @@ public struct LinksResponse: Codable {
     }
 }
 
-private final class LinkHierarchySorter {
+final class LinkHierarchySorter {
     
     func sort(links: [Link]) -> [Link] {
         var sorted: [Link] = []

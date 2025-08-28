@@ -22,15 +22,15 @@ struct PhotoRemoteFilterFactory {
     func makeRemoteFilterInteractor(
         tower: Tower,
         circuitBreaker: CircuitBreakerController,
-        photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>
+        photoSharesObserver: FetchedResultsControllerObserver<PDCore.Share>,
+        rootFolderRepository: PhotosRootFolderRepository
     ) -> PhotoAssetCompoundsConflictInteractor {
-        let rootDataSource = PhotosRepositoriesFactory().makeEncryptingRepository(tower: tower)
         let photoShareDataSource = PhotosFactory().makeLocalPhotosRootDataSource(observer: photoSharesObserver)
         let hashResource = FileStreamHashResource(digestBuilderFactory: { SHA1DigestBuilder() })
-        let hashInteractor = LocalPhotoContentHashInteractor(hashResource: hashResource, rootDataSource: rootDataSource, encryptionResource: Encryptor())
+        let hashInteractor = LocalPhotoContentHashInteractor(hashResource: hashResource, rootFolderRepository: rootFolderRepository, encryptionResource: Encryptor())
         let nameConflictsInteractor = RemotePhotoNameConflictsInteractor(
             identifiersInteractor: LocalPhotoAssetIdentifiersInteractor(
-                rootDataSource: rootDataSource,
+                rootRepository: rootFolderRepository,
                 encryptionResource: Encryptor(),
                 nameCorrectionPolicy: PhotoNameCorrectionPolicy(validator: DefaultNodeValidator())
             ),
@@ -38,7 +38,7 @@ struct PhotoRemoteFilterFactory {
             duplicatesRepository: tower.client,
             nameHashesStrategy: LocalPhotoConflictNameHashesStrategy(), circuitBreaker: circuitBreaker
         )
-        let linkIdRepository = ConcreteLocalPhotoLinkIdRepository(storageManager: tower.storage, managedObjectContext: tower.storage.newBackgroundContext())
+        let linkIdRepository = ConcreteLocalPhotoLinkIdRepository(storageManager: tower.storage, managedObjectContext: tower.storage.photosSecondaryBackgroundContext)
         let validator = ConcretePhotoConflictRemoteCheckValidator(hashInteractor: hashInteractor, clientUIDProvider: tower.sessionVault, linkIdRepository: linkIdRepository)
         let contentConflictsInteractor = RemotePhotoContentConflictsInteractor(validator: validator)
         return ConcretePhotoAssetCompoundsConflictInteractor(

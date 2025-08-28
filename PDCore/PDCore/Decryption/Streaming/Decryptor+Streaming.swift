@@ -55,7 +55,7 @@ extension Decryptor {
         do {
             try Decryptor.verifyStreamWithEncryptedSignature(verificationKeyRing, decryptionKeyRing, verifyFileHandle, signature)
         } catch {
-            Log.error(SignatureError(error, "Block - stream"), domain: .encryption, sendToSentryIfPossible: isSignatureVerifiable())
+            Log.error("verifyStreamWithEncryptedSignature failed", error: SignatureError(error, "Block - stream"), domain: .encryption, sendToSentryIfPossible: isSignatureVerifiable())
         }
     }
 }

@@ -17,10 +17,33 @@
 
 import CoreData
 
+public typealias CoreDataPhotoRevision = PhotoRevision
+
 @objc(PhotoRevision)
 public class PhotoRevision: Revision {
     @NSManaged public var exif: String
     @NSManaged public var transientClearExif: Data?
+    @NSManaged public var contentHash: String?
 
     @NSManaged public var photo: Photo
+
+    // MARK: Content digest
+
+    public func getContentDigest() throws -> FileContentDigest {
+        do {
+            let attributes = try decryptedExtendedAttributes()
+            let digest = try attributes.common?.digests?.sha1 ?! "Missing clear content hash"
+            return .contentDigest(digest)
+        } catch {
+            let oldContentHash = try contentHash ?! "Missing revision's content hash"
+            return .contentHash(oldContentHash)
+        }
+    }
+}
+
+public enum FileContentDigest {
+    // Decrypted sha1, can be rehashed with new parent hash key when moving
+    case contentDigest(String)
+    // Sha1 hashed with the current parent hash key
+    case contentHash(String)
 }

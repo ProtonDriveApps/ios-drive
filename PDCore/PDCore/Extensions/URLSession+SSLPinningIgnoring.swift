@@ -16,7 +16,6 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import PDLoadTesting
 
 extension URLSession {
     
@@ -25,13 +24,7 @@ extension URLSession {
         if let delegate {
             session = URLSession(configuration: .forUploading, delegate: delegate, delegateQueue: nil)
         } else {
-            if LoadTesting.isEnabled {
-                // according to URLSession docs, the delegate is retained
-                let testDelegate = TestDelegate()
-                session = URLSession(configuration: .forUploading, delegate: delegate ?? testDelegate, delegateQueue: nil)
-            } else {
-                session = URLSession(configuration: .forUploading)
-            }
+            session = URLSession(configuration: .forUploading)
         }
         
         session.sessionDescription = "Uploader"
@@ -44,13 +37,7 @@ extension URLSession {
     
     private static func createDownloadingSession(description: String) -> URLSession {
         let session: URLSession
-        if LoadTesting.isEnabled {
-            // according to URLSession docs, the delegate is retained
-            let testDelegate = TestDelegate()
-            session = URLSession(configuration: .forDownloading, delegate: testDelegate, delegateQueue: nil)
-        } else {
-            session = URLSession(configuration: .forDownloading)
-        }
+        session = URLSession(configuration: .forDownloading)
 
         session.sessionDescription = description
         return session

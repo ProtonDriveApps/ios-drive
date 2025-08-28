@@ -33,7 +33,7 @@ final class PhotosListLoadInteractor: ThrowingAsynchronousInteractor {
 
     func execute(with input: PhotosListLoadId) async throws -> PhotosListResponse {
         let volumeId = try await volumeIdDataSource.getVolumeId()
-        let parameters = PhotosListRequestParameters(volumeId: volumeId, lastId: input.photoId, pageSize: 150)
+        let parameters = PhotosListRequestParameters(volumeId: volumeId, lastId: input.photoId, pageSize: 150, tag: nil)
         return try await listing.getPhotosList(with: parameters)
     }
 }

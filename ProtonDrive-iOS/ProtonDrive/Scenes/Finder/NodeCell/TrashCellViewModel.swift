@@ -17,6 +17,7 @@
 
 import SwiftUI
 import PDCore
+import PDCoreIOS
 import PDUIComponents
 import Combine
 
@@ -25,7 +26,9 @@ final class TrashCellViewModel: ObservableObject {
     var actionButtonAction: () -> Void = { }
     var restoreButtonAction: () -> Void = { }
     let selectionModel: CellSelectionModel?
-    let iconName: String
+    let iconName: FileAssetName
+    private let tower: Tower
+    private var cancellables: Set<AnyCancellable> = []
 
     // MARK: Non-applicable for trash properties, required by `NodeCellConfiguration` protocol
     let isFavorite = false
@@ -43,6 +46,7 @@ final class TrashCellViewModel: ObservableObject {
     let progressCompleted: Double = 0
     let progressDirection: ProgressTracker.Direction? = nil
     let progress: Progress? = nil
+    let isBookmark: Bool = false
 
     let thumbnailViewModel: ThumbnailImageViewModel?
     let nodeRowActionMenuViewModel: NodeRowActionMenuViewModel?
@@ -50,17 +54,26 @@ final class TrashCellViewModel: ObservableObject {
 
     init(
         node: Node,
+        tower: Tower,
         fileTypeAsset: FileTypeAsset = .shared,
         selectionModel: CellSelectionModel? = nil,
         nodeRowActionMenuViewModel: NodeRowActionMenuViewModel? = nil,
+        thumbnailLoader: ThumbnailLoader,
         featureFlagsController: FeatureFlagsControllerProtocol
     ) {
         self.node = node
+        self.tower = tower
         self.selectionModel = selectionModel
-        self.thumbnailViewModel = ThumbnailImageViewModel(node: node)
+        self.thumbnailViewModel = ThumbnailImageViewModel(node: node, loader: thumbnailLoader)
         self.nodeRowActionMenuViewModel = nodeRowActionMenuViewModel
         self.iconName = fileTypeAsset.getAsset(node.mimeType)
         self.featureFlagsController = featureFlagsController
+
+        tower.succeededId.sink { [weak self] id in
+            guard let node = self?.node, node.identifier.id == id.id else { return }
+            self?.objectWillChange.send()
+        }
+        .store(in: &cancellables)
     }
 }
 

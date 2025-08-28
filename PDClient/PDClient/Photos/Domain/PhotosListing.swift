@@ -15,7 +15,4 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-public protocol PhotosListing {
-    func getPhotosList(with parameters: PhotosListRequestParameters) async throws -> PhotosListResponse
-    func getLinksMetadata(with parameters: LinksMetadataParameters) async throws -> LinksResponse
-}
+public protocol PhotosListing: PhotosListingDataSource, LinksMetadataDataSource { }

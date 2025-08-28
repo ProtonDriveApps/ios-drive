@@ -45,7 +45,7 @@ final class MultipleVolumesEventLoopsTimingController: EventLoopsTimingControlle
 
     private func handleUpdate() {
         let volumes = volumeIdsController.getVolumes()
-        fillInitialDate(for: volumes.mainVolumeId)
+        volumes.ownVolumes.forEach { fillInitialDate(for: $0) }
         volumes.sharedVolumes.forEach { fillInitialDate(for: $0.id) }
     }
 
@@ -63,7 +63,9 @@ final class MultipleVolumesEventLoopsTimingController: EventLoopsTimingControlle
     func getReadyLoops(possible: [LoopID]) -> [LoopID] {
         let volumes = volumeIdsController.getVolumes()
         let executionData = EventLoopsExecutionData(
-            mainLoop: makeLoopData(volumeId: volumes.mainVolumeId, type: .main),
+            ownLoops: volumes.ownVolumes.compactMap {
+                makeLoopData(volumeId: $0, type: .own)
+            },
             sharedLoops: volumes.sharedVolumes.compactMap { volume in
                 let type: EventLoopsExecutionData.LoopType = volume.isActive ? .activeShared : .inactiveShared
                 return makeLoopData(volumeId: volume.id, type: type)
@@ -75,11 +77,11 @@ final class MultipleVolumesEventLoopsTimingController: EventLoopsTimingControlle
 
     private func makeLoopData(volumeId: VolumeID?, type: EventLoopsExecutionData.LoopType) -> EventLoopsExecutionData.LoopData? {
         guard let volumeId else {
-            Log.error("Inconsistent data", domain: .events)
+            Log.error("Inconsistent data", error: nil, domain: .events)
             return nil
         }
         guard let lastDate = executionHistory[volumeId] else {
-            Log.error("Inconsistent dates", domain: .events)
+            Log.error("Inconsistent dates", error: nil, domain: .events)
             return nil
         }
 
@@ -96,6 +98,16 @@ final class MultipleVolumesEventLoopsTimingController: EventLoopsTimingControlle
         loopIds.forEach {
             // Mark the execution time
             executionHistory[$0] = dateResource.getDate()
+        }
+    }
+
+    func updateHistoryForForcePolling(volumeIDs: [String]) {
+        if volumeIDs.isEmpty {
+            executionHistory.forEach { (key, _) in
+                executionHistory[key] = Date(timeIntervalSinceReferenceDate: 0)
+            }
+        } else {
+            volumeIDs.forEach { executionHistory[$0] = Date(timeIntervalSinceReferenceDate: 0) }
         }
     }
 }

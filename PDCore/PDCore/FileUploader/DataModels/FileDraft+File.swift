@@ -37,25 +37,31 @@ extension FileDraft {
 
         // If the main photo is already commited we produce an empty filedraft that will be interpreted as a parent that has children that need to be uploaded.
         if let photo = file as? Photo, photo.state == .active {
+            Log.info("Assuming this is a primary uploaded photo (number of children: \(photo.children.count)). Will create immediately finishing upload operations. UUID: \(uploadID)", domain: .uploader)
             return FileDraft(uploadID: uploadID, file: file, state: .none, numberOfBlocks: 0, isEmpty: false, uri: uri, size: size, mimeType: mimeType)
         }
 
         guard let revision = file.activeRevisionDraft else {
+            Log.info("The file has nil activeRevisionDraft. Will create imediatelly finishing upload operations. UUID: \(uploadID)", domain: .uploader)
             return FileDraft.invalid(withFile: file)
         }
 
-        if state == .encryptingRevision || state == .encryptingNewRevision {
+        switch state {
+        case .encryptingRevision, .encryptingNewRevision:
             if let size = try sizeForExistingFile(revision.normalizedUploadableResourceURL) {
                 let blocks = Int(ceil(Double(size) / Double(Constants.maxBlockSize)))
                 return FileDraft(uploadID: uploadID, file: file, state: state, numberOfBlocks: blocks, isEmpty: blocks == .zero, uri: uri, size: size, mimeType: mimeType)
             } else {
+                Log.info("Found `uploadableResourceURL` to be nil. Will create imediatelly finishing upload operations. UUID: \(uploadID)", domain: .uploader)
                 return FileDraft.invalid(withFile: file)
             }
-        } else if state == .creatingFileDraft || state == .creatingNewRevision || state == .uploadingRevision || state == .commitingRevision {
+        case .creatingFileDraft, .creatingNewRevision, .uploadingRevision, .commitingRevision:
             let blocks = revision.blocks.count
             return FileDraft(uploadID: uploadID, file: file, state: state, numberOfBlocks: blocks, isEmpty: blocks == .zero, uri: uri, size: size, mimeType: mimeType)
-        } else {
-            return FileDraft(uploadID: UUID(), file: file, state: .none, numberOfBlocks: 0, isEmpty: true, uri: uri, size: size, mimeType: mimeType)
+        case .none:
+            let uploadID = UUID()
+            Log.error("Unrecognized file draft state, passing `none` to the filedraft state, which may result in immediate upload completion. UUID: \(uploadID)", error: nil, domain: .uploader)
+            return FileDraft(uploadID: uploadID, file: file, state: .none, numberOfBlocks: 0, isEmpty: true, uri: uri, size: size, mimeType: mimeType)
         }
     }
 
@@ -84,6 +90,12 @@ extension FileDraft {
             return .creatingNewRevision
         }
 
+        let debugInfo = [
+            "activeRevision \(file.activeRevisionDraft == nil ? "is nil" : "is not nil")",
+            "normalizedUploadableResourceURL \(file.activeRevisionDraft?.normalizedUploadableResourceURL == nil ? "is nil" : "is not nil")",
+            "isUploading: \(file.isUploading)"
+        ].joined(separator: ",")
+        Log.warning("Returning .none as filedraft state. debugInfo: \(debugInfo)", domain: .uploader)
         return .none
     }
 
@@ -107,7 +119,7 @@ extension FileDraft {
         return FileDraft(uploadID: UUID(), file: file, state: .none, numberOfBlocks: 0, isEmpty: true, uri: "", size: 1, mimeType: .empty)
     }
 
-    public enum State: Equatable {
+    public enum State: String, Equatable {
         case none
         case encryptingRevision
         case encryptingNewRevision
@@ -184,11 +196,11 @@ extension FileDraft {
                 throw file.invalidState("The file is not in the correct state")
             }
 
-            guard let parentLink = file.parentLink else {
+            guard let parentNode = file.parentNode else {
                 throw file.invalidState("Uploadable file draft must have a parent link.")
             }
 
-            let clearParentNodeHashKey = try parentLink.decryptNodeHashKey()
+            let clearParentNodeHashKey = try parentNode.decryptNodeHashKey()
 
             guard let uploadID = file.uploadID else {
                 throw file.invalidState("Uploadable file must have an uploadID.")
@@ -222,7 +234,7 @@ extension FileDraft {
                 nodePassphraseSignature: file.nodePassphraseSignature,
                 contentKeyPacket: contentKeyPacket,
                 contentKeyPacketSignature: contentKeyPacketSignature,
-                parent: parentLink.identifier,
+                parent: parentNode.identifier,
                 parentNodeHashKey: clearParentNodeHashKey,
                 mimeType: file.mimeType,
                 clientUID: file.clientUID ?? "",

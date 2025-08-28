@@ -17,11 +17,7 @@
 
 import Combine
 import PDCore
-
-enum NetworkConstraint: Equatable {
-    case noWifi
-    case noConnection
-}
+import PDPhotos
 
 protocol PhotoBackupNetworkControllerProtocol: PhotoBackupConstraintController {
     var specificConstraint: AnyPublisher<NetworkConstraint?, Never> { get }
@@ -29,9 +25,8 @@ protocol PhotoBackupNetworkControllerProtocol: PhotoBackupConstraintController {
 }
 
 final class PhotoBackupNetworkController: PhotoBackupNetworkControllerProtocol {
-    private let backupController: PhotosBackupController
     private let settingsController: PhotoBackupSettingsController
-    private let interactor: NetworkStateInteractor
+    private let interactor: ConnectionStateResource
     private var constraintSubject = CurrentValueSubject<NetworkConstraint?, Never>(nil)
     private var cancellables = Set<AnyCancellable>()
     private var lastInterface: NetworkState.Interface?
@@ -47,8 +42,7 @@ final class PhotoBackupNetworkController: PhotoBackupNetworkControllerProtocol {
             .eraseToAnyPublisher()
     }
 
-    init(backupController: PhotosBackupController, settingsController: PhotoBackupSettingsController, interactor: NetworkStateInteractor) {
-        self.backupController = backupController
+    init(settingsController: PhotoBackupSettingsController, interactor: ConnectionStateResource) {
         self.settingsController = settingsController
         self.interactor = interactor
         subscribeToUpdates()
@@ -59,13 +53,6 @@ final class PhotoBackupNetworkController: PhotoBackupNetworkControllerProtocol {
     }
 
     private func subscribeToUpdates() {
-        backupController.isAvailable
-            .map { $0 == .available }
-            .sink { [weak self] isAvailable in
-                self?.handleBackup(isAvailable)
-            }
-            .store(in: &cancellables)
-        
         Publishers.CombineLatest(settingsController.isNetworkConstrained, interactor.state)
             .map { isConstrainedToWifi, state -> NetworkConstraint? in
                 Log.info("PhotoBackupNetworkController network state: \(state), isConstrainedToWifi: \(isConstrainedToWifi)", domain: .photosProcessing)
@@ -100,13 +87,5 @@ final class PhotoBackupNetworkController: PhotoBackupNetworkControllerProtocol {
                 self?.lastInterface = interface
             }
             .store(in: &cancellables)
-    }
-
-    private func handleBackup(_ isAvailable: Bool) {
-        if isAvailable {
-            interactor.execute()
-        } else {
-            interactor.cancel()
-        }
     }
 }

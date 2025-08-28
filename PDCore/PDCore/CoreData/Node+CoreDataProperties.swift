@@ -44,10 +44,16 @@ extension Node {
     @NSManaged public var nameSignatureEmail: String?
     @NSManaged public var size: Int
     @NSManaged public var directShares: Set<Share>
+    @available(*, deprecated, message: "Don't use directly, use `parentNode: Node?` or `parentFolder: Folder?`")
     @NSManaged public var parentLink: Folder?
     @NSManaged public var isToBeDeleted: Bool
     @NSManaged public var isShared: Bool
     @NSManaged public var isSharedWithMeRoot: Bool
+
+    public var parentFolder: Folder? {
+        get { parentLink }
+        set { parentLink = newValue }
+    }
 
     public func getContextShare() throws -> Share {
         // Traverse up to the root node
@@ -66,17 +72,6 @@ extension Node {
         let share = try getContextShare()
         let addressID = try share.getAddressID()
         return addressID
-    }
-
-    private func findRootNode() -> Node {
-        var currentNode: Node = self
-
-        // Traverse up the parent chain until the root node (node with no parent) is found
-        while let parentNode = currentNode.parentLink {
-            currentNode = parentNode
-        }
-
-        return currentNode
     }
 
     public func setShareID(_ shareID: String) {
@@ -107,9 +102,9 @@ extension Node {
             do {
                 return try getContextShare().id
             } catch {
-                Log.error(NukingCacheError(error), domain: .storage)
+                Log.error(error: NukingCacheError(error), domain: .storage)
                 #if os(iOS)
-                NotificationCenter.default.post(name: .nukeCache)
+                NotificationCenter.default.nukeCache(reason: error.localizedDescription)
                 #endif
                 return ""
             }
@@ -146,7 +141,7 @@ extension Node {
     @NSManaged internal var clearPassphrase: String?
     @NSManaged public var clearName: String?
     
-    @objc internal var isFolder: Bool {
+    @objc public var isFolder: Bool {
         // This transient property is useful for fetch requests where we can not check the exact type of the node so we have no other choice. On the higher levels (apps) we'd better rely on the type of the object (is Folder, is File) because mimeType may have improper contents
         self.mimeType == Folder.mimeType
     }
@@ -154,6 +149,10 @@ extension Node {
     // Theoretically, only root node can have share with .main flag, and it should not be possible to create custom direct share for the root node. Let's prioritize such share thought for the sake of safety.
     public var primaryDirectShare: Share? {
         directShares.first(where: { $0.type == .main }) ?? directShares.first
+    }
+
+    public var isAnonymous: Bool {
+        signatureEmail?.isEmpty ?? true
     }
 }
 
@@ -165,7 +164,7 @@ public extension Node {
 
     var isDownloadable: Bool {
         guard let file = self as? File else { return true }
-        return !file.isProtonDocument
+        return !file.isProtonFile
     }
 
     func setIsInheritingOfflineAvailable(_ value: Bool) {
@@ -206,8 +205,8 @@ public enum Role: Int16, Comparable {
 
 extension Node {
     public func getNodeRole() -> Role {
-        if let parentLink {
-            let parentRole = parentLink.getNodeRole()
+        if let parentNode {
+            let parentRole = parentNode.getNodeRole()
             let currentRole: Role
             if let permissions = directShares.first?.members.first?.permissions,
                let role = Role(rawValue: permissions) {

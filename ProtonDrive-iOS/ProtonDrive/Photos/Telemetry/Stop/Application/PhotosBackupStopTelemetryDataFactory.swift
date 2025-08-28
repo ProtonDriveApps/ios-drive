@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDPhotos
 
 struct PhotosBackupStopTelemetryData {
     let state: PhotosBackupState

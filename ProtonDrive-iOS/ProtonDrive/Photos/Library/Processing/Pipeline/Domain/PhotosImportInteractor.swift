@@ -27,7 +27,7 @@ final class PhotosImportInteractor: AsynchronousExecution {
     }
 
     func execute() async {
-        Log.info("4️⃣ \(Self.self): executing", domain: .photosProcessing)
+        Log.info("4️⃣ executing", domain: .photosProcessing)
         let compounds = context.validatedCompounds
         guard !compounds.isEmpty else { return }
         do {
@@ -35,8 +35,8 @@ final class PhotosImportInteractor: AsynchronousExecution {
             context.completeImport()
         } catch {
             let driveError = DriveError(withDomainAndCode: error)
-            Log.error(driveError, domain: .photosProcessing)
-            
+            Log.error(error: driveError, domain: .photosProcessing)
+
             let userError = mapToUserError(error: error)
             context.failProcessing(compounds: compounds, error: userError)
         }

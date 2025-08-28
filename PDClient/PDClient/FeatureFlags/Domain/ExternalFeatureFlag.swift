@@ -20,18 +20,18 @@ public enum ExternalFeatureFlag: CaseIterable {
     case logsCompressionDisabled
     case domainReconnectionEnabled
     case postMigrationJunkFilesCleanup
-    case newTrayAppMenuEnabled
     case pushNotificationIsEnabled
     case logCollectionEnabled
     case logCollectionDisabled
+    case driveiOSDebugMode
     case oneDollarPlanUpsellEnabled
     case driveDisablePhotosForB2B
     case driveDDKEnabled
+    case driveMacSyncRecoveryDisabled
+    case driveMacKeepDownloadedDisabled
 
     // Sharing 
     case driveSharingMigration
-    case driveiOSSharing
-    case driveSharingDevelopment
     case driveSharingInvitations
     case driveSharingExternalInvitations
     case driveSharingDisabled
@@ -39,11 +39,36 @@ public enum ExternalFeatureFlag: CaseIterable {
     case driveSharingEditingDisabled
     case drivePublicShareEditMode
     case drivePublicShareEditModeDisabled
+    case acceptRejectInvitation
+    case driveShareURLBookmarking
+    case driveShareURLBookmarksDisabled
 
     // ProtonDoc
-    case driveDocsWebView
     case driveDocsDisabled
     
+    // Rating booster
+    // Legacy feature flags we used before migrating to Unleash
+    case ratingIOSDrive
+    case driveRatingBooster
+
     // Entitlement
     case driveDynamicEntitlementConfiguration
+
+    // Refactor
+    case driveiOSRefreshableBlockDownloadLink
+
+    // Computers
+    case driveiOSComputers
+    case driveiOSComputersDisabled
+
+    // Albums
+    case driveAlbumsDisabled
+    case driveCopyDisabled
+    case drivePhotosTagsMigration
+    case drivePhotosTagsMigrationDisabled
+
+    // Sheets
+    case docsSheetsEnabled
+    case docsSheetsDisabled
+    case docsCreateNewSheetOnMobileEnabled
 }

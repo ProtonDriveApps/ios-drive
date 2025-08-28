@@ -18,7 +18,7 @@
 import Foundation
 
 public struct RenameNodeParameters: Codable {
-    public init(name: String, hash: String, MIMEType: String?, signatureAddress: String) {
+    public init(name: String, hash: String?, MIMEType: String?, signatureAddress: String) {
         self.Name = name
         self.Hash = hash
         self.MIMEType = MIMEType
@@ -26,17 +26,21 @@ public struct RenameNodeParameters: Codable {
     }
     
     var Name: String
-    var Hash: String
+    var Hash: String?
     var MIMEType: String?
     var SignatureAddress: String
 }
 
-struct RenameNodeEndpoint: Endpoint {
+public struct RenameNodeEndpoint: Endpoint {
     public struct Response: Codable {
         var code: Int
+        
+        public init(code: Int) {
+            self.code = code
+        }
     }
     
-    var request: URLRequest
+    public var request: URLRequest
     
     init(shareID: Share.ShareID, nodeID: Link.LinkID, parameters: RenameNodeParameters, service: APIService, credential: ClientCredential) {
         // url

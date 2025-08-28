@@ -24,6 +24,15 @@ public extension JSONDecoder {
     }
 }
 
+extension JSONDecoder {
+    public static let driveImplementationOfDecapitalisingFirstLetter: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .driveImplementationOfDecapitaliseFirstLetter
+        decoder.dataDecodingStrategy = .deferredToData
+        return decoder
+    }()
+}
+
 extension JSONDecoder.KeyDecodingStrategy {
     public static var driveImplementationOfDecapitaliseFirstLetter: JSONDecoder.KeyDecodingStrategy {
         decapitaliseFirstLetter
@@ -31,18 +40,24 @@ extension JSONDecoder.KeyDecodingStrategy {
     
     /// Lowercases first character if the key does not start with acronym or adds underscore if first character is a digit.
     /// Example: UserID → userID, SPRSession → SRPSessoin, 2fa → _2fa
-    public static var decapitaliseFirstLetter: JSONDecoder.KeyDecodingStrategy {
+    private static var decapitaliseFirstLetter: JSONDecoder.KeyDecodingStrategy {
         .custom { keys in
-            let lastKey = keys.last!
-            if lastKey.intValue != nil {
+            guard let lastKey = keys.last else {
+                return BasicCodingKey(stringValue: "")
+            }
+            guard lastKey.intValue == nil else {
                 return lastKey
             }
-            
             // let's hope server will not return unicode glyphs as JSON keys
             let originalKey: String = lastKey.stringValue
-            if CharacterSet.decimalDigits.contains(originalKey.unicodeScalars.first!) {
+            guard !originalKey.isEmpty else {
+                return BasicCodingKey(stringValue: originalKey)
+            }
+            
+            if let firstCharacter = originalKey.unicodeScalars.first,
+                CharacterSet.decimalDigits.contains(firstCharacter) {
                 // we will just add _ in the beginning if first character is a digit (like 2FA)
-                return BasicCodingKey(stringValue: "_" + originalKey)!
+                return BasicCodingKey(stringValue: "_" + originalKey)
             }
             
             let prefix = originalKey.prefix(while: { $0.unicodeScalars.first(where: { CharacterSet.uppercaseLetters.contains($0) }) != nil })
@@ -50,10 +65,10 @@ extension JSONDecoder.KeyDecodingStrategy {
             if prefix.count == 1 {
                 // we will transform only keys starting with one uppercase letter (like Code or UserID)
                 let modifiedKey = String(prefix).lowercased() + originalKey.dropFirst(prefix.count)
-                return BasicCodingKey(stringValue: modifiedKey)!
+                return BasicCodingKey(stringValue: modifiedKey)
             } else {
                 // we do not want to transform keys that start with acronyms (like UID or SRPSession)
-                return BasicCodingKey(stringValue: originalKey)!
+                return BasicCodingKey(stringValue: originalKey)
             }
         }
     }
@@ -61,15 +76,15 @@ extension JSONDecoder.KeyDecodingStrategy {
 
 /// String value becomes the key
 struct BasicCodingKey: CodingKey {
-  var stringValue: String
-  init?(stringValue: String) {
-    self.stringValue = stringValue
-  }
+    var stringValue: String
+    init(stringValue: String) {
+        self.stringValue = stringValue
+    }
 
-  var intValue: Int? {
-    return nil
-  }
-  init?(intValue: Int) {
-    return nil
-  }
+    var intValue: Int? {
+        return nil
+    }
+    init?(intValue: Int) {
+        return nil
+    }
 }

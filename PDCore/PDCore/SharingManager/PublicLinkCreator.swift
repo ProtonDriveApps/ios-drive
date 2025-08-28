@@ -107,7 +107,7 @@ public final class RemoteCachingPublicLinkCreator: PublicLinkCreator {
 
     func update(_ shareURLMeta: ShareURLMeta, in moc: NSManagedObjectContext) -> ShareURL {
         let shareUrl: ShareURL = self.storage.unique(with: Set([shareURLMeta.shareURLID]), uniqueBy: "id", in: moc).first!
-        shareUrl.fulfill(from: shareURLMeta)
+        shareUrl.fulfillShareURL(with: shareURLMeta)
 
         let shares: [ShareObj] = self.storage.unique(with: Set([shareURLMeta.shareID]), in: moc)
         let share = shares.first!

@@ -70,14 +70,19 @@ public class ShareCreator: ShareCreatorProtocol {
 
 #else
             // I can only create shares for my own volume
-            let (mainShare, volume) = try self.storage.getMainShareAndVolume(in: self.moc)
-            guard let mainShareCreator = mainShare.creator else {
+            let volume = try Volume.fetchOrThrow(id: root.volumeID, in: self.moc)
+            let share = try root.getContextShare()
+            let availableTypes: [Share.ShareType] = [.main, .photos, .device]
+            guard availableTypes.contains(share.type) else {
+                throw Share.InvalidState(message: "Sharing is only available from main, photo and device share types.")
+            }
+            guard let shareCreator = share.creator else {
                 throw Share.InvalidState(message: "No creator found in main share.")
             }
 
-            let addressID = try mainShare.getAddressID()
+            let addressID = try share.getAddressID()
             let signersKit = try self.signersKitFactory.make(forAddressID: addressID)
-            return (volume.id, root.id, root.nodeKey, mainShareCreator, volume, signersKit)
+            return (volume.id, root.id, root.nodeKey, shareCreator, volume, signersKit)
 #endif
         }
 
@@ -125,6 +130,12 @@ public class ShareCreator: ShareCreatorProtocol {
             share.volume = volume
             share.root = root
             root.directShares.insert(share)
+
+            if let album = root as? CoreDataAlbum, let listing = album.albumListing {
+                listing.shareID = shareID
+            } else if let photo = root as? CoreDataPhoto {
+                photo.isShared = true
+            }
 
             try self.moc.saveOrRollback()
             Log.info("New share was created with id: \(shareID), root: \(root.identifier)", domain: .storage)

@@ -22,20 +22,21 @@ import ProtonCoreUIFoundations
 public struct TextButton: View {
     let title: String
     let variant: ButtonVariant
+    let padding: ViewPadding
     let action: () -> Void
 
-    public init(title: String, variant: ButtonVariant, action: @escaping () -> Void) {
+    public init(title: String, variant: ButtonVariant = .regular, padding: ViewPadding = .default, action: @escaping () -> Void) {
         self.title = title
         self.variant = variant
+        self.padding = padding
         self.action = action
     }
 
     public var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.body)
         }
-        .buttonStyle(TextButtonStyle(variant: variant))
+        .buttonStyle(TextButtonStyle(variant: variant, padding: padding))
     }
 }
 #endif

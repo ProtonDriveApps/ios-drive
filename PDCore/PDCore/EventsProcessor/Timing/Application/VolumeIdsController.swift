@@ -18,7 +18,7 @@
 import Combine
 
 struct VolumesList {
-    let mainVolumeId: VolumeID
+    let ownVolumes: Set<VolumeID>
     let sharedVolumes: Set<SharedVolume>
 
     struct SharedVolume: Hashable {
@@ -42,6 +42,7 @@ protocol VolumeIdsControllerProtocol: SharedVolumeIdsController {
     var update: AnyPublisher<Void, Never> { get }
     func getVolumes() -> VolumesList
     func setMainVolume(id: VolumeID)
+    func setPhotoVolume(id: VolumeID)
 }
 
 final class VolumeIdsController: VolumeIdsControllerProtocol {
@@ -49,6 +50,7 @@ final class VolumeIdsController: VolumeIdsControllerProtocol {
 
     private let subject = PassthroughSubject<Void, Never>()
     private var mainVolumeId: VolumeID?
+    private var photoVolumeId: VolumeID?
     private var sharedVolumes = Set<SharedVolume>() {
         didSet {
             if oldValue != sharedVolumes {
@@ -62,11 +64,19 @@ final class VolumeIdsController: VolumeIdsControllerProtocol {
     }
 
     func getVolumes() -> VolumesList {
-        return VolumesList(mainVolumeId: mainVolumeId ?? "", sharedVolumes: sharedVolumes)
+        return VolumesList(
+            ownVolumes: Set([mainVolumeId, photoVolumeId].compactMap { $0 }),
+            sharedVolumes: sharedVolumes
+        )
     }
 
     func setMainVolume(id: VolumeID) {
         mainVolumeId = id
+        subject.send()
+    }
+
+    func setPhotoVolume(id: VolumeID) {
+        photoVolumeId = id
         subject.send()
     }
 

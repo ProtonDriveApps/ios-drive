@@ -59,7 +59,7 @@ public enum NodeType {
 extension Node {
     /// Heavy operation including recursion, use carefully
     public func parentsChain() -> [Folder] {
-        guard let parent = self.parentLink else { return [] }
+        guard let parent = self.parentFolder else { return [] }
         var chain = parent.parentsChain()
         chain.append(parent)
         return chain
@@ -114,11 +114,15 @@ extension Node {
 
     /// Heavy operation including recursion, use carefully
     public var isAvailableOffline: Bool {
+        #if os(macOS)
+        isMarkedOfflineAvailable || isInheritingOfflineAvailable
+        #else
         (isMarkedOfflineAvailable || isInheritingOfflineAvailable) && isDownloaded
+        #endif
     }
 
     public var isTrashInheriting: Bool {
-        guard let parent = parentLink else {
+        guard let parent = parentFolder else {
             return state == .deleted
         }
         if parent.state == .deleted {

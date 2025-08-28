@@ -33,11 +33,17 @@ extension PhotoRevision {
             }
 
             let sessionKey = try decryptContentSessionKey()
-            let decrypted = try Decryptor.decryptAndVerifyExif(
-                dataPacket,
-                contentSessionKey: sessionKey,
-                verificationKeys: verificationKeys
-            )
+            let decrypted: VerifiedBinary
+            do {
+                decrypted = try Decryptor.decryptAndVerifyExif(
+                    dataPacket,
+                    contentSessionKey: sessionKey,
+                    verificationKeys: verificationKeys
+                )
+            } catch let error where !(error is Decryptor.Errors) {
+                DriveIntegrityErrorMonitor.reportMetadataError(for: file)
+                throw error
+            }
 
             switch decrypted {
             case .verified(let exif):
@@ -45,12 +51,12 @@ extension PhotoRevision {
                 return  exif
 
             case .unverified(let exif, let error):
-                Log.error(SignatureError(error, "EXIF", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption, sendToSentryIfPossible: photo.isSignatureVerifiable())
+                Log.error(error: SignatureError(error, "EXIF", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption, sendToSentryIfPossible: photo.isSignatureVerifiable())
                 self.transientClearExif = exif
                 return exif
             }
         } catch {
-            Log.error(DecryptionError(error, "EXIF", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption)
+            Log.error(error: DecryptionError(error, "EXIF", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption)
             return Data()
         }
     }

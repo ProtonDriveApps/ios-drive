@@ -80,15 +80,13 @@ struct MenuView: View {
     private var moreSection: some View {
         VStack(alignment: .leading) {
             sectionHeader(title: Localization.menu_section_title_more)
-            
-            #if HAS_PAYMENTS
-            
-            MenuCell(item: .servicePlans)
-                .background(ColorProvider.SidebarBackground)
-                .onTapGesture { vm.go(to: .servicePlans) }
-            
-            #endif
-            
+
+            if Constants.buildFeatures.hasPayments {
+                MenuCell(item: .servicePlans)
+                    .background(ColorProvider.SidebarBackground)
+                    .onTapGesture { vm.go(to: .servicePlans) }
+            }
+
             MenuCell(item: .settings)
                 .background(ColorProvider.SidebarBackground)
                 .onTapGesture { vm.go(to: .settings) }
@@ -111,7 +109,7 @@ struct MenuView: View {
 
             Button("Send event to Sentry") {
                 let error = DriveError(NSError(domain: "SENTRY TELEMETRY", code: 420))
-                Log.error(error, domain: .application)
+                Log.error(error: error, domain: .application)
             }
             
             Button("Crash") {
@@ -132,6 +130,15 @@ struct MenuView: View {
         VStack(alignment: .leading) {
             sectionHeader(title: Localization.menu_section_title_storage)
 
+            if vm.hasStoragePromoButton {
+                MenuCell(item: .storageBonusPromo)
+                    .menuCellHighlighted(true)
+                    .menuCellHasFadeAnimation(true)
+                    .background(ColorProvider.SidebarBackground)
+                    .onTapGesture { vm.go(to: .storageBonusPromo) }
+                    .padding(.vertical, 3)
+            }
+
             // Online storage
             StorageMenuSection(
                 usedPercent: $vm.usagePercent,
@@ -141,9 +148,9 @@ struct MenuView: View {
             )
             .onAppear(perform: vm.subscribeToUserInfoChanges)
 
-            #if HAS_PAYMENTS
-            storageButton
-            #endif
+            if Constants.buildFeatures.hasPayments {
+                storageButton
+            }
         }
     }
 

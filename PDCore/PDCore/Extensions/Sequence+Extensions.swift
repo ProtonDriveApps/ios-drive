@@ -41,4 +41,14 @@ public extension Sequence {
             return try await taskGroup.reduce([], { $0 + [$1] })
         }
     }
+
+    /// Async version of `flatMap`
+    /// Cannot be called just `flatMap`, the compiler gets confused
+    func asyncFlatMap<T>(_ transform: (Element) async throws -> [T]) async rethrows -> [T] {
+        var values = [T]()
+        for element in self {
+            try await values += transform(element)
+        }
+        return values
+    }
 }

@@ -17,25 +17,7 @@
 
 import Combine
 import PDCore
-
-enum PhotosBackupState: Equatable {
-    case empty
-    case inProgress(PhotosBackupProgress)
-    case complete
-    case completeWithFailures(Int)
-    case disabled
-    case restrictedPermissions
-    case networkConstrained(NetworkConstraint)
-    case storageConstrained
-    case quotaConstrained
-    case featureFlag
-    case applicationStateConstrained
-    case libraryLoading
-}
-
-protocol PhotosBackupStateController {
-    var state: AnyPublisher<PhotosBackupState, Never> { get }
-}
+import PDPhotos
 
 final class LocalPhotosBackupStateController: PhotosBackupStateController {
     private let progressController: PhotosBackupProgressController
@@ -49,6 +31,7 @@ final class LocalPhotosBackupStateController: PhotosBackupStateController {
     private let featureFlagController: PhotoBackupConstraintController
     private let applicationStateController: PhotoBackupConstraintController
     private let loadController: PhotoLibraryLoadController
+    private let migrationController: PhotoBackupConstraintController
     private let strategy: PhotosBackupStateStrategy
     private let throttleResource: ThrottleResource
     private let subject = CurrentValueSubject<PhotosBackupState, Never>(.empty)
@@ -58,7 +41,20 @@ final class LocalPhotosBackupStateController: PhotosBackupStateController {
         subject.eraseToAnyPublisher()
     }
 
-    init(progressController: PhotosBackupProgressController, failuresController: PhotosBackupFailuresController, completeController: PhotosBackupCompleteController, settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController, networkController: PhotoBackupNetworkControllerProtocol, quotaController: PhotoBackupConstraintController, availableSpaceController: PhotoBackupConstraintController, featureFlagController: PhotoBackupConstraintController, applicationStateController: PhotoBackupConstraintController, loadController: PhotoLibraryLoadController, strategy: PhotosBackupStateStrategy, throttleResource: ThrottleResource) {
+    var isWorkingPublisher: AnyPublisher<Bool, Never> {
+        state
+            .map {
+                switch $0 {
+                case .inProgress, .libraryLoading:
+                    return true
+                default:
+                    return false
+                }
+            }
+            .eraseToAnyPublisher()
+    }
+
+    init(progressController: PhotosBackupProgressController, failuresController: PhotosBackupFailuresController, completeController: PhotosBackupCompleteController, settingsController: PhotoBackupSettingsController, authorizationController: PhotoLibraryAuthorizationController, networkController: PhotoBackupNetworkControllerProtocol, quotaController: PhotoBackupConstraintController, availableSpaceController: PhotoBackupConstraintController, featureFlagController: PhotoBackupConstraintController, applicationStateController: PhotoBackupConstraintController, loadController: PhotoLibraryLoadController, migrationController: PhotoBackupConstraintController, strategy: PhotosBackupStateStrategy, throttleResource: ThrottleResource) {
         self.progressController = progressController
         self.failuresController = failuresController
         self.completeController = completeController
@@ -70,6 +66,7 @@ final class LocalPhotosBackupStateController: PhotosBackupStateController {
         self.featureFlagController = featureFlagController
         self.applicationStateController = applicationStateController
         self.loadController = loadController
+        self.migrationController = migrationController
         self.strategy = strategy
         self.throttleResource = throttleResource
         subscribeToUpdates()
@@ -88,7 +85,7 @@ final class LocalPhotosBackupStateController: PhotosBackupStateController {
     private func makePublisher() -> AnyPublisher<PhotosBackupState, Never> {
         let progressPublisher = Publishers.CombineLatest4(progressController.progress, completeController.isComplete, failuresController.count, loadController.isLoading).eraseToAnyPublisher()
         let throttledProgressPublisher = throttleResource.throttle(publisher: progressPublisher, milliseconds: 1000)
-        let cloudPublisher = Publishers.CombineLatest(quotaController.constraint, featureFlagController.constraint)
+        let cloudPublisher = Publishers.CombineLatest3(quotaController.constraint, featureFlagController.constraint, migrationController.constraint)
         let availabilityPublisher = Publishers.CombineLatest4(settingsController.isEnabled, authorizationController.permissions, networkController.specificConstraint, applicationStateController.constraint)
 
         return Publishers.CombineLatest4(throttledProgressPublisher, availabilityPublisher, cloudPublisher, availableSpaceController.constraint)
@@ -104,7 +101,8 @@ final class LocalPhotosBackupStateController: PhotosBackupStateController {
                     isQuotaConstrained: cloud.0,
                     isStorageConstrained: isStorageConstrained,
                     isFeatureFlagConstrained: cloud.1,
-                    isApplicationStateConstrained: availabilities.3
+                    isApplicationStateConstrained: availabilities.3,
+                    isConstrainedByMigration: cloud.2
                 )
             }
             .compactMap { [weak self] input in

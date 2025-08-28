@@ -85,7 +85,7 @@ final class LocalPhotosRepository: PhotosRepository {
         guard photo.managedObjectContext != nil else { return nil }
         let isVideo = mimeTypeResource.isVideo(mimeType: photo.mimeType)
         return PhotosSection.Photo(
-            id: photo.identifier,
+            id: photo.identifier.any(),
             isShared: photo.isShared,
             hasDirectShare: photo.hasDirectShare,
             isVideo: isVideo,

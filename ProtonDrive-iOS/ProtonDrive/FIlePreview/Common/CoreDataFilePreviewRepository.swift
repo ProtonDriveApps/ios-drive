@@ -44,7 +44,7 @@ final class CoreDataFilePreviewRepository: FilePreviewRepository {
         if let cleartextUrl = cleartextUrl, FileManager.default.fileExists(atPath: cleartextUrl.path) {
             return cleartextUrl
         } else {
-            Log.error(DriveError("The file was not found."), domain: .fileManager)
+            Log.error(error: DriveError("The file was not found."), domain: .fileManager)
             return URL.blank
         }
     }

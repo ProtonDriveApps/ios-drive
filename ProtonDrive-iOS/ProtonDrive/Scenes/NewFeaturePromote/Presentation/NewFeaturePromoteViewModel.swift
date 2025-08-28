@@ -104,28 +104,40 @@ final class NewFeaturePromoteViewModel: NewFeaturePromoteViewModelProtocol {
 
     private func makeIllustration(for feature: NewFeature) -> String {
         switch feature {
-        case .doc:
-            return "new_feature_docs"
-        case .sharing:
-            return "new_feature_sharing"
+        case .albums:
+            return "new_feature_albums"
+        case .uiTest:
+            guard Constants.isUITest else {
+                assertionFailure()
+                return ""
+            }
+            return "onboarding-files"
         }
     }
 
     private func makeTitle(for feature: NewFeature) -> String {
         switch feature {
-        case .doc:
-            return Localization.new_feature_doc_title
-        case .sharing:
-            return Localization.new_feature_sharing_title
+        case .albums:
+            return Localization.new_feature_albums_title
+        case .uiTest:
+            guard Constants.isUITest else {
+                assertionFailure()
+                return ""
+            }
+            return "UI testing feature title"
         }
     }
 
     private func makeDescription(for feature: NewFeature) -> String {
         switch feature {
-        case .doc:
-            return Localization.new_feature_doc_desc
-        case .sharing:
-            return Localization.new_feature_sharing_desc
+        case .albums:
+            return Localization.new_feature_albums_desc
+        case .uiTest:
+            guard Constants.isUITest else {
+                assertionFailure()
+                return ""
+            }
+            return "UI testing feature description"
         }
     }
 }

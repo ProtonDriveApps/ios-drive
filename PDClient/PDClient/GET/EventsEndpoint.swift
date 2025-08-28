@@ -30,17 +30,41 @@ public struct Event: Encodable {
     public var eventType: EventType
     public var createTime: TimeInterval
     public var link: Link
-    
+    public var data: Event.Data?
+
     enum CodingKeys: String, CodingKey {
         case eventID
         case eventType
         case createTime
         case link
         case contextShareID
+        case data
     }
     
     private struct MinimalLink: Codable {
         public var linkID: String
+    }
+    
+    public init(
+        contextShareID: Share.ShareID,
+        eventID: EventID,
+        eventType: EventType,
+        createTime: TimeInterval,
+        link: Link,
+        data: Event.Data?
+    ) {
+        self.contextShareID = contextShareID
+        self.eventID = eventID
+        self.eventType = eventType
+        self.createTime = createTime
+        self.link = link
+        self.data = data
+    }
+}
+
+extension Event {
+    public struct Data: Codable {
+        public var externalInvitationSignup: String?
     }
 }
 
@@ -72,6 +96,7 @@ extension Event: Decodable {
             // if that did not help as well - throw encoding error
             throw error
         }
+        self.data = try values.decodeIfPresent(Event.Data.self, forKey: .data)
     }
 }
 

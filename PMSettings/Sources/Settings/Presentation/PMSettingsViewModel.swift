@@ -19,6 +19,8 @@
 //  You should have received a copy of the GNU General Public License
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
+import PDLocalization
+
 public final class PMSettingsViewModel: PMSettingsViewModelProtocol {
     public let sections: [PMSettingsSectionViewModel]
     public let version: String
@@ -29,10 +31,10 @@ public final class PMSettingsViewModel: PMSettingsViewModelProtocol {
     }
 
     public var pageTitle: String {
-        "pmsettings-settings-title".localized
+        Localization.general_settings
     }
 
     public var footer: String? {
-        String(format: "pmsettings-settings-footer".localized, version)
+        Localization.setting_app_version(version: version)
     }
 }

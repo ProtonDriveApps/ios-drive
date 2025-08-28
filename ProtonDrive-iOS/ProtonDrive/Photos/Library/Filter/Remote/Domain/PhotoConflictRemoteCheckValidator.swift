@@ -72,7 +72,7 @@ final class ConcretePhotoConflictRemoteCheckValidator: PhotoConflictRemoteCheckV
     private func validateActive(primaryItem: PhotoRemoteDuplicateCheckItem, primaryLocalHash: PhotoHashes, localItem: PhotosFilterItem, remoteItems: [PhotoRemoteDuplicateCheckItem]) throws -> PhotoConflictRemoteCheckResult {
         guard let primaryLinkId = primaryItem.linkID else {
             // Inconsistent data (missing primary link id). Skipping compound.
-            Log.error(DriveError("Duplicate check: missing primary link id: \(primaryLocalHash.nameHash)"), domain: .photosProcessing)
+            Log.error(error: DriveError("Duplicate check: missing primary link id: \(primaryLocalHash.nameHash)"), domain: .photosProcessing)
             return .skip
         }
 

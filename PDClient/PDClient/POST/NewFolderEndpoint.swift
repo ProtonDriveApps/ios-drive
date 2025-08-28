@@ -19,6 +19,10 @@ import Foundation
 
 public struct NewFolder: Codable {
     public var ID: String
+    
+    public init(ID: String) {
+        self.ID = ID
+    }
 }
 
 public class NewFolderParameters: Codable {
@@ -52,13 +56,18 @@ public class NewFolderParameters: Codable {
     var SignatureAddress: String
 }
 
-struct NewFolderEndpoint: Endpoint {
+public struct NewFolderEndpoint: Endpoint {
     public struct Response: Codable {
         var code: Int
         var folder: NewFolder
+        
+        public init(code: Int, folder: NewFolder) {
+            self.code = code
+            self.folder = folder
+        }
     }
     
-    var request: URLRequest
+    public var request: URLRequest
     
     init(shareID: Share.ShareID, parameters: NewFolderParameters, service: APIService, credential: ClientCredential) {
         // url

@@ -21,8 +21,12 @@ import Combine
 public final class FetchedResultsControllerObserver<ResultType: NSFetchRequestResult&Equatable>: NSObject, NSFetchedResultsControllerDelegate, ObservableObject {
     private var subject = PassthroughSubject<[ResultType], Never>()
 
+    /// Subscribing to `$cache` requires you to hold reference to `FetchedResultsControllerObserver`,
+    /// otherwise notifications are not delivered
     @Published public private(set) var cache: [ResultType] = []
 
+    /// Subscribing to `getPublisher()` requires you to hold reference to `FetchedResultsControllerObserver`,
+    /// otherwise notifications are not delivered
     public func getPublisher() -> AnyPublisher<[ResultType], Never> {
         $cache.eraseToAnyPublisher()
     }
@@ -44,8 +48,7 @@ public final class FetchedResultsControllerObserver<ResultType: NSFetchRequestRe
             try fetchedResultsController.performFetch()
             cache = fetchedResultsController.fetchedObjects ?? []
         } catch {
-            // swiftlint:disable:next no_print
-            print("Failed to fetch items: \(error)")
+            Log.error("Failed to fetch items", error: error, domain: .storage)
         }
     }
 

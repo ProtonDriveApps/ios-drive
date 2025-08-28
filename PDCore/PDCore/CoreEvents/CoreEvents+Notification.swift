@@ -18,6 +18,10 @@
 import Foundation
 
 public extension Notification.Name {
+    static var nukeLogs: Notification.Name {
+        Notification.Name("ch.protondrive.PDCore.nukeLogs")
+    }
+
     static var nukeCache: Notification.Name {
         Notification.Name("ch.protondrive.PDCore.nukeCache")
     }

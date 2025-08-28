@@ -49,7 +49,6 @@ private extension String {
     
     static var logFileExtension: String { ".log" }
     static var swapFileExtension: String { ".swap" }
-    static var archiveFileExtension: String { ".aar" }
     static var defaultLogFileName: String { "logs.log" }
 }
 
@@ -605,8 +604,7 @@ public extension PDFileManager {
             try stream.close()
             retainBox.breakRetainCycle()
         } catch {
-            stream.cancel()
-            Log.error("Stream closing error: \(label), \(error)", domain: .diagnostics)
+            Log.error("Stream closing error: \(label)", error: error, domain: .diagnostics)
         }
     }
     
@@ -616,8 +614,7 @@ public extension PDFileManager {
             try stream.close()
             retainBox.breakRetainCycle()
         } catch {
-            stream.cancel()
-            Log.error("Stream closing error: \(label), \(error)", domain: .diagnostics)
+            Log.error("Stream closing error: \(label)", error: error, domain: .diagnostics)
         }
     }
 }

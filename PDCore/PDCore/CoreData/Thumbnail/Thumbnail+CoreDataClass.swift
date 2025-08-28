@@ -17,6 +17,8 @@
 
 import CoreData
 
+public typealias CoreDataThumbnail = Thumbnail
+
 @objc(Thumbnail)
 public class Thumbnail: NSManagedObject {
     

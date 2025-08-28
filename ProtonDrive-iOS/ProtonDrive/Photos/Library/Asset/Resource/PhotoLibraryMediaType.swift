@@ -17,13 +17,7 @@
 
 import Foundation
 import Photos
-
-enum PhotoLibraryMediaType {
-    case image
-    case video
-    case audio
-    case unknown
-}
+import PDPhotos
 
 extension PhotoLibraryMediaType {
     var asAssetType: PHAssetMediaType {

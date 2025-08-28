@@ -26,15 +26,10 @@ public final class LogsQueueDispatchingLogger: LoggerProtocol {
         self.queue = queue
     }
 
-    public func log(_ level: LogLevel, message: String, system: LogSystem, domain: LogDomain, sendToSentryIfPossible: Bool) {
+    // swiftlint:disable:next function_parameter_count
+    public func log(_ level: LogLevel, message: String, system: LogSystem, domain: LogDomain, context: LogContext?, sendToSentryIfPossible: Bool, file: String, function: String, line: Int) {
         queue.async {
-            self.logger.log(level, message: message, system: system, domain: domain, sendToSentryIfPossible: sendToSentryIfPossible)
-        }
-    }
-
-    public func log(_ error: NSError, system: LogSystem, domain: LogDomain, sendToSentryIfPossible: Bool) {
-        queue.async {
-            self.logger.log(error, system: system, domain: domain, sendToSentryIfPossible: sendToSentryIfPossible)
+            self.logger.log(level, message: message, system: system, domain: domain, context: context, sendToSentryIfPossible: sendToSentryIfPossible, file: file, function: function, line: line)
         }
     }
 }

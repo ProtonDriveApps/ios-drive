@@ -38,7 +38,7 @@ final class PhotoNameCorrectionPolicy: NameCorrectionPolicy {
         #endif
         
         var name = fileName
-        let fileExtension = name.fileExtension()
+        let fileExtension = name.fileExtension
         let placeholderName = placeholderName(name: name, fileExtension: fileExtension)
         
         do {

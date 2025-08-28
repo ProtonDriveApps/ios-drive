@@ -56,7 +56,8 @@ final class PhotosDiagnosticsMetadataRepository {
         let parameters = PhotosListRequestParameters(
             volumeId: rootResponse.share.volumeID,
             lastId: lastId,
-            pageSize: 500
+            pageSize: 500,
+            tag: nil
         )
         let listResponse = try await photosListing.getPhotosList(with: parameters)
         guard !listResponse.photos.isEmpty else {
@@ -95,7 +96,8 @@ final class PhotosDiagnosticsMetadataRepository {
     }
 
     private func loadSecondary(listResponse: [PhotosListResponse.Photo], shareId: String) async throws -> [PDClient.Link] {
-        let relatedLinkIds = listResponse.flatMap(\.relatedPhotos).map(\.linkID)
+        let relatedLinks = listResponse.flatMap { $0.relatedPhotos ?? [] }
+        let relatedLinkIds = relatedLinks.map(\.linkID)
         guard !relatedLinkIds.isEmpty else {
             return []
         }

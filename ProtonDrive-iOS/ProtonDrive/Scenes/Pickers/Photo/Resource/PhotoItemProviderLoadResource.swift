@@ -27,14 +27,28 @@ final class PhotoItemProviderLoadResource: ItemProviderLoadResource {
     typealias URLErrorCompletion = ((URL?, Error?)) -> Void
 
     func execute(with itemProvider: NSItemProvider, completion: @escaping (URLResult) -> Void) {
-        guard let typeIdentifier = itemProvider.registeredTypeIdentifiers.first else  {
+        guard let typeIdentifier = availableTypeIdentifier(from: itemProvider) else  {
+            Log.debug(
+                "[Error] No available identifier from item provider, \(itemProvider.registeredTypeIdentifiers)",
+                domain: .photoPicker
+            )
             completion(.failure(Errors.noRegisteredTypeIdentifier))
             return
         }
 
         execute(with: itemProvider, typeIdentifier: typeIdentifier, completion: completion)
     }
-    
+
+    private func availableTypeIdentifier(from itemProvider: NSItemProvider) -> String? {
+        let identifiers = itemProvider.registeredTypeIdentifiers
+        for identifier in identifiers where itemProvider.hasRepresentationConforming(toTypeIdentifier: identifier) {
+            // e.g. "com.apple.private.photos.thumbnail.standard"
+            if identifier.contains("thumbnail") { continue }
+            return identifier
+        }
+        return identifiers.first
+    }
+
     private func execute(with itemProvider: NSItemProvider, typeIdentifier: String, completion: @escaping (URLResult) -> Void) {
         if UTI(value: typeIdentifier).isLiveAsset {
             loadLivePhoto(with: itemProvider) { [weak self] result in
@@ -57,14 +71,13 @@ final class PhotoItemProviderLoadResource: ItemProviderLoadResource {
         case let (url?, nil):
             guard let size = url.fileSize else {
                 let error = URLConsistencyError.noURLSize
-                Log.error(error, domain: .photoPicker)
+                Log.error(error: error, domain: .photoPicker)
                 return .failure(error)
             }
             return .success(URLContent(url, size))
         case let (nil, error?):
-            let nsError = error as NSError
-            let text = "Couldn't load image from picker. Code: \(nsError.code), domain: \(nsError.domain)"
-            Log.error(text, domain: .photoPicker)
+            let text = "Couldn't load image from picker"
+            Log.error(text, error: error, domain: .photoPicker)
             return .failure(error)
         default:
             return .failure(Errors.invalidState)
@@ -106,10 +119,16 @@ final class PhotoItemProviderLoadResource: ItemProviderLoadResource {
         // Trying loadInPlace version doesn't work for some reason. Documentation doesn't say anything about exceptions.
         // The log we get is:
         // [UI] loadInPlaceFileRepresentationForTypeIdentifier: is not supported. Use loadFileRepresentationForTypeIdentifier: instead.
+        let identifiers = itemProvider.registeredTypeIdentifiers
         itemProvider.loadFileRepresentation(forTypeIdentifier: typeIdentifier) { [weak self] url, error in
             if let url = url {
                 self?.copyToLocalStorage(url: url, completion: completion)
             } else {
+                let desc = error?.localizedDescription ?? "Unknown error"
+                Log.debug(
+                    "[Error] Load representation failed: \(desc), all registered identifiers: \(identifiers)",
+                    domain: .photoPicker
+                )
                 completion((nil, error))
             }
         }

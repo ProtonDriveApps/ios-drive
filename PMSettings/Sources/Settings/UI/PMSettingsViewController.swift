@@ -30,6 +30,7 @@ public class PMSettingsViewController: UITableViewController {
         super.viewDidLoad()
 
         addNavigationBarButton()
+        setLeadingTitleView(title: viewModel?.pageTitle ?? "Settings")
         tableView = UITableView(frame: .zero, style: .grouped)
         tableView.separatorStyle = .none
         tableView.backgroundColor = ColorProvider.BackgroundNorm
@@ -45,11 +46,11 @@ public class PMSettingsViewController: UITableViewController {
         if let leftButton = leftButton {
             navigationItem.leftBarButtonItem = .button(on: self, action: #selector(alternativeAction), image: leftButton.image)
         } else {
-            navigationItem.leftBarButtonItem = .close(on: self, action: #selector(dissmissViewController))
+            navigationItem.leftBarButtonItem = .close(on: self, action: #selector(dismissViewController))
         }
     }
 
-    @objc private func dissmissViewController() {
+    @objc private func dismissViewController() {
         dismiss(animated: true, completion: nil)
     }
 
@@ -66,9 +67,20 @@ public class PMSettingsViewController: UITableViewController {
         tableView.register(cellType: PMLoadingLabelCell.self)
     }
 
+    private func setLeadingTitleView(title: String) {
+        let titleLabel = UILabel()
+        titleLabel.text = title
+        titleLabel.textColor = ColorProvider.TextNorm
+        titleLabel.font = .preferredFont(for: .title2, weight: .bold)
+        titleLabel.textAlignment = .left
+
+        let leftItems = navigationItem.leftBarButtonItems ?? []
+        let titleItem = UIBarButtonItem(customView: titleLabel)
+        navigationItem.leftBarButtonItems = leftItems + [titleItem]
+    }
+
     override public func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        title = viewModel?.pageTitle
         tableView.reloadData()
     }
 

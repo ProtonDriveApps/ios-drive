@@ -25,4 +25,6 @@ public protocol EventLoopsTimingController {
     func getReadyLoops(possible: [LoopID]) -> [LoopID]
     /// Mark the execution to allow time anchoring
     func setExecutedLoops(loopIds: [LoopID])
+    /// Update execution history to make sure loop can be executed
+    func updateHistoryForForcePolling(volumeIDs: [String])
 }

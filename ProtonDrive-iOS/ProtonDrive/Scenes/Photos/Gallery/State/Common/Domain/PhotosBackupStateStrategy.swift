@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import PDPhotos
+
 struct PhotosBackupStatesInput: Equatable {
     let progress: PhotosBackupProgress?
     let failures: Int
@@ -27,6 +29,7 @@ struct PhotosBackupStatesInput: Equatable {
     let isStorageConstrained: Bool
     let isFeatureFlagConstrained: Bool
     let isApplicationStateConstrained: Bool
+    let isConstrainedByMigration: Bool
 }
 
 protocol PhotosBackupStateStrategy {
@@ -35,6 +38,10 @@ protocol PhotosBackupStateStrategy {
 
 final class PrioritizedPhotosBackupStateStrategy: PhotosBackupStateStrategy {
     func map(input: PhotosBackupStatesInput) -> PhotosBackupState {
+        guard !input.isConstrainedByMigration else {
+            return .empty
+        }
+
         guard input.isBackupEnabled else {
             return .disabled
         }

@@ -17,6 +17,7 @@
 
 import UIKit
 import PDCore
+import PDCoreIOS
 
 struct NotificationsPermissionsFactory {
     func makeFlowController() -> NotificationsPermissionsFlowController {

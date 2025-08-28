@@ -18,6 +18,7 @@
 import Combine
 import Foundation
 import PDCore
+import PDPhotos
 
 protocol PhotosTelemetryUpsellControllerProtocol {}
 

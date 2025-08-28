@@ -29,7 +29,7 @@ final class PhotosFilterByIdInteractor: AsynchronousExecution {
     }
 
     func execute() async {
-        Log.info("1️⃣ \(Self.self): executing", domain: .photosProcessing)
+        Log.info("1️⃣ executing", domain: .photosProcessing)
         measurementRepository.start()
         let identifiers = await resource.execute(with: Array(context.validIdentifiers)).validIdentifiers
         context.completeIdentifiersValidation(identifiers: identifiers)

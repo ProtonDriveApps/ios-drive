@@ -79,7 +79,7 @@ final class DatabaseAsynchronousThumbnailRepository: AsynchronousThumbnailReposi
     }
 
     private func getThumbnail(id: PhotoId) -> Thumbnail? {
-        let photo = try? storageManager.fetchPhoto(id: id, moc: managedObjectContext)
+        let photo = Photo.fetch(identifier: id, in: managedObjectContext)
         return photo?.photoRevision.thumbnails.first(where: { $0.type == type })
     }
 

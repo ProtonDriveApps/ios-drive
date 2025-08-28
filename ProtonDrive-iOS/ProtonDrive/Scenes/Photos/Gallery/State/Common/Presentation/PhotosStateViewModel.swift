@@ -18,6 +18,7 @@
 import Combine
 import PDCore
 import PDLocalization
+import PDPhotos
 
 protocol PhotosStateViewModelProtocol: ObservableObject {
     var viewData: PhotosStateViewData? { get }
@@ -189,8 +190,8 @@ final class PhotosStateViewModel: PhotosStateViewModelProtocol {
 
     private func makeInProgressTitles() -> [PhotosStateTitle] {
         [
-            PhotosStateTitle(title: Localization.state_encrypting, icon: .lock),
-            PhotosStateTitle(title: Localization.state_backing_up, icon: .progress)
+            PhotosStateTitle(title: Localization.state_backing_up, icon: .progress),
+            PhotosStateTitle(title: Localization.state_encrypting, icon: .lock)
         ]
     }
 

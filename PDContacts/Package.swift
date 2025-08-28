@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "PDContacts",
     platforms: [
-        .iOS(.v15),
+        .iOS(.v16),
         .macOS(.v13)
     ],
     products: [
@@ -14,8 +14,9 @@ let package = Package(
         .library(name: "PDContacts", targets: ["PDContacts"]),
     ],
     dependencies: [
-        // exact version is defined by PDClient
-        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", .suitable),
+
+        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", exact: "32.7.1"),
+        .package(url: "https://github.com/ProtonMail/apple-fusion.git", exact: "2.1.5"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -30,7 +31,3 @@ let package = Package(
         ),
     ]
 )
-
-extension Range where Bound == Version {
-    static let suitable = Self(uncheckedBounds: ("0.0.0", "99.0.0"))
-}

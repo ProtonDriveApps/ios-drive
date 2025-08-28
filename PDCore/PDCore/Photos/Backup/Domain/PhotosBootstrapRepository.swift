@@ -17,6 +17,12 @@
 
 import Combine
 
+public enum PhotosShareState {
+    case notFound
+    case legacyShare
+    case photoVolume
+}
+
 public protocol PhotosBootstrapRepository {
-    var isPhotosRootReady: AnyPublisher<Bool, Never> { get }
+    var state: AnyPublisher<PhotosShareState, Never> { get }
 }

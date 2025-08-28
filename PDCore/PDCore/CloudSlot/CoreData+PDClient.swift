@@ -19,14 +19,16 @@ import Foundation
 import PDClient
 
 public extension Volume {
-    func fulfill(from meta: PDClient.Volume) {
+    func fulfillVolume(with meta: PDClient.Volume) {
         self.maxSpace = meta.maxSpace ?? 0
         self.usedSpace = meta.usedSpace ?? 0
+        let typeValue = Int16(meta.type.rawValue)
+        self.type = PDCore.Volume.VolumeType(rawValue: typeValue) ?? .undetermined
     }
 }
 
 public extension Share {
-    func fulfill(from meta: PDClient.Share) {
+    func fulfillShare(with meta: PDClient.Share) {
         self.flags = meta.flags
         self.creator = meta.creator
 
@@ -38,7 +40,7 @@ public extension Share {
         self.volumeID = meta.volumeID
     }
 
-    func fulfill(from meta: PDClient.ShareShort) {
+    func fulfillShare(with meta: PDClient.ShareShort) {
         self.flags = meta.flags
         self.creator = meta.creator
         self.volumeID = meta.volumeID
@@ -46,8 +48,8 @@ public extension Share {
 }
 
 public extension Node {
-    /// Use only from File.fulfill(from:) and Folder.fulfill(from:), do not directly
-    fileprivate func fulfillBase(from meta: PDClient.Link) {
+    /// Use only from File.fulfillFile(with:) and Folder.fulfillFolder(with:), do not directly
+    fileprivate func fulfillNode(with meta: PDClient.Link) {
         self.attributesMaskRaw = meta.attributes
         self.permissionsMaskRaw = meta.permissions
         self.name = meta.name
@@ -68,40 +70,37 @@ public extension Node {
 }
 
 public extension File {
-    func fulfill(from meta: PDClient.Link) {
-        super.fulfillBase(from: meta)
+    func fulfillFile(with meta: PDClient.Link) {
+        super.fulfillNode(with: meta)
         self.activeRevision?.xAttributes = meta.XAttr
         self.contentKeyPacket = meta.fileProperties?.contentKeyPacket
         self.contentKeyPacketSignature = meta.fileProperties?.contentKeyPacketSignature
     }
 
-    func fulfill(from newFileDetails: NewFile) {
+    func fulfillFile(with newFileDetails: NewFile) {
         self.id = newFileDetails.ID
     }
 }
 
 public extension Folder {
-    func fulfill(from meta: PDClient.Link) {
-        super.fulfillBase(from: meta)
+    func fulfillFolder(with meta: PDClient.Link) {
+        super.fulfillNode(with: meta)
         self.nodeHashKey = meta.folderProperties?.nodeHashKey
-    }
-
-    func fulfill(from newFolderDetails: NewFolder) {
-        self.id = newFolderDetails.ID
     }
 }
 
 public extension Photo {
-    func fulfillPhoto(from meta: PDClient.Link) {
-        super.fulfill(from: meta)
+    func fulfillPhoto(with meta: PDClient.Link) {
+        super.fulfillFile(with: meta)
         if let captureInterval = meta.fileProperties?.activeRevision?.photo?.captureTime {
             self.captureTime = Date(timeIntervalSince1970: captureInterval)
         }
+        self.tags = meta.photoProperties?.tags
     }
 }
 
 public extension Revision {
-    func fulfill(from meta: PDClient.RevisionShort) {
+    func fulfillRevision(with meta: PDClient.RevisionShort) {
         self.signatureAddress = meta.signatureAddress
         self.created = Date(timeIntervalSince1970: meta.createTime)
         self.id = meta.ID
@@ -110,7 +109,7 @@ public extension Revision {
         self.state = meta.state
     }
 
-    func fulfill(from meta: PDClient.Revision) {
+    func fulfillRevision(with meta: PDClient.Revision) {
         self.signatureAddress = meta.signatureAddress
         self.created = Date(timeIntervalSince1970: meta.createTime)
         self.id = meta.ID
@@ -127,15 +126,16 @@ public extension Revision {
 }
 
 public extension PhotoRevision {
-    func fulfill(link: PDClient.Link, revision: PDClient.RevisionShort) {
-        super.fulfill(from: revision)
+    func fulfillRevision(link: PDClient.Link, revision: PDClient.RevisionShort) {
+        super.fulfillRevision(with: revision)
         self.exif = revision.photo?.exif ?? ""
         self.xAttributes = link.XAttr
+        self.contentHash = revision.photo?.contentHash
     }
 }
 
 public extension DownloadBlock {
-    func fulfill(from meta: PDClient.Block) {
+    func fulfillBlock(with meta: PDClient.Block) {
         self.index = meta.index
         self.sha256 = Data(base64Encoded: meta.hash).forceUnwrap()
         self.downloadUrl = meta.URL.absoluteString
@@ -145,7 +145,7 @@ public extension DownloadBlock {
 }
 
 public extension ShareURL {
-    func fulfill(from meta: ShareURLMeta) {
+    func fulfillShareURL(with meta: ShareURLMeta) {
         self.token = meta.token
         self.id = meta.shareURLID
         self.expirationTime = meta.expirationTime.asDate
@@ -166,7 +166,7 @@ public extension ShareURL {
         self.sharePassphraseKeyPacket = meta.sharePassphraseKeyPacket
     }
 
-    func fulfill(from meta: ShareURLShortMeta) {
+    func fulfillShareURL(with meta: ShareURLShortMeta) {
         self.id = meta.shareUrlID
         self.token = meta.token ?? ""
         self.expirationTime = meta.expireTime
@@ -181,5 +181,49 @@ private extension Optional where Wrapped == TimeInterval {
             return nil
         }
         return Date(timeIntervalSince1970: interval)
+    }
+}
+
+public extension CoreDataPhotoListing {
+    func fulfillListing(with link: PDClient.Link) {
+        // ids are already set
+        self.addedTime = link.fileProperties?.activeRevision?.photo?.addedTime
+        if let captureInterval = link.fileProperties?.activeRevision?.photo?.captureTime {
+            self.captureTime = Date(timeIntervalSince1970: captureInterval)
+        }
+        self.contentHash = link.fileProperties?.activeRevision?.photo?.contentHash ?? ""
+        self.nameHash = link.fileProperties?.activeRevision?.photo?.hash
+        self.tagsRaw = CoreDataPhotoListing.tagsSerializer.serialize(tags: link.photoProperties?.tags ?? [])
+    }
+}
+
+public extension CoreDataAlbum {
+    func fulfillAlbum(with link: PDClient.Link) {
+        super.fulfillNode(with: link)
+        guard let albumProperties = link.albumProperties else {
+            return
+        }
+        self.locked = albumProperties.locked
+        self.coverLinkID = albumProperties.coverLinkID
+        self.lastActivityTime = Date(timeIntervalSince1970: albumProperties.lastActivityTime)
+        self.photoCount = Int16(albumProperties.photoCount)
+        self.nodeHashKey = albumProperties.nodeHashKey
+        self.xAttributes = link.XAttr
+    }
+}
+
+public extension CoreDataAlbumListing {
+    func fulfillAlbumListing(with link: PDClient.Link) {
+        // id, volumeID are already set
+        // TODO: `Albums` related - check that we actually need to store shareID directly
+        self.shareID = link.sharingDetails?.shareID
+
+        guard let albumProperties = link.albumProperties else {
+            return
+        }
+        self.locked = albumProperties.locked
+        self.coverLinkID = albumProperties.coverLinkID
+        self.lastActivityTime = Date(timeIntervalSince1970: albumProperties.lastActivityTime)
+        self.photoCount = Int16(albumProperties.photoCount)
     }
 }

@@ -96,7 +96,7 @@ final class ThumbnailDecryptor {
                 completion(.success)
 
             } catch {
-                Log.error(DriveError(error), domain: .encryption)
+                Log.error(error: DriveError(error), domain: .encryption)
                 completion(.failure(ThumbnailLoaderError.nonRecoverable))
             }
         }

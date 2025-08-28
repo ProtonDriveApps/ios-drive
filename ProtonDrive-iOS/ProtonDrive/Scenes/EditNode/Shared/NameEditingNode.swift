@@ -31,6 +31,7 @@ struct NameEditingNode {
     enum NodeType {
         case folder
         case file
+        case computer
     }
 }
 
@@ -39,5 +40,9 @@ extension NameEditingNode {
         self.init(id: NodeIdentifier(node.id, node.shareId, node.volumeID),
                   decryptedName: node.decryptedName,
                   type: (node is Folder) ? .folder : .file)
+    }
+
+    init(computer: ComputerIdentifier, name: String) {
+        self.init(id: NodeIdentifier(computer.nodeID, computer.shareID, computer.volumeID), decryptedName: name, type: .computer)
     }
 }

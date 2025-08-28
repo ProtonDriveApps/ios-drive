@@ -17,12 +17,13 @@
 
 import Combine
 import PDCore
+import PDPhotos
 
 final class LocalPhotosUploadsProgressController: PhotosLoadProgressController {
     private let repository: PhotoUploadsRepository
     private let subject = CurrentValueSubject<PhotosBackupProgress, Never>(.init(total: 0, inProgress: 0))
     private var cancellables = Set<AnyCancellable>()
-    private var totalCount: Int
+    private var totalCount: Int = 0
 
     var progress: AnyPublisher<PhotosBackupProgress, Never> {
         subject.eraseToAnyPublisher()
@@ -30,8 +31,6 @@ final class LocalPhotosUploadsProgressController: PhotosLoadProgressController {
 
     init(repository: PhotoUploadsRepository) {
         self.repository = repository
-        totalCount = repository.getInitialCount()
-        subject.value = PhotosBackupProgress(total: totalCount, inProgress: totalCount)
         subscribeToUpdates()
     }
 
@@ -48,9 +47,16 @@ final class LocalPhotosUploadsProgressController: PhotosLoadProgressController {
             .store(in: &cancellables)
     }
 
-    private func handleUpdate(_ count: Int) {
-        let progress = PhotosBackupProgress(total: totalCount, inProgress: count)
-        Log.info("Photos upload progress: \(progress)", domain: .photosProcessing)
-        subject.send(progress)
+    private func handleUpdate(_ count: PhotosUploadingCount) {
+        if count.isInitialCount {
+            totalCount = count.count
+            Log.info("Photos upload progress (initial): \(progress)", domain: .photosProcessing)
+            let progress = PhotosBackupProgress(total: totalCount, inProgress: totalCount)
+            subject.send(progress)
+        } else {
+            let progress = PhotosBackupProgress(total: totalCount, inProgress: count.count)
+            Log.info("Photos upload progress: \(progress)", domain: .photosProcessing)
+            subject.send(progress)
+        }
     }
 }

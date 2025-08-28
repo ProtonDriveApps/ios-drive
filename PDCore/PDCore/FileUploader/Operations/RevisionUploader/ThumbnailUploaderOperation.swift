@@ -59,12 +59,24 @@ final class ThumbnailUploaderOperation: AsynchronousOperation {
 
             case .failure(let error as ResponseError) where error.isRetryable:
                 Log.info("STAGE: 3.1 Thumbnail \(self.index) upload 🏞☁️ not finished ⚠️. UUID: \(self.id.uuidString) Token: \(self.token)", domain: .uploader)
-                Log.error("UUID: \(self.id.uuidString) ERROR: \(error)", domain: .uploader)
+                Log
+                    .error(
+                        "ThumbnailUploader upload failed (retryable)",
+                        error: error,
+                        domain: .uploader,
+                        context: LogContext("UUID: \(self.id.uuidString)")
+                    )
                 self.state = .finished
 
             case .failure(let error):
                 Log.info("STAGE: 3.1 Thumbnail \(self.index) upload 🏞☁️ finished ❌. UUID: \(self.id.uuidString) Token: \(self.token)", domain: .uploader)
-                Log.error("UUID: \(self.id.uuidString) ERROR: \(error)", domain: .uploader)
+                Log
+                    .error(
+                        "ThumbnailUploader upload failed",
+                        error: error,
+                        domain: .uploader,
+                        context: LogContext("UUID: \(self.id.uuidString)")
+                    )
                 self.onError(error)
             }
         }

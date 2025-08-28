@@ -16,7 +16,6 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import PDLoadTesting
 import ProtonCoreUtilities
 
 extension Client {
@@ -181,31 +180,8 @@ extension Client {
         let endpoint = NewBlocksEndpoint(parameters: parameters, service: service, credential: credential)
         request(endpoint) { result in
             completion(result.flatMap {
-                if LoadTesting.isEnabled {
-                    return .success((
-                        blocks: Self.fixUploadLinks(requestURL: endpoint.request.url, links: $0.uploadLinks),
-                        thumbnails: Self.fixUploadLinks(requestURL: endpoint.request.url, links: $0.thumbnailLinks)
-                    ))
-                } else {
-                    return .success((blocks: $0.uploadLinks, thumbnails: $0.thumbnailLinks ?? []))
-                }
+                .success((blocks: $0.uploadLinks, thumbnails: $0.thumbnailLinks ?? []))
             })
-        }
-    }
-
-    private static func fixUploadLinks(requestURL: URL?, links: [ContentUploadLink]?) -> [ContentUploadLink] {
-        guard LoadTesting.isEnabled else {
-            assertionFailure("This method should only be called when load testing is enabled")
-            return links ?? []
-        }
-        guard let apiURL = requestURL?.absoluteString, let links else { return links ?? [] }
-        return links.map { link in
-            guard apiURL.hasPrefix("http://") && link.URL.hasPrefix("https://") else {
-                return link
-            }
-            let host = apiURL.replacingOccurrences(of: "drive/blocks", with: "")
-            let fixedURL = host + link.URL.replacingOccurrences(of: "https:\\/\\/\\w+\\/", with: "", options: .regularExpression)
-            return ContentUploadLink(token: link.token, URL: fixedURL)
         }
     }
 
@@ -431,13 +407,6 @@ extension Client {
         _ = try await request(endpoint)
     }
 
-    public func retoreTrashNode(shareID: ShareID, linkIDs: [LinkID]) async throws -> [PartialFailure] {
-        let parameters = RestoreLinkEndpoint.Parameters(shareID: shareID, linkIDs: linkIDs)
-        let endpoint = RestoreLinkEndpoint(parameters: parameters, service: service, credential: try credential())
-        let response = try await request(endpoint)
-        return response.responses.compactMap(PartialFailure.init)
-    }
-
     public func deleteTrashed(shareID: ShareID, linkIDs: [LinkID]) async throws -> [PartialFailure] {
         let parameters = DeleteLinkEndpoint.Parameters(shareID: shareID, linkIDs: linkIDs)
         let endpoint = DeleteLinkEndpoint(parameters: parameters, service: service, credential: try credential())
@@ -473,10 +442,10 @@ public struct PartialFailure {
         self.error = NSError(domain: error, code: code, localizedDescription: description)
     }
 
-    init?(_ linkReponse: MultipleLinkResponse.LinkResponse) {
-        guard let error = linkReponse.response.error else { return nil }
-        self.id = linkReponse.linkID
-        self.error = NSError(domain: error, code: linkReponse.response.code)
+    public init?(_ linkResponse: MultipleLinkResponse.LinkResponse) {
+        guard let error = linkResponse.response.error else { return nil }
+        self.id = linkResponse.linkID
+        self.error = NSError(domain: error, code: linkResponse.response.code)
     }
 }
 

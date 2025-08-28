@@ -18,6 +18,8 @@
 import Foundation
 import CoreData
 
+public typealias CoreDataBlock = Block
+
 @objc(Block)
 public class Block: NSManagedObject {
     override public func prepareForDeletion() {

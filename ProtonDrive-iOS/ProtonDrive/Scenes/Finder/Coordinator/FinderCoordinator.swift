@@ -20,9 +20,11 @@ import Foundation
 import SwiftUI
 import UIKit
 import PDCore
+import PDCoreIOS
 import PDUIComponents
 import ProtonCoreUIFoundations
 import PDLocalization
+import PDPhotos
 
 class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
     enum Context {
@@ -45,12 +47,14 @@ class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
     private let deeplink: Deeplink?
     private let photoPickerCoordinator: PhotosPickerCoordinator?
     private let isSharedWithMe: Bool
+    private let scrollToTopPublisher: AnyPublisher<TabBarItem, Never>?
     private(set) var onDisappear: () -> Void = { }
     private(set) var onAppear: () -> Void = { }
     private(set) var model: FinderModel? // Previously we had it weak but iOS 14 was mysteriously nullifying it after some Move manipulations - see DRVIOS-581
     private(set) weak var previousFolderCoordinator: FinderCoordinator?
     private(set) weak var nextFolderCoordinator: FinderCoordinator?
-    private lazy var createDocumentView = makeCreateDocumentView()
+    private lazy var createDocView = makeCreateDocumentView(fileType: .doc)
+    private lazy var createSheetView = makeCreateDocumentView(fileType: .sheet)
     weak var rootViewController: UIViewController?
 
     // Binding observed by FinderView's NavigationView
@@ -71,26 +75,40 @@ class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
         switch destination {
         case let .file(file: file, share: share):
             self.openFilePreview(file: file, share: share)
-        case let .protonDocument(file):
-            self.openProtonDocument(with: file)
+        case let .protonFile(file):
+            self.openProtonFile(with: file)
         case let .openInBrowser(file):
-            self.openProtonDocumentInBrowser(with: file)
+            self.openProtonFileInBrowser(with: file)
+        case let .openBookmark(bookmark):
+            self.openBookmark(with: bookmark)
         case let .configShareMember(node: node):
             self.openSharingMemberConfiguration(node: node)
         case let .createDocument(parentIdentifier):
-            self.createDocumentView.start(with: parentIdentifier)
+            self.createDocView.start(with: parentIdentifier)
+        case let .createSheet(parentIdentifier):
+            self.createSheetView.start(with: parentIdentifier)
+        case .servicePlans:
+            self.openSubscriptions()
         default:
             self._presentedModal = destination
         }
     }
 
-    init(container: AuthenticatedDependencyContainer, isSharedWithMe: Bool = false, parent: FinderCoordinator? = nil, deeplink: Deeplink? = nil, photoPickerCoordinator: PhotosPickerCoordinator? = nil) {
+    init(
+        container: AuthenticatedDependencyContainer,
+        isSharedWithMe: Bool = false,
+        parent: FinderCoordinator? = nil,
+        deeplink: Deeplink? = nil,
+        photoPickerCoordinator: PhotosPickerCoordinator? = nil,
+        scrollToTopPublisher: AnyPublisher<TabBarItem, Never>? = nil
+    ) {
         self.container = container
         self.isSharedWithMe = isSharedWithMe
         self.deeplink = deeplink
         self.previousFolderCoordinator = parent
         self.photoPickerCoordinator = photoPickerCoordinator
         self.rootViewController = parent?.rootViewController
+        self.scrollToTopPublisher = scrollToTopPublisher
     }
 }
 
@@ -114,8 +132,13 @@ extension FinderCoordinator {
             }
 
         case let .folder(nodeID):
-            if let node = tower.uiSlot?.subscribeToNode(nodeID) as? Folder {
-                self.startFolder(nodeID, node)
+            let node = tower.uiSlot?.subscribeToNode(nodeID) as? Folder
+            if let node = node {
+                if node.isDeviceRoot {
+                    self.startComputersRoot(nodeID, node)
+                } else {
+                    self.startFolder(nodeID, node)
+                }
             } else {
                 TechnicalErrorPlaceholderView(message: Localization.finder_coordinator_invalid_folder)
             }
@@ -124,10 +147,11 @@ extension FinderCoordinator {
             self.startOfflineAvailable()
 
         case .shared:
-            if let volumeId = tower.uiSlot.getVolumeId() {
-                self.startShared(volumeID: volumeId)
-            } else {
+            let volumeIds = tower.uiSlot.getOwnVolumeIds()
+            if volumeIds.isEmpty {
                 TechnicalErrorPlaceholderView(message: Localization.finder_coordinator_invalid_shared_folder)
+            } else {
+                startShared(volumeIds: volumeIds)
             }
         case .sharedWithMe:
             self.startSharedWithMe()
@@ -143,13 +167,13 @@ extension FinderCoordinator {
                 return
             }
             guard let node = tower.uiSlot?.subscribeToNode(nodeID) else {
-                Log.error("Attempt to open folder but NodeID \(nodeID) doesn't exist", domain: .application)
+                Log.error("Attempt to open folder but NodeID \(nodeID) doesn't exist", error: nil, domain: .application)
                 return
             }
             if (node as? Folder) != nil {
                 Log.info("Open folder \(nodeID)", domain: .application)
             } else {
-                Log.error("Attempt to open folder but node is not a folder type", domain: .application)
+                Log.error("Attempt to open folder but node is not a folder type", error: nil, domain: .application)
             }
         default:
             break
@@ -167,32 +191,45 @@ extension FinderCoordinator {
     private func startOfflineAvailable() -> some View {
         let model = OfflineAvailableModel(tower: tower)
         self.model = model
-        let viewModel = OfflineAvailableViewModel(model: model, featureFlagsController: featureFlagsController)
+        let viewModel = OfflineAvailableViewModel(
+            model: model,
+            featureFlagsController: featureFlagsController,
+            warningViewModel: makeWarningViewModel()
+        )
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
     }
 
     @ViewBuilder
-    private func startShared(volumeID: String) -> some View {
+    private func startShared(volumeIds: [String]) -> some View {
         if featureFlagsController.hasSharing {
-            startSharedByMe(volumeID: volumeID)
+            startSharedByMe(volumeIds: volumeIds)
         } else {
-            startPublicLinkShared(volumeID: volumeID)
+            startPublicLinkShared(volumeIds: volumeIds)
         }
     }
 
-    private func startPublicLinkShared(volumeID: String) -> some View {
-        let model = SharedModel(tower: tower, volumeID: volumeID)
+    private func startPublicLinkShared(volumeIds: [String]) -> some View {
+        let model = SharedModel(tower: tower, volumeIds: volumeIds)
         self.model = model
-        let viewModel = SharedViewModel(model: model, featureFlagsController: featureFlagsController)
+        let viewModel = SharedViewModel(
+            model: model,
+            featureFlagsController: featureFlagsController,
+            scrollToTopPublisher: scrollToTopPublisher,
+            warningViewModel: makeWarningViewModel()
+        )
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
     }
 
-    private func startSharedByMe(volumeID: String) -> some View {
-        let model = SharedByMeModel(tower: tower, volumeID: volumeID)
+    private func startSharedByMe(volumeIds: [String]) -> some View {
+        let model = SharedByMeModel(tower: tower, volumeIds: volumeIds)
         self.model = model
-        let viewModel = SharedByMeViewModel(model: model, featureFlagsController: featureFlagsController)
+        let viewModel = SharedByMeViewModel(
+            model: model,
+            featureFlagsController: featureFlagsController,
+            warningViewModel: makeWarningViewModel()
+        )
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
     }
@@ -202,16 +239,45 @@ extension FinderCoordinator {
         self.model = model
         let starter = SynchronizingInMemorySharedWithMeStarter(client: tower.client, storage: tower.storage, sharedVolumesEventsController: container.sharedVolumesEventsContainer.controller)
         let cacher = CoredataSharedWithMeLinkMetadataCache(storage: tower.storage)
-        let retriever = SharedWithMeLinksMetadataRetriever(client: tower.client, dataSource: starter, cacher: cacher)
-        let viewModel = SharedWithMeViewModel(model: model, starter: starter, retriever: retriever, featureFlagsController: featureFlagsController, volumeIdsController: tower.sharedVolumeIdsController)
+        let retriever = SharedWithMeLinksMetadataRetriever(remoteShareDataSource: tower.client, remoteLinksDataSource: tower.client, sharedWithMeLinksCache: cacher)
+        let invitationStatusContainer = PendingInvitationsStatusContainer(tower: tower, featureFlagsController: featureFlagsController, configuration: .default)
+        let bookmarksContainer = BookmarkContainer(tower: tower, featureFlagsController: featureFlagsController)
+        let invitationsContainer = PendingInvitationsContainer(tower: tower, featureFlagsController: featureFlagsController, configuration: .default)
+        let invitationViewsFactory = PendingInvitationsListViewFactory(container: invitationsContainer)
+        assert(scrollToTopPublisher != nil)
+        let viewModel = SharedWithMeViewModel(
+            model: model,
+            starter: starter,
+            retriever: retriever,
+            pendingInvitationsContainer: invitationStatusContainer,
+            bookmarksContainer: bookmarksContainer,
+            featureFlagsController: featureFlagsController,
+            volumeIdsController: tower.sharedVolumeIdsController,
+            scrollToTopPublisher: scrollToTopPublisher ?? PassthroughSubject<TabBarItem, Never>().eraseToAnyPublisher()
+        )
+        self.hookIntoViewLifecycle(viewModel)
+        return FinderView(
+            vm: viewModel,
+            coordinator: self,
+            presentModal: presentModal,
+            drilldownTo: drilldownTo,
+            invitationViewsFactory: invitationViewsFactory
+        )
+    }
+
+    private func startFolder(_ nodeID: NodeIdentifier, _ node: Folder) -> some View {
+        let userInfoController = UserInfoControllerFactory().makeController(sessionVault: tower.sessionVault)
+        let model = FolderModel(tower: tower, node: node, nodeID: nodeID, userInfoController: userInfoController)
+        self.model = model
+        let viewModel = FolderViewModel(localSettings: tower.localSettings, model: model, node: node, nodeStatePolicy: FileNodeStatePolicy(), featureFlagsController: featureFlagsController, isSharedWithMe: isSharedWithMe, volumeIdsController: tower.sharedVolumeIdsController, scrollToTopPublisher: scrollToTopPublisher)
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
     }
 
-    private func startFolder(_ nodeID: NodeIdentifier, _ node: Folder) -> some View {
+    private func startComputersRoot(_ nodeID: NodeIdentifier, _ node: Folder) -> some View {
         let model = FolderModel(tower: tower, node: node, nodeID: nodeID)
         self.model = model
-        let viewModel = FolderViewModel(localSettings: tower.localSettings, model: model, node: node, nodeStatePolicy: FileNodeStatePolicy(), featureFlagsController: featureFlagsController, isSharedWithMe: isSharedWithMe, volumeIdsController: tower.sharedVolumeIdsController)
+        let viewModel = ComputerRootFolderViewModel(localSettings: tower.localSettings, model: model, node: node, nodeStatePolicy: FileNodeStatePolicy(), featureFlagsController: featureFlagsController, isSharedWithMe: isSharedWithMe, volumeIdsController: tower.sharedVolumeIdsController, scrollToTopPublisher: scrollToTopPublisher)
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
     }
@@ -240,8 +306,11 @@ extension FinderCoordinator {
             // Use UIKit to present file preview rather than SwiftUI, check FileCoordinator
             EmptyView()
 
-        case .protonDocument:
+        case .protonFile:
             // Should be opened directly
+            EmptyView()
+
+        case .openBookmark:
             EmptyView()
 
         case .openInBrowser:
@@ -249,6 +318,10 @@ extension FinderCoordinator {
             EmptyView()
 
         case .createDocument:
+            // Should be handled directly
+            EmptyView()
+
+        case .servicePlans:
             // Should be handled directly
             EmptyView()
 
@@ -273,7 +346,7 @@ extension FinderCoordinator {
             EditNodeCoordinator().start((tower, .create(parent: parent)))
                 .edgesIgnoringSafeArea(.bottom)
 
-        case let .rename(node) where node.parentLink != nil:
+        case let .rename(node) where node.parentFolder != nil:
             EditNodeCoordinator().start((tower, .rename(node: node)))
                 .edgesIgnoringSafeArea(.bottom)
 
@@ -300,7 +373,7 @@ extension FinderCoordinator {
     }
 
     private func goFolder(_ folder: Folder) -> some View {
-        let coordinator = FinderCoordinator(container: container, isSharedWithMe: self.isSharedWithMe, parent: self, deeplink: deeplink, photoPickerCoordinator: photoPickerCoordinator)
+        let coordinator = FinderCoordinator(container: container, isSharedWithMe: self.isSharedWithMe, parent: self, deeplink: deeplink, photoPickerCoordinator: photoPickerCoordinator, scrollToTopPublisher: scrollToTopPublisher)
         nextFolderCoordinator = coordinator
         return coordinator.start(.folder(nodeID: folder.identifier))
     }
@@ -311,13 +384,21 @@ extension FinderCoordinator {
         return RootMoveView(coordinator: coordinator, nodes: nodeIds, root: rootId, parent: parentId)
     }
 
-    private func openProtonDocument(with file: File) {
-        let controller = container.protonDocumentContainer.makeController(rootViewController: rootViewController)
+    private func openProtonFile(with file: File) {
+        let controller = container.protonFileContainer.makeController(rootViewController: rootViewController)
         controller.openPreview(file.identifier)
     }
 
-    private func openProtonDocumentInBrowser(with file: File) {
-        let controller = container.protonDocumentContainer.makeController(rootViewController: rootViewController)
+    private func openBookmark(with bookmark: CoreDataBookmark) {
+        Task {
+            let container = BookmarkContainer(tower: tower, featureFlagsController: featureFlagsController)
+            let controller = container.makeController(for: bookmark)
+            await controller.open()
+        }
+    }
+
+    private func openProtonFileInBrowser(with file: File) {
+        let controller = container.protonFileContainer.makeController(rootViewController: rootViewController)
         controller.openExternally(file.identifier)
     }
 
@@ -350,32 +431,32 @@ extension FinderCoordinator {
     }
 
     private func openSharingMemberConfiguration(node: Node) {
-        let shareCreator = ShareCreator(
-            storage: tower.storage,
-            sessionVault: tower.sessionVault,
-            cloudShareCreator: tower.client.createShare,
-            signersKitFactory: tower.sessionVault,
-            moc: tower.storage.backgroundContext
-        )
-        let dependencies = SharingMemberCoordinator.Dependencies(
-            baseHost: tower.client.service.configuration.baseHost,
-            client: tower.client,
-            contactsManager: container.contactsManager, 
-            entitlementsManager: tower.entitlementsManager,
+        let dependencies = SharingMemberStartDependencies(
+            tower: tower,
+            contactsManager: container.contactsManager,
             featureFlagsController: container.featureFlagsController,
-            node: node,
-            rootViewController: rootViewController,
-            sessionVault: tower.sessionVault,
-            shareCreator: shareCreator, 
-            storage: tower.storage
+            invitationResultController: nil,
+            rootViewController: rootViewController
         )
-        SharingMemberCoordinator(dependencies: dependencies)
-            .openSharingConfig()
+        let factory = SharingMemberStartFactory()
+        let coordinator = factory.makeCoordinator(dependencies: dependencies, node: node)
+        coordinator.openSharingConfig(sharingType: .common)
     }
 
-    private func makeCreateDocumentView() -> NewDocumentLoadingView {
-        let factory = NewDocumentFactory()
-        return factory.makeView(tower: tower, previewContainer: container.protonDocumentContainer)
+    private func makeCreateDocumentView(fileType: ProtonFileType) -> NewProtonFileLoadingView {
+        let factory = NewProtonFileFactory()
+        return factory.makeView(tower: tower, previewContainer: container.protonFileContainer, fileType: fileType)
+    }
+
+    private func makeWarningViewModel() -> PhotosMigrationWarningViewModelProtocol {
+        return PhotosMigrationWarningViewModel(controller: container.photosContainer.newPhotosContainer.migrationController)
+    }
+
+    func openSubscriptions() {
+        let viewController = container.makeSubscriptionsViewController()
+        let navigationViewController = ModalNavigationViewController(rootViewController: viewController)
+        navigationViewController.modalPresentationStyle = .fullScreen
+        rootViewController?.present(navigationViewController, animated: true)
     }
 }
 

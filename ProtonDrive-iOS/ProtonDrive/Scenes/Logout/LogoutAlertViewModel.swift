@@ -17,9 +17,14 @@
 
 import PDLocalization
 
-final class LogoutAlertViewModel: LogoutRequesting {
+final class LogoutAlertViewModel: LogoutRequesting, CleanLogsRequesting {
     let title = Localization.logout_alert_title
     let message = Localization.logout_alert_message
     let logoutButton = Localization.general_logout
     let cancelButton = Localization.general_cancel
+
+    func startUserInitiatedLogout() {
+        requestLogout()
+        requestCleanLogs()
+    }
 }

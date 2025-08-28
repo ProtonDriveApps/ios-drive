@@ -17,6 +17,7 @@
 
 import Foundation
 import PDLocalization
+import PDCoreIOS
 
 protocol NotificationsPermissionsViewModel {
     var data: NotificationsPermissionsViewData { get }

@@ -21,46 +21,26 @@ import PDClient
 
 extension OfflineSaver {
     internal func trackReachability(toHost host: String) {
-        do {
-            // providing hostname, we'll get whenReachable called not only when connectivity changes
-            // but also when VPN is connected
-            let reachability = try Reachability(hostname: host)
-            reachability.whenReachable = self.onReachable
-            reachability.whenUnreachable = self.onUnreachable
-            self.reachability = reachability
-        } catch let error {
-            assert(false, error.localizedDescription)
-            Log.error(error, domain: .networking)
+        let cancellable = connectionStateResource.state.sink { [weak self] state in
+            self?.handle(state: state)
         }
+        add(cancellable: cancellable)
     }
-    
-    func onReachable(_ reachability: Reachability) {
-        switch reachability.connection {
-        case .cellular, .wifi:
-            Log.info("Became reachable via \(reachability.connection.description)", domain: .networking)
-            
+
+    private func handle(state: NetworkState) {
+        switch state {
+        case .reachable:
             self.rebuildProgressSubject.send()
             self.storage?.backgroundContext.perform {
                 self.checkEverything()
             }
-            
-        default: break
-        }
-    }
-    
-    func onUnreachable(_ reachability: Reachability) {
-        switch reachability.connection {
-        case .unavailable:
-            Log.info("Lost reachability", domain: .networking)
-            
+        case .unreachable:
             // check if something is not downloaded properly - and artificially add tiny fraction so progress will be claimed started
             self.storage?.backgroundContext.perform {
                 if nil != self.markedFoldersAndFiles().files.first(where: { $0.activeRevision?.blocksAreValid() != true }) {
                     DispatchQueue.main.async { self.fractionCompleted += 0.01 }
                 }
             }
-            
-        default: break
         }
     }
 }

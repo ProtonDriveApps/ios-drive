@@ -24,7 +24,8 @@ struct PhotosGalleryView<
     PlaceholderView: View,
     StateView: View,
     LockingView: View,
-    StorageView: View
+    StorageView: View,
+    MigrationView: View
 >: View {
     @ObservedObject private var viewModel: ViewModel
     private let grid: () -> GridView
@@ -32,22 +33,28 @@ struct PhotosGalleryView<
     private let stateView: StateView
     private let lockingBannerView: LockingView
     private let storageView: StorageView
+    private let migrationView: MigrationView
 
-    init(viewModel: ViewModel, grid: @escaping () -> GridView, placeholder: @escaping () -> PlaceholderView, stateView: StateView, lockingBannerView: LockingView, storageView: StorageView) {
+    init(viewModel: ViewModel, grid: @escaping () -> GridView, placeholder: @escaping () -> PlaceholderView, stateView: StateView, lockingBannerView: LockingView, storageView: StorageView, migrationView: MigrationView) {
         self.viewModel = viewModel
         self.grid = grid
         self.placeholder = placeholder
         self.stateView = stateView
         self.lockingBannerView = lockingBannerView
         self.storageView = storageView
+        self.migrationView = migrationView
     }
 
     var body: some View {
         VStack(spacing: 0) {
             Spacer().frame(height: 10)
-            stateView
-            lockingBannerView
-            storageView
+            if viewModel.isMigrationNeeded {
+                migrationView
+            } else {
+                stateView
+                lockingBannerView
+                storageView
+            }
             Spacer(minLength: 0)
             content
         }

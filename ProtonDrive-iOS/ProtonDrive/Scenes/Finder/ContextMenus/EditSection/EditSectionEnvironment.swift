@@ -17,6 +17,7 @@
 
 import SwiftUI
 import PDCore
+import PDCoreIOS
 
 final class EditSectionEnvironment {
     typealias Destination = FinderCoordinator.Destination
@@ -91,6 +92,18 @@ final class EditSectionEnvironment {
         }
     }
 
+    func removeBookmark(of vm: NodeRowActionMenuViewModel) {
+        onDismiss()
+        DispatchQueue.main.async {
+            self.menuItem.wrappedValue = .removeBookmark(vm: vm)
+        }
+    }
+
+    func copyBookmarkURL(vm: EditSectionViewModel) {
+        onDismiss()
+        vm.copyBookmark()
+    }
+
     func move(vm: EditSectionViewModel) {
         onDismiss()
         DispatchQueue.main.async {
@@ -153,6 +166,13 @@ final class EditSectionEnvironment {
         onDismiss()
         DispatchQueue.main.async {
             self.modal.wrappedValue = .createDocument(parentIdentifier: parentIdentifier)
+        }
+    }
+
+    func createSheet(with parentIdentifier: NodeIdentifier) {
+        onDismiss()
+        DispatchQueue.main.async {
+            self.modal.wrappedValue = .createSheet(parentIdentifier: parentIdentifier)
         }
     }
 }

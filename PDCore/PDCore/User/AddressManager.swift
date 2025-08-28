@@ -46,7 +46,7 @@ public class AddressManager {
     private var sessionVault: SessionVault
     private var authenticator: Authenticator
 
-    init(authenticator: Authenticator, sessionVault: SessionVault) {
+    public init(authenticator: Authenticator, sessionVault: SessionVault) {
         self.authenticator = authenticator
         self.sessionVault = sessionVault
     }

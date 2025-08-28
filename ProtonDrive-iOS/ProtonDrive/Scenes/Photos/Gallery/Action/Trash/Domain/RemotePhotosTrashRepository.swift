@@ -17,7 +17,6 @@
 
 struct PhotosTrashData {
     let volumeId: String
-    let shareId: String
     let nodeIds: [String]
 }
 

@@ -17,6 +17,6 @@
 
 import Foundation
 
-protocol TelemetrySettingRepository {
+public protocol TelemetrySettingRepository {
     func isTelemetryEnabled() -> Bool
 }

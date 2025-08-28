@@ -40,12 +40,10 @@ extension Tree.Node {
 
 private extension String {
     func normalizeIfGivenFileName() -> String {
-        let filename = fileName()
-        let fileExtension = fileExtension()
         if fileExtension.isEmpty || fileExtension.containSymbol() {
             return self
         } else {
-            return "\(filename).\(fileExtension.uppercased())"
+            return "\(fileName).\(fileExtension.uppercased())"
         }
     }
     

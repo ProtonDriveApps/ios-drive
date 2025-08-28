@@ -28,6 +28,16 @@
 				<string>me.proton.drive.doc</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Proton Sheet</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>me.proton.drive.sheet</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
@@ -41,6 +51,19 @@
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>ch.protonmail.drive</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>protondrive</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>Debug</string>
 	<key>DEFAULT_API_HOST</key>
@@ -79,9 +102,9 @@
 		</dict>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Use camera to upload photos and videos to the Drive</string>
+	<string>Use camera to upload photos and videos to the Drive, or to scan QR codes.</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Use FaceID to unlock the app</string>
+	<string>Use FaceID to unlock the app or scan QR codes.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Use microphone to upload videos to the Drive</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
@@ -111,11 +134,13 @@
 		<string>processing</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
-	<string>DriveLaunchScreen</string>
+	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>armv7</string>
 	</array>
+	<key>UIRequiresFullScreen</key>
+	<false/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -153,6 +178,31 @@
 				<key>public.mime-type</key>
 				<array>
 					<string>application/vnd.proton.doc</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Proton Sheet</string>
+			<key>UTTypeIconFiles</key>
+			<array>
+				<string>protonSheetIcon.png</string>
+			</array>
+			<key>UTTypeIdentifier</key>
+			<string>me.proton.drive.sheet</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>protonsheet</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.proton.sheet</string>
 				</array>
 			</dict>
 		</dict>

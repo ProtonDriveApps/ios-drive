@@ -35,7 +35,8 @@ final class RemoteThumbnailURLFetchInteractor: ThumbnailURLFetchInteractor {
     }
 
     func execute(thumbnailId: String, volumeId: String) async throws -> URL {
-        let urls = try await listInteractor.execute(ids: [thumbnailId], volumeId: volumeId)
+        let id = AnyVolumeIdentifier(id: thumbnailId, volumeID: volumeId)
+        let urls = try await listInteractor.execute(ids: [id])
         try updateRepository.update(thumbnails: urls)
         guard let url = urls.first else {
             throw ThumbnailURLFetchInteractorError.invalidResponse

@@ -16,10 +16,14 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import Foundation
+import PDCore
+import PDPhotos
 
 protocol PhotoLibraryLoadController {
     var isLoading: AnyPublisher<Bool, Never> { get }
     func getInitialCount() -> Int?
+    func handlePrematureCompletion()
 }
 
 final class LocalPhotoLibraryLoadController: PhotoLibraryLoadController {
@@ -29,18 +33,23 @@ final class LocalPhotoLibraryLoadController: PhotoLibraryLoadController {
     private let interactor: PhotoLibraryLoadInteractor
     private var isProcessing = false
     private var loadingSubject = CurrentValueSubject<Bool, Never>(false)
+    private var delayedPublisher = PassthroughSubject<Void, Never>()
+    private let scheduler: AnySchedulerOf<DispatchQueue>
     private var cancellables = Set<AnyCancellable>()
     private var count: Int?
+
+    private var loadingResetCancellable: AnyCancellable?
 
     var isLoading: AnyPublisher<Bool, Never> {
         loadingSubject.eraseToAnyPublisher()
     }
 
-    init(backupController: PhotosBackupController, identifiersController: PhotoLibraryIdentifiersController, computationalAvailabilityController: ComputationalAvailabilityController, interactor: PhotoLibraryLoadInteractor) {
+    init(backupController: PhotosBackupController, identifiersController: PhotoLibraryIdentifiersController, computationalAvailabilityController: ComputationalAvailabilityController, interactor: PhotoLibraryLoadInteractor, scheduler: AnySchedulerOf<DispatchQueue>) {
         self.backupController = backupController
         self.identifiersController = identifiersController
         self.computationalAvailabilityController = computationalAvailabilityController
         self.interactor = interactor
+        self.scheduler = scheduler
         subscribeToUpdates()
     }
 
@@ -69,6 +78,24 @@ final class LocalPhotoLibraryLoadController: PhotoLibraryLoadController {
             .store(in: &cancellables)
     }
 
+    private func scheduleLoadingEnd(with delay: Double) {
+        guard loadingResetCancellable == nil else {
+            return
+        }
+
+        loadingResetCancellable = Just(false)
+            .delay(for: .seconds(delay), scheduler: scheduler)
+            .handleEvents(receiveCompletion: { [weak self] _ in
+                guard let self else {
+                    return
+                }
+                self.loadingResetCancellable = nil
+            })
+            .sink { [weak self] value in
+                self?.loadingSubject.send(value)
+            }
+    }
+
     private func handleIdentifiers(update: PhotoLibraryLoadUpdate) {
         let identifiers = update.identifiers
         if !identifiers.isEmpty {
@@ -78,12 +105,22 @@ final class LocalPhotoLibraryLoadController: PhotoLibraryLoadController {
         switch update {
         case .fullLoad:
             count = identifiers.count
-            loadingSubject.send(false)
+            let delay = Double(count ?? 0) * 0.01 // 1 second per every 100 identifiers
+            scheduleLoadingEnd(with: delay)
         case .loading:
+            loadingResetCancellable?.cancel()
             loadingSubject.send(true)
         case .update:
             break
         }
+    }
+
+    func handlePrematureCompletion() {
+        guard loadingResetCancellable != nil else {
+            return
+        }
+        loadingResetCancellable = nil
+        loadingSubject.send(false)
     }
 
     private func handleUpdate(availability: PhotosBackupAvailability) {
@@ -100,6 +137,7 @@ final class LocalPhotoLibraryLoadController: PhotoLibraryLoadController {
     private func executeInteractor() {
         if !isProcessing {
             isProcessing = true
+            loadingResetCancellable?.cancel()
             loadingSubject.send(true)
             interactor.execute()
         }
@@ -107,6 +145,7 @@ final class LocalPhotoLibraryLoadController: PhotoLibraryLoadController {
 
     private func cancelInteractor() {
         isProcessing = false
+        loadingResetCancellable?.cancel()
         loadingSubject.send(false)
         interactor.cancel()
     }

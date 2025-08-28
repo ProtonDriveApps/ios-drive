@@ -70,4 +70,22 @@ extension NodeRowActionMenuViewModelTrashAlertPresenting {
                 })
             ])
     }
+
+    func makeRemoveBookmarkAlert(environment: TrashAlertEnvironment) -> DialogSheetModel {
+        guard let node = nodes.first as? CoreDataBookmark else {
+            return DialogSheetModel.placeholder
+        }
+
+        let vm = DeleteBookmarkAlertViewModel(node: node, model: model)
+        return DialogSheetModel(
+            title: vm.title,
+            buttons: [
+                DialogButton(title: vm.confirmationButton, role: .destructive, action: {
+                    vm.mainAction()
+                    environment.onDismiss()
+                    environment.cancelSelection?()
+                    environment.popScreenIfNeeded()
+                })
+            ])
+    }
 }

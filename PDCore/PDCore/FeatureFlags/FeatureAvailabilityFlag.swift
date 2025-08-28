@@ -23,18 +23,18 @@ public enum FeatureAvailabilityFlag: CaseIterable {
     case logsCompressionDisabled
     case domainReconnectionEnabled
     case postMigrationJunkFilesCleanup
-    case newTrayAppMenuEnabled
     case pushNotificationIsEnabled
     case logCollectionEnabled
     case logCollectionDisabled
+    case driveiOSDebugMode
     case oneDollarPlanUpsellEnabled
     case driveDisablePhotosForB2B
     case driveDDKEnabled
+    case driveMacSyncRecoveryDisabled
+    case driveMacKeepDownloadedDisabled
 
     // Sharing
     case driveSharingMigration
-    case driveSharingDevelopment
-    case driveiOSSharing
     case driveSharingInvitations
     case driveSharingExternalInvitations
     case driveSharingDisabled
@@ -42,11 +42,35 @@ public enum FeatureAvailabilityFlag: CaseIterable {
     case driveSharingEditingDisabled
     case drivePublicShareEditMode
     case drivePublicShareEditModeDisabled
+    case driveMobileSharingInvitationsAcceptReject
+    case driveShareURLBookmarking
+    case driveShareURLBookmarksDisabled
 
     // ProtonDoc
-    case driveDocsWebView
     case driveDocsDisabled
     
+    // Rating booster
+    // Legacy feature flags we used before migrating to Unleash
+    case ratingIOSDrive
+    case driveRatingBooster
     // Entitlement
     case driveDynamicEntitlementConfiguration
+
+    // Refactor
+    case driveiOSRefreshableBlockDownloadLink
+
+    // Computers
+    case driveiOSComputers
+    case driveiOSComputersDisabled
+
+    // Album
+    case driveAlbumsDisabled
+    case driveCopyDisabled
+    case drivePhotosTagsMigration
+    case drivePhotosTagsMigrationDisabled
+
+    // Proton sheets
+    case docsSheetsEnabled
+    case docsSheetsDisabled
+    case docsCreateNewSheetOnMobileEnabled
 }

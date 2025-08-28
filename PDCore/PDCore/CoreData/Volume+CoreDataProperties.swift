@@ -28,4 +28,25 @@ extension Volume {
     @NSManaged public var maxSpace: Int
     @NSManaged public var usedSpace: Int
     @NSManaged public var shares: Set<Share>
+    // Cannot be nil, so by default the value will be `undetermined`.
+    // On iOS, this should be populated correctly, since we perform migration of type when launching app.
+    // Don't use on macOS unless migration is also added.
+    @NSManaged public var type: VolumeType
+
+    @objc public enum VolumeType: Int16, CustomStringConvertible {
+        case undetermined
+        case main
+        case photo
+
+        public var description: String {
+            switch self {
+            case .undetermined:
+                return "undetermined"
+            case .main:
+                return "main"
+            case .photo:
+                return "photo"
+            }
+        }
+    }
 }

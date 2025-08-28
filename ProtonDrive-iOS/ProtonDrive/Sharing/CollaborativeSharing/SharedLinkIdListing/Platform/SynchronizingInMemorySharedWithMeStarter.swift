@@ -17,12 +17,13 @@
 
 import CoreData
 import PDCore
+import PDCoreIOS
 import PDClient
 
 public final class SynchronizingInMemorySharedWithMeStarter: SharedWithMeStarter, SharedLinkIdDataSource {
     private let client: Client
     private let storage: StorageManager
-    private var allLinks: [ShareLink] = []
+    private var allLinks: [SharedWithMeLink] = []
     private let context: NSManagedObjectContext
     private let sharedVolumesEventsController: SharedVolumesEventsControllerProtocol
 
@@ -33,7 +34,7 @@ public final class SynchronizingInMemorySharedWithMeStarter: SharedWithMeStarter
         self.sharedVolumesEventsController = sharedVolumesEventsController
     }
 
-    public func getLinks() -> [ShareLink] {
+    public func getLinks() -> [SharedWithMeLink] {
         return allLinks
     }
 
@@ -54,7 +55,7 @@ public final class SynchronizingInMemorySharedWithMeStarter: SharedWithMeStarter
         var removedVolumeIds = [VolumeID]()
 
         await context.perform {
-            let remoteShareIds = Set(self.allLinks.map(\.share))
+            let remoteShareIds = Set(self.allLinks.map(\.shareId))
             let localShareIds = Set(localItems.map { $0.share.id })
 
             // Delete local items that are no longer in remote
@@ -66,21 +67,21 @@ public final class SynchronizingInMemorySharedWithMeStarter: SharedWithMeStarter
 
             // Find volumes not yet in local db
             addedVolumeIds = self.allLinks
-                .filter { !localShareIds.contains($0.share) }
+                .filter { !localShareIds.contains($0.shareId) }
                 .map(\.volumeId)
         }
 
         return (removedVolumeIds, addedVolumeIds)
     }
 
-    private func fetchAllLinks() async throws -> [ShareLink] {
-        var fetchedLinks: [[ShareLink]] = []
+    private func fetchAllLinks() async throws -> [SharedWithMeLink] {
+        var fetchedLinks: [[SharedWithMeLink]] = []
         var lastPageId: String?
         var pageIndex = 0
 
         repeat {
             let response = try await client.getSharedWithMeLinks(lastPageId: lastPageId)
-            let remoteLinks = response.links.map { ShareLink(link: $0.linkID, share: $0.shareID, volumeId: $0.volumeID) }
+            let remoteLinks = response.links.map { SharedWithMeLink(linkId: $0.linkID, shareId: $0.shareID, volumeId: $0.volumeID) }
 
             fetchedLinks.append(remoteLinks)
 
@@ -111,7 +112,7 @@ public final class SynchronizingInMemorySharedWithMeStarter: SharedWithMeStarter
             // Save the context after deleting objects
             try context.saveOrRollback()
         } catch {
-            Log.error("Error deleting shares: \(error.localizedDescription)", domain: .storage)
+            Log.error("Error deleting shares", error: nil, domain: .storage)
         }
     }
 
@@ -126,7 +127,7 @@ public final class SynchronizingInMemorySharedWithMeStarter: SharedWithMeStarter
             try context.saveOrRollback()
             return volumes.map(\.id)
         } catch {
-            Log.error("Error deleting orphaned volumes: \(error.localizedDescription)", domain: .storage)
+            Log.error("Error deleting orphaned volumes", error: error, domain: .storage)
             return []
         }
     }

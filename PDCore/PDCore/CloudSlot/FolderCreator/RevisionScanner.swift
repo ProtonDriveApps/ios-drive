@@ -31,32 +31,45 @@ public class RevisionScanner {
     public func scanRevision(_ identifier: RevisionIdentifier) async throws {
         let revisionMeta = try await client.getRevision(revisionID: identifier.revision, fileID: identifier.file, shareID: identifier.share)
 
-        _ = try await performUpdate(in: storage.backgroundContext, revisionIdentifier: identifier, revisionMeta: revisionMeta)
+        _ = try await Self.performUpdate(in: storage.backgroundContext, revisionIdentifier: identifier, revisionMeta: revisionMeta, storage: storage)
     }
 
     @discardableResult
-    public func performUpdate(
+    public static func performUpdate(
         in context: NSManagedObjectContext,
         revisionIdentifier identifier: RevisionIdentifier,
-        revisionMeta: PDClient.Revision
+        revisionMeta: PDClient.Revision,
+        storage: StorageManager
     ) async throws -> (File, Revision) {
         try await context.perform {
             let revision = Revision.fetchOrCreate(identifier: identifier, allowSubclasses: true, in: context)
-            revision.fulfill(from: revisionMeta)
+            revision.fulfillRevision(with: revisionMeta)
 
             let file = File.fetchOrCreate(identifier: identifier.nodeIdentifier, allowSubclasses: true, in: context)
             file.volumeID = identifier.volumeID
 
-            self.storage.removeOldBlocks(of: revision)
+#if os(iOS)
+            var newBlocks: [DownloadBlock] = []
+            for meta in revisionMeta.blocks {
+                let block = Self.fetchOrCreateBlock(from: revision, index: meta.index, context: context)
+                block.fulfillBlock(with: meta)
+                block.volumeID = identifier.volumeID
+                block.setValue(revision, forKey: #keyPath(Block.revision))
+                newBlocks.append(block)
+            }
+#else
+            // Legacy for Mac, can be removed after 2025 Feb, once mac migrated to DDK
+            storage.removeOldBlocks(of: revision)
 
-            let newBlocks: [DownloadBlock] = self.storage.unique(with: Set(revisionMeta.blocks.map { $0.URL.absoluteString }), uniqueBy: #keyPath(DownloadBlock.downloadUrl), in: context)
+            let newBlocks: [DownloadBlock] = storage.unique(with: Set(revisionMeta.blocks.map { $0.URL.absoluteString }), uniqueBy: #keyPath(DownloadBlock.downloadUrl), in: context)
 
             newBlocks.forEach { block in
                 let meta = revisionMeta.blocks.first { $0.URL.absoluteString == block.downloadUrl }!
-                block.fulfill(from: meta)
+                block.fulfillBlock(with: meta)
                 block.volumeID = identifier.volumeID
                 block.setValue(revision, forKey: #keyPath(Block.revision))
             }
+#endif
 
             revision.setValue(file, forKey: #keyPath(Revision.file))
             revision.blocks = Set(newBlocks)
@@ -64,6 +77,16 @@ public class RevisionScanner {
             try context.saveOrRollback()
 
             return (file, revision)
+        }
+    }
+    
+    private static func fetchOrCreateBlock(from revision: Revision, index: Int, context: NSManagedObjectContext) -> DownloadBlock {
+        if let block = revision.blocks.first(where: { $0.index == index }) as? DownloadBlock {
+            return block
+        } else {
+            let block = DownloadBlock(context: context)
+            block.index = index
+            return block
         }
     }
 }

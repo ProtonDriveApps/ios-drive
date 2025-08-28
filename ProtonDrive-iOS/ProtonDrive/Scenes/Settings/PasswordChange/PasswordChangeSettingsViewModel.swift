@@ -19,6 +19,7 @@ import UIKit
 import Foundation
 import PMSettings
 import PDCore
+import PDCoreIOS
 import ProtonCoreDataModel
 import ProtonCoreNetworking
 import ProtonCorePasswordChange
@@ -61,10 +62,11 @@ class PasswordChangeSettingsViewModel: PMDrillDownCellViewModel {
 
     @MainActor
     var controller: PasswordChangeViewController {
-        PasswordChangeModule.makePasswordChangeViewController(
+        let credential = sessionVault.sessionCredential ?? coreCredential
+        return PasswordChangeModule.makePasswordChangeViewController(
             mode: mode,
             apiService: apiService,
-            authCredential: coreCredential.toAuthCredential(),
+            authCredential: credential.toAuthCredential(),
             userInfo: userInfo
         ) { [weak self] authCredential, newUserInfo in
             guard let self else { return }
@@ -91,15 +93,18 @@ class PasswordChangeSettingsViewModel: PMDrillDownCellViewModel {
                     )
                     await MainActor.run { [weak self] in
                         self?.parentViewController?.navigationController?.popToRootViewController(animated: true)
-                        NotificationCenter.default.post(name: .banner, object: BannerModel.info(Localization.password_change_success_text))
+                        NotificationCenter.default.post(
+                            name: DriveNotification.banner.name,
+                            object: BannerModel.info(Localization.password_change_success_text)
+                        )
                     }
                     await sessionCommunicator.onChildSessionReady()
                 } catch {
-                    Log.error(error.localizedDescription, domain: .application)
+                    Log.error(error: error, domain: .application)
                     NotificationCenter.default.post(.signOut)
                 }
             } catch {
-                Log.error(error.localizedDescription, domain: .sessionManagement)
+                Log.error(error: error, domain: .sessionManagement)
             }
         }
     }

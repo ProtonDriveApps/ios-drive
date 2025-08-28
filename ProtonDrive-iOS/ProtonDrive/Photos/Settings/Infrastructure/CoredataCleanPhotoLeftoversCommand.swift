@@ -38,7 +38,7 @@ final class CoredataCleanPhotoLeftoversCommand: Command {
                 try self.moc.saveOrRollback()
             }
         } catch {
-            Log.error(DriveError(error), domain: .uploader)
+            Log.error(error: DriveError(error), domain: .uploader)
         }
     }
 }

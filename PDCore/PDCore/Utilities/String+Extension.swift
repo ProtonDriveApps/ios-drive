@@ -18,39 +18,11 @@
 import Foundation
 
 extension String {
-    func nodeNameIteration() -> (iteration: Int, nameWithoutIteration: String, extension: String) {
-        let url = URL(fileURLWithPath: self)
-        let pathExtension = url.pathExtension
-        let name = url.deletingPathExtension().lastPathComponent
-        
-        let range = NSRange(location: 0, length: name.utf16.count)
-        guard let regex = try? NSRegularExpression(pattern: #" \(\d+\)"#) else {
-            assert(false, "Error in regex \(#function)")
-            return (0, name, pathExtension)
-        }
-        guard let match = regex.firstMatch(in: name, options: [], range: range),
-            let iterationStringRange = Range(match.range, in: name),
-            match.range.upperBound == name.count else
-        {
-            return (0, name, pathExtension) // no match
-        }
-        
-        let iterationString = String(name[iterationStringRange]).dropFirst(2).dropLast()
-        guard let iteration = Int(iterationString) else {
-            assert(false, "Regex gave non-number \(#function)")
-            return (0, name, pathExtension)
-        }
-        
-        var stringWithoutIteration = name
-        stringWithoutIteration.removeSubrange(iterationStringRange)
-        return (iteration, stringWithoutIteration, pathExtension)
-    }
-
-    public func fileName() -> String {
+    public var fileName: String {
         return URL(fileURLWithPath: self).deletingPathExtension().lastPathComponent
     }
 
-    public func fileExtension() -> String {
+    public var fileExtension: String {
         return URL(fileURLWithPath: self).pathExtension
     }
 }

@@ -24,7 +24,7 @@ final class PMPreviewController: QLPreviewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         if UIDevice.current.userInterfaceIdiom == .phone {
-            (UIApplication.shared.delegate as? AppDelegate)?.lockOrientationIfNeeded(in: .allButUpsideDown)
+            lockOrientationIfNeeded(in: .allButUpsideDown)
         }
     }
 
@@ -41,7 +41,7 @@ final class PMPreviewController: QLPreviewController {
 
     override func viewWillDisappear(_ animated: Bool) {
         if UIDevice.current.userInterfaceIdiom == .phone {
-            (UIApplication.shared.delegate as? AppDelegate)?.lockOrientationIfNeeded(in: .portrait)
+            lockOrientationIfNeeded(in: .portrait)
         }
         super.viewWillDisappear(animated)
     }

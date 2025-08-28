@@ -57,7 +57,7 @@ public struct SignersKit {
     }
 
     @available(*, deprecated, message: "Use directly SessionVault through SignersKitFactoryProtocol")
-    init(sessionVault: SessionVault) throws {
+    public init(sessionVault: SessionVault) throws {
         guard let address = sessionVault.currentAddress() else {
             throw Errors.noAddressFound
         }

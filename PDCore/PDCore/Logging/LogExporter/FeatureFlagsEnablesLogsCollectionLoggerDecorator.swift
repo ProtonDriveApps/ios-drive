@@ -40,13 +40,9 @@ public final class FeatureFlagsEnablesLogsCollectionLoggerDecorator: LoggerProto
             .store(in: &cancellables)
     }
 
-    public func log(_ level: LogLevel, message: String, system: LogSystem, domain: LogDomain, sendToSentryIfPossible: Bool) {
+    // swiftlint:disable:next function_parameter_count
+    public func log(_ level: LogLevel, message: String, system: LogSystem, domain: LogDomain, context: LogContext?, sendToSentryIfPossible: Bool, file: String, function: String, line: Int) {
         guard !(logCollectionDisabled == true) else { return }
-        decoratee.log(level, message: message, system: system, domain: domain, sendToSentryIfPossible: sendToSentryIfPossible)
-    }
-
-    public func log(_ error: NSError, system: LogSystem, domain: LogDomain, sendToSentryIfPossible: Bool) {
-        guard !(logCollectionDisabled == true) else { return }
-        decoratee.log(error, system: system, domain: domain, sendToSentryIfPossible: sendToSentryIfPossible)
+        decoratee.log(level, message: message, system: system, domain: domain, context: context, sendToSentryIfPossible: sendToSentryIfPossible, file: file, function: function, line: line)
     }
 }

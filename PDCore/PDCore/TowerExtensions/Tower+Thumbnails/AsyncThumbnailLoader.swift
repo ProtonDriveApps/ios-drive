@@ -19,7 +19,7 @@ import Foundation
 import Combine
 
 final class AsyncThumbnailLoader: CancellableThumbnailLoader {
-    private var denied = Set<Identifier>()
+    private var denied = Set<AnyVolumeIdentifier>() // cannot be `Identifier`, needs to use concrete struct
     private let scheduled: NSMapTable<NSString, ThumbnailIdentifiableOperation> = NSMapTable(keyOptions: .copyIn, valueOptions: .weakMemory)
     private let regulatingQueue = DispatchQueue(label: "thumbnail.loader.queue", qos: .userInitiated, attributes: .concurrent)
     private let operationsFactory: ThumbnailOperationsFactory
@@ -94,7 +94,7 @@ extension AsyncThumbnailLoader {
     }
 
     private func isAllowed(_ id: Identifier) -> Bool {
-        return !denied.contains(id)
+        return !denied.contains(id.any())
     }
 
     private func isNotScheduled(_ id: Identifier) -> Bool {
@@ -110,7 +110,7 @@ extension AsyncThumbnailLoader {
 
     private func handlingNonRecoverableError(id: Identifier) {
         regulatingQueue.async(flags: .barrier) {
-            self.denied.insert(id)
+            self.denied.insert(id.any())
         }
     }
 
@@ -146,8 +146,8 @@ protocol ThumbnailLoaderDelegate: AnyObject {
     func finishOperationWithFailure(_ id: NodeIdentifier, error: Error)
 }
 
-extension NodeIdentifier {
+private extension VolumeIdentifiable {
     var thumbnailLoaderIdentifier: NSString {
-        NSString(string: shareID + nodeID)
+        NSString(string: id + volumeID)
     }
 }

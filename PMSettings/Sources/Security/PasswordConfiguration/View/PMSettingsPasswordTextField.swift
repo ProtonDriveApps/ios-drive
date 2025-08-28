@@ -40,7 +40,7 @@ public final class PMSettingsPasswordTextField: UIView, UITextFieldDelegate {
     let captionLabel = makeCaptionLabel()
 
     weak var delegate: SettingsTextFieldDelegate?
-    public private (set) var caption: String?
+    public private(set) var caption: String?
     private var rules: [(regex: NSRegularExpression, error: String?)] = []
 
     public convenience init(type: UIKeyboardType) {

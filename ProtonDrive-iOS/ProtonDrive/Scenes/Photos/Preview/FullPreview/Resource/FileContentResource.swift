@@ -22,7 +22,7 @@ import PDCore
 
 protocol FileContentResource {
     var result: AnyPublisher<FileContent, Error> { get }
-    func execute(with id: NodeIdentifier)
+    func execute(with id: any VolumeIdentifiable)
     func cancel()
 }
 
@@ -45,7 +45,7 @@ final class DecryptedPhotoContentResource: FileContentResource {
     private let photoUploadedNotifier: PhotoUploadedNotifier
     private let managedObjectContext: NSManagedObjectContext
     private let subject = PassthroughSubject<FileContent, Error>()
-    private var id: NodeIdentifier?
+    private var id: (any VolumeIdentifiable)?
     private var task: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
     private let photoDecryptor: any FileContentDecryptor<Photo>
@@ -78,8 +78,8 @@ final class DecryptedPhotoContentResource: FileContentResource {
         cancel()
     }
 
-    func execute(with id: NodeIdentifier) {
-        guard self.id != id else { return }
+    func execute(with id: any VolumeIdentifiable) {
+        guard self.id?.any() != id.any() else { return }
         cancel()
         self.id = id
         task = Task(priority: .userInitiated) { [weak self] in
@@ -108,7 +108,7 @@ final class DecryptedPhotoContentResource: FileContentResource {
 }
 
 extension DecryptedPhotoContentResource {
-    private func executeInBackground(id: NodeIdentifier) async {
+    private func executeInBackground(id: any VolumeIdentifiable) async {
         do {
             let strategy = try contentLoadStrategy.loadStrategy(of: id)
             let mainPhoto = try fetchResource.fetchPhoto(with: id, context: managedObjectContext)
@@ -117,28 +117,48 @@ extension DecryptedPhotoContentResource {
                 subscribeForUpdate(id: id)
             case .returnMainAssetDuringChildrenUpload:
                 subscribeForUpdate(id: id)
-                await preparePhotoContent(mainPhoto: mainPhoto, children: [], isLoading: true)
+                try await preparePhotoContent(mainPhoto: mainPhoto, children: [], isLoading: true)
             case .returnMainAssetAndDownloadChildren:
                 cancellables.removeAll()
-                await preparePhotoContent(mainPhoto: mainPhoto, children: [], isLoading: true)
-                
+                try await preparePhotoContent(mainPhoto: mainPhoto, children: [], isLoading: true)
+
                 let children = getChildren(from: mainPhoto)
-                await preparePhotoContent(mainPhoto: mainPhoto, children: children, isLoading: false)
+                try await preparePhotoContent(mainPhoto: mainPhoto, children: children, isLoading: false)
             case .allAssetsAvailable:
                 cancellables.removeAll()
                 let children = getChildren(from: mainPhoto)
-                await preparePhotoContent(mainPhoto: mainPhoto, children: children, isLoading: false)
+                try await preparePhotoContent(mainPhoto: mainPhoto, children: children, isLoading: false)
             }
         } catch {
-            await finish(with: error)
+            await finishWithDetailedError(error: error, id: id)
         }
     }
-    
-    private func subscribeForUpdate(id: NodeIdentifier) {
+
+    private func finishWithDetailedError(error: Error, id: any VolumeIdentifiable) async {
+        if let validationError = error as? FileURLValidationResourceError {
+            switch validationError {
+            case .unsupportedPhoto:
+                await finish(with: FileContentError.unsupportedPhoto)
+            case .unsupportedVideo:
+                await finish(with: FileContentError.unsupportedVideo)
+            }
+        } else {
+            let isVideo = managedObjectContext.performAndWait {
+                (try? fetchResource.fetchPhoto(with: id, context: managedObjectContext))?.isVideo
+            } ?? false
+            if isVideo {
+                await finish(with: FileContentError.failedVideo)
+            } else {
+                await finish(with: FileContentError.failedPhoto)
+            }
+        }
+    }
+
+    private func subscribeForUpdate(id: any VolumeIdentifiable) {
         guard cancellables.isEmpty else { return }
         photoUploadedNotifier.uploadedNotifier
             .sink(receiveValue: { [weak self] nodeID in
-                guard nodeID == id.nodeID else { return }
+                guard nodeID == id.id else { return }
                 self?.task = Task(priority: .userInitiated) { [weak self] in
                     await self?.executeInBackground(id: id)
                 }
@@ -156,34 +176,30 @@ extension DecryptedPhotoContentResource {
         mainPhoto: Photo,
         children: [Photo],
         isLoading: Bool
-    ) async {
+    ) async throws {
         let photos = isLoading ? [mainPhoto] : [mainPhoto] + children
         
-        do {
-            try await photoDownloader.downloadIfNotCached(files: photos)
-            let mainPhotoURL: URL
-            if let lastFileContent {
-                // Don't need to decrypt main photo again 
-                mainPhotoURL = lastFileContent.url
-            } else {
-                let (_, url) = try await photoDecryptor.loadAndValidateDecryptedURL(from: mainPhoto)
-                mainPhotoURL = url
-            }
-            
-            let children = isLoading ? [] : children
-            let decryptedResult = try await photoDecryptor.loadAndValidateDecryptedURL(from: children)
-            let childrenURLs: [URL] = Array(decryptedResult.values)
-            
-            let content = FileContent(
-                url: mainPhotoURL,
-                childrenURLs: childrenURLs,
-                couldBeLivePhoto: mainPhoto.canBeLivePhoto,
-                couldBeBurst: mainPhoto.canBeBurstPhoto,
-                isLoading: isLoading
-            )
-            await finish(with: content)
-        } catch {
-            await finish(with: error)
+        try await photoDownloader.downloadIfNotCached(files: photos)
+        let mainPhotoURL: URL
+        if let lastFileContent {
+            // Don't need to decrypt main photo again
+            mainPhotoURL = lastFileContent.url
+        } else {
+            let (_, url) = try await photoDecryptor.loadAndValidateDecryptedURL(from: mainPhoto)
+            mainPhotoURL = url
         }
+
+        let children = isLoading ? [] : children
+        let decryptedResult = try await photoDecryptor.loadAndValidateDecryptedURL(from: children)
+        let childrenURLs: [URL] = Array(decryptedResult.values)
+
+        let content = FileContent(
+            url: mainPhotoURL,
+            childrenURLs: childrenURLs,
+            couldBeLivePhoto: mainPhoto.canBeLivePhoto,
+            couldBeBurst: mainPhoto.canBeBurstPhoto,
+            isLoading: isLoading
+        )
+        await finish(with: content)
     }
 }

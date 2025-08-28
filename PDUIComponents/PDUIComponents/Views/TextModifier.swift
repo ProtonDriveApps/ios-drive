@@ -74,5 +74,15 @@ public struct ResizableTextModifier: ViewModifier {
             .frame(maxWidth: maxWidth, alignment: alignment)
             .font(font.weight(fontWeight))
             .foregroundStyle(textColor)
+            .multilineTextAlignment(textAlignment)
+    }
+
+    private var textAlignment: TextAlignment {
+        switch alignment {
+        case .center:
+            return .center
+        default:
+            return .leading
+        }
     }
 }

@@ -17,6 +17,7 @@
 
 import Combine
 import PDCore
+import PDCoreIOS
 import UIKit
 import PDLocalization
 
@@ -41,6 +42,7 @@ final class LaunchViewModel {
         self.accountRecoveryWrapper = accountRecoveryWrapper
 
         alertPresenting
+            .throttle(for: Constants.isUnitTest ? 0 : 1, scheduler: DispatchQueue.main, latest: true)
             .sink { alert in
                 switch alert {
                 case .logout:

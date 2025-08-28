@@ -36,7 +36,14 @@ final class EditNodeNameViewModel: EditNodeViewModel {
     }
     
     var title: String {
-        node.type == .file ? Localization.edit_node_title_rename_file : Localization.edit_node_title_rename_folder
+        switch node.type {
+        case .file:
+            return Localization.edit_node_title_rename_file
+        case .folder:
+            return Localization.edit_node_title_rename_folder
+        case .computer:
+            return Localization.edit_node_title_rename_computer
+        }
     }
 
     var buttonText: String {

@@ -18,7 +18,7 @@
 import PDCore
 import Combine
 
-extension FetchedResultsControllerObserver: UploadingPhotosRepository where ResultType == Photo  {
+extension FetchedResultsControllerObserver: PDCore.UploadingPhotosRepository where ResultType == Photo  {
     public var photos: AnyPublisher<[Photo], Never> {
         return getPublisher()
     }

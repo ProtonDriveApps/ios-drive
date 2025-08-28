@@ -23,10 +23,13 @@ protocol EnumeratorWithChanges: AnyObject {
     var eventsManager: EventsSystemManager { get }
     var fileSystemSlot: FileSystemSlot { get }
     var cloudSlot: CloudSlotProtocol { get }
-    var changeObserver: FileProviderChangeObserver? { get }
+    var enumerationObserver: EnumerationObserverProtocol? { get }
+    var keepDownloadedManager: KeepDownloadedEnumerationManager { get }
     var shouldReenumerateItems: Bool { get set }
+    var displayChangeEnumerationDetails: Bool { get }
 }
 
+/// "Change" enumerations are when an item is added/remove/changed on the server.
 extension EnumeratorWithChanges {
     
     // MARK: - Anchors
@@ -38,9 +41,11 @@ extension EnumeratorWithChanges {
         guard let eventID = eventsManager.lastUnenumeratedEvent()?.eventId,
               let referenceDate = eventsManager.eventSystemReferenceDate
         else {
+            Log.trace("guard")
             throw Errors.couldNotProduceSyncAnchor
         }
 
+        Log.trace()
         let anchor = NSFileProviderSyncAnchor.UnderlyingAnchor(
             eventID: eventID,
             shareID: shareID,
@@ -57,23 +62,26 @@ extension EnumeratorWithChanges {
         guard let eventID = eventsManager.lastEnumeratedEvent()?.eventId,
               let referenceDate = eventsManager.eventSystemReferenceDate
         else {
+            Log.trace("guard")
             completionHandler(nil)
             return
         }
 
+        Log.trace()
         let anchor = NSFileProviderSyncAnchor.UnderlyingAnchor(
             eventID: eventID,
             shareID: shareID,
             eventSystemRerefenceDate: referenceDate
         )
         
-        Log.info("⚓️ current sync anchor: " + String(describing: anchor), domain: .fileProvider)
+        Log.info("⚓️ current sync anchor: " + String(describing: anchor), domain: .enumerating)
         completionHandler(NSFileProviderSyncAnchor(anchor: anchor))
     }
     
     func enumerateChanges(_ observers: [NSFileProviderChangeObserver], _ syncAnchor: NSFileProviderSyncAnchor) {
-        Log.info("🔄 enumerating changes", domain: .fileProvider)
-        changeObserver?.incrementSyncCounter(enumeratingChange: true)
+        Log.info("🔄 enumerating changes", domain: .enumerating)
+
+        enumerationObserver?.changes.didStartEnumeratingChanges(name: syncAnchor.rawValue.description)
 
         #if os(iOS)
         enumerateChangesIOS(observers, syncAnchor)
@@ -84,11 +92,13 @@ extension EnumeratorWithChanges {
 
     @available(macOS, unavailable)
     private func enumerateChangesIOS(_ observers: [NSFileProviderChangeObserver], _ syncAnchor: NSFileProviderSyncAnchor) {
+        Log.trace()
         enumerateChangesCommon(observers, syncAnchor)
     }
 
     @available(iOS, unavailable)
     private func enumerateChangesMacOS(_ observers: [NSFileProviderChangeObserver], _ syncAnchor: NSFileProviderSyncAnchor) {
+        Log.trace()
         eventsManager.forceProcessEvents()
         enumerateChangesCommon(observers, syncAnchor)
     }
@@ -97,20 +107,33 @@ extension EnumeratorWithChanges {
         // reference date is date of last login or cache clearing
         // reference date changed -> reEnumerationIsNeeded
         guard !syncAnchor.rawValue.isEmpty else {
+            Log.trace("guard")
             return false
         }
 
+        Log.trace()
         return newSyncAnchor[\.referenceDate] != syncAnchor[\.referenceDate]
     }
 
     private func enumerateChangesCommon(_ observers: [NSFileProviderChangeObserver], _ syncAnchor: NSFileProviderSyncAnchor) {
         guard !shouldReenumerateItems else {
+            Log.trace("guard")
             // forces the `enumerateItems`
-            observers.forEach { $0.finishEnumeratingWithError(NSFileProviderError(.syncAnchorExpired)) }
-            Log.info("Forcing items reenumeration", domain: .forceRefresh)
+            observers.forEach {
+                if $0 is ChangeEnumerationObserver {
+                    $0.finishEnumeratingChanges(upTo: syncAnchor, moreComing: false)
+                } else {
+                    $0.finishEnumeratingWithError(NSFileProviderError(.syncAnchorExpired))
+                }
+            }
+            Log.info("Forcing items reenumeration", domain: .enumerating)
             shouldReenumerateItems = false
             return
         }
+
+        processLocallyModifiedItemsAwaitingEnumeration(observers)
+
+        Log.trace()
         let newSyncAnchor: NSFileProviderSyncAnchor
         do {
             newSyncAnchor = try prospectiveAnchor()
@@ -126,7 +149,7 @@ extension EnumeratorWithChanges {
 
         // same anchor means no new events
         guard newSyncAnchor != syncAnchor else {
-            Log.info("Sync anchor did not change" + String(describing: syncAnchor), domain: .fileProvider)
+            Log.info("Sync anchor did not change" + String(describing: syncAnchor), domain: .enumerating)
             observers.forEach { $0.finishEnumeratingChanges(upTo: syncAnchor, moreComing: false) }
             return
         }
@@ -138,20 +161,22 @@ extension EnumeratorWithChanges {
 
         var itemsToDelete: [NSFileProviderItemIdentifier] = []
         var nodesToUpdate: [Node] = []
+        var nodesToReport: [(Node, FileProviderOperation)] = []
 
         do {
             let events = try eventsManager.eventsHistory(since: syncAnchor[\.eventID])
-            Log.info("History: \(events.count) events", domain: .events)
-            events.forEach { self.categorize(row: $0, into: &nodesToUpdate, or: &itemsToDelete) }
+            Log.info("History: \(events.count) events", domain: .enumerating)
+            events.forEach { self.categorize(row: $0, into: &nodesToUpdate, or: &itemsToDelete, and: &nodesToReport) }
             eventsManager.setEnumerated(events.map { $0.objectID })
         } catch let error {
-            Log.error("Error fetching events history: \(error.localizedDescription) events", domain: .events)
+            Log.error("Error fetching events history", error: error, domain: .enumerating)
         }
 
         if !itemsToDelete.isEmpty {
-            Log.info("Delete: \(itemsToDelete.count) events", domain: .events)
+            Log.info("Delete: \(itemsToDelete.count) events", domain: .enumerating)
             observers.forEach { $0.didDeleteItems(withIdentifiers: itemsToDelete) }
         }
+        Log.info("Deleted \(itemsToDelete.count) item(s)", domain: .enumerating)
 
         // successful completion
         let completion: () -> Void = {
@@ -159,57 +184,111 @@ extension EnumeratorWithChanges {
             observers.forEach { $0.finishEnumeratingChanges(upTo: newSyncAnchor, moreComing: false) }
         }
 
-        guard let moc = nodesToUpdate.first?.managedObjectContext else {
-            completion()
-            return
+        let itemsToUpdate = nodesToUpdate.compactMap {
+            try? NodeItem(node: $0)
         }
 
-        moc.perform { [weak self] in
-            let itemsToUpdate = nodesToUpdate.compactMap {
-                do {
-                    return try NodeItem(node: $0)
-                } catch {
-                    #if os(macOS)
-                    guard let self else { return nil }
-                    let reportableSyncItem = ReportableSyncItem(
-                        id: $0.identifier.rawValue,
-                        modificationTime: Date(),
-                        filename: "Error: Not available",
-                        location: nil,
-                        mimeType: $0.mimeType,
-                        fileSize: $0.size,
-                        operation: .enumerateChanges,
-                        state: .errored,
-                        description: "Access to file attribute (e.g., file name) not available. Please retry or contact support."
-                    )
-                    if let syncStorage = self.fileSystemSlot.syncStorage {
-                        let syncReportingController = SyncReportingController(storage: syncStorage, suite: .group(named: Constants.appGroup), appTarget: .main)
-                        syncReportingController.report(item: reportableSyncItem)
-                    }
-                    #endif
-                    return nil
+        observers.forEach { $0.didUpdate(itemsToUpdate) }
+        Log.info("Updated \(itemsToUpdate.count) item(s)", domain: .enumerating)
+
+        completion()
+
+        // `reportEnumeratedChange` updates the state of this SyncItem to .enumerateChanges.
+        // If items in this state are not being displayed, this update would cause the SyncItem to disappear,
+        // so we don't do it in that scenario.
+        if self.displayChangeEnumerationDetails, let moc = nodesToReport.first?.0.managedObjectContext {
+            moc.perform { [self] in
+                nodesToReport.forEach { (node, operation) in
+                    self.reportEnumeratedChange(for: node, operation: operation)
                 }
             }
-            Log.info("Update: \(itemsToUpdate.count)", domain: .events)
-            observers.forEach { $0.didUpdate(itemsToUpdate) }
-            completion()
         }
+
+#if os(macOS)
+        keepDownloadedManager.updateStateBasedOnParent(for: nodesToUpdate)
+#endif
     }
-    
+
+    private func processLocallyModifiedItemsAwaitingEnumeration(_ observers: [NSFileProviderChangeObserver]) {
+        keepDownloadedManager.processKeepDownloadedItems(observers)
+        keepDownloadedManager.processRemoveDownloadedItems(observers)
+    }
+
+    /// Note: call from within NSManagedObjectContext!
+    private func reportEnumeratedChange(for node: Node, operation: FileProviderOperation) {
+#if os(macOS)
+
+        // Note: even if we don't want to display these items in the tray app, we need them to trigger showing "Syncing" status.
+        do {
+            let name = try node.decryptName()
+            let reportableSyncItem = ReportableSyncItem(
+                id: node.identifier.rawValue,
+                modificationTime: Date(),
+                filename: name,
+                location: nil,
+                mimeType: node.mimeType,
+                fileSize: node.presentableNodeSize,
+                operation: operation,
+                state: .finished,
+                progress: 100,
+                errorDescription: nil
+            )
+            fileSystemSlot.syncStorage?.upsert(
+                reportableSyncItem,
+                updateIf: { $0.notModifiedWithin(seconds: SyncItem.changeEnumerationUpdateThreshold) }
+            )
+        } catch {
+            reportDecryptionError(for: node, underlyingError: error)
+        }
+
+#endif
+    }
+
+    private func reportDecryptionError(for node: Node, underlyingError: Error) {
+#if os(macOS)
+        let reportableSyncItem = ReportableSyncItem(
+            id: node.identifier.rawValue,
+            modificationTime: Date(),
+            filename: "Name not available",
+            location: nil,
+            mimeType: node.mimeType,
+            fileSize: node.presentableNodeSize,
+            operation: .enumerateChanges,
+            state: .errored,
+            progress: 0,
+            errorDescription: "Access to file attribute (e.g. file name) not available. Please retry or contact support."
+        )
+        fileSystemSlot.syncStorage?.upsert(
+            reportableSyncItem,
+            updateIf: { $0.notModifiedWithin(seconds: SyncItem.changeEnumerationUpdateThreshold) }
+        )
+#endif
+    }
+
     private func categorize(row: EventsSystemManager.EventsHistoryRow,
                             into nodesToUpdate: inout [Node],
-                            or itemsToDelete: inout [NSFileProviderItemIdentifier])
+                            or itemsToDelete: inout [NSFileProviderItemIdentifier],
+                            and nodesToReport: inout [(Node, FileProviderOperation)])
     {
+        Log.trace()
         switch row.event.genericType {
         case .delete:
             let shareID = !row.share.isEmpty ? row.share : shareID
             let nodeIdentifier = NodeIdentifier(row.event.inLaneNodeId, shareID, "")
             itemsToDelete.append(.init(nodeIdentifier))
-            
+
+            // This is a permanent deletion from trash (on BE).
+            // The node was deleted from our Metadata DB when we called `forceProcessEvents()`
+            // on our `EventsSystemManager`.
+            //   With no node, we don't have enough info (e.g. filename) to present this in our sync
+            // view UI. If we wish to display this, we will need to hold onto this info
+            // before deleting the node.
+            //   For now, we accept that macOS will NOT display permanently deleted item events.
+
         case .updateContent, .updateMetadata, .create:
             let nodeIdentifier = NodeIdentifier(row.event.inLaneNodeId, row.share, "")
             guard let node = self.fileSystemSlot.getNode(nodeIdentifier) else {
-                Log.info("Event's node not found in storage - event has not yet been processed", domain: .events)
+                Log.info("Event's node not found in storage - event has not yet been processed", domain: .enumerating)
                 return
             }
 
@@ -222,9 +301,27 @@ extension EnumeratorWithChanges {
             // trash capabilities and our BE model.
             if node.state == .deleted {
                 itemsToDelete.append(.init(nodeIdentifier))
+                nodesToReport.append((node, .remoteTrash))
+            } else if row.event.genericType == .create {
+                nodesToUpdate.append(node)
+                nodesToReport.append((node, .remoteCreate))
             } else {
                 nodesToUpdate.append(node)
+                nodesToReport.append((node, .enumerateChanges))
             }
         }
+    }
+}
+
+extension SyncItem {
+    /// Minimum amount of time which needs to pass after a file operation, before an change enumeration of that item is not ignored.
+    static let changeEnumerationUpdateThreshold: TimeInterval = 180
+
+    func notModifiedWithin(seconds: TimeInterval) -> Bool {
+        let threshold = Date.timeIntervalSinceReferenceDate - seconds
+
+        Log.trace("\(modificationTime.timeIntervalSinceReferenceDate) < \(threshold) = \(modificationTime.timeIntervalSinceReferenceDate < threshold) (\(modificationTime.timeIntervalSinceReferenceDate - threshold))")
+
+        return modificationTime.timeIntervalSinceReferenceDate < threshold
     }
 }

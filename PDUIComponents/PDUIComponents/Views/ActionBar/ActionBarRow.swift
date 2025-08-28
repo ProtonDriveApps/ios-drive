@@ -19,39 +19,48 @@ import SwiftUI
 import ProtonCoreUIFoundations
 
 #if os(iOS)
-struct ActionBarRow<Content: View>: View {
+struct ActionBarRow<Content: View, ContextMenu: View>: View {
     @Binding var selection: ActionBarButtonViewModel?
     private let items: [ActionBarButtonViewModel]
     private let leadingItems: [ActionBarButtonViewModel]
     private let trailingItems: [ActionBarButtonViewModel]
     private let content: Content
+    private var contextMenu: ((ActionBarButtonViewModel) -> ContextMenu)?
+    private let isLoading: Bool
 
-    public init(selection: Binding<ActionBarButtonViewModel?>,
-                items: [ActionBarButtonViewModel] = [],
-                leadingItems: [ActionBarButtonViewModel] = [],
-                trailingItems: [ActionBarButtonViewModel] = [],
-                @ViewBuilder content: () -> Content)
-    {
+    public init(
+        selection: Binding<ActionBarButtonViewModel?>,
+        items: [ActionBarButtonViewModel] = [],
+        leadingItems: [ActionBarButtonViewModel] = [],
+        trailingItems: [ActionBarButtonViewModel] = [],
+        @ViewBuilder content: () -> Content,
+        contextMenu: ((ActionBarButtonViewModel) -> ContextMenu)?,
+        isLoading: Bool
+    ) {
         self._selection = selection
         self.items = items
         self.leadingItems = leadingItems
         self.trailingItems = trailingItems
         self.content = content()
+        self.contextMenu = contextMenu
+        self.isLoading = isLoading
     }
     
     var body: some View {
         HStack(spacing: 0) {
             ForEach(self.leadingItems) {
-                ActionBarButtonView(vm: $0, selection: self.$selection)
-                .environment(\.layoutDirection, .leftToRight)
-                .fixedSize()
+                ActionBarButtonView(vm: $0, selection: self.$selection, contextMenu: contextMenu)
+                    .environment(\.layoutDirection, .leftToRight)
+                    .fixedSize()
+                    .opacity(opacity)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             
             if !self.items.isEmpty {
                 HStack {
                     ForEach(self.items) {
-                        ActionBarButtonView(vm: $0, selection: self.$selection)
+                        ActionBarButtonView(vm: $0, selection: self.$selection, contextMenu: contextMenu)
+                            .opacity(opacity)
                     }
                     .frame(minWidth: 0, maxWidth: .infinity)
 
@@ -65,7 +74,8 @@ struct ActionBarRow<Content: View>: View {
             }
             
             ForEach(self.trailingItems) {
-                ActionBarButtonView(vm: $0, selection: self.$selection)
+                ActionBarButtonView(vm: $0, selection: self.$selection, contextMenu: contextMenu)
+                    .opacity(opacity)
                 .environment(\.layoutDirection, .rightToLeft)
                 .fixedSize()
             }
@@ -73,18 +83,20 @@ struct ActionBarRow<Content: View>: View {
 
         }
     }
+
+    private var opacity: Double {
+        isLoading ? 0.3 : 1
+    }
 }
 
-struct ActionBarModern_Previews: PreviewProvider {
-    static var buttons: [ActionBarButtonViewModel] = [.createFolder, .deleteMultiple]
-    
-    static var previews: some View {
-        Group {
-            ActionBarRow(
-                selection: .constant(.createFolder),
-                leadingItems: [.cancel],
-                trailingItems: [.createFolder]) {}
-        }
-    }
+#Preview {
+    ActionBarRow(
+        selection: .constant(.createFolder),
+        leadingItems: [.cancel],
+        trailingItems: [.createFolder],
+        content: { Text("hi") },
+        contextMenu: { _ in Text("hi") },
+        isLoading: false
+    )
 }
 #endif

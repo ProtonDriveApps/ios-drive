@@ -18,6 +18,7 @@
 import Foundation
 import Photos
 import PDCore
+import PDPhotos
 
 final class PhotosLibraryTreeRepository: TreeRepository {
     private let optionsFactory: PHFetchOptionsFactory
@@ -120,7 +121,7 @@ final class PhotosLibraryTreeRepository: TreeRepository {
             guard !modifiedResources.isEmpty else { return }
             let originalName = try nameResource.getFilename(from: resources)
             modifiedResources.forEach { resource in
-                let name = filenameStrategy.makeModifiedFilename(originalFilename: originalName, filenameExtension: resource.originalFilename.fileExtension())
+                let name = filenameStrategy.makeModifiedFilename(originalFilename: originalName, filenameExtension: resource.originalFilename.fileExtension)
                 let photo = Tree.Node(nodeTitle: name)
                 modifications.append(photo)
             }
@@ -149,8 +150,8 @@ final class PhotosLibraryTreeRepository: TreeRepository {
             let photoFilename = try nameResource.getPhotoFilename(from: allResources)
             let videoFilename = try nameResource.getPairedVideoFilename(from: allResources)
             let photo = Tree.Node(
-                nodeTitle: filenameStrategy.makeModifiedFilename(originalFilename: photoFilename, filenameExtension: photoFilename.fileExtension()),
-                descendants: [filenameStrategy.makeModifiedFilename(originalFilename: videoFilename, filenameExtension: modifiedPairedVideo.originalFilename.fileExtension())]
+                nodeTitle: filenameStrategy.makeModifiedFilename(originalFilename: photoFilename, filenameExtension: photoFilename.fileExtension),
+                descendants: [filenameStrategy.makeModifiedFilename(originalFilename: videoFilename, filenameExtension: modifiedPairedVideo.originalFilename.fileExtension)]
             )
             photos.append(photo)
             resources = resources.filter { $0 != modifiedPhoto && $0 != modifiedPairedVideo }
@@ -171,7 +172,7 @@ final class PhotosLibraryTreeRepository: TreeRepository {
 
             try modifiedVideos.forEach { modifiedVideo in
                 let modifiedVideoFilename = try nameResource.getFilename(from: [modifiedVideo])
-                let videoFilename = filenameStrategy.makeModifiedFilename(originalFilename: originalVideoFilename, filenameExtension: modifiedVideoFilename.fileExtension())
+                let videoFilename = filenameStrategy.makeModifiedFilename(originalFilename: originalVideoFilename, filenameExtension: modifiedVideoFilename.fileExtension)
                 let photo = Tree.Node(nodeTitle: videoFilename)
                 photos.append(photo)
             }
@@ -193,7 +194,7 @@ final class PhotosLibraryTreeRepository: TreeRepository {
 
             try modifiedPhotos.forEach { modifiedPhoto in
                 let modifiedPhotoFilename = try nameResource.getFilename(from: [modifiedPhoto])
-                let photoFilename = filenameStrategy.makeModifiedFilename(originalFilename: originalPhotoFilename, filenameExtension: modifiedPhotoFilename.fileExtension())
+                let photoFilename = filenameStrategy.makeModifiedFilename(originalFilename: originalPhotoFilename, filenameExtension: modifiedPhotoFilename.fileExtension)
                 let photo = Tree.Node(nodeTitle: photoFilename)
                 photos.append(photo)
             }
@@ -209,7 +210,7 @@ final class PhotosLibraryTreeRepository: TreeRepository {
                 photos.append(photo)
             } else {
                 // Otherwise we adjust the name to distinguish the original from modification
-                let name = filenameStrategy.makeModifiedFilename(originalFilename: originalFilename, filenameExtension: resource.originalFilename.fileExtension())
+                let name = filenameStrategy.makeModifiedFilename(originalFilename: originalFilename, filenameExtension: resource.originalFilename.fileExtension)
                 let photo = Tree.Node(nodeTitle: name)
                 photos.append(photo)
             }

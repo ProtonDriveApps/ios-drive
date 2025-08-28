@@ -18,6 +18,7 @@
 import Combine
 import PDLocalization
 import PDCore
+import PDCoreIOS
 import PDUIComponents
 import SwiftUI
 import ProtonCoreUIFoundations
@@ -53,6 +54,10 @@ final class EditSectionViewModel: ObservableObject {
     var shareSectionItems: [EditSectionItem] {
         var shareSection: [EditSectionItem] = []
 
+        if node is CoreDataBookmark {
+            return [.copyBookmark]
+        }
+
         if featureFlagsController.hasSharing && node.getNodeRole() == .admin {
             shareSection.append(configShareMember)
         }
@@ -61,6 +66,10 @@ final class EditSectionViewModel: ObservableObject {
     }
 
     var secondSectionItems: [EditSectionItem] {
+        if node is CoreDataBookmark {
+            return []
+        }
+
         if isSharedWithMeRoot {
             return [download].compactMap { $0 }
         } else {
@@ -80,6 +89,10 @@ final class EditSectionViewModel: ObservableObject {
     }
 
     var thirdSectionItems: [EditSectionItem] {
+        if let bookmark = node as? CoreDataBookmark {
+            return [.removeBookmark]
+        }
+
         if isSharedWithMeRoot {
             return [.details(isFile: isFile), .removeMe].compactMap { $0 }
         } else {
@@ -105,7 +118,17 @@ final class EditSectionViewModel: ObservableObject {
     func starNode() {
         nodeEditionViewModel.setFavorite(!node.isFavorite, nodes: [node])
     }
-    
+
+    func copyBookmark() {
+        guard let bookmark = node as? CoreDataBookmark else { return }
+        nodeEditionViewModel.copyBookmarkUrl(bookmark)
+    }
+
+    func removeBookmark() {
+        guard let bookmark = node as? CoreDataBookmark else { return }
+        nodeEditionViewModel.removeBookmark(bookmark)
+    }
+
     func markOfflineAvailable() {
         nodeEditionViewModel.markOfflineAvailable(!node.isMarkedOfflineAvailable, nodes: [node])
     }
@@ -140,7 +163,7 @@ final class EditSectionViewModel: ObservableObject {
     }
 
     private var openInBrowser: EditSectionItem? {
-        if (node as? File)?.isProtonDocument ?? false {
+        if (node as? File)?.isProtonFile ?? false {
             return .openInBrowser
         } else {
             return nil
@@ -160,6 +183,8 @@ extension EditSectionViewModel {
         case remove
         case openInBrowser
         case removeMe
+        case removeBookmark
+        case copyBookmark
 
         var text: String {
             switch self {
@@ -183,6 +208,10 @@ extension EditSectionViewModel {
                 return Localization.edit_section_open_in_browser
             case .removeMe:
                 return Localization.edit_section_remove_me
+            case .removeBookmark:
+                return Localization.edit_section_remove_bookmark
+            case .copyBookmark:
+                return Localization.edit_section_copy_link_bookmark
             }
         }
 
@@ -198,6 +227,8 @@ extension EditSectionViewModel {
             case .remove: return IconProvider.trash
             case .openInBrowser: return IconProvider.arrowOutSquare
             case .removeMe: return .init("ic_user_cross")
+            case .removeBookmark: return IconProvider.trash
+            case .copyBookmark: return IconProvider.link
             }
         }
 
@@ -214,6 +245,8 @@ extension EditSectionViewModel {
             case .remove: return "remove"
             case .openInBrowser: name = "openInBrowser"
             case .removeMe: return "removeMe"
+            case .removeBookmark: return "removeBookmark"
+            case .copyBookmark: return "copyBookmark"
             }
             return "EditSectionItem.\(name)"
         }

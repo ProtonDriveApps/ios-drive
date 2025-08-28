@@ -27,9 +27,9 @@ import ProtonCoreServices
 import ProtonCoreCryptoGoInterface
 import ProtonCoreCryptoPatchedGoImplementation
 import PDUploadVerifier
-import PDLoadTesting
 
 class FileProviderExtension: NSFileProviderExtension {
+    @SettingsStorage("firstLaunchHappened") private var firstLaunchHappened: Bool?
     private let itemProvider: ItemProvider
     private let itemActionsOutlet: ItemActionsOutlet
     private let keymaker: Keymaker
@@ -40,18 +40,17 @@ class FileProviderExtension: NSFileProviderExtension {
     private let logConfigurator: LogsConfigurator
 
     override init() {
+        self._firstLaunchHappened.configure(with: Constants.appGroup)
         inject(cryptoImplementation: ProtonCoreCryptoPatchedGoImplementation.CryptoGoMethodsImplementation.instance)
         PDFileManager.configure(with: Constants.appGroup)
         // Inject build type to enable build differentiation. (Build macros don't work in SPM)
         PDCore.Constants.buildType = Constants.buildType
-        #if LOAD_TESTING && !SSL_PINNING
-        LoadTesting.enableLoadTesting()
-        #endif
 
         self.keymaker = DriveKeymaker(autolocker: nil, keychain: DriveKeychain.shared)
         self.itemProvider = ItemProvider()
         self.itemActionsOutlet = ItemActionsOutlet(fileProviderManager: NSFileProviderManager.default)
-        self.logConfigurator = LogsConfigurator(logSystem: .iOSFileProvider, featureFlags: LocalSettings.shared)
+        let defaultHost = Constants.clientApiConfig.environment.doh.defaultHost
+        self.logConfigurator = LogsConfigurator(logSystem: .iOSFileProvider, localSettings: LocalSettings.shared, defaultHost: defaultHost)
 
         super.init()
 
@@ -74,7 +73,8 @@ class FileProviderExtension: NSFileProviderExtension {
             self.initialServices = InitialServices(
                 userDefault: Constants.appGroup.userDefaults,
                 clientConfig: Constants.clientApiConfig,
-                keymaker: keymaker,
+                mainKeyProvider: keymaker,
+                autoLocker: nil,
                 sessionRelatedCommunicatorFactory: { sessionStore, authenticator, onSessionReceived in
                     SessionRelatedCommunicatorForExtension(
                         userDefaultsConfiguration: .forFileProviderExtension(userDefaults: Constants.appGroup.userDefaults),
@@ -92,6 +92,7 @@ class FileProviderExtension: NSFileProviderExtension {
                 appGroup: Constants.appGroup,
                 eventObservers: [listener],
                 eventProcessingMode: .full,
+                eventLoopInterval: 90,
                 uploadVerifierFactory: uploadVerifierFactory,
                 activityObserver: { [weak self] activity in
                     self?.currentActivityChanged(activity)
@@ -141,7 +142,11 @@ class FileProviderExtension: NSFileProviderExtension {
     /// Otherwise will throw to open FileProviderUI
     private func towerIfExists() throws -> Tower {
 
-        if keymaker.mainKeyExists(), keymaker.mainKey == nil { // app is locked
+        // Intentionally using keymaker like this.
+        // otherwise, the if block executes even though the condition is false.
+        let keyExists = keymaker.mainKeyExists()
+        let mainKey = try keymaker.mainKeyOrError
+        if keyExists && mainKey == nil { // app is locked
             #if SUPPORT_BIOMETRIC_UNLOCK_IN_APPEX
             // will try to read mainKey provided by FileProviderUI extension or open FileProviderUI to initiate mainKey exchange
             let mainKey = try CrossProcessMainKeyExchange.getMainKeyOrThrowEphemeralKeypair()
@@ -162,12 +167,15 @@ class FileProviderExtension: NSFileProviderExtension {
             throw CrossProcessErrorExchange.childSessionExpiredError
         }
 
-        if initialServices.isLoggedIn, let tower = postLoginServices?.tower { // app is logged in and appex has post login services
-            return tower
+        guard
+            firstLaunchHappened == true,
+            let tower = postLoginServices?.tower,
+            initialServices.isLoggedIn
+        else {
+            // will open FileProviderUI on "Please Log In" screen
+            throw CrossProcessErrorExchange.notAuthenticatedError
         }
-
-        // will open FileProviderUI on "Please Log In" screen
-        throw CrossProcessErrorExchange.notAuthenticatedError
+        return tower
     }
 
     private func towerIfExists(_ errorHandler: (Error) -> Void) -> Tower! {
@@ -194,27 +202,32 @@ class FileProviderExtension: NSFileProviderExtension {
 extension FileProviderExtension {
     override func enumerator(for containerItemIdentifier: NSFileProviderItemIdentifier) throws -> NSFileProviderEnumerator {
         let tower = try towerIfExists()
+        let keepDownloadedManager = KeepDownloadedEnumerationManager(storage: tower.storage, fileSystemSlot: tower.fileSystemSlot, fileProviderManager: NSFileProviderManager.default)
 
         do {
             switch containerItemIdentifier {
             case .workingSet:
-                Log.info("Provide enumerator for WORKING SET", domain: .fileProvider)
-                return WorkingSetEnumerator(tower: tower)
+                Log.info("Provide enumerator for WORKING SET", domain: .enumerating)
+                return WorkingSetEnumerator(tower: tower, keepDownloadedManager: keepDownloadedManager)
 
             case .rootContainer:
                 guard let rootID = tower.rootFolderIdentifier() else {
-                    Log.info("Enumerator for ROOT cannot be provided because there is no rootID", domain: .application)
+                    Log.info("Enumerator for ROOT cannot be provided because there is no rootID", domain: .enumerating)
                     throw Errors.rootNotFound
                 }
-                Log.info("Provide enumerator for ROOT", domain: .fileProvider)
-                return RootEnumerator(tower: tower, rootID: rootID)
+                Log.info("Provide enumerator for ROOT", domain: .enumerating)
+                return RootEnumerator(tower: tower,
+                                      keepDownloadedManager: keepDownloadedManager,
+                                      rootID: rootID)
 
             default:
                 guard let nodeId = NodeIdentifier(containerItemIdentifier) else {
-                    Log.error("Could not find NodeID for folder enumerator \(containerItemIdentifier)", domain: .fileProvider)
+                    Log.error("Could not find NodeID for folder enumerator \(containerItemIdentifier)", error: nil, domain: .enumerating)
                     throw NSFileProviderError(NSFileProviderError.Code.noSuchItem)
                 }
-                return FolderEnumerator(tower: tower, nodeID: nodeId)
+                return FolderEnumerator(tower: tower,
+                                        keepDownloadedManager: keepDownloadedManager,
+                                        nodeID: nodeId)
             }
         } catch {
             throw PDFileProvider.Errors.mapToFileProviderError(error) ?? error
@@ -232,15 +245,15 @@ extension FileProviderExtension {
 
         let creatorsIfRoot = identifier == .rootContainer ? tower.sessionVault.addressIDs : []
         assert(tower.sessionVault.currentCreator() != nil, "Tried to access root without creator logged in")
-        let (itemOrNil, errorOrNil) = itemProvider.item(for: identifier, creatorAddresses: creatorsIfRoot, slot: tower.fileSystemSlot!)
+        let (itemOrNil, errorOrNil) = itemProvider.localItem(for: identifier, creatorAddresses: creatorsIfRoot, fileSystemSlot: tower.fileSystemSlot!)
 
         if let error = errorOrNil {
-            Log.error(error, domain: .fileProvider)
+            Log.error(error: error, domain: .fileProvider)
             throw PDFileProvider.Errors.mapToFileProviderError(error) ?? NSFileProviderError(.noSuchItem)
         }
 
         guard let item = itemOrNil else {
-            Log.error("Failed to provide item for \(identifier)", domain: .fileProvider)
+            Log.error("Failed to provide item for \(identifier)", error: nil, domain: .fileProvider)
             throw NSFileProviderError(.noSuchItem)
         }
 
@@ -249,7 +262,7 @@ extension FileProviderExtension {
 
     override func urlForItem(withPersistentIdentifier identifier: NSFileProviderItemIdentifier) -> URL? {
         guard let item = try? self.item(for: identifier), item.contentType != .folder else {
-            Log.error("Failed to provide url for \(identifier)", domain: .fileProvider)
+            Log.error("Failed to provide url for \(identifier)", error: nil, domain: .fileProvider)
             return nil
         }
         return identifier.makeUrl(item: item)
@@ -272,7 +285,7 @@ extension FileProviderExtension {
             try NSFileProviderManager.writePlaceholder(at: placeholderURL, withMetadata: item)
             completionHandler(nil)
         } catch let error {
-            Log.error(error, domain: .fileProvider)
+            Log.error(error: error, domain: .fileProvider)
             completionHandler(error)
         }
     }
@@ -291,19 +304,27 @@ extension FileProviderExtension {
             return
         }
 
-        Log.info("Provide file for \(~item) - schedule download", domain: .fileProvider)
-        itemProvider.fetchContents(for: identifier, slot: tower.fileSystemSlot!, downloader: tower.downloader!, storage: tower.storage) { copyUrl, item, fpError in
-            if let fsError = PDFileProvider.Errors.mapToFileProviderError(fpError) {
-                return completionHandler(fsError)
-            }
+        Task {
+            Log.info("Provide file for \(~item) - schedule download", domain: .fileProvider)
+            await itemProvider.fetchContents(
+                for: identifier,
+                nodeFetcher: { await tower.node(itemIdentifier: $0) },
+                downloader: tower.downloader!,
+                storage: tower.storage,
+                useRefreshableDownloadOperation: tower.featureFlags.isEnabled(flag: .driveiOSRefreshableBlockDownloadLink),
+                completionHandler: { copyUrl, item, fpError in
+                    if let fsError = PDFileProvider.Errors.mapToFileProviderError(fpError) {
+                        return completionHandler(fsError)
+                    }
 
-            do {
-                try? FileManager.default.removeItem(at: url) // opportunistic
-                try FileManager.default.moveItem(at: copyUrl!, to: url) // should not fail
-                completionHandler(nil)
-            } catch let error {
-                completionHandler(error)
-            }
+                    do {
+                        try? FileManager.default.removeItem(at: url) // opportunistic
+                        try FileManager.default.moveItem(at: copyUrl!, to: url) // should not fail
+                        completionHandler(nil)
+                    } catch let error {
+                        completionHandler(error)
+                    }
+                })
         }
     }
 
@@ -318,13 +339,13 @@ extension FileProviderExtension {
             Log.info("Item changed for \(~item)", domain: .fileProvider)
             itemActionsOutlet.modifyItem(tower: tower, item: item, baseVersion: nil, changedFields: .contents, contents: url) { modifiedItem, _, _, error in
                 if let error = error {
-                    Log.error(error, domain: .fileProvider)
+                    Log.error(error: error, domain: .fileProvider)
                 } else {
                     Log.info("Updated contents for \(~(modifiedItem ?? item))", domain: .fileProvider)
                 }
             }
         } catch {
-            Log.error(error, domain: .fileProvider)
+            Log.error(error: error, domain: .fileProvider)
         }
     }
 
@@ -340,7 +361,7 @@ extension FileProviderExtension {
             tower.downloader!.cancel(operationsOf: [nodeIdentifier])
             _ = try FileManager.default.removeItem(at: url)
         } catch {
-            Log.error(error, domain: .fileProvider)
+            Log.error(error: error, domain: .fileProvider)
         }
 
         self.providePlaceholder(at: url) { _ in }
@@ -404,7 +425,7 @@ extension FileProviderExtension {
             guard let item = try self.item(for: itemIdentifier) as? NodeItem else {
                 throw NSFileProviderError(NSFileProviderError.Code.noSuchItem)
             }
-            var changedFields = NSFileProviderItemFields.parentItemIdentifier
+            var changedFields: PDFileProvider.NSFileProviderItemFields = NSFileProviderItemFields.parentItemIdentifier
             item.parentItemIdentifier = parentItemIdentifier
 
             if let newName = newName {
@@ -432,7 +453,12 @@ extension FileProviderExtension {
 
     override func trashItem(withIdentifier itemIdentifier: NSFileProviderItemIdentifier, completionHandler: @escaping (NSFileProviderItem?, Error?) -> Void) {
         Log.info("Trash item \(itemIdentifier)", domain: .fileProvider)
-        self.reparentItem(withIdentifier: itemIdentifier, toParentItemWithIdentifier: .trashContainer, newName: nil, completionHandler: completionHandler)
+        self.reparentItem(
+            withIdentifier: itemIdentifier,
+            toParentItemWithIdentifier: .trashContainer,
+            newName: nil,
+            completionHandler: completionHandler
+        )
     }
 
     override func untrashItem(withIdentifier itemIdentifier: NSFileProviderItemIdentifier, toParentItemIdentifier parentItemIdentifier: NSFileProviderItemIdentifier?, completionHandler: @escaping (NSFileProviderItem?, Error?) -> Void) {

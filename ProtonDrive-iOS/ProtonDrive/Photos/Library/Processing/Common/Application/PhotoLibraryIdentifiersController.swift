@@ -48,7 +48,7 @@ final class ConcretePhotoLibraryIdentifiersController: PhotoLibraryIdentifiersCo
     }
 
     func add(ids: PhotoIdentifiers) {
-        Log.debug("ConcretePhotoLibraryIdentifiersController.add", domain: .photosProcessing)
+        Log.info("ConcretePhotoLibraryIdentifiersController.add \(ids.count)", domain: .photosProcessing)
         repository.insert(ids)
         progressController.handle(.added(ids.count))
         executeNextBatchIfPossible()

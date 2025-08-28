@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 public enum ButtonVariant {
-    case full
-    case contained
+    case regular
+    case regularBold
+    case smallBold
 }

@@ -19,8 +19,8 @@ import Combine
 import Foundation
 import PDCore
 
-typealias PhotoId = NodeIdentifier
-typealias PhotoIdsSet = Set<PhotoId>
+typealias PhotoId = AnyVolumeIdentifier
+typealias PhotoIdsSet = Set<AnyVolumeIdentifier>
 
 protocol ThumbnailsController: AnyObject {
     /// Publishes only ids that are ready to be displayed
@@ -40,7 +40,9 @@ final class LocalThumbnailsController: ThumbnailsController {
     }
 
     var failedId: AnyPublisher<PhotoId, Never> {
-        thumbnailLoader.failedId.eraseToAnyPublisher()
+        thumbnailLoader.failedId
+            .compactMap { $0.any() }
+            .eraseToAnyPublisher()
     }
 
     init(thumbnailLoader: ThumbnailLoader) {
@@ -53,7 +55,7 @@ final class LocalThumbnailsController: ThumbnailsController {
             .sink { [weak self] id in
                 guard let self = self else { return }
                 var ids = self.readySubject.value
-                ids.insert(id)
+                ids.insert(id.any())
                 self.readySubject.send(ids)
             }
             .store(in: &cancellables)

@@ -18,8 +18,12 @@
 import Foundation
 import PDClient
 
-public final class RemoteCreatingPhotosRootDataSource: PhotosShareDataSource {
-    
+public protocol LegacyPhotoShareCreateResource {
+    func createLegacyShare() async throws -> VolumeID
+}
+
+public final class RemoteCreatingPhotosRootDataSource: PhotosShareDataSource, LegacyPhotoShareCreateResource {
+
     private let storage: StorageManager
     private let sessionVault: SessionVault
     private let photoShareCreator: PhotoShareCreator
@@ -32,11 +36,18 @@ public final class RemoteCreatingPhotosRootDataSource: PhotosShareDataSource {
         self.finishResource = finishResource
     }
 
+    public func createLegacyShare() async throws -> VolumeID {
+        let share = try await getPhotoShare()
+        let managedObjectContext = try share.moc ?! "Missing photo share"
+        return await managedObjectContext.perform {
+            return share.volumeID
+        }
+    }
+
     public func getPhotoShare() async throws -> Share {
-        
         let shareName = "PhotosShare"
         let RootName = "PhotosRoot"
-        let moc = storage.newBackgroundContext()
+        let moc = storage.photosSecondaryBackgroundContext
 
         let (volumeID, mainShareCreator, volume) = try await moc.perform {
             let (mainShare, volume) = try self.storage.getMainShareAndVolume(in: moc)

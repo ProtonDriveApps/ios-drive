@@ -18,6 +18,8 @@
 
 import CoreData
 
+public typealias CoreDataPhoto = Photo
+
 @objc(Photo)
 public class Photo: File {
     @NSManaged public var captureTime: Date
@@ -26,10 +28,14 @@ public class Photo: File {
     @NSManaged public var children: Set<Photo>
 
     @NSManaged public var photoRevision: PhotoRevision
-    
+
+    @NSManaged public var albums: Set<CoreDataAlbum>
+    @NSManaged public var photoListings: Set<CoreDataPhotoListing> // A photo can be listed in multiple albums
+
     // MainKey encrypted properties
     @NSManaged public var tempBase64Metadata: String?
     @NSManaged public var tempBase64Exif: String?
+    @NSManaged public var tags: [Int]?
 
     // Deprecated
     @available(*, deprecated, message: "Not needed")
@@ -37,6 +43,10 @@ public class Photo: File {
 
     @available(*, deprecated, message: "Not needed")
     @NSManaged override public var activeRevision: Revision?
+
+    override public var parentNode: NodeWithNodeHashKey? {
+        return parentFolder ?? albums.first
+    }
 
     // Transient
     @objc public var monthIdentifier: String? {
@@ -95,6 +105,36 @@ public class Photo: File {
 
     @objc(removeChildren:)
     @NSManaged public func removeFromChildren(_ values: Set<Photo>)
+
+    @objc(addAlbumsObject:)
+    @NSManaged public func addToAlbums(_ value: CoreDataAlbum)
+
+    @objc(removeAlbumsObject:)
+    @NSManaged public func removeFromAlbums(_ value: CoreDataAlbum)
+
+    @objc(addAlbums:)
+    @NSManaged public func addToAlbums(_ values: Set<CoreDataAlbum>)
+
+    @objc(removeAlbums:)
+    @NSManaged public func removeFromAlbums(_ values: Set<CoreDataAlbum>)
+
+    @objc(addPhotoListingsObject:)
+    @NSManaged public func addToPhotoListings(_ value: CoreDataPhotoListing)
+
+    @objc(removePhotoListingsObject:)
+    @NSManaged public func removeFromPhotoListings(_ value: CoreDataPhotoListing)
+
+    @objc(addPhotoListings:)
+    @NSManaged public func addToPhotoListings(_ values: Set<CoreDataPhotoListing>)
+
+    @objc(removePhotoListings:)
+    @NSManaged public func removeFromPhotoListings(_ values: Set<CoreDataPhotoListing>)
+
+    // MARK: Fetch request
+
+    @nonobjc public class func photoFetchRequest() -> NSFetchRequest<Photo> {
+        return NSFetchRequest<Photo>(entityName: "Photo")
+    }
 }
 
 // MARK: - PDCore DTO's for saving metadata and exif
@@ -104,7 +144,20 @@ public struct TemporalMetadata: Codable {
     public let camera: ExtendedAttributes.Camera?
     public let media: ExtendedAttributes.Media
     public let iOSPhotos: ExtendedAttributes.iOSPhotos
-    
+
+    public init(metadata: PhotoAssetMetadata) {
+        let formatter = ISO8601DateFormatter()
+        self.location = metadata.location.map { ExtendedAttributes.Location(latitude: $0.latitude, longitude: $0.longitude) }
+        self.camera = ExtendedAttributes.Camera(
+            captureTime: formatter.string(metadata.camera.captureTime),
+            device: metadata.camera.device,
+            orientation: metadata.camera.orientation,
+            subjectCoordinates: ExtendedAttributes.SubjectCoordinates(subjectCoordinates: metadata.camera.subjectCoordinates)
+        )
+        self.media = ExtendedAttributes.Media(width: metadata.media.width, height: metadata.media.height, duration: metadata.media.duration)
+        self.iOSPhotos = ExtendedAttributes.iOSPhotos(iCloudID: metadata.iOSPhotos.identifier, modificationTime: formatter.string(metadata.iOSPhotos.modificationTime))
+    }
+
     func base64Encoded() -> String? {
         try? JSONEncoder().encode(self).base64EncodedString()
     }
@@ -130,11 +183,11 @@ extension Photo {
         return context.performAndWait {
             let mainMime = MimeType(value: mimeType)
             let childrenMime = nonDuplicatedChildren.map { MimeType(value: $0.mimeType) }
-            
+
             return mainMime.isImage && childrenMime.count == 1 && (childrenMime.first?.isVideo ?? false)
         }
     }
-    
+
     /// workaround to fix duplicated upload
     /// sometimes a file can be uploaded twice
     public var nonDuplicatedChildren: [Photo] {
@@ -151,7 +204,7 @@ extension Photo {
             return nonDuplicatedChildren
         }
     }
-    
+
     /// There is no solid way to check given content is burst photo or not
     /// If all of children are photos
     /// It is considered a burst photo.
@@ -164,5 +217,36 @@ extension Photo {
                 .allSatisfy { $0.isImage }
             return mainMime.isImage && !children.isEmpty && allChildrenArePhoto
         }
+    }
+
+    public var isVideo: Bool {
+        return MimeType(value: mimeType).isVideo
+    }
+
+    public func hasPhotoStreamListing() -> Bool {
+        photoListings.contains(where: { $0.albumID == nil })
+    }
+
+    public var isRawPhoto: Bool {
+        let mime = MimeType(value: mimeType).value.lowercased()
+        let fileExtension = (decryptedName as NSString).pathExtension.lowercased()
+
+        let knownRawMimeTypes: Set<String> = [
+            "image/x-dcraw", "image/x-adobe-dng", "image/x-canon-crw", "image/x-canon-cr2", "image/x-canon-cr3",
+            "image/x-epson-erf", "image/x-hasselblad-fff", "image/x-fuji-raf", "image/x-kodak-dcr", "image/x-kodak-k25",
+            "image/x-kodak-kdc", "image/x-leaf-mos", "image/x-minolta-mrw", "image/x-nikon-nef", "image/x-nikon-nrw",
+            "image/x-olympus-orf", "image/x-panasonic-raw", "image/x-raw", "image/x-panasonic-rw2", "image/x-rwz",
+            "image/x-pentax-pef", "image/x-pentax-ptx", "image/x-sigma-x3f", "image/x-sony-srf", "image/x-sony-sr2",
+            "image/x-samsung-srw", "image/x-sony-arw", "image/x-phaseone-iiq", "image/x-mamiya-mef", "image/x-leica-rwl",
+            "image/x-hasselblad-3fr"
+        ]
+
+        let knownRawExtensions: Set<String> = [
+            "dcraw", "dng", "crw", "cr2", "cr3", "erf", "fff", "raf", "dcr", "k25", "kdc", "mos", "mrw",
+            "nef", "nrw", "orf", "raw", "rw2", "rwz", "pef", "ptx", "x3f", "srf", "sr2", "srw", "arw",
+            "iiq", "mef", "rwl", "3fr"
+        ]
+
+        return MimeType(value: mimeType).isRaw || knownRawMimeTypes.contains(mime) || knownRawExtensions.contains(fileExtension)
     }
 }

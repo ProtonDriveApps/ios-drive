@@ -17,6 +17,7 @@
 
 import Foundation
 import PDCore
+import PDPhotos
 import SwiftUI
 
 struct PhotosDiagnosticsFactory {
@@ -47,7 +48,7 @@ struct PhotosDiagnosticsFactory {
     }
 
     private func makeDatabaseDumpRepository(storageManager: StorageManager) -> TreeRepository {
-        return PhotosDatabaseTreeRepository(storageManager: storageManager, managedObjectContext: storageManager.newBackgroundContext())
+        return PhotosDatabaseTreeRepository(storageManager: storageManager, managedObjectContext: storageManager.photosSecondaryBackgroundContext)
     }
 
     private func makeCloudDumpRepository(tower: Tower) -> TreeRepository {

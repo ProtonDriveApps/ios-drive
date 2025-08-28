@@ -27,6 +27,10 @@ public struct PhotosListEndpoint: Endpoint {
             let item = URLQueryItem(name: "PreviousPageLastLinkID", value: lastId)
             items.append(item)
         }
+        if let tag = parameters.tag {
+            let item = URLQueryItem(name: "Tag", value: "\(tag)")
+            items.append(item)
+        }
 
         let url = service.url(of: "/volumes/\(parameters.volumeId)/photos", parameters: items)
         var headers = service.baseHeaders

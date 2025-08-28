@@ -17,9 +17,9 @@
 
 import CoreData
 
-typealias EventPack = (event: GenericEvent, share: String, objectID: NSManagedObjectID)
+public typealias EventPack = (event: GenericEvent, share: String, objectID: NSManagedObjectID)
 
-protocol EventsConveyor: AnyObject {
+public protocol EventsConveyor: AnyObject {
     func prepareForProcessing()
     func next() -> EventPack?
     func disregard(_ id: NSManagedObjectID)

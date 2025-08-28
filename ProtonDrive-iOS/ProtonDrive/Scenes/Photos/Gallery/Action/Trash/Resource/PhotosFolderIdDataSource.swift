@@ -18,7 +18,7 @@
 import PDCore
 
 protocol PhotosFolderIdDataSource {
-    func getRootId() throws -> String
+    func getRootId() throws -> NodeIdentifier
 }
 
 final class DatabasePhotosFolderIdDataSource: PhotosFolderIdDataSource {
@@ -28,13 +28,8 @@ final class DatabasePhotosFolderIdDataSource: PhotosFolderIdDataSource {
         self.repository = repository
     }
 
-    func getRootId() throws -> String {
-        let root = try repository.get()
-        guard let moc = root.moc else {
-            throw Folder.noMOC()
-        }
-        return moc.performAndWait {
-            root.id
-        }
+    func getRootId() throws -> NodeIdentifier {
+        let root = try repository.getEncryptionInfo()
+        return root.identifier
     }
 }

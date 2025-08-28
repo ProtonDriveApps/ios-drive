@@ -24,11 +24,23 @@ public protocol EncryptionResource {
         addressPassphrase: String,
         addressPrivateKey: String
     ) throws -> String
+    func encryptAndSignWithCompression(
+        _ plainData: Data,
+        encryptionKey: ArmoredKey,
+        signingKey: ArmoredKey,
+        passphrase: String
+    ) throws -> String
     func generateNodeKeys(
         addressPassphrase: String,
         addressPrivateKey: String,
         parentKey: String
     ) throws -> KeyCredentials
+    func updateNodeKeys(
+        passphrase: String,
+        addressPassphrase: String,
+        addressPrivateKey: String,
+        parentKey: String
+    ) throws -> NodeUpdatedCredentials
     func generateNodeHashKey(nodeKey: String, passphrase: String) throws -> String
     func generateContentKeys(
         nodeKey: ArmoredKey,
@@ -53,4 +65,11 @@ public protocol EncryptionResource {
         privateKey: ArmoredKey,
         passphrase: Passphrase
     ) throws -> Data
+    func reencryptKeyPacket(
+        of encryptedMessage: String,
+        oldParentKey: String,
+        oldParentPassphrase: String,
+        newParentKey: String
+    ) throws -> String
+    func getPublicKey(fromPrivateKey privateKey: ArmoredKey) throws -> ArmoredKey
 }

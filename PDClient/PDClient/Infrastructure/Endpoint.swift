@@ -67,6 +67,17 @@ extension EndpointWithRawResponse {
         guard let data = request.httpBody else { return nil }
         return (try? JSONSerialization.jsonObject(with: data, options: .allowFragments)).flatMap { $0 as? [String: Any] }
     }
+    
+    // playing it safe — only GET method respects "Retry-After"
+    // this can be changed for requests with other methods case-by-case
+    public var retryPolicy: ProtonRetryPolicy.RetryMode {
+        switch method {
+        case .get:
+            return .background
+        case .post, .put, .delete:
+            return .userInitiated
+        }
+    }
 }
 
 public struct ErrorResponse: Codable, CustomStringConvertible, Error {

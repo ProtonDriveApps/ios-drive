@@ -17,21 +17,28 @@
 
 import Foundation
 
-public enum SyncItemState: Int, Codable {
-    case inProgress
-    case errored
-    case finished
-    case undefined
-}
+public enum SyncItemState: Int, Codable, CaseIterable {
+    case inProgress       // 0
+    case errored          // 1
+    case finished         // 2
+    case cancelled        // 3
+    case excludedFromSync // 4
+    case undefined        // 5
 
-public extension SyncItemState {
-
-    var logName: String {
+    public var description: String {
         switch self {
-        case .inProgress: "IN PROGRESS"
-        case .errored: "FAILURE"
-        case .finished: "SUCCESS"
-        case .undefined: "UNDEFINED"
+        case .inProgress:
+            "In progress"
+        case .errored:
+            "Failure"
+        case .finished:
+            "Success"
+        case .cancelled:
+            "Cancelled"
+        case .excludedFromSync:
+            "Excluded from sync"
+        case .undefined:
+            "Undefined"
         }
     }
 }

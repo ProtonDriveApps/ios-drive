@@ -23,13 +23,16 @@ import ProtonCoreNetworking
 
 public enum Errors: Error, LocalizedError {
     case noMainShare
+    case nodeIdentifierNotFound
     case nodeNotFound
     case rootNotFound
     case revisionNotFound
     
     case parentNotFound
     case childLimitReached
-    case emptyUrlForFileUpload
+    case urlForUploadIsNil
+    case urlForUploadHasNoSize
+    case urlForUploadFailedCopying
     case noAddressInTower
     case couldNotProduceSyncAnchor
     
@@ -42,17 +45,22 @@ public enum Errors: Error, LocalizedError {
     case conflictIdentified(reason: String)
     case deletionRejected(updatedItem: NSFileProviderItem)
 
+    case invalidFilename(filename: String)
+
     case excludeFromSync
-    
+
     public var errorDescription: String? {
         switch self {
         case .noMainShare: return "No main share"
+        case .nodeIdentifierNotFound: return "Item identifier not found"
         case .nodeNotFound: return "Item not found"
         case .rootNotFound: return "Root not found for domain"
         case .revisionNotFound: return "Revision not found for item"
         case .parentNotFound: return "Parent not found for item"
         case .childLimitReached: return "Folder limit reached. Organize items into subfolders to continue syncing."
-        case .emptyUrlForFileUpload: return "Empty URL for file upload"
+        case .urlForUploadIsNil: return "No URL for file upload"
+        case .urlForUploadHasNoSize: return "File under URL for file upload has no size"
+        case .urlForUploadFailedCopying: return "File under URL for file upload cannot be processed"
         case .couldNotProduceSyncAnchor: return "Could not produce sync anchor"
         case .requestedItemForWorkingSet: return "Requesting item for WorkingSet failed"
         case .requestedItemForTrash: return "Requesting item for Trash failed"
@@ -66,89 +74,103 @@ public enum Errors: Error, LocalizedError {
             return NSFileProviderError(.notAuthenticated).localizedDescription
         case .failedToCreateModel:
             return "Failed to create model"
+        case .invalidFilename(let filename):
+            return "Invalid filename: \(filename)"
         case .excludeFromSync:
-            #if os(macOS)
+#if os(macOS)
             return "This item is excluded from sync"
-            #else
+#else
             return NSFileProviderError(.noSuchItem).localizedDescription // "The file doesn’t exist."
-            #endif
+#endif
         }
     }
 }
 
-// swiftlint:disable cyclomatic_complexity
 extension Errors {
     public static func mapToFileProviderError(_ error: Error?) -> Error? {
-
-        guard let error else { return nil }
-
-        #if os(iOS)
-        Log.fireWarning(error: error as NSError)
-        #endif
-        Log.error(error, domain: .fileProvider)
-
-        switch error {
         
+        guard let error else { return nil }
+        
+#if os(iOS)
+        Log.fireWarning(error: error as NSError)
+#endif
+        Log.error(error: error, domain: .fileProvider, sendToSentryIfPossible: false)
+        
+        switch error {
+            
         case let fileProviderError as NSFileProviderError: return fileProviderError
         case let cocoaError as CocoaError where cocoaError.code == .userCancelled: return cocoaError
-        
+            
         case Errors.rootNotFound, Errors.noMainShare:
-            return NSFileProviderError(.syncAnchorExpired)
-        case Errors.parentNotFound: 
+            return NSFileProviderError.create(.syncAnchorExpired, from: error)
+        case Errors.childLimitReached:
+            return NSFileProviderError.create(.serverUnreachable, from: error)
+        case Errors.parentNotFound,
+            Errors.nodeIdentifierNotFound,
+            Errors.nodeNotFound,
+            Errors.requestedItemForWorkingSet,
+            Errors.requestedItemForTrash:
+            return NSFileProviderError.create(.noSuchItem, from: error)
+        case Errors.noAddressInTower:
+            #if os(macOS)
+            return NSFileProviderError.create(.notAuthenticated, from: error)
+            #else
+            return CrossProcessErrorExchange.notAuthenticatedError
+            #endif
+        case Errors.urlForUploadIsNil, Errors.urlForUploadHasNoSize, Errors.urlForUploadFailedCopying:
+#if os(macOS)
+            return NSFileProviderError.create(.cannotSynchronize, from: error)
+#else
             return NSFileProviderError(.noSuchItem)
-        case Errors.childLimitReached: 
-            return NSFileProviderError(.serverUnreachable)
-        case Errors.nodeNotFound: 
-            return NSFileProviderError(.noSuchItem)
-        case Errors.requestedItemForWorkingSet: 
-            return NSFileProviderError(.noSuchItem)
-        case Errors.requestedItemForTrash: 
-            return NSFileProviderError(.noSuchItem)
-        case Errors.noAddressInTower: 
-            return NSFileProviderError(.notAuthenticated)
-        case Errors.emptyUrlForFileUpload: 
-            return NSFileProviderError(.noSuchItem)
-        case Errors.failedToCreateModel: 
-            return NSFileProviderError(.pageExpired)
-        case Errors.conflictIdentified: 
-            return NSFileProviderError(.serverUnreachable)
+#endif
+        case Errors.failedToCreateModel:
+            return NSFileProviderError.create(.pageExpired, from: error)
+        case Errors.conflictIdentified:
+            return NSFileProviderError.create(.serverUnreachable, from: error)
         case Errors.deletionRejected(updatedItem: let updatedItem):
             return NSFileProviderError(_nsError: NSError.fileProviderErrorForRejectedDeletion(of: updatedItem))
         case Errors.excludeFromSync:
-            #if os(macOS)
+#if os(macOS)
             if #available(macOS 13, *) {
-                return NSFileProviderError(.excludedFromSync)
+                return NSFileProviderError.create(.excludedFromSync, from: error)
             } else {
-                return NSFileProviderError(.cannotSynchronize)
+                return NSFileProviderError.create(.cannotSynchronize, from: error)
             }
-            #else
+#else
             return NSFileProviderError(.noSuchItem)
-            #endif
+#endif
             
-        case let responseError as ResponseError where responseError.responseCode == 200701:
-            #if os(macOS)
-            return NSFileProviderError(.excludedFromSync)
-            #else
-            if #available(iOS 16.0, *) {
-                return NSFileProviderError(.excludedFromSync)
-            } else {
-                return NSFileProviderError(.noSuchItem)
-            }
-            #endif
+        case let responseError as ResponseError
+            where responseError.responseCode == APIErrorCodes.protonDocumentCannotBeCreatedFromMacOSAppErrorCode.rawValue:
+            return NSFileProviderError.create(.excludedFromSync, from: error)
             
         case is ResponseError:
-            return NSFileProviderError(.serverUnreachable)
+            return NSFileProviderError.create(.serverUnreachable, from: error)
             
         case is InvalidLinkIdError:
-            return NSFileProviderError(.serverUnreachable)
+            return NSFileProviderError.create(.serverUnreachable, from: error)
             
         default:
-            #if os(macOS)
-            return NSFileProviderError(.cannotSynchronize)
-            #else
+#if os(macOS)
+            return NSFileProviderError.create(.cannotSynchronize, from: error)
+#else
             return NSFileProviderError(.noSuchItem)
-            #endif
+#endif
         }
     }
 }
-// swiftlint:enable cyclomatic_complexity
+
+public extension NSFileProviderError {
+    static func create(_ status: NSFileProviderError.Code, from error: Swift.Error?) -> Self {
+        guard let error else {
+            return NSFileProviderError(status)
+        }
+        return NSFileProviderError(
+            status,
+            userInfo: [
+                NSDebugDescriptionErrorKey: "FP error code: \(status). Original error: \(error.localizedDescription)",
+                NSUnderlyingErrorKey: error
+            ]
+        )
+    }
+}

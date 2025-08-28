@@ -24,12 +24,16 @@ class DownloadBlockOperation: DownloadBinaryOperation {
     let completion: Completion
     private let endpointFactory: EndpointFactory
     private(set) var progress: Progress!
+    private var timeoutHandler: (() -> Void)?
     
-    init(downloadTaskURL: URL, endpointFactory: EndpointFactory, completionHandler: @escaping Completion) {
+    init(
+        downloadTaskURL: URL,
+        endpointFactory: EndpointFactory,
+        completionHandler: @escaping Completion
+    ) {
         self.endpointFactory = endpointFactory
         self.completion = completionHandler
         self.progress = Progress(totalUnitCount: 1)
-
         super.init(url: downloadTaskURL)
 
         self.completionBlock = { [weak self] in
@@ -39,6 +43,7 @@ class DownloadBlockOperation: DownloadBinaryOperation {
             if !Constants.downloaderUsesSharedURLSession {
                 self.session?.invalidateAndCancel()
             }
+            self.session = nil
         }
     }
     

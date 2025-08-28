@@ -41,6 +41,9 @@ final class ConcretePhotosAvailableSpaceResource: PhotosAvailableSpaceResource {
 
     init(observer: FetchedResultsControllerObserver<Photo>) {
         self.observer = observer
+        queue.async { [weak self] in
+            self?.observer.start()
+        }
     }
 
     func execute() {

@@ -17,6 +17,7 @@
 
 import PDClient
 import PDCore
+import PDCoreIOS
 import UIKit
 import Combine
 import ProtonCoreFeatureFlags
@@ -47,7 +48,7 @@ public extension DriveDependencyContainer {
             .map { _ in Void() }
             .eraseToAnyPublisher()
 
-        let bannerPublisher = NotificationCenter.default.publisher(for: .banner, object: nil)
+        let bannerPublisher = DriveNotification.banner.publisher
             .compactMap { notification -> BannerModel? in
             guard let bannerModel = notification.object as? BannerModel else { return nil }
             return bannerModel
@@ -87,7 +88,8 @@ public extension DriveDependencyContainer {
     }
 
     private func makeLaunchConfigurator() -> LaunchConfigurator {
-        let sentry = SentryLaunchConfigurator(sentryClient: SentryClient.shared, localSettings: localSettings) { [weak self] in self?.client }
+        localSettings.userId = sessionVault.clientCredential()?.userID
+        let sentry = SentryLaunchConfigurator(sentryClient: SentryClient.shared, localSettings: localSettings)
         let keyChain = KeychainLaunchConfigurator(suite: Constants.appGroup)
 
         return iOSDriveLaunchConfigurator([sentry, keyChain])

@@ -33,18 +33,36 @@ public struct GradientButton: View {
     }
 }
 
-private struct GradientButtonStyle: ButtonStyle {
+public struct GradientButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) var isEnabled
+    private var colors: [Color]
+    private var horizontalPadding: CGFloat
+    private var verticalPadding: CGFloat
 
-    func makeBody(configuration: Self.Configuration) -> some View {
+    public init(
+        colors: [Color]? = nil,
+        horizontalPadding: CGFloat = 16,
+        verticalPadding: CGFloat = 8
+    ) {
+        let defaultColors: [Color] = [
+            Color(red: 110.0 / 255.0, green: 75.0 / 255.0, blue: 1),
+            Color(red: 253.0 / 255.0, green: 75.0 / 255.0, blue: 175.0 / 255.0),
+            Color(red: 34.0 / 255.0, green: 216.0 / 255.0, blue: 1),
+        ]
+        self.colors = colors ?? defaultColors
+        self.horizontalPadding = horizontalPadding
+        self.verticalPadding = verticalPadding
+    }
+
+    public func makeBody(configuration: Self.Configuration) -> some View {
         HStack {
             configuration.label
                 .font(.body)
                 .foregroundColor(Color.SidebarTextNorm)
         }
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.horizontal, horizontalPadding)
+        .padding(.vertical, verticalPadding)
         .overlay(stroke)
     }
 
@@ -55,13 +73,5 @@ private struct GradientButtonStyle: ButtonStyle {
 
     private var linearGradient: some ShapeStyle {
         LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing)
-    }
-
-    private var colors: [Color] {
-        [
-            Color(red: 110.0 / 255.0, green: 75.0 / 255.0, blue: 1),
-            Color(red: 253.0 / 255.0, green: 75.0 / 255.0, blue: 175.0 / 255.0),
-            Color(red: 34.0 / 255.0, green: 216.0 / 255.0, blue: 1),
-        ]
     }
 }

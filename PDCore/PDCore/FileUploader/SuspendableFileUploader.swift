@@ -20,7 +20,6 @@ import Combine
 import CoreData
 
 public final class SuspendableFileUploader: FileUploader, NetworkConstrained {
-
     private var suspCancellables = Set<AnyCancellable>()
 
     var networkMonitor: NetworkStateResource = MonitoringNetworkStateResource()
@@ -81,7 +80,7 @@ public final class SuspendableFileUploader: FileUploader, NetworkConstrained {
             let clientUID = file.clientUID
 
             let shareID = file.shareId
-            guard let parentID = file.parentLink?.id else {
+            guard let parentID = file.parentNode?.id else {
                 throw file.invalidState("The file doesn't have a parentID")
             }
 
@@ -93,14 +92,29 @@ public final class SuspendableFileUploader: FileUploader, NetworkConstrained {
 
                     let error = self.mapDefaultError(error)
                     NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
-                    Log.error("Upload error: \(error.localizedDescription)", domain: .uploader)
+                    Log.error("SuspendableFileUploader uploadfile error", error: error, domain: .uploader)
                     self.handleUploadError(error, for: uploadID)
                     completion(.failure(error))
+                    
+                    if uploadFailureShouldNotBeReported(error: error) {
+                        return
+                    }
+                    
+                    uploadSuccessRateMonitor.incrementFailure(
+                        identifier: file.identifier,
+                        shareType: .main,
+                        initiator: .background
+                    )
                 }
 
                 switch result {
                 case .success(let file):
                     completion(.success(file))
+                    uploadSuccessRateMonitor.incrementSuccess(
+                        identifier: file.identifier,
+                        shareType: .main,
+                        initiator: .background
+                    )
 
                 // File or draft already exists
                 case .failure(let error as ResponseError):
@@ -137,6 +151,25 @@ public final class SuspendableFileUploader: FileUploader, NetworkConstrained {
             progress.addChild(operationProgress, pending: progress.totalUnitsOfWork)
             return operationProgress
         }
+    }
+    
+    private func uploadFailureShouldNotBeReported(error: Error) -> Bool {
+        if error.isNetworkIssueError{
+            return true
+        }
+        
+        if error.responseCode == nil {
+            return false
+        }
+        
+        if let responseCode = ResponseCode(rawValue: error.responseCode!) {
+            switch responseCode {
+            case .tooManyChildren, .insufficientQuota, .insufficientSpace:
+                return true
+            }
+        } 
+        
+        return false
     }
 
     private func handleUploadError(_ error: Error, for uploadID: UUID) {

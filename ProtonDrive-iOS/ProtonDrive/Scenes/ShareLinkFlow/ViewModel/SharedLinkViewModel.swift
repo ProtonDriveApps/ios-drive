@@ -18,6 +18,7 @@
 import Combine
 import Foundation
 import PDLocalization
+import PDCoreIOS
 
 class SharedLinkViewModel: ObservableObject {
     private let link: SharedLink

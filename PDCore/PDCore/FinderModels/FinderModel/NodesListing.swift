@@ -23,6 +23,7 @@ public protocol NodesListing: AnyObject {
     var childrenObserver: FetchedObjectsObserver<Node> { get }
     var sorting: SortPreference { get }
     func reportDecryptionError(for node: Node, underlyingError: Error)
+    func reportEnumeratedItem(for node: Node)
 }
 
 extension NodesListing {
@@ -53,18 +54,28 @@ extension NodesListing {
     
     // MARK: Node Error Reporting
 
-    #if os(macOS)
-    private var syncReporter: SyncReporting? {
-        guard let storage = tower.syncStorage else {
-            return nil
-        }
-        return SyncReportingController(storage: storage, suite: .group(named: Constants.appGroup), appTarget: .main)
+    /// Note: call from within NSManagedObjectContext!
+    public func reportEnumeratedItem(for node: Node) {
+        #if os(macOS)
+        let reportableSyncItem = ReportableSyncItem(
+            id: node.identifier.rawValue,
+            modificationTime: Date(),
+            filename: node.decryptedName,
+            location: nil,
+            mimeType: node.mimeType,
+            fileSize: node.size,
+            operation: .enumerateItems,
+            state: .finished,
+            progress: 100,
+            errorDescription: nil
+        )
+        tower.syncStorage?.upsert(reportableSyncItem)
+        #endif
     }
-    #endif
 
     public func reportDecryptionError(for node: Node, underlyingError: Error) {
         #if os(macOS)
-        let reportableError = ReportableSyncItem(
+        let reportableSyncItem = ReportableSyncItem(
             id: node.identifier.rawValue,
             modificationTime: Date(),
             filename: "Error: Not available",
@@ -73,9 +84,10 @@ extension NodesListing {
             fileSize: node.size,
             operation: .enumerateItems,
             state: .errored,
-            description: "Access to file attribute (e.g., file name) not available. Please retry or contact support."
+            progress: 0,
+            errorDescription: "Access to file attribute (e.g., file name) not available. Please retry or contact support."
         )
-        try? syncReporter?.report(item: reportableError)
+        tower.syncStorage?.upsert(reportableSyncItem)
         #endif
     }
 }

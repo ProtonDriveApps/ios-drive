@@ -69,8 +69,8 @@ public final class SharingManager: SharedLinkRepository {
         try await provider.getPublicLink(for: node, permissions: permissions)
     }
 
-    public func updatePublicLink(_ identifier: PublicLinkIdentifier, node: NodeIdentifier, with details: UpdateShareURLDetails) async throws {
-        try await updater.updatePublicLink(identifier, node: node, with: details)
+    public func updatePublicLink(_ identifier: PublicLinkIdentifier, with details: UpdateShareURLDetails) async throws {
+        try await updater.updatePublicLink(identifier, with: details)
     }
 
     public func deletePublicLink(_ identifier: PublicLinkIdentifier) async throws {

@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import CoreData
+import ProtonCoreUtilities
 
 struct InvalidMetadataRelationshipError: LocalizedError {
     let linkID: String
@@ -31,12 +32,32 @@ struct InvalidMetadataRelationshipError: LocalizedError {
 }
 
 public extension NSManagedObjectContext {
+#if DEBUG
+    /// Counts how many times the context is saved, to enable detecting when it happens too much.
+    static var saveCounter = Atomic<Int>(0)
+#endif
 
     /// Only performs a save if there are changes to commit.
     /// - Returns: `true` if a save was needed. Otherwise, `false`.
     func saveIfNeeded() throws {
         guard hasChanges else { return }
+
+#if DEBUG
+        Self.saveCounter.mutate { $0 += 1 }
+        Log.trace("Will save... \(Self.saveCounter.value.description)")
+#else
+        Log.trace("Will save...")
+#endif
+
+        #if os(iOS)
+        guard !(persistentStoreCoordinator?.persistentStores.isEmpty ?? true) else {
+            Log.error("Executing save on moc which doesn't have a persistent store", error: nil, domain: .storage)
+            return
+        }
+        #endif
+
         try save()
+        Log.trace("Did save")
     }
 
     /// Attempts to save the changes in the NSManagedObjectContext

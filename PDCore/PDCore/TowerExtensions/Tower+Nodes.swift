@@ -73,14 +73,14 @@ extension Tower {
                     return handler(.failure(NSError(domain: "Failed to find Node", code: 0, userInfo: nil)))
                 }
 
-                let isProtonDocument = managedObjectContext.performAndWait {
-                    (node as? File)?.isProtonDocument ?? false
+                let isProtonFile = managedObjectContext.performAndWait {
+                    (node as? File)?.isProtonFile ?? false
                 }
 
                 let newMime: String?
                 if node is Folder {
                     newMime = Folder.mimeType
-                } else if newName.fileExtension().isEmpty || isProtonDocument {
+                } else if newName.fileExtension.isEmpty || isProtonFile {
                     // Preserve the previous MIME type in case:
                     // 1. The user removed it when renaming; or
                     // 2. It's a Proton Document, which doesn't have an extension on other platforms
@@ -119,29 +119,29 @@ extension Tower {
             let nodes = nodes.map { $0.in(moc: self.storage.backgroundContext) }
             nodes.forEach {
                 $0.isMarkedOfflineAvailable = mark
-                Log.info("Will mark node:\($0.identifier) as offline available", domain: .offlineAvailable)
+                Log.info("Will toggle offline available mark to: \(mark). Node:\($0.identifier)", domain: .offlineAvailable)
             }
 
             do {
                 try self.storage.backgroundContext.saveOrRollback()
                 handler(.success(nodes))
             } catch {
-                Log.error("Failed marking nodes as offline available \(error.localizedDescription)", domain: .offlineAvailable)
+                Log.error("Failed marking nodes as offline available", error: error, domain: .offlineAvailable)
                 handler(.failure(error))
             }
         }
     }
-    
+
     public func move(nodeID nodeIdentifier: NodeIdentifier, under newParent: Folder, with newName: String? = nil, handler: @escaping (Result<Node, Error>) -> Void) {
         Task {
             do {
                 let moc = self.storage.backgroundContext
                 guard let node = self.storage.fetchNode(id: nodeIdentifier, moc: moc) else {
-                    return  handler(.failure(CloudSlot.Errors.noNodeFound))
+                    return handler(.failure(CloudSlot.Errors.noNodeFound))
                 }
                 // Changed by macOS, this should probably be dealt somewhere else in the file proveider code
                 // This should be the case where the system asks us to move a folder to the same parent (no movement)
-                let currentParentID = moc.performAndWait { node.parentLink?.identifier }
+                let currentParentID = moc.performAndWait { node.parentNode?.identifier }
                 guard newParent.identifier != currentParentID else {
                     return handler(.success(node))
                 }

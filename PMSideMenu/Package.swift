@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "PMSideMenu",
     platforms: [
-        .iOS(.v15)
+        .iOS(.v16)
     ],
     products: [
         .library(name: "PMSideMenu", targets: ["PMSideMenu"]),
@@ -24,7 +24,3 @@ let package = Package(
         ),
     ]
 )
-
-extension Range where Bound == Version {
-    static let suitable = Self(uncheckedBounds: ("0.0.0", "99.0.0"))
-}

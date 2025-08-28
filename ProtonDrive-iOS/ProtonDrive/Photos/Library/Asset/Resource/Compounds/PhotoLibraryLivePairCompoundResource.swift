@@ -17,6 +17,7 @@
 
 import PDCore
 import Photos
+import PDPhotos
 
 struct LivePhotoAssetResourcePair {
     let photo: PHAssetResource
@@ -85,8 +86,8 @@ final class ConcretePhotoLibraryLivePairCompoundResource: PhotoLibraryLivePairCo
     }
 
     private func loadLivePair(identifier: PhotoIdentifier, asset: PHAsset, resources: LivePhotoAssetResourcePair, isOriginal: Bool) async throws -> PhotoAssetCompound {
-        let photoData = PhotoAssetData(identifier: identifier, asset: asset, resource: resources.photo, originalFilename: resources.photoFilename, fileExtension: resources.photoFilename.fileExtension(), isOriginal: isOriginal)
-        let videoData = PhotoAssetData(identifier: identifier, asset: asset, resource: resources.video, originalFilename: resources.videoFilename, fileExtension: resources.videoFilename.fileExtension(), isOriginal: isOriginal)
+        let photoData = PhotoAssetData(identifier: identifier, asset: asset, resource: resources.photo, originalFilename: resources.photoFilename, fileExtension: resources.photoFilename.fileExtension, isOriginal: isOriginal)
+        let videoData = PhotoAssetData(identifier: identifier, asset: asset, resource: resources.video, originalFilename: resources.videoFilename, fileExtension: resources.videoFilename.fileExtension, isOriginal: isOriginal)
         let photoAsset = try await assetResource.executePhoto(with: photoData)
         let videoAsset = try await assetResource.executeVideo(with: videoData)
         return PhotoAssetCompound(primary: photoAsset, secondary: [videoAsset])

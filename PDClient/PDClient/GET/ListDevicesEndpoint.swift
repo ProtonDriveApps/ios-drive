@@ -50,9 +50,9 @@ extension ListDevicesEndpoint {
         public struct Device: Codable {
             public let deviceID: String
             public let volumeID: String
-            public let creationTime: TimeInterval
-            public let modifyTime: TimeInterval?
-            public let lastSyncTime: TimeInterval?
+            public let creationTime: Date
+            public let modifyTime: Date?
+            public let lastSyncTime: Date?
             public let type: Int
             public let syncState: Int
         }

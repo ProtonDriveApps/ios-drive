@@ -17,6 +17,7 @@
 
 import Combine
 import PDCore
+import PDCoreIOS
 import SwiftUI
 import PDUIComponents
 import PDLocalization
@@ -26,6 +27,7 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
     typealias Identifier = NodeIdentifier
     private let localSettings: LocalSettings
     private let volumeIdsController: SharedVolumeIdsController
+    let scrollToTopPublisher: AnyPublisher<TabBarItem, Never>?
 
     // MARK: FinderViewModel
     let model: FolderModel
@@ -56,10 +58,20 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
         return node.isRoot ? Localization.menu_text_my_files : node.decryptedName
     }
 
+    var isRoot: Bool { node?.isRoot ?? false }
+
     @Published var isUpdating = false
 
     var trailingNavBarItems: [NavigationBarButton] {
-        self.listState.isSelecting ? [.cancel] : [.upload]
+        if listState.isSelecting {
+            return [.cancel]
+        } else {
+            var items: [NavigationBarButton] = [.upload]
+            if isRoot, !isPaidUser {
+                items.insert(.subscribe, at: 0)
+            }
+            return items
+        }
     }
 
     var leadingNavBarItems: [NavigationBarButton] {
@@ -79,6 +91,7 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
 
     let supportsLayoutSwitch = true
     let featureFlagsController: FeatureFlagsControllerProtocol
+    let topBanner: String? = nil
 
     @Published var isUploadDisclaimerVisible: Bool = false
 
@@ -130,6 +143,7 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
     @Published var listState: ListState = .active
 
     // MARK: others
+    var isPaidUser = false
 
     init(
         localSettings: LocalSettings,
@@ -138,7 +152,8 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
         nodeStatePolicy: NodeStatePolicy,
         featureFlagsController: FeatureFlagsControllerProtocol,
         isSharedWithMe: Bool = false,
-        volumeIdsController: SharedVolumeIdsController
+        volumeIdsController: SharedVolumeIdsController,
+        scrollToTopPublisher: AnyPublisher<TabBarItem, Never>?
     ) {
         self.localSettings = localSettings
         defer { self.model.loadFromCache() }
@@ -149,6 +164,7 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
         self.featureFlagsController = featureFlagsController
         self.isSharedWithMe = isSharedWithMe
         self.volumeIdsController = volumeIdsController
+        self.scrollToTopPublisher = scrollToTopPublisher
         hasPlusFunctionality = !isSharedWithMe || node.getNodeRole() != .viewer
 
         self.subscribeToSort()
@@ -160,6 +176,16 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
         self.subscribeToUserInfoUpdates()
         setupLockedStateBannerVisibility()
         setupUploadBannerVisibility()
+
+        if let controller = model.userInfoController {
+            controller.userInfo
+                .removeDuplicates()
+                .sink { [weak self] info in
+                    guard let info else { return }
+                    self?.isPaidUser = info.isPaid
+                }
+                .store(in: &cancellables)
+        }
 
         $permanentChildren
             .removeDuplicates()

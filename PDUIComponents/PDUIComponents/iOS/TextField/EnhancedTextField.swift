@@ -49,7 +49,6 @@ public struct EnhancedTextField: UIViewRepresentable {
     }
     
     public func updateUIView(_ uiView: EnhancedUITextField, context: Context) {
-        uiView.text = text
         uiView.onBackspace = onBackspace
     }
     
@@ -99,8 +98,9 @@ extension EnhancedTextFieldCoordinator: UITextFieldDelegate {
         textBinding.wrappedValue = newText
         return true
     }
-    
+
     public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        textField.text = ""
         onSubmit()
         return true
     }
