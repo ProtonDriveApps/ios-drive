@@ -50,7 +50,7 @@ protocol NodeCellConfiguration: AnyObject {
     var iconName: FileAssetName { get }
     var name: String { get }
     var isFavorite: Bool { get }
-    var isAvailableOffline: Bool { get }
+    var availableOfflineFlags: NodeCellAvailableOfflineFlags { get }
     /// Public share link has been enabled
     var isShared: Bool { get }
     // Sharing feature is enabled
@@ -77,11 +77,19 @@ protocol NodeCellConfiguration: AnyObject {
     var selectionModel: CellSelectionModel? { get }
     var id: NodeIdentifier { get }
 
-    var thumbnailViewModel: ThumbnailImageViewModel? { get }
+    var thumbnailViewModel: ThumbnailImageViewModel { get }
     
     var nodeRowActionMenuViewModel: NodeRowActionMenuViewModel? { get }
     var featureFlagsController: FeatureFlagsControllerProtocol { get }
     var defaultSecondLineSubtitle: String { get }
+}
+
+struct NodeCellAvailableOfflineFlags {
+    let isAvailableOffline: Bool
+    let isFolderDownloading: Bool
+    let isMarkedAsAvailableOffline: Bool
+
+    static let notAvailable = NodeCellAvailableOfflineFlags(isAvailableOffline: false, isFolderDownloading: false, isMarkedAsAvailableOffline: false)
 }
 
 extension NodeCellConfiguration {

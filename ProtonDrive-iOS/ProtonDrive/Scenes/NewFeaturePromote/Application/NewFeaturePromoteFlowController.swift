@@ -72,8 +72,8 @@ final class NewFeaturePromoteFlowController: NewFeaturePromoteFlowControllerProt
 
     private func isFeatureFlagEnabled(feature: NewFeature) -> Bool {
         switch feature {
-        case .albums:
-            return featureFlagsController.hasAlbums
+        case .scanDoc:
+            return true
         case .uiTest:
             return Constants.isUITest
         }
@@ -81,9 +81,9 @@ final class NewFeaturePromoteFlowController: NewFeaturePromoteFlowControllerProt
 
     private func getReleaseDate(for feature: NewFeature) -> Date {
         switch feature {
-        case .albums:
-            // Wed May 07 2025 10:00:00 GMT+0000
-            return Date(timeIntervalSince1970: 1746612000)
+        case .scanDoc:
+            // Mon Jan 05 2026 00:00:00 GMT+0000
+            return Date(timeIntervalSince1970: 1767571200)
         case .uiTest:
             return Date()
         }

@@ -20,72 +20,40 @@ import PDClient
 
 enum RemotePhotosVolumeFetchResult {
     case photoVolume(VolumeID)
-    case legacyPhotoShare(VolumeID)
     case noPhotoShare
 }
 
-struct RemotePhotosVolumeFetchInput {
-    let localLegacyShareVolumeId: String?
-}
-
 protocol RemotePhotosVolumeFetchResourceProtocol {
-    func getRemoteState(input: RemotePhotosVolumeFetchInput) async throws -> RemotePhotosVolumeFetchResult
+    func getRemoteState() async throws -> RemotePhotosVolumeFetchResult
 }
 
 final class RemotePhotosVolumeFetchResource: RemotePhotosVolumeFetchResourceProtocol {
-    private let storageManager: StorageManager
-    private let photoShareListing: PhotoShareListing
     private let bootstrapResource: RemotePhotoVolumeBootstrapResourceProtocol
     private let client: Client
-    private let legacyShareFetchResource: LegacyPhotoShareFetchResource
 
     init(
-        storageManager: StorageManager,
-        photoShareListing: PhotoShareListing,
         bootstrapResource: RemotePhotoVolumeBootstrapResourceProtocol,
-        client: Client,
-        legacyShareFetchResource: LegacyPhotoShareFetchResource
+        client: Client
     ) {
-        self.storageManager = storageManager
-        self.photoShareListing = photoShareListing
         self.bootstrapResource = bootstrapResource
         self.client = client
-        self.legacyShareFetchResource = legacyShareFetchResource
     }
 
-    func getRemoteState(input: RemotePhotosVolumeFetchInput) async throws -> RemotePhotosVolumeFetchResult {
+    func getRemoteState() async throws -> RemotePhotosVolumeFetchResult {
         let volumes = try await client.getVolumes()
         if let remoteVolume = volumes.first(where: { $0.type == .photo && $0.state == .active }) {
             Log.info("Photo volume exists on remote, bootstrapping now.", domain: .albums)
             // Photo volume exists in remote, we can store it.
             return try await bootstrap(photoVolume: remoteVolume)
         } else {
-            Log.info("Photo volume doesn't exists on remote, will check legacy photo share.", domain: .albums)
+            Log.info("Photo volume doesn't exists on remote.", domain: .albums)
             // Photo volume doesn't exist. We need to validate if old share exists or not.
-            return try await bootstrapLegacyShareIfPossible(volumes: volumes, input: input)
+            return .noPhotoShare
         }
     }
 
     private func bootstrap(photoVolume: PDClient.Volume) async throws -> RemotePhotosVolumeFetchResult {
         try await bootstrapResource.bootstrap(volume: photoVolume)
         return .photoVolume(photoVolume.volumeID)
-    }
-
-    private func bootstrapLegacyShareIfPossible(volumes: [PDClient.Volume], input: RemotePhotosVolumeFetchInput) async throws -> RemotePhotosVolumeFetchResult {
-        let mainVolume = try volumes.first(where: { $0.type == .main && $0.state == .active }) ?! "Missing main volume"
-        let activePhotoShares = try await photoShareListing.getActivePhotoShares()
-        guard let legacyShareListing = activePhotoShares.first(where: { $0.volumeID == mainVolume.volumeID }) else {
-            Log.info("No legacy photo share on remote.", domain: .albums)
-            return .noPhotoShare
-        }
-
-        if input.localLegacyShareVolumeId == legacyShareListing.volumeID {
-            Log.info("Local photo share equals to remote photo share. Skipping bootstrapping.", domain: .albums)
-            return .legacyPhotoShare(legacyShareListing.volumeID)
-        } else {
-            Log.info("Bootstrapping legacy photo share.", domain: .albums)
-            let volumeId = try await legacyShareFetchResource.fetchRemoteShare(with: legacyShareListing)
-            return .legacyPhotoShare(volumeId)
-        }
     }
 }

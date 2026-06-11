@@ -34,3 +34,20 @@ public enum DriveObservabilityInitiator: String, Encodable, Equatable {
     case background
     case explicit
 }
+
+public enum DriveObservabilityPipeline: String, Encodable, Equatable {
+    case `default`
+    case legacy
+}
+
+enum DriveSDKObservabilityLabelKey: String {
+    case volumeType
+    case status
+    case type
+    case userPlan
+    case retryHelped
+}
+
+enum DriveSDKObservabilityLabelValue: String {
+    case unknown
+}

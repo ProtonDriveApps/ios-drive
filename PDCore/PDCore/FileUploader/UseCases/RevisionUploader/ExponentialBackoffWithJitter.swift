@@ -22,7 +22,10 @@ public final class ExponentialBackoffWithJitter {
     public static func getDelay(attempt n: Int) -> TimeInterval {
         let maxDelay = 600000 // 10 minutes in milliseconds
         if n == 0 { return 0 } // No delay for the first attempt
-        let delay = Int(pow(2.0, Double(n - 1))) * 1000
+        // Clamp the exponent to avoid overflow when converting to Int
+        // 2^10 * 1000 = 1​,024​,000ms which is over maxDelay already.
+        let clampedExponent = min(n - 1, 10)
+        let delay = Int(pow(2.0, Double(clampedExponent))) * 1000
         let jitter = Int.random(in: 0...1000)
         return TimeInterval(min(delay + jitter, maxDelay)) / 1000
     }

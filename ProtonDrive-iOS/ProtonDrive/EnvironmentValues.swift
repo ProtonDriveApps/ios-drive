@@ -58,7 +58,7 @@ extension EnvironmentValues {
 
 @available(*, deprecated, message: "Refactor this out: used only in AppDelegate.applicationWillTerminate")
 private struct StorageKey: EnvironmentKey {
-    static var defaultValue = StorageManager(suite: Constants.appGroup, sessionVault: Environment(\.initialServices.sessionVault).wrappedValue)
+    static var defaultValue = StorageManager(suite: Constants.appGroup)
 }
 
 // MARK: - AcknowledgedNotEnoughStorageKey

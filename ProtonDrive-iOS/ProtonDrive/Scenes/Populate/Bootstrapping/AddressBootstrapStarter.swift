@@ -21,22 +21,54 @@ import PDCore
 class AddressBootstrapStarter: AppBootstrapper {
     let localAddressProvider: SessionVault
     let remoteAddressProvider: AddressProvider
+    let connectionStateResource: ConnectionStateResource
 
-    init(localAddressProvider: SessionVault, remoteAddressProvider: AddressProvider) {
+    init(
+        localAddressProvider: SessionVault,
+        remoteAddressProvider: AddressProvider,
+        connectionStateResource: ConnectionStateResource
+    ) {
         self.localAddressProvider = localAddressProvider
         self.remoteAddressProvider = remoteAddressProvider
+        self.connectionStateResource = connectionStateResource
     }
 
     func bootstrap() async throws {
-        guard localAddressProvider.addresses == nil else {
-            return
+        if let addresses = localAddressProvider.addresses, !addresses.isEmpty {
+            let isSuccess = try validateAddresses(addresses: addresses)
+            if !isSuccess {
+                try await fetchRemoteAddress()
+            }
+        } else {
+            try await fetchRemoteAddress()
         }
+    }
 
+    private func fetchRemoteAddress() async throws {
+        guard connectionStateResource.currentState.isReachable else {
+            throw NetworkStateError.deviceIsOffline
+        }
+        guard localAddressProvider.userInfo != nil else {
+            throw LoggingOutError("The session is invalid.")
+        }
+        Log.debug("Fetching remote addresses...", domain: .applicationBootstrap)
+        let addresses = try await remoteAddressProvider.fetchAddresses()
+        localAddressProvider.storeAddresses(addresses)
+    }
+
+    /// - Returns: Validate success
+    private func validateAddresses(addresses: [Address]) throws -> Bool {
         guard localAddressProvider.userInfo != nil else {
             throw LoggingOutError("The session is invalid.")
         }
 
-        let addresses = try await remoteAddressProvider.fetchAddresses()
-        localAddressProvider.storeAddresses(addresses)
+        for address in addresses {
+            let pairs = address.activeKeys.compactMap(KeyPair.init)
+            if pairs.isEmpty {
+                Log.warning("KeyPair initialized failed", domain: .applicationBootstrap)
+                return false
+            }
+        }
+        return true
     }
 }

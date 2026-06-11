@@ -17,6 +17,7 @@
 
 import SwiftUI
 import PDCore
+import PDCoreIOS
 import ProtonCoreUIFoundations
 import PDUIComponents
 import PDLocalization
@@ -42,6 +43,12 @@ struct MenuView: View {
                 storageSection
 
                 appVersion
+
+                #if HAS_QA_FEATURES
+                if !vm.sdkFlags.isEmpty {
+                    makeFlagsSection(from: vm.sdkFlags)
+                }
+                #endif
             }
             .padding()
         }
@@ -57,7 +64,7 @@ struct MenuView: View {
 
     private var filesSection: some View {
         VStack(alignment: .leading) {
-            MenuCell(item: .myFiles)
+            MenuCell(item: .home)
                 .background(ColorProvider.SidebarBackground)
                 .onTapGesture { vm.go(to: .myFiles) }
 
@@ -71,7 +78,7 @@ struct MenuView: View {
                 .background(ColorProvider.SidebarBackground)
                 .onTapGesture { vm.go(to: .trash) }
 
-            ProgressMenuSectionGeneric<OfflineSaver>(progressObserver: vm.downloads)
+            ProgressMenuSectionGeneric(progressObserver: vm.downloads)
                 .background(ColorProvider.SidebarBackground)
                 .onTapGesture { vm.go(to: .offlineAvailable) }
         }
@@ -171,6 +178,9 @@ struct MenuView: View {
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.top, 32)
             .accessibilityIdentifier("MenuView.appVersion")
+            .onMultiTap(requiredTaps: 5, within: 3) {
+                vm.toggleDebugMode()
+            }
     }
 
     private func sectionHeader(title: String) -> some View {
@@ -183,5 +193,47 @@ struct MenuView: View {
                 .foregroundColor(ColorProvider.SidebarTextWeak)
         }
         .frame(height: 32)
+    }
+
+    private func makeFlagsSection(from flags: SDKMenuFlags) -> some View {
+        Text(makeTexts(from: flags))
+            .font(.subheadline)
+            .foregroundColor(ColorProvider.SidebarTextWeak)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.top, 32)
+    }
+
+    private func makeTexts(from flags: SDKMenuFlags) -> String {
+        let usedFlags = makeString(from: flags)
+        let usingText = "Using SDK for:\n\(usedFlags)"
+        let unusedFlags = makeString(from: Set(SDKMenuFlag.allCases).subtracting(flags))
+        let notUsingText = "Not using SDK for:\n\(unusedFlags)"
+        return "\(usingText)\n\n\(notUsingText)"
+    }
+
+    private func makeString(from flags: Set<SDKMenuFlag>) -> String {
+        return flags
+            .map { "- " + makeString(from: $0) }
+            .sorted(by: { $0 < $1 })
+            .joined(separator: "\n")
+    }
+
+    private func makeString(from flag: SDKMenuFlag) -> String {
+        switch flag {
+        case .isUsingSDKMainVolumeUpload:
+            "Main volume upload"
+        case .isUsingSDKMainVolumeThumbnails:
+            "Main volume thumbnails"
+        case .isUsingSDKMainVolumeDownload:
+            "Main volume download"
+        case .isUsingSDKPhotoVolumeUpload:
+            "Photo volume upload"
+        case .isUsingSDKPhotoVolumeDownload:
+            "Photo volume download (stream & album)"
+        case .isUsingSDKPhotoVolumeThumbnails:
+            "Photo volume thumbnails (stream & album)"
+        case .isUsingSDKNodeOperations:
+            "Node operations"
+        }
     }
 }

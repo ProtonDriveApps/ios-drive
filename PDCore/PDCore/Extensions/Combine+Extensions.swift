@@ -65,6 +65,21 @@ public extension Publisher {
             }
         }
     }
+
+    func asyncFilter(
+        _ predicate: @escaping (Output) async -> Bool
+    ) -> AnyPublisher<Output, Failure> {
+        flatMap { value in
+            Future<Output?, Failure> { promise in
+                Task {
+                    let allowed = await predicate(value)
+                    promise(.success(allowed ? value : nil))
+                }
+            }
+        }
+        .compactMap { $0 }
+        .eraseToAnyPublisher()
+    }
 }
 
 public extension Publisher {

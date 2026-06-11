@@ -40,8 +40,7 @@ final class ProtonFileIncomingURLParser: ProtonFileIncomingURLParserProtocol {
             throw ProtonFileOpeningError.invalidIncomingFileExtension
         }
         let nodeId = components[componentsCount - 2]
-        let shareId = components[componentsCount - 3]
-        // VolumeID not defined on this endpoint at the moment
-        return NodeIdentifier(nodeId, shareId, "")
+        let volumeId = components[componentsCount - 3] // The URL is volume based now
+        return NodeIdentifier(nodeId, "", volumeId)
     }
 }

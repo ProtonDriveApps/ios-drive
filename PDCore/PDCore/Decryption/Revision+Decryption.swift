@@ -31,24 +31,144 @@ extension Revision {
         guard let moc = self.moc else {
             return false
         }
-        return moc.performAndWait {
-            guard !self.blocks.isEmpty else {
-                return false
-            }
-            for block in self.blocks where block.localUrl == nil {
-                return false
-            }
-            
-            return true
+        let (counts, temporaryURLs, permanentURLs) = moc.performAndWait {
+            let counts = blocks.count
+            let temporaryURLs = blocks.compactMap(\.temporaryUrl)
+            let permanentURLs = blocks.compactMap(\.permanentUrl)
+            return (counts, temporaryURLs, permanentURLs)
+        }
+        guard counts > 0 else {
+            return false
+        }
+        return temporaryURLs.filter { FileManager.default.fileExists(atPath: $0.path) }.count == counts ||
+            permanentURLs.filter { FileManager.default.fileExists(atPath: $0.path) }.count == counts
+    }
+
+    /// Has valid encrypted blocks or decrypted data
+    public func isAvailableLocally() -> Bool {
+        return validatedDecryptedFilePath() != nil || blocksAreValid()
+    }
+
+    internal func decryptContentSessionKey() throws -> Data {
+        do {
+            return try file.decryptContentKeyPacket()
+        } catch let error where !(error is Decryptor.Errors) {
+            DriveIntegrityErrorMonitor.reportMetadataError(for: file)
+            throw error
         }
     }
-    
+
+    private func removeEncryptedBlocks() {
+        for block in self.blocks {
+            if let localURL = block.localUrl {
+                try? FileManager.default.removeItem(at: localURL)
+            }
+            if let permanentURL = block.permanentUrl {
+                try? FileManager.default.removeItem(at: permanentURL)
+            }
+        }
+    }
+
+    public func restoreAfterInvalidBlocksFound() {
+        removeEncryptedBlocks()
+
+        guard let moc = self.managedObjectContext else {
+            assert(false, "Revision has no moc")
+            return
+        }
+        
+        moc.performAndWait {
+            let oldBlocks = self.blocks
+            self.blocks.removeAll()
+            oldBlocks.forEach(moc.delete)
+            try? moc.saveOrRollback()
+        }
+    }
+
+    internal func getAddressPublicKeysOfRevision() throws -> [PublicKey] {
+        guard let signatureAddress = signatureAddress else {
+            throw Errors.noSignatureAddress
+        }
+#if os(macOS)
+        do {
+            let addressID = try file.getContextShareAddressID()
+            return SessionVault.current.getPublicKeys(email: signatureAddress, addressID: addressID)
+        } catch {
+            return SessionVault.current.getPublicKeys(for: signatureAddress)
+        }
+#else
+        
+        let addressID = try file.getContextShareAddressID()
+        let creatorKeys = SessionVault.current.getPublicKeys(email: signatureAddress, addressID: addressID)
+        return creatorKeys
+#endif
+    }
+
+    private func sortedBlocks() -> [Block] {
+        blocks.sorted(by: { $0.index < $1.index })
+    }
+
+    private func checkManifestSignatureForDownloadedRevisions() throws {
+        guard let armoredManifestSignature = manifestSignature else { throw Errors.noManifestSignature }
+
+        let revisionCreatorAddressKeys = try getAddressPublicKeysOfRevision()
+        let signatureAddressIsEmpty = signatureAddress?.isEmpty ?? true
+        let verificationKeys = signatureAddressIsEmpty ? [file.nodeKey] : revisionCreatorAddressKeys
+
+        let contentHashes: [Data] = getThumbnailHashes() + sortedBlocks().compactMap { $0.sha256 }
+        let localManifest = Data(contentHashes.joined())
+
+        try Decryptor.verifyManifestSignature(localManifest, armoredManifestSignature, verificationKeys: verificationKeys)
+    }
+
+    private func getThumbnailHashes() -> [Data] {
+        let thumbnails = Array(thumbnails).sorted(by: { $0.type.rawValue < $1.type.rawValue })
+        return thumbnails.compactMap(\.sha256)
+    }
+
+    func move(to newBase: Downloader.DownloadLocation) throws {
+        switch newBase {
+        case .offlineAvailable:
+            let permanentPath = try permanentClearURL(shouldCreate: true)
+            let permanentFolderPath = permanentPath.deletingLastPathComponent()
+            if let tempFolderPath = validateTemporaryClearFilePath()?.deletingLastPathComponent() {
+                _ = try FileManager.default.replaceItemAt(permanentFolderPath, withItemAt: tempFolderPath)
+            } else if let fpFolderPath = validateFPClearPath()?.deletingLastPathComponent() {
+                try? FileManager.default.removeItem(at: permanentFolderPath)
+                try FileManager.default.copyItem(at: fpFolderPath, to: permanentFolderPath)
+            }
+        case .temporary:
+            guard let permanentPath = validatePermanentClearFilePath() else { return }
+            let permanentFolderPath = permanentPath.deletingLastPathComponent()
+            
+            if validateFPClearPath() != nil {
+                try FileManager.default.removeItem(at: permanentFolderPath)
+            } else {
+                let tempFolderPath = (try temporaryClearURL(shouldCreate: true)).deletingLastPathComponent()
+                _ = try FileManager.default.replaceItemAt(tempFolderPath, withItemAt: permanentFolderPath)
+            }
+        case .oblivion:
+            if let permanentFolderPath = validatePermanentClearFilePath()?.deletingLastPathComponent() {
+                try FileManager.default.removeItem(at: permanentFolderPath)
+            }
+            if let tempFolderPath = validateTemporaryClearFilePath()?.deletingLastPathComponent() {
+                try FileManager.default.removeItem(at: tempFolderPath)
+            }
+            if let fpFolderPath = validateFPClearPath()?.deletingLastPathComponent() {
+                try FileManager.default.removeItem(at: fpFolderPath)
+            }
+        }
+    }
+}
+
+// MARK: - Decrypt file
+extension Revision {
     // when we do not care of cancelling
     public func decryptFile() throws -> URL {
         var isCancelled = false
         return try self.decryptFile(isCancelled: &isCancelled)
     }
-    
+
     // when we may want to cancel
     public func decryptFile(isCancelled: inout Bool) throws -> URL {
         // For GA we just silently let the decryption pass
@@ -67,8 +187,7 @@ extension Revision {
             }
         } else {
             do {
-                let clearUrl = try clearURL()
-                return try decryptFileInMemory(toURL: clearUrl, isCancelled: &isCancelled)
+                return try decryptFileInMemory(isCancelled: &isCancelled)
             } catch {
                 Log.error(error: DecryptionError(error, "Revision", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption)
                 throw error
@@ -76,15 +195,188 @@ extension Revision {
         }
     }
 
-    public func decryptFileToURL(_ url: URL, isCancelled: inout Bool) throws -> URL {
-        do {
-            return try decryptFileInMemory(toURL: url, isCancelled: &isCancelled)
-        } catch {
-            Log.error(error: DecryptionError(error, "Revision", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption)
-            throw error
+    /// If decrypted data does not exist, decrypt to the given clearUrl;
+    /// otherwise, return the path to the existing decrypted data.
+    func decryptFileInMemory(isCancelled: inout Bool) throws -> URL {
+        #if os(iOS)
+        if let validatedPath = validatedDecryptedFilePath() {
+            return validatedPath
         }
+        #endif
+        let tempClearURL = try temporaryClearURL(shouldCreate: true)
+        let sessionKey = try decryptContentSessionKey()
+
+        let blocks = self.blocks.sorted(by: { $0.index < $1.index })
+        guard !blocks.isEmpty, !isCancelled else {
+            throw Errors.noBlocks
+        }
+
+        if FileManager.default.fileExists(atPath: tempClearURL.path) {
+            try? FileManager.default.removeItem(at: tempClearURL)
+        }
+
+        try blocks.first?.decrypt(with: sessionKey).write(to: tempClearURL)
+        let fileHandle = try FileHandle(forWritingTo: tempClearURL)
+        defer { try? fileHandle.close() }
+
+        try fileHandle.seekToEnd()
+
+        for block in blocks.dropFirst() {
+            guard !isCancelled else { break }
+            try autoreleasepool {
+                let blockData = try block.decrypt(with: sessionKey)
+                try fileHandle.write(contentsOf: blockData)
+            }
+        }
+
+        if isCancelled {
+            try? FileManager.default.removeItem(at: tempClearURL)
+            throw Errors.cancelled
+        }
+        removeEncryptedBlocks()
+        try moc?.saveIfNeeded()
+        return tempClearURL
     }
-    
+
+    private func decryptFileInStream(isCancelled: inout Bool) throws -> URL {
+        #if os(iOS)
+        if let validatedPath = validatedDecryptedFilePath() {
+            return validatedPath
+        }
+        #endif
+
+        let blocks = self.blocks.sorted(by: { $0.index < $1.index })
+        guard !blocks.isEmpty, !isCancelled else {
+            throw Errors.noBlocks
+        }
+
+        let clearFileUrl = try temporaryClearURL(shouldCreate: true)
+        var clearBlockUrls: [URL] = []
+        try autoreleasepool {
+            for (index, block) in blocks.enumerated() {
+                guard !isCancelled else { break }
+                let clearBlockUrl = clearFileUrl.appendingPathExtension("\(index)")
+                try block.decrypt(to: clearBlockUrl)
+                clearBlockUrls.append(clearBlockUrl)
+            }
+            Crypto.freeGolangMem()
+        }
+
+        try FileManager.default.merge(files: clearBlockUrls, to: clearFileUrl, chunkSize: Constants.maxBlockChunkSize)
+
+        if isCancelled {
+            try? FileManager.default.removeItem(at: clearFileUrl)
+            throw Errors.cancelled
+        }
+        removeEncryptedBlocks()
+        try moc?.saveIfNeeded()
+        return clearFileUrl
+    }
+}
+
+// MARK: - Decrypt path
+extension Revision {
+    /// Construct path to temporary directory for normal file storage
+    /// - Parameter shouldCreate: iOS only. Should create the folder if it doesn't exist
+    public func temporaryClearURL(shouldCreate: Bool) throws -> URL {
+        guard let moc else { throw Revision.noMOC() }
+#if os(iOS)
+        let nodeIdentifier = moc.performAndWait {
+            return file.identifier
+        }
+        return DecryptedFileManager.temporaryClearURL(identifier: nodeIdentifier, shouldCreate: shouldCreate)
+#else
+        let (filename, nodeIdentifier) = try moc.performAndWait {
+            let filename = try file.decryptName()
+            let nodeIdentifier = NodeIdentifier(identifier.fileID, identifier.shareID, identifier.volumeID)
+            return (filename, nodeIdentifier)
+        }
+        return PDFileManager.prepareTempURLForFile(
+            identifier: nodeIdentifier,
+            named: filename,
+            shouldCreate: shouldCreate
+        )
+#endif
+    }
+
+    /// Construct path to permanent directory, for file available offline
+    /// - Parameter shouldCreate: iOS only. Should create the folder if it doesn't exist
+    public func permanentClearURL(shouldCreate: Bool) throws -> URL {
+        guard let moc else { throw Revision.noMOC() }
+        #if os(iOS)
+        let nodeIdentifier = moc.performAndWait {
+            return file.identifier
+        }
+        return DecryptedFileManager.permanentClearURL(identifier: nodeIdentifier, shouldCreate: shouldCreate)
+        #else
+        let (filename, nodeIdentifier) = try moc.performAndWait {
+            let filename = try file.decryptName()
+            let nodeIdentifier = NodeIdentifier(identifier.fileID, identifier.shareID, identifier.volumeID)
+            return (filename, nodeIdentifier)
+        }
+        return PDFileManager.preparePermanentURLForFile(
+            identifier: nodeIdentifier,
+            named: filename,
+            shouldCreate: shouldCreate
+        )
+        #endif
+    }
+
+    /// Path points to existing decrypted data, and may refer to either a temporary or permanent location
+    public func validatedDecryptedFilePath() -> URL? {
+        #if os(macOS)
+            validateTemporaryClearFilePath() ?? validatePermanentClearFilePath() ?? validateFPClearPath()
+        #else
+            guard let moc else { return nil }
+            let identifier = moc.performAndWait { file.volumeBasedIdentifierWithinManagedObjectContext }
+            return validatedDecryptedFilePath(identifier: identifier)
+        #endif
+    }
+
+    /// Path points to existing decrypted data, and may refer to either a temporary or permanent location
+    public func validatedDecryptedFilePath(identifier: NodeIdentifier) -> URL? {
+        #if os(macOS)
+            validateTemporaryClearFilePath() ?? validatePermanentClearFilePath() ?? validateFPClearPath()
+        #else
+            return DecryptedFileManager.validatedDecryptedFilePath(identifier: identifier)
+        #endif
+    }
+
+    /// Path points to existing temporary decrypted data
+    /// - Returns: Returns the path if the file already exists
+    public func validateTemporaryClearFilePath() -> URL? {
+        if let tempPath = try? temporaryClearURL(shouldCreate: false),
+           FileManager.default.fileExists(atPath: tempPath.path(percentEncoded: false)) {
+            return tempPath
+        }
+        return nil
+    }
+
+    /// Path points to existing permanent decrypted data
+    /// - Returns: Returns the path if the file already exists
+    public func validatePermanentClearFilePath() -> URL? {
+        if let permanentPath = try? permanentClearURL(shouldCreate: false),
+           FileManager.default.fileExists(atPath: permanentPath.path(percentEncoded: false)) {
+            return permanentPath
+        }
+        return nil
+    }
+
+    func validateFPClearPath() -> URL? {
+        #if os(macOS)
+        return nil
+        #else
+        guard let moc else { return nil }
+        let identifier = moc.performAndWait {
+            file.identifier
+        }
+        return DecryptedFileManager.validateFileProviderClearPath(identifier: identifier)
+        #endif
+    }
+}
+
+// MARK: - Decrypt attributes
+extension Revision {
     public func decryptedExtendedAttributes() throws -> ExtendedAttributes {
         #if os(macOS)
         try PDCoreDecryptExtendedAttributes(self)
@@ -151,138 +443,5 @@ extension Revision {
             Log.error(error: DecryptionError(error, "ExtendedAttributes", description: "RevisionID: \(id) \nLinkID: \(file.id) \nVolumeID: \(file.volumeID)"), domain: .encryption)
             throw error
         }
-    }
-
-    internal func decryptContentSessionKey() throws -> Data {
-        do {
-            return try file.decryptContentKeyPacket()
-        } catch let error where !(error is Decryptor.Errors) {
-            DriveIntegrityErrorMonitor.reportMetadataError(for: file)
-            throw error
-        }
-    }
-    
-    func decryptFileInMemory(toURL clearUrl: URL, isCancelled: inout Bool) throws -> URL {
-        let sessionKey = try decryptContentSessionKey()
-
-        let blocks = self.blocks.sorted(by: { $0.index < $1.index })
-        guard !blocks.isEmpty, !isCancelled else {
-            throw Errors.noBlocks
-        }
-
-        if FileManager.default.fileExists(atPath: clearUrl.path) {
-            try? FileManager.default.removeItem(at: clearUrl)
-        }
-
-        try blocks.first?.decrypt(with: sessionKey).write(to: clearUrl)
-        let fileHandle = try FileHandle(forWritingTo: clearUrl)
-        defer { try? fileHandle.close() }
-        
-        try fileHandle.seekToEnd()
-        
-        for block in blocks.dropFirst() {
-            guard !isCancelled else { break }
-            try autoreleasepool {
-                let blockData = try block.decrypt(with: sessionKey)
-                try fileHandle.write(contentsOf: blockData)
-            }
-        }
-        
-        if isCancelled {
-            try? FileManager.default.removeItem(at: clearUrl)
-            throw Errors.cancelled
-        }
-        
-        return clearUrl
-    }
-    
-    private func decryptFileInStream(isCancelled: inout Bool) throws -> URL {
-        let blocks = self.blocks.sorted(by: { $0.index < $1.index })
-        guard !blocks.isEmpty, !isCancelled else {
-            throw Errors.noBlocks
-        }
-
-        let clearFileUrl = try clearURL()
-        var clearBlockUrls: [URL] = []
-        try autoreleasepool {
-            for (index, block) in blocks.enumerated() {
-                guard !isCancelled else { break }
-                let clearBlockUrl = clearFileUrl.appendingPathExtension("\(index)")
-                try block.decrypt(to: clearBlockUrl)
-                clearBlockUrls.append(clearBlockUrl)
-            }
-            Crypto.freeGolangMem()
-        }
-
-        try FileManager.default.merge(files: clearBlockUrls, to: clearFileUrl, chunkSize: Constants.maxBlockChunkSize)
-        
-        if isCancelled {
-            try? FileManager.default.removeItem(at: clearFileUrl)
-            throw Errors.cancelled
-        }
-        
-        return clearFileUrl
-    }
-
-    public func clearURL() throws -> URL {
-        let filename = try file.decryptName()
-        return PDFileManager.prepareUrlForFile(named: filename)
-    }
-    
-    public func restoreAfterInvalidBlocksFound() {
-        for block in self.blocks where block.localUrl != nil {
-            try? FileManager.default.removeItem(at: block.localUrl!)
-        }
-        
-        guard let moc = self.managedObjectContext else {
-            assert(false, "Revision has no moc")
-            return
-        }
-        
-        moc.performAndWait {
-            let oldBlocks = self.blocks
-            self.blocks.removeAll()
-            oldBlocks.forEach(moc.delete)
-            try? moc.saveOrRollback()
-        }
-    }
-
-    internal func getAddressPublicKeysOfRevision() throws -> [PublicKey] {
-#if os(macOS)
-        guard let signatureAddress = signatureAddress else {
-            throw Errors.noSignatureAddress
-        }
-        return SessionVault.current.getPublicKeys(for: signatureAddress)
-
-#else
-        guard let signatureAddress = signatureAddress else {
-            throw Errors.noSignatureAddress
-        }
-        let addressID = try file.getContextShareAddressID()
-        let creatorKeys = SessionVault.current.getPublicKeys(email: signatureAddress, addressID: addressID)
-        return creatorKeys
-#endif
-    }
-
-    private func sortedBlocks() -> [Block] {
-        blocks.sorted(by: { $0.index < $1.index })
-    }
-
-    private func checkManifestSignatureForDownloadedRevisions() throws {
-        guard let armoredManifestSignature = manifestSignature else { throw Errors.noManifestSignature }
-
-        let revisionCreatorAddressKeys = try getAddressPublicKeysOfRevision()
-        let signatureAddressIsEmpty = signatureAddress?.isEmpty ?? true
-        let verificationKeys = signatureAddressIsEmpty ? [file.nodeKey] : revisionCreatorAddressKeys
-
-        let contentHashes: [Data] = getThumbnailHashes() + sortedBlocks().compactMap { $0.sha256 }
-        let localManifest = Data(contentHashes.joined())
-
-        try Decryptor.verifyManifestSignature(localManifest, armoredManifestSignature, verificationKeys: verificationKeys)
-    }
-
-    private func getThumbnailHashes() -> [Data] {
-        let thumbnails = Array(thumbnails).sorted(by: { $0.type.rawValue < $1.type.rawValue })
-        return thumbnails.compactMap(\.sha256)
     }
 }

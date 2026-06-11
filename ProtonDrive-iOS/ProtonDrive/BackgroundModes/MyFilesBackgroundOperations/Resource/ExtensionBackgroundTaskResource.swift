@@ -46,7 +46,7 @@ final class ExtensionBackgroundTaskResourceImpl: ExtensionBackgroundTaskResource
     
     func cancelTask() {
         if backgroundTask != .invalid {
-            Log.debug("⏸️ Cancelling extension task.", domain: .backgroundTask)
+            Log.info("⏸️ Cancelling extension task.", domain: .backgroundTask)
             UIApplication.shared.endBackgroundTask(backgroundTask)
             backgroundTask = .invalid
         }

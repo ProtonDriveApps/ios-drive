@@ -36,16 +36,19 @@ public protocol ContactsManagerProtocol {
 }
 
 public final class ContactsManager: ContactsManagerProtocol {
+    private struct ContactCacheState {
+        var contacts: [Contact] = []
+        var contactGroups: [ContactGroup] = []
+        var isContactInitialized = false
+        var isContactGroupInitialized = false
+    }
     
     private let jsonDecoder: JSONDecoder = JSONDecoder()
     private let service: APIService
     private var log: ((String) -> Void)?
     private var error: ((String) -> Void)?
-    private var contacts: [Contact] = []
-    private var contactGroups: [ContactGroup] = []
-    private var isContactInitialized = false
-    private var isContactGroupInitialized = false
-    private var keyCache: [KeyQuery: PublicKeyResponse] = [:]
+    private let contactCacheState = Atomic(ContactCacheState())
+    private var keyCache: Atomic<[KeyQuery: PublicKeyResponse]> = .init([:])
     private let contactUpdateSubject = PassthroughSubject<Void, Never>()
     public var contactUpdatedNotifier: AnyPublisher<Void, Never> { contactUpdateSubject.eraseToAnyPublisher() }
     
@@ -70,17 +73,23 @@ public final class ContactsManager: ContactsManagerProtocol {
     /// otherwise, query the backend.
     /// - Returns: user contacts
     public func fetchUserContacts() async throws -> [Contact] {
-        if isContactInitialized { return contacts }
+        if let cachedContacts = contactCacheState.transform({ $0.isContactInitialized ? $0.contacts : nil }) {
+            log?("Successfully retrieved \(cachedContacts.count) user contacts from cache")
+            return cachedContacts
+        }
         
         async let contactsAsync = fetchAllContacts()
         async let emailsAsync = fetchAllEmails()
         let (contactsRes, emailsRes) = await (contactsAsync, emailsAsync)
         switch (contactsRes, emailsRes) {
         case (.success(let contacts), .success(let emails)):
-            self.contacts = map(contacts: contacts, contactEmails: emails)
-            isContactInitialized = true
-            log?("Successfully retrieved user contacts; total number of contacts: \(contacts.count)")
-            return self.contacts
+            let mappedContacts = map(contacts: contacts, contactEmails: emails)
+            contactCacheState.mutate { state in
+                state.contacts = mappedContacts
+                state.isContactInitialized = true
+            }
+            log?("Successfully retrieved \(contacts.count) user contacts")
+            return mappedContacts
         case (.failure(let error), _):
             throw error
         case (_, .failure(let error)):
@@ -93,15 +102,19 @@ public final class ContactsManager: ContactsManagerProtocol {
     /// otherwise, query the backend.
     /// - Returns: user contacts
     public func fetchUserContactGroups() async throws -> [ContactGroup] {
-        defer {
-            log?("Successfully retrieved user contact groups; total number of groups: \(contactGroups.count)")
+        if let cachedGroups = contactCacheState.transform({ $0.isContactGroupInitialized ? $0.contactGroups : nil }) {
+            log?("Successfully retrieved \(cachedGroups.count) contact groups from cache")
+            return cachedGroups
         }
-        if isContactGroupInitialized { return contactGroups }
-        let contactGroups = try await fetchContactGroupLabel().labels
+        let fetchedContactGroups = try await fetchContactGroupLabel().labels
         let contacts = try await fetchUserContacts()
-        self.contactGroups = map(contactGroups: contactGroups, contacts: contacts)
-        isContactGroupInitialized = true
-        return self.contactGroups
+        let mappedGroups = map(contactGroups: fetchedContactGroups, contacts: contacts)
+        contactCacheState.mutate { state in
+            state.contactGroups = mappedGroups
+            state.isContactGroupInitialized = true
+        }
+        log?("Successfully retrieved \(mappedGroups.count) contact groups")
+        return mappedGroups
     }
     
     /// - Parameters:
@@ -109,10 +122,10 @@ public final class ContactsManager: ContactsManagerProtocol {
     ///   - internalOnly: If true, it will not perform any external lookup, and only provide information from the Proton DB
     public func fetchActivePublicKeys(email: String, internalOnly: Bool = true) async throws -> PublicKeyResponse {
         let query = KeyQuery(email: email, internalOnly: internalOnly)
-        if let cache = keyCache[query] {
+        if let cache = keyCache.transform({ $0[query] }) {
             return cache
         }
-        
+
         let request = PublicKeyRequest(email: email, internalOnly: internalOnly)
         log(request: request)
         do {
@@ -120,7 +133,9 @@ public final class ContactsManager: ContactsManagerProtocol {
             let jsonDict = response.1
             let jsonData = try JSONSerialization.data(withJSONObject: jsonDict)
             let res = try jsonDecoder.decode(PublicKeyResponse.self, from: jsonData)
-            keyCache[query] = res
+            keyCache.mutate { cache in
+                cache[query] = res
+            }
             return res
         } catch {
             log(failedRequest: request, error: error)
@@ -129,20 +144,27 @@ public final class ContactsManager: ContactsManagerProtocol {
     }
     
     public func delete(contactID: String) {
-        contacts.removeAll(where: { $0.id == contactID })
-        for var group in contactGroups {
-            group.delete(contactID: contactID)
+        contactCacheState.mutate { state in
+            state.contacts.removeAll(where: { $0.id == contactID })
+            for index in state.contactGroups.indices {
+                state.contactGroups[index].delete(contactID: contactID)
+            }
         }
         contactUpdateSubject.send()
     }
     
     public func create(contact: Contact, with emails: [ContactEmail]) {
-        guard !contacts.map(\.id).contains(contact.id) else { return }
         var contact = contact
         for email in emails {
             contact.append(contactEmail: email)
         }
-        contacts.append(contact)
+        var inserted = false
+        contactCacheState.mutate { state in
+            guard !state.contacts.contains(where: { $0.id == contact.id }) else { return }
+            state.contacts.append(contact)
+            inserted = true
+        }
+        guard inserted else { return }
         contactUpdateSubject.send()
     }
     
@@ -151,45 +173,61 @@ public final class ContactsManager: ContactsManagerProtocol {
         for email in emails {
             contact.append(contactEmail: email)
         }
-        if let index = contacts.firstIndex(where: { $0.id == contact.id }) {
-            contacts[index] = contact
-        } else {
-            contacts.append(contact)
-        }
-        for index in contactGroups.indices {
-            if contact.labelIDs.contains(contactGroups[index].id) {
-                contactGroups[index].updateOrInsert(contact: contact)
+        contactCacheState.mutate { state in
+            if let index = state.contacts.firstIndex(where: { $0.id == contact.id }) {
+                state.contacts[index] = contact
             } else {
-                contactGroups[index].delete(contactID: contact.id)
+                state.contacts.append(contact)
+            }
+            for index in state.contactGroups.indices {
+                if contact.labelIDs.contains(state.contactGroups[index].id) {
+                    state.contactGroups[index].updateOrInsert(contact: contact)
+                } else {
+                    state.contactGroups[index].delete(contactID: contact.id)
+                }
             }
         }
         contactUpdateSubject.send()
     }
     
     public func delete(groupID: String) {
-        contactGroups.removeAll(where: { $0.id == groupID })
-        for index in contacts.indices {
-            contacts[index].remove(labelID: groupID)
+        contactCacheState.mutate { state in
+            state.contactGroups.removeAll(where: { $0.id == groupID })
+            for index in state.contacts.indices {
+                state.contacts[index].remove(labelID: groupID)
+            }
         }
         contactUpdateSubject.send()
     }
     
     public func create(group: ContactGroup) {
-        guard !contactGroups.map(\.id).contains(group.id) else { return }
-        contactGroups.append(group)
+        var inserted = false
+        contactCacheState.mutate { state in
+            guard !state.contactGroups.contains(where: { $0.id == group.id }) else { return }
+            state.contactGroups.append(group)
+            inserted = true
+        }
+        guard inserted else { return }
         contactUpdateSubject.send()
     }
     
     public func update(group: ContactGroup) {
-        if let existingGroup = contactGroups.first(where: { $0.id == group.id }) {
-            let contacts = existingGroup.contacts
-            var group = group
-            group.append(contentsOf: contacts)
-            guard let index = contactGroups.firstIndex(where: { $0.id == group.id }) else { return }
-            contactGroups[index] = group
-        } else {
-            create(group: group)
+        var shouldNotify = true
+        contactCacheState.mutate { state in
+            if let existingGroup = state.contactGroups.first(where: { $0.id == group.id }) {
+                let contacts = existingGroup.contacts
+                var updatedGroup = group
+                updatedGroup.append(contentsOf: contacts)
+                guard let index = state.contactGroups.firstIndex(where: { $0.id == updatedGroup.id }) else {
+                    shouldNotify = false
+                    return
+                }
+                state.contactGroups[index] = updatedGroup
+            } else {
+                state.contactGroups.append(group)
+            }
         }
+        guard shouldNotify else { return }
         contactUpdateSubject.send()
     }
 }

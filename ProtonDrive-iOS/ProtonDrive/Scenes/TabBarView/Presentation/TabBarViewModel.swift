@@ -21,9 +21,11 @@ import PDCore
 import PDCoreIOS
 
 protocol TabBarViewModelProtocol {
+    var currentTabItem: TabBarItem { get }
     var defaultHomeTab: Int { get }
     var isTabBarHidden: AnyPublisher<Bool, Never> { get }
     func selectTab(tag: Int)
+    func reportPerformance(selectedIndex: Int)
 }
 
 final class TabBarViewModel: TabBarViewModelProtocol {
@@ -35,8 +37,11 @@ final class TabBarViewModel: TabBarViewModelProtocol {
     private let volumeIdsController: SharedVolumeIdsController
     private let featureFlagsController: FeatureFlagsControllerProtocol
     private let ratingBoosterFlowController: RatingBoosterFlowControllerProtocol
-    private var currentTabItem: TabBarItem?
+    private let performanceMetricsController: PerformanceMetricsControllerProtocol?
+    private(set) var currentTabItem: TabBarItem
     private var hasSharing: Bool
+    private var hasInitialized = false
+    private var deepLinkNotification: DeepLinkNotification?
 
     let isTabBarHidden: AnyPublisher<Bool, Never>
 
@@ -47,7 +52,9 @@ final class TabBarViewModel: TabBarViewModelProtocol {
         localSettings: LocalSettings,
         volumeIdsController: SharedVolumeIdsController,
         featureFlagsController: FeatureFlagsControllerProtocol,
-        ratingBoosterFlowController: RatingBoosterFlowControllerProtocol
+        ratingBoosterFlowController: RatingBoosterFlowControllerProtocol,
+        performanceMetricsController: PerformanceMetricsControllerProtocol?,
+        deepLinkNotification: DeepLinkNotification?
     ) {
         self.isTabBarHidden = isTabBarHiddenPublisher
         self.scrollToTopSubject = scrollToTopSubject
@@ -56,7 +63,9 @@ final class TabBarViewModel: TabBarViewModelProtocol {
         self.volumeIdsController = volumeIdsController
         self.featureFlagsController = featureFlagsController
         self.ratingBoosterFlowController = ratingBoosterFlowController
-        currentTabItem = TabBarItem(rawValue: localSettings.defaultHomeTabTag)
+        self.performanceMetricsController = performanceMetricsController
+        self.deepLinkNotification = deepLinkNotification
+        currentTabItem = deepLinkNotification?.tab ?? TabBarItem(rawValue: localSettings.defaultHomeTabTag) ?? .files
         hasSharing = featureFlagsController.hasSharing
         subscribeToUpdates()
     }
@@ -91,6 +100,8 @@ final class TabBarViewModel: TabBarViewModelProtocol {
         if currentTabItem == .sharedWithMe && item != currentTabItem {
             // Moving away from sharedWithMe means no shared volume should be marked as active
             volumeIdsController.resignActiveSharedVolume()
+        } else if currentTabItem == .photos && item != .photos {
+            volumeIdsController.resignActiveSharedVolume()
         }
         ratingBoosterFlowController.navigationDidHappen()
     }
@@ -107,6 +118,31 @@ final class TabBarViewModel: TabBarViewModelProtocol {
         case TabBarItem.sharedWithMe.tag:
             scrollToTopSubject.send(.sharedWithMe)
         default: break
+        }
+    }
+
+    func reportPerformance(selectedIndex: Int) {
+        guard
+            let item = TabBarItem(rawValue: selectedIndex),
+            currentTabItem.tag != item.tag || !hasInitialized
+        else { return }
+        performanceMetricsController?.startRecord(pageType: item.toMetricTag)
+    }
+}
+
+extension TabBarItem {
+    var toMetricTag: PerformanceMetric.PageType {
+        switch self {
+        case .files:
+            return .myFiles
+        case .photos:
+            return .photos
+        case .shared:
+            return .sharedByMe
+        case .sharedWithMe:
+            return .sharedWithMe
+        case .computers:
+            return .computers
         }
     }
 }

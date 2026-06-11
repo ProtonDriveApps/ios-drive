@@ -32,7 +32,6 @@ struct PhotosRootFactory {
         let viewModel = PhotosRootViewModel(
             bootstrapController: bootstrapController,
             selectionController: LocalPhotosSelectionController(),
-            migrationController: container.migrationAvailableController,
             configuration: configuration,
             coordinator: coordinator,
             featureFlagsController: container.dependencies.featureFlagsController,

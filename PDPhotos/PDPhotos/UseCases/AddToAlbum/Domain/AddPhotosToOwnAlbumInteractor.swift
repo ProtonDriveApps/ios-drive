@@ -200,7 +200,7 @@ struct AddPhotosToOwnAlbumInteractor: AddPhotosToOwnAlbumInteractorProtocol {
             }
         }
 
-        _ = try await dependencies.metadataResource.fetch(identifiers: Array(allIds))
+        _ = try await dependencies.metadataResource.fetch(identifiers: Array(allIds), forceToRefresh: false)
     }
 
     // This is so photos from photo-stream can be added to an album (without re-uploading content)

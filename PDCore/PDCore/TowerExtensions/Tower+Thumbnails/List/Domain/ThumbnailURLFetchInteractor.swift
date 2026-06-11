@@ -16,9 +16,10 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import CoreData
 
 protocol ThumbnailURLFetchInteractor {
-    func execute(thumbnailId: String, volumeId: String) async throws -> URL
+    func execute(thumbnailId: String, volumeId: String, moc: NSManagedObjectContext) async throws -> URL
 }
 
 enum ThumbnailURLFetchInteractorError: Error {
@@ -34,10 +35,10 @@ final class RemoteThumbnailURLFetchInteractor: ThumbnailURLFetchInteractor {
         self.updateRepository = updateRepository
     }
 
-    func execute(thumbnailId: String, volumeId: String) async throws -> URL {
+    func execute(thumbnailId: String, volumeId: String, moc: NSManagedObjectContext) async throws -> URL {
         let id = AnyVolumeIdentifier(id: thumbnailId, volumeID: volumeId)
         let urls = try await listInteractor.execute(ids: [id])
-        try updateRepository.update(thumbnails: urls)
+        try updateRepository.update(thumbnails: urls, moc: moc)
         guard let url = urls.first else {
             throw ThumbnailURLFetchInteractorError.invalidResponse
         }

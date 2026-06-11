@@ -17,6 +17,7 @@
 
 import Foundation
 import PDClient
+import CoreData
 
 public final class TrashScanner {
     private let client: Client
@@ -29,17 +30,17 @@ public final class TrashScanner {
         self.myVolume = myVolume
     }
 
-    public func scanTrash() async throws {
-        try await scanAllTrashed(volumeID: myVolume)
+    public func scanTrash(moc: NSManagedObjectContext) async throws {
+        try await scanAllTrashed(volumeID: myVolume, moc: moc)
     }
 
-    public func scanAllTrashed(volumeID: String) async throws {
+    public func scanAllTrashed(volumeID: String, moc: NSManagedObjectContext) async throws {
         let supportedSharesValidator = makeSupportedSharesValidator()
-        try await fetchTrashMyVolume(volumeID, atPage: 0, validator: supportedSharesValidator)
+        try await fetchTrashMyVolume(volumeID, atPage: 0, validator: supportedSharesValidator, moc: moc)
     }
 
     // Does not support Device volumes
-    private func fetchTrashMyVolume(_ volumeID: String, atPage page: Int, validator: SupportedSharesValidator) async throws {
+    private func fetchTrashMyVolume(_ volumeID: String, atPage page: Int, validator: SupportedSharesValidator, moc: NSManagedObjectContext) async throws {
         let pageSize = Constants.pageSizeForChildrenFetchAndEnumeration
         let response = try await client.listVolumeTrash(volumeID: volumeID, page: page, pageSize: pageSize)
 
@@ -51,17 +52,15 @@ public final class TrashScanner {
 
             let linksResponse = try await client.getLinksMetadata(with: .init(shareId: batch.shareID, linkIds: batch.linkIDs))
 
-            let context = storage.backgroundContext
-
-            try await context.perform { [weak self] in
+            try await moc.perform { [weak self] in
                 guard let self else { return }
-                self.storage.updateLinks(linksResponse.sortedLinks, in: context)
-                try context.saveOrRollback()
+                self.storage.updateLinks(linksResponse.sortedLinks, in: moc)
+                try moc.saveOrRollback()
             }
         }
 
         guard !isLastPage(response) else { return }
-        try await fetchTrashMyVolume(volumeID, atPage: page + 1, validator: validator)
+        try await fetchTrashMyVolume(volumeID, atPage: page + 1, validator: validator, moc: moc)
     }
 
     private func isLastPage(_ response: ListVolumeTrashEndpoint.Response) -> Bool {

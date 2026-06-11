@@ -34,13 +34,22 @@ protocol FileContentDownloader<FileType> {
 final class RemoteFileContentDownloader<T: File>: FileContentDownloader {
     typealias FileType = T
     private let downloader: Downloader
+    private let sdkDownloader: SDKFileDownloaderProtocol?
     private let managedObjectContext: NSManagedObjectContext
-    private var capturedContinuations: [NodeIdentifier: CheckedContinuation<T, any Error>] = [:]
+    private var capturedContinuations: [AnyVolumeIdentifier: CheckedContinuation<T, any Error>] = [:]
+    private let performanceMetricsController: PerformanceMetricsControllerProtocol?
     private var id: (any VolumeIdentifiable)?
 
-    init(managedObjectContext: NSManagedObjectContext, downloader: Downloader) {
+    init(
+        managedObjectContext: NSManagedObjectContext,
+        downloader: Downloader,
+        performanceMetricsController: PerformanceMetricsControllerProtocol?,
+        sdkDownloader: SDKFileDownloaderProtocol?
+    ) {
         self.managedObjectContext = managedObjectContext
         self.downloader = downloader
+        self.performanceMetricsController = performanceMetricsController
+        self.sdkDownloader = sdkDownloader
     }
     
     func set(id: any VolumeIdentifiable) {
@@ -52,39 +61,57 @@ final class RemoteFileContentDownloader<T: File>: FileContentDownloader {
         capturedContinuations = [:]
         if let id {
             downloader.cancel(operationsOf: [id])
+            sdkDownloader?.cancel(operationsOf: [id.any()])
         }
         self.id = nil
     }
     
     @discardableResult
     func downloadIfNotCached(files: [FileType]) async throws -> [FileType] {
-        try await withThrowingTaskGroup(of: T.self) { group in
-            for file in files {
-                group.addTask {
-                    try await self.download(file: file)
+        do {
+            let (mainID, cacheState) = await checkDataSource(files: files)
+            reportPerformanceMetric(mainID: mainID, cacheState: cacheState)
+            return try await withThrowingTaskGroup(of: T.self) { group in
+                for file in files {
+                    group.addTask {
+                        try await self.download(file: file, cacheState: cacheState)
+                    }
                 }
+                var results: [T] = []
+                for try await result in group {
+                    results.append(result)
+                }
+                return results
             }
-            var results: [T] = []
-            for try await result in group {
-                results.append(result)
-            }
-            return results
+        } catch SDKDownloadErrors.cancelled {
+            throw FileContentResourceError.cancelled
+        } catch {
+            throw error
         }
     }
     
-    private func download(file: FileType) async throws -> FileType {
+    private func download(file: FileType, cacheState: [String: Bool]) async throws -> FileType {
+        if let hasCache = cacheState[file.genericIdentifier.id], hasCache {
+            return file
+        }
+        
+        if let sdkDownloader {
+            _ = try await sdkDownloader.download(file: file.genericIdentifier)
+            return file
+        } else {
+            return try await downloadViaLegacy(file: file, cacheState: cacheState)
+        }
+    }
+
+    private func downloadViaLegacy(file: FileType, cacheState: [String: Bool]) async throws -> FileType {
         return try await withCheckedThrowingContinuation { [weak self] continuation in
-            if self?.isCached(file: file) ?? false {
-                continuation.resume(returning: file)
-                return
-            }
             self?.managedObjectContext.perform {
-                self?.capturedContinuations[file.identifier] = continuation
+                self?.capturedContinuations[file.genericIdentifierWithinManagedObjectContext] = continuation
                 self?.downloader.scheduleDownloadWithBackgroundSupport(cypherdataFor: file) { result in
-                    guard let continuation = self?.capturedContinuations[file.identifier] else {
+                    guard let continuation = self?.capturedContinuations[file.genericIdentifier] else {
                         return
                     }
-                    self?.capturedContinuations[file.identifier] = nil
+                    self?.capturedContinuations[file.genericIdentifier] = nil
                     switch result {
                     case .success:
                         // To ensure the object is within the same context,
@@ -97,10 +124,32 @@ final class RemoteFileContentDownloader<T: File>: FileContentDownloader {
             }
         }
     }
-    
-    private func isCached(file: FileType) -> Bool {
-        return file.moc?.performAndWait {
-            file.activeRevision?.blocksAreValid()
-        } ?? false
+
+    /// - Parameter files: Files need to be downloaded
+    /// - Returns: (Identifier of the main photo, [file ID: has cache])
+    private func checkDataSource(files: [FileType]) async -> (AnyVolumeIdentifier, [String: Bool]) {
+        guard let mainID = files.first?.genericIdentifier else { return (.init(id: "", volumeID: ""), [:]) }
+        var cacheState: [String: Bool] = [:]
+        let mapping = await managedObjectContext.perform {
+            var mapping: [String: Revision?] = [:]
+            for file in files {
+                let id = file.id
+                let revision = file.activeRevision
+                mapping[id] = revision
+            }
+            return mapping
+        }
+        for (id, revision) in mapping {
+            cacheState[id] = revision?.isAvailableLocally()
+        }
+        return (mainID, cacheState)
+    }
+
+    private func reportPerformanceMetric(mainID: AnyVolumeIdentifier, cacheState: [String: Bool]) {
+        let allCached = cacheState.values.allSatisfy { $0 }
+        performanceMetricsController?.fetchFullContent(
+            id: mainID,
+            dataSource: allCached ? .local : .remote
+        )
     }
 }

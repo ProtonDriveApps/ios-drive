@@ -17,6 +17,7 @@
 
 import FileProvider
 import PDCore
+import CoreData
 import Combine
 import ProtonCoreObservability
 
@@ -28,7 +29,7 @@ protocol EnumeratorWithItemsFromAPI: AnyObject, EnumeratorWithItemsFromDB where 
 /// "Item" enumerations are when listing the contents of a directory.
 extension EnumeratorWithItemsFromAPI {
     
-    func fetchPageFromAPI(_ page: Int, observers: [NSFileProviderEnumerationObserver]) {
+    func fetchPageFromAPI(_ containerType: FileOperationEvent.ContainerType, _ page: Int, observers: [NSFileProviderEnumerationObserver], moc: NSManagedObjectContext) {
         Log.trace()
         self.model.prepareForRefresh(fromPage: page)
         self.fetchFromAPICancellable?.cancel()
@@ -46,11 +47,11 @@ extension EnumeratorWithItemsFromAPI {
         // To fix that, we skip the model.node.isChildrenListFullyFetched check if fetched page was not the last page
         var receivedTheLastPage = false
         
-        self.fetchFromAPICancellable = self.model.fetchChildrenFromAPI(proceedTillLastPage: false)
+        self.fetchFromAPICancellable = self.model.fetchChildrenFromAPI(proceedTillLastPage: false, moc: moc)
         .sink { completion in
             if case let .failure(error) = completion {
-                Log.error("Error fetching page", error: error, domain: .enumerating)
-                let fsError = Errors.mapToFileProviderError(error) ?? error
+                Log.event(.enumerateItems(.failed(.init(containerType: containerType, error: error.localizedDescription))))
+                let fsError = Errors.mapLegacyErrorToFileProviderError(error)
                 observers.forEach { $0.finishEnumeratingWithError(fsError) }
             } else {
                 Log.info("Finished fetching page \(page) from cloud", domain: .enumerating)
@@ -66,6 +67,7 @@ extension EnumeratorWithItemsFromAPI {
                 let nextPage = page + 1
                 let providerPage = NSFileProviderPage(nextPage)
                 observers.forEach { $0.finishEnumerating(upTo: providerPage) }
+                
             }
         } receiveValue: { value in
             Log.info("Received page from cloud", domain: .enumerating)
@@ -93,6 +95,12 @@ extension EnumeratorWithItemsFromAPI {
                     }
                 }
             }
+            Log.event(.enumerateItems(.succeeded(.init(
+                containerType: containerType,
+                itemEnumerationMode: .api,
+                enumeratedItemIDs: items.map(\.itemIdentifier.logIdentifier),
+                hasMorePages: receivedTheLastPage == false
+            ))))
             observers.forEach { $0.didEnumerate(items) }
         }
     }

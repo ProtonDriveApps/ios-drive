@@ -18,6 +18,7 @@
 import Combine
 import UIKit
 import PDCore
+import PDCoreIOS
 
 protocol FetchingViewModel: AnyObject {
     var lastUpdated: Date { get set }
@@ -42,10 +43,9 @@ extension FetchingViewModel where Self: FinderViewModel, Self: SortingViewModel,
         if !self.isUpdating {
             self.isUpdating = true
         }
-        
         self.model.prepareForRefresh()
         self.fetchFromAPICancellable?.cancel()
-        self.fetchFromAPICancellable = self.model.fetchChildrenFromAPI(proceedTillLastPage: false)
+        self.fetchFromAPICancellable = self.model.fetchChildrenFromAPI(proceedTillLastPage: false, moc: self.model.tower.storage.backgroundContext)
         .receive(on: DispatchQueue.main)
         .sink(receiveCompletion: { [weak self] completion in
             if case Subscribers.Completion.failure(let error) = completion {
@@ -71,16 +71,15 @@ extension FetchingViewModel where Self: FinderViewModel, Self: SortingViewModel,
         }
         self.model.prepareForRefresh(fromPage: 0)
         self.fetchFromAPICancellable?.cancel()
-        self.fetchFromAPICancellable = self.model.fetchChildrenFromAPI(proceedTillLastPage: true)
+        self.fetchFromAPICancellable = self.model.fetchChildrenFromAPI(proceedTillLastPage: true, moc: self.model.tower.storage.backgroundContext)
         .receive(on: DispatchQueue.main)
         .sink(receiveCompletion: { [weak self] completion in
             if case Subscribers.Completion.failure(let error) = completion {
-
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                     self?.genericErrors.send(error)
                     self?.isUpdating = false
                 }
-
+                self?.clearUnavailableFolderIfNeeded(error: error)
             } else {
                 self?.isUpdating = false
             }
@@ -111,5 +110,18 @@ extension FetchingViewModel where Self: FinderViewModel, Self: SortingViewModel,
     
     private func didRefreshRecently() -> Bool {
         self.lastUpdated != .distantPast || self.isUpdating
+    }
+
+    private func clearUnavailableFolderIfNeeded(error: Error) {
+        let notExisting = 2501
+        guard
+            error.bestShotAtReasonableErrorCode == notExisting,
+            let context = model.node.managedObjectContext
+        else { return }
+        context.perform {
+            context.delete(self.model.node)
+            try? context.saveIfNeeded()
+        }
+        UserMessageHandler().handleError(PlainMessageError(error.localizedDescription))
     }
 }

@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import Foundation
 
 final class EditNodeModel {
     private var tower: Tower
@@ -27,12 +28,35 @@ final class EditNodeModel {
 
 extension EditNodeModel: FolderCreator {
     func createFolder(with name: String, parent: Folder, completion: @escaping (FolderCreator.Result) -> Void) {
-        self.tower.createFolder(named: name, under: parent, handler: completion)
+        if let performer = tower.getSdkNodeOperationPerformer() {
+            Task.detached {
+                let parentID = parent.identifier.any()
+                do {
+                    let folder = try await performer.createFolder(parentFolderID: parentID, name: name)
+                    completion(.success(folder))
+                } catch {
+                    completion(.failure(error))
+                }
+            }
+        } else {
+            self.tower.createFolder(named: name, under: parent, moc: tower.storage.backgroundContext, handler: completion)
+        }
     }
 }
 
 extension EditNodeModel: NodeNameEditorProtocol {
     func rename(to name: String, node: NodeIdentifier, completion: @escaping (NodeNameEditorProtocol.Result) -> Void) {
-        tower.rename(node: node, cleartextName: name, handler: completion)
+        if let performer = tower.getSdkNodeOperationPerformer() {
+            Task {
+                do {
+                    let node = try await performer.rename(nodeUid: node.any(), newName: name)
+                    completion(.success(node))
+                } catch {
+                    completion(.failure(error))
+                }
+            }
+        } else {
+            tower.rename(node: node, cleartextName: name, moc: tower.storage.backgroundContext, handler: completion)
+        }
     }
 }

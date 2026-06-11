@@ -15,10 +15,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Combine
 import UIKit
 import PMSideMenu
 import PDCore
 import PMSettings
+import PDUIComponents
+import ProtonCoreUIFoundations
 
 final class SideMenuCoordinator {
     typealias Destination = MenuViewModel.Destination
@@ -26,31 +29,38 @@ final class SideMenuCoordinator {
     weak var delegate: PMSlidingContainer!
     weak var viewController: SideMenuViewController!
     private weak var settingsVC: UIViewController?
+    private var cancellables: Set<AnyCancellable> = []
 
     private let ratingBoosterFlowController: RatingBoosterFlowControllerProtocol
-    private let myFilesFactory: () -> UIViewController
-    private let sharedByMeFactory: () -> UIViewController
+    private let myFilesFactory: (DeepLinkNotification?) -> UIViewController
+    private let sharedByMeFactory: (Deeplink?) -> UIViewController
     private let trashFactory: () -> UIViewController
     private let offlineAvailableFactory: () -> UIViewController
     private let settingsFactory: () -> UIViewController
     private let plansFactory: () -> UIViewController
     private let storageBonusPromoFactory: () -> UIViewController
     private let reportBugFactory: () -> UIViewController
+    private let makeAccountSettingsSection: () -> PMSettingsSectionViewModel
+    private let sceneInitStateController: SceneInitStateControllerProtocol
 
     init(
         viewController: SideMenuViewController,
         ratingBoosterFlowController: RatingBoosterFlowControllerProtocol,
-        myFilesFactory: @escaping () -> UIViewController,
-        sharedByMeFactory: @escaping () -> UIViewController,
+        sceneInitStateController: SceneInitStateControllerProtocol,
+        generalSettings: GeneralSettings,
+        myFilesFactory: @escaping (DeepLinkNotification?) -> UIViewController,
+        sharedByMeFactory: @escaping (Deeplink?) -> UIViewController,
         trashFactory: @escaping () -> UIViewController,
         offlineAvailableFactory: @escaping () -> UIViewController,
         settingsFactory: @escaping () -> UIViewController,
         plansFactory: @escaping () -> UIViewController,
         storageBonusPromoFactory: @escaping () -> UIViewController,
-        reportBugFactory: @escaping () -> UIViewController
+        reportBugFactory: @escaping () -> UIViewController,
+        makeAccountSettingsSection: @escaping () -> PMSettingsSectionViewModel
     ) {
         self.viewController = viewController
         self.ratingBoosterFlowController = ratingBoosterFlowController
+        self.sceneInitStateController = sceneInitStateController
         self.myFilesFactory = myFilesFactory
         self.sharedByMeFactory = sharedByMeFactory
         self.trashFactory = trashFactory
@@ -59,6 +69,7 @@ final class SideMenuCoordinator {
         self.plansFactory = plansFactory
         self.storageBonusPromoFactory = storageBonusPromoFactory
         self.reportBugFactory = reportBugFactory
+        self.makeAccountSettingsSection = makeAccountSettingsSection
 
         NotificationCenter.default.addObserver(
             self,
@@ -66,13 +77,26 @@ final class SideMenuCoordinator {
             name: UIDevice.orientationDidChangeNotification,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(receiveDeepLink(notification:)),
+            name: .deepLink,
+            object: nil
+        )
+        generalSettings.userSettings
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.generalSettingsDidUpdate()
+            }
+            .store(in: &cancellables)
     }
 
-    func go(to destination: Destination) {
+    func go(to destination: Destination, deepLinkNotification: DeepLinkNotification? = nil) {
         ratingBoosterFlowController.navigationDidHappen()
         switch destination {
         case .myFiles:
-            showMyFiles()
+            showMyFiles(deepLinkNotification: deepLinkNotification)
         case .servicePlans:
             showServicePlans()
         case .trash:
@@ -86,20 +110,25 @@ final class SideMenuCoordinator {
         case .logout:
             showLogout()
         case .sharedByMe:
-            showSharedByMe()
+            showSharedByMe(deepLinkNotification: deepLinkNotification)
         case .storageBonusPromo:
             showStorageBonusPromo()
         }
+        sceneInitStateController.setSceneIsInited()
     }
 }
 
 private extension SideMenuCoordinator {
-    func showMyFiles() {
-        delegate.sideMenu(viewController, didSelectViewController: myFilesFactory())
+    func showMyFiles(deepLinkNotification: DeepLinkNotification?) {
+        delegate.sideMenu(viewController, didSelectViewController: myFilesFactory(deepLinkNotification))
     }
 
-    func showSharedByMe() {
-        delegate.sideMenu(viewController, didSelectViewController: sharedByMeFactory())
+    func showSharedByMe(deepLinkNotification: DeepLinkNotification?) {
+        var deepLink: Deeplink?
+        if let deepLinkNotification, deepLinkNotification.menuDestination == .sharedByMe {
+            deepLink = deepLinkNotification.link
+        }
+        delegate.sideMenu(viewController, didSelectViewController: sharedByMeFactory(deepLink))
     }
 
     func showServicePlans() {
@@ -161,6 +190,27 @@ private extension SideMenuCoordinator {
         else { return }
         let point = CGPoint(x: screenSize.width / 2, y: screenSize.height / 2)
         popover.sourceRect = CGRect(origin: point, size: .zero)
+    }
+
+    @objc
+    private func receiveDeepLink(notification: Notification) {
+        guard let obj = notification.object as? DeepLinkNotification else { return }
+        go(to: obj.menuDestination, deepLinkNotification: obj)
+    }
+
+    private func generalSettingsDidUpdate() {
+        guard
+            let nav = settingsVC as? DarkModeAwareNavigationViewController,
+            let vc = nav.viewControllers.first as? PMSettingsViewController
+        else { return }
+        let section = makeAccountSettingsSection()
+        vc.viewModel.update(section: section)
+
+        if nav.viewControllers.count >= 2,
+           nav.viewControllers[1] is ShowingNavigationBarUIHostingController {
+            // Only sign in with QR code use `ShowingNavigationBarUIHostingController`
+            nav.popToViewController(vc, animated: true)
+        }
     }
 }
 

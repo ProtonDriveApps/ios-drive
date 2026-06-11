@@ -17,7 +17,7 @@
 
 import Foundation
 
-public enum FileProviderOperation: Int, Codable, CaseIterable {
+public enum FileProviderOperation: Int, Codable, CaseIterable, Sendable {
     /// Undefined is default value
     case undefined        // 0
     case create           // 1

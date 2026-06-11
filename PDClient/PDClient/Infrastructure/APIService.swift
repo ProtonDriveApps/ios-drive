@@ -30,13 +30,7 @@ public class APIService {
         self.configuration = configuration
         self.baseHeadersFactory = baseHeadersFactory
     }
-    
-    var baseComponents: URLComponents {
-        var urlComponents = URLComponents(string: configuration.apiOrigin)!
-        urlComponents.path = "/drive"
-        return urlComponents
-    }
-    
+
     public var baseHeaders: [String: String] {
         baseHeadersFactory.makeHeaders()
     }
@@ -49,12 +43,27 @@ public class APIService {
     }
 
     public func url(of path: String, parameters: [URLQueryItem]? = nil) -> URL {
-        var urlComponents = self.baseComponents
+        // Consumers of APIService might include a leading slash in their paths,
+        // which we don't want as our base route already includes it - remove
+        // them if present.
+        let path = pathWithoutLeadingSlash(from: path)
+
+        var urlComponents = configuration.driveApiBaseComponents
         urlComponents.queryItems = parameters
+
         guard let url = urlComponents.url else {
             fatalError("Could not create URL from components")
         }
+
         return url.appendingPathComponent(path)
+    }
+
+    private func pathWithoutLeadingSlash(from path: String) -> String {
+        if path.hasPrefix("/") {
+            return String(path.dropFirst(1))
+        }
+
+        return path
     }
 
     func url(of path: String, queries: [URLQueryItem]?) -> URL {
@@ -69,14 +78,26 @@ public class APIService {
 public extension APIService {
     struct Configuration {
         private static let apiPrefix = "drive-api."
+        private static let baseRoute = "/drive/"
 
         public let environment: Environment
         public let clientVersion: String
         /// API origin (scheme + host) https://datatracker.ietf.org/doc/html/rfc6454#section-3.2
         public let apiOrigin: String
+
         /// Base origin (scheme + host) https://datatracker.ietf.org/doc/html/rfc6454#section-3.2
         public let baseOrigin: String
-        
+
+        /// Drive API base components, useful for constructing endpoint concrete URLs
+        ///
+        /// In the form of `scheme://$API_PREFIX.$BASE_ORIGIN/$BASE_ROUTE
+        public let driveApiBaseComponents: URLComponents
+
+        /// Drive API base URL, used for SDK initialization
+        public var driveApiBase: String {
+            driveApiBaseComponents.string!
+        }
+
         /// Base host https://datatracker.ietf.org/doc/html/rfc1738#section-5
         public var baseHost: String {
             let url = URL(string: baseOrigin)
@@ -93,6 +114,12 @@ public extension APIService {
             } else {
                 baseOrigin = apiOrigin
             }
+
+            var driveApiBaseComponents = URLComponents(string: baseOrigin)!
+            driveApiBaseComponents.host?.insert(contentsOf: Self.apiPrefix, at: apiOrigin.startIndex)
+            driveApiBaseComponents.path = "/drive/"
+
+            self.driveApiBaseComponents = driveApiBaseComponents
         }
     }
 }

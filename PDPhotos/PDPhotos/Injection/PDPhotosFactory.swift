@@ -19,6 +19,7 @@ import CoreData
 import PDCore
 import PDCoreIOS
 import PDUIComponents
+import PDContacts
 
 struct PDPhotosFactory {
     func makeRootViewModel() -> RootViewModel {
@@ -40,10 +41,17 @@ struct PDPhotosFactory {
         return repository
     }
 
-    func makeThumbnailsContainer(tower: Tower, metadataController: MetadataControllerProtocol) -> ThumbnailsControllersContainer {
+    func makeThumbnailsContainer(
+        tower: Tower,
+        metadataController: MetadataControllerProtocol,
+        performanceMetricsController: PerformanceMetricsControllerProtocol,
+        featureFlagsController: FeatureFlagsControllerProtocol
+    ) -> ThumbnailsControllersContainer {
         ThumbnailsControllersContainer(dependencies: ThumbnailsControllersContainer.Dependencies(
             tower: tower,
-            metadataController: metadataController
+            metadataController: metadataController,
+            performanceMetricsController: performanceMetricsController,
+            featureFlagsController: featureFlagsController
         ))
     }
 
@@ -68,7 +76,8 @@ struct PDPhotosFactory {
         context: NSManagedObjectContext,
         featureFlagsController: FeatureFlagsControllerProtocol,
         tower: Tower,
-        streamConfiguration: PhotoStreamConfiguration
+        streamConfiguration: PhotoStreamConfiguration,
+        contactsManager: ContactsManagerProtocol
     ) -> RemoteAlbumFetchController {
         if streamConfiguration.volumeId.isEmpty {
             Log.error("makeRemoteAlbumFetchController but stream volumeID is nil", error: nil, domain: .albums)
@@ -77,7 +86,9 @@ struct PDPhotosFactory {
         let retriever = SharedWithMeLinksMetadataRetriever(
             remoteShareDataSource: tower.client,
             remoteLinksDataSource: tower.client,
-            sharedWithMeLinksCache: cache
+            sharedWithMeLinksCache: cache,
+            contactsController: ContactsController(contactsManager: contactsManager),
+            keysVault: tower.sessionVault
         )
         let starter = makeSharedWithMeAlbumStarter(
             context: context,
@@ -91,7 +102,8 @@ struct PDPhotosFactory {
                 photoVolumeID: streamConfiguration.volumeId,
                 retriever: retriever,
                 starter: starter,
-                storeAlbumListingsRepository: CoreDataStoreAlbumListingsRepository(managedObjectContext: context)
+                storeAlbumListingsRepository: CoreDataStoreAlbumListingsRepository(managedObjectContext: context),
+                volumeIDsController: tower.sharedVolumeIdsController
             )
         )
     }
@@ -125,7 +137,6 @@ struct PDPhotosFactory {
     }
 
     func makeBootstrapController(
-        migrationController: PhotoVolumeMigrationControllerProtocol,
         tower: Tower,
         featureFlagsController: FeatureFlagsControllerProtocol,
         shareCreationResource: PhotoShareCreationFinishResource,
@@ -134,49 +145,29 @@ struct PDPhotosFactory {
         let managedObjectContext = tower.storage.newBackgroundContext()
         let localResource = LocalPhotosVolumeFetchResource(managedObjectContext: managedObjectContext, storageManager: tower.storage)
         let bootstrapResource = RemotePhotoVolumeBootstrapResource(sharesListing: tower.client, bootstrapClient: tower.client, managedObjectContext: managedObjectContext, storageManager: tower.storage)
-        let legacyShareFetchResource = RemoteFetchingPhotosRootDataSource(storage: tower.storage, photoShareListing: tower.client)
-        let remoteFetchResource = RemotePhotosVolumeFetchResource(storageManager: tower.storage, photoShareListing: tower.client, bootstrapResource: bootstrapResource, client: tower.client, legacyShareFetchResource: legacyShareFetchResource)
-        let createInteractor = CreatePhotoVolumeInteractor(client: tower.client, context: managedObjectContext, encryptor: Encryptor(), shareCreationResource: shareCreationResource)
-        let migrationStatusInteractor = PhotoVolumeMigrationStatusInteractor(apiService: tower.client)
-        let legacyShareCreateResource = RemoteCreatingPhotosRootDataSource(storage: tower.storage, sessionVault: tower.sessionVault, photoShareCreator: tower.client, finishResource: shareCreationResource)
+        let remoteFetchResource = RemotePhotosVolumeFetchResource(bootstrapResource: bootstrapResource, client: tower.client)
+        let createInteractor = CreatePhotoVolumeInteractor(
+            client: tower.client,
+            clientUIDProvider: tower.sessionVault,
+            context: managedObjectContext,
+            encryptor: Encryptor(),
+            localSettings: tower.localSettings,
+            shareCreationResource: shareCreationResource
+        )
         let legacyShareDeleteRepository = LegacyPhotoShareDeleteRepository(managedObjectContext: managedObjectContext, storageManager: tower.storage)
         let interactor = PhotoVolumeBootstrapInteractor(
             localResource: localResource,
             remoteFetchResource: remoteFetchResource,
             createInteractor: createInteractor,
-            migrationStatusInteractor: migrationStatusInteractor,
             signersKitFactory: tower.sessionVault,
             eventsStartResource: PhotoVolumeEventsStartResource(tower: tower),
-            legacyShareCreateResource: legacyShareCreateResource,
             legacyShareDeleteRepository: legacyShareDeleteRepository
         )
         let facade = AsynchronousPhotosBoostrapFacade(interactor: interactor)
         return PhotoVolumeBootstrapController(
-            migrationController: migrationController,
             facade: facade,
             featureFlagsController: featureFlagsController,
             errorController: errorController
         )
-    }
-
-    func makeMigrationSheetAvailableController(tower: Tower) -> MigrationSheetAvailableControllerProtocol {
-        #if DEBUG
-        if DebugConstants.commandLineContains(flags: [.uiTests, .skipMigrationPopup]) {
-            return DisabledMigrationSheetAvailableController()
-        }
-        #endif
-        let factory = MigrationSheetFactory()
-        return factory.makeAvailableController(localSettings: tower.localSettings)
-    }
-
-    func makeMigrationController(tower: Tower) -> PhotoVolumeMigrationControllerProtocol {
-        let managedObjectContext = tower.storage.newBackgroundContext()
-        let remoteStartInteractor = PhotoVolumeMigrationRemoteStartInteractor(apiService: tower.client)
-        let deleteRepository = LegacyPhotoShareDeleteRepository(managedObjectContext: managedObjectContext, storageManager: tower.storage)
-        let startInteractor = PhotoVolumeMigrationStartInteractor(remoteStartInteractor: remoteStartInteractor, deleteRepository: deleteRepository)
-        let startFacade = AsynchronousPhotoVolumeMigrationStartFacade(interactor: startInteractor)
-        let updateInteractor = PhotoVolumeMigrationStatusInteractor(apiService: tower.client)
-        let updateFacade = AsynchronousPhotoVolumeMigrationUpdateFacade(interactor: updateInteractor)
-        return PhotoVolumeMigrationController(startFacade: startFacade, updateFacade: updateFacade)
     }
 }

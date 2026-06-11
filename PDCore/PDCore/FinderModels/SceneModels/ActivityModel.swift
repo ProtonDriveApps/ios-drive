@@ -32,6 +32,7 @@ public final class ActivityModel: FinderModel, NodesListing, UploadsListing, Dow
     public private(set) weak var tower: Tower!
     public private(set) var childrenObserver: FetchedObjectsObserver<Node>
     public private(set) var sorting: SortPreference
+    private var context: NSManagedObjectContext?
     
     // MARK: UploadsListing
     public private(set) var childrenUploadingObserver: FetchedObjectsObserver<File>
@@ -50,11 +51,21 @@ public final class ActivityModel: FinderModel, NodesListing, UploadsListing, Dow
     
     /// Constructor for background thead, uses fileSystemSlot
     public convenience init(tower: Tower) throws {
+        let context = tower.storage.synchronousContextPool.acquire(for: .activityModel)
         let creatorAddresses = tower.sessionVault.addressIDs
-        guard let shareID = tower.fileSystemSlot?.getMainShare(of: creatorAddresses)?.id else {
+        guard let share = tower.fileSystemSlot?.getMainShare(of: creatorAddresses, moc: context) else {
             throw FolderModel.Errors.noMainShareFound
         }
+        let shareID = context.performAndWait { share.id }
         self.init(tower: tower, shareID: shareID)
+        self.context = context
+    }
+    
+    deinit {
+        if context != nil, let tower {
+            self.context = nil
+            tower.storage.synchronousContextPool.relinquish(for: .activityModel)
+        }
     }
 }
 

@@ -18,38 +18,48 @@
 import FileProvider
 import PDCore
 
-@available(macOS, unavailable)
 public extension NSFileProviderItemIdentifier {
+    
+    var logIdentifier: String {
+        NodeIdentifier(self)?.nodeID ?? rawValue
+    }
+    
+#if os(iOS)
     
     /// URL should be compatible with structure produced by ``NSFileProviderItemIdentifier/makeUrl(filename:)`` method
     init(_ url: URL) {
         _ = url.lastPathComponent // filename
         let nodeId = url.deletingLastPathComponent().lastPathComponent // node id
-        let shareId = url.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent // share id
-        // TODO: Fix this, it should be broken
-        let identifier = NodeIdentifier(nodeId, shareId, "")
+        let volumeID = url.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent // volume id
+        let identifier = NodeIdentifier(nodeId, "", volumeID)
         self.init(identifier)
     }
     
-    /// URL contains some metadata of the file in order to simplify lookups: `.../ShareID/NodeID/filename`
+    /// URL contains some metadata of the file in order to simplify lookups:
+    /// mac: `.../ShareID/NodeID/filename`
+    /// iOS: `.../VolumeID/NodeID/filename`
     func makeUrl(item: NSFileProviderItem) -> URL? {
         guard let nodeIdentifier = NodeIdentifier(self) else {
             return nil
         }
-        var url = NSFileProviderManager.default.documentStorageURL
-        url.appendPathComponent(nodeIdentifier.shareID, isDirectory: true)
-        url.appendPathComponent(nodeIdentifier.nodeID, isDirectory: true)
+        guard var url = PDFileManager.getFileProviderStorageURL() else {
+            return nil
+        }
         let filename = makeFilename(item: item)
+        url.appendPathComponent(PDFileManager.getUserID(), isDirectory: true)
+        url.appendPathComponent(nodeIdentifier.volumeID, isDirectory: true)
+        url.appendPathComponent(nodeIdentifier.nodeID, isDirectory: true)
         url.appendPathComponent(filename, isDirectory: false)
         return url
+        
     }
-
+    
     private func makeFilename(item: NSFileProviderItem) -> String {
         let filename = item.filename
         guard let contentType = item.contentType else {
             return filename
         }
-
+        
         // This url is used by OS to determine if the file should be opened in place or transferred.
         // Unless we add the extension, it won't be recognized.
         // Also it can be used to validate incoming URL in the main app to quickly verify that a proton doc is being requested.
@@ -64,4 +74,7 @@ public extension NSFileProviderItemIdentifier {
             return filename
         }
     }
+    
+#endif
+    
 }

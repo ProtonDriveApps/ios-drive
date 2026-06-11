@@ -46,6 +46,7 @@ final class PhotosPreviewActionViewModel: PhotosPreviewActionViewModelProtocol {
     private var cancellables = Set<AnyCancellable>()
     private var currentPhotoID: AnyVolumeIdentifier?
     private var isPhotoMetadataLoaded: Bool = false
+    private var isCurrentPhotoDownloaded: Bool = false
     private var source: PhotosPreviewSource = .undetermined
     private(set) var dialogModel: DialogSheetModel = .placeholder
     private var photosRootIdentifier: AnyVolumeIdentifier?
@@ -62,6 +63,7 @@ final class PhotosPreviewActionViewModel: PhotosPreviewActionViewModelProtocol {
     func previewIsChanged(item: PhotosPreviewItem) {
         isLoading = true
         currentPhotoID = item.any()
+        isCurrentPhotoDownloaded = false
         loadMetadata()
     }
 
@@ -106,6 +108,13 @@ extension PhotosPreviewActionViewModel {
             }
             .store(in: &cancellables)
 
+        dependencies.fileIsDownloadedPublisher
+            .sink { [weak self] readyID in
+                guard self?.currentPhotoID == readyID else { return }
+                self?.updateActions()
+            }
+            .store(in: &cancellables)
+
         dependencies.favoritingController.result
             .sink { [weak self] result in
                 self?.handleFavoritingUpdate(result)
@@ -122,7 +131,7 @@ extension PhotosPreviewActionViewModel {
     private func loadMetadata() {
         guard let currentPhotoID else { return }
         isPhotoMetadataLoaded = false
-        dependencies.metadataController.loadImmediatelly([currentPhotoID])
+        dependencies.metadataController.loadImmediatelly([currentPhotoID], forceToRefresh: false)
     }
 
     private func setupSource() {
@@ -146,15 +155,18 @@ extension PhotosPreviewActionViewModel {
         Task {
             var isFavorited: Bool = false
             var canSaveSharedPhoto = false
+            var isDownloaded = false
             if let currentPhotoID {
                 isFavorited = await dependencies.infoReader.isAllFavoritedPhotos(ids: [currentPhotoID])
                 canSaveSharedPhoto = await dependencies.infoReader.isCopyToStreamAvailable(id: currentPhotoID)
+                isDownloaded = await dependencies.infoReader.isAllDownloaded(ids: [currentPhotoID])
             }
-            await MainActor.run { [isFavorited, canSaveSharedPhoto] in
+            await MainActor.run { [isFavorited, canSaveSharedPhoto, isDownloaded] in
                 let factory = PreviewToolBarItemFactory(
                     streamConfiguration: dependencies.streamConfiguration,
                     featuresController: dependencies.featureFlagsController
                 )
+                self.isCurrentPhotoDownloaded = isDownloaded
                 self.isLoading = false
                 self.actions = factory.makeItems(for: source, isFavorited: isFavorited, hasSaveSharedPhoto: canSaveSharedPhoto)
             }
@@ -182,6 +194,8 @@ extension PhotosPreviewActionViewModel {
             openPhotoInfo()
         case .setAsAlbumCover:
             setAsAlbumCover()
+        case .removeFromAlbum:
+            trash(id: currentPhotoID)
         case .trash:
             trash(id: currentPhotoID)
         case .save:
@@ -215,13 +229,13 @@ extension PhotosPreviewActionViewModel {
         case .undetermined:
             break
         case .photoStream:
-            if hasAlbumsSharing() {
+            if hasSharing() {
                 Task {
                     let ids = await dependencies.infoReader.loadPhotoListingIDs(from: [currentPhotoID])
                     let controller = LocalPhotosSelectionController()
                     controller.start(selectedID: ids)
                     await MainActor.run {
-                        dependencies.coordinator.openShareToSheet(selectionController: controller)
+                        dependencies.coordinator.openShareToSheet(selectionController: controller, isDownloaded: isCurrentPhotoDownloaded)
                     }
                 }
             } else {
@@ -257,26 +271,22 @@ extension PhotosPreviewActionViewModel {
             dialogModel = dependencies.trashDialogFactory.dialogForPhotoGalleryWith(ids: [id])
             currentAction = .trash
         case .album(let role):
-            guard role == .admin || role == .editor else {
-                return
+            switch role {
+            case .viewer:
+                // no-op
+                break
+            case .editor:
+                dialogModel = dependencies.trashDialogFactory.removeFromAlbumAsEditor(ids: [id])
+                currentAction = .trash
+            case .admin, .owner:
+                dialogModel = dependencies.trashDialogFactory.removeFromAlbumAsAdmin(ids: [id])
+                currentAction = .trash
             }
-
-            var model: DialogSheetModel
-            if role == .admin {
-                model = dependencies.trashDialogFactory.removeFromAlbumAsAdmin(ids: [id])
-            }
-            // editor
-            else {
-                model = dependencies.trashDialogFactory.removeFromAlbumAsEditor(ids: [id])
-            }
-
-            dialogModel = model
-            currentAction = .trash
         }
     }
 
-    private func hasAlbumsSharing() -> Bool {
-        return dependencies.featureFlagsController.hasAlbumsSharing && !dependencies.streamConfiguration.isLegacyShare
+    private func hasSharing() -> Bool {
+        return dependencies.featureFlagsController.hasSharing
     }
 }
 
@@ -324,6 +334,7 @@ extension PhotosPreviewActionViewModel {
         let trashDialogFactory: TrashDialogFactoryProtocol
         let userMessageHandler: UserMessageHandlerProtocol
         let copyToStreamController: CopyPhotosToStreamControllerProtocol?
+        let fileIsDownloadedPublisher: AnyPublisher<PhotoId, Never>
 
         // Album only dependencies
         let updateAlbumInteractor: UpdateAlbumInteractorProtocol?

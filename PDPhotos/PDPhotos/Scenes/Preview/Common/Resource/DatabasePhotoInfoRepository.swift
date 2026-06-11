@@ -42,14 +42,16 @@ final class DatabasePhotoInfoRepository: PhotoInfoRepository {
     // Metadata fetch is triggered already by other components, but this function still needs to be notified
     // once they are populated in the DB. That's why we're using observer rather than a single fetch function.
     func execute(with id: PhotoId) {
-        observerCancellable = nil
-        observer = nil
-        observer = observerFactory.makeObserver(id: id, managedObjectContext: managedObjectContext)
-        observerCancellable = observer?.objectWillChange
-            .sink { [weak self] in
-                self?.handleUpdate(id: id)
-            }
-        observer?.start()
+        DispatchQueue.global().async {
+            self.observerCancellable = nil
+            self.observer = nil
+            self.observer = self.observerFactory.makeObserver(id: id, managedObjectContext: self.managedObjectContext)
+            self.observerCancellable = self.observer?.objectWillChange
+                .sink { [weak self] in
+                    self?.handleUpdate(id: id)
+                }
+            self.observer?.start()
+        }
     }
 
     private func handleUpdate(id: PhotoId) {

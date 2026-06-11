@@ -27,7 +27,8 @@ struct AlbumGalleryFactory {
         listController: PhotosListControllerProtocol,
         fetchingController: PhotosListFetchingControllerProtocol,
         selectionController: PhotosSelectionController,
-        streamConfiguration: PhotoStreamConfiguration
+        streamConfiguration: PhotoStreamConfiguration,
+        performanceMetricsController: PerformanceMetricsControllerProtocol?
     ) -> PhotosGridViewModel {
         let monthFormatter = LocalizedMonthFormatter(dateResource: PlatformCurrentDateResource(), dateFormatter: PlatformMonthAndYearFormatter(), monthResource: PlatformMonthResource())
         return PhotosGridViewModel(
@@ -39,7 +40,8 @@ struct AlbumGalleryFactory {
             remoteAlbumFetchController: nil,
             scrollToTopPublisher: PassthroughSubject().eraseToAnyPublisher(),
             streamConfiguration: streamConfiguration,
-            scrollerController: nil
+            scrollerController: nil,
+            performanceMetricsController: performanceMetricsController
         )
     }
 
@@ -90,7 +92,7 @@ struct AlbumGalleryFactory {
         let itemViewModelFactory = CachingPhotoItemViewModelFactory(cache: PhotoItemViewModelsCache()) { item in
             galleryFactory.makeItemViewModel(
                 item: item,
-                thumbnailsContainer: container.dependencies.thumbnailsContainer,
+                thumbnailsContainer: item.albumId == nil ? container.dependencies.streamThumbnailsContainer : container.dependencies.albumsThumbnailsContainer,
                 coordinator: galleryCoordinator,
                 selectionController: selectionController,
                 infosController: infosController,
@@ -180,7 +182,7 @@ struct AlbumGalleryFactory {
             client: tower.client,
             infoReader: infoReader,
             linksFactory: MultipleMovingNodeLinkFactory(infoReader: infoReader, moc: managedObjectContext),
-            localUpdater: MovedNodesUpdateRepository(moc: managedObjectContext),
+            localUpdater: MovedNodesUpdateRepository(moc: managedObjectContext, parentIDFetcher: tower.parentIDFetcher),
             moc: managedObjectContext
         )
         let provider = PhotoRootInfoProvider(

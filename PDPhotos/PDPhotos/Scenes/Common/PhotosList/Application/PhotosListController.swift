@@ -27,6 +27,7 @@ protocol PhotosListControllerProtocol: AnyObject {
     func getIds() -> Set<PhotoId>
     func getListings() -> [PhotoListing]
     func setFilter(_ filter: PhotosListFilter)
+    func stopObserving()
 }
 
 final class PhotosListController: PhotosListControllerProtocol {
@@ -66,5 +67,9 @@ final class PhotosListController: PhotosListControllerProtocol {
     func setFilter(_ filter: PhotosListFilter) {
         isLoadingSubject.send(true)
         repository.setFilter(filter)
+    }
+
+    func stopObserving() {
+        repository.stopObserving()
     }
 }

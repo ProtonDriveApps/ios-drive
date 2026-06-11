@@ -58,7 +58,7 @@ class FileProviderUIViewController: FPUIActionExtensionViewController {
                                       message: Localization.file_provider_signIn_alert_message,
                                       preferredStyle: .alert)
         let close = UIAlertAction(title: Localization.general_ok, style: .default) { _ in
-            if let url = URL(string: "protondrive://signin") {
+            if let url = URL(string: Constants.UniversalLink.singIn.rawValue) {
                 self.extensionContext.open(url)
             }
             self.extensionContext.cancelRequest(withError: CrossProcessErrorExchange.cancelError)

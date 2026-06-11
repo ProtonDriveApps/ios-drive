@@ -50,7 +50,9 @@ final class RemoteThumbnailsListInteractor: ThumbnailsListInteractor {
     }
 
     private func execute(ids: [String], volumeId: String) async throws -> ThumbnailsList {
-        let batches = ids.splitInGroups(of: maximalIdsCount)
+        let batches = ids
+            .filter { !$0.isEmpty }
+            .splitInGroups(of: maximalIdsCount)
         var result = [ThumbnailInfo]()
         for batch in batches {
             let parameters = GetThumbnailsByIDParameters(volumeID: volumeId, thumbnailIDs: batch)

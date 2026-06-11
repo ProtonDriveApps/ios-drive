@@ -39,4 +39,5 @@ extension PDFileManager {
     public static let logsRotationDirectory: URL = logsDirectory.appendingPathComponent("2.RotationDirectory", isDirectory: true)
     public static let logsArchiveDirectory: URL = logsDirectory.appendingPathComponent("3.ArchiveDirectory", isDirectory: true)
     public static let logsExportDirectory: URL = logsDirectory.appendingPathComponent("ExportDirectory", isDirectory: true)
+    public static let observabilityEventsDirectory: URL = logsDirectory.appendingPathComponent("ObservabilityEvents", isDirectory: true)
 }

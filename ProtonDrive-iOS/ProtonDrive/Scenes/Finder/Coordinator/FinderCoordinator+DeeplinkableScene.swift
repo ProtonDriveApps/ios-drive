@@ -49,13 +49,25 @@ extension FinderCoordinator: DeeplinkableScene {
     }
     
     func deeplink(from deeplink: Deeplink?, tower: Tower?) {
-        if let deeplink = deeplink?.next(after: self.currentIdentifier) { // folder, shared, activity, move
-            self.drilldownTo.wrappedValue = deeplink.nodeID
-        } else if let modal = deeplink?.finalModal(), let file = tower?.uiSlot?.subscribeToNode(modal) as? File { // file
-            self.presentModal.wrappedValue = .file(file: file, share: false)
-            deeplink?.invalidate()
-        } else { // end of sequence
-            deeplink?.invalidate()
+        // A delay is required, especially when the app returns from the background
+        // When coming back to the foreground, FinderView refreshes due to data synchronization
+        // Any UI changes triggered before that refresh may be reset
+        // For example, a presented modal could be dismissed automatically after about one second
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if let deeplink = deeplink?.next(after: self.currentIdentifier) { // folder, shared, activity, move
+                self.drilldownTo.wrappedValue = deeplink.nodeID
+            } else if let modal = deeplink?.finalModal(), let file = tower?.uiSlot?.subscribeToNode(modal) as? File { // file
+                self.presentModal.wrappedValue = .file(file: file)
+                deeplink?.invalidate()
+            } else if let action = deeplink?.finalAction() {
+                    switch action {
+                    case .scanDocument:
+                        self.presentModal.wrappedValue = .scanDocument
+                    }
+                deeplink?.invalidate()
+            } else { // end of sequence
+                deeplink?.invalidate()
+            }
         }
     }
     

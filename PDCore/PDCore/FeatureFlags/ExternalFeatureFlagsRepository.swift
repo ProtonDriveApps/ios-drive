@@ -54,12 +54,7 @@ class ExternalFeatureFlagsRepository: FeatureFlagsRepository {
                 var messages: [String] = ["⛳️ FeatureFlag updated"]
                 for externalFlag in ExternalFeatureFlag.allCases {
                     let storageFlag = self.mapExternalFeatureFlagToAvailability(external: externalFlag)
-                    let value: Bool
-                    if externalFlag == .ratingIOSDrive {
-                        value = self.legacyResource.isEnabled(flag: externalFlag)
-                    } else {
-                        value = self.externalResource.isEnabled(flag: externalFlag)
-                    }
+                    let value = self.isEnabled(flag: externalFlag)
                     messages.append("Flag: \(storageFlag) value: \(value)")
                     self.externalStore.setFeatureEnabled(storageFlag, value: value)
                 }
@@ -71,6 +66,14 @@ class ExternalFeatureFlagsRepository: FeatureFlagsRepository {
 
     public func isEnabled(flag: FeatureAvailabilityFlag) -> Bool {
         externalStore.isFeatureEnabled(flag)
+    }
+
+    public func isEnabled(flag: ExternalFeatureFlag) -> Bool {
+        if flag == .ratingIOSDrive {
+            return legacyResource.isEnabled(flag: flag)
+        } else {
+            return self.externalResource.isEnabled(flag: flag)
+        }
     }
 
     public func enable(flag: FeatureAvailabilityFlag) {
@@ -142,48 +145,51 @@ class ExternalFeatureFlagsRepository: FeatureFlagsRepository {
         case .postMigrationJunkFilesCleanup: return .postMigrationJunkFilesCleanup
         case .domainReconnectionEnabled: return .domainReconnectionEnabled
         case .pushNotificationIsEnabled: return .pushNotificationIsEnabled
-        case .logCollectionEnabled: return .logCollectionEnabled
-        case .logCollectionDisabled: return .logCollectionDisabled
         case .oneDollarPlanUpsellEnabled: return .oneDollarPlanUpsellEnabled
         case .driveDisablePhotosForB2B: return .driveDisablePhotosForB2B
-        case .driveDDKEnabled: return .driveDDKEnabled
+        case .driveDDKIntelEnabled: return .driveDDKIntelEnabled
+        case .driveDDKDisabled: return .driveDDKDisabled
         case .driveMacSyncRecoveryDisabled: return .driveMacSyncRecoveryDisabled
-        case .driveMacKeepDownloadedDisabled: return .driveMacKeepDownloadedDisabled
+        case .driveMacPromoBannerDisabled: return .driveMacPromoBannerDisabled
+        case .driveMacGradualRolloutChannelEnabled: return .driveMacGradualRolloutChannelEnabled
+        case .driveMacAbnormalExitRelaunchDisabled: return .driveMacAbnormalExitRelaunchDisabled
         // Sharing
         case .driveSharingMigration: return .driveSharingMigration
-        case .driveSharingInvitations: return .driveSharingInvitations
         case .driveSharingExternalInvitations: return .driveSharingExternalInvitations
         case .driveSharingDisabled: return .driveSharingDisabled
         case .driveSharingExternalInvitationsDisabled: return .driveSharingExternalInvitationsDisabled
-        case .driveSharingEditingDisabled: return .driveSharingEditingDisabled
         case .drivePublicShareEditMode: return .drivePublicShareEditMode
         case .drivePublicShareEditModeDisabled: return .drivePublicShareEditModeDisabled
-        case .acceptRejectInvitation: return .driveMobileSharingInvitationsAcceptReject
         case .driveShareURLBookmarking: return .driveShareURLBookmarking
-        case .driveShareURLBookmarksDisabled: return.driveShareURLBookmarksDisabled
-        // ProtonDoc
-        case .driveDocsDisabled: return .driveDocsDisabled
+        case .driveShareURLBookmarksDisabled: return .driveShareURLBookmarksDisabled
         // Rating booster
         // Legacy feature flags we used before migrating to Unleash
         case .ratingIOSDrive: return .ratingIOSDrive
         case .driveRatingBooster: return .driveRatingBooster
         // Entitlement
         case .driveDynamicEntitlementConfiguration: return .driveDynamicEntitlementConfiguration
-        // Refactor
-        case .driveiOSRefreshableBlockDownloadLink: return .driveiOSRefreshableBlockDownloadLink
-        // Computers
-        case .driveiOSComputers: return .driveiOSComputers
-        case .driveiOSComputersDisabled: return .driveiOSComputersDisabled
         // Album
-        case .driveAlbumsDisabled: return .driveAlbumsDisabled
         case .driveCopyDisabled: return .driveCopyDisabled
-        case .drivePhotosTagsMigration: return .drivePhotosTagsMigration
         case .drivePhotosTagsMigrationDisabled: return .drivePhotosTagsMigrationDisabled
         // Sheets
         case .docsSheetsEnabled: return .docsSheetsEnabled
         case .docsSheetsDisabled: return .docsSheetsDisabled
         case .docsCreateNewSheetOnMobileEnabled: return .docsCreateNewSheetOnMobileEnabled
         case .driveiOSDebugMode: return .driveiOSDebugMode
+        // Payments
+        case .driveiOSPaymentsV2: return .driveiOSPaymentsV2
+        // SDK
+        case .driveiOSSDKUploadMain: return .driveiOSSDKUploadMain
+        case .driveiOSSDKUploadPhoto: return .driveiOSSDKUploadPhoto
+        case .driveiOSSDKDownloadMain: return .driveiOSSDKDownloadMain
+        case .driveiOSSDKDownloadPhoto: return .driveiOSSDKDownloadPhoto
+        case .driveCryptoEncryptBlocksWithPgpAead: return .driveCryptoEncryptBlocksWithPgpAead
+        case .driveMacSDKUploadMainDisabled: return .driveMacSDKUploadMainDisabled
+        case .driveMacSDKDownloadMainDisabled: return .driveMacSDKDownloadMainDisabled
+        case .driveMacFileProviderBatchingDisabled: return .driveMacFileProviderBatchingDisabled
+        case .driveiOSSDKNodeOperations: return .driveiOSSDKNodeOperations
+        case .driveDownloadVerificationDisabled: return .driveDownloadVerificationDisabled
+        case .driveUploadVerificationDisabled: return .driveUploadVerificationDisabled
         }
     }
 }

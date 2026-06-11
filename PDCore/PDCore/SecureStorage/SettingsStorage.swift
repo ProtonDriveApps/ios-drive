@@ -71,8 +71,9 @@ public class SettingsStorage<T> {
     
     private var additionalLogging: Bool
     
-    public init(_ label: String, additionalLogging: Bool = false) {
+    public init(_ label: String, suite: SettingsStorageSuite = .standard, additionalLogging: Bool = false) {
         self.label = label
+        self.suite = suite
         self.additionalLogging = additionalLogging
     }
     

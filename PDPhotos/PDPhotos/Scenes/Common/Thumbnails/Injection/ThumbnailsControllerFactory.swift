@@ -17,6 +17,7 @@
 
 import CoreData
 import PDCore
+import PDCoreIOS
 
 struct ThumbnailsControllerFactory {
     func makeSmallThumbnailsController(tower: Tower) -> ThumbnailsController {
@@ -36,12 +37,24 @@ struct ThumbnailsControllerFactory {
         urlsController: ThumbnailURLsController,
         metadataController: MetadataControllerProtocol,
         synchronousRepository: SynchronousThumbnailRepository,
+        performanceMetricsController: PerformanceMetricsControllerProtocol,
+        featureFlagsController: FeatureFlagsControllerProtocol,
         id: PhotoId,
         type: ThumbnailType
     ) -> ThumbnailController {
         let managedObjectContext = getManagedObjectContext(tower: tower)
         let asynchronousRepository = DatabaseAsynchronousThumbnailRepository(managedObjectContext: managedObjectContext, storageManager: tower.storage, type: type)
-        return LocalThumbnailController(thumbnailsController: thumbnailsController, urlsController: urlsController, metadataController: metadataController, synchronousRepository: synchronousRepository, asynchronousRepository: asynchronousRepository, id: id)
+        let canUseSDK = tower.getSdkThumbnailsDownloaderForPhotos() != nil
+        return LocalThumbnailController(
+            thumbnailsController: thumbnailsController,
+            urlsController: urlsController,
+            metadataController: metadataController,
+            synchronousRepository: synchronousRepository,
+            asynchronousRepository: asynchronousRepository,
+            performanceMetricsController: performanceMetricsController,
+            canUseSDK: canUseSDK,
+            id: id
+        )
     }
 
     private func getManagedObjectContext(tower: Tower) -> NSManagedObjectContext {

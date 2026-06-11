@@ -15,60 +15,62 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-public enum ExternalFeatureFlag: CaseIterable {
-    case photosUploadDisabled
-    case logsCompressionDisabled
-    case domainReconnectionEnabled
-    case postMigrationJunkFilesCleanup
-    case pushNotificationIsEnabled
-    case logCollectionEnabled
-    case logCollectionDisabled
-    case driveiOSDebugMode
-    case oneDollarPlanUpsellEnabled
-    case driveDisablePhotosForB2B
-    case driveDDKEnabled
-    case driveMacSyncRecoveryDisabled
-    case driveMacKeepDownloadedDisabled
+public enum ExternalFeatureFlag: String, CaseIterable, Codable {
+    case photosUploadDisabled = "DrivePhotosUploadDisabled"
+    case logsCompressionDisabled = "DriveLogsCompressionDisabled"
+    case domainReconnectionEnabled = "DriveDomainReconnectionEnabled"
+    case postMigrationJunkFilesCleanup = "DrivePostMigrationJunkFilesCleanup"
+    case pushNotificationIsEnabled = "PushNotifications"
+    case driveiOSDebugMode = "DriveiOSDebugMode"
+    case oneDollarPlanUpsellEnabled = "DriveOneDollarPlanUpsell"
+    case driveDisablePhotosForB2B = "DriveDisablePhotosForB2B"
+    case driveDDKIntelEnabled = "DriveDDKIntelEnabled"
+    case driveDDKDisabled = "DriveDDKDisabled"
+    case driveMacSyncRecoveryDisabled = "DriveMacSyncRecoveryDisabled"
+    case driveMacPromoBannerDisabled = "DriveMacPromoBannerDisabled"
+    case driveMacGradualRolloutChannelEnabled = "DriveMacGradualRolloutChannelEnabled"
+    case driveMacAbnormalExitRelaunchDisabled = "DriveMacAbnormalExitRelaunchDisabled"
 
-    // Sharing 
-    case driveSharingMigration
-    case driveSharingInvitations
-    case driveSharingExternalInvitations
-    case driveSharingDisabled
-    case driveSharingExternalInvitationsDisabled
-    case driveSharingEditingDisabled
-    case drivePublicShareEditMode
-    case drivePublicShareEditModeDisabled
-    case acceptRejectInvitation
-    case driveShareURLBookmarking
-    case driveShareURLBookmarksDisabled
+    // Sharing
+    case driveSharingMigration = "DriveSharingMigration"
+    case driveSharingExternalInvitations = "DriveSharingExternalInvitations"
+    case driveSharingDisabled = "DriveSharingDisabled"
+    case driveSharingExternalInvitationsDisabled = "DriveSharingExternalInvitationsDisabled"
+    case drivePublicShareEditMode = "DrivePublicShareEditMode"
+    case drivePublicShareEditModeDisabled = "DrivePublicShareEditModeDisabled"
+    case driveShareURLBookmarking = "DriveShareURLBookmarking"
+    case driveShareURLBookmarksDisabled = "DriveShareURLBookmarksDisabled"
 
-    // ProtonDoc
-    case driveDocsDisabled
-    
     // Rating booster
     // Legacy feature flags we used before migrating to Unleash
-    case ratingIOSDrive
-    case driveRatingBooster
+    case ratingIOSDrive = "RatingIOSDrive"
+    case driveRatingBooster = "DriveRatingBooster"
 
     // Entitlement
-    case driveDynamicEntitlementConfiguration
-
-    // Refactor
-    case driveiOSRefreshableBlockDownloadLink
-
-    // Computers
-    case driveiOSComputers
-    case driveiOSComputersDisabled
+    case driveDynamicEntitlementConfiguration = "DriveDynamicEntitlementConfiguration"
 
     // Albums
-    case driveAlbumsDisabled
-    case driveCopyDisabled
-    case drivePhotosTagsMigration
-    case drivePhotosTagsMigrationDisabled
+    case driveCopyDisabled = "DriveCopyDisabled"
+    case drivePhotosTagsMigrationDisabled = "DrivePhotosTagsMigrationDisabled"
 
     // Sheets
-    case docsSheetsEnabled
-    case docsSheetsDisabled
-    case docsCreateNewSheetOnMobileEnabled
+    case docsSheetsEnabled = "DocsSheetsEnabled"
+    case docsSheetsDisabled = "DocsSheetsDisabled"
+    case docsCreateNewSheetOnMobileEnabled = "DocsCreateNewSheetOnMobileEnabled"
+
+    // Payments
+    case driveiOSPaymentsV2 = "DriveiOSPaymentsV2"
+
+    // SDK
+    case driveiOSSDKUploadMain = "DriveiOSSDKUploadMain"
+    case driveiOSSDKUploadPhoto = "DriveiOSSDKUploadPhoto"
+    case driveiOSSDKDownloadMain = "DriveiOSSDKDownloadMain"
+    case driveiOSSDKDownloadPhoto = "DriveiOSSDKDownloadPhoto"
+    case driveCryptoEncryptBlocksWithPgpAead = "DriveCryptoEncryptBlocksWithPgpAead"
+    case driveMacSDKUploadMainDisabled = "DriveMacSDKUploadMainDisabled"
+    case driveMacSDKDownloadMainDisabled = "DriveMacSDKDownloadMainDisabled"
+    case driveMacFileProviderBatchingDisabled = "DriveMacFileProviderBatchingDisabled"
+    case driveiOSSDKNodeOperations = "DriveiOSSDKNodeOperations"
+    case driveDownloadVerificationDisabled = "DriveDownloadVerificationDisabled"
+    case driveUploadVerificationDisabled = "DriveUploadVerificationDisabled"
 }

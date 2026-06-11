@@ -19,7 +19,7 @@ import CoreData
 
 class ThumbnailDecryptorOperation: ThumbnailIdentifiableOperation {
     private var encryptedThumbnail: Data?
-    private let decryptor: ThumbnailDecryptor
+    let decryptor: ThumbnailDecryptor
 
     init(encryptedThumbnail: Data?, decryptor: ThumbnailDecryptor, identifier: NodeIdentifier) {
         self.encryptedThumbnail = encryptedThumbnail
@@ -83,7 +83,7 @@ final class ThumbnailDecryptor {
         guard !isCancelled else { return }
 
         let moc = store.backgroundContext
-        moc.perform { [weak self] in
+        moc.perform { [weak self, moc] in
             guard let self = self else { return }
 
             do {
@@ -93,7 +93,22 @@ final class ThumbnailDecryptor {
                 thumbnail.clearData = thumbnail.clearThumbnail
 
                 try moc.saveOrRollback()
-                completion(.success)
+                if let data = thumbnail.clearThumbnail {
+                    #if os(iOS)
+                    CoreDataThumbnail.saveClearDataToDisk(
+                        clearData: data,
+                        type: thumbnail.type,
+                        identifier: thumbnail.revision.file.identifierWithinManagedObjectContext
+                    ) {
+                        completion(.success)
+                    }
+                    try thumbnail.clearBlob(in: moc, shouldSave: true)
+                    #else
+                    completion(.success)
+                    #endif
+                } else {
+                    completion(.success)
+                }
 
             } catch {
                 Log.error(error: DriveError(error), domain: .encryption)

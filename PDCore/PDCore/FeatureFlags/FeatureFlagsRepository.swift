@@ -17,8 +17,9 @@
 
 import Combine
 import Foundation
+import PDClient
 
-public protocol FeatureFlagsRepository: FeatureFlagsStartingRepository, FeatureFlagsUpdateRepository {
+public protocol FeatureFlagsRepository: FeatureFlagsStartingRepository, FeatureFlagsUpdateRepository, ExternalFeatureFlagsResource {
     func isEnabled(flag: FeatureAvailabilityFlag) -> Bool
     func enable(flag: FeatureAvailabilityFlag)
     func disable(flag: FeatureAvailabilityFlag)

@@ -57,6 +57,7 @@ extension NodesListing {
     /// Note: call from within NSManagedObjectContext!
     public func reportEnumeratedItem(for node: Node) {
         #if os(macOS)
+        guard let syncStorage = tower.syncStorage else { return }
         let reportableSyncItem = ReportableSyncItem(
             id: node.identifier.rawValue,
             modificationTime: Date(),
@@ -69,12 +70,17 @@ extension NodesListing {
             progress: 100,
             errorDescription: nil
         )
-        tower.syncStorage?.upsert(reportableSyncItem)
+        Task {
+            await syncStorage.backgroundContextPool.withContext { context in
+                syncStorage.upsert(reportableSyncItem, in: context)
+            }
+        }
         #endif
     }
 
     public func reportDecryptionError(for node: Node, underlyingError: Error) {
         #if os(macOS)
+        guard let syncStorage = tower.syncStorage else { return }
         let reportableSyncItem = ReportableSyncItem(
             id: node.identifier.rawValue,
             modificationTime: Date(),
@@ -87,7 +93,11 @@ extension NodesListing {
             progress: 0,
             errorDescription: "Access to file attribute (e.g., file name) not available. Please retry or contact support."
         )
-        tower.syncStorage?.upsert(reportableSyncItem)
+        Task {
+            await syncStorage.backgroundContextPool.withContext { context in
+                syncStorage.upsert(reportableSyncItem, in: context)
+            }
+        }
         #endif
     }
 }

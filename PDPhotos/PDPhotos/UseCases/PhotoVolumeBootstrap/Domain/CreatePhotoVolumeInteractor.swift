@@ -25,15 +25,26 @@ protocol CreatePhotoVolumeInteractorProtocol {
 }
 
 struct CreatePhotoVolumeInteractor: CreatePhotoVolumeInteractorProtocol {
-    private let client: PhotoShareMigrateAPIService
+    private let client: PhotoShareMigrateAPIService & TagsMigrationAPIClient
+    private let clientUIDProvider: UploadClientUIDProvider
     private let context: NSManagedObjectContext
     private let encryptor: EncryptionResource
+    private let localSettings: LocalSettings
     private let shareCreationResource: PhotoShareCreationFinishResource
 
-    init(client: PhotoShareMigrateAPIService, context: NSManagedObjectContext, encryptor: EncryptionResource, shareCreationResource: PhotoShareCreationFinishResource) {
+    init(
+        client: PhotoShareMigrateAPIService & TagsMigrationAPIClient,
+        clientUIDProvider: UploadClientUIDProvider,
+        context: NSManagedObjectContext,
+        encryptor: EncryptionResource,
+        localSettings: LocalSettings,
+        shareCreationResource: PhotoShareCreationFinishResource
+    ) {
         self.client = client
+        self.clientUIDProvider = clientUIDProvider
         self.context = context
         self.encryptor = encryptor
+        self.localSettings = localSettings
         self.shareCreationResource = shareCreationResource
     }
 
@@ -50,6 +61,7 @@ struct CreatePhotoVolumeInteractor: CreatePhotoVolumeInteractorProtocol {
             link: link
         )
         shareCreationResource.execute() // Telemetry
+        try await markStateFinished(volumeID: newVolume.volumeID, rootID: newVolume.share.linkID)
         return volumeId
     }
 
@@ -143,5 +155,15 @@ struct CreatePhotoVolumeInteractor: CreatePhotoVolumeInteractorProtocol {
             try context.saveOrRollback()
             return volume.id
         }
+    }
+
+    private func markStateFinished(volumeID: String, rootID: String) async throws {
+        let stateUpdater = DefaultPhotoTagsMigrationStateUpdater(
+            tagsMigrationClient: client,
+            localSettings: localSettings,
+            volumeID: volumeID,
+            clientUID: clientUIDProvider.getUploadClientUID()
+        )
+        try await stateUpdater.markFinished(id: rootID)
     }
 }

@@ -27,6 +27,7 @@ protocol OfflineAvailableResource {
 final class LocalOfflineAvailableResource: OfflineAvailableResource {
     private let tower: Tower
     private let downloader: Downloader
+    private let sdkDownloader: SDKFileDownloaderProtocol?
     private let storage: StorageManager
     private let managedObjectContext: NSManagedObjectContext
     private var subject = CurrentValueSubject<PhotoIdsSet, Never>([])
@@ -36,22 +37,46 @@ final class LocalOfflineAvailableResource: OfflineAvailableResource {
         subject.eraseToAnyPublisher()
     }
 
-    init(tower: Tower, downloader: Downloader, storage: StorageManager, managedObjectContext: NSManagedObjectContext) {
+    init(tower: Tower, downloader: Downloader, sdkDownloader: SDKFileDownloaderProtocol?, storage: StorageManager, managedObjectContext: NSManagedObjectContext) {
         self.tower = tower
         self.downloader = downloader
+        self.sdkDownloader = sdkDownloader
         self.storage = storage
         self.managedObjectContext = managedObjectContext
-        subscribeToUpdates()
+        Task { @MainActor in
+            subscribeToUpdates()
+        }
     }
 
+    @MainActor
     private func subscribeToUpdates() {
-        downloader.downloadsPublisher()
+        let sdkPublisher = sdkDownloader?.progresses
+            .map { Set($0.keys) }
+            .eraseToAnyPublisher()
+        let legacyPublisher = downloader.downloadsPublisher()
+            .map { Set($0) }
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
+            .eraseToAnyPublisher()
+
+        makeIdsPublisher(legacyPublisher: legacyPublisher, sdkPublisher: sdkPublisher)
             .sink { [weak self] ids in
-                self?.subject.send(Set(ids))
+                self?.subject.send(ids)
             }
             .store(in: &cancellables)
+    }
+
+    private typealias IdsPublisher = AnyPublisher<Set<AnyVolumeIdentifier>, Never>
+    private func makeIdsPublisher(legacyPublisher: IdsPublisher, sdkPublisher: IdsPublisher?) -> IdsPublisher {
+        if let sdkPublisher {
+            return sdkPublisher.combineLatest(legacyPublisher)
+                .map { sdkIds, legacyIds in
+                    sdkIds.union(legacyIds)
+                }
+                .eraseToAnyPublisher()
+        } else {
+            return legacyPublisher
+        }
     }
 
     func toggle(ids: PhotoIdsSet) {
@@ -60,7 +85,7 @@ final class LocalOfflineAvailableResource: OfflineAvailableResource {
             let ids = Array(ids)
             let photos = self.storage.fetchPhotos(identifiers: ids, moc: self.managedObjectContext)
             let shouldMarkOffline = photos.contains(where: { !$0.isMarkedOfflineAvailable })
-            self.tower.markOfflineAvailable(shouldMarkOffline, nodes: photos) { [weak self] _ in
+            self.tower.markOfflineAvailable(shouldMarkOffline, nodes: photos, moc: managedObjectContext) { [weak self] _ in
                 self?.notifyUpdate()
             }
         }

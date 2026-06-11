@@ -25,11 +25,13 @@ import PDUIComponents
 import ProtonCoreUIFoundations
 import PDLocalization
 import PDPhotos
+import PDSDKCore
 
 class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
     enum Context {
         case move(rootNode: NodeIdentifier, nodesToMove: [NodeIdentifier], nodeToMoveParent: NodeIdentifier)
         case folder(nodeID: NodeIdentifier)
+        case incomingFiles(rootNodeID: NodeIdentifier)
         case shared
         case offlineAvailable
         case sharedWithMe
@@ -47,6 +49,7 @@ class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
     private let deeplink: Deeplink?
     private let photoPickerCoordinator: PhotosPickerCoordinator?
     private let isSharedWithMe: Bool
+    private let incomingFilesSelectionHandler: ((Folder) -> Void)?
     private let scrollToTopPublisher: AnyPublisher<TabBarItem, Never>?
     private(set) var onDisappear: () -> Void = { }
     private(set) var onAppear: () -> Void = { }
@@ -55,6 +58,8 @@ class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
     private(set) weak var nextFolderCoordinator: FinderCoordinator?
     private lazy var createDocView = makeCreateDocumentView(fileType: .doc)
     private lazy var createSheetView = makeCreateDocumentView(fileType: .sheet)
+    private var fileExportCoordinator: FileExportCoordinator?
+    private var previewPrepareCoordinator: FilePreviewPreparationCoordinator?
     weak var rootViewController: UIViewController?
 
     // Binding observed by FinderView's NavigationView
@@ -71,10 +76,14 @@ class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
         self?._presentedModal
     } set: {  [weak self] destination in
         guard let self else { return }
-        // Default case opens SwiftUI modal. Non-swiftui handling needs to be overriden here.
+        // Default case opens SwiftUI modal. Non-swiftui handling needs to be overriden here (presented from `FinderView`)
+        // For all the others, we still want to have means to communicate to the view that new screen is being opened. For
+        // that purpose, we set it to `presentModalSubject`
+        presentModalSubject.send(destination)
+
         switch destination {
-        case let .file(file: file, share: share):
-            self.openFilePreview(file: file, share: share)
+        case let .file(file: file):
+            self.openFilePreview(file: file)
         case let .protonFile(file):
             self.openProtonFile(with: file)
         case let .openInBrowser(file):
@@ -89,26 +98,36 @@ class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
             self.createSheetView.start(with: parentIdentifier)
         case .servicePlans:
             self.openSubscriptions()
+        case .openIn(let file), .downloadToDevice(let file):
+            fileExportCoordinator = FileExportCoordinator(tower: tower, rootViewController: rootViewController)
+            Task.detached { [weak self] in
+                await self?.fileExportCoordinator?.startExport(file: file, for: destination!)
+            }
         default:
             self._presentedModal = destination
         }
     }
+    let presentModalSubject = PassthroughSubject<Destination?, Never>()
 
     init(
         container: AuthenticatedDependencyContainer,
         isSharedWithMe: Bool = false,
         parent: FinderCoordinator? = nil,
         deeplink: Deeplink? = nil,
+        incomingFilesSelectionHandler: ((Folder) -> Void)? = nil,
         photoPickerCoordinator: PhotosPickerCoordinator? = nil,
         scrollToTopPublisher: AnyPublisher<TabBarItem, Never>? = nil
     ) {
         self.container = container
         self.isSharedWithMe = isSharedWithMe
         self.deeplink = deeplink
+        self.incomingFilesSelectionHandler = incomingFilesSelectionHandler
         self.previousFolderCoordinator = parent
         self.photoPickerCoordinator = photoPickerCoordinator
         self.rootViewController = parent?.rootViewController
         self.scrollToTopPublisher = scrollToTopPublisher
+
+        super.init()
     }
 }
 
@@ -139,6 +158,12 @@ extension FinderCoordinator {
                 } else {
                     self.startFolder(nodeID, node)
                 }
+            } else {
+                TechnicalErrorPlaceholderView(message: Localization.finder_coordinator_invalid_folder)
+            }
+        case .incomingFiles(let nodeID):
+            if let node = tower.uiSlot?.subscribeToNode(nodeID) as? Folder {
+                startIncomingFilesSave(nodeID: nodeID, node: node)
             } else {
                 TechnicalErrorPlaceholderView(message: Localization.finder_coordinator_invalid_folder)
             }
@@ -194,7 +219,7 @@ extension FinderCoordinator {
         let viewModel = OfflineAvailableViewModel(
             model: model,
             featureFlagsController: featureFlagsController,
-            warningViewModel: makeWarningViewModel()
+            progressTrackersController: ProgressTrackersController()
         )
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
@@ -216,7 +241,7 @@ extension FinderCoordinator {
             model: model,
             featureFlagsController: featureFlagsController,
             scrollToTopPublisher: scrollToTopPublisher,
-            warningViewModel: makeWarningViewModel()
+            progressTrackersController: ProgressTrackersController()
         )
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
@@ -228,7 +253,7 @@ extension FinderCoordinator {
         let viewModel = SharedByMeViewModel(
             model: model,
             featureFlagsController: featureFlagsController,
-            warningViewModel: makeWarningViewModel()
+            progressTrackersController: ProgressTrackersController()
         )
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
@@ -239,7 +264,13 @@ extension FinderCoordinator {
         self.model = model
         let starter = SynchronizingInMemorySharedWithMeStarter(client: tower.client, storage: tower.storage, sharedVolumesEventsController: container.sharedVolumesEventsContainer.controller)
         let cacher = CoredataSharedWithMeLinkMetadataCache(storage: tower.storage)
-        let retriever = SharedWithMeLinksMetadataRetriever(remoteShareDataSource: tower.client, remoteLinksDataSource: tower.client, sharedWithMeLinksCache: cacher)
+        let retriever = SharedWithMeLinksMetadataRetriever(
+            remoteShareDataSource: tower.client,
+            remoteLinksDataSource: tower.client,
+            sharedWithMeLinksCache: cacher,
+            contactsController: ContactsController(contactsManager: container.contactsManager),
+            keysVault: tower.sessionVault
+        )
         let invitationStatusContainer = PendingInvitationsStatusContainer(tower: tower, featureFlagsController: featureFlagsController, configuration: .default)
         let bookmarksContainer = BookmarkContainer(tower: tower, featureFlagsController: featureFlagsController)
         let invitationsContainer = PendingInvitationsContainer(tower: tower, featureFlagsController: featureFlagsController, configuration: .default)
@@ -253,7 +284,8 @@ extension FinderCoordinator {
             bookmarksContainer: bookmarksContainer,
             featureFlagsController: featureFlagsController,
             volumeIdsController: tower.sharedVolumeIdsController,
-            scrollToTopPublisher: scrollToTopPublisher ?? PassthroughSubject<TabBarItem, Never>().eraseToAnyPublisher()
+            scrollToTopPublisher: scrollToTopPublisher ?? PassthroughSubject<TabBarItem, Never>().eraseToAnyPublisher(),
+            progressTrackersController: ProgressTrackersController()
         )
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(
@@ -267,9 +299,24 @@ extension FinderCoordinator {
 
     private func startFolder(_ nodeID: NodeIdentifier, _ node: Folder) -> some View {
         let userInfoController = UserInfoControllerFactory().makeController(sessionVault: tower.sessionVault)
-        let model = FolderModel(tower: tower, node: node, nodeID: nodeID, userInfoController: userInfoController)
+        let model = FolderModel(
+            tower: tower,
+            node: node,
+            nodeID: nodeID,
+            userInfoController: userInfoController
+        )
         self.model = model
-        let viewModel = FolderViewModel(localSettings: tower.localSettings, model: model, node: node, nodeStatePolicy: FileNodeStatePolicy(), featureFlagsController: featureFlagsController, isSharedWithMe: isSharedWithMe, volumeIdsController: tower.sharedVolumeIdsController, scrollToTopPublisher: scrollToTopPublisher)
+        let viewModel = FolderViewModel(
+            localSettings: tower.localSettings,
+            model: model,
+            node: node,
+            nodeStatePolicy: FileNodeStatePolicy(),
+            featureFlagsController: featureFlagsController,
+            isSharedWithMe: isSharedWithMe,
+            volumeIdsController: tower.sharedVolumeIdsController,
+            scrollToTopPublisher: scrollToTopPublisher,
+            progressTrackersController: ProgressTrackersController()
+        )
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
     }
@@ -277,8 +324,21 @@ extension FinderCoordinator {
     private func startComputersRoot(_ nodeID: NodeIdentifier, _ node: Folder) -> some View {
         let model = FolderModel(tower: tower, node: node, nodeID: nodeID)
         self.model = model
-        let viewModel = ComputerRootFolderViewModel(localSettings: tower.localSettings, model: model, node: node, nodeStatePolicy: FileNodeStatePolicy(), featureFlagsController: featureFlagsController, isSharedWithMe: isSharedWithMe, volumeIdsController: tower.sharedVolumeIdsController, scrollToTopPublisher: scrollToTopPublisher)
+        let viewModel = ComputerRootFolderViewModel(localSettings: tower.localSettings, model: model, node: node, nodeStatePolicy: FileNodeStatePolicy(), featureFlagsController: featureFlagsController, isSharedWithMe: isSharedWithMe, volumeIdsController: tower.sharedVolumeIdsController, scrollToTopPublisher: scrollToTopPublisher, progressTrackersController: ProgressTrackersController())
         self.hookIntoViewLifecycle(viewModel)
+        return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
+    }
+
+    private func startIncomingFilesSave(nodeID: NodeIdentifier, node: CoreDataFolder) -> some View {
+        let model = IncomingFilesModel(tower: tower, node: node, nodeID: nodeID)
+        self.model = model
+        let viewModel = IncomingFilesViewModel(
+            model: model,
+            node: node,
+            onSaveHere: incomingFilesSelectionHandler,
+            featureFlagsController: featureFlagsController
+        )
+        hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
     }
 }
@@ -286,11 +346,15 @@ extension FinderCoordinator {
 // MARK: - go(to:)
 
 extension FinderCoordinator {
+    // swiftlint:disable cyclomatic_complexity
     @ViewBuilder
     func go(to destination: Destination) -> some View {
         switch destination {
         case let .folder(folder) where model is MoveModel:
             self.goFolderMove(folder, model as! MoveModel)
+
+        case let .folder(folder) where model is IncomingFilesModel:
+            goInComingFilesSave(folder)
 
         case let .folder(folder):
             self.goFolder(folder)
@@ -339,6 +403,10 @@ extension FinderCoordinator {
             CameraPicker(delegate: model as! PickerDelegate)
                 .edgesIgnoringSafeArea(.all)
 
+        case .scanDocument where model is PickerDelegate:
+            DocumentScanner(delegate: model as! PickerDelegate)
+                .edgesIgnoringSafeArea(.all)
+
         case let .nodeDetails(nextNode):
             NodeDetailsCoordinator().start((tower, nextNode))
 
@@ -363,6 +431,7 @@ extension FinderCoordinator {
             TechnicalErrorPlaceholderView()
         }
     }
+    // swiftlint:enable cyclomatic_complexity
 
     private func goFolderMove(_ folder: Folder, _ model: MoveModel) -> some View {
         let nodesToMoveID = model.nodeIdsToMove
@@ -376,6 +445,16 @@ extension FinderCoordinator {
         let coordinator = FinderCoordinator(container: container, isSharedWithMe: self.isSharedWithMe, parent: self, deeplink: deeplink, photoPickerCoordinator: photoPickerCoordinator, scrollToTopPublisher: scrollToTopPublisher)
         nextFolderCoordinator = coordinator
         return coordinator.start(.folder(nodeID: folder.identifier))
+    }
+
+    private func goInComingFilesSave(_ folder: Folder) -> some View {
+        let coordinator = FinderCoordinator(
+            container: container,
+            parent: self,
+            incomingFilesSelectionHandler: incomingFilesSelectionHandler
+        )
+        nextFolderCoordinator = coordinator
+        return coordinator.start(.incomingFiles(rootNodeID: folder.identifier))
     }
 
     private func goMove(_ firstNode: Node, _ nodes: [Node], _ rootId: NodeIdentifier, _ parentId: NodeIdentifier) -> some View {
@@ -402,32 +481,21 @@ extension FinderCoordinator {
         controller.openExternally(file.identifier)
     }
 
-    private func openFilePreview(file: File, share: Bool) {
+    private func openFilePreview(file: File) {
+        guard let rootViewController else { return }
         // Create the repository and coordinator
         let repository = CoreDataFilePreviewRepository(context: tower.storage.backgroundContext, file: file)
-        let coordinator = FilePreviewPreparationCoordinator(repository: repository, root: rootViewController, share: share)
-        let vm = FilePreviewPreparationViewModel(repository: repository, coordinator: coordinator, errorHandler: UserMessageHandler())
-
-        // Create the alert view to indicate the decryption process
-        let alert = UIAlertController(title: vm.title, message: nil, preferredStyle: .alert)
-        let cancelAction = UIAlertAction(title: vm.cancelTitle, style: .cancel) { _ in vm.cancel() }
-        alert.addAction(cancelAction)
-
-        coordinator.presentingController = alert
-
-        rootViewController?.present(alert, animated: true, completion: { [vm] in vm.prepareFile() })
-    }
-
-    private func openPreview(repository: FilePreviewRepository, share: Bool) -> UIViewController {
-        let model = FileModel(repository: repository)
-        let vc = PMPreviewController()
-        vc.model = model
-        vc.delegate = model
-        vc.dataSource = model
-        vc.share = share
-        vc.modalPresentationStyle = .fullScreen
-        vc.isModalInPresentation = false
-        return vc
+        let coordinator = FilePreviewPreparationCoordinator(
+            messageHandler: UserMessageHandler(),
+            repository: repository,
+            performanceMetricsController: tower.performanceMetricsController,
+            root: rootViewController
+        )
+        self.previewPrepareCoordinator = coordinator
+        Task {
+            await coordinator.preview()
+            self.previewPrepareCoordinator = nil
+        }
     }
 
     private func openSharingMemberConfiguration(node: Node) {
@@ -446,10 +514,6 @@ extension FinderCoordinator {
     private func makeCreateDocumentView(fileType: ProtonFileType) -> NewProtonFileLoadingView {
         let factory = NewProtonFileFactory()
         return factory.makeView(tower: tower, previewContainer: container.protonFileContainer, fileType: fileType)
-    }
-
-    private func makeWarningViewModel() -> PhotosMigrationWarningViewModelProtocol {
-        return PhotosMigrationWarningViewModel(controller: container.photosContainer.newPhotosContainer.migrationController)
     }
 
     func openSubscriptions() {

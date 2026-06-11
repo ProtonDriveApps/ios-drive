@@ -47,9 +47,6 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, QASettings
     private var content: some View {
         VStack {
             VStack(spacing: 0) {
-                viewModel.topBanner.map {
-                    NotificationBanner(message: $0, style: .transparent, padding: .vertical)
-                }
                 backupEnabledRow
                     .separatedWithoutPadding()
                 mobileDataRow

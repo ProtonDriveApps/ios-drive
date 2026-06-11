@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Scheme
+   LastUpgradeVersion = "1430"
+   version = "1.7">
+   <BuildAction
+      parallelizeBuildables = "YES"
+      buildImplicitDependencies = "YES"
+      runPostActionsOnFailure = "NO">
+      <BuildActionEntries>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "ABC227B5260CAF1900749583"
+               BuildableName = "PDFileProviderTests.xctest"
+               BlueprintName = "PDFileProviderTests"
+               ReferencedContainer = "container:../PDFileProvider/PDFileProvider.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "31CDDF5C2A9E0D6C00FB8285"
+               BuildableName = "PDUploadVerifierTests.xctest"
+               BlueprintName = "PDUploadVerifierTests"
+               ReferencedContainer = "container:../PDUploadVerifier/PDUploadVerifier.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "263A1CB28B7E6F013C22E331"
+               BuildableName = "ProtonDrive.app"
+               BlueprintName = "ProtonDrive"
+               ReferencedContainer = "container:ProtonDrive-iOS.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "5F6A5E8E42602BA9D51A8C75"
+               BuildableName = "ProtonDriveTests.xctest"
+               BlueprintName = "ProtonDriveTests"
+               ReferencedContainer = "container:ProtonDrive-iOS.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "B92551D2EC1F52720B8CB111"
+               BuildableName = "ProtonDriveUITests.xctest"
+               BlueprintName = "ProtonDriveUITests"
+               ReferencedContainer = "container:ProtonDrive-iOS.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      language = "en"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      region = "US"
+      codeCoverageEnabled = "YES"
+      onlyGenerateCoverageForSpecifiedTargets = "NO">
+      <TestPlans>
+         <TestPlanReference
+            default = "YES"
+            reference = "container:../TestPlans/ProtonDrive-iOS-Unit.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-Integration.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-OnboardingNewFeaturesAndUpsell.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-CollaborativeSharing.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-ComputersAndAvailableOfflineFiles.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-ProtonDocsAndSheets.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-CP.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-FileProvider.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-FlakeyTests.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-Files.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-MyFiles.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-Performance.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-PhotosTab.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-PhotosPreviewAndFilter.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-Albums.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-PublicLinks.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-SettingsAndNotifications.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-PinProtection.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-FileUpload.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-Smoke.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-Trash.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-UserAuthenticationAndSubscription.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-SDK.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-SDKPerformanceUploads.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-LowDeviceStoragePreReq.xctestplan">
+         </TestPlanReference>
+         <TestPlanReference
+            reference = "container:../TestPlans/ProtonDrive-iOS-UI-LowDeviceStorage.xctestplan">
+         </TestPlanReference>
+      </TestPlans>
+      <MacroExpansion>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "263A1CB28B7E6F013C22E331"
+            BuildableName = "ProtonDrive.app"
+            BlueprintName = "ProtonDrive"
+            ReferencedContainer = "container:ProtonDrive-iOS.xcodeproj">
+         </BuildableReference>
+      </MacroExpansion>
+      <Testables>
+      </Testables>
+      <CommandLineArguments>
+      </CommandLineArguments>
+   </TestAction>
+   <LaunchAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      launchStyle = "0"
+      useCustomWorkingDirectory = "NO"
+      ignoresPersistentStateOnLaunch = "NO"
+      debugDocumentVersioning = "YES"
+      debugServiceExtension = "internal"
+      allowLocationSimulation = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "263A1CB28B7E6F013C22E331"
+            BuildableName = "ProtonDrive.app"
+            BlueprintName = "ProtonDrive"
+            ReferencedContainer = "container:ProtonDrive-iOS.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+      <CommandLineArguments>
+         <CommandLineArgument
+            argument = "-com.apple.CoreData.ConcurrencyDebug 1"
+            isEnabled = "YES">
+         </CommandLineArgument>
+      </CommandLineArguments>
+      <StoreKitConfigurationFileReference
+         identifier = "../../ProtonDriveUITests/Tests/Subscription/Proton Drive: Cloud Storage.storekit">
+      </StoreKitConfigurationFileReference>
+   </LaunchAction>
+   <ProfileAction
+      buildConfiguration = "Debug"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      savedToolIdentifier = ""
+      useCustomWorkingDirectory = "NO"
+      debugDocumentVersioning = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "263A1CB28B7E6F013C22E331"
+            BuildableName = "ProtonDrive.app"
+            BlueprintName = "ProtonDrive"
+            ReferencedContainer = "container:ProtonDrive-iOS.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+      <CommandLineArguments>
+      </CommandLineArguments>
+   </ProfileAction>
+   <AnalyzeAction
+      buildConfiguration = "Debug">
+   </AnalyzeAction>
+   <ArchiveAction
+      buildConfiguration = "Debug"
+      customArchiveName = "ProtonDrive"
+      revealArchiveInOrganizer = "YES">
+   </ArchiveAction>
+</Scheme>

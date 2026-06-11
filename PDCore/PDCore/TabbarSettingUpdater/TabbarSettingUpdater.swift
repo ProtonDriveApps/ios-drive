@@ -22,7 +22,7 @@ import ProtonCorePayments
 import ProtonCoreServices
 
 public protocol TabbarSettingUpdaterProtocol {
-    func updateTabSettingBasedOnUserPlan(share: Share) async
+    func updateTabSettingBasedOnUserPlan() async
 }
 
 public final class TabbarSettingUpdater: TabbarSettingUpdaterProtocol {
@@ -46,7 +46,7 @@ public final class TabbarSettingUpdater: TabbarSettingUpdaterProtocol {
         self.storageManager = storageManager
     }
     
-    public func updateTabSettingBasedOnUserPlan(share: Share) async {
+    public func updateTabSettingBasedOnUserPlan() async {
         guard featureFlags.isEnabled(flag: .driveDisablePhotosForB2B) else {
             await updateTabSettingForNormalUser()
             return
@@ -58,7 +58,7 @@ public final class TabbarSettingUpdater: TabbarSettingUpdaterProtocol {
             if let organization = resDict["Organization"] as? JSONDictionary,
                let planName = organization["PlanName"] as? String,
                b2bPlans.contains(planName) {
-                await updateTabSettingForB2BUser(share: share)
+                await updateTabSettingForB2BUser()
             } else {
                 await updateTabSettingForNormalUser()
             }
@@ -77,7 +77,7 @@ public final class TabbarSettingUpdater: TabbarSettingUpdaterProtocol {
         }
     }
     
-    private func updateTabSettingForB2BUser(share: Share) async {
+    private func updateTabSettingForB2BUser() async {
         await MainActor.run {
             localSettings.isB2BUser = true
             // If there is cached data, do not revert the value.

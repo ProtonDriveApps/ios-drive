@@ -19,7 +19,7 @@ import Foundation
 
 extension URLSession {
     
-    static func forUploading(delegate: URLSessionDelegate? = nil) -> URLSession {
+    public static func forUploading(delegate: URLSessionDelegate? = nil) -> URLSession {
         let session: URLSession
         if let delegate {
             session = URLSession(configuration: .forUploading, delegate: delegate, delegateQueue: nil)
@@ -31,7 +31,7 @@ extension URLSession {
         return session
     }
     
-    static func forDownloading() -> URLSession {
+    public static func forDownloading() -> URLSession {
         sharedDownloadSession ?? createDownloadingSession(description: "Downloader(Per File)")
     }
     

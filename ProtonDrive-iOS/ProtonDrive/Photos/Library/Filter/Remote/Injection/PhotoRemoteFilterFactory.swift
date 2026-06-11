@@ -27,7 +27,6 @@ struct PhotoRemoteFilterFactory {
     ) -> PhotoAssetCompoundsConflictInteractor {
         let photoShareDataSource = PhotosFactory().makeLocalPhotosRootDataSource(observer: photoSharesObserver)
         let hashResource = FileStreamHashResource(digestBuilderFactory: { SHA1DigestBuilder() })
-        let hashInteractor = LocalPhotoContentHashInteractor(hashResource: hashResource, rootFolderRepository: rootFolderRepository, encryptionResource: Encryptor())
         let nameConflictsInteractor = RemotePhotoNameConflictsInteractor(
             identifiersInteractor: LocalPhotoAssetIdentifiersInteractor(
                 rootRepository: rootFolderRepository,
@@ -39,7 +38,7 @@ struct PhotoRemoteFilterFactory {
             nameHashesStrategy: LocalPhotoConflictNameHashesStrategy(), circuitBreaker: circuitBreaker
         )
         let linkIdRepository = ConcreteLocalPhotoLinkIdRepository(storageManager: tower.storage, managedObjectContext: tower.storage.photosSecondaryBackgroundContext)
-        let validator = ConcretePhotoConflictRemoteCheckValidator(hashInteractor: hashInteractor, clientUIDProvider: tower.sessionVault, linkIdRepository: linkIdRepository)
+        let validator = ConcretePhotoConflictRemoteCheckValidator(clientUIDProvider: tower.sessionVault, linkIdRepository: linkIdRepository)
         let contentConflictsInteractor = RemotePhotoContentConflictsInteractor(validator: validator)
         return ConcretePhotoAssetCompoundsConflictInteractor(
             nameConflictsInteractor: nameConflictsInteractor,

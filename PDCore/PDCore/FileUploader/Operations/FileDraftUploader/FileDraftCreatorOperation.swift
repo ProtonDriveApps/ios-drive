@@ -53,8 +53,9 @@ final class FileDraftCreatorOperation: AsynchronousOperation, UploadOperation {
             guard let self = self, !self.isCancelled else { return }
 
             switch result {
-            case .success:
-                Log.info("STAGE: 2 Create File ✍️☁️ finished ✅. UUID: \(self.id.uuidString)", domain: .uploader)
+            case .success(let file):
+                let id = file.identifier.id
+                Log.info("STAGE: 2 Create File ✍️☁️ finished ✅. UUID: \(self.id.uuidString), nodeID: \(id)", domain: .uploader)
                 NotificationCenter.default.post(name: .operationEnd, object: draft.uri)
                 self.progress.complete()
                 self.state = .finished

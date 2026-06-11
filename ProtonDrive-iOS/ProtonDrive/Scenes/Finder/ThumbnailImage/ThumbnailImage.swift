@@ -19,15 +19,15 @@ import SwiftUI
 import UIKit
 import PDCore
 
-struct ThumbnailImage<Placeholder: View, Thumbnail: View>: View {
-    private let vm: ThumbnailImageViewModel?
+struct ThumbnailImage<Placeholder: View, Thumbnail: View, ViewModel: ThumbnailImageViewModel>: View {
+    @ObservedObject private var vm: ViewModel
     private let placeholder: Placeholder
     private let thumbnail: (UIImage) -> Thumbnail
     /// To make sure content loads clear data 
     private let viewID: String
 
     init(
-        vm: ThumbnailImageViewModel?,
+        vm: ViewModel,
         @ViewBuilder placeholder: () -> Placeholder,
         @ViewBuilder thumbnail: @escaping (UIImage) -> Thumbnail
     ) {
@@ -39,13 +39,13 @@ struct ThumbnailImage<Placeholder: View, Thumbnail: View>: View {
 
     var body: some View {
         content()
-            .onAppear(perform: vm?.load)
+            .onAppear(perform: vm.load)
             .id(viewID)
     }
 
     @ViewBuilder
     private func content() -> some View {
-        if let imgData = vm?.clear,
+        if let imgData = vm.clear,
            let img = UIImage(data: imgData) {
             thumbnail(img)
         } else {

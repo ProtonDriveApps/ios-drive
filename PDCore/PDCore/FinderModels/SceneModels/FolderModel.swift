@@ -52,13 +52,17 @@ public final class FolderModel: FinderModel, FinderErrorModel, ThumbnailLoader, 
     }
     
     // MARK: NodesFetching
-    public let node: Folder // should be from main thread context
+    private var context: NSManagedObjectContext?
+    public let node: Folder
     public var currentNodeID: NodeIdentifier!
     public let pageSize = Constants.pageSizeForChildrenFetchAndEnumeration
     public var lastFetchedPage = 0
     
     // MARK: others
     public let userInfoController: UserInfoController?
+    public var isUsingSDKForThumbnails: Bool {
+        tower.getSdkThumbnailsDownloaderForFiles() != nil
+    }
 
     /// Constructor for main thread, uses UISlot for subscriptions
     public init(tower: Tower, node: Folder, nodeID: NodeIdentifier, userInfoController: UserInfoController? = nil) {
@@ -91,18 +95,25 @@ public final class FolderModel: FinderModel, FinderErrorModel, ThumbnailLoader, 
         guard let fileSystemSlot = tower.fileSystemSlot else {
             throw Errors.noFileSystemSlot
         }
+        
+        let pool = tower.storage.synchronousContextPool
+        let context = pool.acquire(for: .folderModel)
+        self.context = context
 
 #if os(macOS)
-        guard let node = fileSystemSlot.getNode(nodeID) ?? Self.fetchRemoteNode(tower: tower, nodeID: nodeID) else {
+        guard let node = fileSystemSlot.getNode(nodeID, moc: context) ?? Self.fetchRemoteNode(tower: tower, nodeID: nodeID, moc: context) else {
+            pool.relinquish(for: .folderModel)
             throw Errors.nodeIdNotFound(nodeID.rawValue)
         }
 #else
-        guard let node = fileSystemSlot.getNode(nodeID) else {
+        guard let node = fileSystemSlot.getNode(nodeID, moc: context) else {
+            pool.relinquish(for: .folderModel)
             throw Errors.nodeIdNotFound(nodeID.rawValue)
         }
 #endif
 
         guard let folder = node as? Folder else {
+            pool.relinquish(for: .folderModel)
             throw Errors.nodeIdDoesNotBelongToFolder(nodeID.rawValue)
         }
 
@@ -110,8 +121,12 @@ public final class FolderModel: FinderModel, FinderErrorModel, ThumbnailLoader, 
         self.node = folder
         self.userInfoController = userInfoController
 
-        let children = tower.fileSystemSlot!.subscribeToChildren(of: nodeID)
-        self.childrenObserver = FetchedObjectsObserver(children)
+        let children = tower.fileSystemSlot!.subscribeToChildren(of: nodeID, moc: context)
+        self.childrenObserver = FetchedObjectsObserver(children, onDeinit: {
+            // This is a workaround. We must ensure the NSFetchedResultsController using a context
+            // is deallocated before the context is reset.
+            pool.relinquish(for: .folderModel)
+        })
         
         let uploads = self.tower.storage.subscriptionToUploadingFiles()
         self.childrenUploadingObserver = FetchedObjectsObserver(uploads)
@@ -124,13 +139,13 @@ public final class FolderModel: FinderModel, FinderErrorModel, ThumbnailLoader, 
 #if os(macOS)
     /// Synchronously return remote node.
     /// Needs to be synchronous because it will be indirectly called from `enumerateItems(for:startingAt:)`
-    private static func fetchRemoteNode(tower: Tower, nodeID: NodeIdentifier) -> Node? {
+    private static func fetchRemoteNode(tower: Tower, nodeID: NodeIdentifier, moc: NSManagedObjectContext) -> Node? {
         var result: Node?
         let semaphore = DispatchSemaphore(value: 0)
 
         assert(!Thread.isMainThread)
         Task {
-            result = try await tower.cloudSlot.scanNode(nodeID, linkProcessingErrorTransformer: { $1 })
+            result = try await tower.cloudSlot.scanNode(nodeID, linkProcessingErrorTransformer: { $1 }, moc: moc)
             semaphore.signal()
         }
 
@@ -145,5 +160,9 @@ public final class FolderModel: FinderModel, FinderErrorModel, ThumbnailLoader, 
 
     public func cancelThumbnailLoading(_ id: Identifier) {
         tower.cancelThumbnailLoading(id)
+    }
+
+    public var succeededId: AnyPublisher<Identifier, Never> {
+        tower.succeededId
     }
 }

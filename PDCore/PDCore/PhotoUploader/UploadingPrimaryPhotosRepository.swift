@@ -17,4 +17,6 @@
 
 public protocol UploadingPrimaryPhotosRepository {
     func getPhotos() -> [Photo]
+    func getPendingPhotosForSDK() -> [CoreDataPhoto]
+    func deleteInterruptPhotos() async
 }

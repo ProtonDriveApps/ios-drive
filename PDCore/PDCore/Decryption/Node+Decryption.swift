@@ -63,7 +63,7 @@ extension Node {
     }
 
     internal func decryptNodePassphrase() throws -> VerifiedText {
-        let addressKeys = try getAddressPublicKeysOfNodeCreatorWithFallbackToShareCreator()
+        let addressKeys = try getAddressPublicKeysOfNodeCreatorWithFallbackToContextShareAddressOrShareCreator()
         let parentNodeKey = try getDirectParentSecret()
         let signatureEmailIsEmpty = signatureEmail?.isEmpty ?? true
         let verificationKeys = signatureEmailIsEmpty ? [parentNodeKey.privateKey] : addressKeys
@@ -93,8 +93,29 @@ extension Node {
 
 extension Node {
     
-    private func getAddressPublicKeysOfNodeCreatorWithFallbackToShareCreator() throws -> [PublicKey] {
+    private func getAddressPublicKeysOfNodeCreatorWithFallbackToContextShareAddressOrShareCreator() throws -> [PublicKey] {
 #if os(macOS)
+        do {
+            return try getAddressPublicKeysOfNodeCreatorWithFallbackToContextShareAddress()
+        } catch {
+            return try getAddressPublicKeysOfNodeCreatorWithFallbackToShareCreator()
+        }
+#else
+        try getAddressPublicKeysOfNodeCreatorWithFallbackToContextShareAddress()
+#endif
+    }
+    
+    private func getAddressPublicKeysOfNodeCreatorWithFallbackToContextShareAddress() throws -> [PublicKey] {
+        let addressID = try getContextShareAddressID()
+
+        if let publicKeys = try? getAddressPublicKeys(email: signatureEmail ?? "", addressID: addressID) {
+            return publicKeys
+        }
+
+        throw SessionVault.Errors.noRequiredAddressKey
+    }
+    
+    private func getAddressPublicKeysOfNodeCreatorWithFallbackToShareCreator() throws -> [PublicKey] {
         if let signatureEmail = signatureEmail, let publicKeys = try? getAddressPublicKeys(email: signatureEmail) {
             return publicKeys
         }
@@ -104,15 +125,6 @@ extension Node {
         }
 
         throw SessionVault.Errors.noRequiredAddressKey
-#else
-        let addressID = try getContextShareAddressID()
-
-        if let publicKeys = try? getAddressPublicKeys(email: signatureEmail ?? "", addressID: addressID) {
-            return publicKeys
-        }
-
-        throw SessionVault.Errors.noRequiredAddressKey
-#endif
     }
 
     internal func getAddressPublicKeys(email: String, addressID: String) throws -> [PublicKey] {

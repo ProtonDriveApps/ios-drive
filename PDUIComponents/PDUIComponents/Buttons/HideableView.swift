@@ -44,7 +44,9 @@ public struct HideableView<T: View, U: View>: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSEvent.didChangeKeyStateNotification)) { notification in
             if let event = notification.object as? NSEvent {
-                isModifierPressed = event.modifierFlags.contains(modifier)
+                withAnimation {
+                    isModifierPressed = event.modifierFlags.contains(modifier)
+                }
             }
         }
         .onAppear {

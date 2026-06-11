@@ -16,9 +16,12 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDCore
 
-protocol FilePreviewRepository {
+protocol FilePreviewRepository: AnyObject {
     func getURL() -> URL
     func cancel()
     func loadFile() async throws
+    func getFileMetadata() async -> (AnyVolumeIdentifier, MimeType)
+    func requiresDecryption() async throws -> Bool
 }

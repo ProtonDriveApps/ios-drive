@@ -79,10 +79,12 @@ extension GloballyUnique {
     }
     
     public static func fetchOrCreateIndicatingResult(id: String, allowSubclasses: Bool = false, in context: NSManagedObjectContext) -> FetchOrCreateResult<Self> {
-        if let existingEntity = fetch(id: id, allowSubclasses: allowSubclasses, in: context) {
-            return .fetched(existingEntity)
+        context.performAndWait {
+            if let existingEntity = fetch(id: id, allowSubclasses: allowSubclasses, in: context) {
+                return .fetched(existingEntity)
+            }
+            return .created(new(id: id, in: context))
         }
-        return .created(new(id: id, in: context))
     }
 
     public static func fetch(id: String, allowSubclasses: Bool = false, in context: NSManagedObjectContext) -> Self? {

@@ -47,7 +47,7 @@ final class FeatureFlagsPendingInvitationsStatusMonitorDecorator: PendingInvitat
     }
 
     func getPendingInvitationsStatus() async throws -> PendingInvitationStatus {
-        if controller.hasAcceptRejectInvitations {
+        if controller.hasSharing {
             return try await interactor.getPendingInvitationsStatus()
         } else {
             return .none

@@ -24,16 +24,16 @@ extension URL {
     public func mimeType() -> String {
         let pathExtension = self.pathExtension
         
-        if let uti = UTType(tag: pathExtension, tagClass: .filenameExtension, conformingTo: nil),
-            let type = uti.preferredMIMEType {
+        if let uti = UTType(tag: pathExtension, tagClass: .filenameExtension, conformingTo: nil) {
+            if let type = uti.preferredMIMEType {
                 return type
-        }
-            
-        if let appleExtension = MimeType.appleExtensions[path] {
-            return appleExtension.value
+            } else if let appleExtension = MimeType.appleExtensions[uti.identifier] {
+                return appleExtension.value
+            }
         }
 
-        if let nonRecognized = MimeType.nonRecognizedExtensions[path] {
+        // Check non-recognized extensions using path extension
+        if let nonRecognized = MimeType.nonRecognizedExtensions[pathExtension] {
             return nonRecognized.value
         }
 
@@ -70,6 +70,7 @@ private extension MimeType {
         "json": .json,
         "jsonld": .jsonld,
         "mjs": .mjs,
+        "mkv": .mkv,
         "mpkg": .mpkg,
         "odp": .odp,
         "ods": .ods,

@@ -22,8 +22,9 @@ public struct TowerHierarchyDumper {
     
     public func dump(tower: Tower, sorter: @escaping NodeProviderNameSorter, obfuscator: @escaping NodeProviderNameObfuscator) async throws -> String {
         
-        guard let rootId = tower.rootFolderIdentifier(),
-              let root = tower.folderForNodeIdentifier(rootId) else
+        let moc = tower.storage.backgroundContext
+        guard let rootId = tower.rootFolderIdentifier(moc: moc),
+              let root = tower.folderForNodeIdentifier(rootId, moc: moc) else
         {
             throw NSError(domain: "TowerHierarchyDumper", code: 1)
         }

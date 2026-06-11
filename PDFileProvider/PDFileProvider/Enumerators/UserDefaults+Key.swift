@@ -23,8 +23,8 @@ public extension UserDefaults {
         case workingSetEnumerationInProgressKey = "workingSetEnumerationInProgress"
         case pathsMarkedAsKeepDownloadedKey = "pathsMarkedAsKeepDownloaded"
         case pathsMarkedAsOnlineOnlyKey = "pathsMarkedAsOnlineOnly"
-        case isKeepDownloadedEnabledKey = "isKeepDownloadedEnabled"
         case openItemsInBrowserKey = "openItemsInBrowser"
+        case extensionPathKey = "fileProviderExtensionPath"
     }
     
     @objc dynamic var shouldReenumerateItems: Bool {
@@ -45,5 +45,9 @@ public extension UserDefaults {
     
     @objc dynamic var openItemsInBrowser: String? {
         return string(forKey: FileProvider.openItemsInBrowserKey.rawValue)
+    }
+
+    @objc dynamic var fileProviderExtensionPath: String? {
+        return string(forKey: FileProvider.extensionPathKey.rawValue)
     }
 }

@@ -65,6 +65,7 @@ struct PhotosGalleryView<
         case .placeholder(let tag):
             viewInScrollView {
                 placeholder(tag)
+                    .padding(.top, -120)
             }
             .overlay(alignment: .bottom) {
                 bannersView.opacity(viewModel.configuration.isPickingPhotos ? 0 : 1)

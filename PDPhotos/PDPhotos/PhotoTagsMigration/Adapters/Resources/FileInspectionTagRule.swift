@@ -46,7 +46,9 @@ final class FileInspectionTagRule: PhotoTagRule {
         // No need to download the entire file and check.
         guard !context.assignedTags.contains(.videos) else {
             Log.debug("Skipping file inspection for identifier \(identifier.id) as it is already tagged as a video.", domain: .photosTagMigration)
+            // Skip video xattr backfill, download video takes time 
             return analyzeResult
+                .update(taggingContext: .init(assignedTags: context.assignedTags, control: .finished))
                 .update(xAttrContext: XAttrBackfillContext(extendedAttributes: backfillXAttr, control: .finished))
         }
 
@@ -56,7 +58,7 @@ final class FileInspectionTagRule: PhotoTagRule {
             let photoURL = content.url
 
             defer {
-                Log.debug("Cleaning up downloaded file for \(identifier.id) at path: \(photoURL.path)", domain: .photosTagMigration)
+                Log.debug("Cleaning up downloaded file for \(identifier.id)", domain: .photosTagMigration)
                 try? FileManager.default.removeItem(at: photoURL)
             }
 
@@ -258,7 +260,7 @@ final class FileInspectionTagRule: PhotoTagRule {
                     }
                 )
 
-            self?.fileContentResource.execute(with: identifier)
+            self?.fileContentResource.execute(with: identifier, downloadMainOnly: true)
         }
     }
 

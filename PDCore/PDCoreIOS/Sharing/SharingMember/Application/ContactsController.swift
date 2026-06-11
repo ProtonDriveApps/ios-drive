@@ -22,7 +22,7 @@ import PDLocalization
 
 public protocol ContactsControllerProtocol {
     func fetchContacts() async throws -> IntegralContacts
-    func fetchInternalPublicKey(email: String) async throws -> [Key]
+    func fetchInternalPublicKeys(email: String) async throws -> [Key]
     func name(of email: String) async -> String?
 }
 
@@ -76,7 +76,7 @@ public final class ContactsController: ContactsControllerProtocol {
         await store.update(status: .fetched)
     }
     
-    public func fetchInternalPublicKey(email: String) async throws -> [Key] {
+    public func fetchInternalPublicKeys(email: String) async throws -> [Key] {
         let res = try await contactsManager.fetchActivePublicKeys(email: email, internalOnly: true)
         return res.address.keys
     }

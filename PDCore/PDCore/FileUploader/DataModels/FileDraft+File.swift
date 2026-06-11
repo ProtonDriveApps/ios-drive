@@ -93,8 +93,9 @@ extension FileDraft {
         let debugInfo = [
             "activeRevision \(file.activeRevisionDraft == nil ? "is nil" : "is not nil")",
             "normalizedUploadableResourceURL \(file.activeRevisionDraft?.normalizedUploadableResourceURL == nil ? "is nil" : "is not nil")",
-            "isUploading: \(file.isUploading)"
-        ].joined(separator: ",")
+            "isUploading: \(file.isUploading)",
+            "nameSignatureEmail \(file.nameSignatureEmail == nil ? "is nil" : "is not nil")"
+        ].joined(separator: ", ")
         Log.warning("Returning .none as filedraft state. debugInfo: \(debugInfo)", domain: .uploader)
         return .none
     }

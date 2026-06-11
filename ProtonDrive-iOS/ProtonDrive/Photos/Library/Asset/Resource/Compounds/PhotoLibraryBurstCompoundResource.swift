@@ -49,6 +49,7 @@ final class PhotoLibraryBurstCompoundResource: PhotoLibraryCompoundResource {
     }
 
     func execute(with identifier: PhotoIdentifier, asset: PHAsset) async throws -> [PhotoAssetCompound] {
+        Log.info("Load burst asset \(identifier.cloudIdentifier)", domain: .photosProcessing)
         let primaryResources = PHAssetResource.assetResources(for: asset)
         let primary = AssetResources(asset: asset, resources: primaryResources)
         let secondary = fetchSecondaryResources(for: asset)

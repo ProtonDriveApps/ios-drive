@@ -20,46 +20,49 @@ import PDClient
 import CoreData
 
 public protocol NodeMoverProtocol {
-    func move(_ node: Node, to newParent: Folder, name: String) async throws
-    func move(photo: CoreDataPhoto, from album: CoreDataAlbum, to photoRoot: Folder) async throws
+    func move(_ node: Node, to newParent: Folder, name: String, moc: NSManagedObjectContext) async throws
+    func move(photo: CoreDataPhoto, from album: CoreDataAlbum, to photoRoot: Folder, moc: NSManagedObjectContext) async throws
 }
 
 public final class NodeMover: NodeMoverProtocol {
     /// Typealias for one of the methods of PDClient's Client.
     public typealias CloudNodeMover = (Client.ShareID, Client.LinkID, MoveEntryEndpoint.Parameters) async throws -> Void
 
-    private let moc: NSManagedObjectContext
-    private let storage: StorageManager
     private let signersKitFactory: SignersKitFactoryProtocol
     private let cloudNodeMover: CloudNodeMover
+    private let parentIDFetcher: NodeParentIDFetcher
 
     public init(
-        storage: StorageManager,
         cloudNodeMover: @escaping CloudNodeMover,
         signersKitFactory: SignersKitFactoryProtocol,
-        moc: NSManagedObjectContext
+        parentIDFetcher: NodeParentIDFetcher
     ) {
-        self.moc = moc
-        self.storage = storage
         self.signersKitFactory = signersKitFactory
         self.cloudNodeMover = cloudNodeMover
+        self.parentIDFetcher = parentIDFetcher
     }
-    
-    public func move(_ node: Node, to newParent: Folder, name: String) async throws {
+
+    public func move(_ node: Node, to newParent: Folder, name: String, moc: NSManagedObjectContext) async throws {
         let validatedNewName = try name.validateNodeName(validator: NameValidations.iosName)
-        let cryptoInfo = try await readCryptoInfo(from: node, and: newParent)
-        
+        let cryptoInfo = try await readCryptoInfo(from: node, and: newParent, moc: moc)
+
         let parameters = try prepareRequestParameter(
             node: node,
             cryptoInfo: cryptoInfo,
             validatedNewName: validatedNewName
         )
-        
+
         try await cloudNodeMover(cryptoInfo.shareID, cryptoInfo.nodeID, parameters)
 
+        let nodeManagedObjectID = node.objectID
+        let parentManagerObjectID = newParent.objectID
+        
         try await moc.perform {
-            let node = node.in(moc: self.moc)
-            let newParent = newParent.in(moc: self.moc)
+            let node = moc.object(with: nodeManagedObjectID) as! Node
+            let newParent = moc.object(with: parentManagerObjectID) as! Folder
+
+            let nodeID = node.id
+            let newParentID = newParent.id
 
             node.name = parameters.Name
             node.nodeHash = parameters.Hash
@@ -74,14 +77,16 @@ public final class NodeMover: NodeMoverProtocol {
 
             node.parentFolder = newParent
 
-            try self.moc.saveOrRollback()
+            try moc.saveOrRollback()
         }
     }
 
-    public func move(photo: CoreDataPhoto, from album: CoreDataAlbum, to photoRoot: Folder) async throws {
-        let name = try await self.moc.perform { try photo.decryptName() }
+    public func move(
+        photo: CoreDataPhoto, from album: CoreDataAlbum, to photoRoot: Folder, moc: NSManagedObjectContext
+    ) async throws {
+        let name = try await moc.perform { try photo.decryptName() }
         let validatedNewName = try name.validateNodeName(validator: NameValidations.iosName)
-        let cryptoInfo = try await readCryptoInfo(from: photo, album: album, and: photoRoot)
+        let cryptoInfo = try await readCryptoInfo(from: photo, album: album, and: photoRoot, moc: moc)
 
         let parameters = try prepareRequestParameter(
             node: photo,
@@ -91,9 +96,12 @@ public final class NodeMover: NodeMoverProtocol {
 
         try await cloudNodeMover(cryptoInfo.shareID, cryptoInfo.nodeID, parameters)
 
-        try await moc.perform {
-            let node = photo.in(moc: self.moc)
-            let newParent = photoRoot.in(moc: self.moc)
+        let (nodeID, newParentID) = try await moc.perform {
+            let node = photo.in(moc: moc)
+            let newParent = photoRoot.in(moc: moc)
+
+            let nodeID = node.id
+            let newParentID = newParent.id
 
             node.name = parameters.Name
             node.nodeHash = parameters.Hash
@@ -108,24 +116,26 @@ public final class NodeMover: NodeMoverProtocol {
 
             node.parentFolder = newParent
 
-            try self.moc.saveOrRollback()
+            try moc.saveOrRollback()
+            return (nodeID, newParentID)
         }
     }
 
     private func readCryptoInfo(
         from node: Node,
         album: CoreDataAlbum? = nil,
-        and newParent: Folder
+        and newParent: Folder,
+        moc: NSManagedObjectContext
     ) async throws -> CryptoInfo {
         try await moc.perform {
-            let node = node.in(moc: self.moc)
+            let node = node.in(moc: moc)
 #if os(macOS)
-            let signersKit = try self.signersKitFactory.make(forSigner: .main)
+            let signersKit = try node.getContextShareAddressBasedSignersKit(signersKitFactory: self.signersKitFactory,
+                                                                            fallbackSigner: .main)
 #else
-            let addressID = try node.getContextShareAddressID()
-            let signersKit = try self.signersKitFactory.make(forAddressID: addressID)
+            let signersKit = try node.getContextShareAddressBasedSignersKit(signersKitFactory: self.signersKitFactory)
 #endif
-            let newParent = newParent.in(moc: self.moc)
+            let newParent = newParent.in(moc: moc)
             guard let oldParent = album ?? node.parentFolder else {
                 throw node.invalidState("The moving Node should have a parent.")
             }
@@ -175,13 +185,13 @@ public final class NodeMover: NodeMoverProtocol {
             )
         } else {
             return try prepareRequestParameterForNormal(
-                node: node, 
+                node: node,
                 cryptoInfo: cryptoInfo,
                 validatedNewName: validatedNewName
             )
         }
     }
-    
+
     private func prepareRequestParameterForAnonymous(
         node: Node,
         cryptoInfo: CryptoInfo,
@@ -193,7 +203,7 @@ public final class NodeMover: NodeMoverProtocol {
             signersKit: cryptoInfo.signersKit
         )
         let newNameHash = try Encryptor.hmac(filename: validatedNewName, parentHashKey: cryptoInfo.newParentHashKey)
-        
+
         let updatedCredential = try Encryptor.updateNodeKeys(
             passphraseString: cryptoInfo.oldDecryptedNodePassphrase,
             addressPassphrase: cryptoInfo.signersKit.addressPassphrase,

@@ -17,13 +17,14 @@
 
 import Foundation
 
-public enum SyncItemState: Int, Codable, CaseIterable {
+public enum SyncItemState: Int, Codable, CaseIterable, Sendable {
     case inProgress       // 0
     case errored          // 1
     case finished         // 2
     case cancelled        // 3
     case excludedFromSync // 4
     case undefined        // 5
+    case paused           // 6
 
     public var description: String {
         switch self {
@@ -39,6 +40,8 @@ public enum SyncItemState: Int, Codable, CaseIterable {
             "Excluded from sync"
         case .undefined:
             "Undefined"
+        case .paused:
+            "Paused"
         }
     }
 }

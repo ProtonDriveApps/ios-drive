@@ -22,6 +22,7 @@ import PDCore
 
 public protocol PhotoLibraryExifParser {
     func parseCameraInfo(from dictionary: NSDictionary) -> PhotoAssetMetadata.Camera
+    func parseCameraInfo(from asset: AVAsset) async -> PhotoAssetMetadata.Camera
     func parseCameraInfo(at url: URL) async -> PhotoAssetMetadata.Camera
     func parseLocation(from dictionary: NSDictionary) -> PhotoAssetMetadata.Location?
     func parseLocationFrom(stringValue: String?) -> PhotoAssetMetadata.Location?
@@ -58,17 +59,17 @@ public final class CoreImagePhotoLibraryExifParser: PhotoLibraryExifParser {
         )
     }
 
-    public func parseCameraInfo(at url: URL) async -> PhotoAssetMetadata.Camera {
+    /// Parse camera info for video
+    public func parseCameraInfo(from asset: AVAsset) async -> PhotoAssetMetadata.Camera {
         var creationDate: Date?
         var modelString: String?
         var isFrontCamera = false
         do {
-            let asset = AVAsset(url: url)
             let (metadata, tracks) = try await asset.load(.metadata, .tracks)
 
             let dateMetadata = metadata.first(where: { $0.commonKey?.rawValue == "creationDate" })
             let dateString = try await dateMetadata?.load(.stringValue)
-            creationDate = ISO8601DateFormatter().date(dateString)
+            creationDate = ISO8601DateFormatter.default.date(dateString)
 
             let modelMetadata = metadata.first(where: { $0.commonKey?.rawValue == "model" })
             modelString = try await modelMetadata?.load(.stringValue)
@@ -94,6 +95,12 @@ public final class CoreImagePhotoLibraryExifParser: PhotoLibraryExifParser {
             subjectCoordinates: nil, // Video doesn't have it
             isFrontCamera: isFrontCamera
         )
+    }
+
+    /// Parse camera info for video
+    public func parseCameraInfo(at url: URL) async -> PhotoAssetMetadata.Camera {
+        let asset = AVAsset(url: url)
+        return await parseCameraInfo(from: asset)
     }
 
     public func parseLocation(from dictionary: NSDictionary) -> PhotoAssetMetadata.Location? {

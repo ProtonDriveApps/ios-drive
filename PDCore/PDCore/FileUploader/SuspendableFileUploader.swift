@@ -22,16 +22,16 @@ import CoreData
 public final class SuspendableFileUploader: FileUploader, NetworkConstrained {
     private var suspCancellables = Set<AnyCancellable>()
 
-    var networkMonitor: NetworkStateResource = MonitoringNetworkStateResource()
+    var networkMonitor: ConnectionStateResource
     var isNetworkReachable = true
 
     weak var fileUploader: FileUploader?
     weak var progress: Progress?
 
-    public required init(uploader: FileUploader, progress: Progress?) {
+    public required init(uploader: FileUploader, progress: Progress?, networkMonitor: ConnectionStateResource) {
         self.fileUploader = uploader
         self.progress = progress
-        self.networkMonitor.execute()
+        self.networkMonitor = networkMonitor
         super.init(fileUploadFactory: uploader.fileUploadFactory,
                    filecleaner: uploader.filecleaner,
                    moc: uploader.moc, dispatchQueue: uploader.dispatchQueue)

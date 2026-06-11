@@ -48,9 +48,10 @@ final class LocalPhotosBackupProgressController: PhotosBackupProgressController 
         Publishers.CombineLatest3(libraryLoadController.progress, uploadsController.progress, loadController.isLoading)
             .map { loadProgress, uploadProgress, isInitialLoad in
                 let progress = PhotosBackupProgress(
-                    total: loadProgress.total + uploadProgress.total,
-                    inProgress: loadProgress.inProgress + uploadProgress.inProgress
+                    total: uploadProgress.total + loadProgress.total,
+                    inProgress: uploadProgress.inProgress + loadProgress.inProgress
                 )
+                Log.debug("Load progress: \(loadProgress.inProgress)/\(loadProgress.total), upload progress: \(uploadProgress.inProgress)/\(uploadProgress.total)", domain: .photosProcessing)
                 return ProgressNotification(progress: progress, isInitialLoad: isInitialLoad)
             }
             .removeDuplicates()

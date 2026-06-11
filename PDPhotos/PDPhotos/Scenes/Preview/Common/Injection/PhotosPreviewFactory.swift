@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Combine
 import CoreData
 import PDCore
 import PDCoreIOS
@@ -25,6 +26,7 @@ struct PhotosPreviewFactory {
         PhotosPreviewCoordinator(container: container)
     }
 
+    // swiftlint:disable:next function_parameter_count
     func makePreviewViewController(
         coordinator: PhotosPreviewCoordinator,
         previewController: PhotosPreviewController,
@@ -56,6 +58,7 @@ struct PhotosPreviewFactory {
     // swiftlint:disable:next function_parameter_count
     func makeDetailViewController(
         id: PhotoId,
+        albumId: AlbumIdentifier?,
         tower: Tower,
         coordinator: PhotosPreviewCoordinator,
         thumbnailsContainer: ThumbnailsControllersContainer,
@@ -64,20 +67,71 @@ struct PhotosPreviewFactory {
         detailController: PhotoPreviewDetailController,
         photosManagedObjectContext: NSManagedObjectContext,
         photoUploadedNotifier: PhotoUploadedNotifier,
-        metadataController: MetadataControllerProtocol
+        metadataController: MetadataControllerProtocol,
+        performanceMetricsController: PerformanceMetricsControllerProtocol,
+        featureFlagsController: FeatureFlagsControllerProtocol,
+        fileIsDownloadedSubject: PassthroughSubject<PhotoId, Never>
     ) -> UIViewController {
         let smallThumbnailController = thumbnailsContainer.makeSmallThumbnailController(id: id)
         let fullThumbnailController = thumbnailsContainer.makeBigThumbnailController(id: id)
         let fileContentController = GalleryScenesFactory().makeFileContentController(
             tower: tower,
+            featureFlagsController: featureFlagsController,
             moc: photosManagedObjectContext,
             photoUploadedNotifier: photoUploadedNotifier
         )
-        let fullPreviewController = LocalPhotoFullPreviewController(id: id, detailController: detailController, fullThumbnailController: fullThumbnailController, smallThumbnailController: smallThumbnailController, contentController: fileContentController)
+        let fullPreviewController = LocalPhotoFullPreviewController(
+            id: id,
+            buildType: Constants.buildType,
+            detailController: detailController,
+            fullThumbnailController: fullThumbnailController,
+            smallThumbnailController: smallThumbnailController,
+            contentController: fileContentController,
+            messageHandler: UserMessageHandler()
+        )
         let shareController = CachingPhotoPreviewDetailShareController(fileContentController: fileContentController, coordinator: coordinator, id: id)
-        let viewModel = PhotoPreviewDetailViewModel(thumbnailController: smallThumbnailController, modeController: modeController, previewController: previewController, detailController: detailController, fullPreviewController: fullPreviewController, shareController: shareController, id: id, coordinator: coordinator, metadataController: metadataController)
+        let videoXAttrBackfiller = makeVideoXAttrBackfiller(tower: tower, id: id, managedContext: photosManagedObjectContext)
+        let viewModel = PhotoPreviewDetailViewModel(
+            thumbnailController: smallThumbnailController,
+            modeController: modeController,
+            previewController: previewController,
+            detailController: detailController,
+            fullPreviewController: fullPreviewController,
+            shareController: shareController,
+            id: id,
+            coordinator: coordinator,
+            metadataController: metadataController,
+            videoXAttrBackfiller: videoXAttrBackfiller,
+            performanceMetricsController: performanceMetricsController,
+            fileIsDownloadedSubject: fileIsDownloadedSubject
+        )
         let loadingViewController = makeLoadingView(fullPreviewController: fullPreviewController)
         return PhotoPreviewDetailViewController(viewModel: viewModel, loadingViewController: loadingViewController)
+    }
+
+    private func makeVideoXAttrBackfiller(
+        tower: Tower,
+        id: PhotoId,
+        managedContext: NSManagedObjectContext
+    ) -> VideoXAttrBackfiller {
+        let exifResource = CoreImagePhotoLibraryExifResource(parser: CoreImagePhotoLibraryExifParser())
+        let analyzer = DefaultXAttrBackfillAnalyzer(exifResource: exifResource)
+        let backfiller = DefaultPhotoXAttrBatchBackfiller(
+            client: tower.client,
+            encryptor: Encryptor(),
+            managedContext: managedContext,
+            signersKitFactory: tower.sessionVault
+        )
+        return VideoXAttrBackfiller(
+            dependencies: .init(
+                analyzer: analyzer,
+                backfiller: backfiller,
+                exifResource: exifResource,
+                revisionReader: PhotoRevisionReader(),
+                managedContext: managedContext
+            ),
+            id: id
+        )
     }
 
     private func makeLoadingView(fullPreviewController: PhotoFullPreviewController) -> UIViewController {

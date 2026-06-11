@@ -30,18 +30,18 @@ public final class LocalNodeRestorer: LocalNodeRestorerProtocol {
     }
 
     public func restoreLocally(_ nodes: [NodeIdentifier]) async throws {
-        try await context.perform {
-            let nodes = Node.fetch(identifiers: Set(nodes), allowSubclasses: true, in: self.context)
+        try await context.perform { [context] in
+            let nodes = Node.fetch(identifiers: Set(nodes), allowSubclasses: true, in: context)
             nodes.forEach { $0.state = .active }
-            try self.context.saveOrRollback()
+            try context.saveOrRollback()
         }
     }
 
     public func restore(nodeIDs: [AnyVolumeIdentifier]) async throws {
-        try await context.perform {
-            let nodes = Node.fetch(identifiers: Set(nodeIDs), allowSubclasses: true, in: self.context)
+        try await context.perform { [context] in
+            let nodes = Node.fetch(identifiers: Set(nodeIDs), allowSubclasses: true, in: context)
             nodes.forEach { $0.state = .active }
-            try self.context.saveOrRollback()
+            try context.saveOrRollback()
         }
     }
 }

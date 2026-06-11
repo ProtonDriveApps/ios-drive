@@ -22,25 +22,32 @@ import ProtonCoreKeymaker
 import ProtonCoreServices
 import ProtonCoreHumanVerification
 import PDUploadVerifier
+import PDSDKCore
+import PDSDKCoreiOS
 
 extension DriveDependencyContainer {
     @MainActor
     func makeProtectViewController() async -> UIViewController {
         let populatedController = PopulatedStateController()
         let tower = await initializeTowerInBackgroundQueue(populatedController: populatedController)
+        let featureFlagsController = FeatureFlagsController(
+            buildType: Constants.buildType,
+            featureFlagsStore: localSettings,
+            updateRepository: tower.featureFlags
+        )
 
         let authenticatedContainer = AuthenticatedDependencyContainer(
-            tower: tower, 
+            tower: tower,
             keymaker: keymaker,
             networkService: networkService,
             localSettings: localSettings,
-            windowScene: windowScene,
             settingsSuite: appGroup,
             authenticator: authenticator,
             populatedStateController: populatedController,
-            autoLocker: autoLocker
+            autoLocker: autoLocker,
+            featureFlagsController: featureFlagsController
         )
-        
+
         self.authenticatedContainer = authenticatedContainer
 
         return await authenticatedContainer.makeProtectViewController()
@@ -48,7 +55,7 @@ extension DriveDependencyContainer {
 
     func initializeTowerInBackgroundQueue(populatedController: PopulatedStateControllerProtocol) async -> Tower {
         Log.info("Initializing Tower", domain: .application)
-        let storageManager = StorageManager(suite: Constants.appGroup, sessionVault: sessionVault)
+        let storageManager = StorageManager(suite: Constants.appGroup)
         
         let tower = Tower(
             storage: storageManager,
@@ -76,7 +83,6 @@ extension AuthenticatedDependencyContainer {
     @MainActor
     func makeProtectViewController() async -> UIViewController {
         let viewController = ProtectViewController()
-        let lockedStateController = makeLockedStateController()
         let coordinator = makeProtectCoordinator(controller: lockedStateController, viewController: viewController)
         let viewModel = makeProtectViewModel(controller: lockedStateController, coordinator: coordinator)
         viewController.viewModel = viewModel
@@ -92,30 +98,10 @@ extension AuthenticatedDependencyContainer {
         )
     }
 
-    private func makeLockedStateController() -> LockedStateControllerProtocol {
-        let removedMainKeyPublisher = NotificationCenter.default.publisher(for: Keymaker.Const.removedMainKeyFromMemory)
-            .merge(with: NotificationCenter.default.publisher(for: Keymaker.Const.requestMainKey))
-            .filter { _ in self.keymaker.isProtected() == true }
-            .map { _ in Void() }
-            .receive(on: DispatchQueue.main)
-            .eraseToAnyPublisher()
-
-        let obtainedMainKeyPublisher = NotificationCenter.default.publisher(for: Keymaker.Const.obtainedMainKey)
-            .map { _ in Void() }
-            .receive(on: DispatchQueue.main)
-            .eraseToAnyPublisher()
-        return LockedStateController(
-            isLocked: keymaker.isLocked,
-            removedMainKeyPublisher: removedMainKeyPublisher,
-            obtainedMainKeyPublisher: obtainedMainKeyPublisher
-        )
-    }
-
     private func makeProtectCoordinator(controller: LockedStateControllerProtocol, viewController: ProtectViewController) -> ProtectCoordinatorProtocol {
         let humanHelper = makeHumanVerificationHelper(networkService)
         humanCheckHelper = humanHelper
         return ProtectCoordinator(
-            windowScene: windowScene,
             viewController: viewController,
             humanVerificationHelper: humanHelper,
             lockedViewControllerFactory: makeLockViewController,

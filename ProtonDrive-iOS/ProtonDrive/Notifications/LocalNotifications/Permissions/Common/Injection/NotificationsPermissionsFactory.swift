@@ -24,8 +24,8 @@ struct NotificationsPermissionsFactory {
         NotificationsPermissionsFlowControllerImpl(signOutPublisher: NotificationCenter.default.mappedPublisher(for: DriveNotification.signOut.name))
     }
 
-    func makePermissionsCoordinator(controller: NotificationsPermissionsController, flowController: NotificationsPermissionsFlowController, windowScene: UIWindowScene, type: NotificationsPermissionsType) -> NotificationsPermissionsCoordinator {
-        return NotificationsPermissionsCoordinator(windowScene: windowScene, controller: flowController, type: type, viewControllerFactory: {
+    func makePermissionsCoordinator(controller: NotificationsPermissionsController, flowController: NotificationsPermissionsFlowController, type: NotificationsPermissionsType) -> NotificationsPermissionsCoordinator {
+        return NotificationsPermissionsCoordinator(controller: flowController, type: type, viewControllerFactory: {
             makePermissionsView(controller: controller, flowController: flowController, type: type)
         }, transparentViewControllerFactory: makeTransparentViewController)
     }

@@ -32,7 +32,7 @@ final class TrashCellViewModel: ObservableObject {
 
     // MARK: Non-applicable for trash properties, required by `NodeCellConfiguration` protocol
     let isFavorite = false
-    let isAvailableOffline = false
+    let availableOfflineFlags: NodeCellAvailableOfflineFlags = .notAvailable
     let isShared = false
     let hasDirectShare: Bool = false
     var hasSharing: Bool { featureFlagsController.hasSharing }
@@ -48,7 +48,7 @@ final class TrashCellViewModel: ObservableObject {
     let progress: Progress? = nil
     let isBookmark: Bool = false
 
-    let thumbnailViewModel: ThumbnailImageViewModel?
+    let thumbnailViewModel: ThumbnailImageViewModel
     let nodeRowActionMenuViewModel: NodeRowActionMenuViewModel?
     let featureFlagsController: FeatureFlagsControllerProtocol
 

@@ -73,6 +73,7 @@ final class RemoteAlbumFetchController: RemoteAlbumFetchControllerProtocol {
         // in DB.
         try await dependencies.starter.bootstrap(remoteLinks: links)
         try await dependencies.retriever.retrieve(links: links)
+        links.map(\.volumeId).forEach { dependencies.volumeIDsController.setActiveSharedVolume(id: $0) }
     }
 }
 
@@ -83,5 +84,6 @@ extension RemoteAlbumFetchController {
         let retriever: SharedLinkRetriever
         let starter: SharedWithMeAlbumStarterProtocol
         let storeAlbumListingsRepository: StoreAlbumListingsRepository
+        let volumeIDsController: SharedVolumeIdsController
     }
 }

@@ -27,6 +27,8 @@ enum ReportTopic: String, CaseIterable, Identifiable {
     case encryption
     case decryption
     case other
+    case docs
+    case sheets
 
     var id: String { self.rawValue }
 
@@ -40,6 +42,8 @@ enum ReportTopic: String, CaseIterable, Identifiable {
         case .encryption: return Localization.report_topic_encryption_title
         case .decryption: return Localization.report_topic_decryption_title
         case .other: return Localization.report_topic_other_title
+        case .docs: return Localization.report_topic_docs_title
+        case .sheets: return Localization.report_topic_sheets_title
         }
     }
 }

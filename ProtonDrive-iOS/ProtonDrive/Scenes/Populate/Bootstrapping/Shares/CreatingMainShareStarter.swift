@@ -33,7 +33,7 @@ final class CreatingMainShareStarter: AppBootstrapper {
     }
 
     private func createVolume() async throws {
-        _ = try await volumeCreator.createVolume()
+        _ = try await volumeCreator.createVolume(moc: volumeCreator.storage.backgroundContext)
     }
 
     private func bootstrapRoots() async throws {

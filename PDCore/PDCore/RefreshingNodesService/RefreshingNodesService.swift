@@ -23,13 +23,15 @@ private struct ErrorWithLink: Error { let link: Link; let error: Error }
 
 public final class CancelToken {
     public var onCancel: () -> Void = { }
-    // TODO: consider thread-safety
+    @MainActor
     public var isCancelled: Bool = false
     public init() { }
     public func cancel() {
-        guard !isCancelled else { return }
-        isCancelled = true
-        onCancel()
+        Task { @MainActor in
+            guard !isCancelled else { return }
+            isCancelled = true
+            onCancel()
+        }
     }
 }
 
@@ -38,7 +40,7 @@ public protocol RefreshingNodesServiceProtocol {
         root: Folder,
         shouldIncludeDeletedItems: Bool,
         cancelToken: CancelToken?,
-        onNodeRefreshed: @MainActor @escaping (Int) -> Void
+        onNodesRefreshed: @MainActor @escaping (Int) -> Void
     ) async throws
     
     func refreshUsingDirtyNodesApproach(
@@ -54,7 +56,7 @@ public protocol RefreshingNodesServiceProtocol {
 
 public extension RefreshingNodesServiceProtocol {
     func refreshUsingEagerSyncApproach(root: Folder, shouldIncludeDeletedItems: Bool) async throws {
-        try await refreshUsingEagerSyncApproach(root: root, shouldIncludeDeletedItems: shouldIncludeDeletedItems, cancelToken: nil, onNodeRefreshed: { _ in })
+        try await refreshUsingEagerSyncApproach(root: root, shouldIncludeDeletedItems: shouldIncludeDeletedItems, cancelToken: nil, onNodesRefreshed: { _ in })
     }
     
     func refreshUsingDirtyNodesApproach(
@@ -105,15 +107,15 @@ public final class RefreshingNodesService: RefreshingNodesServiceProtocol {
         root: Folder,
         shouldIncludeDeletedItems: Bool,
         cancelToken: CancelToken?,
-        onNodeRefreshed: @MainActor @escaping (Int) -> Void
+        onNodesRefreshed: @MainActor @escaping (Int) -> Void
     ) async throws {
         
         var nodeCount = 0
         let enumeration: Downloader.Enumeration = { node in
-            Log.debug("[Eager sync] Scanned node \(node.decryptedName)", domain: .syncing)
+            Log.debug("[Eager sync] Scanned node \(node.id)", domain: .syncing)
             nodeCount += 1
             Task { @MainActor [currentNodeCount = nodeCount] in
-                onNodeRefreshed(currentNodeCount)
+                onNodesRefreshed(currentNodeCount)
             }
         }
         
@@ -303,7 +305,7 @@ public final class RefreshingNodesService: RefreshingNodesServiceProtocol {
         // we don't handle the missing parent here because root has no parent by design
         if let rootFolderIdentifier, nodeIdentifier == rootFolderIdentifier {
             _ = try await withCheckedThrowingContinuation { continuation in
-                ctx.cloudSlot.scanNode(rootFolderIdentifier, linkProcessingErrorTransformer: { $1 }, handler: { continuation.resume(with: $0) })
+                ctx.cloudSlot.scanNode(rootFolderIdentifier, linkProcessingErrorTransformer: { $1 }, moc: ctx.moc, handler: { continuation.resume(with: $0) })
             }
         }
         
@@ -430,6 +432,7 @@ public final class RefreshingNodesService: RefreshingNodesServiceProtocol {
                 return try await withCheckedThrowingContinuation { continuation in
                     ctx.cloudSlot.scanNode(nodeIdentifier,
                                            linkProcessingErrorTransformer: ErrorWithLink.init(link:error:),
+                                           moc: ctx.moc,
                                            handler: { continuation.resume(with: $0) })
                 }
             } catch {
@@ -541,6 +544,7 @@ public final class RefreshingNodesService: RefreshingNodesServiceProtocol {
             node = try await withCheckedThrowingContinuation { continuation in
                 ctx.cloudSlot.scanNode(nodeIdentifier,
                                        linkProcessingErrorTransformer: ErrorWithLink.init(link:error:),
+                                       moc: ctx.moc,
                                        handler: { continuation.resume(with: $0) })
             }
         } catch {
@@ -617,7 +621,7 @@ public final class RefreshingNodesService: RefreshingNodesServiceProtocol {
                                       alreadyFetchedChildren: [Node],
                                       moc: NSManagedObjectContext,
                                       handler: @escaping (Result<(Folder, [Node]), Error>) -> Void) {
-        cloudSlot.scanChildren(of: folderIdentifier, parameters: [.page(pageToFetch), .pageSize(pageSize)]) { resultChildren in
+        cloudSlot.scanChildren(of: folderIdentifier, parameters: [.page(pageToFetch), .pageSize(pageSize)], moc: moc) { resultChildren in
             switch resultChildren {
             case let .failure(error):
                 handler(.failure(error))

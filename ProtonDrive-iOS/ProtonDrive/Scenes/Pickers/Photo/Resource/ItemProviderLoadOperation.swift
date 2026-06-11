@@ -17,6 +17,7 @@
 
 import Foundation
 import PDCore
+import PDCoreIOS
 
 typealias URLResultBlock = (URLResult) -> Void
 

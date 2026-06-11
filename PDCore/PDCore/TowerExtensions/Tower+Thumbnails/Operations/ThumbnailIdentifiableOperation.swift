@@ -34,6 +34,11 @@ class ThumbnailIdentifiableOperation: AsynchronousOperation {
         state = .finished
     }
 
+    func finishOperationWithEmpty() {
+        delegate?.finishOperationWithEmpty(identifier)
+        state = .finished
+    }
+
     override func start() {
         guard !isCancelled else {
             return finishOperationWithFailure(ThumbnailLoaderError.cancelled)

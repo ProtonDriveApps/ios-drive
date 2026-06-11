@@ -22,23 +22,26 @@ public final class AndFilteredLogger: LoggerProtocol {
     private let logger: LoggerProtocol
     private let domains: Set<LogDomain>
     private let levels: Set<LogLevel>
+    /// Log will be ignored if this closure returns true
+    private let exclusionFilter: (LogContext?) -> Bool
 
-    public init(logger: LoggerProtocol, domains: Set<LogDomain>, levels: Set<LogLevel>) {
+    public init(logger: LoggerProtocol, domains: Set<LogDomain>, levels: Set<LogLevel>, exclusionFilter: @escaping (LogContext?) -> Bool = { _ in false }) {
         self.logger = logger
         self.domains = domains
         self.levels = levels
+        self.exclusionFilter = exclusionFilter
     }
 
     // swiftlint:disable:next function_parameter_count
     public func log(_ level: LogLevel, message: String, system: LogSystem, domain: LogDomain, context: LogContext?, sendToSentryIfPossible: Bool, file: String, function: String, line: Int) {
-        guard isValid(level: level, domain: domain) else {
+        guard isValid(level: level, domain: domain, context: context) else {
             return
         }
 
         logger.log(level, message: message, system: system, domain: domain, context: context, sendToSentryIfPossible: sendToSentryIfPossible, file: file, function: function, line: line)
     }
 
-    private func isValid(level: LogLevel, domain: LogDomain) -> Bool {
-        return levels.contains(level) && domains.contains(domain)
+    private func isValid(level: LogLevel, domain: LogDomain, context: LogContext?) -> Bool {
+        return levels.contains(level) && domains.contains(domain) && !exclusionFilter(context)
     }
 }

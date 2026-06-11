@@ -76,9 +76,10 @@ final class AlbumGridItemViewModel: GridViewItem, ObservableObject {
         }
 
         if album.shareID != nil {
-            if album.role != .admin {
+            switch album.role {
+            case .viewer, .editor, .admin:
                 albumType = Localization.album_type_shared_with_me
-            } else {
+            case .owner:
                 albumType = Localization.album_type_shared_by_me
             }
         } else {

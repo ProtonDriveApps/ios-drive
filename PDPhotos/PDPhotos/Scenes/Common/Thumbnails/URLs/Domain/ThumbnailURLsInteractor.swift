@@ -44,6 +44,6 @@ final class RemoteThumbnailURLsInteractor: ThumbnailURLsInteractor {
         /// Fetch thumbnail urls
         let urls = try await listInteractor.execute(ids: Set(thumbnailIds))
         /// Store urls to the repository
-        try updateRepository.update(thumbnails: urls)
+        try updateRepository.update(thumbnails: urls, moc: updateRepository.backgroundContext)
     }
 }

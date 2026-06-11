@@ -20,14 +20,32 @@ import PDCore
 import UniformTypeIdentifiers
 import PDLocalization
 
-class NodeDetailsViewModel: ObservableObject {
-    struct NodeDetailViewModel: Identifiable {
-        let id: String
-        let value: String
+struct KeyValue: Identifiable {
+    var id: String {
+        key
     }
 
+    let key: String
+    let value: String
+
+    init(key: String, value: String) {
+        self.key = key
+        self.value = value
+    }
+
+    init?(key: String, value: String?) {
+        guard let value else {
+            return nil
+        }
+        self.key = key
+        self.value = value
+    }
+}
+
+class NodeDetailsViewModel: ObservableObject {
     struct QADetails {
-        let extendedAttributes: String
+        let attributes: [KeyValue]
+        let extendedAttributes: [KeyValue]
     }
 
     var node: Node
@@ -57,7 +75,7 @@ class NodeDetailsViewModel: ObservableObject {
         }
     }()
     
-    lazy var details: [NodeDetailViewModel] = {
+    lazy var details: [KeyValue] = {
         if let file = node as? File {
             return makeFileDetails(with: file)
         } else if node is Folder {
@@ -68,14 +86,14 @@ class NodeDetailsViewModel: ObservableObject {
         }
     }()
 
-    private func makeFileDetails(with file: File) -> [NodeDetailViewModel] {
+    private func makeFileDetails(with file: File) -> [KeyValue] {
         var details = self.detailsFolder
         details.append(contentsOf: [
-            .init(id: Localization.file_detail_extension, value: self.fileExtension ?? "－")
+            .init(key: Localization.file_detail_extension, value: self.fileExtension ?? "－")
         ])
         if !file.isProtonFile {
             details.append(contentsOf: [
-                .init(id: Localization.file_detail_size, value: ByteCountFormatter.storageSizeString(forByteCount: Int64(file.size)))
+                .init(key: Localization.file_detail_size, value: ByteCountFormatter.storageSizeString(forByteCount: Int64(file.size)))
             ])
         }
         let shareStatus: String
@@ -85,16 +103,16 @@ class NodeDetailsViewModel: ObservableObject {
             shareStatus = Localization.file_detail_share_no
         }
         details.append(contentsOf: [
-            .init(id: Localization.file_detail_shared, value: shareStatus)
+            .init(key: Localization.file_detail_shared, value: shareStatus)
         ])
         return details
     }
     
-    lazy var detailsFolder: [NodeDetailViewModel] = [
-        .init(id: Localization.file_detail_name, value: node.decryptedName),
-        .init(id: Localization.file_detail_uploaded_by, value: self.editorAddress),
-        .init(id: Localization.file_detail_location, value: self.path),
-        .init(id: Localization.file_detail_modified, value: Self.dateFormatter.string(from: node.modifiedDate))
+    lazy var detailsFolder: [KeyValue] = [
+        .init(key: Localization.file_detail_name, value: node.decryptedName),
+        .init(key: Localization.file_detail_uploaded_by, value: self.editorAddress),
+        .init(key: Localization.file_detail_location, value: self.path),
+        .init(key: Localization.file_detail_modified, value: Self.dateFormatter.string(from: node.modifiedDate))
     ]
 
     lazy var fileExtension: String? = { [unowned self] in
@@ -136,22 +154,73 @@ class NodeDetailsViewModel: ObservableObject {
             return
         }
 
-        qaDetails = QADetails(extendedAttributes: makeExtendedAttributes(file: file))
+        // Doesn't need localization, since it's only for dev/QA builds
+        qaDetails = QADetails(
+            attributes: [
+                KeyValue(key: "Key author", value: file.signatureEmail ?? ""),
+                KeyValue(key: "Name author", value: file.nameSignatureEmail ?? ""),
+                KeyValue(key: "Content author", value: file.activeRevision?.signatureAddress ?? ""),
+                KeyValue(key: "MIME type", value: file.mimeType),
+            ],
+            extendedAttributes: makeExtendedAttributes(file: file)
+        )
     }
 
-    private func makeExtendedAttributes(file: File) -> String {
+    private func makeExtendedAttributes(file: File) -> [KeyValue] {
+        if file.isProtonFile { return [] }
         guard let revision = file.activeRevision else {
-            return "error: no active revision"
+            assertionFailure("Active revision is nil")
+            return []
         }
 
         do {
             let attributes = try revision.decryptedExtendedAttributes()
-            let jsonEncoder = JSONEncoder()
-            jsonEncoder.outputFormatting = .prettyPrinted
-            let attributesData = try jsonEncoder.encode(attributes)
-            return String(data: attributesData, encoding: .utf8) ?? "empty"
+            let floatingStyle = FloatingPointFormatStyle<Double>().precision(.fractionLength(2))
+
+            var array = [KeyValue?]()
+            if let common = attributes.common {
+                let blockSizes = (common.blockSizes ?? []).map { ByteCountFormatter.storageSizeString(forByteCount: Int64($0)) }
+                let clearSize = common.size.map { ByteCountFormatter.storageSizeString(forByteCount: Int64($0)) }
+                array += [
+                    KeyValue(key: "Block sizes", value: blockSizes.joined(separator: ", ")),
+                    KeyValue(key: "Original size", value: clearSize),
+                    KeyValue(key: "SHA1", value: common.digests?.sha1 ?? ""),
+                ]
+                if let modificationTime = common.modificationTime {
+                    let modificationTimeDate = ISO8601DateFormatter.default.date(modificationTime)
+                    let formattedTime = modificationTimeDate.map { Self.dateFormatter.string(from: $0) }
+                    array += [
+                        KeyValue(key: "Modified (in xAttr)", value: formattedTime ?? ""),
+                    ]
+                }
+            }
+            if let location = attributes.location {
+                array += [
+                    KeyValue(key: "Longitude", value: location.longitude.formatted(floatingStyle)),
+                    KeyValue(key: "Latitude", value: location.latitude.formatted(floatingStyle)),
+                ]
+            }
+            if let camera = attributes.camera {
+                let coordinates = camera.subjectCoordinates.map { subjectCoordinates in
+                    "top: \(subjectCoordinates.top), left: \(subjectCoordinates.left), bottom: \(subjectCoordinates.bottom), right: \(subjectCoordinates.right)"
+                }
+                array += [
+                    KeyValue(key: "Device", value: camera.device),
+                    KeyValue(key: "Orientation", value: camera.orientation.map(String.init)),
+                    KeyValue(key: "Subject Coordinates", value: coordinates),
+                ]
+            }
+            if let media = attributes.media {
+                array += [
+                    KeyValue(key: "Duration", value: media.duration?.formatted(floatingStyle)),
+                    KeyValue(key: "Height", value: media.height?.formatted()),
+                    KeyValue(key: "Width", value: media.width?.formatted()),
+                ]
+            }
+            return array.compactMap { $0 }
         } catch {
-            return "error: \(error)"
+            assertionFailure("Couldn't decrypt extended attributes")
+            return []
         }
     }
 }

@@ -21,13 +21,11 @@ import PDCore
 struct PhotoAssetIdentifier: Equatable, Hashable {
     let name: String
     let nameHash: String
-    let url: URL
     let asset: PhotoAsset
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(name)
         hasher.combine(nameHash)
-        hasher.combine(url)
     }
 }
 
@@ -65,6 +63,6 @@ final class LocalPhotoAssetIdentifiersInteractor: PhotoAssetIdentifiersInteracto
         let name = try nameCorrectionPolicy.validateNameAndCorrectIfNeeded(fileName: asset.filename)
         let newAsset = asset.copy(with: name)
         let nameHash = try encryptionResource.makeHmac(string: name, hashKey: key)
-        return PhotoAssetIdentifier(name: name, nameHash: nameHash, url: newAsset.url, asset: newAsset)
+        return PhotoAssetIdentifier(name: name, nameHash: nameHash, asset: newAsset)
     }
 }

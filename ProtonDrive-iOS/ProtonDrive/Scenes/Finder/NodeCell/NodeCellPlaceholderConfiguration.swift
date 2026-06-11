@@ -26,7 +26,7 @@ class NodeCellPlaceholderConfiguration: ObservableObject, NodeCellConfiguration 
     var iconName: FileAssetName
     var name: String
     var isFavorite: Bool = false
-    var isAvailableOffline: Bool = false
+    var availableOfflineFlags: NodeCellAvailableOfflineFlags = .notAvailable
     var isShared: Bool = false
     var hasDirectShare: Bool = false
     var isSharedWithMeRoot: Bool = false
@@ -48,14 +48,14 @@ class NodeCellPlaceholderConfiguration: ObservableObject, NodeCellConfiguration 
     var id: NodeIdentifier = NodeIdentifier("", "", "")
     let isBookmark: Bool = false
 
-    let thumbnailViewModel: ThumbnailImageViewModel?
+    let thumbnailViewModel: ThumbnailImageViewModel
     let nodeRowActionMenuViewModel: NodeRowActionMenuViewModel? = nil
     let featureFlagsController: FeatureFlagsControllerProtocol
 
     init(featureFlagsController: FeatureFlagsControllerProtocol) {
         self.iconName = FileAssetName.unknown
         self.name = Self.unknownNamePlaceholder
-        self.thumbnailViewModel = nil
+        self.thumbnailViewModel = ThumbnailImageViewModel()
         self.featureFlagsController = featureFlagsController
     }
 

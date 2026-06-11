@@ -77,6 +77,11 @@ enum CloudFileCleanerError: Error {
     case fileIsNotADraft
 }
 
+public enum CloudScanError: Error {
+    /// `scanNodes` ancestor resolution did not converge within the depth cap.
+    case ancestorResolutionDepthExceeded(unresolved: Set<String>)
+}
+
 public typealias ShareShortMeta = PDClient.ShareShort
 public typealias ShareMeta = PDClient.Share
 public typealias ShareObj = PDCore.Share
@@ -90,6 +95,7 @@ public typealias NodeObj = PDCore.Node
 public typealias FolderObj = PDCore.Folder
 public typealias FileObj = PDCore.File
 public typealias PhotoObj = PDCore.Photo
+public typealias BlockMeta = PDClient.Block
 public typealias BlockObj = PDCore.Block
 
 public typealias ShareURLMeta = PDClient.ShareURLMeta
@@ -104,22 +110,29 @@ public typealias CloudContentCreatorCompletion = (Result<FullUploadableRevision,
 public class CloudSlot: CloudSlotProtocol {
     public typealias Errors = CloudSlotErrors
 
+    /// Hard cap on `scanNodes` ancestor-resolution iterations.
+    @usableFromInline static let ancestorResolutionDepthCap = 900
+    
+    public static let maxBatchSize = 150
+
     private let storage: StorageManager
     private let client: Client
     private let sessionVault: SessionVault
 
-    public var moc: NSManagedObjectContext {
-        self.storage.backgroundContext
-    }
-
-    private let queue = DispatchQueue.global(qos: .default)
+    private let completionQueue = DispatchQueue.global(qos: .default)
 
     private let instanceIdentifier = UUID()
+    private let parentIDFetcher: NodeParentIDFetcher
+    
+    public var backgroundContext: NSManagedObjectContext {
+        storage.backgroundContext
+    }
 
-    public init(client: Client, storage: StorageManager, sessionVault: SessionVault) {
+    public init(client: Client, storage: StorageManager, sessionVault: SessionVault, parentIDFetcher: NodeParentIDFetcher) {
         self.client = client
         self.storage = storage
         self.sessionVault = sessionVault
+        self.parentIDFetcher = parentIDFetcher
         Log.info("CloudSlot init: \(instanceIdentifier)", domain: .syncing)
     }
 
@@ -165,41 +178,40 @@ public protocol CloudSlotProtocol: AnyObject,
     CloudTrasherProtocol,
     ThumbnailsUpdateRepository
 {
-    var moc: NSManagedObjectContext { get }
 }
 
 public protocol CloudShareScannerProtocol {
-    func scanShare(shareID: String, handler: @escaping (Result<Share, Error>) -> Void)
+    func scanShare(shareID: String, moc: NSManagedObjectContext, handler: @escaping (Result<Share, Error>) -> Void)
 }
 
 public protocol CloudRootScannerProtocol {
-    func scanRoots(isPhotosEnabled: Bool, onFoundMainShare: @escaping (Result<Share, Error>) -> Void, onMainShareNotFound: @escaping () -> Void)
-    func scanRootsAsync(isPhotosEnabled: Bool) async throws -> Share?
+    func scanRoots(isPhotosEnabled: Bool, moc: NSManagedObjectContext, onFoundMainShare: @escaping (Result<Share, Error>) -> Void, onMainShareNotFound: @escaping () -> Void)
+    func scanRootsAsync(isPhotosEnabled: Bool, moc: NSManagedObjectContext) async throws -> Share?
 }
 
 public protocol CloudShareAndRootFolderScannerProtocol {
-    func scanShareAndRootFolder(shareID: String, handler: @escaping (Result<Share, Error>) -> Void)
+    func scanShareAndRootFolder(shareID: String, moc: NSManagedObjectContext, handler: @escaping (Result<Share, Error>) -> Void)
 }
 
 public protocol CloudTrashScannerProtocol {
-    func scanAllTrashed(volumeID: String) async throws
+    func scanAllTrashed(volumeID: String, moc: NSManagedObjectContext) async throws
 }
 
 public protocol CloudChildrenScannerProtocol {
-    func scanChildren(of parentID: NodeIdentifier, parameters: [FolderChildrenEndpointParameters]?, handler: @escaping (Result<[Node], Error>) -> Void)
-    func scanChildren(of parentID: NodeIdentifier, parameters: [FolderChildrenEndpointParameters]?) async throws -> [Node]
+    func scanChildren(of parentID: NodeIdentifier, parameters: [FolderChildrenEndpointParameters]?, moc: NSManagedObjectContext, handler: @escaping (Result<[Node], Error>) -> Void)
+    func scanChildren(of parentID: NodeIdentifier, parameters: [FolderChildrenEndpointParameters]?, moc: NSManagedObjectContext) async throws -> [Node]
 }
 
 public protocol CloudNodeScannerProtocol {
-    func scanNode(_ nodeID: NodeIdentifier, linkProcessingErrorTransformer: @escaping (Link, Error) -> Error, handler: @escaping (Result<Node, Error>) -> Void)
+    func scanNode(_ nodeID: NodeIdentifier, linkProcessingErrorTransformer: @escaping (Link, Error) -> Error, moc: NSManagedObjectContext, handler: @escaping (Result<Node, Error>) -> Void)
 
-    func scanNode(_ nodeID: NodeIdentifier, linkProcessingErrorTransformer: @escaping (Link, Error) -> Error) async throws -> Node
+    func scanNode(_ nodeID: NodeIdentifier, linkProcessingErrorTransformer: @escaping (Link, Error) -> Error, moc: NSManagedObjectContext) async throws -> Node
 }
 
 public protocol CloudRevisionScannerProtocol {
     /// Legacy function, can be removed after 2025 Feb, once macOS migrated to DDK
-    func scanRevision(_ revisionID: RevisionIdentifier, handler: @escaping (Result<Revision, Error>) -> Void)
-    func scanRevision(_ revisionID: RevisionIdentifier) async throws -> Revision
+    func scanRevision(_ revisionID: RevisionIdentifier, moc: NSManagedObjectContext, handler: @escaping (Result<Revision, Error>) -> Void)
+    func scanRevision(_ revisionID: RevisionIdentifier, moc: NSManagedObjectContext) async throws -> Revision
 }
 
 public protocol CloudFileCleaner {
@@ -208,15 +220,15 @@ public protocol CloudFileCleaner {
 }
 
 public protocol FolderCreatorProtocol {
-    func createFolder(_ name: String, parent: Folder) async throws -> Folder
+    func createFolder(_ name: String, parent: Folder, moc: NSManagedObjectContext) async throws -> Folder
 }
 
 public protocol NodeRenamerProtocol {
-    func rename(_ node: Node, to newName: String, mimeType: String?) async throws
+    func rename(_ node: Node, to newName: String, mimeType: String?, moc: NSManagedObjectContext) async throws
 }
 
 public protocol CloudNodeMoverProtocol {
-    func move(node: Node, to newParent: Folder, name: String) async throws
+    func move(node: Node, to newParent: Folder, name: String, moc: NSManagedObjectContext) async throws
 }
 
 public protocol CloudEventProvider {
@@ -232,7 +244,7 @@ public protocol CloudPublicLinkProtocol {
 }
 
 public protocol CloudAsyncVolumeCreatorProtocol {
-    func createVolumeAsync(signersKit: SignersKit) async throws -> Share
+    func createVolumeAsync(signersKit: SignersKit, moc: NSManagedObjectContext) async throws -> Share
 }
 
 public protocol ThumbnailCloudClient {
@@ -264,11 +276,13 @@ public protocol CloudRevisionCreator {
 }
 
 extension CloudSlot {
-    private func updateShare(shareMeta: ShareMeta, handler: @escaping (Result<Share, Error>) -> Void) {
-        self.moc.performAndWait {
-            let updatedShare = self.update(shareMeta, in: self.moc)
+    private func updateShare(shareMeta: ShareMeta,
+                             moc: NSManagedObjectContext,
+                             handler: @escaping (Result<Share, Error>) -> Void) {
+        moc.performAndWait {
+            let updatedShare = self.update(shareMeta, in: moc)
             do {
-                try self.moc.saveOrRollback()
+                try moc.saveOrRollback()
                 handler(.success(updatedShare))
             } catch {
                 return handler(.failure(error))
@@ -276,21 +290,26 @@ extension CloudSlot {
         }
     }
 
-    public func scanShare(shareID: String, handler: @escaping (Result<Share, Error>) -> Void) {
+    public func scanShare(shareID: String,
+                          moc: NSManagedObjectContext,
+                          handler: @escaping (Result<Share, Error>) -> Void) {
         self.client.getShare(shareID) { result in
             switch result {
             case .failure(let error):
                 handler(.failure(error))
             case .success(let shareMeta):
-                self.updateShare(shareMeta: shareMeta, handler: handler)
+                self.updateShare(shareMeta: shareMeta, moc: moc, handler: handler)
             }
         }
     }
 
-    public func scanRoots(isPhotosEnabled: Bool = false, onFoundMainShare: @escaping (Result<Share, Error>) -> Void, onMainShareNotFound: @escaping () -> Void) {
+    public func scanRoots(isPhotosEnabled: Bool = false,
+                          moc: NSManagedObjectContext,
+                          onFoundMainShare: @escaping (Result<Share, Error>) -> Void,
+                          onMainShareNotFound: @escaping () -> Void) {
         Task {
             do {
-                guard let mainShare = try await scanRootsAsync() else {
+                guard let mainShare = try await scanRootsAsync(moc: moc) else {
                     onMainShareNotFound()
                     return
                 }
@@ -305,7 +324,8 @@ extension CloudSlot {
         }
     }
 
-    public func scanRootsAsync(isPhotosEnabled: Bool = false) async throws -> Share? {
+    public func scanRootsAsync(isPhotosEnabled: Bool = false,
+                               moc: NSManagedObjectContext) async throws -> Share? {
         // we cannot rely on volume state being properly updated before we call for shares first.
         // call for shares updates the volume state as a hidden side effect. this is a BE quirk.
         _ = try await client.getShares()
@@ -315,47 +335,50 @@ extension CloudSlot {
         guard let volume = volumes.first(where: { $0.state == .active }) else {
             return nil
         }
-        
+
         update(volumes, in: moc)
 
-        let mainShare = try await scanRootShare(volume.share.shareID)
+        let mainShare = try await scanRootShare(volume.share.shareID, moc: moc)
         if isPhotosEnabled {
             do {
                 let photosShare = try await client.listPhotoShares()
-                _ = try await scanRootShare(photosShare.shareID)
+                _ = try await scanRootShare(photosShare.shareID, moc: moc)
             } catch { }
         }
 
         return mainShare
     }
 
-    private func scanRootShare(_ shareID: String) async throws -> Share {
+    private func scanRootShare(_ shareID: String,
+                               moc: NSManagedObjectContext) async throws -> Share {
         try await withCheckedThrowingContinuation { continuation in
-            scanShareAndRootFolder(shareID: shareID, handler: continuation.resume(with:))
+            scanShareAndRootFolder(shareID: shareID, moc: moc, handler: continuation.resume(with:))
         }
     }
 
-    public func scanShareAndRootFolder(shareID: String, handler: @escaping (Result<Share, Error>) -> Void) {
+    public func scanShareAndRootFolder(shareID: String,
+                                       moc: NSManagedObjectContext,
+                                       handler: @escaping (Result<Share, Error>) -> Void) {
         self.client.getShare(shareID) { result in
             switch result {
             case .failure(let error): handler(.failure(error))
             case .success(let shareMeta):
                 let rootNodeIdentifier = NodeIdentifier(shareMeta.linkID, shareMeta.shareID, shareMeta.volumeID)
-                self.scanNode(rootNodeIdentifier) { result in
+                self.scanNode(rootNodeIdentifier, moc: moc) { result in
                     switch result {
                     case .failure(let error): handler(.failure(error))
-                    case .success: self.updateShare(shareMeta: shareMeta, handler: handler)
+                    case .success: self.updateShare(shareMeta: shareMeta, moc: moc, handler: handler)
                     }
                 }
             }
         }
     }
 
-    public func scanAllTrashed(volumeID: String) async throws {
-        try await fetchTrash(volumeID, atPage: 0)
+    public func scanAllTrashed(volumeID: String, moc: NSManagedObjectContext) async throws {
+        try await fetchTrash(volumeID, atPage: 0, moc: moc)
     }
 
-    private func fetchTrash(_ volumeID: String, atPage page: Int) async throws {
+    private func fetchTrash(_ volumeID: String, atPage page: Int, moc: NSManagedObjectContext) async throws {
         let pageSize = Constants.pageSizeForChildrenFetchAndEnumeration
         do {
             let response = try await client.listVolumeTrash(volumeID: volumeID, page: page, pageSize: pageSize)
@@ -371,8 +394,8 @@ extension CloudSlot {
                     let linksResponse = try await client.getLinksMetadata(with: .init(shareId: batch.shareID, linkIds: batch.linkIDs))
                     try await moc.perform { [weak self] in
                         guard let self else { return }
-                        _ = try self.update(links: linksResponse.sortedLinks, shareId: batch.shareID, managedObjectContext: self.moc)
-                        try self.moc.saveOrRollback()
+                        _ = try self.update(links: linksResponse.sortedLinks, shareId: batch.shareID, managedObjectContext: moc)
+                        try moc.saveOrRollback()
                     }
                 } catch {
                     throw error
@@ -380,7 +403,7 @@ extension CloudSlot {
             }
 
             guard !response.trash.isEmpty else { return }
-            try await fetchTrash(volumeID, atPage: page + 1)
+            try await fetchTrash(volumeID, atPage: page + 1, moc: moc)
         } catch {
             throw error
         }
@@ -388,6 +411,7 @@ extension CloudSlot {
 
     public func scanChildren(of parentID: NodeIdentifier,
                              parameters: [FolderChildrenEndpointParameters]? = nil,
+                             moc: NSManagedObjectContext,
                              handler: @escaping (Result<[Node], Error>) -> Void)
     {
         let mode: UpdateMode = (parameters?.containsPagination() ?? false) ? .append : .replace
@@ -395,11 +419,11 @@ extension CloudSlot {
             switch result {
             case .failure(let error): handler(.failure(error))
             case .success(let childrenLinksMeta):
-                self.moc.performAndWait {
+                moc.performAndWait {
                     let childrenLinksMetaWithoutDrafts = childrenLinksMeta.filter { $0.state != .draft }
-                    let objs = self.update(childrenLinksMetaWithoutDrafts, under: parentID.nodeID, of: parentID.shareID, mode: mode, in: self.moc)
+                    let objs = self.update(childrenLinksMetaWithoutDrafts, under: parentID.nodeID, of: parentID.shareID, mode: mode, in: moc)
                     do {
-                        try self.moc.saveOrRollback()
+                        try moc.saveOrRollback()
                     } catch let error {
                         return handler(.failure(error))
                     }
@@ -408,8 +432,10 @@ extension CloudSlot {
             }
         }
     }
-    
-    public func scanChildren(of parentID: NodeIdentifier, parameters: [FolderChildrenEndpointParameters]?) async throws -> [Node] {
+
+    public func scanChildren(of parentID: NodeIdentifier,
+                             parameters: [FolderChildrenEndpointParameters]?,
+                             moc: NSManagedObjectContext) async throws -> [Node] {
         let mode: UpdateMode = (parameters?.containsPagination() ?? false) ? .append : .replace
         let childrenLinksMeta = try await client.getFolderChildren(
             parentID.shareID,
@@ -424,27 +450,28 @@ extension CloudSlot {
                 under: parentID.nodeID,
                 of: parentID.shareID,
                 mode: mode,
-                in: self.moc
+                in: moc
             )
-            try self.moc.saveOrRollback()
+            try moc.saveOrRollback()
             return objs
         }
     }
 
     public func scanNode(_ nodeID: NodeIdentifier,
                          linkProcessingErrorTransformer: @escaping (Link, Error) -> Error = { $1 },
+                         moc: NSManagedObjectContext,
                          handler: @escaping (Result<Node, Error>) -> Void)
     {
         self.client.getNode(nodeID.shareID, nodeID: nodeID.nodeID, breadcrumbs: .startCollecting()) { result in
             switch result {
             case .failure(let error): handler(.failure(error))
             case .success(let linkMeta):
-                self.moc.performAndWait {
-                    let objs = self.update([linkMeta], of: nodeID.shareID, in: self.moc)
+                moc.performAndWait {
+                    let objs = self.update([linkMeta], of: nodeID.shareID, in: moc)
                     do {
-                        try self.moc.saveOrRollback()
+                        try moc.saveOrRollback()
                     } catch let error {
-                        self.moc.rollback()
+                        moc.rollback()
                         return handler(.failure(linkProcessingErrorTransformer(linkMeta, error)))
                     }
                     handler(.success(objs.first!))
@@ -455,26 +482,164 @@ extension CloudSlot {
 
     public func scanNode(
         _ nodeID: NodeIdentifier,
-        linkProcessingErrorTransformer: @escaping (PDClient.Link, any Error) -> any Error
+        linkProcessingErrorTransformer: @escaping (PDClient.Link, any Error) -> any Error,
+        moc: NSManagedObjectContext
     ) async throws -> Node {
         try await withCheckedThrowingContinuation { continuation in
-            scanNode(nodeID, 
+            scanNode(nodeID,
                      linkProcessingErrorTransformer: linkProcessingErrorTransformer,
+                     moc: moc,
                      handler: continuation.resume(with:))
         }
     }
 
+    /// Phase 1 output: links accumulated across batched fetches, plus IDs the
+    /// backend didn't return.
+    private typealias AncestorResolution = (fetchedLinks: [PDClient.Link], deletedIDs: Set<String>)
+
+    /// Batched share-scoped metadata fetch with recursive ancestor resolution.
+    ///
+    /// Any requested ID the backend doesn't return is treated as deleted; its
+    /// subtree is removed before persisting. Persistence happens **once**, at
+    /// the end — `update` creates stub Core Data objects for any parent absent
+    /// from its input, and saving a stub mid-resolution fails validation.
+    public func scanNodes(
+        linkIDs: [String],
+        shareID: String,
+        moc: NSManagedObjectContext,
+        maxDepth: Int = CloudSlot.ancestorResolutionDepthCap
+    ) async throws {
+        let resolution = try await resolveLinksAndAncestors(
+            seedLinkIDs: linkIDs, shareID: shareID, maxDepth: maxDepth, moc: moc
+        )
+        try await persistResolutionWithCascadingDelete(
+            resolution, shareID: shareID, moc: moc
+        )
+    }
+
+    /// Phase 1 — parent-chain traversal. Each iteration fires a batched
+    /// metadata request (chunked by the BE 150-link cap) for everything still
+    /// unresolved at the current level.
+    private func resolveLinksAndAncestors(
+        seedLinkIDs: [String],
+        shareID: String,
+        maxDepth: Int,
+        moc: NSManagedObjectContext
+    ) async throws -> AncestorResolution {
+        var fetchedLinks: [PDClient.Link] = []
+        var fetchedIDs = Set<String>()
+        var pending = Set(seedLinkIDs)
+        var requestCounter = 0
+        var deletedIDs = Set<String>()
+
+        while !pending.isEmpty {
+            guard requestCounter < maxDepth else {
+                throw CloudScanError.ancestorResolutionDepthExceeded(unresolved: pending)
+            }
+            requestCounter += 1
+
+            let currentBatch = Array(pending)
+            pending.removeAll()
+
+            var returnedLinks: [PDClient.Link] = []
+            for chunk in currentBatch.splitInGroups(of: CloudSlot.maxBatchSize) {
+                let response = try await client.getLinksMetadata(
+                    with: LinksMetadataParameters(shareId: shareID, linkIds: chunk)
+                )
+                returnedLinks.append(contentsOf: response.sortedLinks)
+            }
+            let returnedIDs = Set(returnedLinks.map(\.linkID))
+
+            // Asked for, didn't come back → deleted on the backend.
+            deletedIDs.formUnion(Set(currentBatch).subtracting(returnedIDs))
+
+            let newLinks = returnedLinks.filter { !fetchedIDs.contains($0.linkID) }
+            fetchedLinks.append(contentsOf: newLinks)
+            fetchedIDs.formUnion(newLinks.map(\.linkID))
+
+            let unresolvedParentIDs = Set(returnedLinks.compactMap(\.parentLinkID))
+                .subtracting(fetchedIDs)
+                .subtracting(deletedIDs)
+            guard !unresolvedParentIDs.isEmpty else { break }
+
+            // Already in DB → `update(_:of:in:)` resolves them via
+            // `storage.unique(with:)`, no refetch needed.
+            let parentIdentifiers = unresolvedParentIDs.map { NodeIdentifier($0, shareID, "") }
+            let parentsAlreadyInDB = moc.performAndWait {
+                Set(self.storage.fetchNodes(identifiers: parentIdentifiers, moc: moc).map(\.id))
+            }
+            pending = unresolvedParentIDs.subtracting(parentsAlreadyInDB)
+        }
+
+        return (fetchedLinks: fetchedLinks, deletedIDs: deletedIDs)
+    }
+
+    /// Phase 2 — descendant traversal of every deleted ID.
+    /// Persists clean links and hard-deletes DB
+    /// nodes in the deleted subtree, in a single save.
+    private func persistResolutionWithCascadingDelete(
+        _ resolution: AncestorResolution,
+        shareID: String,
+        moc: NSManagedObjectContext
+    ) async throws {
+        // Seeds may already be in the DB (caller asked for a known ID the
+        // backend says is gone) — seed `dbNodesToHardDelete` from them
+        // before traversing descendants.
+        var idsInDeletedSubtree = resolution.deletedIDs
+        let seedIdentifiers = resolution.deletedIDs.map { NodeIdentifier($0, shareID, "") }
+        var dbNodesToHardDelete = self.storage.fetchNodes(identifiers: seedIdentifiers, moc: moc)
+        var cascadeQueue = Array(resolution.deletedIDs)
+        // Precomputed once: walking `fetchedLinks` per cascade id would be O(N×M).
+        let linksByParent = Dictionary(grouping: resolution.fetchedLinks) { $0.parentLinkID ?? "" }
+
+        try await moc.perform {
+            // Index-based dequeue keeps the cascade O(N); `removeFirst()` is O(N) per pop.
+            var head = 0
+            while head < cascadeQueue.count {
+                let id = cascadeQueue[head]
+                head += 1
+
+                // A `fetchedLinks` entry here has no DB equivalent.
+                // Excluding it from `cleanLinks` is enough; no DB delete needed.
+                // `parentsAlreadyInDB` would have suppressed the parent fetch
+                // if the ancestor were already in DB.
+                for link in linksByParent[id, default: []]
+                    where !idsInDeletedSubtree.contains(link.linkID) {
+                    idsInDeletedSubtree.insert(link.linkID)
+                    cascadeQueue.append(link.linkID)
+                }
+
+                let dbChildren = try self.storage.fetchChildren(
+                    of: id, share: shareID, sorting: .default, moc: moc
+                )
+                for child in dbChildren where !idsInDeletedSubtree.contains(child.id) {
+                    idsInDeletedSubtree.insert(child.id)
+                    dbNodesToHardDelete.append(child)
+                    cascadeQueue.append(child.id)
+                }
+            }
+
+            let cleanLinks = resolution.fetchedLinks.filter { !idsInDeletedSubtree.contains($0.linkID) }
+            self.update(cleanLinks, of: shareID, in: moc)
+            for node in dbNodesToHardDelete {
+                moc.delete(node)
+            }
+            try moc.saveOrRollback()
+        }
+    }
+
     public func scanRevision(_ revisionID: RevisionIdentifier,
+                             moc: NSManagedObjectContext,
                              handler: @escaping (Result<Revision, Error>) -> Void)
     {
-        self.client.getRevision(revisionID.share, fileID: revisionID.file, revisionID: revisionID.revision) { result in
+        self.client.getRevision(revisionID.shareID, fileID: revisionID.fileID, revisionID: revisionID.revisionID) { result in
             switch result {
             case .failure(let error): handler(.failure(error))
             case .success(let revisionMeta):
-                self.moc.performAndWait {
-                    let obj = self.update(revisionMeta, inFileID: revisionID.file, of: revisionID.share, in: self.moc)
+                moc.performAndWait {
+                    let obj = self.update(revisionMeta, inFileID: revisionID.fileID, of: revisionID.shareID, in: moc)
                     do {
-                        try self.moc.saveOrRollback()
+                        try moc.saveOrRollback()
                     } catch let error {
                         return handler(.failure(error))
                     }
@@ -484,15 +649,16 @@ extension CloudSlot {
         }
     }
 
-    public func scanRevision(_ revisionID: RevisionIdentifier) async throws -> Revision {
+    public func scanRevision(_ revisionID: RevisionIdentifier,
+                             moc: NSManagedObjectContext) async throws -> Revision {
         let revisionMeta = try await client.getRevision(
-            revisionID: revisionID.revision,
-            fileID: revisionID.file,
-            shareID: revisionID.share
+            revisionID: revisionID.revisionID,
+            fileID: revisionID.fileID,
+            shareID: revisionID.shareID
         )
         return try await moc.perform {
-            let obj = self.update(revisionMeta, inFileID: revisionID.file, of: revisionID.share, in: self.moc)
-            try self.moc.saveOrRollback()
+            let obj = self.update(revisionMeta, inFileID: revisionID.fileID, of: revisionID.shareID, in: moc)
+            try moc.saveOrRollback()
             return obj
         }
     }
@@ -520,39 +686,41 @@ extension CloudSlot {
 }
 
 extension CloudSlot {
-    public func createFolder(_ name: String, parent: Folder) async throws -> Folder {
-        let creator = FolderCreator(storage: storage, cloudFolderCreator: client.createFolder, signersKitFactory: signersKitFactory, moc: storage.backgroundContext)
+    public func createFolder(_ name: String, parent: Folder, moc: NSManagedObjectContext) async throws -> Folder {
+        let creator = FolderCreator(cloudFolderCreator: client.createFolder, signersKitFactory: signersKitFactory)
 
-        return try await creator.createFolder(name, parent: parent)
+        return try await creator.createFolder(name, parent: parent, moc: moc)
     }
 
-    public func rename(_ node: Node, to newName: String, mimeType: String?) async throws {
-        let renamer = NodeRenamer(storage: storage, cloudNodeRenamer: client.renameEntry, signersKitFactory: signersKitFactory, moc: storage.backgroundContext)
+    public func rename(_ node: Node, to newName: String, mimeType: String?, moc: NSManagedObjectContext) async throws {
+        let renamer = NodeRenamer(cloudNodeRenamer: client.renameEntry, signersKitFactory: signersKitFactory)
 
-        return try await renamer.rename(node, to: newName, mimeType: mimeType)
+        return try await renamer.rename(node, to: newName, mimeType: mimeType, moc: moc)
     }
 
-    public func move(node: Node, to newParent: Folder, name: String) async throws {
-        let mover = NodeMover(storage: storage, cloudNodeMover: client.moveEntry, signersKitFactory: signersKitFactory, moc: storage.backgroundContext)
+    public func move(node: Node, to newParent: Folder, name: String, moc: NSManagedObjectContext) async throws {
+        let mover = NodeMover(cloudNodeMover: client.moveEntry, signersKitFactory: signersKitFactory, parentIDFetcher: parentIDFetcher)
 
-        return try await mover.move(node, to: newParent, name: name)
+        return try await mover.move(node, to: newParent, name: name, moc: moc)
     }
 
-    private func createVolume(signersKit: SignersKit, handler: @escaping (Result<Share, Error>) -> Void) {
+    private func createVolume(signersKit: SignersKit,
+                              moc: NSManagedObjectContext,
+                              handler: @escaping (Result<Share, Error>) -> Void) {
         let folderName = "root"
 
-        self.moc.performAndWait {
+        moc.performAndWait {
             do {
                 let address = signersKit.address
                 let addressKey = signersKit.addressKey
-                let share: ShareObj = self.storage.new(with: address.email, by: #keyPath(ShareObj.creator), in: self.moc)
+                let share: ShareObj = self.storage.new(with: address.email, by: #keyPath(ShareObj.creator), in: moc)
                 let shareKeys = try share.generateShareKeys(signersKit: signersKit)
                 share.addressID = address.addressID
                 share.key = shareKeys.key
                 share.passphrase = shareKeys.passphrase
                 share.passphraseSignature = shareKeys.signature
 
-                let root: FolderObj = self.storage.new(with: address.email, by: #keyPath(FolderObj.signatureEmail), in: self.moc)
+                let root: FolderObj = self.storage.new(with: address.email, by: #keyPath(FolderObj.signatureEmail), in: moc)
                 root.directShares.insert(share)
 
                 let rootName = try root.encryptName(cleartext: folderName, signersKit: signersKit)
@@ -593,12 +761,12 @@ extension CloudSlot {
                         handler(.failure(error))
 
                     case .success(let newVolume):
-                        self.moc.performAndWait {
+                        moc.performAndWait {
                             share.id = newVolume.share.ID
                             root.id = newVolume.share.linkID
                             root.setShareID(newVolume.share.ID)
 
-                            let volume: VolumeObj = self.storage.new(with: newVolume.ID, by: "id", in: self.moc)
+                            let volume: VolumeObj = self.storage.new(with: newVolume.ID, by: "id", in: moc)
                             volume.shares.insert(share)
 
                             handler(.success(share))
@@ -613,9 +781,9 @@ extension CloudSlot {
         }
     }
 
-    public func createVolumeAsync(signersKit: SignersKit) async throws -> Share {
+    public func createVolumeAsync(signersKit: SignersKit, moc: NSManagedObjectContext) async throws -> Share {
         return try await withCheckedThrowingContinuation { continuation in
-            createVolume(signersKit: signersKit) { result in
+            createVolume(signersKit: signersKit, moc: moc) { result in
                 switch result {
                 case .success(let share):
                     continuation.resume(returning: share)
@@ -672,7 +840,7 @@ extension CloudSlot {
             draft.shareID,
             parameters: parameters,
             completion: { [weak self] result in
-                self?.queue.async {
+                self?.completionQueue.async {
                     completion(result.map { RemoteUploadedNewFile(fileID: $0.ID, revisionID: $0.revisionID) })
                 }
             }
@@ -703,7 +871,7 @@ extension CloudSlot {
         client.postBlocks(
             parameters: parameters,
             completion: { [weak self] response in
-                self?.queue.async {
+                self?.completionQueue.async {
                     onCompletion(response.map { revision.makeFull(blockLinks: $0.blocks, thumbnailLinks: $0.thumbnails) })
                 }
             }
@@ -738,7 +906,7 @@ extension CloudSlot {
             revisionID: revision.revisionID,
             parameters: parameters,
             completion: { [weak self] result in
-                self?.queue.async {
+                self?.completionQueue.async {
                     completion(result)
                 }
             }
@@ -749,7 +917,7 @@ extension CloudSlot {
 // MARK: - UploadedRevisionChecker
 extension CloudSlot {
     public func checkUploadedRevision(_ id: RevisionIdentifier, completion: @escaping (Result<XAttrs, Error>) -> Void) {
-        client.getRevision(id.share, fileID: id.file, revisionID: id.revision) { result in
+        client.getRevision(id.shareID, fileID: id.fileID, revisionID: id.revisionID) { result in
             switch result {
             case .success(let revision) where revision.state == .active:
                 if let unwrappedXAttr = revision.XAttr {
@@ -770,8 +938,8 @@ extension CloudSlot {
 extension CloudSlot {
     public func createRevision(for file: NodeIdentifier, onCompletion: @escaping (Result<RevisionIdentifier, Error>) -> Void) {
         client.postRevision(file.nodeID, shareID: file.shareID) { [weak self] result in
-            self?.queue.async {
-                onCompletion(result.map { RevisionIdentifier(share: file.shareID, file: file.nodeID, revision: $0.ID, volume: file.volumeID) })
+            self?.completionQueue.async {
+                onCompletion(result.map { RevisionIdentifier(shareID: file.shareID, fileID: file.nodeID, revisionID: $0.ID, volumeID: file.volumeID) })
             }
         }
     }
@@ -1086,7 +1254,7 @@ extension CloudSlot {
             let fileObj: File = self.storage.unique(with: Set([fileID]), allowSubclasses: true, in: moc).first!
             fileObj.setValue(shareID, forKey: #keyPath(NodeObj.shareID))
 
-            self.storage.removeOldBlocks(of: revisionObj)
+            self.storage.removeOutdatedCache(of: revisionObj)
 
             let newBlocks: [DownloadBlock] = self.storage.unique(with: Set(revision.blocks.map { $0.URL.absoluteString }),
                                                          uniqueBy: #keyPath(DownloadBlock.downloadUrl),
@@ -1148,7 +1316,7 @@ extension CloudSlot {
         }
     }
 
-    public func update(thumbnails: [ThumbnailURL]) throws {
+    public func update(thumbnails: [ThumbnailURL], moc: NSManagedObjectContext) throws {
         try moc.performAndWait {
             updateThumbnails(with: thumbnails, in: moc)
             try moc.saveOrRollback()
@@ -1231,17 +1399,7 @@ public class iOSSupportedSharesValidator: SupportedSharesValidator {
     }
 
     public func isValid(_ id: String) -> Bool {
-        if hasComputers {
-            return true
-        } else {
-            return supportedShares.contains(id)
-        }
-    }
-
-    private var hasComputers: Bool {
-        // We cannot use FeatureFlagsController directly anymore because the code was moved to PDCoreiOS,
-        // This code should exist for a limited amount of time, until, computers become fully part of iOS
-        LocalSettings.shared.driveiOSComputers && !LocalSettings.shared.driveiOSComputersDisabled
+        return supportedShares.contains(id)
     }
 }
 

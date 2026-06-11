@@ -24,4 +24,5 @@ protocol ThumbnailEncrypting {
 struct EncryptedThumbnailData {
     let encrypted: Data
     let hash: Data
+    let clearData: Data
 }

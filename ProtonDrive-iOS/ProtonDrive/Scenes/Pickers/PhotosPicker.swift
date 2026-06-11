@@ -20,6 +20,7 @@ import UIKit
 import SwiftUI
 import PhotosUI
 import PDCore
+import PDCoreIOS
 import PDLocalization
 import PDUIComponents
 import ProtonCoreUIFoundations

@@ -53,7 +53,15 @@ final class PhotoListingsMappingResource: PhotoListingsMappingResourceProtocol {
 
     private func makeListing(listing: CoreDataPhotoListing, downloadingIds: PhotoIdsSet) -> PhotoListing? {
         guard listing.managedObjectContext != nil else { return nil }
-        let metadata = makeMetadata(from: listing.photo, downloadingIds: downloadingIds)
+        if let photo = listing.photo {
+            let isAllChildrenUploaded = photo.children.allSatisfy { $0.state == .active }
+            guard isAllChildrenUploaded else { return nil }
+        }
+        let metadata = makeMetadata(
+            from: listing.photo,
+            relatedListings: listing.relatedPhotos,
+            downloadingIds: downloadingIds
+        )
         return PhotoListing(
             id: listing.photoIdentifier,
             albumId: listing.albumID,
@@ -63,29 +71,32 @@ final class PhotoListingsMappingResource: PhotoListingsMappingResourceProtocol {
         )
     }
 
-    private func makeMetadata(from photo: Photo?, downloadingIds: PhotoIdsSet) -> PhotoListing.Metadata? {
+    private func makeMetadata(from photo: Photo?, relatedListings: Set<CoreDataPhotoListing>, downloadingIds: PhotoIdsSet) -> PhotoListing.Metadata? {
         guard let photo, photo.managedObjectContext != nil else {
             return nil
         }
         let isVideo = mimeTypeResource.isVideo(mimeType: photo.mimeType)
+        var allIDs = Set(relatedListings.map(\.photoIdentifier))
+        allIDs.insert(photo.genericIdentifier)
+
         return PhotoListing.Metadata(
             isShared: photo.isShared,
             hasDirectShare: photo.hasDirectShare,
             isVideo: isVideo,
-            isAvailableOffline: photo.isMarkedOfflineAvailable && photo.isDownloaded,
-            isDownloading: photo.isMarkedOfflineAvailable && downloadingIds.contains(photo.identifier.any()),
-            burstChildrenCount: getBurstCount(from: photo),
+            isAvailableOffline: photo.isMarkedOfflineAvailable && photo.isDownloaded && photo.children.allSatisfy { $0.isDownloaded },
+            isDownloading: photo.isMarkedOfflineAvailable && !downloadingIds.isDisjoint(with: allIDs),
+            burstChildrenCount: getBurstCount(from: photo, hasChildren: !relatedListings.isEmpty),
             isFavorite: (photo.tags ?? []).contains(PhotoTag.favorites.rawValue)
         )
     }
 
-    public func getBurstCount(from photo: Photo) -> Int? {
+    public func getBurstCount(from photo: Photo, hasChildren: Bool) -> Int? {
+        guard hasChildren else {
+            return nil
+        }
         // Intentionally not using `Photo.canBeBurstPhoto`, since that one is not performance optimized.
         // Solution below uses caching of MimeType to speed up the process
         guard mimeTypeResource.isImage(mimeType: photo.mimeType) else {
-            return nil
-        }
-        guard !photo.children.isEmpty else {
             return nil
         }
 

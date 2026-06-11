@@ -235,35 +235,15 @@ struct GalleryScenesFactory {
         return PhotosStorageView(viewModel: viewModel)
     }
 
-    func makeMigrationView(
-        migrationController: PhotoVolumeMigrationControllerProtocol,
-        featureFlagsController: FeatureFlagsControllerProtocol,
-        streamConfiguration: PhotoStreamConfiguration
-    ) -> some View {
-        let viewModel = PhotosMigrationBannerViewModel(
-            migrationController: migrationController,
-            featureFlagsController: featureFlagsController,
-            streamConfiguration: streamConfiguration
-        )
-        return MigrationBannerView(viewModel: viewModel)
-    }
-
-    // swiftlint:disable:next function_parameter_count
     func makeBannersView(
-        featureFlagsController: FeatureFlagsControllerProtocol,
-        streamConfiguration: PhotoStreamConfiguration,
         stateView: some View,
         lockingBannerView: some View,
-        storageView: some View,
-        migrationView: some View
+        storageView: some View
     ) -> some View {
-        let viewModel = GalleryBannersViewModel(featureFlagsController: featureFlagsController, streamConfiguration: streamConfiguration)
         return GalleryBannersView(
-            viewModel: viewModel,
             stateView: stateView,
             lockingBannerView: lockingBannerView,
-            storageView: storageView,
-            migrationView: migrationView
+            storageView: storageView
         )
     }
 
@@ -311,7 +291,8 @@ struct GalleryScenesFactory {
             remoteAlbumFetchController: remoteAlbumFetchController,
             scrollToTopPublisher: scrollToTopPublisher,
             streamConfiguration: streamConfiguration,
-            scrollerController: scrollerController
+            scrollerController: scrollerController,
+            performanceMetricsController: tower.performanceMetricsController
         )
         
         let localSelection: PhotosSelectionController
@@ -332,7 +313,8 @@ struct GalleryScenesFactory {
             photoUploadedNotifier: photoUploadedNotifier,
             featureFlagsController: featureFlagsController,
             metadataController: metadataController,
-            streamConfiguration: streamConfiguration
+            streamConfiguration: streamConfiguration,
+            configuration: configuration
         )
         return PhotosGridView(
             viewModel: viewModel,
@@ -363,11 +345,13 @@ struct GalleryScenesFactory {
         photoUploadedNotifier: PhotoUploadedNotifier,
         featureFlagsController: FeatureFlagsControllerProtocol,
         metadataController: MetadataControllerProtocol,
-        streamConfiguration: PhotoStreamConfiguration
+        streamConfiguration: PhotoStreamConfiguration,
+        configuration: PhotosRootConfiguration
     ) -> some View {
         let trashController = makeTrashController(tower: tower)
         let fileContentController = makeFileContentController(
             tower: tower,
+            featureFlagsController: featureFlagsController,
             moc: photosManagedObjectContext,
             photoUploadedNotifier: photoUploadedNotifier
         )
@@ -395,7 +379,8 @@ struct GalleryScenesFactory {
             favoritingController: favoritingController,
             trashDialogFactory: trashDialogFactory,
             userMessageHandler: UserMessageHandler(),
-            streamConfiguration: streamConfiguration
+            streamConfiguration: streamConfiguration,
+            configuration: configuration
         )
         return PhotosActionView(viewModel: viewModel)
     }
@@ -434,11 +419,21 @@ struct GalleryScenesFactory {
     }
 
     func makeTrashController(tower: Tower) -> PhotosTrashController {
-        let remoteRepository = BackendRemotePhotosTrashRepository(trasher: tower.cloudSlot)
-        let localRepository = DatabasePhotosTrashRepository(storageManager: tower.storage)
-        let trashInteractor = PhotosTrashInteractor(remoteRepository: remoteRepository, localRepository: localRepository)
-        let trashFacade = AsyncPhotosTrashFacade(interactor: trashInteractor)
-        return LocalPhotosTrashController(facade: trashFacade)
+        if let performer = tower.getSdkNodeOperationPerformer() {
+            let downloaders: [DownloaderProtocol?] = [tower.downloader, tower.getSdkPhotoDownloader()]
+            let interactor = SDKPhotosTrashInteractor(
+                downloaders: downloaders,
+                performer: performer
+            )
+            let facade = AsyncSDKPhotosTrashFacade(interactor: interactor)
+            return LocalPhotosTrashController(facade: facade)
+        } else {
+            let remoteRepository = BackendRemotePhotosTrashRepository(trasher: tower.cloudSlot)
+            let localRepository = DatabasePhotosTrashRepository(storageManager: tower.storage)
+            let trashInteractor = PhotosTrashInteractor(remoteRepository: remoteRepository, localRepository: localRepository)
+            let trashFacade = AsyncPhotosTrashFacade(interactor: trashInteractor)
+            return LocalPhotosTrashController(facade: trashFacade)
+        }
     }
 
     // swiftlint:disable:next function_parameter_count
@@ -514,15 +509,18 @@ struct GalleryScenesFactory {
 
     func makeFileContentController(
         tower: Tower,
+        featureFlagsController: FeatureFlagsControllerProtocol,
         moc: NSManagedObjectContext,
         photoUploadedNotifier: PhotoUploadedNotifier
     ) -> FileContentController {
         let contentResource = DecryptedPhotoContentResource(
             managedObjectContext: moc,
             downloader: tower.downloader,
+            sdkDownloader: tower.getSdkPhotoDownloader(),
             fetchResource: PhotoFetchResource(storage: tower.storage),
-            validationResource: PhotoURLValidationResource(),
-            photoUploadedNotifier: photoUploadedNotifier
+            photoUploadedNotifier: photoUploadedNotifier,
+            performanceMetricsController: tower.performanceMetricsController,
+            photoDecryptor: RemoteFileContentDecryptor(validator: PhotoURLValidationResource())
         )
         return LocalFileContentController(resource: contentResource, storageResource: LocalFileStorageResource())
     }
@@ -533,7 +531,13 @@ struct GalleryScenesFactory {
     }
 
     func makeOfflineAvailableResource(tower: Tower, managedObjectContext: NSManagedObjectContext) -> OfflineAvailableResource {
-        LocalOfflineAvailableResource(tower: tower, downloader: tower.downloader, storage: tower.storage, managedObjectContext: managedObjectContext)
+        LocalOfflineAvailableResource(
+            tower: tower,
+            downloader: tower.downloader,
+            sdkDownloader: tower.getSdkPhotoDownloader(),
+            storage: tower.storage,
+            managedObjectContext: managedObjectContext
+        )
     }
 
     func makeTrashDialogFactory(

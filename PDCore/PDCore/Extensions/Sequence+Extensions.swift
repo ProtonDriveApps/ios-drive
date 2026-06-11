@@ -28,6 +28,10 @@ public extension Sequence {
 
     /// async version of `forEach`
     func forEach(_ operation: (Element) async throws -> Void) async rethrows {
+        try await asyncForEach(operation)
+    }
+    
+    func asyncForEach(_ operation: (Element) async throws -> Void) async rethrows {
         for element in self {
             try await operation(element)
         }
@@ -41,6 +45,10 @@ public extension Sequence {
             return try await taskGroup.reduce([], { $0 + [$1] })
         }
     }
+    
+    func parallelForEach(_ transform: @escaping (Element) async throws -> Void) async rethrows {
+        _ = try await parallelMap(transform)
+    }
 
     /// Async version of `flatMap`
     /// Cannot be called just `flatMap`, the compiler gets confused
@@ -48,6 +56,29 @@ public extension Sequence {
         var values = [T]()
         for element in self {
             try await values += transform(element)
+        }
+        return values
+    }
+
+    /// Async version of `compactMap`
+    /// Cannot be called just `compactMap`, the compiler gets confused
+    func asyncCompactMap<T>(_ transform: (Element) async throws -> T?) async rethrows -> [T] {
+        var values = [T]()
+        for element in self {
+            if let value = try await transform(element) {
+                values.append(value)
+            }
+        }
+        return values
+    }
+
+    /// async version of `filter`
+    func filter(_ operation: (Element) async throws -> Bool) async rethrows -> [Element] {
+        var values = [Element]()
+        for element in self {
+            if try await operation(element) {
+                values.append(element)
+            }
         }
         return values
     }

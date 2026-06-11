@@ -17,12 +17,14 @@
 
 import Foundation
 
-protocol EncodingResource {
+public protocol EncodingResource {
     func encodeIntoJson<T: Encodable>(_ value: T) throws -> Data
 }
 
-final class FoundationEncodingResource: EncodingResource {
-    func encodeIntoJson<T: Encodable>(_ value: T) throws -> Data {
+public final class FoundationEncodingResource: EncodingResource {
+    public init() {}
+    
+    public func encodeIntoJson<T: Encodable>(_ value: T) throws -> Data {
         try JSONEncoder().encode(value)
     }
 }

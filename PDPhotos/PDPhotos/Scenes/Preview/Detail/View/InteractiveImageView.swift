@@ -124,7 +124,7 @@ final class InteractiveImageView: UIView, UIScrollViewDelegate {
             setUpPhotoViewLayout(photoView: livePhotoView, in: scrollView)
             updateBadgeHiddenStatus()
             isLoadingViewShown = false
-            accessibilityIdentifier = "PhotoPreviewDetail.LivePhoto"
+            accessibilityIdentifier = isLoading ? "PhotoPreviewDetail.LivePhoto.loading" : "PhotoPreviewDetail.LivePhoto"
         case let .burstPhoto(coverURL, childrenURLs, isLoading):
             let burstView = factory.makeBurstPhotoPreview(
                 coverURL: coverURL,
@@ -135,7 +135,7 @@ final class InteractiveImageView: UIView, UIScrollViewDelegate {
             setUpPhotoViewLayout(photoView: burstView, in: scrollView)
             updateBadgeHiddenStatus()
             isLoadingViewShown = false
-            accessibilityIdentifier = "PhotoPreviewDetail.Burst"
+            accessibilityIdentifier = isLoading ? "PhotoPreviewDetail.Burst.loading" : "PhotoPreviewDetail.Burst"
         }
         updateLoadingBadge()
     }

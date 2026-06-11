@@ -28,7 +28,7 @@ extension SyncItem {
     @NSManaged public var fileSize: NSNumber?
     @NSManaged public var modificationTime: Date
 
-    @NSManaged public var progress: Int
+    @NSManaged public var progress: Double
     /// Automatically set in the didSet of "state"
     @NSManaged public var inProgress: Bool
 

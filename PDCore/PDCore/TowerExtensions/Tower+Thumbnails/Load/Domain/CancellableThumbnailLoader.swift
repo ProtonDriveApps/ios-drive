@@ -19,4 +19,5 @@ import Foundation
 
 public protocol CancellableThumbnailLoader: ThumbnailLoader {
     func cancelAll()
+    func loadThumbnailAsync(with id: Identifier) async
 }

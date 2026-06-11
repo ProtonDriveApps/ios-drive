@@ -17,39 +17,66 @@
 
 import UIKit
 import SwiftUI
+import PDCore
+import PDCoreIOS
+import PDLocalization
 
-protocol FilePreviewPreparationCoordinatorProtocol {
-    func onFileDecrypted() async
-}
-
-final class FilePreviewPreparationCoordinator: FilePreviewPreparationCoordinatorProtocol {
-    weak var presentingController: UIAlertController?
-
-    private weak var root: UIViewController?
+final class FilePreviewPreparationCoordinator {
+    private let messageHandler: UserMessageHandlerProtocol
     private let repository: FilePreviewRepository
-    private let share: Bool
+    private var performanceMetricsController: PerformanceMetricsControllerProtocol?
+    private weak var presentingController: UIAlertController?
+    private weak var root: UIViewController?
 
-    init(repository: FilePreviewRepository, root: UIViewController!, share: Bool) {
+    init(
+        messageHandler: UserMessageHandlerProtocol,
+        repository: FilePreviewRepository,
+        performanceMetricsController: PerformanceMetricsControllerProtocol?,
+        root: UIViewController
+    ) {
+        self.messageHandler = messageHandler
         self.repository = repository
-        self.share = share
+        self.performanceMetricsController = performanceMetricsController
         self.root = root
+    }
+    
+    func preview() async {
+        do {
+            if try await repository.requiresDecryption() {
+                await presentAlert()
+                try await repository.loadFile()
+                await presentingController?.dismiss(animated: false)
+            }
+            await openPreview(repository: repository)
+        } catch {
+            if error is CancellationError { return }
+            Log.error("Preview file failed", error: error, domain: .scenes)
+            messageHandler.handleError(PlainMessageError(error.localizedDescription))
+        }
+    }
+    
+    @MainActor
+    private func presentAlert() {
+        let alert = UIAlertController(title: Localization.general_decrypting, message: nil, preferredStyle: .alert)
+        let cancelAction = UIAlertAction(title: Localization.general_cancel, style: .cancel) { [weak repository] _ in
+            repository?.cancel()
+        }
+        alert.addAction(cancelAction)
+        presentingController = alert
+        root?.present(alert, animated: false)
     }
 
     @MainActor
-    func onFileDecrypted() async {
-        presentingController?.dismiss(animated: true) { [repository, weak self] in
-            guard let self else { return }
-            self.openPreview(repository: repository)
-        }
-    }
-
     private func openPreview(repository: FilePreviewRepository) {
-        let model = FileModel(repository: repository)
+        let model = FileModel(
+            repository: repository,
+            performanceMetricsController: performanceMetricsController,
+            messageHandler: messageHandler
+        )
         let vc = PMPreviewController()
         vc.model = model
         vc.delegate = model
         vc.dataSource = model
-        vc.share = share
         vc.modalPresentationStyle = .fullScreen
         vc.isModalInPresentation = false
         root?.present(vc, animated: true)

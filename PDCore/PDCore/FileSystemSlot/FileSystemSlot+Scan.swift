@@ -43,9 +43,6 @@ public class FileSystemSlot {
     public let baseURL: URL
     public let storage: StorageManager
     public let syncStorage: SyncStorageManager?
-    public var moc: NSManagedObjectContext {
-        self.storage.backgroundContext
-    }
     
     enum Errors: Error {
         case unknownTypeOfNode
@@ -58,36 +55,40 @@ public class FileSystemSlot {
     
     // MARK: - SUBSCRIBE TO DB CHANGES
     
-    public func getNode(_ identifier: NodeIdentifier, moc: NSManagedObjectContext? = nil) -> Node? {
-        self.storage.fetchNode(id: identifier, moc: moc ?? self.moc)
+    public func getNode(_ identifier: NodeIdentifier, moc: NSManagedObjectContext) -> Node? {
+        self.storage.fetchNode(id: identifier, moc: moc)
     }
 
-    public func getNodes(_ identifiers: [NodeIdentifier], moc: NSManagedObjectContext? = nil) -> [Node] {
-        self.storage.fetchNodes(identifiers: identifiers, moc: moc ?? self.moc)
+    public func getNodes(_ identifiers: [NodeIdentifier], moc: NSManagedObjectContext) -> [Node] {
+        self.storage.fetchNodes(identifiers: identifiers, moc: moc)
     }
 
-    public func getDraft(_ localID: String, shareID: String) -> File? {
-        self.storage.fetchDraft(localID: localID, shareID: shareID, moc: self.moc)
+    public func getDraft(_ localID: String, shareID: String, moc: NSManagedObjectContext) -> File? {
+        self.storage.fetchDraft(localID: localID, shareID: shareID, moc: moc)
     }
     
-    public func getMainShare(of creatorAddresses: Set<String>) -> Share? {
-        self.storage.mainShareOfVolume(by: creatorAddresses, moc: self.moc)
+    public func getMainShare(of creatorAddresses: Set<String>, moc: NSManagedObjectContext) -> Share? {
+        self.storage.mainShareOfVolume(by: creatorAddresses, moc: moc)
     }
     
-    public func getChildren(of parentID: NodeIdentifier, sorting: SortPreference) -> [Node] {
-        let result = try? self.storage.fetchChildren(of: parentID.nodeID, share: parentID.shareID, sorting: sorting, moc: self.moc)
+    public func getChildren(
+        of parentID: NodeIdentifier, sorting: SortPreference, moc: NSManagedObjectContext
+    ) -> [Node] {
+        let result = try? self.storage.fetchChildren(of: parentID.nodeID, share: parentID.shareID, sorting: sorting, moc: moc)
         return result ?? []
     }
     
-    public func getNodes(of shareID: String) -> [Node] {
-        let result = self.storage.fetchNodes(of: shareID, moc: self.moc)
+    public func getNodes(of shareID: String, moc: NSManagedObjectContext) -> [Node] {
+        let result = self.storage.fetchNodes(of: shareID, moc: moc)
         return result
     }
     
     // MARK: - SEND FROM DB TO FS
     
-    public func subscribeToChildren(of parentID: NodeIdentifier) -> NSFetchedResultsController<Node> {
-        self.storage.subscriptionToChildren(ofNode: parentID, sorting: .default, moc: self.moc)
+    public func subscribeToChildren(
+        of parentID: NodeIdentifier, moc: NSManagedObjectContext
+    ) -> NSFetchedResultsController<Node> {
+        self.storage.subscriptionToChildren(ofNode: parentID, sorting: .default, moc: moc)
     }
 }
 

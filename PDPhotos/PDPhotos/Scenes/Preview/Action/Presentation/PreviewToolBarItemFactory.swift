@@ -34,7 +34,11 @@ struct PreviewToolBarItemFactory {
         case .photoStream:
             actions = makeItemsForPhotoStream(isFavorited: isFavorited)
         case .album(let role):
-            actions = makeItemsForAlbum(isAdmin: role == .admin, isEditor: role == .editor, isFavorited: isFavorited, hasSaveSharedPhoto: hasSaveSharedPhoto)
+            actions = makeItemsForAlbum(
+                role: role,
+                isFavorited: isFavorited,
+                hasSaveSharedPhoto: hasSaveSharedPhoto
+            )
         case .undetermined:
             return .init(primary: [], more: [])
         }
@@ -51,29 +55,30 @@ struct PreviewToolBarItemFactory {
 
 extension PreviewToolBarItemFactory {
     private func makeItemsForPhotoStream(isFavorited: Bool) -> [PhotosAction] {
-        var actions = [PhotosAction]()
-        actions.append(makeShareItem())
-        if arePhotoVolumeActionsAllowed() {
-            actions.append(isFavorited ? .unFavorite : .favorite)
-            actions.append(.createAlbum)
-        }
-        actions.append(contentsOf: [.availableOffline, .info, .trash])
-        return actions
+        return [
+            makeShareItem(),
+            isFavorited ? .unFavorite : .favorite,
+            .createAlbum,
+            .availableOffline,
+            .info,
+            .trash
+        ]
     }
 
-    private func makeItemsForAlbum(isAdmin: Bool, isEditor: Bool, isFavorited: Bool, hasSaveSharedPhoto: Bool) -> [PhotosAction] {
+    private func makeItemsForAlbum(role: Role, isFavorited: Bool, hasSaveSharedPhoto: Bool) -> [PhotosAction] {
         var actions = [PhotosAction]()
 
-        if arePhotoVolumeActionsAllowed() {
-            actions.append(isFavorited ? .unFavorite : .favorite)
+        actions.append(isFavorited ? .unFavorite : .favorite)
+
+        if role.canAdministrate {
+            actions.append(.setAsAlbumCover)
         }
 
-        if isAdmin {
-            actions.append(.setAsAlbumCover)
+        if role.canShare {
             actions.append(makeShareItem())
         }
 
-        if isAdmin || isEditor {
+        if role.canAdministrate || role == .editor {
             actions.append(.trash)
         }
 
@@ -86,14 +91,10 @@ extension PreviewToolBarItemFactory {
     }
 
     private func makeShareItem() -> PhotosAction {
-        if featuresController.hasAlbumsSharing {
+        if featuresController.hasSharing {
             return .newShare
         } else {
             return .share
         }
-    }
-
-    private func arePhotoVolumeActionsAllowed() -> Bool {
-        featuresController.hasAlbumsActions && !streamConfiguration.isLegacyShare
     }
 }

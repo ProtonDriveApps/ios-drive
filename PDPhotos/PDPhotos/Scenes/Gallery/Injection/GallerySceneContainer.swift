@@ -32,9 +32,9 @@ final class GallerySceneContainer {
         let managedObjectContext: NSManagedObjectContext
         var tower: Tower { parentDependencies.tower }
         let metadataController: MetadataControllerProtocol
-        let thumbnailsContainer: ThumbnailsControllersContainer
+        let streamThumbnailsContainer: ThumbnailsControllersContainer
+        let albumsThumbnailsContainer: ThumbnailsControllersContainer // Once thumbnails are supported by SDK get back to a single thumbnailsContainer
         let tagsController: GalleryTagsControllerProtocol
-        let migrationController: PhotoVolumeMigrationControllerProtocol
     }
     let streamConfiguration: PhotoStreamConfiguration
     let dependencies: Dependencies
@@ -150,7 +150,8 @@ final class GallerySceneContainer {
             context: context,
             featureFlagsController: dependencies.parentDependencies.featureFlagsController,
             tower: dependencies.tower,
-            streamConfiguration: streamConfiguration
+            streamConfiguration: streamConfiguration,
+            contactsManager: dependencies.parentDependencies.contactsManager
         )
         let galleryFactory = AlbumGalleryFactory()
         let invitationsController = galleryFactory.makeInvitationsController(container: pendingInvitationsContainer)
@@ -162,7 +163,7 @@ final class GallerySceneContainer {
                 selectionController: configuration.selectionController ?? LocalPhotosSelectionController(),
                 metadataController: dependencies.metadataController,
                 remoteAlbumFetchController: remoteAlbumFetchController,
-                thumbnailContainer: dependencies.thumbnailsContainer,
+                thumbnailContainer: dependencies.albumsThumbnailsContainer,
                 invitationsController: invitationsController,
                 invitationsChangeController: pendingInvitationsContainer.changeController
             ),
@@ -225,24 +226,17 @@ final class GallerySceneContainer {
             progressController: dependencies.parentDependencies.backupProgressController,
             coordinator: coordinator
         )
-        let migrationView = factory.makeMigrationView(
-            migrationController: dependencies.migrationController,
-            featureFlagsController: dependencies.parentDependencies.featureFlagsController,
-            streamConfiguration: streamConfiguration
-        )
         let bannersView = factory.makeBannersView(
-            featureFlagsController: dependencies.parentDependencies.featureFlagsController,
-            streamConfiguration: streamConfiguration,
             stateView: stateView,
             lockingBannerView: lockingBannerView,
-            storageView: storageView,
-            migrationView: migrationView
+            storageView: storageView
         )
         let remoteAlbumFetchController = PDPhotosFactory().makeRemoteAlbumFetchController(
             context: dependencies.managedObjectContext,
             featureFlagsController: dependencies.parentDependencies.featureFlagsController,
             tower: dependencies.tower,
-            streamConfiguration: streamConfiguration
+            streamConfiguration: streamConfiguration,
+            contactsManager: dependencies.parentDependencies.contactsManager
         )
         let scrollerView = factory.makeScrollerView(scrollerController: scrollerController)
         return factory.makeGalleryView(
@@ -250,7 +244,7 @@ final class GallerySceneContainer {
             coordinator: coordinator,
             listController: listController,
             fetchingController: fetchingController,
-            thumbnailsContainer: dependencies.thumbnailsContainer,
+            thumbnailsContainer: dependencies.streamThumbnailsContainer,
             settingsController: dependencies.parentDependencies.settingsController,
             errorControllers: [dependencies.parentDependencies.processingController, dependencies.parentDependencies.uploader],
             selectionController: selectionController,
@@ -267,7 +261,8 @@ final class GallerySceneContainer {
             remoteAlbumFetchController: remoteAlbumFetchController,
             streamConfiguration: streamConfiguration,
             scrollerController: scrollerController,
-            itemsViewModelsCache: itemsViewModelsCache,
+            // So we won’t reuse the same PhotoItemViewModel for both the gallery and the photo picker
+            itemsViewModelsCache: configuration.isPickingPhotos ? PhotoItemViewModelsCache() : itemsViewModelsCache,
             bannersView: bannersView,
             tagsView: tagsView,
             scrollerView: scrollerView
@@ -277,9 +272,10 @@ final class GallerySceneContainer {
     func makePreviewController(id: PhotoId, albumId: AlbumIdentifier?) -> UIViewController {
         let dependencies = PhotosPreviewContainer.Dependencies(
             id: id,
+            albumId: albumId,
             tower: dependencies.parentDependencies.tower,
             listController: makeListController(albumId: albumId),
-            thumbnailsContainer: dependencies.thumbnailsContainer,
+            thumbnailsContainer: albumId == nil ? dependencies.streamThumbnailsContainer : dependencies.albumsThumbnailsContainer,
             photosManagedObjectContext: dependencies.parentDependencies.photosManagedObjectContext,
             photoUploadedNotifier: dependencies.parentDependencies.photoUploadedNotifier,
             metadataController: dependencies.metadataController,
@@ -307,7 +303,8 @@ final class GallerySceneContainer {
         let dependencies = SubscriptionsContainer.Dependencies(
             tower: dependencies.parentDependencies.tower,
             keymaker: dependencies.parentDependencies.keymaker,
-            networkService: dependencies.parentDependencies.networkService
+            networkService: dependencies.parentDependencies.networkService,
+            featureFlagsController: dependencies.parentDependencies.featureFlagsController
         )
         let container = SubscriptionsContainer(dependencies: dependencies)
         return container.makeRootViewController()

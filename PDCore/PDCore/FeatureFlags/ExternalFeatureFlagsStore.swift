@@ -31,49 +31,52 @@ extension LocalSettings: ExternalFeatureFlagsStore {
         case .domainReconnectionEnabled: domainReconnectionEnabled = value
         case .postMigrationJunkFilesCleanup: postMigrationJunkFilesCleanup = value
         case .pushNotificationIsEnabled: pushNotificationIsEnabled = value
-        case .logCollectionEnabled: logCollectionEnabled = value
-        case .logCollectionDisabled: logCollectionDisabled = value
         case .oneDollarPlanUpsellEnabled: oneDollarPlanUpsellEnabled = value
         case .driveDisablePhotosForB2B: driveDisablePhotosForB2B = value
-        case .driveDDKEnabled: driveDDKEnabled = value
+        case .driveDDKIntelEnabled: driveDDKIntelEnabled = value
+        case .driveDDKDisabled: driveDDKDisabled = value
         case .driveMacSyncRecoveryDisabled: driveMacSyncRecoveryDisabled = value
-        case .driveMacKeepDownloadedDisabled: driveMacKeepDownloadedDisabled = value
+        case .driveMacPromoBannerDisabled: driveMacPromoBannerDisabled = value
+        case .driveMacGradualRolloutChannelEnabled: driveMacGradualRolloutChannelEnabled = value
+        case .driveMacAbnormalExitRelaunchDisabled: driveMacAbnormalExitRelaunchDisabled = value
         // Sharing
         case .driveSharingMigration: driveSharingMigration = value
-        case .driveSharingInvitations: driveSharingInvitations = value
         case .driveSharingExternalInvitations: driveSharingExternalInvitations = value
         case .driveSharingDisabled: driveSharingDisabled = value
         case .driveSharingExternalInvitationsDisabled: driveSharingExternalInvitationsDisabled = value
-        case .driveSharingEditingDisabled: driveSharingEditingDisabled = value
         case .drivePublicShareEditMode: drivePublicShareEditMode = value
         case .drivePublicShareEditModeDisabled: drivePublicShareEditModeDisabled = value
-        case .driveMobileSharingInvitationsAcceptReject: driveMobileSharingInvitationsAcceptReject = value
         case .driveShareURLBookmarking: driveShareURLBookmarking = value
         case .driveShareURLBookmarksDisabled: driveShareURLBookmarksDisabled = value
         // Album
-        case .driveAlbumsDisabled: driveAlbumsDisabled = value
         case .driveCopyDisabled: driveCopyDisabled = value
-        case .drivePhotosTagsMigration: drivePhotosTagsMigration = value
         case .drivePhotosTagsMigrationDisabled: drivePhotosTagsMigrationDisabled = value
 
-        // ProtonDoc
-        case .driveDocsDisabled: driveDocsDisabled = value
         // Rating booster
         // Legacy feature flags we used before migrating to Unleash
         case .ratingIOSDrive: ratingIOSDrive = value
         case .driveRatingBooster: driveRatingBooster = value
         // Entitlement
         case .driveDynamicEntitlementConfiguration: driveDynamicEntitlementConfiguration = value
-        // Refactor
-        case .driveiOSRefreshableBlockDownloadLink: driveiOSRefreshableBlockDownloadLink = value
-        // Computers
-        case .driveiOSComputers: driveiOSComputers = value
-        case .driveiOSComputersDisabled: driveiOSComputersDisabled = value
         // Sheets
         case .docsSheetsEnabled: docsSheetsEnabled = value
         case .docsSheetsDisabled: docsSheetsDisabled = value
         case .docsCreateNewSheetOnMobileEnabled: docsCreateNewSheetOnMobileEnabled = value
         case .driveiOSDebugMode: driveiOSDebugMode = value
+        // Payments
+        case .driveiOSPaymentsV2: driveiOSPaymentsV2 = value
+        // SDK
+        case .driveiOSSDKUploadMain: driveiOSSDKUploadMain = value
+        case .driveiOSSDKUploadPhoto: driveiOSSDKUploadPhoto = value
+        case .driveiOSSDKDownloadMain: driveiOSSDKDownloadMain = value
+        case .driveiOSSDKDownloadPhoto: driveiOSSDKDownloadPhoto = value
+        case .driveiOSSDKNodeOperations: driveiOSSDKNodeOperations = value
+        case .driveCryptoEncryptBlocksWithPgpAead: driveCryptoEncryptBlocksWithPgpAead = value
+        case .driveMacSDKUploadMainDisabled: driveMacSDKUploadMainDisabled = value
+        case .driveMacSDKDownloadMainDisabled: driveMacSDKDownloadMainDisabled = value
+        case .driveMacFileProviderBatchingDisabled: driveMacFileProviderBatchingDisabled = value
+        case .driveDownloadVerificationDisabled: driveDownloadVerificationDisabled = value
+        case .driveUploadVerificationDisabled: driveUploadVerificationDisabled = value
         }
     }
 
@@ -85,48 +88,51 @@ extension LocalSettings: ExternalFeatureFlagsStore {
         case .domainReconnectionEnabled: return domainReconnectionEnabled
         case .postMigrationJunkFilesCleanup: return postMigrationJunkFilesCleanup
         case .pushNotificationIsEnabled: return pushNotificationIsEnabled
-        case .logCollectionEnabled: return logCollectionEnabled
-        case .logCollectionDisabled: return logCollectionDisabled
         case .oneDollarPlanUpsellEnabled: return oneDollarPlanUpsellEnabled
         case .driveDisablePhotosForB2B: return driveDisablePhotosForB2B
-        case .driveDDKEnabled: return driveDDKEnabled
+        case .driveDDKIntelEnabled: return driveDDKIntelEnabled
+        case .driveDDKDisabled: return driveDDKDisabled
         case .driveMacSyncRecoveryDisabled: return driveMacSyncRecoveryDisabled
-        case .driveMacKeepDownloadedDisabled: return driveMacKeepDownloadedDisabled
+        case .driveMacPromoBannerDisabled: return driveMacPromoBannerDisabled
+        case .driveMacGradualRolloutChannelEnabled: return driveMacGradualRolloutChannelEnabled
+        case .driveMacAbnormalExitRelaunchDisabled: return driveMacAbnormalExitRelaunchDisabled
         // Sharing
         case .driveSharingMigration: return driveSharingMigration
-        case .driveSharingInvitations: return driveSharingInvitations
         case .driveSharingExternalInvitations: return driveSharingExternalInvitations
         case .driveSharingDisabled: return driveSharingDisabled
         case .driveSharingExternalInvitationsDisabled: return driveSharingExternalInvitationsDisabled
-        case .driveSharingEditingDisabled: return driveSharingEditingDisabled
         case .drivePublicShareEditMode: return drivePublicShareEditMode
         case .drivePublicShareEditModeDisabled: return drivePublicShareEditModeDisabled
-        case .driveMobileSharingInvitationsAcceptReject: return driveMobileSharingInvitationsAcceptReject
         case .driveShareURLBookmarking: return driveShareURLBookmarking
         case .driveShareURLBookmarksDisabled: return driveShareURLBookmarksDisabled
         // Album
-        case .driveAlbumsDisabled: return driveAlbumsDisabled
         case .driveCopyDisabled: return driveCopyDisabled
-        case .drivePhotosTagsMigration: return drivePhotosTagsMigration
         case .drivePhotosTagsMigrationDisabled: return drivePhotosTagsMigrationDisabled
-        // ProtonDoc
-        case .driveDocsDisabled: return driveDocsDisabled
         // Rating booster
         // Legacy feature flags we used before migrating to Unleash
         case .ratingIOSDrive: return ratingIOSDrive
         case .driveRatingBooster: return driveRatingBooster
         // Entitlement
         case .driveDynamicEntitlementConfiguration: return driveDynamicEntitlementConfiguration
-        // Refactor
-        case .driveiOSRefreshableBlockDownloadLink: return driveiOSRefreshableBlockDownloadLink
-            // Computers
-        case .driveiOSComputers: return driveiOSComputers
-        case .driveiOSComputersDisabled: return driveiOSComputersDisabled
         // Sheets
         case .docsSheetsEnabled: return docsSheetsEnabled
         case .docsSheetsDisabled: return docsSheetsDisabled
         case .docsCreateNewSheetOnMobileEnabled: return docsCreateNewSheetOnMobileEnabled
         case .driveiOSDebugMode: return driveiOSDebugMode
+        // Payments
+        case .driveiOSPaymentsV2: return driveiOSPaymentsV2
+        // SDK
+        case .driveiOSSDKUploadMain: return driveiOSSDKUploadMain
+        case .driveiOSSDKUploadPhoto: return driveiOSSDKUploadPhoto
+        case .driveiOSSDKDownloadMain: return driveiOSSDKDownloadMain
+        case .driveiOSSDKDownloadPhoto: return driveiOSSDKDownloadPhoto
+        case .driveiOSSDKNodeOperations: return driveiOSSDKNodeOperations
+        case .driveCryptoEncryptBlocksWithPgpAead: return driveCryptoEncryptBlocksWithPgpAead
+        case .driveMacSDKUploadMainDisabled: return driveMacSDKUploadMainDisabled
+        case .driveMacSDKDownloadMainDisabled: return driveMacSDKDownloadMainDisabled
+        case .driveMacFileProviderBatchingDisabled: return driveMacFileProviderBatchingDisabled
+        case .driveDownloadVerificationDisabled: return driveDownloadVerificationDisabled
+        case .driveUploadVerificationDisabled: return driveUploadVerificationDisabled
         }
     }
 }

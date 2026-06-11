@@ -467,6 +467,12 @@
             "value" : "保存せずに削除"
           }
         },
+        "ka" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "წაშლა შენახვის გარეშე"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -645,6 +651,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "アルバムから離れる"
+          }
+        },
+        "ka" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ალბომის დატოვება"
           }
         },
         "ko" : {
@@ -1358,7 +1370,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enregistrer les photos et retirer"
+            "value" : "Enregistrer les photos et retirez-les"
           }
         },
         "hu" : {
@@ -1383,6 +1395,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "写真を保存して削除"
+          }
+        },
+        "ka" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ფოტოების შენახვა და წაშლა"
           }
         },
         "ko" : {
@@ -2501,6 +2519,24 @@
             }
           }
         },
+        "ka" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "რა გსურთ, რომ უყოთ ამ ერთეულს?,%d"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "რა გსურთ, რომ უყოთ ამ ერთეულებს?,%d"
+                }
+              }
+            }
+          }
+        },
         "ko" : {
           "variations" : {
             "plural" : {
@@ -2669,6 +2705,24 @@
             }
           }
         },
+        "sv" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Vad vill du göra med det här objektet?,%d"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Vad vill du göra med de här objekten?,%d"
+                }
+              }
+            }
+          }
+        },
         "tr" : {
           "variations" : {
             "plural" : {
@@ -2682,6 +2736,36 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Bu ögelerle ne yapmak istersiniz?,%d"
+                }
+              }
+            }
+          }
+        },
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Що ви хочете зробити з цими елементами?, %d"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Що ви хочете зробити з цими елементами?, %d"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Що ви хочете зробити з цим елементом?, %d"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Що ви хочете зробити з цими елементами?, %d"
                 }
               }
             }
@@ -2779,7 +2863,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Êtes-vous sûr de vouloir supprimer le ou les éléments sélectionnés de votre album ?"
+            "value" : "Voulez-vous vraiment retirer le ou les éléments sélectionnés de votre album ?"
           }
         },
         "hu" : {
@@ -2804,6 +2888,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "本当に選択したアイテムをアルバムから削除しますか？"
+          }
+        },
+        "ka" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "დარწმუნებული ხართ, რომ გსურთ მონიშნული ერთეულ(ებ)ის წაშლა თქვენი ალბომიდან?"
           }
         },
         "ko" : {
@@ -2839,7 +2929,7 @@
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sigur doriți să ștergeți articolele selectate din album?"
+            "value" : "Ștergeți articolele selectate din album?"
           }
         },
         "ru" : {
@@ -2852,6 +2942,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Skutočne chcete odstrániť z albumu vybrané položky?"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Är du säker på att du vill ta bort de valda objekten från ditt album?"
           }
         },
         "tr" : {
@@ -3351,6 +3447,24 @@
             }
           }
         },
+        "ka" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ამ ფოტოზე წვდომას დაკარგავთ. თუ ჯერ არ შეგი­ნახავთ, შეინახეთ ის თქვენი ფოტოების ქრონიკაში, სანამ ალბომიდან წაშლით."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ამ %d ფოტოზე წვდომას დაკარგავთ. თუ ჯერ არ შეგი­ნახავთ, შეინახეთ ისინი თქვენი ფოტოების ქრონიკაში, სანამ ალბომიდან წაშლით."
+                }
+              }
+            }
+          }
+        },
         "ko" : {
           "variations" : {
             "plural" : {
@@ -3580,6 +3694,36 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Bu %d fotoğrafa erişemeyeceksiniz. Henüz yapmadıysanız, albümden kaldırmadan önce fotoğrafı zaman akışınıza kaydedin."
+                }
+              }
+            }
+          }
+        },
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Ви втратите доступ до цих %d фотографій. Якщо ви ще цього не зробили, збережіть їх у своїй хронології, перш ніж видаляти з альбому."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Ви втратите доступ до цих %d фотографій. Якщо ви ще цього не зробили, збережіть їх у своїй хронології, перш ніж видаляти з альбому."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Ви втратите доступ до цієї фотографії. Якщо ви ще цього не зробили, збережіть її у своїй хронології, перш ніж видаляти з альбому."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Ви втратите доступ до цих %d фотографій. Якщо ви ще цього не зробили, збережіть їх у своїй хронології, перш ніж видаляти з альбому."
                 }
               }
             }
@@ -3995,7 +4139,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Segur que voleu suprimir l'àlbum «%@»? No se suprimiran les fotos."
+            "value" : "Segur que voleu suprimir l'àlbum «%@»? Les fotos no s'eliminaran."
           }
         },
         "cs" : {
@@ -4007,7 +4151,7 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Er De sikker på, at De vil slette albumet “%@”? Billederne vil ikke blive slettet."
+            "value" : "Er du sikker på, at du vil slette albummet “%@”? Billederne vil ikke blive slettet."
           }
         },
         "de" : {
@@ -4121,7 +4265,7 @@
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sigur doriți să ștergeți albumul „%@”? Fotografiile nu vor fi șterse."
+            "value" : "Ștergeți albumul „%@”? Fotografiile nu vor fi șterse."
           }
         },
         "ru" : {
@@ -4379,7 +4523,7 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nogle fotos i dette album er ikke gemt p\bå din tidslinje. Sletning af dette album vil permanent slette disse fotos.\\n\\nVil du gerne gemme dem f\bør fjernelse?"
+            "value" : "Nogle fotos i dette album er ikke gemt p\bå din tidslinje. Sletning af dette album vil permanent slette disse fotos.\\n\\nVil du gemme dem før de slettes?"
           }
         },
         "de" : {
@@ -4446,6 +4590,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "このアルバムの一部の写真はあなたのタイムラインに保存されません。このアルバムを削除するとそれらの写真は完全に削除されます。\n\n削除する前に保存しますか？"
+          }
+        },
+        "ka" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ამ ალბომის ზოგიერთი ფოტო არ არის შენახული თქვენს ქრონიკაში. ამ ალბომის წაშლით ეს ფოტოები სამუდამოდ წაიშლება.\\n\\nგსურთ მათი შენახვა წაშლამდე?"
           }
         },
         "ko" : {
@@ -4716,6 +4866,168 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在偵測遠端變更"
+          }
+        }
+      }
+    },
+    "disconnection_view_title" : {
+      "comment" : "Title shown in the view when device is disconnected",
+      "extractionState" : "manual",
+      "localizations" : {
+        "be" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У вашай прылады адсутнічае падключэнне"
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El dispositiu no té connexió"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vaše zařízení je bez připojení"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Din enhed har ingen forbindelse"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Gerät hat keine Verbindung."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Η συσκευή σας δεν έχει σύνδεση"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your device has no connection"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El dispositivo no está conectado."
+          }
+        },
+        "es-419" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El dispositivo no tiene conexión."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laitteellasi ei ole yhteyttä"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre appareil n'est pas connecté."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A készüléknek nincs kapcsolata"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Perangkat Anda tidak memiliki koneksi"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il tuo dispositivo non ha connessione"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デバイスが接続されていません"
+          }
+        },
+        "ka" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "თქვენს მოწყობილობას მიერთება არ გააჩნია"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기 연결이 없습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enheten din har ingen tilkobling"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uw apparaat heeft geen verbinding"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Twoje urządzenie nie ma połączenia"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seu dispositivo não tem conexão"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dispozitivul nu are conexiune"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vaše zariadenie nemá žiadne pripojenie"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Din enhet har ingen anslutning"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aygıtınızın internet bağlantısı yok"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "您的设备未连接"
           }
         }
       }
@@ -5312,13 +5624,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%d Arquivo"
+                  "value" : "%d arquivo"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%d Arquivos"
+                  "value" : "%d arquivos"
                 }
               }
             }
@@ -6119,7 +6431,7 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Albummer"
+            "value" : "Albums"
           }
         },
         "de" : {
@@ -6299,7 +6611,7 @@
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fotografie"
+            "value" : "Fotky"
           }
         },
         "da" : {
@@ -9704,13 +10016,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%d element afegit al vostre estríming"
+                  "value" : "%d element afegit a l'estríming"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%d elements afegits al vostre estríming"
+                  "value" : "%d elements afegits a l'estríming"
                 }
               }
             }
@@ -9950,6 +10262,24 @@
             }
           }
         },
+        "ka" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d ერთეული დაემატა თქვენს ნაკადს"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d ერთეული დაემატა თქვენს ნაკადს"
+                }
+              }
+            }
+          }
+        },
         "ko" : {
           "variations" : {
             "plural" : {
@@ -10143,6 +10473,24 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%d položiek pridaných do vášho streamu"
+                }
+              }
+            }
+          }
+        },
+        "sv" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d objekt har lagts till i din ström"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d objekt har lagts till i din ström"
                 }
               }
             }
@@ -10503,6 +10851,24 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%d 個のアイテムはすでに存在しています"
+                }
+              }
+            }
+          }
+        },
+        "ka" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d ერთეული უკვე არსებობს"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d ერთეული უკვე არსებობს"
                 }
               }
             }
@@ -11084,6 +11450,24 @@
             }
           }
         },
+        "ka" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d ერთეული სრულად არ ატვირთულა"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d ერთეული სრულად არ ატვირთულა"
+                }
+              }
+            }
+          }
+        },
         "ko" : {
           "variations" : {
             "plural" : {
@@ -11277,6 +11661,24 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%d položiek nie je úplne nahraných"
+                }
+              }
+            }
+          }
+        },
+        "sv" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d objekt har inte laddats upp helt"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d objekt har inte laddats upp helt"
                 }
               }
             }
@@ -11637,6 +12039,24 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%d個のアイテムの追加に失敗しました"
+                }
+              }
+            }
+          }
+        },
+        "ka" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d ერთეულის დამატება ვერ მოხერხდა"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d ერთეულის დამატება ვერ მოხერხდა"
                 }
               }
             }
@@ -12213,6 +12633,24 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%d個のアイテムの削除に失敗しました"
+                }
+              }
+            }
+          }
+        },
+        "ka" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d ერთეულის წაშლა ვერ მოხერხდა"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d ერთეულის წაშლა ვერ მოხერხდა"
                 }
               }
             }
@@ -12914,13 +13352,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%d Item"
+                  "value" : "%d item"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%d Itens"
+                  "value" : "%d itens"
                 }
               }
             }
@@ -13982,6 +14420,24 @@
             }
           }
         },
+        "ka" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d ერთეული წაიშალა ნაკადიდან"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d ერთეული წაიშალა ნაკადიდან"
+                }
+              }
+            }
+          }
+        },
         "ko" : {
           "variations" : {
             "plural" : {
@@ -14175,6 +14631,24 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%d položiek odstránených zo streamu"
+                }
+              }
+            }
+          }
+        },
+        "sv" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d objekt har tagits bort från strömmen"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%d objekt har tagits bort från strömmen"
                 }
               }
             }
@@ -15327,7 +15801,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Название не может быть пустым"
+            "value" : "Имя не может быть пустым"
           }
         },
         "sk" : {
@@ -15578,7 +16052,7 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Navn må ikke slutte med et mellemrum"
+            "value" : "Navn må ikke slutte med et mellemrum (blank tegn)"
           }
         },
         "de" : {
@@ -17624,7 +18098,7 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Drive lagerplads fyldt"
+            "value" : "Drive-lagerplads fyldt"
           }
         },
         "de" : {
@@ -19793,7 +20267,7 @@
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sériové foto"
+            "value" : "Sekvenčné foto"
           }
         },
         "sv" : {
@@ -20411,7 +20885,7 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mine albummer"
+            "value" : "Mine albums"
           }
         },
         "de" : {

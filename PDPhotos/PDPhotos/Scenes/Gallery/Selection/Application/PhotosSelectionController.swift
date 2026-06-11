@@ -24,6 +24,17 @@ public struct PhotoListingId: Equatable, Hashable {
     var allIds: [PhotoId] {
         [primary] + secondary
     }
+    
+    public static func == (lhs: PhotoListingId, rhs: PhotoListingId) -> Bool {
+        lhs.primary == rhs.primary && Set(lhs.secondary) == Set(rhs.secondary)
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(primary)
+        for id in secondary.sorted(by: { $0.id < $1.id }) {
+            hasher.combine(id)
+        }
+    }
 }
 
 public protocol PhotosSelectionController {

@@ -19,11 +19,19 @@ import PDClient
 import PDCore
 
 struct FilteredPhotoCompoundsResult {
+    /// Compounds should be uploaded
     let validCompounds: [PhotoAssetCompound]
+    /// Compounds were only partially uploaded, upload the remaining ones
     let validPartialCompounds: [PartialPhotoAssetCompound]
+    /// Compounds were uploaded, filtered by content hash
     let invalidCompounds: [PhotoAssetCompound]
     let invalidAssets: [PhotoAsset]
+    /// Compounds read PhotoAssetIdentifier failed
     let failedCompounds: [PhotosFailedCompound]
+
+    var debugInfo: String {
+        "valid: \(validCompounds.count), partial valid: \(validPartialCompounds.count), invalid: \(invalidCompounds.count), failed: \(failedCompounds.count)"
+    }
 }
 
 protocol PhotoAssetCompoundsConflictInteractor {

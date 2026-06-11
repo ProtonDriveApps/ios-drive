@@ -28,6 +28,7 @@ final class EditNodeNameViewModel: EditNodeViewModel {
     private let node: NameEditingNode
     private let nameEditor: NodeNameEditorProtocol
     private let validator: Validator<String>
+    var shouldDoneButtonBeEnabledByDefault: Bool = false
 
     init(node: NameEditingNode, nameEditor: NodeNameEditorProtocol, validator: Validator<String>) {
         self.node = node

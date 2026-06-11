@@ -94,7 +94,9 @@ extension LegacyFeatureFlagsResource {
                 updateSubject.send()
             case .failure(let failure):
                 updateSubject.send()
-                Log.error("Fetch legacy FF failed", error: failure, domain: .featureFlags)
+                // The Proton servers are unreachable
+                let reportToSentry = failure.bestShotAtReasonableErrorCode != 111222333
+                Log.error("Fetch legacy FF failed", error: failure, domain: .featureFlags, sendToSentryIfPossible: reportToSentry)
             }
         }
     }

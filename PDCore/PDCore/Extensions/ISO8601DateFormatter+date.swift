@@ -18,6 +18,12 @@
 import Foundation
 
 public extension ISO8601DateFormatter {
+    // Default instance for default `formatOptions`
+    // Should return `UTC time in ISO 8601 format` (used for xAttr for example)
+    static let `default`: ISO8601DateFormatter = {
+        return ISO8601DateFormatter()
+    }()
+    
     func date(_ string: String?) -> Date? {
         guard let string else {
             return nil

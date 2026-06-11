@@ -59,7 +59,8 @@ final class AlbumActionViewModel: BasePhotosActionViewModel, PhotosActionViewMod
             metadataController: metadataController,
             favoritingController: favoritingController,
             trashDialogFactory: trashDialogFactory,
-            userMessageHandler: userMessageHandler
+            userMessageHandler: userMessageHandler,
+            configuration: .init()
         )
         subscribeToAlbumUpdates()
     }
@@ -84,8 +85,8 @@ final class AlbumActionViewModel: BasePhotosActionViewModel, PhotosActionViewMod
         let ids = selectionController.getPrimaryIds()
         guard !ids.isEmpty else { return [] }
 
-        var actions = makeAdminSingleSelectionActions(for: ids)
-        actions.formUnion(makeAdminMultipleSelectionActions(for: ids))
+        var actions = makeAdminOrOwnerSingleSelectionActions(for: ids)
+        actions.formUnion(makeAdminOrOwnerMultipleSelectionActions(for: ids))
         actions.formUnion(makeEditorSingleSelectionActions(for: ids))
         actions.formUnion(makeEditorMultipleSelectionActions(for: ids))
         actions.formUnion(makeViewerSingleSelectionActions(for: ids))
@@ -94,47 +95,58 @@ final class AlbumActionViewModel: BasePhotosActionViewModel, PhotosActionViewMod
         return actions
     }
 
-    private func makeAdminSingleSelectionActions(for ids: Set<AnyVolumeIdentifier>) -> Set<PhotosAction> {
-        guard albumRole == .admin,
+    private func makeAdminOrOwnerSingleSelectionActions(for ids: Set<AnyVolumeIdentifier>) -> Set<PhotosAction> {
+        guard let albumRole,
+              albumRole.canAdministrate,
               ids.count == 1 else {
             return []
         }
-        var actions = Set<PhotosAction>()
-        actions.insert(.trash)
-        actions.insert(.availableOffline)
+        var actions: Set<PhotosAction> = [
+            .removeFromAlbum,
+            .availableOffline,
+            .toggleFavorite,
+            .setAsAlbumCover,
+            .shareNative,
+            .info
+        ]
 
-        if featureFlagsController.hasAlbumsActions {
-            actions.insert(.toggleFavorite)
-            actions.insert(.setAsAlbumCover)
-        }
-        
-        actions.insert(.shareNative)
-        actions.insert(.info)
-
-        if featureFlagsController.hasSharing {
-            actions.insert(.newShare)
-        } else {
-            actions.insert(.share)
+        if albumRole.canShare {
+            if featureFlagsController.hasSharing {
+                actions.insert(.newShare)
+            } else {
+                actions.insert(.share)
+            }
         }
 
         return actions
     }
 
-    private func makeAdminMultipleSelectionActions(for ids: Set<AnyVolumeIdentifier>) -> Set<PhotosAction> {
-        guard albumRole == .admin,
+    private func makeAdminOrOwnerMultipleSelectionActions(for ids: Set<AnyVolumeIdentifier>) -> Set<PhotosAction> {
+        guard let albumRole,
+              albumRole.canAdministrate,
               ids.count > 1 else {
             return []
         }
 
-        var actions = Set<PhotosAction>()
-        actions.insert(.trash)
-        actions.insert(.availableOffline)
+        return [
+            .trash,
+            .availableOffline,
+            .toggleFavorite
+        ]
+    }
 
-        if featureFlagsController.hasAlbumsActions {
-            actions.insert(.toggleFavorite)
+    private func makeAdminMultipleSelectionActions(for ids: Set<AnyVolumeIdentifier>) -> Set<PhotosAction> {
+        guard let albumRole,
+              albumRole.canAdministrate,
+              ids.count > 1 else {
+            return []
         }
 
-        return actions
+        return [
+            .removeFromAlbum,
+            .availableOffline,
+            .toggleFavorite
+        ]
     }
 
     private func makeEditorSingleSelectionActions(for ids: Set<AnyVolumeIdentifier>) -> Set<PhotosAction> {
@@ -142,19 +154,15 @@ final class AlbumActionViewModel: BasePhotosActionViewModel, PhotosActionViewMod
               ids.count == 1 else {
             return []
         }
-        var actions = Set<PhotosAction>()
-        actions.insert(.save)
-        actions.insert(.trash)
-        actions.insert(.availableOffline)
 
-        if featureFlagsController.hasAlbumsActions {
-            actions.insert(.toggleFavorite)
-        }
-
-        actions.insert(.shareNative)
-        actions.insert(.info)
-
-        return actions
+        return [
+            .save,
+            .trash,
+            .availableOffline,
+            .toggleFavorite,
+            .shareNative,
+            .info
+        ]
     }
 
     private func makeEditorMultipleSelectionActions(for ids: Set<AnyVolumeIdentifier>) -> Set<PhotosAction> {
@@ -163,16 +171,12 @@ final class AlbumActionViewModel: BasePhotosActionViewModel, PhotosActionViewMod
             return []
         }
 
-        var actions = Set<PhotosAction>()
-        actions.insert(.save)
-        actions.insert(.trash)
-        actions.insert(.availableOffline)
-
-        if featureFlagsController.hasAlbumsActions {
-            actions.insert(.toggleFavorite)
-        }
-
-        return actions
+        return [
+            .save,
+            .trash,
+            .availableOffline,
+            .toggleFavorite
+        ]
     }
 
     private func makeViewerSingleSelectionActions(for ids: Set<AnyVolumeIdentifier>) -> Set<PhotosAction> {
@@ -180,18 +184,14 @@ final class AlbumActionViewModel: BasePhotosActionViewModel, PhotosActionViewMod
               ids.count == 1 else {
             return []
         }
-        var actions = Set<PhotosAction>()
-        actions.insert(.save)
-        actions.insert(.availableOffline)
 
-        if featureFlagsController.hasAlbumsActions {
-            actions.insert(.toggleFavorite)
-        }
-
-        actions.insert(.shareNative)
-        actions.insert(.info)
-
-        return actions
+        return [
+            .save,
+            .availableOffline,
+            .toggleFavorite,
+            .shareNative,
+            .info
+        ]
     }
 
     private func makeViewerMultipleSelectionActions(for ids: Set<AnyVolumeIdentifier>) -> Set<PhotosAction> {
@@ -200,23 +200,18 @@ final class AlbumActionViewModel: BasePhotosActionViewModel, PhotosActionViewMod
             return []
         }
 
-        var actions = Set<PhotosAction>()
-        actions.insert(.save)
-        actions.insert(.availableOffline)
-
-        // ❓ do viewers can toggleFavorite?
-        if featureFlagsController.hasAlbumsActions {
-            actions.insert(.toggleFavorite)
-        }
-
-        return actions
+        return [
+            .save,
+            .availableOffline,
+            .toggleFavorite // ❓ can viewers toggleFavorite?
+        ]
     }
 
     func handle(action: PhotosAction) {
         Log.info("[AlbumAction] Did select: \(action)", domain: .userAction)
         switch action {
-        case .trash:
-            trash()
+        case .removeFromAlbum:
+            removeFromAlbum()
         case .share, .newShare:
             share()
         case .shareNative:
@@ -229,7 +224,7 @@ final class AlbumActionViewModel: BasePhotosActionViewModel, PhotosActionViewMod
             favorite()
         case .setAsAlbumCover:
             setAsAlbumCover()
-        case .createAlbum, .shareMultiple, .more:
+        case .createAlbum, .shareMultiple, .more, .trash:
             break // not available in album context
         case .favorite:
             break
@@ -241,25 +236,25 @@ final class AlbumActionViewModel: BasePhotosActionViewModel, PhotosActionViewMod
     }
 
     // MARK: - Action Handlers
-    func trash() {
+    func removeFromAlbum() {
         let ids = selectionController.getPrimaryIds()
 
-        if albumRole == .admin {
-            trashAsAdmin(ids: ids)
+        if let albumRole, albumRole.canAdministrate {
+            removeAsAdmin(ids: ids)
 
         } else if albumRole == .editor {
-            trashAsEditor(ids: ids)
+            removeAsEditor(ids: ids)
         } else {
             Log.error("Tried to trash photos as viewer, of before the role was determined", error: nil, domain: .albums)
         }
     }
 
-    private func trashAsAdmin(ids: Set<PhotoId>) {
+    private func removeAsAdmin(ids: Set<PhotoId>) {
         let model = trashDialogFactory.removeFromAlbumAsAdmin(ids: ids)
         confirmationRequiringActionModel = model
     }
 
-    private func trashAsEditor(ids: Set<PhotoId>) {
+    private func removeAsEditor(ids: Set<PhotoId>) {
         let model = trashDialogFactory.removeFromAlbumAsEditor(ids: ids)
         confirmationRequiringActionModel = model
     }

@@ -35,8 +35,14 @@ extension SyncStorageManager {
     public func cleanUpInProgressItems() {
         Log.trace()
 
-        let statePredicate = NSPredicate(format: "stateRaw == %d", SyncItemState.inProgress.rawValue)
-        delete(with: statePredicate, in: backgroundContext)
+        // Also clean paused items — they represent interrupted operations that won't resume
+        // from where they left off after a restart (the file provider system retries from scratch).
+        let statePredicate = NSPredicate(
+            format: "stateRaw == %d OR stateRaw == %d",
+            SyncItemState.inProgress.rawValue,
+            SyncItemState.paused.rawValue
+        )
+        delete(with: statePredicate, in: presentationContext)
     }
 
     public func cleanUpExpiredItems() {
@@ -46,33 +52,45 @@ extension SyncStorageManager {
         // no longer matters at restart.
         let cutoffDate = Date.Past.twentyFourHours()
         let predicate = NSPredicate(format: "modificationTime < %@", cutoffDate as NSDate)
-        delete(with: predicate, in: backgroundContext)
+        delete(with: predicate, in: presentationContext)
     }
 
     public func cleanUpErrors() {
         Log.trace()
 
         let errorPredicate = NSPredicate(format: "stateRaw == %d", SyncItemState.errored.rawValue)
-        delete(with: errorPredicate, in: backgroundContext)
+        delete(with: errorPredicate, in: presentationContext)
     }
 
     public func cleanUp() async {
         Log.trace()
-        
-        await self.mainContext.perform {
-            self.mainContext.reset()
-        }
 
-        await self.backgroundContext.perform {
-            self.backgroundContext.reset()
+        let persistentContainer = persistentContainer
 
-            [SyncItem.self].forEach { entity in
-                let request = NSBatchDeleteRequest(fetchRequest: NSFetchRequest<NSFetchRequestResult>(entityName: String(describing: entity)))
-                request.resultType = .resultTypeObjectIDs
-                do {
-                    _ = try self.persistentContainer.persistentStoreCoordinator.execute(request, with: self.backgroundContext)
-                } catch {
-                    assert(false, "Could not perform batch deletion after logout")
+        await backgroundContextPool.withContext { context in
+            await context.perform {
+                // in memory stores do not support the NSBatchDeleteRequest
+                if context.isInMemory {
+                    [SyncItem.self].forEach { entity in
+                        let request = NSFetchRequest<NSManagedObject>(entityName: String(describing: entity))
+                        do {
+                            let result = try context.fetch(request)
+                            result.forEach { context.delete($0) }
+                            try context.save()
+                        } catch {
+                            assert(false, "Could not perform one-by-one deletion after logout")
+                        }
+                    }
+                } else {
+                    [SyncItem.self].forEach { entity in
+                        let request = NSBatchDeleteRequest(fetchRequest: NSFetchRequest<NSFetchRequestResult>(entityName: String(describing: entity)))
+                        request.resultType = .resultTypeObjectIDs
+                        do {
+                            _ = try persistentContainer.persistentStoreCoordinator.execute(request, with: context)
+                        } catch {
+                            assert(false, "Could not perform batch deletion after logout")
+                        }
+                    }
                 }
             }
         }

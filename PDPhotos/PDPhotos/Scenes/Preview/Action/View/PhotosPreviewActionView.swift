@@ -84,6 +84,8 @@ struct PhotosPreviewActionView<ViewModel: PhotosPreviewActionViewModelProtocol>:
             return .shareMultiple
         case .save:
             return .save
+        case .removeFromAlbum:
+            return .removeFromAlbum
         }
     }
 
@@ -115,6 +117,8 @@ struct PhotosPreviewActionView<ViewModel: PhotosPreviewActionViewModelProtocol>:
             return .shareMultiple
         case .save:
             return .save
+        case .removeFromAlbum:
+            return .removeFromAlbum
         default:
             return nil
         }

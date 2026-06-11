@@ -57,7 +57,9 @@ struct ContentVersion: Codable, Hashable {
 
     func encoded() -> Data {
         do {
-            return try JSONEncoder().encode(self)
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.sortedKeys]
+            return try encoder.encode(self)
         } catch {
             fatalError("Failed to encode content version")
         }

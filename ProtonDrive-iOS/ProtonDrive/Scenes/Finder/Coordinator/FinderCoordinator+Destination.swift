@@ -23,7 +23,7 @@ extension FinderCoordinator {
     enum Destination: Identifiable, Hashable {
         case none // no changes to hierarchy
 
-        case file(file: File, share: Bool), folder(Folder) // push to navigation controller
+        case file(file: File), folder(Folder) // push to navigation controller
         case protonFile(file: File) // open proton document preview
         case openInBrowser(file: File) // open proton document in browser
         case openBookmark(bookmark: CoreDataBookmark)
@@ -32,11 +32,13 @@ extension FinderCoordinator {
         case nodeDetails(Node)
         case createFolder(parent: Folder), rename(Node), move([Node], parent: Folder?)
         case shareLink(node: Node)
-        case shareIn(url: URL)
         case configShareMember(node: Node)
         case createDocument(parentIdentifier: NodeIdentifier)
         case createSheet(parentIdentifier: NodeIdentifier)
         case servicePlans
+        case scanDocument
+        case openIn(file: CoreDataFile)
+        case downloadToDevice(file: CoreDataFile)
 
         case noSpaceLeftLocally, noSpaceLeftCloud
     }
@@ -49,13 +51,17 @@ extension FinderCoordinator {
         case is Folder where (self.model as? MoveModel)?.nodeIdsToMove.contains(nextNode.identifier) == true:
             return .none
 
+        case is File where (nextNode as? File)?.activeRevision?.validatedDecryptedFilePath() != nil:
+            let file = nextNode as! File
+            return .file(file: file)
+
         case is File where (nextNode as? File)?.activeRevision?.blocksAreValid() == true: // cached file
             let file = nextNode as! File
             if file.isProtonFile { // Either doc or sheet
                 // Proton doc has a separate logic for displaying preview
                 return .protonFile(file: file)
             } else {
-                return .file(file: file, share: false)
+                return .file(file: file)
             }
 
         case is File: // only metadata is locally available

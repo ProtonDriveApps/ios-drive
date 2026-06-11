@@ -26,7 +26,11 @@ public class Revision: NSManagedObject {
     public typealias NodeState = PDClient.NodeState
     
     @NSManaged private var stateRaw: NSNumber?
-    
+
+    /// Whether the checksum in xattr of the revision content was verified by the client during upload
+    /// Stored in memory only, populated after downloading the revision metadata
+    public var checksumVerified: Bool?
+
     @ManagedEnum(raw: #keyPath(stateRaw)) public var state: NodeState?
     
     // dangerous, see https://developer.apple.com/documentation/coredata/nsmanagedobject
@@ -52,6 +56,15 @@ public extension Revision {
         let oldThumbnails = thumbnails
         thumbnails = Set([])
         oldThumbnails.forEach(moc.delete)
+        #if os(iOS)
+        let identifier = file.identifierWithinManagedObjectContext.any()
+        DispatchQueue.global().async {
+            let urls = Self.thumbnailURLs(for: identifier)
+            for url in urls {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+        #endif
     }
 
     // Photos grid only use small thumbnail to display
@@ -63,3 +76,39 @@ public extension Revision {
         }
     }
 }
+
+// MARK: FileSystem related
+
+// TODO(SDK): clean up filesystem related functions, ideally have them in one place for file, thumbnails etc
+#if os(iOS)
+public extension CoreDataRevision {
+
+    func getFileSystemUrls() -> [URL] {
+        var urls = [
+            validateFPClearPath(),
+            validatePermanentClearFilePath(),
+            validateTemporaryClearFilePath()
+        ]
+        urls.append(contentsOf: Self.thumbnailURLs(for: file.identifierWithinManagedObjectContext.any()))
+
+        return urls.compactMap { $0 }
+    }
+
+    private static func thumbnailURLs(for identifier: AnyVolumeIdentifier) -> [URL] {
+        var urls: [URL] = []
+        let thumbnailUrl = PDFileManager.clearThumbnailV1URL(
+            for: NodeIdentifier(identifier.id, "", identifier.volumeID),
+            type: .default,
+            shouldCreate: false
+        )
+        urls.append(thumbnailUrl.deletingLastPathComponent())
+        
+        let volumeBasedIdentifier = identifier.volumeBasedIdentifier
+        let newURLs = ThumbnailType.allCases.compactMap {
+            PDFileManager.thumbnailURL(for: volumeBasedIdentifier, type: $0)
+        }
+        urls.append(contentsOf: newURLs)
+        return urls
+    }
+}
+#endif

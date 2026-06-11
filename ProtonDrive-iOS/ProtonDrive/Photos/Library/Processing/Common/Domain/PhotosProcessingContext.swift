@@ -23,7 +23,7 @@ protocol PhotosProcessingContext {
     var invalidIdentifiers: Set<PhotoIdentifier> { get }
     var failedIdentifiersAndError: [PhotoIdentifier: PhotosFailureUserError] { get }
     var missingIdentifiers: Set<PhotoIdentifier> { get }
-    var skippedIdentifiers: Set<PhotoIdentifier> { get }
+    var skippedIdentifiersAndError: [PhotoIdentifier: PhotosFailureUserError] { get }
     var newIdentifiers: Set<PhotoIdentifier> { get }
     var duplicatedCompoundIdentifiers: [PhotoIdentifier] { get }
     var importedCompoundsCount: Int { get }
@@ -62,7 +62,7 @@ final class ConcretePhotosProcessingContext: PhotosProcessingContext {
     private(set) var invalidIdentifiers: Set<PhotoIdentifier> = []
     private(set) var failedIdentifiersAndError: [PhotoIdentifier: PhotosFailureUserError] = [:]
     private(set) var missingIdentifiers: Set<PhotoIdentifier> = []
-    private(set) var skippedIdentifiers: Set<PhotoIdentifier> = []
+    private(set) var skippedIdentifiersAndError: [PhotoIdentifier: PhotosFailureUserError] = [:]
     private var replacedIdentifiers = [PhotoIdentifier: PhotoIdentifier]()
     private(set) var duplicatedCompoundIdentifiers: [PhotoIdentifier] = []
     private var duplicatedCompounds: [PhotoIdentifier: [PhotoAssetCompound]] = [:]
@@ -72,6 +72,7 @@ final class ConcretePhotosProcessingContext: PhotosProcessingContext {
     private var importedCompoundPairs = [IdentifierCompoundTypePair]()
     private(set) var invalidAssets: [PhotoAsset] = []
     private(set) var errors: [Error] = []
+    private let errorMappingPolicy: PhotosAssetsErrorMappingPolicy
 
     var newIdentifiers: Set<PhotoIdentifier> {
         Set(replacedIdentifiers.values)
@@ -93,8 +94,9 @@ final class ConcretePhotosProcessingContext: PhotosProcessingContext {
         importedCompoundsCount - Set(importedCompoundPairs.map(\.identifier)).count
     }
 
-    init(initialIdentifiers: Set<PhotoIdentifier>) {
+    init(initialIdentifiers: Set<PhotoIdentifier>, errorMappingPolicy: PhotosAssetsErrorMappingPolicy) {
         self.initialIdentifiers = initialIdentifiers
+        self.errorMappingPolicy = errorMappingPolicy
     }
 
     func completeIdentifiersValidation(identifiers: PhotoIdentifiers) {
@@ -112,9 +114,16 @@ final class ConcretePhotosProcessingContext: PhotosProcessingContext {
 
     func completeCompoundsCreation() {
         Log.info("completeCompoundsCreation", domain: .photosProcessing)
-        let processedIdentifiers = createdCompoundPairs.map(\.identifier) + failedIdentifiersAndError.keys + skippedIdentifiers + missingIdentifiers + replacedIdentifiers.keys
+        let processedIdentifiers = createdCompoundPairs.map(\.identifier) +
+        failedIdentifiersAndError.keys +
+        skippedIdentifiersAndError.keys +
+        missingIdentifiers +
+        replacedIdentifiers.keys
+
         let newSkippedIdentifiers = Set(validIdentifiers).subtracting(processedIdentifiers)
-        skippedIdentifiers.formUnion(newSkippedIdentifiers)
+        for identifier in newSkippedIdentifiers where skippedIdentifiersAndError[identifier] == nil {
+            skippedIdentifiersAndError[identifier] = .unknown
+        }
     }
 
     // This function is called exclusively by PhotosAssetsInteractor
@@ -125,7 +134,8 @@ final class ConcretePhotosProcessingContext: PhotosProcessingContext {
 
     func addTemporaryError(identifier: PhotoIdentifier, error: Error) {
         Log.info("addTemporaryError: \(error.localizedDescription)", domain: .photosProcessing)
-        skippedIdentifiers.insert(identifier)
+        let mappingError = errorMappingPolicy.map(error: error)
+        skippedIdentifiersAndError[identifier] = mappingError
     }
 
     func addMissing(identifier: PhotoIdentifier) {
@@ -169,7 +179,7 @@ final class ConcretePhotosProcessingContext: PhotosProcessingContext {
             let compound = failedCompound.compound
             guard let pair = createdCompoundPairs.first(where: { $0.compound == compound }) else { return }
             failedIdentifiersAndError[pair.identifier] = failedCompound.error
-            skippedIdentifiers.remove(pair.identifier)
+            skippedIdentifiersAndError.removeValue(forKey: pair.identifier)
         }
     }
 
@@ -178,7 +188,8 @@ final class ConcretePhotosProcessingContext: PhotosProcessingContext {
         compounds.forEach { compound in
             guard let pair = createdCompoundPairs.first(where: { $0.compound == compound }) else { return }
             invalidAssets += compound.allAssets
-            skippedIdentifiers.insert(pair.identifier)
+            let mappingError = errorMappingPolicy.map(error: error)
+            skippedIdentifiersAndError[pair.identifier] = mappingError
         }
     }
 

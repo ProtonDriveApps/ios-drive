@@ -56,26 +56,59 @@ public class InitialServices {
     public var isLoggedInPublisher: AnyPublisher<Bool, Never> {
         self.sessionVault.isSignedInPublisher
     }
-    
+
+    /// Convenience init for production use: creates a real network monitor.
+    public convenience init(userDefault: UserDefaults,
+                            clientConfig: Configuration,
+                            mainKeyProvider: MainKeyProvider,
+                            autoLocker: Autolocker?,
+                            sessionRelatedCommunicatorFactory: @escaping SessionRelatedCommunicatorFactory,
+                            isDetailedLoggingEnabled: (() -> Bool)? = nil) {
+        let networking = Self.makeNetworking(environment: clientConfig.environment)
+        let monitor = MonitorConnectionStateResource(doh: networking.dohInterface)
+        #if os(iOS)
+        monitor.startMonitoring()
+        #endif
+        #if DEBUG
+        monitor.startObservingSimulationCommands()
+        #endif
+        self.init(
+            userDefault: userDefault,
+            clientConfig: clientConfig,
+            mainKeyProvider: mainKeyProvider,
+            autoLocker: autoLocker,
+            sessionRelatedCommunicatorFactory: sessionRelatedCommunicatorFactory,
+            connectionStateResource: monitor,
+            networking: networking,
+            isDetailedLoggingEnabled: isDetailedLoggingEnabled
+        )
+    }
+
     public init(userDefault: UserDefaults,
                 clientConfig: Configuration,
                 mainKeyProvider: MainKeyProvider,
                 autoLocker: Autolocker?,
-                sessionRelatedCommunicatorFactory: @escaping SessionRelatedCommunicatorFactory) {
+                sessionRelatedCommunicatorFactory: @escaping SessionRelatedCommunicatorFactory,
+                connectionStateResource: ConnectionStateResource,
+                networking: PMAPIService? = nil,
+                isDetailedLoggingEnabled: (() -> Bool)? = nil) {
         self.userDefault = userDefault
         self.mainKeyProvider = mainKeyProvider
         self.clientConfig = clientConfig
         self.sessionRelatedCommunicatorFactory = sessionRelatedCommunicatorFactory
         self.localSettings = LocalSettings.shared
 
-        let (sessionVault, networking, serviceDelegate, authenticator, communicator, featureFlagsRepository, pushNotificationService, connectionStateResource) =
+        let networking = networking ?? Self.makeNetworking(environment: clientConfig.environment)
+
+        let (sessionVault, serviceDelegate, authenticator, communicator, featureFlagsRepository, pushNotificationService) =
             Self.makeServices(
                 userDefault: userDefault,
                 clientConfig: clientConfig,
                 and: mainKeyProvider,
                 using: sessionRelatedCommunicatorFactory,
                 localSettings: localSettings,
-                autoLocker: autoLocker
+                autoLocker: autoLocker,
+                networking: networking
             )
 
         self.sessionVault = sessionVault
@@ -85,9 +118,32 @@ public class InitialServices {
         self.featureFlagsRepository = featureFlagsRepository
         self.sessionRelatedCommunicator = communicator
         self.connectionStateResource = connectionStateResource
-#if os(iOS)
+
+        #if os(macOS)
+        let detailedLoggingCheck = isDetailedLoggingEnabled ?? { false }
+        let observabilityPerformer = ObservabilityConstrainedRequestPerformer(localSettings: localSettings, requestPerforming: networking)
+        let observabilityInterceptor = ObservabilityInterceptingRequestPerformer(
+            wrapped: observabilityPerformer,
+            fileWriter: ObservabilityEventFileWriter.shared,
+            isDetailedLoggingEnabled: detailedLoggingCheck
+        )
+        ObservabilityEnv.current.setupWorld(requestPerformer: observabilityInterceptor)
+        #elseif os(iOS)
         self.pushNotificationService = pushNotificationService
-#endif
+        let observabilityPerformer = ObservabilityConstrainedRequestPerformer(localSettings: localSettings, requestPerforming: networking)
+        ObservabilityEnv.current.setupWorld(requestPerformer: observabilityPerformer)
+
+        #if DEBUG
+        let isRunningUITests = DebugConstants.commandLineContains(flags: [.uiTests])
+        #else
+        let isRunningUITests = false
+        #endif
+
+        if !PDCore.Constants.runningInExtension, !isRunningUITests {
+            TelemetryService.shared.setApiService(apiService: networking)
+            TelemetryService.shared.setTelemetryEnabled(!(localSettings.optOutFromTelemetry ?? false))
+        }
+        #endif
 
         networkService.acquireSessionIfNeeded { result in
             switch result {
@@ -103,28 +159,29 @@ public class InitialServices {
         }
     }
 
+    private static func makeNetworking(environment: ProtonCoreEnvironment.Environment) -> PMAPIService {
+#if os(iOS)
+        PMAPIService.createAPIServiceWithoutSession(environment: environment,
+                                                    challengeParametersProvider: .forAPIService(clientApp: .drive,
+                                                                                                challenge: PMChallenge()))
+#else
+        PMAPIService.createAPIServiceWithoutSession(environment: environment,
+                                                    challengeParametersProvider: .empty)
+#endif
+    }
+
     // swiftlint:disable large_tuple
+    // swiftlint:disable:next function_parameter_count
     private static func makeServices(
         userDefault: UserDefaults,
         clientConfig: Configuration,
         and mainKeyProvider: MainKeyProvider,
         using sessionRelatedCommunicatorFactory: SessionRelatedCommunicatorFactory,
         localSettings: LocalSettings,
-        autoLocker: Autolocker?
-    ) -> (SessionVault, PMAPIService, PMAPIClient, Authenticator, SessionRelatedCommunicatorBetweenMainAppAndExtensions, FeatureFlagsRepositoryProtocol, PushNotificationServiceProtocol?, ConnectionStateResource) {
+        autoLocker: Autolocker?,
+        networking: PMAPIService
+    ) -> (SessionVault, PMAPIClient, Authenticator, SessionRelatedCommunicatorBetweenMainAppAndExtensions, FeatureFlagsRepositoryProtocol, PushNotificationServiceProtocol?) {
         let sessionVault = SessionVault(mainKeyProvider: mainKeyProvider)
-#if os(iOS)
-        let networking = PMAPIService.createAPIServiceWithoutSession(environment: clientConfig.environment,
-                                                                     challengeParametersProvider: .forAPIService(clientApp: .drive,
-                                                                                                                 challenge: PMChallenge()))
-#else
-        let networking = PMAPIService.createAPIServiceWithoutSession(environment: clientConfig.environment,
-                                                                     challengeParametersProvider: .empty)
-#endif
-        let connectionStateResource = MonitorConnectionStateResource(doh: networking.dohInterface)
-        #if os(iOS)
-        connectionStateResource.startMonitor()
-        #endif
         let authenticator = Authenticator(api: networking)
 
         let sessionRelatedCommunicator = sessionRelatedCommunicatorFactory(sessionVault, authenticator) { [weak networking] credential, kind in
@@ -156,6 +213,8 @@ public class InitialServices {
         // Override FF values for dynamic plans and easy device migration, after launch during services creation. Original override.
         let featureFlagsRepository = ProtonCoreFeatureFlags.FeatureFlagsRepository.shared
         featureFlagsRepository.setApiService(networking)
+        let userID = sessionVault.userInfo?.ID
+        featureFlagsRepository.setUserId(userID ?? "")
         featureFlagsRepository.setFlagOverride(CoreFeatureFlagType.dynamicPlan, true)
         featureFlagsRepository.resetFlagOverride(CoreFeatureFlagType.easyDeviceMigrationDisabled)
         Task {
@@ -176,18 +235,11 @@ public class InitialServices {
 #endif
         let pushNotificationService: PushNotificationServiceProtocol? = nil
 
-        ObservabilityEnv.current.setupWorld(requestPerformer: networking)
-#if os(iOS)
-        if !PDCore.Constants.runningInExtension, !isRunningUITests {
-            TelemetryService.shared.setApiService(apiService: networking)
-            TelemetryService.shared.setTelemetryEnabled(!(localSettings.optOutFromTelemetry ?? false))
-        }
-#endif
         Task {
             await sessionRelatedCommunicator.performInitialSetup()
         }
 
-        return (sessionVault, networking, serviceDelegate, authenticator, sessionRelatedCommunicator, featureFlagsRepository, pushNotificationService, connectionStateResource)
+        return (sessionVault, serviceDelegate, authenticator, sessionRelatedCommunicator, featureFlagsRepository, pushNotificationService)
     }
     // swiftlint:enable large_tuple
 }

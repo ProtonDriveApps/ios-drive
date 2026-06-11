@@ -34,41 +34,37 @@ struct NodeDetailsView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     ForEach(self.vm.details) { detail in
-                        HStack(alignment: .firstTextBaseline) {
-                            Text(detail.id)
-                                .font(.body)
-                                .foregroundColor(ColorProvider.TextNorm)
-                                .multilineTextAlignment(.leading)
-                            
-                            Spacer()
-                            
-                            Text(detail.value)
-                                .font(.body)
-                                .foregroundColor(ColorProvider.TextWeak)
-                                .multilineTextAlignment(.trailing)
-                        }
-                        .padding()
-                        .frame(minHeight: 44)
+                        makeRow(from: detail)
                     }
 
                     vm.qaDetails.map { qaDetails in
-                        VStack(alignment: .leading) {
+                        VStack(spacing: 0) {
                             Spacer()
                             Divider()
                             Text("QA section")
                                 .font(.body.bold())
                                 .foregroundColor(ColorProvider.TextNorm)
+                                .padding(10)
                             Divider()
-                            Text("xAttr")
-                                .font(.body)
+                            Text("Base attributes")
+                                .font(.caption)
                                 .foregroundColor(ColorProvider.TextNorm)
-                            Text(qaDetails.extendedAttributes)
-                                .font(.body)
-                                .foregroundColor(ColorProvider.TextWeak)
                                 .multilineTextAlignment(.leading)
-                                .padding(.leading, 10)
+                                .padding(10)
+                            Divider()
+                            ForEach(qaDetails.attributes) { detail in
+                                makeRow(from: detail)
+                            }
+                            Text("Extended attributes")
+                                .font(.caption)
+                                .foregroundColor(ColorProvider.TextNorm)
+                                .multilineTextAlignment(.leading)
+                                .padding(10)
+                            Divider()
+                            ForEach(qaDetails.extendedAttributes) { detail in
+                                makeRow(from: detail)
+                            }
                         }
-                        .padding()
                     }
                 }
             }
@@ -77,5 +73,24 @@ struct NodeDetailsView: View {
         }
         .background(ColorProvider.BackgroundSecondary)
         .edgesIgnoringSafeArea(.bottom)
+    }
+
+    private func makeRow(from detail: KeyValue) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(detail.key)
+                .font(.body)
+                .foregroundColor(ColorProvider.TextNorm)
+                .multilineTextAlignment(.leading)
+
+            Spacer()
+
+            Text(detail.value)
+                .font(.body)
+                .foregroundColor(ColorProvider.TextWeak)
+                .multilineTextAlignment(.trailing)
+                .accessibilityIdentifier(detail.key + "_value")
+        }
+        .padding()
+        .frame(minHeight: 44)
     }
 }

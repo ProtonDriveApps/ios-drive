@@ -29,15 +29,16 @@ import SwiftUI
 import PDUIComponents
 import PDContacts
 import PMEventsManager
+import PDSDKCore
 
 final class AuthenticatedDependencyContainer {
     let tower: Tower
     let keymaker: Keymaker
     let networkService: PMAPIService
     let localSettings: LocalSettings
-    let applicationStateController: ApplicationStateOperationsController
-    let windowScene: UIWindowScene
-    let childContainers: [Any]
+    private var applicationStateController: ApplicationStateOperationsController?
+    let extensionTaskStateController: ConcreteBackgroundTaskStateController
+    var childContainers: [Any]
     var humanCheckHelper: HumanCheckHelper?
     let pickersContainer: PickersContainer
     let photosContainer: PhotosContainer
@@ -53,13 +54,30 @@ final class AuthenticatedDependencyContainer {
     private let photosSkippableCacheStorage: PhotosSkippableStorage
     let scrollToTopSubject = PassthroughSubject<TabBarItem, Never>()
     private weak var autoLocker: Autolocker?
+    let lockedStateController: LockedStateControllerProtocol
+    private var bootstrappedSubject = CurrentValueSubject<Bool, Never>(false)
+    let bootstrapStateController: BootstrapStateControllerProtocol
+    let sceneInitStateController: SceneInitStateControllerProtocol
+    private let duplicateUploadHandler: DuplicateUploadHandler
 
-    init(tower: Tower, keymaker: Keymaker, networkService: PMAPIService, localSettings: LocalSettings, windowScene: UIWindowScene, settingsSuite: SettingsStorageSuite, authenticator: Authenticator, populatedStateController: PopulatedStateControllerProtocol, autoLocker: Autolocker?) {
+    @MainActor
+    init(
+        tower: Tower,
+        keymaker: Keymaker,
+        networkService: PMAPIService,
+        localSettings: LocalSettings,
+        settingsSuite: SettingsStorageSuite,
+        authenticator: Authenticator,
+        populatedStateController: PopulatedStateControllerProtocol,
+        autoLocker: Autolocker?,
+        featureFlagsController: FeatureFlagsControllerProtocol,
+        bootstrapStateController: BootstrapStateControllerProtocol = BootstrapStateController(),
+        sceneInitStateController: SceneInitStateControllerProtocol = SceneInitStateController()
+    ) {
         self.tower = tower
         self.keymaker = keymaker
         self.networkService = networkService
         self.localSettings = localSettings
-        self.windowScene = windowScene
         self.authenticator = authenticator
         self.contactsManager = ContactsManager(
             service: networkService,
@@ -68,6 +86,8 @@ final class AuthenticatedDependencyContainer {
         )
         self.populatedStateController = populatedStateController
         self.autoLocker = autoLocker
+        self.bootstrapStateController = bootstrapStateController
+        self.sceneInitStateController = sceneInitStateController
         contactEventBridge = ContactEventBridge(contactsManager: contactsManager)
         tower.contactAdapter.delegate = contactEventBridge
         let converter = ExternalInvitationConverter(
@@ -77,76 +97,54 @@ final class AuthenticatedDependencyContainer {
             signersFactory: tower.sessionVault
         )
         tower.set(externalInvitationConverter: converter)
+        let factory = AuthenticatedDependenciesFactory(keymaker: keymaker, tower: tower)
+        lockedStateController = factory.makeLockedStateController()
 
-        let myFilesUploadOperationInteractor = MyFilesUploadOperationInteractor(storage: tower.storage, interactor: tower.fileUploader)
         pickersContainer = PickersContainer()
 
-        var operationInteractors: [OperationInteractor] = [
-            myFilesUploadOperationInteractor,
-            pickersContainer.photoPickerInteractor
-        ]
-
-        let extensionStateController = ConcreteBackgroundTaskStateController()
+        extensionTaskStateController = ConcreteBackgroundTaskStateController()
 
         photosSkippableCacheStorage = UserDefaultsPhotosSkippableStorage()
-        featureFlagsController = FeatureFlagsController(buildType: Constants.buildType, featureFlagsStore: localSettings, updateRepository: tower.featureFlags)
+        self.featureFlagsController = featureFlagsController
         let notificationFlowController = NotificationsPermissionsFactory().makeFlowController()
         ratingBoosterFlowController = RatingBoosterFlowController(
-            coordinator: RatingBoosterCoordinator(windowScene: windowScene),
+            coordinator: RatingBoosterCoordinator(),
             featureFlagsController: featureFlagsController,
             localSettings: localSettings,
             repository: DisableLegacyRatingRepository(networkService: tower.networking)
         )
+
+        assert(tower.performanceMetricsController != nil)
         let dependencies = PhotosContainer.Dependencies(
             tower: tower,
-            windowScene: windowScene,
             keymaker: keymaker,
             networkService: networkService,
             settingsSuite: settingsSuite,
-            extensionStateController: extensionStateController,
+            extensionStateController: extensionTaskStateController,
             photoSkippableCache: ConcretePhotosSkippableCache(storage: photosSkippableCacheStorage),
             notificationsPermissionsFlowController: notificationFlowController,
             contacstsManager: contactsManager,
             featureFlagsController: featureFlagsController,
             populatedStateController: populatedStateController,
-            scrollToTopPublisher: scrollToTopSubject.eraseToAnyPublisher()
+            scrollToTopPublisher: scrollToTopSubject.eraseToAnyPublisher(),
+            lockedStateController: lockedStateController,
+            performanceMetricsController: tower.performanceMetricsController ?? PerformanceMetricsController(),
+            authenticator: authenticator
         )
         photosContainer = PhotosContainer(dependencies: dependencies)
-
-        let photosUploadOperationInteractor = PhotosUploadOperationInteractor(uploadingFiles: photosContainer.uploadingPhotosRepository.getPhotos, interactor: photosContainer.uploader)
-        operationInteractors.append(photosUploadOperationInteractor)
-
-        let operationsInteractor = AggregatedOperationInteractor(interactors: operationInteractors)
-        #if SUPPORTS_BACKGROUND_UPLOADS
-        let processingController = ProcessingBackgroundOperationController(
-            operationInteractor: operationsInteractor,
-            taskResource: ProcessingExtensionBackgroundTaskResourceImpl()
-        )
-        let backgroundOperationController = ExtensionBackgroundOperationController(
-            processingController: processingController,
-            extensionStateController: extensionStateController,
-            operationInteractor: uploadOperationInteractor,
-            taskResource: ExtensionBackgroundTaskResourceImpl()
-        )
-        #else
-        let backgroundOperationController = ExtensionBackgroundOperationController(
-            extensionStateController: extensionStateController,
-            operationInteractor: operationsInteractor,
-            taskResource: ExtensionBackgroundTaskResourceImpl()
-        )
-        #endif
-
-        applicationStateController = ApplicationStateOperationsController(
-            applicationStateResource: iOSApplicationRunningStateResource(),
-            backgroundOperationController: backgroundOperationController
-        )
 
         // Child containers
         childContainers = [
             LocalNotificationsContainer(tower: tower),
-            MyFilesNotificationsPermissionsContainer(tower: tower, windowScene: windowScene, flowController: notificationFlowController),
-            ForegroundTransitionContainer(tower: tower, pickerResource: pickersContainer.photoPickerResource, populatedStateController: populatedStateController),
+            MyFilesNotificationsPermissionsContainer(tower: tower, flowController: notificationFlowController),
+            ForegroundTransitionContainer(
+                tower: tower,
+                pickerResource: pickersContainer.photoPickerResource,
+                populatedStateController: populatedStateController,
+                lockedStateController: lockedStateController
+            ),
             QuotaUpdatesContainer(tower: tower, photoUploader: photosContainer.uploader),
+            PaymentsCleanUpContainer(tower: tower),
         ]
 
         protonFileContainer = ProtonFilePreviewContainer(
@@ -159,9 +157,52 @@ final class AuthenticatedDependencyContainer {
         )
         sharedVolumesEventsContainer = SharedVolumesEventsContainer(tower: tower, featureFlagsController: featureFlagsController)
         applicationUserSettingsController = ApplicationUserSettingsController(localSettings: localSettings, notificationCenter: .default)
+        duplicateUploadHandler = DuplicateUploadHandler(dependencies: .init(
+            bootstrapStateController: bootstrapStateController,
+            tower: tower)
+        )
+    }
+
+    @MainActor
+    func initializeBackgroundOperationsController() {
+        // Background modes controller needs to be initialized after every other dependency is created (SDK),
+        // so it needs to be called after `population`
+        applicationStateController = AuthenticatedDependenciesFactory(keymaker: keymaker, tower: tower)
+            .makeBackgroudModesController(container: self)
+    }
+
+    @MainActor
+    func initializeDownloadAndUploadSpeedContainers() {
+        // Download and upload speed measurements need to be initialized after every other dependency is created (SDK),
+        // so it needs to be called after `population`
+        let downloaderProcessEligibilityController = DownloaderProcessAvailabilityFactory().makeController(
+            extensionTaskController: extensionTaskStateController,
+            lockedStateController: lockedStateController
+        )
+        // Uploader eligibility basically means unifying `my files` & `photos` eligibilities.
+        // Since `my files` eligibility is actually subset of `photos`, we can use photos' one.
+        // If we support BG uploads for `my files` in future, this will need to be updated.
+        let uploaderProcessEligibilityController = photosContainer.computationalAvailabilityController
+
+        childContainers += [
+            DownloadSpeedContainer(
+                legacyDownloader: tower.downloader,
+                sdkDownloader: tower.getSdkFileDownloader(),
+                processEligibilityController: downloaderProcessEligibilityController
+            ),
+            UploadSpeedContainer(
+                legacyUploadingQueue: iOSTrackableUploadingQueue(myFilesUploader: tower.fileUploader, photoUploader: photosContainer.uploader),
+                legacyBytesCounterResource: tower.uploadedBytesCounterResource,
+                sdkUploader: tower.getSdkFileUploader(),
+                sdkPhotoUploader: tower.getSdkPhotoUploader(),
+                processEligibilityController: uploaderProcessEligibilityController
+            )
+        ]
     }
 
     func makePopulateViewController(lockedStateController: LockedStateControllerProtocol) -> UIViewController {
+        // UserID can set to nil when app lock is enabled, set it back after unlocking 
+        tower.localSettings.userId = tower.sessionVault.clientCredential()?.userID
         let viewController = PopulateViewController()
         let coordinator = makePopulateCoordinator(viewController)
         var viewModel = makePopulateViewModel(lockedStateController: lockedStateController, coordinator: coordinator)
@@ -174,6 +215,9 @@ final class AuthenticatedDependencyContainer {
         let navigationController = UINavigationController(rootViewController: viewController)
         navigationController.navigationBar.isHidden = true
         navigationController.interactivePopGestureRecognizer?.isEnabled = false
+        if #available(iOS 26.0, *) {
+            navigationController.interactiveContentPopGestureRecognizer?.isEnabled = false
+        }
 
         return navigationController
     }
@@ -182,6 +226,7 @@ final class AuthenticatedDependencyContainer {
     ///  right now it's not included in order not to modify directly the legacy class.
     func makePopulateViewModel(lockedStateController: LockedStateControllerProtocol, coordinator: PopulateCoordinatorProtocol) -> PopulateViewModelProtocol {
         return FeatureFlagsAwarePopulateViewModelDecorator(
+            connectionResource: tower.connectionStateResource,
             localSettings: localSettings,
             viewModel: makeAppBootstrappingPopulateViewModel(coordinator: coordinator),
             featureFlagsRepository: tower.featureFlags,
@@ -192,33 +237,99 @@ final class AuthenticatedDependencyContainer {
     func makeAppBootstrappingPopulateViewModel(coordinator: PopulateCoordinatorProtocol) -> PopulateViewModelProtocol {
         let bootstrapper = makeAppBootstrapper()
         let onboardingObserver = makeOnboardingObserver()
-        return BootstrappinggPopulateViewModel(bootstrapper: bootstrapper, coordinator: coordinator, onboardingObserver: onboardingObserver, populatedStateController: populatedStateController)
+        return BootstrappingPopulateViewModel(bootstrapper: bootstrapper, coordinator: coordinator, onboardingObserver: onboardingObserver, populatedStateController: populatedStateController)
     }
 
     func makeAppBootstrapper() -> AppBootstrapper {
-        let addressStarter = AddressBootstrapStarter(localAddressProvider: self.tower.sessionVault, remoteAddressProvider: self.tower.addressManager)
+        let addressStarter = AddressBootstrapStarter(
+            localAddressProvider: self.tower.sessionVault,
+            remoteAddressProvider: self.tower.addressManager,
+            connectionStateResource: tower.connectionStateResource
+        )
         let localRootShareStarter = LocalRootSharesBootstrapStarter(storage: tower.storage)
-        let remoteRootShareStarter = RemoteSharesBootstrapStarter(listShares: tower.client.listShares, bootstrapRoot: tower.client.bootstrapRoot, featureFlagsController: featureFlagsController, storage: tower.storage)
+        let remoteRootShareStarter = RemoteSharesBootstrapStarter(
+            listShares: tower.client.listShares,
+            bootstrapRoot: tower.client.bootstrapRoot,
+            featureFlagsController: featureFlagsController,
+            storage: tower.storage,
+            connectionStateResource: tower.connectionStateResource
+        )
         let volumeCreator = VolumeCreator(sessionVault: tower.sessionVault, storage: tower.storage, client: tower.client)
         let creatingRootShareStarter = CreatingMainShareStarter(volumeCreator: volumeCreator, remoteRootsBootstrapper: remoteRootShareStarter)
         let rootShareStarter = RootSharesBootstrapStarter(localStore: localRootShareStarter, remote: remoteRootShareStarter, creating: creatingRootShareStarter)
         let eventsStarter = EventsBootstrapStarter(eventsStarter: tower, mainVolumeIdDataSource: MainVolumeIdDataSource(storage: tower.storage, context: tower.storage.backgroundContext), eventsStorageManager: tower.eventStorageManager, eventsManagedObjectContext: tower.eventStorageManager.makeNewBackgroundContext(), eventSerializer: ClientEventSerializer())
-        let settingsUpdater = TabbarSettingUpdater(client: tower.client, featureFlags: tower.featureFlags, localSettings: tower.localSettings, networking: tower.networking, storageManager: tower.storage)
-        let checklistBootstrapper = DriveChecklistBootstrapper(repository: StorageBonusPromoFactory().makeStoragePromoBonusStatusRepository(tower: tower))
-        let driveSettings = DriveUserSettingsInitializerInteractor(fetchUserSettingsResource: tower.client, localSettings: tower.localSettings)
+        let checklistBootstrapper = DriveChecklistBootstrapper(
+            repository: StorageBonusPromoFactory().makeStoragePromoBonusStatusRepository(tower: tower),
+            connectionStateResource: tower.connectionStateResource
+        )
+        let driveSettings = DriveUserSettingsInitializerInteractor(
+            fetchUserSettingsResource: tower.client,
+            localSettings: tower.localSettings,
+            connectionStateResource: tower.connectionStateResource
+        )
         let protonSettings = tower.generalSettings
-        let b2bStatusStarter = B2BUserStatusStarter(featureFlags: tower.featureFlags, localSettings: tower.localSettings, networking: tower.networking)
+        let b2bStatusStarter = B2BUserStatusStarter(
+            featureFlags: tower.featureFlags,
+            localSettings: tower.localSettings,
+            networking: tower.networking,
+            connectionStateResource: tower.connectionStateResource
+        )
         let settingsStarter = AditionalSettingsStarter(driveSettingsInitializer: driveSettings, protonSettingsInitializer: protonSettings, b2bUserStatusStarter: b2bStatusStarter, checklistBootstrapper: checklistBootstrapper)
         let photosCacheBootstrapper = makePhotosBoostrapper()
         let volumeTypeBootstrapper = VolumeTypeBootstrapStarter(storage: tower.storage, managedObjectContext: tower.storage.backgroundContext)
         let tagsMigrationFinishChecker = TagsMigrationFinishChecker(
+            connectionStateResource: tower.connectionStateResource,
             storageManager: tower.storage,
             client: tower.client,
             localSettings: tower.localSettings,
             featureFlags: featureFlagsController,
             clientUIDProvider: tower.sessionVault
         )
-        return DriveBootstrapStarter(addressBootstrapper: addressStarter, sharesBootstrapper: rootShareStarter, volumesBootstrapper: volumeTypeBootstrapper, eventsBootstrapper: eventsStarter, settingsBootstrapper: settingsStarter, photosCacheBootstrapper: photosCacheBootstrapper, tagsMigrationFinishChecker: tagsMigrationFinishChecker, autoLocker: autoLocker)
+        let skippableCache = ConcretePhotosSkippableCache(storage: photosSkippableCacheStorage)
+        let uploadingPhotosBootrapper = UploadingPhotosBootstrapper(
+            skippableCache: skippableCache,
+            storage: tower.storage,
+            tower: tower
+        )
+        let paymentsBootstrapper = PaymentsBootstrapper(
+            featureFlagsController: featureFlagsController,
+            connectionStateResource: tower.connectionStateResource,
+            coreAPIService: tower.networking
+        )
+        let fileManagerBootstrapper = FileManagerBootstrapper(localSettings: tower.localSettings)
+        let duplicatePhotoListingBootstrapper = DuplicatePhotoListingBootstrapper(context: tower.storage.photosBackgroundContext)
+        let sdkBootstrapper = SDKBootstrapStarter(
+            dependencies: .init(
+                tower: tower,
+                featureFlagsController: featureFlagsController,
+                populatedController: populatedStateController,
+                connectionStateResource: tower.connectionStateResource,
+                keymaker: keymaker,
+                photoUploadedNotifier: photosContainer.photoUploadedNotifier,
+                skippableCache: skippableCache,
+                failedPhotosResource: photosContainer.failedPhotosResource
+            )
+        )
+        let sdkRelatedInfrastructureBootstrapper = SDKRelatedInfrastructureBootstrapper(container: self)
+
+        return DriveBootstrapStarter(
+            addressBootstrapper: addressStarter,
+            sharesBootstrapper: rootShareStarter,
+            volumesBootstrapper: volumeTypeBootstrapper,
+            eventsBootstrapper: eventsStarter,
+            settingsBootstrapper: settingsStarter,
+            photosCacheBootstrapper: photosCacheBootstrapper,
+            tagsMigrationFinishChecker: tagsMigrationFinishChecker,
+            autoLocker: autoLocker,
+            uploadingPhotosBootrapper: uploadingPhotosBootrapper,
+            paymentsBootstrapper: paymentsBootstrapper,
+            fileManagerBootstrapper: fileManagerBootstrapper,
+            duplicatePhotoListingBootstrapper: duplicatePhotoListingBootstrapper,
+            sdkBootstrapStarter: sdkBootstrapper,
+            bootstrapStateController: bootstrapStateController,
+            sdkRelatedInfrastructureBootstrapper: sdkRelatedInfrastructureBootstrapper,
+            filePathMigrationBootstrapStarter: FilePathMigrationBootstrapStarter()
+        )
     }
 
     private func makePhotosBoostrapper() -> AppBootstrapper {
@@ -239,19 +350,12 @@ final class AuthenticatedDependencyContainer {
     }
 
     func makeSubscriptionsViewController() -> UIViewController {
-        let dependencies = SubscriptionsContainer.Dependencies(
-            tower: tower,
-            keymaker: keymaker,
-            networkService: networkService
-        )
-        let container = SubscriptionsContainer(dependencies: dependencies)
+        let container = makeSubscriptionsContainer()
         return container.makeRootViewController()
     }
 
     private func makePopulateCoordinator(_ viewController: PopulateViewController) -> PopulateCoordinatorProtocol {
-        let subscriptionsContainer = SubscriptionsContainer(
-            dependencies: SubscriptionsContainer.Dependencies(tower: tower, keymaker: keymaker, networkService: networkService)
-        )
+        let subscriptionsContainer = makeSubscriptionsContainer()
         let upsellController = OneDollarUpsellFlowController(
             featureFlagEnabled: tower.featureFlags.isEnabled(flag: .oneDollarPlanUpsellEnabled),
             isPayedUser: tower.sessionVault.getUserInfo()?.isPaid == true,
@@ -281,6 +385,16 @@ final class AuthenticatedDependencyContainer {
             }
         )
     }
+
+    func makeSubscriptionsContainer() -> SubscriptionsContainer {
+        let dependencies = SubscriptionsContainer.Dependencies(
+            tower: tower,
+            keymaker: keymaker,
+            networkService: networkService,
+            featureFlagsController: featureFlagsController
+        )
+        return SubscriptionsContainer(dependencies: dependencies)
+    }
 }
 
 protocol EventsSystemStarter {
@@ -299,6 +413,7 @@ protocol SignOutManager {
 
 extension Tower: SignOutManager {
     func signOut() async {
+        await AppShortcutManager().removeShortcutForLoggedOutUser()
         await signOut(cacheCleanupStrategy: .cleanEverything)
 
         // notify cross-process observers
@@ -308,11 +423,16 @@ extension Tower: SignOutManager {
 
 protocol LockManager {
     func onLock()
+    func onUnlocked()
 }
 
 extension Tower: LockManager {
     func onLock() {
         stop()
+    }
+
+    func onUnlocked() {
+        resume()
     }
 }
 

@@ -18,6 +18,7 @@
 import CoreData
 import Foundation
 import PDCore
+import PDCoreIOS
 import PDClient
 
 final class EventsBootstrapStarter: AppBootstrapper {
@@ -43,6 +44,7 @@ final class EventsBootstrapStarter: AppBootstrapper {
     private func migrateStoredEventsIfNecessary() async throws {
         let events = try await eventsStorageManager.fetchUnprocessedEvents(volumeId: "", managedObjectContext: eventsManagedObjectContext)
         guard !events.isEmpty else {
+            Log.info("events bootstrap starter return due to empty events", domain: .applicationBootstrap)
             return
         }
 

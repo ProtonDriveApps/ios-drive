@@ -53,19 +53,17 @@ public class LocalSettings: NSObject {
     @SettingsStorage("oneDollarPlanUpsellEnabledValue") public var oneDollarPlanUpsellEnabledValue: Bool?
     @SettingsStorage("promotedNewFeaturesValue") var promotedNewFeaturesValue: [String]?
 
-    @SettingsStorage("DriveiOSLogCollection") public var driveiOSLogCollection: Bool?
     @SettingsStorage("debugModeEnabledValue") public var debugModeEnabledValue: Bool?
-    @SettingsStorage("DriveiOSLogCollectionDisabled") public var driveiOSLogCollectionDisabled: Bool?
     @SettingsStorage("keepScreenAwakeBannerHasDismissed") public var keepScreenAwakeBannerHasDismissed: Bool?
-    @SettingsStorage("DriveDDKEnabled") public var driveDDKEnabledValue: Bool?
+    @SettingsStorage("DriveDDKIntelEnabled") public var driveDDKIntelEnabledValue: Bool?
+    @SettingsStorage("DriveDDKDisabled") public var driveDDKDisabledValue: Bool?
     @SettingsStorage("DriveMacSyncRecoveryDisabled") public var driveMacSyncRecoveryDisabledValue: Bool?
-    @SettingsStorage("DriveMacKeepDownloadedDisabled") public var driveMacKeepDownloadedDisabledValue: Bool?
-    @SettingsStorage("DriveAlbumsDisabled") public var driveAlbumsDisabledValue: Bool?
+    @SettingsStorage("DriveMacPromoBannerDisabled") public var driveMacPromoBannerDisabledValue: Bool?
+    @SettingsStorage("DriveMacGradualRolloutChannelEnabled") public var driveMacGradualRolloutChannelEnabledValue: Bool?
+    @SettingsStorage("DriveMacAbnormalExitRelaunchDisabled") public var driveMacAbnormalExitRelaunchDisabledValue: Bool?
     @SettingsStorage("DriveCopyDisabled") public var driveCopyDisabledValue: Bool?
     @SettingsStorage("photoVolumeMigrationLastShownDate") public var photoVolumeMigrationLastShownDate: Date?
     @SettingsStorage("QuotaState") public var quotaStateValue: Int?
-    @SettingsStorage("domainVersion") public var domainVersionValue: Data?
-    @SettingsStorage("DrivePhotosTagsMigration") public var drivePhotosTagsMigrationValue: Bool?
     @SettingsStorage("DrivePhotosTagsMigrationDisabled") public var drivePhotosTagsMigrationDisabledValue: Bool?
 
     @SettingsStorage("tagsMigrationFinished") var tagsMigrationFinishedValue: Bool?
@@ -73,14 +71,11 @@ public class LocalSettings: NSObject {
 
     // Sharing flags
     @SettingsStorage("DriveSharingMigration") public var driveSharingMigrationValue: Bool?
-    @SettingsStorage("DriveSharingInvitations") public var driveSharingInvitationsValue: Bool?
     @SettingsStorage("DriveSharingExternalInvitations") public var driveSharingExternalInvitationsValue: Bool?
     @SettingsStorage("DriveSharingDisabled") public var driveSharingDisabledValue: Bool?
     @SettingsStorage("DriveSharingExternalInvitationsDisabled") public var driveSharingExternalInvitationsDisabledValue: Bool?
-    @SettingsStorage("DriveSharingEditingDisabled") public var driveSharingEditingDisabledValue: Bool?
     @SettingsStorage("DrivePublicShareEditMode") public var drivePublicShareEditModeValue: Bool?
     @SettingsStorage("DrivePublicShareEditModeDisabled") public var drivePublicShareEditModeDisabledValue: Bool?
-    @SettingsStorage("DriveMobileSharingInvitationsAcceptReject") public var driveMobileSharingInvitationsAcceptRejectValue: Bool?
     @SettingsStorage("DriveShareURLBookmarking") public var driveShareURLBookmarkingValue: Bool?
     @SettingsStorage("DriveShareURLBookmarksDisabled") public var driveShareURLBookmarksDisabledValue: Bool?
     // Photo tab for b2b user
@@ -88,25 +83,15 @@ public class LocalSettings: NSObject {
     /// Remote feature flag - DriveDisablePhotosForB2B
     @SettingsStorage("DriveDisablePhotosForB2B") public var driveDisablePhotosForB2BValue: Bool?
 
-    // ProtonDoc
-    @SettingsStorage("DriveDocsDisabled") private var driveDocsDisabledValue: Bool?
-
     // Entitlements
     @SettingsStorage("DriveDynamicEntitlementConfiguration") private var driveDynamicEntitlementConfigurationValue: Bool?
     @SettingsStorage("DriveEntitlements") public var driveEntitlementsValue: Data?
     @SettingsStorage("DriveEntitlementsUpdatedTime") public var driveEntitlementsUpdatedTimeValue: Int64?
 
-    // Refactor
-    @SettingsStorage("DriveiOSRefreshableBlockDownloadLink") private var driveiOSRefreshableBlockDownloadLinkValue: Bool?
-
     // Rating booster
     // Legacy feature flags we used before migrating to Unleash
     @SettingsStorage("RatingIOSDrive") private var ratingIOSDriveValue: Bool?
     @SettingsStorage("DriveRatingBooster") private var driveRatingBoosterValue: Bool?
-
-    @SettingsStorage("didEnableComputers") public var didEnableComputersValue: Bool?
-    @SettingsStorage("DriveiOSComputersValue") private var driveiOSComputersValue: Bool?
-    @SettingsStorage("DriveiOSComputersDisabledValue") private var driveiOSComputersDisabledValue: Bool?
 
     // Checklist
     @SettingsStorage("driveChecklistStatusDataValue") private var driveChecklistStatusDataValue: Data?
@@ -117,6 +102,7 @@ public class LocalSettings: NSObject {
     @SettingsStorage("DocsCreateNewSheetOnMobileEnabledValue") private var docsCreateNewSheetOnMobileEnabledValue: Bool?
 
     @SettingsStorage("DriveiOSDebugMode") public var driveiOSDebugModeValue: Bool?
+    @SettingsStorage("DriveiOSPaymentsV2") public var driveiOSPaymentsV2Value: Bool?
     // drive/me/settings
     @SettingsStorage("Layout") public var layout: Int?
     @SettingsStorage("Sort") public var sort: Int?
@@ -129,6 +115,20 @@ public class LocalSettings: NSObject {
     @SettingsStorage("didFetchDriveUserSettings") public var didFetchDriveUserSettings: Bool?
     @SettingsStorage("didFetchProtonUserSettings") public var didFetchProtonUserSettings: Bool?
     @SettingsStorage("didFetchB2BStatus") public var didFetchB2BStatus: Bool?
+    public var enableDebugModeInThisLaunch: Bool = false
+
+    // SDK FF
+    @SettingsStorage("DriveiOSSDKUploadMainValue") private var driveiOSSDKUploadMainValue: Bool?
+    @SettingsStorage("DriveiOSSDKUploadPhotoValue") private var driveiOSSDKUploadPhotoValue: Bool?
+    @SettingsStorage("DriveiOSSDKDownloadMainValue") private var driveiOSSDKDownloadMainValue: Bool?
+    @SettingsStorage("DriveiOSSDKDownloadPhotoValue") private var driveiOSSDKDownloadPhotoValue: Bool?
+    @SettingsStorage("DriveiOSSDKNodeOperationsValue") private var driveiOSSDKNodeOperationsValue: Bool?
+    @SettingsStorage("DriveCryptoEncryptBlocksWithPgpAeadValue") private var driveCryptoEncryptBlocksWithPgpAeadValue: Bool?
+    @SettingsStorage("DriveMacSDKUploadMainDisabled") private var driveMacSDKUploadMainDisabledValue: Bool?
+    @SettingsStorage("DriveMacSDKDownloadMainDisabled") private var driveMacSDKDownloadMainDisabledValue: Bool?
+    @SettingsStorage("DriveMacFileProviderBatchingDisabled") private var driveMacFileProviderBatchingDisabledValue: Bool?
+    @SettingsStorage("DriveDownloadVerificationDisabled") private var driveDownloadVerificationDisabledValue: Bool?
+    @SettingsStorage("DriveUploadVerificationDisabled") private var driveUploadVerificationDisabledValue: Bool?
 
     public let suite: SettingsStorageSuite
 
@@ -157,10 +157,9 @@ public class LocalSettings: NSObject {
         self._photosBackupNotOlderThanValue.configure(with: suite)
         self._photosUploadDisabledValue.configure(with: suite)
         self._logsCompressionDisabledValue.configure(with: suite)
-        self._driveiOSLogCollection.configure(with: suite)
         self._debugModeEnabledValue.configure(with: suite)
-        self._driveiOSLogCollectionDisabled.configure(with: suite)
         self._driveiOSDebugModeValue.configure(with: suite)
+        self._driveiOSPaymentsV2Value.configure(with: suite)
         self._domainReconnectionEnabledValue.configure(with: suite)
         self._postMigrationJunkFilesCleanupValue.configure(with: suite)
         self._userId.configure(with: suite)
@@ -168,38 +167,33 @@ public class LocalSettings: NSObject {
         self._defaultHomeTabTagValue.configure(with: suite)
         self._oneDollarPlanUpsellEnabledValue.configure(with: suite)
         self._keepScreenAwakeBannerHasDismissed.configure(with: suite)
-        self._driveDDKEnabledValue.configure(with: suite)
+        self._driveDDKIntelEnabledValue.configure(with: suite)
+        self._driveDDKDisabledValue.configure(with: suite)
         self._driveMacSyncRecoveryDisabledValue.configure(with: suite)
-        self._driveMacKeepDownloadedDisabledValue.configure(with: suite)
+        self._driveMacPromoBannerDisabledValue.configure(with: suite)
+        self._driveMacGradualRolloutChannelEnabledValue.configure(with: suite)
+        self._driveMacAbnormalExitRelaunchDisabledValue.configure(with: suite)
         self._didFetchFeatureFlags.configure(with: suite)
         self._promotedNewFeaturesValue.configure(with: suite)
-        self._driveAlbumsDisabledValue.configure(with: suite)
         self._driveCopyDisabledValue.configure(with: suite)
         self._photoVolumeMigrationLastShownDate.configure(with: suite)
         self._quotaStateValue.configure(with: suite)
-        self._domainVersionValue.configure(with: suite)
-        self._drivePhotosTagsMigrationValue.configure(with: suite)
         self._drivePhotosTagsMigrationDisabledValue.configure(with: suite)
         self._tagsMigrationFinishedValue.configure(with: suite)
         self._isTagsMigrationSheetShownValue.configure(with: suite)
 
         // Sharing
         self._driveSharingMigrationValue.configure(with: suite)
-        self._driveSharingInvitationsValue.configure(with: suite)
         self._driveSharingExternalInvitationsValue.configure(with: suite)
         self._driveSharingDisabledValue.configure(with: suite)
         self._driveSharingExternalInvitationsDisabledValue.configure(with: suite)
-        self._driveSharingEditingDisabledValue.configure(with: suite)
         self._drivePublicShareEditModeValue.configure(with: suite)
-        self._driveMobileSharingInvitationsAcceptRejectValue.configure(with: suite)
         self._driveShareURLBookmarkingValue.configure(with: suite)
         self._driveShareURLBookmarksDisabledValue.configure(with: suite)
         self._drivePublicShareEditModeDisabledValue.configure(with: suite)
         // Photo tab for b2b user
         self._isB2BUserValue.configure(with: suite)
         self._driveDisablePhotosForB2BValue.configure(with: suite)
-        // ProtonDoc
-        self._driveDocsDisabledValue.configure(with: suite)
         // Drive entitlements
         self._driveDynamicEntitlementConfigurationValue.configure(with: suite)
         self._driveEntitlementsValue.configure(with: suite)
@@ -208,14 +202,6 @@ public class LocalSettings: NSObject {
         // Legacy feature flags we used before migrating to Unleash
         self._ratingIOSDriveValue.configure(with: suite)
         self._driveRatingBoosterValue.configure(with: suite)
-
-        // Computers
-        self._didEnableComputersValue.configure(with: suite)
-        self._driveiOSComputersValue.configure(with: suite)
-        self._driveiOSComputersDisabledValue.configure(with: suite)
-
-        // Refactor
-        self._driveiOSRefreshableBlockDownloadLinkValue.configure(with: suite)
 
         if let sortPreferenceCache = self.sortPreferenceCache {
             nodesSortPreference = SortPreference(rawValue: sortPreferenceCache) ?? SortPreference.default
@@ -239,6 +225,19 @@ public class LocalSettings: NSObject {
         self._didFetchDriveUserSettings.configure(with: suite)
         self._didFetchProtonUserSettings.configure(with: suite)
         self._didFetchB2BStatus.configure(with: suite)
+        // SDK
+        self._driveiOSSDKUploadMainValue.configure(with: suite)
+        self._driveiOSSDKUploadPhotoValue.configure(with: suite)
+        self._driveiOSSDKDownloadMainValue.configure(with: suite)
+        self._driveiOSSDKDownloadPhotoValue.configure(with: suite)
+        self._driveiOSSDKNodeOperationsValue.configure(with: suite)
+        self._driveCryptoEncryptBlocksWithPgpAeadValue.configure(with: suite)
+        self._driveMacSDKUploadMainDisabledValue.configure(with: suite)
+        self._driveMacSDKDownloadMainDisabledValue.configure(with: suite)
+        self._driveMacFileProviderBatchingDisabledValue.configure(with: suite)
+        self._driveDownloadVerificationDisabledValue.configure(with: suite)
+        self._driveUploadVerificationDisabledValue.configure(with: suite)
+
         setDynamicVariables()
     }
 
@@ -255,8 +254,6 @@ public class LocalSettings: NSObject {
         photosBackupNotOlderThan = photosBackupNotOlderThanValue ?? .distantPast
         photosUploadDisabled = photosUploadDisabledValue ?? false
         logsCompressionDisabled = logsCompressionDisabledValue ?? false
-        logCollectionEnabled = driveiOSLogCollection ?? false
-        logCollectionDisabled = driveiOSLogCollectionDisabled ?? false
         debugModeEnabled = debugModeEnabledValue ?? false
         domainReconnectionEnabled = domainReconnectionEnabledValue ?? false
         postMigrationJunkFilesCleanup = postMigrationJunkFilesCleanupValue ?? false
@@ -268,24 +265,17 @@ public class LocalSettings: NSObject {
             defaultHomeTabTag = value
         }
         driveSharingMigration = driveSharingMigrationValue ?? false
-        driveSharingInvitations = driveSharingInvitationsValue ?? false
         driveSharingExternalInvitations = driveSharingExternalInvitationsValue ?? false
         driveSharingDisabled = driveSharingDisabledValue ?? false
         driveSharingExternalInvitationsDisabled = driveSharingExternalInvitationsDisabledValue ?? false
-        driveSharingEditingDisabled = driveSharingEditingDisabledValue ?? false
         drivePublicShareEditMode = drivePublicShareEditModeValue ?? false
-        driveMobileSharingInvitationsAcceptReject = driveMobileSharingInvitationsAcceptRejectValue ?? false
         driveShareURLBookmarking = driveShareURLBookmarkingValue ?? false
         driveShareURLBookmarksDisabled = driveShareURLBookmarksDisabledValue ?? false
         drivePublicShareEditModeDisabled = drivePublicShareEditModeDisabledValue ?? false
         driveDisablePhotosForB2B = driveDisablePhotosForB2BValue ?? false
-        driveDocsDisabled = driveDocsDisabledValue ?? false
-        driveDDKEnabled = driveDDKEnabledValue ?? false
+        driveDDKIntelEnabled = driveDDKIntelEnabledValue ?? false
+        driveDDKDisabled = driveDDKDisabledValue ?? false
         driveMacSyncRecoveryDisabled = driveMacSyncRecoveryDisabledValue ?? false
-        driveMacKeepDownloadedDisabled = driveMacKeepDownloadedDisabledValue ?? false
-        didEnableComputers = didEnableComputersValue ?? false
-        driveiOSComputers = driveiOSComputersValue ?? false
-        driveiOSComputersDisabled = driveiOSComputersDisabledValue ?? false
         docsSheetsEnabled = docsSheetsEnabledValue ?? false
         docsSheetsDisabled = docsSheetsDisabledValue ?? false
         docsCreateNewSheetOnMobileEnabled = docsCreateNewSheetOnMobileEnabledValue ?? false
@@ -298,6 +288,18 @@ public class LocalSettings: NSObject {
         self.driveSettingsDocsCommentsNotificationsEnabled = docsCommentsNotificationsEnabled ?? false
         self.driveSettingsDocsCommentsNotificationsIncludeDocumentName = docsCommentsNotificationsIncludeDocumentName ?? false
         self.driveSettingsPhotoTags = photoTags ?? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        // SDK
+        driveiOSSDKUploadMain = driveiOSSDKUploadMainValue ?? false
+        driveiOSSDKUploadPhoto = driveiOSSDKUploadPhotoValue ?? false
+        driveiOSSDKDownloadMain = driveiOSSDKDownloadMainValue ?? false
+        driveiOSSDKDownloadPhoto = driveiOSSDKDownloadPhotoValue ?? false
+        driveiOSSDKNodeOperations = driveiOSSDKNodeOperationsValue ?? false
+        driveCryptoEncryptBlocksWithPgpAead = driveCryptoEncryptBlocksWithPgpAeadValue ?? false
+        driveMacSDKUploadMainDisabled = driveMacSDKUploadMainDisabledValue ?? false
+        driveMacSDKDownloadMainDisabled = driveMacSDKDownloadMainDisabledValue ?? false
+        driveMacFileProviderBatchingDisabled = driveMacFileProviderBatchingDisabledValue ?? false
+        driveDownloadVerificationDisabled = driveDownloadVerificationDisabledValue ?? false
+        driveUploadVerificationDisabled = driveUploadVerificationDisabledValue ?? false
     }
 
     /// `cleanUserSpecificSettings`
@@ -314,7 +316,6 @@ public class LocalSettings: NSObject {
         self.optOutFromCrashReports = nil
         self.userId = nil
         self.didFetchFeatureFlags = nil
-        self.domainVersionValue = nil
         // self.isOnboardedValue needs no clean up - we only show it for first login ever
         // self.isUpsellShownValue needs no clean up - we only show it once
         // self.isPhotoUpsellShownValue needs no clean up - we only show it once
@@ -332,9 +333,10 @@ public class LocalSettings: NSObject {
         self.debugModeEnabledValue = nil
         self.domainReconnectionEnabledValue = nil
         self.postMigrationJunkFilesCleanupValue = nil
-        self.driveDDKEnabledValue = nil
+        self.driveDDKIntelEnabledValue = nil
+        self.driveDDKDisabledValue = nil
         self.driveMacSyncRecoveryDisabledValue = nil
-        self.driveMacKeepDownloadedDisabledValue = nil
+        self.driveMacAbnormalExitRelaunchDisabledValue = nil
         self.pushNotificationIsEnabledValue = nil
         self.keepScreenAwakeBannerHasDismissed = nil
         self.didShowPhotosNotification = nil
@@ -342,13 +344,10 @@ public class LocalSettings: NSObject {
         self.showPhotoUpsellInNextLaunch = nil
         self.driveDisablePhotosForB2BValue = nil
         self.driveSharingMigrationValue = nil
-        self.driveSharingInvitationsValue = nil
         self.driveSharingExternalInvitationsValue = nil
         self.driveSharingDisabledValue = nil
         self.driveSharingExternalInvitationsDisabledValue = nil
-        self.driveSharingEditingDisabledValue = nil
         self.drivePublicShareEditModeValue = nil
-        self.driveMobileSharingInvitationsAcceptRejectValue = nil
         self.driveShareURLBookmarkingValue = nil
         self.driveShareURLBookmarksDisabledValue = nil
         self.drivePublicShareEditModeDisabledValue = nil
@@ -357,10 +356,6 @@ public class LocalSettings: NSObject {
         self.driveEntitlementsUpdatedTimeValue = nil
         self.ratingIOSDriveValue = nil
         self.driveRatingBoosterValue = nil
-        self.driveiOSRefreshableBlockDownloadLinkValue = nil
-        self.didEnableComputersValue = nil
-        self.driveiOSComputersValue = nil
-        self.driveiOSComputersDisabledValue = nil
         self.driveiOSDebugModeValue = nil
         if cleanUserSpecificSettings {
             promotedNewFeaturesValue = nil
@@ -368,12 +363,23 @@ public class LocalSettings: NSObject {
             self.defaultHomeTabTagValue = 1
             self.didFetchB2BStatus = nil
             isTagsMigrationSheetShownValue = nil
+            //TODO(SDK) probably we should prevent cleaning up of other FFs
+            // SDK
+            driveiOSSDKUploadMainValue = nil
+            driveiOSSDKUploadPhotoValue = nil
+            driveiOSSDKDownloadMainValue = nil
+            driveiOSSDKDownloadPhotoValue = nil
+            driveiOSSDKNodeOperationsValue = nil
+            driveMacSDKUploadMainDisabledValue = nil
+            driveMacSDKDownloadMainDisabledValue = nil
+            driveMacFileProviderBatchingDisabledValue = nil
+            driveCryptoEncryptBlocksWithPgpAeadValue = nil
+            driveDownloadVerificationDisabledValue = nil
+            driveUploadVerificationDisabledValue = nil
         }
-        driveAlbumsDisabledValue = nil
         driveCopyDisabledValue = nil
         photoVolumeMigrationLastShownDate = nil
         driveChecklistStatusDataValue = nil
-        drivePhotosTagsMigrationValue = nil
         drivePhotosTagsMigrationDisabledValue = nil
         tagsMigrationFinishedValue = nil
         self.layout = nil
@@ -383,7 +389,6 @@ public class LocalSettings: NSObject {
         self.docsCommentsNotificationsEnabled = nil
         self.docsCommentsNotificationsIncludeDocumentName = nil
         self.photoTags = nil
-
         self.didFetchDriveUserSettings = nil
         self.didFetchProtonUserSettings = nil
         setDynamicVariables()
@@ -497,21 +502,14 @@ public class LocalSettings: NSObject {
         }
     }
 
-    @objc public dynamic var logCollectionEnabled: Bool = false {
-        willSet {
-            driveiOSLogCollection = newValue
-        }
-    }
-
-    @objc public dynamic var logCollectionDisabled: Bool = false {
-        willSet {
-            driveiOSLogCollectionDisabled = newValue
-        }
-    }
-
     public var driveiOSDebugMode: Bool {
         get { driveiOSDebugModeValue ?? false }
         set { driveiOSDebugModeValue = newValue }
+    }
+
+    public var driveiOSPaymentsV2: Bool {
+        get { driveiOSPaymentsV2Value ?? false }
+        set { driveiOSPaymentsV2Value = newValue }
     }
 
     @objc public dynamic var defaultHomeTabTag: Int = 1 {
@@ -545,10 +543,6 @@ public class LocalSettings: NSObject {
         willSet { driveSharingMigrationValue = newValue }
     }
 
-    @objc public dynamic var driveSharingInvitations: Bool = false {
-        willSet { driveSharingInvitationsValue = newValue }
-    }
-
     @objc public dynamic var driveSharingExternalInvitations: Bool = false {
         willSet { driveSharingExternalInvitationsValue = newValue }
     }
@@ -561,16 +555,8 @@ public class LocalSettings: NSObject {
         willSet { driveSharingExternalInvitationsDisabledValue = newValue }
     }
 
-    @objc public dynamic var driveSharingEditingDisabled: Bool = false {
-        willSet { driveSharingEditingDisabledValue = newValue }
-    }
-
     @objc public dynamic var drivePublicShareEditMode: Bool = false {
         willSet { drivePublicShareEditModeValue = newValue }
-    }
-
-    @objc public dynamic var driveMobileSharingInvitationsAcceptReject: Bool = false {
-        willSet { driveMobileSharingInvitationsAcceptRejectValue = newValue }
     }
 
     @objc public dynamic var driveShareURLBookmarking: Bool = false {
@@ -599,13 +585,14 @@ public class LocalSettings: NSObject {
         willSet { driveDisablePhotosForB2BValue = newValue }
     }
 
-    public var driveDocsDisabled: Bool = false {
-        willSet { driveDocsDisabledValue = newValue }
+    public var driveDDKIntelEnabled: Bool {
+        get { driveDDKIntelEnabledValue ?? false }
+        set { driveDDKIntelEnabledValue = newValue }
     }
 
-    public var driveDDKEnabled: Bool {
-        get { driveDDKEnabledValue ?? false }
-        set { driveDDKEnabledValue = newValue }
+    public var driveDDKDisabled: Bool {
+        get { driveDDKDisabledValue ?? false }
+        set { driveDDKDisabledValue = newValue }
     }
 
     public var driveMacSyncRecoveryDisabled: Bool {
@@ -613,9 +600,19 @@ public class LocalSettings: NSObject {
         set { driveMacSyncRecoveryDisabledValue = newValue }
     }
 
-    public var driveMacKeepDownloadedDisabled: Bool {
-        get { driveMacKeepDownloadedDisabledValue ?? false }
-        set { driveMacKeepDownloadedDisabledValue = newValue }
+    public var driveMacPromoBannerDisabled: Bool {
+        get { driveMacPromoBannerDisabledValue ?? false }
+        set { driveMacPromoBannerDisabledValue = newValue }
+    }
+
+    public var driveMacGradualRolloutChannelEnabled: Bool {
+        get { driveMacGradualRolloutChannelEnabledValue ?? false }
+        set { driveMacGradualRolloutChannelEnabledValue = newValue }
+    }
+
+    public var driveMacAbnormalExitRelaunchDisabled: Bool {
+        get { driveMacAbnormalExitRelaunchDisabledValue ?? false }
+        set { driveMacAbnormalExitRelaunchDisabledValue = newValue }
     }
 
     public var ratingIOSDrive: Bool {
@@ -633,45 +630,15 @@ public class LocalSettings: NSObject {
         set { driveDynamicEntitlementConfigurationValue = newValue }
     }
 
-    public var driveiOSRefreshableBlockDownloadLink: Bool {
-        get { driveiOSRefreshableBlockDownloadLinkValue ?? false }
-        set { driveiOSRefreshableBlockDownloadLinkValue = newValue }
-    }
-
-    public var driveAlbumsDisabled: Bool {
-        get { driveAlbumsDisabledValue ?? false }
-        set { driveAlbumsDisabledValue = newValue }
-    }
-
     public var driveCopyDisabled: Bool {
         get { driveCopyDisabledValue ?? false }
         set { driveCopyDisabledValue = newValue }
-    }
-
-    public var driveiOSComputers: Bool {
-        get { driveiOSComputersValue ?? false }
-        set { driveiOSComputersValue = newValue }
-    }
-
-    public var driveiOSComputersDisabled: Bool {
-        get { driveiOSComputersDisabledValue ?? false }
-        set { driveiOSComputersDisabledValue = newValue }
-    }
-
-    public var didEnableComputers: Bool {
-        get { didEnableComputersValue ?? false }
-        set { didEnableComputersValue = newValue }
     }
 
     // If there is no data about the checklist status, return empty data that will be interpreted as not available.
     @objc public dynamic var driveChecklistStatusData: Data {
         get { driveChecklistStatusDataValue ?? Data() }
         set { driveChecklistStatusDataValue = newValue }
-    }
-
-    public var drivePhotosTagsMigration: Bool {
-        get { drivePhotosTagsMigrationValue ?? false }
-        set { drivePhotosTagsMigrationValue = newValue }
     }
 
     public var drivePhotosTagsMigrationDisabled: Bool {
@@ -736,6 +703,61 @@ public class LocalSettings: NSObject {
     @objc public dynamic var driveSettingsPhotoTags: [Int] {
         get { photoTags ?? [] }
         set { photoTags = newValue }
+    }
+
+    public var driveiOSSDKUploadMain: Bool {
+        get { driveiOSSDKUploadMainValue ?? false }
+        set { driveiOSSDKUploadMainValue = newValue }
+    }
+
+    public var driveiOSSDKUploadPhoto: Bool {
+        get { driveiOSSDKUploadPhotoValue ?? false }
+        set { driveiOSSDKUploadPhotoValue = newValue }
+    }
+
+    public var driveiOSSDKDownloadMain: Bool {
+        get { driveiOSSDKDownloadMainValue ?? false }
+        set { driveiOSSDKDownloadMainValue = newValue }
+    }
+
+    public var driveiOSSDKDownloadPhoto: Bool {
+        get { driveiOSSDKDownloadPhotoValue ?? false }
+        set { driveiOSSDKDownloadPhotoValue = newValue }
+    }
+
+    public var driveiOSSDKNodeOperations: Bool {
+        get { driveiOSSDKNodeOperationsValue ?? false }
+        set { driveiOSSDKNodeOperationsValue = newValue }
+    }
+
+    public var driveCryptoEncryptBlocksWithPgpAead: Bool {
+        get { driveCryptoEncryptBlocksWithPgpAeadValue ?? false }
+        set { driveCryptoEncryptBlocksWithPgpAeadValue = newValue }
+    }
+
+    public var driveMacSDKUploadMainDisabled: Bool {
+        get { driveMacSDKUploadMainDisabledValue ?? false }
+        set { driveMacSDKUploadMainDisabledValue = newValue }
+    }
+
+    public var driveMacSDKDownloadMainDisabled: Bool {
+        get { driveMacSDKDownloadMainDisabledValue ?? false }
+        set { driveMacSDKDownloadMainDisabledValue = newValue }
+    }
+
+    public var driveMacFileProviderBatchingDisabled: Bool {
+        get { driveMacFileProviderBatchingDisabledValue ?? false }
+        set { driveMacFileProviderBatchingDisabledValue = newValue }
+    }
+
+    public var driveDownloadVerificationDisabled: Bool {
+        get { driveDownloadVerificationDisabledValue ?? false }
+        set { driveDownloadVerificationDisabledValue = newValue }
+    }
+
+    public var driveUploadVerificationDisabled: Bool {
+        get { driveUploadVerificationDisabledValue ?? false }
+        set { driveUploadVerificationDisabledValue = newValue }
     }
 }
 

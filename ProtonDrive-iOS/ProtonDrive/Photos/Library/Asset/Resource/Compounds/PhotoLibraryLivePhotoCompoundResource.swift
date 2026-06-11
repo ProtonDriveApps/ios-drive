@@ -40,6 +40,7 @@ final class PhotoLibraryLivePhotoCompoundResource: PhotoLibraryCompoundResource 
     }
 
     func execute(with identifier: PhotoIdentifier, asset: PHAsset) async throws -> [PhotoAssetCompound] {
+        Log.info("Load live photo asset \(identifier.cloudIdentifier)", domain: .photosProcessing)
         return [
             try await liveCompoundResource.getOriginal(with: identifier, asset: asset),
             try? await liveCompoundResource.getModified(with: identifier, asset: asset)

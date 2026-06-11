@@ -69,17 +69,13 @@ final class PhotoContentLoadStrategy: PhotoContentLoadStrategyProtocol {
     }
     
     private func getChildrenInfo(from mainPhoto: Photo) -> (Bool, Int) {
-        managedObjectContext.performAndWait {
+        let (revisions, areAllUploaded) = managedObjectContext.performAndWait {
             let children = Array(mainPhoto.children)
             let areUploaded = children.allSatisfy { $0.state == .active }
-            let uncachedNum = children.filter { !$0.photoRevision.blocksAreValid() }.count
-            return (areUploaded, uncachedNum)
+            return (children.map(\.photoRevision), areUploaded)
         }
-    }
-    
-    private func isCached(photo: Photo) -> Bool {
-        return photo.moc?.performAndWait {
-            photo.photoRevision.blocksAreValid()
-        } ?? false
+
+        let uncachedNum = revisions.filter { !$0.isAvailableLocally() }.count
+        return (areAllUploaded, uncachedNum)
     }
 }

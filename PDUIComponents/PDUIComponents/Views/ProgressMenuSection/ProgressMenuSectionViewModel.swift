@@ -24,8 +24,8 @@ import UIKit
 #endif
 
 #if os(iOS)
-public class ProgressMenuSectionViewModelGeneric<ProgressProviderType>: ObservableObject where ProgressProviderType: NSObject, ProgressProviderType: ProgressFractionCompletedProvider {
-   
+public class ProgressMenuSectionViewModelGeneric: ObservableObject {
+
     enum State {
         case initial, inProgress, finished
     }
@@ -36,13 +36,13 @@ public class ProgressMenuSectionViewModelGeneric<ProgressProviderType>: Observab
     let iconName: String
     
     private var progressCancellable: AnyCancellable!
-    private var progressProvider: ProgressProviderType
+    private var progressProvider: ProgressFractionCompletedProvider
     private lazy var progress: Progress = .init(totalUnitCount: 100)
     private let steadyTitle: String
     private let inProgressTitle: String
     private let threshold = 0.01 // update Published stuff only when Progress increment exceeds this value
     
-    public init(progressProvider: ProgressProviderType, steadyTitle: String, inProgressTitle: String, iconName: String) {
+    public init(progressProvider: ProgressFractionCompletedProvider, steadyTitle: String, inProgressTitle: String, iconName: String) {
         self.progressProvider = progressProvider
         self.title = steadyTitle
         self.steadyTitle = steadyTitle
@@ -56,24 +56,42 @@ public class ProgressMenuSectionViewModelGeneric<ProgressProviderType>: Observab
         progressView.progressTintColor = ColorProvider.BrandNorm
         progressView.trackTintColor = .clear
         
-        self.progressCancellable = self.progressProvider.publisher(for: \.fractionCompleted)
+        self.progressCancellable = self.progressProvider.progressState
         .receive(on: DispatchQueue.main)
-        .filter { [unowned self] in
-            abs(self.progressCompleted - $0) >= self.threshold
-        }.sink { [unowned self] completed in
-            self.progress.completedUnitCount = Int64(completed * 100)
-            self.progressCompleted = completed
-            self.state = (self.threshold ..< 1.0 - self.threshold).contains(completed) ? .inProgress : .finished
-            self.title = self.state == .inProgress ? self.inProgressTitle : self.steadyTitle
+        .sink { [weak self] state in
+            guard let self else { return }
+            switch state {
+            case let .progress(completed):
+                self.progress.completedUnitCount = Int64(completed * 100)
+                self.progressCompleted = completed
+                let isFinish = self.progress.fractionCompleted >= 0.9999
+                self.state = isFinish ? .finished : .inProgress
+                self.title = self.state == .inProgress ? self.inProgressTitle : self.steadyTitle
+            case .inactive:
+                self.state = .finished
+                self.title = self.steadyTitle
+            }
         }
         
         return progressView
     }
 }
 
-@objc public protocol ProgressFractionCompletedProvider: AnyObject {
-    @objc dynamic var fractionCompleted: Double { get }
+public enum ProgressState {
+    case progress(Double)
+    case inactive
+
+    public var value: Double? {
+        switch self {
+        case .progress(let value):
+            return value
+        case .inactive:
+            return nil
+        }
+    }
 }
 
-extension Progress: ProgressFractionCompletedProvider {}
+public protocol ProgressFractionCompletedProvider: AnyObject {
+    var progressState: AnyPublisher<ProgressState, Never> { get }
+}
 #endif

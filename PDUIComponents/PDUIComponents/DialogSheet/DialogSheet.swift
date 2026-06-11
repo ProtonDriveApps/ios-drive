@@ -67,14 +67,9 @@ private struct DialogContainerModifier<Item: Identifiable>: ViewModifier {
     }
 
     private func useCompactLayout() -> Bool {
-        // horizontalSizeClass on iPhone always compact
-        guard UIDevice.current.isIpad else { return true }
-        if horizontalSizeClass == .regular { return false }
-
-        // At least on iPad Pro(12.9), iOS 18.0+
-        // The horizontalSizeClass reports is incorrect, report compact rather than regular
-        let screenWidth = UIScreen.main.bounds.width
-        return currentWidth < screenWidth
+        // iPhone uses compact layout
+        // iPad uses alert
+        return !UIDevice.current.isIpad
     }
 
     @ViewBuilder

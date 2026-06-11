@@ -50,8 +50,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/ProtonMail/protoncore_ios.git",
       "state" : {
-        "revision" : "d72ee3f8ec940f15374f4d98e3e2ece5340ac419",
-        "version" : "32.7.1"
+        "revision" : "0fdf4c672d898ab8b9048c3b1c36c44a047dd694",
+        "version" : "33.2.0"
       }
     },
     {
@@ -77,8 +77,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/getsentry/sentry-cocoa.git",
       "state" : {
-        "revision" : "56fb914f14922efeda6c744c0125696552b6d2b5",
-        "version" : "8.53.1"
+        "revision" : "ca92efeb24b10052cd2a79e5205f42c5a16770ec",
+        "version" : "8.53.2"
       }
     },
     {

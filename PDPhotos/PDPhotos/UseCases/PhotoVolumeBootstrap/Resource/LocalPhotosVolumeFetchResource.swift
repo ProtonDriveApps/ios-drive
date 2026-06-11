@@ -20,7 +20,7 @@ import PDCore
 
 enum LocalPhotosVolumeResult {
     case photoVolume(VolumeID)
-    case legacyPhotoShare(VolumeID)
+    case legacyPhotoShare
     case notEnoughData
 }
 
@@ -45,9 +45,9 @@ final class LocalPhotosVolumeFetchResource: LocalPhotosVolumeFetchResourceProtoc
             // Check if old photo share exists
             return try managedObjectContext.performAndWait {
                 let shares = try storageManager.fetchShares(moc: managedObjectContext)
-                if let legacyPhotoShare = shares.first(where: { $0.type == .photos }) {
+                if shares.contains(where: { $0.type == .photos }) {
                     // Old type photo share exists
-                    return .legacyPhotoShare(legacyPhotoShare.volumeID)
+                    return .legacyPhotoShare
                 } else {
                     // There's no photo share in local DB
                     return .notEnoughData

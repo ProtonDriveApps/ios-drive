@@ -21,7 +21,6 @@ import PDCore
 import PDCoreIOS
 
 final class NotificationsPermissionsCoordinator {
-    private let windowScene: UIWindowScene
     private let controller: NotificationsPermissionsFlowController
     private let viewControllerFactory: (() -> UIViewController)
     private let transparentViewControllerFactory: (() -> UIViewController)
@@ -32,13 +31,11 @@ final class NotificationsPermissionsCoordinator {
     private let type: NotificationsPermissionsType
     
     init(
-        windowScene: UIWindowScene,
         controller: NotificationsPermissionsFlowController,
         type: NotificationsPermissionsType,
         viewControllerFactory: @escaping (() -> UIViewController),
         transparentViewControllerFactory: @escaping (() -> UIViewController)
     ) {
-        self.windowScene = windowScene
         self.controller = controller
         self.viewControllerFactory = viewControllerFactory
         self.transparentViewControllerFactory = transparentViewControllerFactory
@@ -76,6 +73,10 @@ final class NotificationsPermissionsCoordinator {
     }
     
     private func open() {
+        guard let windowScene = UIApplication.shared.getActiveWindowScene() else {
+            return
+        }
+
         // Needs to be in a separate window because other modals can be triggered at the same time.
         previousWindow = windowScene.keyWindow
         let window = UIWindow(windowScene: windowScene)

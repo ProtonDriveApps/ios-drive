@@ -24,4 +24,5 @@ protocol ThumbnailOperationsFactory {
     typealias Completion = (Result) -> Void
 
     func makeThumbnailModel(forFileWithID id: Identifier) throws -> ThumbnailIdentifiableOperation
+    func makeThumbnailModelAsync(forFileWithID id: Identifier) async throws -> ThumbnailIdentifiableOperation
 }

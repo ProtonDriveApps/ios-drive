@@ -90,6 +90,8 @@ struct PhotosActionView<ViewModel: PhotosActionViewModelProtocol>: View {
             return .shareMultiple
         case .save:
             return .save
+        case .removeFromAlbum:
+            return .removeFromAlbum
         }
     }
 
@@ -117,6 +119,8 @@ struct PhotosActionView<ViewModel: PhotosActionViewModelProtocol>: View {
             return .shareMultiple
         case .save:
             return .save
+        case .removeFromAlbum:
+            return .removeFromAlbum
         default:
             return nil
         }
@@ -127,7 +131,7 @@ struct PhotosActionView<ViewModel: PhotosActionViewModelProtocol>: View {
         if model == .more, let moreItems = viewModel.actions.more {
             let items: [ActionBarButtonViewModel] = moreItems.map(makeItem)
             ForEach(items) { item in
-                Button {
+                Button(role: item.isDestructive ? .destructive : nil) {
                     makeAction(from: item).map(viewModel.handle)
                 } label: {
                     HStack {

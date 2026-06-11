@@ -17,19 +17,24 @@
 
 import Foundation
 import PDCore
+import PDCoreIOS
+import ProtonCoreFeatureFlags
 
 final class FeatureFlagsAwarePopulateViewModelDecorator: PopulateViewModelProtocol {
+    let connectionResource: ConnectionStateResource
     let localSettings: LocalSettings
     let viewModel: PopulateViewModelProtocol
     let featureFlagsRepository: FeatureFlagsStartingRepository
     let entitlementsManager: EntitlementsManagerProtocol
 
     init(
+        connectionResource: ConnectionStateResource,
         localSettings: LocalSettings,
         viewModel: PopulateViewModelProtocol,
         featureFlagsRepository: FeatureFlagsStartingRepository,
         entitlementsManager: EntitlementsManagerProtocol
     ) {
+        self.connectionResource = connectionResource
         self.localSettings = localSettings
         self.viewModel = viewModel
         self.featureFlagsRepository = featureFlagsRepository
@@ -37,28 +42,32 @@ final class FeatureFlagsAwarePopulateViewModelDecorator: PopulateViewModelProtoc
     }
 
     func populate() async throws {
-        if localSettings.didFetchFeatureFlags == true {
-            // Start loading feature flags in the background
-            async let _ = await updateCachedFeatureFlagsAndEntitlement()
+        try await fetchFeatureFlags()
+        try await viewModel.populate()
+    }
 
-            // Call viewModel.viewDidLoad() as soon as possible
-            try await viewModel.populate()
+    private func fetchFeatureFlags() async throws {
+        if localSettings.didFetchFeatureFlags == true {
+            Task.detached { [weak self] in
+                await measure(message: "Bootstrap feature flag in background", domain: .applicationBootstrap) {
+                    try? await self?.updateFeatureFlags(hasCached: true)
+                }
+            }
         } else {
-            // Call featureFlagsRepository.startAsync() before viewModel.viewDidLoad() the first time
-            try await featureFlagsRepository.startAsync()
-            localSettings.didFetchFeatureFlags = true
-            try await updateEntitlement()
-            try await viewModel.populate()
+            try await measure(message: "Bootstrap feature flag", domain: .applicationBootstrap) {
+                // Call featureFlagsRepository.startAsync() before viewModel.viewDidLoad() the first time
+                try await updateFeatureFlags(hasCached: false)
+            }
         }
     }
-    
-    private func updateCachedFeatureFlagsAndEntitlement() async {
-        do {
-            try await featureFlagsRepository.startAsync()
-            try await updateEntitlement()
-        } catch {
-            localSettings.driveEntitlementsValue = nil
-            localSettings.driveEntitlementsUpdatedTimeValue = nil
+
+    private func updateFeatureFlags(hasCached: Bool) async throws {
+        guard connectionResource.currentState.isReachable else {
+            throw NetworkStateError.deviceIsOffline
+        }
+        try await featureFlagsRepository.startAsync()
+        if hasCached == false {
+            localSettings.didFetchFeatureFlags = true
         }
     }
 

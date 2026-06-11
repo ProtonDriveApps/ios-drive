@@ -23,6 +23,7 @@ import PDClient
 
 protocol PhotoXAttrBatchBackfiller {
     func execute(reports: [MigrationAnalyzeReport]) async throws
+    func send(identifier: AnyVolumeIdentifier, extendedAttributes: ExtendedAttributes) async
 }
 
 final class DefaultPhotoXAttrBatchBackfiller: PhotoXAttrBatchBackfiller {
@@ -59,7 +60,7 @@ final class DefaultPhotoXAttrBatchBackfiller: PhotoXAttrBatchBackfiller {
         }
     }
 
-    private func send(identifier: AnyVolumeIdentifier, extendedAttributes: ExtendedAttributes) async {
+    func send(identifier: AnyVolumeIdentifier, extendedAttributes: ExtendedAttributes) async {
         do {
             guard let properties = try await keyReader.read(photoIdentifier: identifier, in: managedContext) else {
                 Log.warning("Can't get revision properties, photo \(identifier) doesn't exist", domain: .exifBackfill)

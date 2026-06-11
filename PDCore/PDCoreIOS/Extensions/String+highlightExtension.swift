@@ -24,7 +24,7 @@ extension String {
         let ranges = nonIntersectingRanges(of: keywords, in: self)
 
         for range in ranges {
-            let nsRange = NSRange(range, in: self.lowercased())
+            let nsRange = NSRange(range, in: self)
             stringToHighlight.addAttribute(.foregroundColor, value: highlightColor, range: nsRange)
         }
 
@@ -34,8 +34,6 @@ extension String {
     /// Ranges returned by this method are guaranteed not to overlap.
     /// Overlapping ranges are not filtered out, but merged, so all keywords are still fully covered.
     private func nonIntersectingRanges(of keywords: [String], in text: String) -> [Range<String.Index>] {
-        let text = text.lowercased()
-        let keywords = keywords.map { $0.lowercased() }
         var ranges = [Range<String.Index>]()
 
         for keyword in keywords {
@@ -43,6 +41,7 @@ extension String {
 
             while let nextRange = text.range(
                 of: keyword,
+                options: [.caseInsensitive],
                 range: startingPosition..<text.endIndex
             ) {
                 ranges.append(nextRange)

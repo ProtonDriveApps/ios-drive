@@ -37,7 +37,7 @@ public struct ProtonFileOpeningFactory {
 
     public func makeAuthenticatedURLInteractor(tower: Tower, authenticator: Authenticator) -> ProtonFileAuthenticatedDataFacadeProtocol {
         let selectorRepository = ChildSessionSelectorRepository(sessionStorage: tower.sessionVault, authenticator: authenticator)
-        let sessionInteractor = ProtonFileAuthenticatedWebSessionInteractor(sessionStore: tower.sessionVault, selectorRepository: selectorRepository, encryptionResource: CryptoKitAESGCMEncryptionResource(), encodingResource: FoundationEncodingResource())
+        let sessionInteractor = AuthenticatedWebSessionInteractor(sessionStore: tower.sessionVault, selectorRepository: selectorRepository, encryptionResource: CryptoKitAESGCMEncryptionResource(), encodingResource: FoundationEncodingResource())
         let urlFactory = ProtonFileAuthenticatedURLFactory(configuration: tower.api.configuration, nonAuthenticatedURLFactory: makeURLFactory(tower: tower))
         let authenticatedURLInteractor = ProtonFileAuthenticatedDataInteractor(sessionInteractor: sessionInteractor, urlFactory: urlFactory)
         return ProtonFileAuthenticatedDataFacade(interactor: authenticatedURLInteractor)

@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDClient
+import CoreData
 
 class NodeScanner {
 
@@ -27,12 +28,18 @@ class NodeScanner {
         self.storage = storage
     }
 
-    public func scanNode(_ identifier: NodeIdentifier) async throws {
-        let context = storage.backgroundContext
+    public func scanNode(_ identifier: NodeIdentifier, moc: NSManagedObjectContext) async throws {
         let node = try await client.getNode(shareID: identifier.shareID, nodeID: identifier.nodeID)
-        try await context.perform {
-            self.storage.updateLink(node, using: context)
-            try context.saveOrRollback()
+        let parentId = node.parentLinkID.map { AnyVolumeIdentifier(id: $0, volumeID: node.volumeID) }
+        try await moc.perform { [weak self, moc, node] in
+            #if os(iOS)
+            // Validate that parent is in DB. On iOS, we should not otherwise continue processing such node.
+            if let parentId {
+                _ = try Node.fetchOrThrow(identifier: parentId, allowSubclasses: true, in: moc)
+            }
+            #endif
+            self?.storage.updateLink(node, using: moc)
+            try moc.saveOrRollback()
         }
     }
 

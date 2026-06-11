@@ -35,13 +35,14 @@ extension KeyPair {
 
 extension KeyPair {
     public init?(addressKey: AddressManager.AddressKey) {
-        guard let publicKey = try? addressKey.publicKey(),
-              let passphrase = try? SessionVault.current.addressPassphrase(for: addressKey) else {
+        do {
+            self.publicKey = try addressKey.publicKey()
+            self.privateKey = addressKey.privateKey
+            self.passphrase = try SessionVault.current.addressPassphrase(for: addressKey)
+        } catch {
+            Log.error("Initialize KeyPair failed", error: error, domain: .sessionManagement)
             return nil
         }
-        self.publicKey = publicKey
-        self.privateKey = addressKey.privateKey
-        self.passphrase = passphrase
     }
 }
 

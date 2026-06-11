@@ -54,12 +54,12 @@ public struct GetShareBootstrapEndpoint: Endpoint {
         public let key: String
         public let passphrase: String
         public let passphraseSignature: String
-        public let addressID: String
-        public let addressKeyID: String
+        public let addressID: String?
+        public var addressKeyID: String?
         public let memberships: [Membership]
         public let rootLinkRecoveryPassphrase: String?
 
-        public init(code: Int, shareID: String, volumeID: String, type: Int, state: Int, creator: String, locked: Bool?, createTime: Int?, modifyTime: Int?, linkID: String, linkType: LinkType, key: String, passphrase: String, passphraseSignature: String, addressID: String, addressKeyID: String, memberships: [Membership], rootLinkRecoveryPassphrase: String?) {
+        public init(code: Int, shareID: String, volumeID: String, type: Int, state: Int, creator: String, locked: Bool?, createTime: Int?, modifyTime: Int?, linkID: String, linkType: LinkType, key: String, passphrase: String, passphraseSignature: String, addressID: String?, addressKeyID: String?, memberships: [Membership], rootLinkRecoveryPassphrase: String?) {
             self.code = code
             self.shareID = shareID
             self.volumeID = volumeID

@@ -48,7 +48,11 @@ public final class LocalPhotoAssetsStorageConstraintInteractor: PhotoAssetsStora
     private func subscribeToUpdates() {
         resource.size
             .map { size in
-                size > Self.photosAssetsMaximalFolderSize
+                let isConstrained = size > Self.photosAssetsMaximalFolderSize
+                if isConstrained {
+                    Log.debug("Pending uploading size is too big: \(size)", domain: .storage)
+                }
+                return isConstrained
             }
             .removeDuplicates()
             .sink { [weak self] isConstrained in

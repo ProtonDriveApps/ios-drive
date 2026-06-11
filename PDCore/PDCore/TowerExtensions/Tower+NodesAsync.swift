@@ -16,13 +16,14 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import CoreData
 
 // MARK: - Async functions
 extension Tower {
 
-    public func createFolder(named name: String, under parent: Folder) async throws -> Folder {
+    public func createFolder(named name: String, under parent: Folder, moc: NSManagedObjectContext) async throws -> Folder {
         return try await withCheckedThrowingContinuation { continuation in
-            createFolder(named: name, under: parent) { result in
+            createFolder(named: name, under: parent, moc: moc) { result in
                 switch result {
                 case .success(let folder):
                     continuation.resume(returning: folder)
@@ -33,9 +34,9 @@ extension Tower {
         }
     }
 
-    public func rename(node: NodeIdentifier, cleartextName newName: String) async throws -> Node {
+    public func rename(node: NodeIdentifier, cleartextName newName: String, moc: NSManagedObjectContext) async throws -> Node {
         return try await withCheckedThrowingContinuation { continuation in
-            rename(node: node, cleartextName: newName) { result in
+            rename(node: node, cleartextName: newName, moc: moc) { result in
                 switch result {
                 case .success(let node):
                     continuation.resume(returning: node)
@@ -46,9 +47,9 @@ extension Tower {
         }
     }
 
-    public func move(nodeID nodeIdentifier: NodeIdentifier, under newParent: Folder, withNewName newName: String? = nil) async throws -> Node {
+    public func move(nodeID nodeIdentifier: NodeIdentifier, under newParent: Folder, withNewName newName: String? = nil, moc: NSManagedObjectContext) async throws -> Node {
         return try await withCheckedThrowingContinuation { continuation in
-            move(nodeID: nodeIdentifier, under: newParent, with: newName) { result in
+            move(nodeID: nodeIdentifier, under: newParent, with: newName, moc: moc) { result in
                 switch result {
                 case .success(let node):
                     return continuation.resume(returning: node)
@@ -59,9 +60,9 @@ extension Tower {
         }
     }
     
-    public func delete(nodeID nodeIdentifier: NodeIdentifier) async throws {
+    public func delete(nodeID nodeIdentifier: NodeIdentifier, moc: NSManagedObjectContext) async throws {
         return try await withCheckedThrowingContinuation { continuation in
-            delete([nodeIdentifier]) { result in
+            delete([nodeIdentifier], moc: moc) { result in
                 switch result {
                 case .success:
                     return continuation.resume(with: .success)

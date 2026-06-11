@@ -15,8 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import CoreData
 import PDClient
 
 public protocol ThumbnailsUpdateRepository {
-    func update(thumbnails: [ThumbnailURL]) throws
+    var backgroundContext: NSManagedObjectContext { get }
+    func update(thumbnails: [ThumbnailURL], moc: NSManagedObjectContext) throws
 }

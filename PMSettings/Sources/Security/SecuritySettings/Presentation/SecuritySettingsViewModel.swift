@@ -22,6 +22,8 @@
 import Foundation
 
 final class SecuritySettingsViewModel: PMSettingsViewModelProtocol {
+    var sectionsDidUpdate: ((Int) -> Void)?
+    
     let sections: [PMSettingsSectionViewModel]
     var onLoadFinished: (() -> Void)?
     var footer: String?

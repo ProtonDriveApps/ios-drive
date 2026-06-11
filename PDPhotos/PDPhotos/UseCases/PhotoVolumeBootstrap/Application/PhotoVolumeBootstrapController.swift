@@ -22,7 +22,6 @@ import PDCoreIOS
 enum PhotoVolumeBootstrapState: Equatable {
     case uninitialized
     case inProgress
-    case migrationInProgress
     case failed(String)
     case finished(PhotoStreamConfiguration)
 }
@@ -33,7 +32,6 @@ protocol PhotoVolumeBootstrapControllerProtocol {
 }
 
 final class PhotoVolumeBootstrapController: PhotoVolumeBootstrapControllerProtocol {
-    private let migrationController: PhotoVolumeMigrationControllerProtocol
     private let featureFlagsController: FeatureFlagsControllerProtocol
     private let errorController: ErrorSetControllerProtocol
     private let facade: PhotoVolumeBootstrapFacade
@@ -44,8 +42,7 @@ final class PhotoVolumeBootstrapController: PhotoVolumeBootstrapControllerProtoc
         stateSubject.eraseToAnyPublisher()
     }
 
-    init(migrationController: PhotoVolumeMigrationControllerProtocol, facade: PhotoVolumeBootstrapFacade, featureFlagsController: FeatureFlagsControllerProtocol, errorController: ErrorSetControllerProtocol) {
-        self.migrationController = migrationController
+    init(facade: PhotoVolumeBootstrapFacade, featureFlagsController: FeatureFlagsControllerProtocol, errorController: ErrorSetControllerProtocol) {
         self.facade = facade
         self.featureFlagsController = featureFlagsController
         self.errorController = errorController
@@ -54,10 +51,9 @@ final class PhotoVolumeBootstrapController: PhotoVolumeBootstrapControllerProtoc
 
     func bootstrap() {
         switch stateSubject.value {
-        case .uninitialized, .failed, .migrationInProgress:
+        case .uninitialized, .failed:
             stateSubject.send(.inProgress)
-            let canCreatePhotoVolume = featureFlagsController.hasAlbums
-            let input = PhotoVolumeBootstrapInput(canCreatePhotoVolume: canCreatePhotoVolume)
+            let input = PhotoVolumeBootstrapInput(canCreatePhotoVolume: true)
             facade.execute(with: input)
         case .inProgress, .finished:
             break
@@ -68,18 +64,6 @@ final class PhotoVolumeBootstrapController: PhotoVolumeBootstrapControllerProtoc
         facade.result
             .sink { [weak self] result in
                 self?.handle(result)
-            }
-            .store(in: &cancellables)
-
-        migrationController.state
-            .sink { [weak self] state in
-                self?.handleMigrationUpdate(state)
-            }
-            .store(in: &cancellables)
-
-        migrationController.errorPublisher
-            .sink { [weak self] error in
-                self?.stateSubject.send(.failed(error.localizedDescription))
             }
             .store(in: &cancellables)
     }
@@ -97,25 +81,8 @@ final class PhotoVolumeBootstrapController: PhotoVolumeBootstrapControllerProtoc
     private func handleOutput(_ result: PhotoVolumeBootstrapOutput) {
         switch result {
         case let .photoVolume(volumeId):
-            let configuration = PhotoStreamConfiguration(volumeId: volumeId, isLegacyShare: false)
+            let configuration = PhotoStreamConfiguration(volumeId: volumeId)
             stateSubject.send(.finished(configuration))
-        case let .legacyPhotoShare(volumeId):
-            let configuration = PhotoStreamConfiguration(volumeId: volumeId, isLegacyShare: true)
-            stateSubject.send(.finished(configuration))
-        case .migrating:
-            stateSubject.send(.migrationInProgress)
-            migrationController.monitorMigration()
-        }
-    }
-
-    private func handleMigrationUpdate(_ state: PhotoVolumeMigrationState) {
-        switch state {
-        case .undetermined:
-            break
-        case .inProgress:
-            stateSubject.send(.migrationInProgress)
-        case .finished:
-            bootstrap()
         }
     }
 }

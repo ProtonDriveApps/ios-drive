@@ -40,7 +40,7 @@ final class RemoteFileContentDecryptor<T: File>: FileContentDecryptor {
         let url = try decryptedURL(from: file)
         // Verify decrypted file is usable
         try await validator.validate(file: file, url: url)
-        let id = try identifier(of: file)
+        let id = file.volumeBasedIdentifier
         return (id, url)
     }
     
@@ -61,19 +61,16 @@ final class RemoteFileContentDecryptor<T: File>: FileContentDecryptor {
     private func decryptedURL(from file: FileType) throws -> URL {
         guard let moc = file.moc else { throw File.noMOC() }
         
-        return try moc.performAndWait {
+        let (realURL, hardLinkURL) = try moc.performAndWait {
             guard let revision = file.activeRevision else {
                 throw file.invalidState("Uploaded file should have an active revision")
             }
-
-            return try revision.decryptFile()
+            let realURL = try revision.decryptFile()
+            let hardLinkURL = realURL.deletingLastPathComponent().appending(path: file.decryptedName)
+            return (realURL, hardLinkURL)
         }
-    }
-    
-    private func identifier(of file: FileType) throws -> NodeIdentifier {
-        guard let moc = file.moc else { throw File.noMOC() }
-        return moc.performAndWait {
-            file.identifier
-        }
+        try? FileManager.default.removeItem(at: hardLinkURL)
+        try FileManager.default.linkItem(at: realURL, to: hardLinkURL)
+        return hardLinkURL
     }
 }

@@ -32,6 +32,7 @@ final class PhotoLibraryPortraitCompoundResource: PhotoLibraryCompoundResource {
 
     func execute(with identifier: PhotoIdentifier, asset: PHAsset) async throws -> [PhotoAssetCompound] {
         do {
+            Log.info("Load portrait asset \(identifier.cloudIdentifier)", domain: .photosProcessing)
             return try await executePortraitPhoto(with: identifier, asset: asset)
         } catch {
             Log.error("failed to load portrait photo, falling back to plain resource", error: nil, domain: .photosProcessing)

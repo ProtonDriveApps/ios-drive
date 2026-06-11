@@ -17,6 +17,8 @@
 
 import Combine
 import Foundation
+import PDLocalization
+import PDCoreIOS
 
 protocol NativeSharePhotoControllerProtocol {
     var coordinator: NativeSharePhotoCoordinatorProtocol { get }
@@ -51,7 +53,10 @@ final class NativeSharePhotoController: NativeSharePhotoControllerProtocol {
     }
 
     private func handleFileUpdate(_ content: FileContent?) {
-        guard let content else { return }
+        guard let content, !content.isLoading else {
+            UserMessageHandler().handleWarning(Localization.general_loading)
+            return
+        }
 
         if content.couldBeLivePhoto, let videoURL = content.childrenURLs.first {
             coordinator.openNativeShareForLivePhoto(imageURL: content.url, videoURL: videoURL) { [weak self] in

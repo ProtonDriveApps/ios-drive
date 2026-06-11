@@ -15,15 +15,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import CoreData
 import PDCore
 import FileProvider
 
 extension Tower {
 
-    func nodeWithName(of item: NSFileProviderItem) async throws -> Node? {
-        guard let parent = await self.node(itemIdentifier: item.parentItemIdentifier) as? Folder,
-              let moc = parent.moc else {
-            throw Errors.parentNotFound
+    func nodeWithName(of item: NSFileProviderItem, moc: NSManagedObjectContext) async throws -> Node? {
+        guard let parent = await self.node(itemIdentifier: item.parentItemIdentifier, in: moc) as? Folder else {
+            throw Errors.parentNotFound(identifier: item.parentItemIdentifier)
         }
 
         return try moc.performAndWait {
@@ -37,35 +37,35 @@ extension Tower {
         }
     }
 
-    public func rootFolder() async throws -> Folder {
-        guard let root = await node(itemIdentifier: .rootContainer) as? Folder else {
+    public func rootFolder(moc: NSManagedObjectContext) async throws -> Folder {
+        guard let root = await node(itemIdentifier: .rootContainer, in: moc) as? Folder else {
             assertionFailure("Could not find rootContainer")
-            throw NSFileProviderError(.noSuchItem)
+            throw NSError.fileProviderErrorForNonExistentItem(withIdentifier: .rootContainer)
         }
         return root
     }
 
-    func nodeIdentifier(for itemIdentifier: NSFileProviderItemIdentifier) -> NodeIdentifier? {
+    func nodeIdentifier(for itemIdentifier: NSFileProviderItemIdentifier, moc: NSManagedObjectContext) -> NodeIdentifier? {
         guard itemIdentifier != .workingSet, itemIdentifier != .trashContainer else {
             return nil
         }
         guard itemIdentifier != .rootContainer else {
-            return rootFolderIdentifier()
+            return rootFolderIdentifier(moc: moc)
         }
         return NodeIdentifier(itemIdentifier)
     }
 
-    public func parentFolder(of item: NSFileProviderItem) async -> Folder? {
-        await node(itemIdentifier: item.parentItemIdentifier) as? Folder
+    public func parentFolder(of item: NSFileProviderItem, in moc: NSManagedObjectContext) async -> Folder? {
+        await node(itemIdentifier: item.parentItemIdentifier, in: moc) as? Folder
     }
 
-    public func node(itemIdentifier: NSFileProviderItemIdentifier) async -> Node? {
-        guard let nodeIdentifier = self.nodeIdentifier(for: itemIdentifier) else {
+    public func node(itemIdentifier: NSFileProviderItemIdentifier, in moc: NSManagedObjectContext) async -> Node? {
+        guard let nodeIdentifier = self.nodeIdentifier(for: itemIdentifier, moc: moc) else {
             return nil
         }
 
         /// Try fetching local node first...
-        let localNode = fileSystemSlot?.getNode(nodeIdentifier)
+        let localNode = fileSystemSlot?.getNode(nodeIdentifier, moc: moc)
 
         /// If found, return it...
         if let localNode {
@@ -74,7 +74,9 @@ extension Tower {
 
         /// ...otherwise fetch the remote node and return it.
         do {
-            let remoteNode = try await cloudSlot.scanNode(nodeIdentifier) { $1 }
+            let remoteNode = try await cloudSlot.scanNode(
+                nodeIdentifier, linkProcessingErrorTransformer: { $1 }, moc: moc
+            )
             return remoteNode
         } catch {
             Log.error("Could not fetch node from API", domain: .clientNetworking, context: LogContext("nodeIdentifier: \(nodeIdentifier)"))
@@ -82,18 +84,13 @@ extension Tower {
         }
     }
 
-    func draft(for item: NSFileProviderItem) async -> File? {
-        guard let parent = await parentFolder(of: item) else {
+    func draft(for item: NSFileProviderItem, moc: NSManagedObjectContext) async -> File? {
+        guard let parent = await parentFolder(of: item, in: moc) else {
             return nil
         }
 
-        guard let moc = parent.moc else {
-            Log.error("Attempting to fetch identifier when moc is nil (node has been deleted)", error: nil, domain: .fileProvider)
-            fatalError()
-        }
-
         return moc.performAndWait {
-            return fileSystemSlot?.getDraft(item.itemIdentifier.rawValue, shareID: parent.shareId) as? File
+            return fileSystemSlot?.getDraft(item.itemIdentifier.rawValue, shareID: parent.shareId, moc: moc) as? File
         }
     }
 

@@ -19,15 +19,17 @@ public struct BuildFeatures {
     public let hasPayments: Bool
     public let hasUnlimitedPicker: Bool
     public let hasSignUp: Bool
+    public let hasFileProvider: Bool
 
-    public init(hasPayments: Bool, hasUnlimitedPicker: Bool, hasSignUp: Bool) {
+    public init(hasPayments: Bool, hasUnlimitedPicker: Bool, hasSignUp: Bool, hasFileProvider: Bool) {
         self.hasPayments = hasPayments
         self.hasUnlimitedPicker = hasUnlimitedPicker
         self.hasSignUp = hasSignUp
+        self.hasFileProvider = hasFileProvider
     }
 
     static var `default`: BuildFeatures {
         // Gives highest build type constraints (should equal to prod. build constants)
-        BuildFeatures(hasPayments: true, hasUnlimitedPicker: false, hasSignUp: true)
+        BuildFeatures(hasPayments: true, hasUnlimitedPicker: false, hasSignUp: true, hasFileProvider: false)
     }
 }

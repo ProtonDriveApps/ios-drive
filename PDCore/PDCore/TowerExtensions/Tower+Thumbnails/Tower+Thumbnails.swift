@@ -20,6 +20,8 @@ import Combine
 
 extension Tower: ThumbnailLoader {
     public func loadThumbnail(with id: ThumbnailLoader.Identifier) {
+        // There is no way to fetch bookmark thumbnail 
+        if id.volumeID == "bookmark" { return }
         thumbnailLoader.loadThumbnail(with: id)
     }
 

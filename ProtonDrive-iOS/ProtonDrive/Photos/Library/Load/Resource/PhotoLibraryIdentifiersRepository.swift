@@ -17,6 +17,7 @@
 
 import PDCore
 import Photos
+import PDPhotos
 import enum ProtonCoreUtilities.Either
 
 protocol PhotoLibraryIdentifiersRepository {
@@ -27,11 +28,13 @@ final class ConcretePhotoLibraryIdentifiersRepository: PhotoLibraryIdentifiersRe
     private let mappingResource: PhotoLibraryMappingResource
     private let optionsFactory: PHFetchOptionsFactory
     private let skippableCache: PhotosSkippableCache
+    private let identifierStore: PhotoIdentifierStore
 
-    init(mappingResource: PhotoLibraryMappingResource, optionsFactory: PHFetchOptionsFactory, skippableCache: PhotosSkippableCache) {
+    init(mappingResource: PhotoLibraryMappingResource, optionsFactory: PHFetchOptionsFactory, skippableCache: PhotosSkippableCache, identifierStore: PhotoIdentifierStore) {
         self.mappingResource = mappingResource
         self.optionsFactory = optionsFactory
         self.skippableCache = skippableCache
+        self.identifierStore = identifierStore
     }
     
     func getIdentifiers() async -> PhotoIdentifiers {
@@ -42,8 +45,9 @@ final class ConcretePhotoLibraryIdentifiersRepository: PhotoLibraryIdentifiersRe
             assets.append(asset)
         }
         let allIdentifiers = mappingResource.map(assets: assets)
-        
+        identifierStore.store(allIdentifiers: allIdentifiers)
         let identifiersNeedToBeUploaded = await localDuplicateCheck(allIdentifiers: allIdentifiers, assets: assets)
+        Log.info("Get \(allIdentifiers.count) identifiers from photo library, \(identifiersNeedToBeUploaded.count) need to be uploaded", domain: .photosProcessing)
         return identifiersNeedToBeUploaded
     }
 }
@@ -61,7 +65,7 @@ extension ConcretePhotoLibraryIdentifiersRepository {
             case .hasPendingUpload, .newAsset:
                 identifiersNeedToBeUploaded.append(identifier)
             case .needsDoubleCheck:
-                guard 
+                guard
                     let asset = assets.first(where: { $0.localIdentifier == identifier.localIdentifier })
                 else { continue }
                 let result = await doubleCheck(asset: asset, identifier: identifier)
@@ -94,7 +98,7 @@ extension ConcretePhotoLibraryIdentifiersRepository {
             // Can't get adjustment date, check with BE to prevent possible data loss
             return .right(identifier)
         }
-        
+
         // The asset modification date may change for unknown reasons.
         // The `AdjustmentDate` is the reliable date we should use.
         // If the date has been uploaded, then all changes have been synchronized.
@@ -103,7 +107,7 @@ extension ConcretePhotoLibraryIdentifiersRepository {
             identifier: identifier.cloudIdentifier,
             modificationTime: adjustmentDate
         )
-        
+
         let status = skippableCache.checkSkippableStatus(tmp)
         switch status {
         case .skippable:
@@ -112,9 +116,4 @@ extension ConcretePhotoLibraryIdentifiersRepository {
             return .right(identifier)
         }
     }
-}
-
-private struct ComparedDataSet {
-    let cachedIdentifier: PhotoAssetMetadata.iOSPhotos
-    let identifier: PhotoIdentifier
 }

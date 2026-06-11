@@ -24,9 +24,10 @@ protocol UploadingViewModel: AnyObject {
     typealias UploadProgresses = [UUID: Progress]
     var childrenUploadCancellable: AnyCancellable? { get set }
     var showsUploadsErrorBanner: Bool { get }
-    var uploadsCount: Int { get set }
-    var uploadProgresses: UploadProgresses { get set }
+    var progressTrackersController: ProgressTrackersControllerProtocol { get }
+    var hasReceivedUploadsUpdate: Bool { get set }
     var uploadErrors: ErrorRegulator { get }
     var failedCount: Int { get }
     var nodeStatePolicy: NodeStatePolicy { get }
+    var cancellables: Set<AnyCancellable> { get set }
 }

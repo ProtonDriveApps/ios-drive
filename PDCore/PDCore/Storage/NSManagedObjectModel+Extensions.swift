@@ -34,9 +34,19 @@ extension NSManagedObjectModel {
         }
         #endif
 
-        #if RESOURCES_ARE_IMPORTED_BY_SPM
+        #if RESOURCES_ARE_IMPORTED_BY_SPM && !canImport(XCTest)
+        // Looking for the bundle via Bundle.module works fine for SPM packages linked to applications.
         if let bundle = Bundle.module.url(forResource: "Metadata", withExtension: "momd"),
            let model = NSManagedObjectModel(contentsOf: bundle)
+        {
+            return model
+        }
+        #elseif RESOURCES_ARE_IMPORTED_BY_SPM && canImport(XCTest)
+        // But we need to do it manually for tests.
+        if let libraryPath = ProcessInfo.processInfo.environment["DYLD_LIBRARY_PATH"]?.split(separator: ":").first,
+           let resourceBundle = Bundle(path: libraryPath + "/PDCore_PDCore.bundle"),
+           let modelURL = resourceBundle.url(forResource: "Metadata", withExtension: "momd"),
+           let model = NSManagedObjectModel(contentsOf: modelURL)
         {
             return model
         }
@@ -46,6 +56,19 @@ extension NSManagedObjectModel {
         if let bundle = Bundle(for: StorageManager.self).url(forResource: "Metadata", withExtension: "momd"),
            let model = NSManagedObjectModel(contentsOf: bundle)
         {
+            return model
+        }
+
+        // Debug builds for real devices link XCTest in, causing problems when developing
+        // on an iOS device. This doesn't happen for macOS.
+        //
+        // We work around this by trying the SPM/application code path even in case we
+        // already tried looking for it in DYLD_LIBRARY_PATH.
+        //
+        // We shouldn't remove the compile-time checks because checking Bundle.module while
+        // running macOS tests will crash as the resources aren't where it expects.
+        if let url = Bundle.module.url(forResource: "Metadata", withExtension: "momd"),
+           let model = NSManagedObjectModel(contentsOf: url) {
             return model
         }
 

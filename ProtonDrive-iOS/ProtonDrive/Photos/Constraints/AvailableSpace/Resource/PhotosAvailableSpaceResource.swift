@@ -31,6 +31,7 @@ final class ConcretePhotosAvailableSpaceResource: PhotosAvailableSpaceResource {
     private var queue = DispatchQueue(label: "ConcretePhotosAvailableSpaceResource", attributes: .concurrent)
     private var cancellables = Set<AnyCancellable>()
     private var workItem: DispatchWorkItem?
+    private var isStarted = false
 
     var availableSpace: AnyPublisher<Int, Never> {
         subject
@@ -41,13 +42,11 @@ final class ConcretePhotosAvailableSpaceResource: PhotosAvailableSpaceResource {
 
     init(observer: FetchedResultsControllerObserver<Photo>) {
         self.observer = observer
-        queue.async { [weak self] in
-            self?.observer.start()
-        }
     }
 
     func execute() {
         cancel()
+        startObserverIfNeeded()
 
         observer.getPublisher()
             .map { $0.count }
@@ -58,6 +57,18 @@ final class ConcretePhotosAvailableSpaceResource: PhotosAvailableSpaceResource {
                 self?.handleUpdate()
             }
             .store(in: &cancellables)
+    }
+
+    private func startObserverIfNeeded() {
+        // observer.start should only be called once and only once the `execute` is invoked.
+        guard !isStarted else {
+            return
+        }
+
+        isStarted = true
+        queue.async { [weak self] in
+            self?.observer.start()
+        }
     }
 
     private func handleUpdate() {

@@ -64,21 +64,6 @@ extension Client {
         }
     }
 
-    public func getShareUrlRecursively(_ id: ShareID, page: Int = 0, pageSize size: Int = 0, completion: @escaping (Result<([Link], [ShareURLMeta]), Error>) -> Void) {
-        guard let credential = self.credentialProvider.clientCredential() else {
-            return completion(.failure(Errors.couldNotObtainCredential))
-        }
-
-        let endpoint = ShareURLEndpoint(shareID: id, parameters: [.recursive, .page(page), .pageSize(size)], service: self.service, credential: credential)
-        request(endpoint) {
-            completion( $0.flatMap {
-                let links = ($0.links != nil) ? Array($0.links!.values) : []
-                let shareUrls = $0.shareURLs
-                return .success((links, shareUrls))
-            })
-        }
-    }
-
     public func getFolderChildren(_ shareID: ShareID, folderID: FolderID, parameters: [FolderChildrenEndpointParameters]? = nil, completion: @escaping (Result<[Link], Error>) -> Void) {
         guard let credential = self.credentialProvider.clientCredential() else {
             return completion(.failure(Errors.couldNotObtainCredential))
@@ -446,6 +431,17 @@ public struct PartialFailure {
         guard let error = linkResponse.response.error else { return nil }
         self.id = linkResponse.linkID
         self.error = NSError(domain: error, code: linkResponse.response.code)
+    }
+
+    public init?(_ responseDict: [String: Any]) {
+        guard
+            let response = responseDict["Response"] as? [String: Any],
+            let nodeID = responseDict["LinkID"] as? String,
+            let code = response.code,
+            let error = response.error
+        else { return nil }
+        self.id = nodeID
+        self.error = NSError(domain: error, code: code, userInfo: [NSLocalizedDescriptionKey: error])
     }
 }
 

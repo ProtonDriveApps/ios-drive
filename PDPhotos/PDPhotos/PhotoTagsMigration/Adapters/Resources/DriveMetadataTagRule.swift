@@ -19,6 +19,7 @@ import Foundation
 import PDCore
 import CoreData
 
+/// Analyze the data using CoreDataPhoto metadata, including the name, main photo, and child items
 final class DriveMetadataTagRule: PhotoTagRule {
     private let managedContext: NSManagedObjectContext
 

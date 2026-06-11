@@ -53,6 +53,10 @@ public class CoreDataPhotoListing: NSManagedObject, VolumeParentUnique {
         AnyVolumeIdentifier(id: id, volumeID: volumeID)
     }
 
+    public var listingIdentifier: PhotoListingIdentifier {
+        PhotoListingIdentifier(id: id, albumID: albumID, volumeID: volumeID)
+    }
+
     // MARK: Tags
 
     public static let tagsSerializer = CoreDataPhotoTagSerializer()

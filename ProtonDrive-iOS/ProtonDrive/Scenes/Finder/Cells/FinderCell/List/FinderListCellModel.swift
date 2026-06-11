@@ -56,8 +56,10 @@ extension NodeCellConfiguration {
             badges.append(.favorite)
         }
 
-        if isAvailableOffline {
+        if availableOfflineFlags.isAvailableOffline {
             badges.append(.offline)
+        } else if availableOfflineFlags.isMarkedAsAvailableOffline {
+            badges.append(.markedAsOffline)
         }
 
         if isSharedCollaboratively && hasSharing {

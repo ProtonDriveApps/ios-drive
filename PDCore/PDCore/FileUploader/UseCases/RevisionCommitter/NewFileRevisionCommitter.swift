@@ -142,10 +142,10 @@ class NewFileRevisionCommitter: RevisionCommitter {
             }
 
 #if os(macOS)
-            let signersKit = try signersKitFactory.make(forSigner: .address(email))
+            let signersKit = try file.getContextShareAddressBasedSignersKit(signersKitFactory: self.signersKitFactory,
+                                                                            fallbackSigner: .address(email))
 #else
-            let addressID = try file.getContextShareAddressID()
-            let signersKit = try signersKitFactory.make(forAddressID: addressID)
+            let signersKit = try file.getContextShareAddressBasedSignersKit(signersKitFactory: signersKitFactory)
 #endif
             let addressKey = signersKit.addressKey.privateKey
             let addressPassphrase = signersKit.addressPassphrase
@@ -196,7 +196,7 @@ class NewFileRevisionCommitter: RevisionCommitter {
                 xAttributes: revision.xAttributes,
                 photo: photo
             )
-            let identifier = RevisionIdentifier(share: commitableRevision.shareID, file: commitableRevision.fileID, revision: commitableRevision.revisionID, volume: commitableRevision.volumeID)
+            let identifier = RevisionIdentifier(shareID: commitableRevision.shareID, fileID: commitableRevision.fileID, revisionID: commitableRevision.revisionID, volumeID: commitableRevision.volumeID)
             let sha1 = try? revision.decryptedExtendedAttributes().common?.digests?.sha1
 
             return RevisionAndDigest(commitableRevision: commitableRevision, identifier: identifier, sha1: sha1)
@@ -208,7 +208,7 @@ class NewFileRevisionCommitter: RevisionCommitter {
     }
 
     func finalizeRevision(in file: File, commitableRevision: CommitableRevision, completion: @escaping Completion) {
-        moc.performAndWait { [weak self] in
+        moc.performAndWait { [weak self, moc] in
             guard let self, !self.isCancelled else { return }
             
             guard let revision = file.activeRevisionDraft else {
@@ -218,6 +218,10 @@ class NewFileRevisionCommitter: RevisionCommitter {
             revision.created = Date()
             revision.manifestSignature = commitableRevision.manifestSignature
             revision.state = .active
+            #if os(iOS)
+            // clear data is saved to disk, don't need to keep them in core data
+            revision.thumbnails.forEach { try? $0.clearBlob(in: moc) }
+            #endif
 
             file.activeRevision = revision
             file.addToRevisions(revision)

@@ -17,6 +17,7 @@
 
 import Photos
 import PDCore
+import PDPhotos
 
 enum PhotoLibraryAssetsResourceError: Error, Equatable {
     case invalidIdentifier
@@ -24,7 +25,7 @@ enum PhotoLibraryAssetsResourceError: Error, Equatable {
 }
 
 protocol PhotoLibraryAssetsResource {
-    func execute(with identifier: PhotoIdentifier) async throws -> [PhotoAssetCompound]
+    func execute(with identifier: PhotoIdentifier, asset: PHAsset) async throws -> [PhotoAssetCompound]
 }
 
 final class LocalPhotoLibraryAssetsResource: PhotoLibraryAssetsResource {
@@ -54,13 +55,7 @@ final class LocalPhotoLibraryAssetsResource: PhotoLibraryAssetsResource {
         self.mappingResource = mappingResource
     }
 
-    func execute(with identifier: PhotoIdentifier) async throws -> [PhotoAssetCompound] {
-        let options = optionsFactory.makeOptions()
-        let assets = PHAsset.fetchAssets(withLocalIdentifiers: [identifier.localIdentifier], options: options)
-        guard let asset = assets.firstObject else {
-            throw PhotoLibraryAssetsResourceError.invalidIdentifier
-        }
-
+    func execute(with identifier: PhotoIdentifier, asset: PHAsset) async throws -> [PhotoAssetCompound] {
         guard asset.modificationDate == identifier.modifiedDate else {
             if let updatedIdentifier = mappingResource.map(asset: asset, localIdentifier: identifier.localIdentifier) {
                 throw PhotoLibraryAssetsResourceError.obsoleteIdentifier(updatedIdentifier: updatedIdentifier)

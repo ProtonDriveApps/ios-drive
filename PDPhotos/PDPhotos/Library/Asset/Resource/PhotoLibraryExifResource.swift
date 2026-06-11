@@ -21,9 +21,11 @@ import ImageIO
 import PDCore
 
 public  protocol PhotoLibraryExifResource {
+    func getCameraInfo(asset: AVAsset) async -> PhotoAssetMetadata.Camera
     func getCameraInfo(at url: URL, isVideo: Bool) async -> PhotoAssetMetadata.Camera
     func getCameraInfo(from properties: NSDictionary) -> PhotoAssetMetadata.Camera
     func getLocation(at url: URL, isVideo: Bool) async -> PhotoAssetMetadata.Location?
+    func getLocation(asset: AVAsset) async -> PhotoAssetMetadata.Location?
     func getLocation(from properties: NSDictionary) -> PhotoAssetMetadata.Location?
     func getPhotoExif(at url: URL) -> PhotoAsset.Exif
     func getVideoExif(at url: URL) async -> PhotoAsset.Exif
@@ -50,6 +52,10 @@ public final class CoreImagePhotoLibraryExifResource: PhotoLibraryExifResource {
         }
     }
 
+    public func getCameraInfo(asset: AVAsset) async -> PhotoAssetMetadata.Camera {
+        return await parser.parseCameraInfo(from: asset)
+    }
+
     public func getCameraInfo(from properties: NSDictionary) -> PhotoAssetMetadata.Camera {
         parser.parseCameraInfo(from: properties)
     }
@@ -64,6 +70,11 @@ public final class CoreImagePhotoLibraryExifResource: PhotoLibraryExifResource {
         }
     }
 
+    public func getLocation(asset: AVAsset) async -> PhotoAssetMetadata.Location? {
+        let stringValue = await getVideoLocation(from: asset)
+        return parser.parseLocationFrom(stringValue: stringValue)
+    }
+
     public func getLocation(from properties: NSDictionary) -> PhotoAssetMetadata.Location? {
         parser.parseLocation(from: properties)
     }
@@ -72,6 +83,7 @@ public final class CoreImagePhotoLibraryExifResource: PhotoLibraryExifResource {
         return Data()
 
         // We don't upload exif until the format is aligned.
+        // EXIF in this context means metadata other than location, camera details ...etc
         //        let dictionary = getExifDictionary(at: url)
         //        return parser.parseExif(from: dictionary)
     }
@@ -80,6 +92,7 @@ public final class CoreImagePhotoLibraryExifResource: PhotoLibraryExifResource {
         return Data()
 
         // We don't upload exif until the format is aligned.
+        // EXIF in this context means metadata other than location, camera details ...etc
         //        let items = (try? await getVideoMetadataItems(at: url)) ?? []
         //        var dictionary = [String: Any]()
         //        items.forEach { item in
@@ -114,8 +127,12 @@ public final class CoreImagePhotoLibraryExifResource: PhotoLibraryExifResource {
     }
 
     private func getVideoLocation(at url: URL) async -> String? {
+        let asset = AVAsset(url: url)
+        return await getVideoLocation(from: asset)
+    }
+
+    private func getVideoLocation(from asset: AVAsset) async -> String? {
         do {
-            let asset = AVAsset(url: url)
             let metadata = try await asset.load(.metadata)
 
             guard
@@ -131,12 +148,46 @@ public final class CoreImagePhotoLibraryExifResource: PhotoLibraryExifResource {
 
 /// Only for QA to do test
 public final class PartialPhotoLibraryExifResource: PhotoLibraryExifResource {
+    
     public init() { }
 
     public func getCameraInfo(at url: URL, isVideo: Bool) async -> PhotoAssetMetadata.Camera {
         let dictionary = getExifDictionary(at: url)
         let exifDictionary = dictionary[kCGImagePropertyExifDictionary] as? NSDictionary ?? [:]
         return getCameraInfo(from: exifDictionary)
+    }
+
+    public func getCameraInfo(asset: AVAsset) async -> PDCore.PhotoAssetMetadata.Camera {
+        var creationDate: Date?
+        var isFrontCamera = false
+        do {
+            let (metadata, tracks) = try await asset.load(.metadata, .tracks)
+
+            let dateMetadata = metadata.first(where: { $0.commonKey?.rawValue == "creationDate" })
+            let dateString = try await dateMetadata?.load(.stringValue)
+            creationDate = ISO8601DateFormatter.default.date(dateString)
+
+            for track in tracks {
+                guard
+                    let quickTimeMetadata = try? await track.loadMetadata(for: .quickTimeMetadata),
+                    let lens = quickTimeMetadata.first(where: { $0.identifier?.rawValue.contains("lens_model") ?? false }),
+                    let stringValue = try await lens.load(.stringValue)
+                else { continue }
+                if stringValue.contains("front") {
+                    isFrontCamera = true
+                }
+                break
+            }
+        } catch {
+            Log.error("Failed to get video camera information", error: error, domain: .photosProcessing)
+        }
+        return PhotoAssetMetadata.Camera(
+            captureTime: creationDate,
+            device: nil,
+            orientation: nil, // Can't find related info
+            subjectCoordinates: nil, // Video doesn't have it
+            isFrontCamera: isFrontCamera
+        )
     }
 
     public func getCameraInfo(from exifDictionary: NSDictionary) -> PDCore.PhotoAssetMetadata.Camera {
@@ -153,6 +204,10 @@ public final class PartialPhotoLibraryExifResource: PhotoLibraryExifResource {
     }
 
     public func getLocation(from exif: NSDictionary) -> PDCore.PhotoAssetMetadata.Location? {
+        nil
+    }
+
+    public func getLocation(asset: AVAsset) -> PDCore.PhotoAssetMetadata.Location? {
         nil
     }
 

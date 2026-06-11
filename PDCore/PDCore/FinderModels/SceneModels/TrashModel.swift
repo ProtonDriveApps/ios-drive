@@ -104,33 +104,21 @@ public final class TrashModel: FinderModel, TrashListing, NodesListing, Thumbnai
     
     public func fetchTrash() async throws {
         try await volumeIDs.forEach { volumeID in
-            try await tower.cloudSlot.scanAllTrashed(volumeID: volumeID)
+            try await tower.cloudSlot.scanAllTrashed(volumeID: volumeID, moc: tower.storage.backgroundContext)
         }
         self.didFetchAllTrash = true
     }
 
-    public func deleteTrashed(nodes: [NodeIdentifier], isUsingVolumeBasedEndpoint: Bool) async throws {
-        if isUsingVolumeBasedEndpoint {
-            try await deleter.deletePerVolume(nodes)
-        } else {
-            try await deleter.delete(nodes)
-        }
+    public func deleteTrashed(nodes: [NodeIdentifier]) async throws {
+        try await deleter.deletePerVolume(nodes)
     }
 
-    public func emptyTrash(nodes: [NodeIdentifier], isUsingVolumeBasedEndpoint: Bool) async throws {
-        if isUsingVolumeBasedEndpoint {
-            try await trashCleaner.emptyTrashPerVolume(nodes)
-        } else {
-            try await trashCleaner.emptyTrash(nodes)
-        }
+    public func emptyTrash(nodes: [NodeIdentifier]) async throws {
+        try await trashCleaner.emptyTrashPerVolume(nodes)
     }
 
-    public func restoreTrashed(_ nodes: [NodeIdentifier], isUsingVolumeBasedEndpoint: Bool) async throws {
-        if isUsingVolumeBasedEndpoint {
-            try await restorer.restoreVolume(nodes: nodes)
-        } else {
-            try await restorer.restore(nodes)
-        }
+    public func restoreTrashed(_ nodes: [NodeIdentifier]) async throws {
+        try await restorer.restoreVolume(nodes: nodes)
         await MainActor.run {
             // To immediately refresh nodes' states
             // Special case for photos - we need to get update event to recreate CoreDataPhotoListing objects

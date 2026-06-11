@@ -83,13 +83,13 @@ public final class WorkingSetEnumerator: NSObject, NSFileProviderEnumerator, Enu
     // MARK: Enumeration
 
     public func enumerateItems(for observer: NSFileProviderEnumerationObserver, startingAt page: NSFileProviderPage) {
+        Log.event(.enumerateItems(.started(.init(containerType: .workingSet, pageNumber: page.int))))
         defer {
             if workingSetEnumerationInProgress == true {
                 workingSetEnumerationInProgress = false
             }
         }
         
-        Log.trace()
         let observers: [NSFileProviderEnumerationObserver] = [observer, enumerationObserver?.items as? NSFileProviderEnumerationObserver].compactMap { $0 }
 
         let pageNumber = page.rawValue.first ?? 0
@@ -99,14 +99,16 @@ public final class WorkingSetEnumerator: NSObject, NSFileProviderEnumerator, Enu
         do {
             try self.reinitializeModelIfNeeded()
         } catch {
-            observer.finishEnumeratingWithError(Errors.mapToFileProviderError(Errors.failedToCreateModel)!)
-            Log.error("Failed to enumerate items due to model failing to be created", error: nil, domain: .enumerating)
+            observer.finishEnumeratingWithError(Errors.mapLegacyErrorToFileProviderError(Errors.failedToCreateModel))
+            Log.event(.enumerateItems(.failed(.init(
+                containerType: .workingSet,
+                error: "Failed to enumerate items due to model failing to be created"
+            ))))
             // if we cannot create a model, there's no point in accessing the model for enumeration later
             return
         }
-        Log.info("Enumerating items for Working Set", domain: .enumerating)
         self.model.loadFromCache()
-        self.fetchPageFromDB(page.int, pageSize: pageSize, observers: observers)
+        self.fetchPageFromDB(.workingSet, page.int, pageSize: pageSize, observers: observers)
     }
 
     // MARK: Changes
@@ -119,7 +121,7 @@ public final class WorkingSetEnumerator: NSObject, NSFileProviderEnumerator, Enu
     public func enumerateChanges(for observer: NSFileProviderChangeObserver, from syncAnchor: NSFileProviderSyncAnchor) {
         Log.trace()
         let observers = [observer, enumerationObserver?.changes as? NSFileProviderChangeObserver].compactMap { $0 }
-        self.enumerateChanges(observers, syncAnchor)
+        self.enumerateChanges(.workingSet, observers, syncAnchor)
     }
 }
 

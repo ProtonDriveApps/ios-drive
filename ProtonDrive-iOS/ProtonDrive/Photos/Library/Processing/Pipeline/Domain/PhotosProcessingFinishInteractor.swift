@@ -17,17 +17,16 @@
 
 import Combine
 import PDCore
+import PDCoreIOS
 
 final class PhotosProcessingFinishInteractor: AsynchronousExecution {
     private let context: PhotosProcessingContext
     private let progressRepository: PhotoLibraryLoadProgressRepository
-    private let localStorageResource: LocalStorageResource
     private let failedIdentifiersResource: DeletedPhotosIdentifierStoreResource
 
-    init(context: PhotosProcessingContext, progressRepository: PhotoLibraryLoadProgressRepository, localStorageResource: LocalStorageResource, failedIdentifiersResource: DeletedPhotosIdentifierStoreResource) {
+    init(context: PhotosProcessingContext, progressRepository: PhotoLibraryLoadProgressRepository, failedIdentifiersResource: DeletedPhotosIdentifierStoreResource) {
         self.context = context
         self.progressRepository = progressRepository
-        self.localStorageResource = localStorageResource
         self.failedIdentifiersResource = failedIdentifiersResource
     }
 
@@ -37,14 +36,6 @@ final class PhotosProcessingFinishInteractor: AsynchronousExecution {
         progressRepository.discard(context.invalidIdentifiers.count + context.missingIdentifiers.count)
         progressRepository.add(context.importedCompoundsDeltaCount)
         progressRepository.finish(context.importedCompoundsCount + context.failedIdentifiersAndError.count)
-        deleteInvalidAssets(context.invalidAssets)
         Log.info("5️⃣ finished importing count: \(context.importedCompoundsCount), compoundsDelta: \(context.importedCompoundsDeltaCount)", domain: .photosProcessing)
-    }
-
-    private func deleteInvalidAssets(_ assets: [PhotoAsset]) {
-        let urls = assets.map(\.url)
-        urls.forEach {
-            try? localStorageResource.delete(at: $0)
-        }
     }
 }

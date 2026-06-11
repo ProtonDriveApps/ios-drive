@@ -17,12 +17,50 @@
 
 import Foundation
 import PDCore
+import PDCoreIOS
 import ZIPFoundation
 
-class LogExporter {
-    func export() async -> URL {
-        Log.info("Will export logs", domain: .logs)
+actor ExportTracker {
+    private(set) var progress: ExportProgress = .initialization
+    
+    func update(progress: ExportProgress) {
+        self.progress = progress
+    }
+}
 
+enum ExportProgress {
+    case initialization
+    case export
+    case creatingDirectory
+    case archiving
+    case readingPreviousLogs
+    case compressing(Int, Int)
+    
+    var rawValue: String {
+        switch self {
+        case let .compressing(idx, total):
+            return "compressing \(idx)/\(total)"
+        default:
+            return String(describing: self)
+        }
+    }
+}
+
+final class LogExporter {
+    func export(heartbeat: @escaping ((ExportProgress) -> Void)) async throws -> URL {
+        Log.info("Will export logs", domain: .logs)
+        let tracker = ExportTracker()
+        await tracker.update(progress: .export)
+        
+        let heartbeat = Task {
+            while true {
+                try? await Task.sleep(for: .seconds(10))
+                if Task.isCancelled { break }
+                heartbeat(await tracker.progress)
+            }
+        }
+        defer { heartbeat.cancel() }
+        
         Log.exporter.export()
 
         let archiveDirectory = PDFileManager.logsArchiveDirectory
@@ -32,16 +70,21 @@ class LogExporter {
         let fileManager = FileManager.default
 
         try? fileManager.removeItem(at: exportZip)
+        await tracker.update(progress: .creatingDirectory)
         try? fileManager.createDirectory(at: exportDirectory, withIntermediateDirectories: true)
 
         do {
+            await tracker.update(progress: .archiving)
             let finalArchive = try Archive(url: exportZip, accessMode: .create)
+            
+            await tracker.update(progress: .readingPreviousLogs)
             let zipFiles = try fileManager.contentsOfDirectory(at: archiveDirectory, includingPropertiesForKeys: nil)
                 .filter { !$0.isHiddenFile && $0.pathExtension == "zip" }
                 .sorted { $0.creationDate < $1.creationDate }
 
-            for zipFile in zipFiles {
-                guard let archive = try? Archive(url: zipFile, accessMode: .read) else { continue }
+            for (idx, zipFile) in zipFiles.enumerated() {
+                await tracker.update(progress: .compressing(idx, zipFiles.count))
+                guard let archive = try? Archive(url: zipFile, accessMode: .read, pathEncoding: nil) else { continue }
 
                 for entry in archive {
                     // Only decompress `.log` entries
@@ -59,22 +102,13 @@ class LogExporter {
                 }
             }
         } catch {
+            let progress = await tracker.progress
+            UserMessageHandler().handleError(PlainMessageError("\(progress.rawValue), \(error.localizedDescription)"))
             Log.error("Failed to export final logs zip", error: error, domain: .logs)
+            throw error
         }
 
         return exportZip
-    }
-
-    private func zipDirectory(_ directory: URL, into zipFile: URL) {
-        do {
-            let archive = try Archive(url: zipFile, accessMode: .create)
-            let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
-            for file in files {
-                try archive.addEntry(with: file.lastPathComponent, fileURL: file)
-            }
-        } catch {
-            Log.error("Failed to create export zip", error: error, domain: .logs)
-        }
     }
 }
 

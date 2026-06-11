@@ -21,62 +21,77 @@ import PDClient
 import FileProvider
 
 protocol DriveEventsLoopProcessorType {
-    func process() throws -> [NodeIdentifier]
+    func process() async throws -> [NodeIdentifier]
 }
 
 final class DriveEventsLoopProcessor: DriveEventsLoopProcessorType {
-    
+
+    private let volumeID: String
     private let cloudSlot: CloudSlotProtocol
     private let conveyor: EventsConveyor
     private let storage: StorageManager
     private let externalInvitationConverter: ExternalInvitationConvertProtocol?
+    private let nodeTreeOperator: NodeTreeOperatorProtocol?
+    private let myPhotoVolumeID: String?
 
     internal init(
+        volumeID: String,
         cloudSlot: CloudSlotProtocol,
         conveyor: EventsConveyor,
         storage: StorageManager,
-        externalInvitationConverter: ExternalInvitationConvertProtocol?
+        externalInvitationConverter: ExternalInvitationConvertProtocol?,
+        nodeTreeOperator: NodeTreeOperatorProtocol?
     ) {
+        self.volumeID = volumeID
         self.cloudSlot = cloudSlot
         self.conveyor = conveyor
         self.storage = storage
         self.externalInvitationConverter = externalInvitationConverter
+        self.nodeTreeOperator = nodeTreeOperator
+        myPhotoVolumeID = storage.getPhotosVolumeId(in: storage.backgroundContext)
     }
 
-    // Should be a dedicated background context to exclude deadlock by CloudSlot operations
-    // Each processor owns a separate context. The assumption is that all the metadata DB Nodes are separate between
-    // the volumes. There is no CoreData relationship between any node in one volume and a node in another volume,
+    // The assumption is that all the metadata DB Nodes are separate between the volumes.
+    // There is no CoreData relationship between any node in one volume and a node in another volume,
     // so there's no need to use a single context for multiple loops / processors.
-    private lazy var moc: NSManagedObjectContext = storage.eventsBackgroundContext
 
-    func process() throws -> [NodeIdentifier] {
-        var affectedNodes: [NodeIdentifier] = []
+    func process() async throws -> [NodeIdentifier] {
+        Log.event(.eventLoopProcess(.started(.init(loopType: .drive, volumeID: self.volumeID))))
         
-        try moc.performAndWait {
-            try applyEventsToStorage(&affectedNodes)
-            
-            if moc.hasChanges {
-                try moc.saveOrRollback()
+        let affectedNodes: [NodeIdentifier]
+        do {
+            affectedNodes = try await storage.backgroundContextPool.performInContext { moc in
+                var affectedNodes: [NodeIdentifier] = []
+                try self.applyEventsToStorage(&affectedNodes, in: moc)
+                
+                if moc.hasChanges {
+                    try moc.saveOrRollback()
+                }
+                return affectedNodes
             }
+            Log.event(.eventLoopProcess(.succeeded(.init(loopType: .drive, count: affectedNodes.count, volumeID: volumeID))))
+        } catch {
+            Log.event(.eventLoopProcess(.failed(.init(id: volumeID, error: error.localizedDescription))))
+            throw error
         }
-        
-        Log.info("Finished processing events for \(affectedNodes.count) nodes", domain: .events)
         return affectedNodes
     }
     
-    private func applyEventsToStorage(_ affectedNodes: inout [NodeIdentifier]) throws {
+    private func applyEventsToStorage(_ affectedNodes: inout [NodeIdentifier],
+                                      in moc: NSManagedObjectContext) throws {
         
         func updateMetadata(_ shareID: String, _ event: Event) {
-            let updated = self.update(shareId: shareID, from: event)
+            let updated = self.update(shareId: shareID, from: event, in: moc)
             affectedNodes.append(contentsOf: updated)
+            Log.event(.eventProcess(.succeeded(.init(eventID: event.eventId, eventType: .init(eventType: event.genericType), nodeID: event.inLaneNodeId, volumeID: volumeID, shareID: shareID, outcome: .applied))))
         }
 
         while let (event, shareID, objectID) = conveyor.next() {
+            Log.event(.eventProcess(.started(.init(eventID: event.eventId, eventType: .init(eventType: event.genericType), nodeID: event.inLaneNodeId, volumeID: event.volumeId, shareID: shareID))))
             Log.debug("Start to handle event \(event.eventId)", domain: .events)
             guard let event = event as? Event else {
-                Log.info("Ignore event because it is not relevant for current metadata", domain: .events)
                 ignored(event: event, storage: storage)
-                Log.info("Done processing event, now removing it", domain: .events)
+                Log.event(.eventProcess(.succeeded(.init(eventID: event.eventId, eventType: .init(eventType: event.genericType), nodeID: event.inLaneNodeId, volumeID: volumeID, shareID: shareID, outcome: .ignored))))
                 conveyor.completeProcessing(of: objectID)
                 continue
             }
@@ -101,40 +116,36 @@ final class DriveEventsLoopProcessor: DriveEventsLoopProcessorType {
             switch event.genericType {
             case .create:
                 // case 1. — node already exists in the DB
-                if let node = findNode(id: nodeIdentifier) {
+                if let node = findNode(id: nodeIdentifier, in: moc) {
                     let state = moc.performAndWait { node.state }
                     if event.link.state.rawValue == state?.rawValue {
                         // Fix for DM-387 & DM-398
-                        Log.info("Process .create event. Disregard due to \(linkType): \(nodeIdentifier.any()) with the same state already in the metadataDB", domain: .events)
                         conveyor.disregard(objectID)
+                        Log.event(.eventProcess(.succeeded(.init(eventID: event.eventId, eventType: .init(eventType: event.genericType), nodeID: event.inLaneNodeId, volumeID: volumeID, shareID: shareID, outcome: .disregarded))))
                     } else {
-                        Log.info("Process .create event. \(linkType): \(nodeIdentifier.any()) already exists but state is different update metadata", domain: .events)
                         updateMetadata(shareID, event)
                     }
-                    
-                // case 2. — node doesn't yet exists in the DB, but its parent exists, so we can create the node
-                } else if nodeExists(id: parentIdentifier) {
-                    Log.info("Process .create event. \(linkType): \(nodeIdentifier.any()) doesn't exist but parent exists, create it", domain: .events)
+                } else if nodeExists(id: parentIdentifier, in: moc) {
+                    // case 2. — node doesn't yet exists in the DB, but its parent exists, so we can create the node
                     updateMetadata(shareID, event)
-                
-                // case 3. — neither node nor parent exists, let's ignore
+                } else if linkType == "Photo" && myPhotoVolumeID != volumeID {
+                    // Events from shared volume
+                    updateMetadata(shareID, event)
                 } else {
-                    Log.info("Process .create event. Ignore \(linkType): \(nodeIdentifier.any()) because neither parent nor node exists", domain: .events)
                     ignored(event: event, storage: storage)
+                    Log.event(.eventProcess(.succeeded(.init(eventID: event.eventId, eventType: .init(eventType: event.genericType), nodeID: event.inLaneNodeId, volumeID: volumeID, shareID: shareID, outcome: .ignored))))
                 }
 
-            case .updateMetadata where nodeExists(id: parentIdentifier) || nodeExists(id: nodeIdentifier), // need to know node (move from) or the new parent (move to)
+            case .updateMetadata where nodeExists(id: parentIdentifier, in: moc) || nodeExists(id: nodeIdentifier, in: moc), // need to know node (move from) or the new parent (move to)
                  .delete,
-                 .updateContent where nodeExists(id: nodeIdentifier): // need to know node
-                Log.info("Process \(event.genericType). Update metadata for \(linkType): \(nodeIdentifier.any())", domain: .events)
+                 .updateContent where nodeExists(id: nodeIdentifier, in: moc): // need to know node
                 updateMetadata(shareID, event)
 
             default: // ignore event
-                Log.info("Ignore \(event.genericType) event for \(linkType): \(nodeIdentifier.any()), parent \(parentIdentifier) because it is not relevant for current metadata", domain: .events)
                 ignored(event: event, storage: storage)
+                Log.event(.eventProcess(.succeeded(.init(eventID: event.eventId, eventType: .init(eventType: event.genericType), nodeID: event.inLaneNodeId, volumeID: volumeID, shareID: shareID, outcome: .ignored))))
             }
 
-            Log.info("Done processing event for node: \(nodeIdentifier.any()), now removing it", domain: .events)
             conveyor.completeProcessing(of: objectID)
         }
     }
@@ -147,7 +158,7 @@ extension DriveEventsLoopProcessor {
         return NodeIdentifier(nodeID, shareID, volumeID)
     }
 
-    private func update(shareId: String, from event: GenericEvent) -> [NodeIdentifier] {
+    private func update(shareId: String, from event: GenericEvent, in moc: NSManagedObjectContext) -> [NodeIdentifier] {
         guard let event = event as? Event else {
             assert(false, "Wrong event type sent to \(#file)")
             return []
@@ -156,10 +167,14 @@ extension DriveEventsLoopProcessor {
 
         switch event.eventType {
         case .delete:
-            guard let node = findNode(id: identifier) else {
+            guard let node = findNode(id: identifier, in: moc) else {
                 Log.info("Processing delete event. Node: \(identifier.any()) not found", domain: .events)
                 return []
             }
+            #if os(iOS)
+            nodeTreeOperator?.performDeleteLocalCached(on: [node])
+            #endif
+
             moc.delete(node)
             return [node.identifier, node.parentNode?.identifier].compactMap { $0 }
             
@@ -167,13 +182,17 @@ extension DriveEventsLoopProcessor {
             let nodes = cloudSlot.update([event.link], of: shareId, in: moc)
 
             #if os(iOS)
-            nodes.forEach { node in
-                guard let parent = node.parentNode else {
-                    Log.info("Processing \(event.eventType) event. Parent node not found for \(identifier.any())", domain: .events)
-                    return
+            let trashedNodes = nodes.filter { $0.state == .deleted }
+            nodeTreeOperator?.handleTrash(on: trashedNodes, in: moc)
+            nodes
+                .filter({ $0.state != .deleted })
+                .forEach { node in
+                    guard let parent = node.parentNode else {
+                        Log.info("Processing \(event.eventType) event. Parent node not found for \(identifier.any())", domain: .events)
+                        return
+                    }
+                    node.setIsInheritingOfflineAvailable(parent.isInheritingOfflineAvailable || parent.isMarkedOfflineAvailable)
                 }
-                node.setIsInheritingOfflineAvailable(parent.isInheritingOfflineAvailable || parent.isMarkedOfflineAvailable)
-            }
             processEventData(event: event)
             #endif
 
@@ -183,13 +202,13 @@ extension DriveEventsLoopProcessor {
             
         case .updateContent:
             let identifier = NodeIdentifier(event.link.linkID, shareId, event.link.volumeID)
-            guard let file = findFile(identifier: identifier) else {
+            guard let file = findFile(identifier: identifier, in: moc) else {
                 Log.info("Processing .updateContent event. File: \(identifier.any()) not found", domain: .events)
                 return []
             }
             if let revision = file.activeRevision, revision.id != event.link.fileProperties?.activeRevision?.ID {
                 revision.removeOldThumbnails(in: moc)
-                storage.removeOldBlocks(of: revision)
+                storage.removeOutdatedCache(of: revision)
                 file.activeRevision = nil
                 _ = cloudSlot.update([event.link], of: shareId, in: moc)
                 removeCachedFileForFileProvider(file: file)
@@ -224,7 +243,9 @@ extension DriveEventsLoopProcessor {
 }
 
 extension DriveEventsLoopProcessor {
-    private func findNode(id identifier: NodeIdentifier, by attribute: String = "id") -> Node? {
+    private func findNode(
+        id identifier: NodeIdentifier, by attribute: String = "id", in moc: NSManagedObjectContext
+    ) -> Node? {
         if identifier.volumeID.isEmpty {
             let asFile: File? = storage.existing(with: [identifier.nodeID], by: attribute, allowSubclasses: true, in: moc).first
             let asFolder: Folder? = storage.existing(with: [identifier.nodeID], by: attribute, in: moc).first
@@ -238,16 +259,16 @@ extension DriveEventsLoopProcessor {
         }
     }
     
-    private func nodeExists(id identifier: NodeIdentifier?) -> Bool {
+    private func nodeExists(id identifier: NodeIdentifier?, in moc: NSManagedObjectContext) -> Bool {
         guard let identifier = identifier else { return false }
         if identifier.volumeID.isEmpty {
-            return self.storage.exists(with: identifier.nodeID, in: moc)
+            return self.storage.exists(with: identifier.nodeID, by: #keyPath(Node.id), entityName: "Node", in: moc)
         } else {
             return Node.fetch(identifier: identifier, allowSubclasses: true, in: moc) != nil
         }
     }
     
-    private func findFile(identifier: NodeIdentifier) -> File? {
+    private func findFile(identifier: NodeIdentifier, in moc: NSManagedObjectContext) -> File? {
         if identifier.volumeID.isEmpty {
             let file: File? = storage.existing(with: [identifier.nodeID], in: moc).first
             return file
@@ -257,7 +278,7 @@ extension DriveEventsLoopProcessor {
         }
     }
 
-    private func findAlbum(identifier: NodeIdentifier) -> CoreDataAlbum? {
+    private func findAlbum(identifier: NodeIdentifier, in moc: NSManagedObjectContext) -> CoreDataAlbum? {
         CoreDataAlbum.fetch(identifier: identifier, in: moc)
     }
 
@@ -265,6 +286,10 @@ extension DriveEventsLoopProcessor {
     /// Remove cached file to make sure user can see correct data
     private func removeCachedFileForFileProvider(file: File) {
         #if os(iOS)
+        guard var url = PDFileManager.getFileProviderStorageURL() else {
+            return
+        }
+
         let nodeIdentifier = file.identifier
 
         guard let filename = try? file.decryptName() else {
@@ -272,8 +297,8 @@ extension DriveEventsLoopProcessor {
             return
         }
 
-        var url = NSFileProviderManager.default.documentStorageURL
-        url.appendPathComponent(nodeIdentifier.shareID, isDirectory: true)
+        url.appendPathComponent(PDFileManager.getUserID(), isDirectory: true)
+        url.appendPathComponent(nodeIdentifier.volumeID, isDirectory: true)
         url.appendPathComponent(nodeIdentifier.nodeID, isDirectory: true)
         url.appendPathComponent(filename, isDirectory: false)
         guard FileManager.default.fileExists(atPath: url.path) else { return }

@@ -35,7 +35,7 @@ final class StreamRevisionEncryptorOperationFactory: DiscreteRevisionEncryptorOp
          So now we only support video thumbnails.
         */
 
-        VideoThumbnailProvider()
+        return CGImageThumbnailProvider(next: VideoThumbnailProvider())
     }
 
 }

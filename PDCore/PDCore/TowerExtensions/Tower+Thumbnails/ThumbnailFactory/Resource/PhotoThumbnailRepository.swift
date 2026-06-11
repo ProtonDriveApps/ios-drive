@@ -31,9 +31,28 @@ final class PhotoNodeThumbnailRepository: NodeThumbnailRepository {
         return try moc.performAndWait {
             let photo = Photo.fetch(identifier: fileID, in: moc)
             guard let photoRevision = photo?.photoRevision else {
-                throw DriveError("No local photo with identifier: \(fileID)")
+                throw ThumbnailLoaderError.noValidRevision
             }
             return try getThumbnail(from: photoRevision)
+        }
+    }
+
+    func fetchThumbnailAsync(fileID: any VolumeIdentifiable) async throws -> Thumbnail {
+        let moc = store.backgroundContext
+        let type = typeStrategy.getType()
+
+        return try await moc.perform {
+            let photo = Photo.fetch(identifier: fileID, in: moc)
+            guard let photoRevision = photo?.photoRevision else {
+                throw ThumbnailLoaderError.noValidRevision
+            }
+            guard photoRevision.uploadState != .created else {
+                throw ThumbnailLoaderError.thumbnailNotYetCreated
+            }
+            guard let thumbnail = photoRevision.thumbnails.first(where: { $0.type == type }) else {
+                throw ThumbnailLoaderError.nonRecoverable
+            }
+            return thumbnail
         }
     }
 

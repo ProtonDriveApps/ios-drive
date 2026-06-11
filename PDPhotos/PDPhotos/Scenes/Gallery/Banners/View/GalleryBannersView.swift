@@ -18,35 +18,25 @@
 import SwiftUI
 
 struct GalleryBannersView<
-    ViewModel: GalleryBannersViewModelProtocol,
     StateView: View,
     LockingBannerView: View,
-    StorageView: View,
-    MigrationView: View
+    StorageView: View
 >: View {
-    private let viewModel: ViewModel
     private let stateView: StateView
     private let lockingBannerView: LockingBannerView
     private let storageView: StorageView
-    private let migrationView: MigrationView
 
-    init(viewModel: ViewModel, stateView: StateView, lockingBannerView: LockingBannerView, storageView: StorageView, migrationView: MigrationView) {
-        self.viewModel = viewModel
+    init(stateView: StateView, lockingBannerView: LockingBannerView, storageView: StorageView) {
         self.stateView = stateView
         self.lockingBannerView = lockingBannerView
         self.storageView = storageView
-        self.migrationView = migrationView
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            if viewModel.shouldShowMigration {
-                migrationView
-            } else {
-                storageView
-                lockingBannerView
-                stateView
-            }
+            storageView
+            lockingBannerView
+            stateView
         }
         .fixedSize(horizontal: false, vertical: true)
     }

@@ -40,8 +40,8 @@ extension Node {
     @NSManaged public var permissionsMaskRaw: Int
     @NSManaged public var shareID: String
     @NSManaged public var volumeID: String
-    @NSManaged public var signatureEmail: String?
-    @NSManaged public var nameSignatureEmail: String?
+    @NSManaged public var signatureEmail: String? // Encrypted by `DriveStringCryptoTransformer`
+    @NSManaged public var nameSignatureEmail: String? // Encrypted by `DriveStringCryptoTransformer`
     @NSManaged public var size: Int
     @NSManaged public var directShares: Set<Share>
     @available(*, deprecated, message: "Don't use directly, use `parentNode: Node?` or `parentFolder: Folder?`")
@@ -55,7 +55,11 @@ extension Node {
         set { parentLink = newValue }
     }
 
-    public func getContextShare() throws -> Share {
+    public func getContextShare(
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line
+    ) throws -> Share {
         // Traverse up to the root node
         let rootNode = findRootNode()
 
@@ -65,11 +69,15 @@ extension Node {
         }
 
         // If no share is found, throw an error indicating the invalid state
-        throw invalidState("Root node has no associated context share.")
+        throw invalidState("Root node has no associated context share \(file).\(function)#\(line).")
     }
 
-    public func getContextShareAddressID() throws -> String {
-        let share = try getContextShare()
+    public func getContextShareAddressID(
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line
+    ) throws -> String {
+        let share = try getContextShare(file: file, function: function, line: line)
         let addressID = try share.getAddressID()
         return addressID
     }
@@ -166,11 +174,6 @@ public extension Node {
         guard let file = self as? File else { return true }
         return !file.isProtonFile
     }
-
-    func setIsInheritingOfflineAvailable(_ value: Bool) {
-        // Only inherit `true` if is actually downloadable
-        isInheritingOfflineAvailable = value && isDownloadable
-    }
 }
 
 public extension Node {
@@ -193,34 +196,68 @@ extension Node {
     @NSManaged public func removeFromDirectShares(_ values: Set<Share>)
 }
 
-public enum Role: Int16, Comparable {
-    case viewer = 4
-    case editor = 6
-    case admin = 22
+public enum Permissions: Int16, Comparable {
+    case view = 4
+    case edit = 6
+    case administrate = 22
 
-    public static func < (lhs: Role, rhs: Role) -> Bool {
+    public static func < (lhs: Permissions, rhs: Permissions) -> Bool {
         return lhs.rawValue < rhs.rawValue
     }
 }
 
+public enum Role {
+    case viewer
+    case editor
+    case admin
+    case owner
+
+    public var canAdministrate: Bool {
+        return [Role.admin, .owner].contains(self)
+    }
+
+    public var canShare: Bool {
+        return self == .owner // admin role is excluded until admin sharing is implemented
+    }
+}
+
 extension Node {
-    public func getNodeRole() -> Role {
+    public func getNodePermissions() -> Permissions {
         if let parentNode {
-            let parentRole = parentNode.getNodeRole()
-            let currentRole: Role
-            if let permissions = directShares.first?.members.first?.permissions,
-               let role = Role(rawValue: permissions) {
-                currentRole = role
+            let parentPermissions = parentNode.getNodePermissions()
+            let currentPermissions: Permissions
+            if let permissionsFlag = directShares.first?.members.first?.permissions,
+               let permissions = Permissions(rawValue: permissionsFlag) {
+                currentPermissions = permissions
             } else {
-                currentRole = parentRole
+                currentPermissions = parentPermissions
             }
-            return max(parentRole, currentRole)
+            return max(parentPermissions, currentPermissions)
         } else {
-            if let permissions = directShares.first?.members.first?.permissions,
-               let role = Role(rawValue: permissions) {
-                return role
+            if let permissionsFlag = directShares.first?.members.first?.permissions,
+               let permissions = Permissions(rawValue: permissionsFlag) {
+                return permissions
             }
-            return .admin
+            return .administrate
+        }
+    }
+
+    public func getNodeRole() -> Role {
+        let permissions = getNodePermissions()
+        switch permissions {
+        case .view:
+            return .viewer
+        case .edit:
+            return .editor
+        case .administrate:
+            guard let contextShare = try? getContextShare() else {
+                return .admin
+            }
+            if [Share.ShareType.main, .photos, .device].contains(contextShare.type) {
+                return .owner
+            } else {
+                return .admin
+            }
         }
     }
     

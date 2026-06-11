@@ -27,7 +27,7 @@ protocol EnumeratorWithItemsFromDB {
 /// "Item" enumerations are when listing the contents of a directory.
 extension EnumeratorWithItemsFromDB {
     
-    func fetchPageFromDB(_ page: Int, pageSize: Int, observers: [NSFileProviderEnumerationObserver]) {
+    func fetchPageFromDB(_ containerType: FileOperationEvent.ContainerType, _ page: Int, pageSize: Int, observers: [NSFileProviderEnumerationObserver]) {
         Log.trace()
 
         let allChildren = self.model.childrenObserver.fetchedObjects
@@ -35,12 +35,14 @@ extension EnumeratorWithItemsFromDB {
         
         let childrenGroups = allChildren.splitInGroups(of: pageSize)
         guard childrenGroups.count > page else {
+            Log.event(.enumerateItems(.succeeded(.init(containerType: containerType, itemEnumerationMode: .db, enumeratedItemIDs: [], hasMorePages: false))))
             observers.forEach { $0.finishEnumerating(upTo: nil) }
             return
         }
         var children = childrenGroups[page]
 
         guard let moc = allChildren.first?.managedObjectContext else {
+            Log.event(.enumerateItems(.failed(.init(containerType: containerType, error: "No MOC for allChildren"))))
             observers.forEach { $0.finishEnumerating(upTo: nil) }
             return
         }
@@ -68,8 +70,12 @@ extension EnumeratorWithItemsFromDB {
             }
         }
         observers.forEach { $0.didEnumerate(items) }
+        
+        let hasMorePages = (items.count + draftsCount) == pageSize
+        
+        Log.event(.enumerateItems(.succeeded(.init(containerType: containerType, itemEnumerationMode: .db, enumeratedItemIDs: items.map(\.itemIdentifier.logIdentifier), hasMorePages: hasMorePages))))
 
-        guard (items.count + draftsCount) == pageSize else {
+        guard hasMorePages else {
             observers.forEach { $0.finishEnumerating(upTo: nil) }
             return
         }

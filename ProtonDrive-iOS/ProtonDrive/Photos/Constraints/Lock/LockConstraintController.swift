@@ -20,26 +20,9 @@ import PDCore
 import PDPhotos
 
 final class LockConstraintController: PhotoBackupConstraintController {
-    private let isLockedSubject: CurrentValueSubject<Bool, Never>
+    private let lockedStateController: LockedStateControllerProtocol
+    private let isLockedSubject = CurrentValueSubject<Bool, Never>(false)
     private var cancellables = Set<AnyCancellable>()
-
-    init(
-        isLockedResource: @escaping () -> Bool,
-        removedMainKeyResource: AnyPublisher<Void, Never>,
-        obtainedMainKeyResource: AnyPublisher<Void, Never>
-    ) {
-        let initialStatus = isLockedResource()
-        let subject = CurrentValueSubject<Bool, Never>(initialStatus)
-        self.isLockedSubject = subject
-
-        removedMainKeyResource
-            .sink { subject.send(true) }
-            .store(in: &cancellables)
-
-        obtainedMainKeyResource
-            .sink { subject.send(false) }
-            .store(in: &cancellables)
-    }
 
     var constraint: AnyPublisher<Bool, Never> {
         isLockedSubject
@@ -48,5 +31,18 @@ final class LockConstraintController: PhotoBackupConstraintController {
                 Log.info("LockConstraintController.isLockedSubject 🔐: \($0)", domain: .application)
             })
             .eraseToAnyPublisher()
+    }
+
+    init(lockedStateController: LockedStateControllerProtocol) {
+        self.lockedStateController = lockedStateController
+        subscribeToUpdates()
+    }
+
+    private func subscribeToUpdates() {
+        lockedStateController.isLocked
+            .sink { [weak self] isLocked in
+                self?.isLockedSubject.send(isLocked)
+            }
+            .store(in: &cancellables)
     }
 }

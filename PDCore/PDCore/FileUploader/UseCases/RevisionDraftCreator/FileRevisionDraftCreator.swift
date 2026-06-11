@@ -64,7 +64,7 @@ final class FileRevisionDraftCreator: RevisionDraftCreator {
                 throw draft.file.invalidState("The file should have an active revisionDraft")
             }
 
-            revision.id = revisionIdentifier.revision
+            revision.id = revisionIdentifier.revisionID
 
             try moc.saveOrRollback()
         }

@@ -34,6 +34,7 @@ struct GroupToAlbumFactory {
         )
         let fileContentController = GalleryScenesFactory().makeFileContentController(
             tower: container.dependencies.tower,
+            featureFlagsController: container.dependencies.parentDependencies.featureFlagsController,
             moc: container.dependencies.managedObjectContext,
             photoUploadedNotifier: container.dependencies.parentDependencies.photoUploadedNotifier
         )
@@ -50,7 +51,7 @@ struct GroupToAlbumFactory {
                 coordinator: coordinator,
                 metadataController: container.dependencies.metadataController,
                 nativeSharePhotoController: nativeSharePhotoController,
-                thumbnailContainer: container.dependencies.thumbnailsContainer
+                thumbnailContainer: container.dependencies.albumsThumbnailsContainer
             ),
             rootViewController: rootViewController
         )

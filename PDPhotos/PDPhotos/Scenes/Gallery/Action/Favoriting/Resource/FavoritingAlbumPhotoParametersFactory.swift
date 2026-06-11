@@ -46,8 +46,8 @@ final class FavoritingAlbumPhotoParametersFactory: FavoritingAlbumPhotoParameter
         let rootFolderId = try self.storageManager.getPhotoStreamRootFolderId(in: self.managedObjectContext) ?! "Missing root"
         let parentMaterial = try await self.cryptoMaterialReader.readNodeWithHashKey(identifier: rootFolderId)
 
-        let (photo, secondaryPhotos) = try await managedObjectContext.perform {
-            let photo: CoreDataPhoto = try CoreDataPhoto.fetchOrThrow(identifier: photoId, in: self.managedObjectContext)
+        let (photo, secondaryPhotos) = try await managedObjectContext.perform { [managedObjectContext] in
+            let photo: CoreDataPhoto = try CoreDataPhoto.fetchOrThrow(identifier: photoId, in: managedObjectContext)
             return (photo, photo.children)
         }
 

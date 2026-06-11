@@ -92,6 +92,9 @@ final class PhotoPreviewLoadingStateViewModel: PhotoPreviewLoadingStateViewModel
         case .unsupportedVideo:
             title = Localization.photo_preview_error_video_title
             message = Localization.photo_preview_error_unsupported_format
+        case .fileVerification:
+            title = Localization.photo_preview_error_verification_title
+            message = Localization.photo_preview_error_verification_text
         }
         alert = PhotoPreviewLoadingAlert(title: title, message: message, button: Localization.general_ok)
     }

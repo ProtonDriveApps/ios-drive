@@ -18,6 +18,7 @@
 import Combine
 import Foundation
 import PDLocalization
+import PDCore
 
 protocol PhotoPreviewDetailViewModelProtocol: ObservableObject {
     var state: PhotoPreviewDetailState? { get }
@@ -47,16 +48,19 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
     private let detailController: PhotoPreviewDetailController
     private let fullPreviewController: PhotoFullPreviewController
     private let shareController: PhotoPreviewDetailShareController
+    private let performanceMetricsController: PerformanceMetricsControllerProtocol
     private let id: PhotoId
     private let coordinator: PhotoPreviewDetailCoordinator
     private let metadataController: MetadataControllerProtocol
+    private let videoXAttrBackfiller: VideoXAttrBackfillerProtocol
+    private let fileIsDownloadedSubject: PassthroughSubject<PhotoId, Never>
     private var cancellables = Set<AnyCancellable>()
     private var areMetadataFetched = false
     private var isInitialLoadFinished = false
     var mode: AnyPublisher<PhotosPreviewMode, Never> { modeController.mode }
     @Published var state: PhotoPreviewDetailState?
 
-    init(thumbnailController: ThumbnailController, modeController: PhotosPreviewModeController, previewController: PhotosPreviewController, detailController: PhotoPreviewDetailController, fullPreviewController: PhotoFullPreviewController, shareController: PhotoPreviewDetailShareController, id: PhotoId, coordinator: PhotoPreviewDetailCoordinator, metadataController: MetadataControllerProtocol) {
+    init(thumbnailController: ThumbnailController, modeController: PhotosPreviewModeController, previewController: PhotosPreviewController, detailController: PhotoPreviewDetailController, fullPreviewController: PhotoFullPreviewController, shareController: PhotoPreviewDetailShareController, id: PhotoId, coordinator: PhotoPreviewDetailCoordinator, metadataController: MetadataControllerProtocol, videoXAttrBackfiller: VideoXAttrBackfillerProtocol, performanceMetricsController: PerformanceMetricsControllerProtocol, fileIsDownloadedSubject: PassthroughSubject<PhotoId, Never>) {
         self.thumbnailController = thumbnailController
         self.modeController = modeController
         self.previewController = previewController
@@ -66,6 +70,9 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
         self.id = id
         self.coordinator = coordinator
         self.metadataController = metadataController
+        self.videoXAttrBackfiller = videoXAttrBackfiller
+        self.performanceMetricsController = performanceMetricsController
+        self.fileIsDownloadedSubject = fileIsDownloadedSubject
         subscribeToUpdates()
     }
 
@@ -74,6 +81,7 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
     }
 
     func viewDidLoad() {
+        performanceMetricsController.startRecord(id: id, pageType: .photos)
         fetchMetadataIfPossible()
         thumbnailController.load()
         reloadData()
@@ -84,7 +92,7 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
         // Metadata of whole photo compound (primary + secondary) are needed before loading file content.
         let ids = previewController.getListing(id: id)?.allIds ?? []
         if !ids.isEmpty {
-            metadataController.loadImmediatelly(ids)
+            metadataController.loadImmediatelly(ids, forceToRefresh: false)
         }
         // If ids are empty, the preview controller will notify once they're populated and we will refetch metadata then.
     }
@@ -158,12 +166,15 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
     private func reloadData() {
         let state = makeNewState()
         if self.state != state {
+            backfillVideoXAttrIfNeeded(state: state)
             self.state = state
+            reportPerformanceMetricsIfNeeded()
         }
     }
 
     private func makeNewState() -> PhotoPreviewDetailState {
         if let fullPreview = fullPreviewController.getPreview() {
+            fileIsDownloadedSubject.send(id)
             return .preview(fullPreview)
         } else if let thumbnail = thumbnailController.getImage() {
             return .preview(.thumbnail(thumbnail))
@@ -178,6 +189,7 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
     }
 
     private func handlePreviewError(_ error: PhotoFullPreviewError) {
+        Log.error("Load preview failed", error: error, domain: .photosUI)
         switch error {
         case .noPreviewAvailable:
             setGenericError()
@@ -199,4 +211,40 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
             text: Localization.photo_preview_error_text
         )
     }
+
+    private func backfillVideoXAttrIfNeeded(state: PhotoPreviewDetailState) {
+        guard
+            case .preview(let fullPreview) = state,
+            case .video(let url) = fullPreview
+        else { return }
+        videoXAttrBackfiller.backfillIfNeeded(videoURL: url)
+    }
+
+    private func reportPerformanceMetricsIfNeeded() {
+        guard
+            let listing = previewController.getListing(id: id),
+            let metadata = listing.metadata
+        else { return }
+        let fileType: PerformanceMetric.FileType = metadata.isVideo ? .video : .photo
+        switch state {
+        case .preview(let photoFullPreview):
+            switch photoFullPreview {
+            case .thumbnail:
+                performanceMetricsController.reportPreviewToThumbnail(id: id, fileType: fileType)
+            case .gif, .image, .video:
+                performanceMetricsController.reportPreviewToFullContent(id: id, fileType: fileType)
+            case .livePhoto(_, _, let isLoading):
+                if !isLoading {
+                    performanceMetricsController.reportPreviewToFullContent(id: id, fileType: fileType)
+                }
+            case .burstPhoto(_, _, let isLoading):
+                if !isLoading {
+                    performanceMetricsController.reportPreviewToFullContent(id: id, fileType: fileType)
+                }
+            }
+        default:
+            break
+        }
+    }
+
 }

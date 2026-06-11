@@ -56,14 +56,16 @@ final class EventLoopsExecutionPolicy: EventLoopsExecutionPolicyProtocol {
 
         // Own loops
         data.ownLoops
+            .filter { data.possibleIds.contains($0.volumeId) }
             .forEach { loop in
-                if let priority = getPriority(data: data, loop: loop) {
+                if getPriority(data: data, loop: loop) != nil {
                     resultLoops.append(loop.volumeId)
                 }
             }
 
         // Shared loop
         let sortedSharedLoops = data.sharedLoops
+            .filter { data.possibleIds.contains($0.volumeId) }
             .compactMap { loop in
                 if let priority = getPriority(data: data, loop: loop) {
                     return (priority, loop)

@@ -34,7 +34,10 @@ extension NSManagedObjectContext {
 
 public extension NSManagedObject {
     var moc: NSManagedObjectContext? {
-        managedObjectContext
+        if managedObjectContext == nil {
+            Log.warning("managedObjectContext is nil in \(self.objectIdentifier)", domain: .storage)
+        }
+        return managedObjectContext
     }
 
     var objectIdentifier: String {

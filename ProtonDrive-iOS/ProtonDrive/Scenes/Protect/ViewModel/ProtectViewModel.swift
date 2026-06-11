@@ -57,6 +57,7 @@ final class ProtectViewModel: LogoutRequesting {
             lockManager.onLock()
             coordinator.onLocked()
         } else {
+            lockManager.onUnlocked()
             coordinator.onUnlocked()
         }
     }

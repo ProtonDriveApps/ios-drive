@@ -23,17 +23,20 @@ import ProtonCoreServices
 
 final class LaunchCoordinator {
     private let window: UIWindow
+    private let networkService: PMAPIService
     private weak var viewController: LaunchViewController!
     private let startViewControllerFactory: () -> UIViewController
     private let failingAlertFactory: (FailingAlert) -> UIViewController
 
     public init(
         window: UIWindow,
+        networkService: PMAPIService,
         viewController: LaunchViewController,
         startViewControllerFactory: @escaping () -> UIViewController,
         failingAlertFactory: @escaping (FailingAlert) -> UIViewController
     ) {
         self.window = window
+        self.networkService = networkService
         self.viewController = viewController
         self.startViewControllerFactory = startViewControllerFactory
         self.failingAlertFactory = failingAlertFactory
@@ -73,5 +76,31 @@ final class LaunchCoordinator {
             apiService
         ) { _ in }
         UIApplication.shared.topViewController()?.present(accountRecoveryViewController, animated: true)
+    }
+
+    func presentReportIssue() {
+        let target = [
+            "ProtonCoreLoginUI.WelcomeViewController",
+            "ProtonCoreLoginUI.LoginViewController",
+            "ProtonCoreLoginUI.SignupViewController"
+        ]
+        guard let topVC = UIApplication.shared.topViewController() else { return }
+        let isTargetView = target.contains(where: { String(describing: topVC).contains($0) })
+        guard isTargetView || isPopulateView(topVC: topVC) else { return }
+
+        let factory = BugReportFactory(apiService: networkService, sessionVault: nil)
+        let reportVC = factory.makeBugReportViewController()
+        topVC.present(reportVC, animated: true)
+    }
+
+    private func isPopulateView(topVC: UIViewController) -> Bool {
+        guard
+            let nav = topVC.children.compactMap({ $0 as? UINavigationController }).first,
+            let protectVC = nav.viewControllers.compactMap({ $0 as? ProtectViewController }).first,
+            let protectNav = protectVC.children.first as? UINavigationController,
+            protectNav.viewControllers.count == 1,
+            protectNav.viewControllers.contains(where: { $0 is PopulateViewController })
+        else { return false }
+        return true
     }
 }

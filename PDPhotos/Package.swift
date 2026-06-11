@@ -14,14 +14,15 @@ let package = Package(
         .library(name: "PDPhotos", targets: ["PDPhotos"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", exact: "32.7.1"),
+        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", exact: "37.0.1"),
         .package(url: "https://github.com/ProtonMail/apple-fusion.git", exact: "2.1.5"),
         .package(url: "https://github.com/airbnb/lottie-ios", exact: "4.3.3"),
         .package(name: "PDClient", path: "../PDClient"),
         .package(name: "PDCore", path: "../PDCore"),
         .package(name: "PDLocalization", path: "../PDLocalization"),
         .package(name: "PDUIComponents", path: "../PDUIComponents"),
-        .package(name: "PDContacts", path: "../PDContacts")
+        .package(name: "PDContacts", path: "../PDContacts"),
+        .package(name: "PDSDKCore", path: "../PDSDKCore")
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -37,11 +38,13 @@ let package = Package(
                 .product(name: "PDLocalization", package: "PDLocalization"),
                 .product(name: "ProtonCoreUIFoundations", package: "protoncore_ios"),
                 .product(name: "PDContacts", package: "PDContacts"),
-                .product(name: "Lottie", package: "lottie-ios")
+                .product(name: "Lottie", package: "lottie-ios"),
+                .product(name: "ProtonCoreAuthentication", package: "protoncore_ios"),
+                .product(name: "PDSDKCore", package: "PDSDKCore"),
+                .product(name: "PDSDKCoreiOS", package: "PDSDKCore")
             ],
             path: "PDPhotos",
             resources: [
-                .process("PDPhotosUI/Resources/MigrationAnimation.json"),
                 .process("PDPhotosUI/Resources/TagMigrationAnimation.json")
             ]
         ),

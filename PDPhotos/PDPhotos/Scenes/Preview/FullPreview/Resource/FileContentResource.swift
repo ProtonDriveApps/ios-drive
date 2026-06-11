@@ -19,10 +19,11 @@ import Foundation
 import Combine
 import CoreData
 import PDCore
+import PDSDKCore
 
 protocol FileContentResource {
     var result: AnyPublisher<FileContent, Error> { get }
-    func execute(with id: any VolumeIdentifiable)
+    func execute(with id: any VolumeIdentifiable, downloadMainOnly: Bool)
     func cancel()
 }
 
@@ -63,16 +64,23 @@ final class DecryptedPhotoContentResource: FileContentResource {
     init(
         managedObjectContext: NSManagedObjectContext,
         downloader: Downloader,
+        sdkDownloader: SDKFileDownloaderProtocol?,
         fetchResource: PhotoFetchResourceProtocol,
-        validationResource: FileURLValidationResource,
         photoUploadedNotifier: PhotoUploadedNotifier,
+        performanceMetricsController: PerformanceMetricsControllerProtocol?,
+        photoDecryptor: any FileContentDecryptor<Photo>,
         isDetailedErrorNotified: Bool = true
     ) {
         self.fetchResource = fetchResource
         self.managedObjectContext = managedObjectContext
         self.photoUploadedNotifier = photoUploadedNotifier
-        self.photoDecryptor = RemoteFileContentDecryptor<Photo>(validator: validationResource)
-        self.photoDownloader = RemoteFileContentDownloader<Photo>(managedObjectContext: managedObjectContext, downloader: downloader)
+        self.photoDecryptor = photoDecryptor
+        self.photoDownloader = RemoteFileContentDownloader<Photo>(
+            managedObjectContext: managedObjectContext,
+            downloader: downloader,
+            performanceMetricsController: performanceMetricsController,
+            sdkDownloader: sdkDownloader
+        )
         self.contentLoadStrategy = PhotoContentLoadStrategy(fetchResource: fetchResource, managedObjectContext: managedObjectContext)
         self.isDetailedErrorNotified = isDetailedErrorNotified
     }
@@ -81,13 +89,15 @@ final class DecryptedPhotoContentResource: FileContentResource {
         cancel()
     }
 
-    func execute(with id: any VolumeIdentifiable) {
+    /// - Parameters:
+    ///   - downloadMainOnly: Only download the main photo and ignore children
+    func execute(with id: any VolumeIdentifiable, downloadMainOnly: Bool) {
         guard self.id?.any() != id.any() else { return }
         cancel()
         self.id = id
         task = Task(priority: .userInitiated) { [weak self] in
             self?.photoDownloader.set(id: id)
-            await self?.executeInBackground(id: id)
+            await self?.executeInBackground(id: id, downloadMainOnly: downloadMainOnly)
         }
     }
 
@@ -111,9 +121,9 @@ final class DecryptedPhotoContentResource: FileContentResource {
 }
 
 extension DecryptedPhotoContentResource {
-    private func executeInBackground(id: any VolumeIdentifiable) async {
+    private func executeInBackground(id: any VolumeIdentifiable, downloadMainOnly: Bool) async {
         do {
-            let strategy = try contentLoadStrategy.loadStrategy(of: id)
+            let strategy = downloadMainOnly ? .returnMainAssetDuringChildrenUpload : try contentLoadStrategy.loadStrategy(of: id)
             let mainPhoto = try fetchResource.fetchPhoto(with: id, context: managedObjectContext)
             switch strategy {
             case .waitingForMainAssetUploaded:
@@ -149,11 +159,17 @@ extension DecryptedPhotoContentResource {
             case .unsupportedVideo:
                 await finish(with: FileContentError.unsupportedVideo)
             }
+        } else if let verificationError = error as? FileVerificationError {
+            await finish(with: verificationError)
         } else {
             let isVideo = managedObjectContext.performAndWait {
                 (try? fetchResource.fetchPhoto(with: id, context: managedObjectContext))?.isVideo
             } ?? false
-            Log.error("Failed to download/decrypt photo content. Is video: \(isVideo).", error: error, domain: .photosProcessing)
+            if let resoruceError = error as? FileContentResourceError, resoruceError == .cancelled {
+                // Ignore cancel error
+            } else {
+                Log.error("Failed to download/decrypt photo content. Is video: \(isVideo).", error: error, domain: .photosProcessing)
+            }
             if isVideo {
                 await finish(with: FileContentError.failedVideo)
             } else {
@@ -168,7 +184,7 @@ extension DecryptedPhotoContentResource {
             .sink(receiveValue: { [weak self] nodeID in
                 guard nodeID == id.id else { return }
                 self?.task = Task(priority: .userInitiated) { [weak self] in
-                    await self?.executeInBackground(id: id)
+                    await self?.executeInBackground(id: id, downloadMainOnly: false)
                 }
             })
             .store(in: &cancellables)

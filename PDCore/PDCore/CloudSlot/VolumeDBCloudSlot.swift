@@ -16,7 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
-import PDClient
+@preconcurrency import PDClient
 import CoreData
 
 class VolumeDBCloudSlot: CloudSlotProtocol {
@@ -25,9 +25,11 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
     private let apiService: APIService
     private let client: PDClient.Client
     private let cloudSlot: CloudSlotProtocol
-    weak var downloader: DownloaderProtocol?
-
-    var moc: NSManagedObjectContext { storage.backgroundContext }
+    private var nodeTreeTrashHandler: NodeTreeTrashHandlerProtocol?
+    
+    public var backgroundContext: NSManagedObjectContext {
+        storage.backgroundContext
+    }
 
     init(
         storage: StorageManager,
@@ -41,33 +43,35 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
         self.cloudSlot = cloudSlot
     }
 
-    func set(downloader: DownloaderProtocol) {
-        self.downloader = downloader
+    func set(nodeTreeTrashHandler: NodeTreeTrashHandlerProtocol?) {
+        self.nodeTreeTrashHandler = nodeTreeTrashHandler
     }
 
-    func scanShare(shareID: String, handler: @escaping (Result<Share, any Error>) -> Void) {
+    func scanShare(shareID: String, moc: NSManagedObjectContext, handler: @escaping (Result<Share, any Error>) -> Void) {
         fatalError("Just used by macOS")
     }
 
-    func scanRoots(isPhotosEnabled: Bool, onFoundMainShare: @escaping (Result<Share, any Error>) -> Void, onMainShareNotFound: @escaping () -> Void) {
+    func scanRoots(isPhotosEnabled: Bool, moc: NSManagedObjectContext, onFoundMainShare: @escaping (Result<Share, any Error>) -> Void, onMainShareNotFound: @escaping () -> Void) {
         fatalError("Just used by macOS")
     }
 
-    func scanRootsAsync(isPhotosEnabled: Bool) async throws -> Share? {
+    func scanRootsAsync(isPhotosEnabled: Bool, moc: NSManagedObjectContext) async throws -> Share? {
         fatalError("Just used by macOS")
     }
 
-    func scanShareAndRootFolder(shareID: String, handler: @escaping (Result<Share, any Error>) -> Void) {
+    func scanShareAndRootFolder(shareID: String, moc: NSManagedObjectContext, handler: @escaping (Result<Share, any Error>) -> Void) {
         fatalError("Just used by macOS")
     }
 
-    func scanAllTrashed(volumeID: String) async throws {
+    func scanAllTrashed(volumeID: String, moc: NSManagedObjectContext) async throws {
         let scanner = TrashScanner(client: client, storage: storage, myVolume: volumeID)
-        try await scanner.scanTrash()
+        try await scanner.scanTrash(moc: moc)
     }
 
-    func scanChildren(of parentID: NodeIdentifier, parameters: [PDClient.FolderChildrenEndpointParameters]?, handler: @escaping (Result<[Node], any Error>) -> Void) {
-        let context = moc
+    func scanChildren(of parentID: NodeIdentifier,
+                      parameters: [PDClient.FolderChildrenEndpointParameters]?,
+                      moc: NSManagedObjectContext,
+                      handler: @escaping (Result<[Node], any Error>) -> Void) {
         let mode: CloudSlot.UpdateMode = (parameters?.containsPagination() ?? false) ? .append : .replace
 
         self.client.getFolderChildren(parentID.shareID, folderID: parentID.nodeID, parameters: parameters) { result in
@@ -75,10 +79,11 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
             case .success(let childrenLinksMeta):
                 let childrenLinksMetaWithoutDrafts = childrenLinksMeta.filter { $0.state != .draft }
 
-                context.performAndWait {
+                moc.performAndWait {
                     do {
-                        let children = self.storage.updateLinks(childrenLinksMetaWithoutDrafts, in: context)
-                        let parent = Folder.fetchOrCreate(identifier: AnyVolumeIdentifier(id: parentID.nodeID, volumeID: parentID.volumeID), in: context)
+                        // Can throw in case context has been wiped in the meantime. In such case, error would be reported, but it's false alarm.
+                        let parent: Folder = try Folder.fetchOrThrow(identifier: parentID.any(), in: moc)
+                        let children = self.storage.updateLinks(childrenLinksMetaWithoutDrafts, in: moc)
 
                         switch mode {
                         case .replace:
@@ -86,7 +91,7 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
                         case .append:
                             parent.children.formUnion(Set(children))
                         }
-                        try context.saveOrRollback()
+                        try moc.saveOrRollback()
                         handler(.success(children))
                     } catch {
                         return handler(.failure(error))
@@ -101,9 +106,9 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
     
     func scanChildren(
         of parentID: NodeIdentifier,
-        parameters: [PDClient.FolderChildrenEndpointParameters]?
+        parameters: [PDClient.FolderChildrenEndpointParameters]?,
+        moc: NSManagedObjectContext
     ) async throws -> [Node] {
-        let context = moc
         let mode: CloudSlot.UpdateMode = (parameters?.containsPagination() ?? false) ? .append : .replace
         
         let childrenLinksMeta = try await client.getFolderChildren(
@@ -112,12 +117,12 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
             parameters: parameters
         )
         let childrenLinksMetaWithoutDrafts = childrenLinksMeta.filter { $0.state != .draft }
-        return try await context.perform { [weak self] in
+        return try await moc.perform { [weak self] in
             guard let self else { return [] }
-            let children = self.storage.updateLinks(childrenLinksMetaWithoutDrafts, in: context)
+            let children = self.storage.updateLinks(childrenLinksMetaWithoutDrafts, in: moc)
             let parent = Folder.fetchOrCreate(
                 identifier: AnyVolumeIdentifier(id: parentID.nodeID, volumeID: parentID.volumeID),
-                in: context
+                in: moc
             )
 
             switch mode {
@@ -126,17 +131,20 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
             case .append:
                 parent.children.formUnion(Set(children))
             }
-            try context.saveOrRollback()
+            try moc.saveOrRollback()
             return children
         }
     }
 
-    func scanNode(_ nodeID: NodeIdentifier, linkProcessingErrorTransformer: @escaping (PDClient.Link, any Error) -> any Error, handler: @escaping (Result<Node, any Error>) -> Void) {
+    func scanNode(_ nodeID: NodeIdentifier,
+                  linkProcessingErrorTransformer: @escaping (PDClient.Link, any Error) -> any Error,
+                  moc: NSManagedObjectContext,
+                  handler: @escaping (Result<Node, any Error>) -> Void) {
         // Check in depth
         Task {
             do {
-                let node = try await scanNode(nodeID, linkProcessingErrorTransformer: linkProcessingErrorTransformer)
-                self.moc.performAndWait {
+                let node = try await scanNode(nodeID, linkProcessingErrorTransformer: linkProcessingErrorTransformer, moc: moc)
+                moc.performAndWait {
                     handler(.success(node))
                 }
             } catch {
@@ -145,37 +153,39 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
         }
     }
 
-    func scanNode(_ nodeID: NodeIdentifier, linkProcessingErrorTransformer: @escaping (Link, Error) -> Error) async throws -> Node {
+    func scanNode(_ nodeID: NodeIdentifier,
+                  linkProcessingErrorTransformer: @escaping (Link, Error) -> Error,
+                  moc: NSManagedObjectContext) async throws -> Node {
         let scanner = NodeScanner(client: client, storage: storage)
-        try await scanner.scanNode(nodeID)
-        let context = self.moc
-        // There are a lot of crashes in the Downloader if not done like this
-        return try await context.perform {
-            try Node.fetchOrThrow(identifier: nodeID, allowSubclasses: true, in: context)
+        try await scanner.scanNode(nodeID, moc: moc)
+        return try await moc.perform {
+            try Node.fetchOrThrow(identifier: nodeID, allowSubclasses: true, in: moc)
         }
     }
     
-    func scanRevision(_ revisionID: RevisionIdentifier) async throws -> Revision {
+    func scanRevision(_ revisionID: RevisionIdentifier,
+                      moc: NSManagedObjectContext) async throws -> Revision {
         let identifier = revisionID
         let scanner = RevisionScanner(client: client, storage: storage)
         try await scanner.scanRevision(identifier)
-        let context = self.moc
         // There are a lot of crashes in the Downloader if not done like this
-        return try await context.perform {
-            try Revision.fetchOrThrow(identifier: identifier, allowSubclasses: true, in: context)
+        return try await moc.perform {
+            try Revision.fetchOrThrow(identifier: identifier, allowSubclasses: true, in: moc)
         }
     }
 
-    func scanRevision(_ revisionID: RevisionIdentifier, handler: @escaping (Result<Revision, any Error>) -> Void) {
+    func scanRevision(_ revisionID: RevisionIdentifier,
+                      moc: NSManagedObjectContext,
+                      handler: @escaping (Result<Revision, any Error>) -> Void) {
         let identifier = revisionID
         Task {
             do {
                 let scanner = RevisionScanner(client: client, storage: storage)
                 try await scanner.scanRevision(identifier)
-                let context = self.moc
-                // There are a lot of crashes in the Downloader if not done like this
-                let revision: Revision = try await context.perform { try Revision.fetchOrThrow(identifier: identifier, allowSubclasses: true, in: context) }
-                context.performAndWait {
+                let revision: Revision = try await moc.perform {
+                    try Revision.fetchOrThrow(identifier: identifier, allowSubclasses: true, in: moc)
+                }
+                moc.performAndWait {
                     handler(.success(revision))
                 }
             } catch {
@@ -194,16 +204,16 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
         try await cloudSlot.deleteUploadingFile(shareId: shareId, parentId: parentId, linkId: linkId)
     }
 
-    func createFolder(_ name: String, parent: Folder) async throws -> Folder {
-        try await cloudSlot.createFolder(name, parent: parent)
+    func createFolder(_ name: String, parent: Folder, moc: NSManagedObjectContext) async throws -> Folder {
+        try await cloudSlot.createFolder(name, parent: parent, moc: moc)
     }
 
-    func rename(_ node: Node, to newName: String, mimeType: String?) async throws {
-        try await cloudSlot.rename(node, to: newName, mimeType: mimeType)
+    func rename(_ node: Node, to newName: String, mimeType: String?, moc: NSManagedObjectContext) async throws {
+        try await cloudSlot.rename(node, to: newName, mimeType: mimeType, moc: moc)
     }
 
-    func move(node: Node, to newParent: Folder, name: String) async throws {
-        try await cloudSlot.move(node: node, to: newParent, name: name)
+    func move(node: Node, to newParent: Folder, name: String, moc: NSManagedObjectContext) async throws {
+        try await cloudSlot.move(node: node, to: newParent, name: name, moc: moc)
     }
 
     func fetchInitialEvent(ofVolumeID volumeID: String) async throws -> EventID {
@@ -218,7 +228,7 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
         cloudSlot.downloadThumbnailURL(parameters: parameters, completion: completion)
     }
 
-    func createVolumeAsync(signersKit: SignersKit) async throws -> Share {
+    func createVolumeAsync(signersKit: SignersKit, moc: NSManagedObjectContext) async throws -> Share {
         fatalError("Just used by macOS")
     }
 
@@ -265,7 +275,8 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
     }
 
     func trash(_ nodes: [TrashingNodeIdentifier]) async throws {
-        let trasher = NodeTrasher(client: client, storage: storage, downloader: downloader)
+        let handler = try nodeTreeTrashHandler ?! "Tree trash handler is nil"
+        let trasher = NodeTrasher(client: client, storage: storage, nodeTreeTrashHandler: handler)
         try await trasher.trash(nodes)
     }
 
@@ -295,13 +306,13 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
         try await client.removeMember(shareID: shareID, memberID: memberID)
     }
 
-    func update(thumbnails: [ThumbnailURL]) throws {
-        let context = moc
+    func update(thumbnails: [ThumbnailURL],
+                moc: NSManagedObjectContext) throws {
         let thumbnailsDictionary = Dictionary(uniqueKeysWithValues: thumbnails.map { (AnyVolumeIdentifier(id: $0.id, volumeID: $0.volumeID), $0.url.absoluteString) })
         let identifiers = Set(thumbnailsDictionary.keys)
 
-        try context.performAndWait {
-            let thumbnails: [Thumbnail] = Thumbnail.fetch(identifiers: identifiers, in: context)
+        try moc.performAndWait {
+            let thumbnails: [Thumbnail] = Thumbnail.fetch(identifiers: identifiers, in: moc)
             for thumbnail in thumbnails {
                 guard let url = thumbnailsDictionary[AnyVolumeIdentifier(id: thumbnail.id, volumeID: thumbnail.volumeID)] else {
                     continue
@@ -311,7 +322,7 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
                 }
                 thumbnail.downloadURL = url
             }
-            try context.saveOrRollback()
+            try moc.saveOrRollback()
         }
     }
 }

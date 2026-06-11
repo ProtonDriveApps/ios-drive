@@ -20,25 +20,28 @@ import PDCore
 
 protocol SynchronousThumbnailRepository {
     func load(with id: PhotoId) -> Data?
-    func store(image: Data, id: PhotoId)
+    func hasData(with id: PhotoId) -> Bool
 }
 
 final class ConcreteSynchronousThumbnailRepository: SynchronousThumbnailRepository {
-    private let storage: StringKeyedDataStorage
+    let type: ThumbnailType
 
-    init(storage: StringKeyedDataStorage) {
-        self.storage = storage
+    init(type: ThumbnailType) {
+        self.type = type
     }
 
-    func store(image: Data, id: PhotoId) {
-        storage.store(data: image, key: getKey(from: id))
+    func clearThumbnailURL(id: PhotoId) -> URL? {
+        let identifier = NodeIdentifier(id.id, "", id.volumeID)
+        return PDFileManager.thumbnailURL(for: identifier, type: type)
     }
 
     func load(with id: PhotoId) -> Data? {
-        storage.load(with: getKey(from: id))
+        guard let url = clearThumbnailURL(id: id) else { return nil }
+        return try? Data(contentsOf: url)
     }
 
-    private func getKey(from id: PhotoId) -> String {
-        id.id + id.volumeID
+    func hasData(with id: PhotoId) -> Bool {
+        guard let url = clearThumbnailURL(id: id) else { return false }
+        return FileManager.default.fileExists(atPath: url.path)
     }
 }

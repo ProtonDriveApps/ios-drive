@@ -31,15 +31,18 @@ public final class B2BUserStatusStarter: B2BUserStatusStarterProtocol {
     private let featureFlags: any FeatureFlagsRepository
     private let localSettings: LocalSettings
     private let networking: PMAPIService
+    private let connectionStateResource: ConnectionStateResource
 
     public init(
         featureFlags: any FeatureFlagsRepository,
         localSettings: LocalSettings,
-        networking: PMAPIService
+        networking: PMAPIService,
+        connectionStateResource: ConnectionStateResource
     ) {
         self.featureFlags = featureFlags
         self.localSettings = localSettings
         self.networking = networking
+        self.connectionStateResource = connectionStateResource
     }
 
     public func bootstrap() async throws {
@@ -56,13 +59,20 @@ public final class B2BUserStatusStarter: B2BUserStatusStarterProtocol {
                 do {
                     try await determineAndStoreB2BStatus()
                 } catch {
-                    Log.error("Fetching B2B status failed", error: error, domain: .application)
+                    if error is NetworkStateError {
+                        Log.debug("Fetching B2B status failed since device is offline", domain: .application)
+                    } else {
+                        Log.error("Fetching B2B status failed", error: error, domain: .application)
+                    }
                 }
             }
         }
     }
 
     private func determineAndStoreB2BStatus() async throws {
+        guard connectionStateResource.currentState.isReachable else {
+            throw NetworkStateError.deviceIsOffline
+        }
         guard featureFlags.isEnabled(flag: .driveDisablePhotosForB2B) else {
             localSettings.isB2BUser = false
             return

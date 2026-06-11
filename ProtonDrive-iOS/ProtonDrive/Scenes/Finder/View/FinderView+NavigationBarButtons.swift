@@ -77,8 +77,8 @@ extension FinderView {
                 }
             }
             .accessibility(identifier: "RoundButtonView.Button.Plus_Button")
-            .opacity(vm.node?.getNodeRole() == .viewer ? 0 : 1)
-            .disabled(vm.node?.getNodeRole() == .viewer)
+            .opacity(vm.node?.getNodePermissions() == .view ? 0 : 1)
+            .disabled(vm.node?.getNodePermissions() == .view)
 
         case .action where self.vm.node != nil:
             let environment = EditSectionEnvironment(
@@ -129,7 +129,6 @@ extension FinderView {
             SubscriptionBarItem {
                 presentModal.wrappedValue = .servicePlans
             }
-
         default:
             AssertionView("Unsupported NavigationBarButton requested")
         }

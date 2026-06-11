@@ -22,6 +22,7 @@ import PDCore
 protocol PhotosPreviewItemInfoReaderProtocol {
     func loadPhotoListingIDs(from ids: PhotoIdsSet) async -> Set<PhotoListingId>
     func isAllFavoritedPhotos(ids: PhotoIdsSet) async -> Bool
+    func isAllDownloaded(ids: PhotoIdsSet) async -> Bool
     func getAlbumRole(id: AlbumIdentifier) async -> Role?
     func isCopyToStreamAvailable(id: AnyVolumeIdentifier) async -> Bool
 }
@@ -55,6 +56,20 @@ final class PhotosPreviewItemInfoReader: PhotosPreviewItemInfoReaderProtocol {
             for photo in photos {
                 let isFavorite = (photo.tags ?? []).contains(PhotoTag.favorites.rawValue)
                 if isFavorite == false {
+                    return false
+                }
+            }
+            return true
+        }
+    }
+
+    func isAllDownloaded(ids: PhotoIdsSet) async -> Bool {
+        let context = self.context
+        return await context.perform {
+            let photos = CoreDataPhoto.fetch(identifiers: ids, in: context)
+            for photo in photos {
+                let isDownloaded = photo.photoRevision.isAvailableLocally()
+                if isDownloaded == false {
                     return false
                 }
             }

@@ -19,9 +19,9 @@ import SwiftUI
 import ProtonCoreUIFoundations
 
 #if os(iOS)
-public struct ProgressMenuSectionGeneric<ProgressProviderType>: View where ProgressProviderType: NSObject, ProgressProviderType: ProgressFractionCompletedProvider {
+public struct ProgressMenuSectionGeneric: View {
     
-    public init(progressObserver: ProgressMenuSectionViewModelGeneric<ProgressProviderType>) {
+    public init(progressObserver: ProgressMenuSectionViewModelGeneric) {
         self.progressObserver = progressObserver
     }
     
@@ -30,7 +30,7 @@ public struct ProgressMenuSectionGeneric<ProgressProviderType>: View where Progr
     @State var progressCompleted: Double = 0
     @State var showSpinner: Bool = false
     @State var showAnimation: Bool = false
-    @ObservedObject var progressObserver: ProgressMenuSectionViewModelGeneric<ProgressProviderType>
+    @ObservedObject var progressObserver: ProgressMenuSectionViewModelGeneric
 
     public var body: some View {
         VStack(alignment: .leading) {
@@ -108,21 +108,5 @@ private struct ProgressMenuSectionGenericFormatter {
         formatter.maximumFractionDigits = 0
         return formatter
     }()
-}
-
-struct ProcessMenuSection_Previews: PreviewProvider {
-    static var progress: Progress = {
-        let progress = Progress()
-        progress.totalUnitCount = 100
-        progress.completedUnitCount = 42
-        return progress
-    }()
-    
-    static var previews: some View {
-        ProgressMenuSectionGeneric(progressObserver: .init(progressProvider: self.progress,
-                                                           steadyTitle: "Offline available",
-                                                           inProgressTitle: "Downloading files...",
-                                                           iconName: "ic-availableoffline"))
-    }
 }
 #endif

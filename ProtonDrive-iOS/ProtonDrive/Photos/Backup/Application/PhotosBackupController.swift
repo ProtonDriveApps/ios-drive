@@ -27,7 +27,6 @@ final class DrivePhotosBackupController: PhotosBackupController {
     private let lockController: PhotoBackupConstraintController
     private let b2BUserController: PhotoBackupConstraintController
     private let populatedStateController: PopulatedStateControllerProtocol
-    private let featureFlagsController: FeatureFlagsControllerProtocol
     private var cancellables = Set<AnyCancellable>()
     private let isAvailableSubject = CurrentValueSubject<PhotosBackupAvailability, Never>(.unavailable)
 
@@ -35,14 +34,13 @@ final class DrivePhotosBackupController: PhotosBackupController {
         isAvailableSubject.eraseToAnyPublisher()
     }
 
-    init(authorizationController: PhotoLibraryAuthorizationController, settingsController: PhotoBackupSettingsController, bootstrapController: PhotosBootstrapController, lockController: PhotoBackupConstraintController, b2BUserController: PhotoBackupConstraintController, populatedStateController: PopulatedStateControllerProtocol, featureFlagsController: FeatureFlagsControllerProtocol) {
+    init(authorizationController: PhotoLibraryAuthorizationController, settingsController: PhotoBackupSettingsController, bootstrapController: PhotosBootstrapController, lockController: PhotoBackupConstraintController, b2BUserController: PhotoBackupConstraintController, populatedStateController: PopulatedStateControllerProtocol) {
         self.authorizationController = authorizationController
         self.settingsController = settingsController
         self.bootstrapController = bootstrapController
         self.lockController = lockController
         self.b2BUserController = b2BUserController
         self.populatedStateController = populatedStateController
-        self.featureFlagsController = featureFlagsController
         subscribeToUpdates()
     }
 
@@ -54,29 +52,38 @@ final class DrivePhotosBackupController: PhotosBackupController {
                 let isLocked = constraints.0
                 let isPopulated = constraints.1 == .populated
                 let isB2BConstrained = constraints.2
+
+                var messages = [
+                    "Permissions: \(permissions)",
+                    "Is settings enabled: \(isSettingsEnabled)",
+                    "Is locked: \(isLocked)",
+                    "Is populated: \(isPopulated)",
+                    "Is b2b constrained: \(isB2BConstrained)",
+                    "Local state is ready: \(localStateIsReady)"
+                ]
                 if permissions == .full && isSettingsEnabled && localStateIsReady && isPopulated && !isB2BConstrained {
-                    return isLocked ? PhotosBackupAvailability.locked : PhotosBackupAvailability.available
+                    let result = isLocked ? PhotosBackupAvailability.locked : PhotosBackupAvailability.available
+                    messages.append("Backup is \(result)")
+                    return result
                 } else {
+                    messages.append("Backup is unavailable")
+                    Log.info(messages.joined(separator: "\n"), domain: .photosProcessing)
                     return PhotosBackupAvailability.unavailable
                 }
             }
             .removeDuplicates()
             .sink { [weak self] availability in
-                Log.info("Photos backup availability: \(availability)", domain: .photosProcessing)
                 self?.isAvailableSubject.send(availability)
             }
             .store(in: &cancellables)
     }
 
     private func makeLocalStateIsReadyPublisher() -> AnyPublisher<Bool, Never> {
-        Publishers.CombineLatest(bootstrapController.state, featureFlagsController.makePublisher(keyPath: \.hasAlbums))
-            .map { state, isAlbumsEnabled in
+        bootstrapController.state
+            .map { state in
                 switch state {
-                case .notFound:
+                case .notFound, .legacyShare:
                     return false
-                case .legacyShare:
-                    // When albums FF is enabled, we don't allow backup to the legacy share
-                    return !isAlbumsEnabled
                 case .photoVolume:
                     return true
                 }

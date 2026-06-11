@@ -31,6 +31,7 @@ class ComputersViewModel: ObservableObject {
     private let loadStateRepository: ComputersLoadStateRepositoryProtocol
     private let coordinator: ComputersCoordinatorProtocol
     private let messageHandler: UserMessageHandlerProtocol
+    private let performanceMetricsController: PerformanceMetricsControllerProtocol?
     private let updateTrigger = PassthroughSubject<Void, Never>()
     private let goBackPublisher: AnyPublisher<Void, Never>
 
@@ -40,7 +41,8 @@ class ComputersViewModel: ObservableObject {
         loadStateRepository: ComputersLoadStateRepositoryProtocol,
         goBackPublisher: AnyPublisher<Void, Never> = DriveNotification.virtualBack.publisher.map { _ in Void() }.eraseToAnyPublisher(),
         messageHandler: UserMessageHandlerProtocol,
-        coordinator: ComputersCoordinatorProtocol
+        coordinator: ComputersCoordinatorProtocol,
+        performanceMetricsController: PerformanceMetricsControllerProtocol?
     ) {
         self.scanner = scanner
         self.observer = observer
@@ -48,6 +50,7 @@ class ComputersViewModel: ObservableObject {
         self.coordinator = coordinator
         self.messageHandler = messageHandler
         self.goBackPublisher = goBackPublisher
+        self.performanceMetricsController = performanceMetricsController
     }
 
     var isInitialLoad: Bool {
@@ -74,6 +77,7 @@ class ComputersViewModel: ObservableObject {
             .removeDuplicates()
             .merge(with: updateTrigger.map { _ in self.computers })
             .sink { [weak self] in
+                self?.performanceMetricsController?.updateTab(cacheCount: $0.count, in: .computers)
                 self?.computers = $0
             }
             .store(in: &subscriptions)
@@ -86,5 +90,9 @@ class ComputersViewModel: ObservableObject {
 
     func openSideMenu() {
         coordinator.notifySideMenuToggle()
+    }
+
+    func reportListIsShown() {
+        performanceMetricsController?.reportTabToFirstItem(pageType: .computers)
     }
 }

@@ -24,7 +24,7 @@ protocol MetadataControllerProtocol {
     var failedIDs: AnyPublisher<Set<AnyVolumeIdentifier>, Never> { get }
 
     func loadOpportunistically(_ identifiers: [AnyVolumeIdentifier])
-    func loadImmediatelly(_ identifiers: [AnyVolumeIdentifier])
+    func loadImmediatelly(_ identifiers: [AnyVolumeIdentifier], forceToRefresh: Bool)
     func cancel(identifier: AnyVolumeIdentifier)
 }
 
@@ -69,8 +69,8 @@ final class MetadataController: MetadataControllerProtocol {
         identifiers.append(identifier)
     }
 
-    func loadImmediatelly(_ identifiers: [AnyVolumeIdentifier]) {
-        fetchMetadata(for: identifiers)
+    func loadImmediatelly(_ identifiers: [AnyVolumeIdentifier], forceToRefresh: Bool) {
+        fetchMetadata(for: identifiers, forceToRefresh: forceToRefresh)
     }
 
     /// Call when view disappear
@@ -90,26 +90,26 @@ final class MetadataController: MetadataControllerProtocol {
             .filter { !$0.isEmpty }
             .sink(receiveValue: { [weak self] identifiers in
                 self?.identifiers = []
-                self?.fetchMetadata(for: identifiers)
+                self?.fetchMetadata(for: identifiers, forceToRefresh: false)
             })
             .store(in: &cancellables)
     }
 
-    private func fetchMetadata(for identifiers: [AnyVolumeIdentifier]) {
+    private func fetchMetadata(for identifiers: [AnyVolumeIdentifier], forceToRefresh: Bool) {
         Task { [weak self] in
-            await self?.fetchMetadata(for: identifiers, shouldRetry: true)
+            await self?.fetchMetadata(for: identifiers, shouldRetry: true, forceToRefresh: forceToRefresh)
         }
     }
 
-    private func fetchMetadata(for identifiers: [AnyVolumeIdentifier], shouldRetry: Bool) async {
+    private func fetchMetadata(for identifiers: [AnyVolumeIdentifier], shouldRetry: Bool, forceToRefresh: Bool) async {
         Log.info("Fetch metadata for: \(identifiers)", domain: .metadata)
         do {
-            let linkIDs = try await repository.fetch(identifiers: identifiers)
+            let linkIDs = try await repository.fetch(identifiers: identifiers, forceToRefresh: forceToRefresh)
             readySubject.send(Set(linkIDs))
         } catch {
             Log.error(error: error, domain: .metadata)
             if shouldRetry {
-                await fetchMetadata(for: identifiers, shouldRetry: false)
+                await fetchMetadata(for: identifiers, shouldRetry: false, forceToRefresh: forceToRefresh)
             } else {
                 await MainActor.run { [weak self] in
                     self?.failedIDsSubject.send(Set(identifiers))

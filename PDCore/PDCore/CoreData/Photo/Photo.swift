@@ -32,10 +32,11 @@ public class Photo: File {
     @NSManaged public var albums: Set<CoreDataAlbum>
     @NSManaged public var photoListings: Set<CoreDataPhotoListing> // A photo can be listed in multiple albums
 
+    @NSManaged public var localIdentifier: String?
     // MainKey encrypted properties
-    @NSManaged public var tempBase64Metadata: String?
-    @NSManaged public var tempBase64Exif: String?
-    @NSManaged public var tags: [Int]?
+    @NSManaged public var tempBase64Metadata: String? // Encrypted by `DriveStringCryptoTransformer`
+    @NSManaged public var tempBase64Exif: String? // Encrypted by `DriveStringCryptoTransformer`
+    @NSManaged public var tags: [Int]? // Encrypted by `DriveStringCryptoTransformer`
 
     // Deprecated
     @available(*, deprecated, message: "Not needed")
@@ -90,7 +91,7 @@ public class Photo: File {
         guard let iOSPhotos = iOSPhotos, let iCloudID = iOSPhotos.iCloudID else {
             return nil
         }
-        let modificationTime = ISO8601DateFormatter().date(iOSPhotos.modificationTime)
+        let modificationTime = ISO8601DateFormatter.default.date(iOSPhotos.modificationTime)
         return PhotoAssetMetadata.iOSPhotos(identifier: iCloudID, modificationTime: modificationTime)
     }
     
@@ -135,6 +136,14 @@ public class Photo: File {
     @nonobjc public class func photoFetchRequest() -> NSFetchRequest<Photo> {
         return NSFetchRequest<Photo>(entityName: "Photo")
     }
+
+    // Photo needs to get all children too, to be previewable
+    override public func setIsInheritingOfflineAvailable(_ value: Bool) {
+        super.setIsInheritingOfflineAvailable(value)
+        children.forEach {
+            $0.setIsInheritingOfflineAvailable(value)
+        }
+    }
 }
 
 // MARK: - PDCore DTO's for saving metadata and exif
@@ -146,7 +155,7 @@ public struct TemporalMetadata: Codable {
     public let iOSPhotos: ExtendedAttributes.iOSPhotos
 
     public init(metadata: PhotoAssetMetadata) {
-        let formatter = ISO8601DateFormatter()
+        let formatter = ISO8601DateFormatter.default
         self.location = metadata.location.map { ExtendedAttributes.Location(latitude: $0.latitude, longitude: $0.longitude) }
         self.camera = ExtendedAttributes.Camera(
             captureTime: formatter.string(metadata.camera.captureTime),

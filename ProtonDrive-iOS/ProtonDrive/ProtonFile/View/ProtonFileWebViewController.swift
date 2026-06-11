@@ -17,6 +17,7 @@
 
 import Combine
 import PDCore
+import PDCoreIOS
 import WebKit
 import PDUIComponents
 import ProtonCoreUIFoundations
@@ -53,6 +54,12 @@ final class ProtonFileWebViewController: UIViewController, WKUIDelegate, WKNavig
         setupView()
         subscribeToUpdates()
         viewModel.startLoading()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        // This view doesn't have a show action, so the navigation-to-next-view case can be ignored
+        viewModel.viewDisappear()
     }
 
     private func setupView() {
@@ -125,8 +132,13 @@ final class ProtonFileWebViewController: UIViewController, WKUIDelegate, WKNavig
 
     private func makeWebView() -> WKWebView {
         let userContentController = WKUserContentController()
+        let logHandler = ProtonFileWebLoggingHandler(
+            userContentController: userContentController,
+            deleter: viewModel.deleter,
+            identifier: .init(id: viewModel.identifier.linkId, volumeID: viewModel.identifier.volumeId)
+        )
         scriptHandlers = [
-            ProtonFileWebLoggingHandler(userContentController: userContentController),
+            logHandler,
             ProtonFileWebPlatformHandler(userContentController: userContentController)
         ]
         let configuration = WKWebViewConfiguration()
@@ -156,6 +168,7 @@ final class ProtonFileWebViewController: UIViewController, WKUIDelegate, WKNavig
         guard let url = navigationAction.request.url else {
             return .allow
         }
+        viewModel.reportPerformanceIfNeeded(url: url)
 
         if viewModel.isInternal(url: url) {
             // In case of internal url, proceed with loading in webview

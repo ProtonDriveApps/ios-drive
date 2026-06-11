@@ -21,30 +21,58 @@ import Foundation
 import PDCore
 
 final class DatabasePhotoUploadsRepository: PhotoUploadsRepository {
-    private let observer: FetchedResultsControllerObserver<Photo>
+    private let storage: StorageManager
+    private var observer: FetchedResultsControllerObserver<Photo>?
+    private var observerCancellable: AnyCancellable?
     private let backgroundQueue = DispatchQueue.global(qos: .userInitiated)
     private var cancellables = Set<AnyCancellable>()
     private let subject = PassthroughSubject<PhotosUploadingCount, Never>()
+    private let photosMoc: NSManagedObjectContext
     private var isInitialCount: Bool = true
 
     var count: AnyPublisher<PhotosUploadingCount, Never> {
         subject.eraseToAnyPublisher()
     }
 
-    init(observer: FetchedResultsControllerObserver<Photo>) {
+    init(
+        isBackupAvailable: PhotosBackupUploadAvailableController,
+        photosMoc: NSManagedObjectContext,
+        storage: StorageManager
+    ) {
+        self.photosMoc = photosMoc
+        self.storage = storage
+        isBackupAvailable.isAvailable
+            .receive(on: backgroundQueue)
+            .sink { [weak self] isAvailable in
+                if isAvailable {
+                    self?.setupObserver()
+                } else {
+                    self?.stopObserver()
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    private func setupObserver() {
+        let observer = FetchedResultsControllerObserver(
+            controller: storage.subscriptionToMyPrimaryUploadingPhotosCount(moc: photosMoc),
+            isAutomaticallyStarted: false
+        )
         self.observer = observer
         subscribeToUpdates()
         // Start can be heavy in case of many objects. Shouldn't be performed on main queue.
         // Initial count needs to be notified as a special case so the upload counters are correctly set up.
-        backgroundQueue.async { [weak self] in
-            guard let self else { return }
-            self.observer.start()
-            self.notifyInitialCount()
-        }
+        observer.start()
+        notifyInitialCount()
+    }
+
+    private func stopObserver() {
+        observer = nil
+        observerCancellable = nil
     }
 
     private func notifyInitialCount() {
-        let count = observer.cache.count
+        let count = observer?.cache.count ?? 0
         DispatchQueue.main.async { [weak self] in
             let count = PhotosUploadingCount(count: count, isInitialCount: true)
             self?.subject.send(count)
@@ -52,7 +80,7 @@ final class DatabasePhotoUploadsRepository: PhotoUploadsRepository {
     }
 
     private func subscribeToUpdates() {
-        observer.photos
+        observerCancellable = observer?.photos
             .map { photos in
                 photos.count
             }
@@ -62,6 +90,5 @@ final class DatabasePhotoUploadsRepository: PhotoUploadsRepository {
                 let uploadingCount = PhotosUploadingCount(count: count, isInitialCount: false)
                 self?.subject.send(uploadingCount)
             }
-            .store(in: &cancellables)
     }
 }

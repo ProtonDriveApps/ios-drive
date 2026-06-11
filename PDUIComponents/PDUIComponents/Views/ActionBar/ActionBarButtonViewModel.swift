@@ -25,6 +25,7 @@ public enum ActionBarButtonViewModel: Int {
     case cancel
     case deleteMultiple
     case trashMultiple
+    case removeFromAlbum
     case restoreMultiple
     case moveMultiple
     case offlineAvailableMultiple
@@ -66,6 +67,7 @@ public enum ActionBarButtonViewModel: Int {
         case .createAlbum: return IconProvider.plus
         case .shareMultiple: return IconProvider.arrowUpFromSquare
         case .save: return Image("ic-cloud-arrow-down", bundle: .module)
+        case .removeFromAlbum: return IconProvider.trash
         }
     }
     
@@ -91,12 +93,13 @@ public enum ActionBarButtonViewModel: Int {
         case .createAlbum: return "ActionBar.Button.createAlbum"
         case .shareMultiple: return "ActionBar.Button.shareMultiple"
         case .save: return "ActionBar.Button.save"
+        case .removeFromAlbum: return "ActionBar.Button.removeFromAlbum"
         }
     }
     
     public var title: String? {
         switch self {
-        case .trashMultiple: return Localization.general_remove
+        case .trashMultiple: return Localization.edit_section_remove
         case .deleteMultiple: return Localization.general_delete
         case .restoreMultiple: return Localization.general_restore
         case .createFolder: return "New folder"
@@ -108,6 +111,7 @@ public enum ActionBarButtonViewModel: Int {
         case .shareNative: return Localization.general_share
         case .shareMultiple: return Localization.general_share
         case .save: return Localization.general_save
+        case .removeFromAlbum: return Localization.remove_from_album_action
         default: return nil
         }
     }
@@ -131,7 +135,7 @@ public enum ActionBarButtonViewModel: Int {
 
     var isBold: Bool {
         switch self {
-        case .trashMultiple, .cancel, .removeMe, .setAsAlbumCover, .createAlbum, .shareMultiple, .save: return false
+        case .trashMultiple, .cancel, .removeMe, .setAsAlbumCover, .createAlbum, .shareMultiple, .save, .removeFromAlbum: return false
         case .deleteMultiple, .restoreMultiple, .createFolder, .moveMultiple, .offlineAvailableMultiple, .share, .newShare, .shareNative, .info, .toggleFavorite, .more, .favorite, .unFavorite: return true
         }
     }
@@ -139,6 +143,13 @@ public enum ActionBarButtonViewModel: Int {
     var isContextMenu: Bool {
         switch self {
         case .more: return true
+        default: return false
+        }
+    }
+
+    public var isDestructive: Bool {
+        switch self {
+        case .trashMultiple, .removeFromAlbum: return true
         default: return false
         }
     }

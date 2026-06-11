@@ -33,6 +33,7 @@ protocol XAttrBackfillAnalyzer {
     ) async -> XAttrBackfillContext
 }
 
+/// Suitable for photos
 final class DefaultXAttrBackfillAnalyzer: XAttrBackfillAnalyzer {
     private let exifResource: PhotoLibraryExifResource
     private let dateFormatter: ISO8601DateFormatter

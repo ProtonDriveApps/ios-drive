@@ -33,6 +33,7 @@ extension AlbumDetailViewModel {
         let featureFlagsController: FeatureFlagsControllerProtocol
         let inviteeListLoadController: InviteeListLoadControllerProtocol
         let itemViewModelFactory: CachingPhotoItemViewModelFactoryProtocol
+        let metadataController: MetadataControllerProtocol
         let photosGridViewModel: any PhotosGridViewModelProtocol
         let selectionController: PhotosSelectionController
         let thumbnailControllerContainer: ThumbnailsControllersContainerProtocol
@@ -50,6 +51,7 @@ extension AlbumDetailViewModel {
             featureFlagsController: FeatureFlagsControllerProtocol,
             inviteeListLoadController: InviteeListLoadControllerProtocol,
             itemViewModelFactory: CachingPhotoItemViewModelFactoryProtocol,
+            metadataController: MetadataControllerProtocol,
             photosGridViewModel: any PhotosGridViewModelProtocol,
             selectionController: PhotosSelectionController,
             thumbnailControllerContainer: ThumbnailsControllersContainerProtocol,
@@ -68,6 +70,7 @@ extension AlbumDetailViewModel {
             self.featureFlagsController = featureFlagsController
             self.inviteeListLoadController = inviteeListLoadController
             self.itemViewModelFactory = itemViewModelFactory
+            self.metadataController = metadataController
             self.photosGridViewModel = photosGridViewModel
             self.selectionController = selectionController
             self.userMessageHandler = userMessageHandler

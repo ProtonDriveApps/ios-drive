@@ -17,6 +17,7 @@
 
 import AVKit
 import SwiftUI
+import PDCore
 
 final class VideoContentViewController: UIHostingController<VideoContentView> {
     init(url: URL) {
@@ -30,5 +31,13 @@ final class VideoContentViewController: UIHostingController<VideoContentView> {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .clear
+        
+        do {
+            // Ensure that videos play with sound, even if the Silent hardware toggle is On, same as the Apple Photos app.
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            Log.error("setting AVAudioSession category failed", error: error, domain: .photosUI)
+        }
     }
 }

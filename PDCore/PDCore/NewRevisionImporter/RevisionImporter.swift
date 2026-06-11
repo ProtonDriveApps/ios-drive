@@ -37,10 +37,10 @@ public class CoreDataRevisionImporter: RevisionImporter {
         return try moc.performAndWait {
             let coreDataFile = file.in(moc: moc)
 #if os(macOS)
-            let signersKit = try signersKitFactory.make(forSigner: .main)
+            let signersKit = try file.getContextShareAddressBasedSignersKit(signersKitFactory: self.signersKitFactory,
+                                                                            fallbackSigner: .main)
 #else
-            let addressID = try file.getContextShareAddressID()
-            let signersKit = try signersKitFactory.make(forAddressID: addressID)
+            let signersKit = try file.getContextShareAddressBasedSignersKit(signersKitFactory: signersKitFactory)
 #endif
 
             guard coreDataFile.isUploaded() else { throw File.InvalidState(message: "The file should be already uploaded") }

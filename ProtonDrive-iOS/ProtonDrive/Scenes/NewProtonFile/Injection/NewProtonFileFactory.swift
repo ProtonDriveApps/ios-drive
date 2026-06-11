@@ -31,7 +31,9 @@ struct NewProtonFileFactory {
             messageHandler: UserMessageHandler(),
             dateResource: PlatformCurrentDateResource(),
             dateFormatter: PlatformDateFormatterResource(),
-            fileType: fileType
+            fileType: fileType,
+            performanceMetricsController: tower.performanceMetricsController,
+            eventsSystemManager: tower
         )
         return NewProtonFileLoadingView(viewModel: viewModel)
     }

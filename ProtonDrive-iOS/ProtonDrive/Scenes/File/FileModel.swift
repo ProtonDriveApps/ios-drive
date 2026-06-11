@@ -22,9 +22,18 @@ import QuickLook
 class FileModel: NSObject, QLPreviewControllerDataSource, QLPreviewControllerDelegate {
     // The life of the cleartext URL is tied to the life of the repository, please keep it alive as long as needed
     private let repository: FilePreviewRepository
+    private let performanceMetricsController: PerformanceMetricsControllerProtocol?
+    private let messageHandler: UserMessageHandlerProtocol
+    private var didAppear = false
 
-    init(repository: FilePreviewRepository) {
+    init(
+        repository: FilePreviewRepository,
+        performanceMetricsController: PerformanceMetricsControllerProtocol?,
+        messageHandler: UserMessageHandlerProtocol
+    ) {
         self.repository = repository
+        self.performanceMetricsController = performanceMetricsController
+        self.messageHandler = messageHandler
     }
 
     func numberOfPreviewItems(in controller: QLPreviewController) -> Int {
@@ -44,6 +53,32 @@ class FileModel: NSObject, QLPreviewControllerDataSource, QLPreviewControllerDel
 
     func previewController(_ controller: QLPreviewController, didSaveEditedCopyOf previewItem: QLPreviewItem, at modifiedContentsURL: URL) {
 
+    }
+
+    func viewDidAppear() {
+        guard !didAppear else {
+            return
+        }
+        didAppear = true
+        Task {
+            let (id, mimeType) = await repository.getFileMetadata()
+            performanceMetricsController?.fetchFullContent(id: id, dataSource: .local)
+            performanceMetricsController?.reportPreviewToFullContent(id: id, fileType: getFileType(mimeType: mimeType))
+        }
+    }
+
+    private func getFileType(mimeType: MimeType) -> PerformanceMetric.FileType {
+        if mimeType.isImage {
+            return .photo
+        } else if mimeType.isVideo {
+            return .video
+        } else if mimeType.isProtonDoc {
+            return .protonDoc
+        } else if mimeType.isProtonSheet {
+            return .protonSheet
+        } else {
+            return .other
+        }
     }
 }
 

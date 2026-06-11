@@ -31,7 +31,6 @@ final class PhotosDuplicatesCheckInteractor: AsynchronousExecution {
     }
 
     func execute() async {
-        Log.info("3️⃣ executing", domain: .photosProcessing)
         let compounds = context.createdCompounds
         guard !compounds.isEmpty else { return }
         measurementRepository.start()
@@ -43,6 +42,8 @@ final class PhotosDuplicatesCheckInteractor: AsynchronousExecution {
                 let skippableFiles = compounds.reduce(0, { $0 + $1.secondary.count + 1 })
                 skippableCache.markAsSkippable(identifier, skippableFiles: skippableFiles)
             }
+
+            Log.info("3️⃣ Duplication check result: \(result.debugInfo)", domain: .photosProcessing)
         } catch {
             // TODO:DRVIOS-3072 if error happens this becomes an infinite loop
             context.failValidation(compounds: compounds, error: error)

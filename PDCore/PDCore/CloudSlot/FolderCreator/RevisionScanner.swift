@@ -29,7 +29,7 @@ public class RevisionScanner {
     }
     
     public func scanRevision(_ identifier: RevisionIdentifier) async throws {
-        let revisionMeta = try await client.getRevision(revisionID: identifier.revision, fileID: identifier.file, shareID: identifier.share)
+        let revisionMeta = try await client.getRevision(revisionID: identifier.revisionID, fileID: identifier.fileID, shareID: identifier.shareID)
 
         _ = try await Self.performUpdate(in: storage.backgroundContext, revisionIdentifier: identifier, revisionMeta: revisionMeta, storage: storage)
     }
@@ -49,17 +49,22 @@ public class RevisionScanner {
             file.volumeID = identifier.volumeID
 
 #if os(iOS)
-            var newBlocks: [DownloadBlock] = []
             for meta in revisionMeta.blocks {
                 let block = Self.fetchOrCreateBlock(from: revision, index: meta.index, context: context)
                 block.fulfillBlock(with: meta)
                 block.volumeID = identifier.volumeID
-                block.setValue(revision, forKey: #keyPath(Block.revision))
-                newBlocks.append(block)
+                revision.addToBlocks(block)
             }
+            file.revisions
+                .filter { $0 !== revision }
+                .forEach {
+                    storage.removeOutdatedCache(of: $0)
+                    context.delete($0)
+                }
+            file.addToRevisions(revision)
 #else
             // Legacy for Mac, can be removed after 2025 Feb, once mac migrated to DDK
-            storage.removeOldBlocks(of: revision)
+            storage.removeOutdatedCache(of: revision)
 
             let newBlocks: [DownloadBlock] = storage.unique(with: Set(revisionMeta.blocks.map { $0.URL.absoluteString }), uniqueBy: #keyPath(DownloadBlock.downloadUrl), in: context)
 
@@ -69,10 +74,9 @@ public class RevisionScanner {
                 block.volumeID = identifier.volumeID
                 block.setValue(revision, forKey: #keyPath(Block.revision))
             }
-#endif
-
             revision.setValue(file, forKey: #keyPath(Revision.file))
             revision.blocks = Set(newBlocks)
+#endif
 
             try context.saveOrRollback()
 

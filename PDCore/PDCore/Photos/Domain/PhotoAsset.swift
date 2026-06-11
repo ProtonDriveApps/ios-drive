@@ -19,40 +19,61 @@ import Foundation
 
 public struct PhotoAsset: Equatable {
 
-    public let url: URL
     public let filename: String
     public let mimeType: MimeType
     public let exif: Exif
     public let metadata: PhotoAssetMetadata
     public let tags: [Int]
+    public let contentHash: String
+    public let dataSize: Int
+    public let resourceType: Int
+    public let localIdentifier: String
 
-    public init(url: URL, filename: String, mimeType: MimeType, exif: PhotoAsset.Exif, metadata: PhotoAssetMetadata, tags: [Int]) {
-        self.url = url
+    public init(
+        filename: String,
+        mimeType: MimeType,
+        exif: PhotoAsset.Exif,
+        metadata: PhotoAssetMetadata,
+        tags: [Int],
+        contentHash: String,
+        dataSize: Int,
+        resourceType: Int,
+        localIdentifier: String
+    ) {
         self.filename = filename
         self.mimeType = mimeType
         self.exif = exif
         self.metadata = metadata
         self.tags = tags
+        self.contentHash = contentHash
+        self.dataSize = dataSize
+        self.resourceType = resourceType
+        self.localIdentifier = localIdentifier
     }
     
     public func copy(with newFileName: String) -> PhotoAsset {
         .init(
-            url: url,
             filename: newFileName,
             mimeType: mimeType,
             exif: exif,
             metadata: metadata,
-            tags: tags
+            tags: tags,
+            contentHash: contentHash,
+            dataSize: dataSize,
+            resourceType: resourceType,
+            localIdentifier: localIdentifier
         )
     }
-    
+
     public static func == (lhs: PhotoAsset, rhs: PhotoAsset) -> Bool {
         // Filename can be changed due to validation failed, not reliable here
-        return lhs.url == rhs.url &&
-        lhs.mimeType == rhs.mimeType &&
+        return lhs.mimeType == rhs.mimeType &&
         lhs.exif == rhs.exif &&
         lhs.metadata == rhs.metadata &&
-        lhs.tags == rhs.tags
+        lhs.tags == rhs.tags &&
+        lhs.contentHash == rhs.contentHash &&
+        lhs.dataSize == rhs.dataSize &&
+        lhs.resourceType == rhs.resourceType
     }
 
     public typealias Exif = Data
@@ -121,6 +142,7 @@ public struct PhotoAssetMetadata: Equatable {
     }
 
     public struct iOSPhotos: Equatable, Hashable {
+        /// Cloud identifier
         public let identifier: String
         public let modificationTime: Date?
 
@@ -140,5 +162,14 @@ public struct PhotoAssetMetadata: Equatable {
         self.camera = camera
         self.location = location
         self.iOSPhotos = iOSPhotos
+    }
+
+    public func copy(with iOSPhotos: iOSPhotos?) -> Self {
+        .init(
+            media: media,
+            camera: camera,
+            location: location,
+            iOSPhotos: iOSPhotos ?? self.iOSPhotos
+        )
     }
 }

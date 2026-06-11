@@ -25,11 +25,13 @@ import CommonCrypto
 
 /// ProtonCoreKeyManager framework provides a number of static methods - high-level API to work with Crypto.xcframework
 /// This class gives us space to override that functional
-class Decryptor {
-    
+public class Decryptor {
+
     typealias CoreDecryptor = ProtonCoreKeyManager.Decryptor
     typealias Errors = CoreDecryptor.Errors
-    
+
+    public init() {}
+
     /*
      Decrypt ShareURL password (not signed) -> Does not need verification
      Decrypt Node's name -> Needs to be verified
@@ -47,7 +49,7 @@ class Decryptor {
 
 extension Decryptor {
 
-    static var cryptoTime: Int64 {
+    public static var cryptoTime: Int64 {
         CryptoGo.CryptoGetUnixTime()
     }
 
@@ -153,13 +155,6 @@ extension Decryptor {
         verificationKeys: [ArmoredKey]
     ) throws -> VerifiedBinary {
         try decryptAndVerifyDetachedBinaryMessage(blockDataPacket, sessionKey, signature, verificationKeys)
-    }
-    
-    static func decryptBlock(
-        _ blockDataPacket: DataPacket,
-        sessionKey: SessionKey
-    ) throws -> Data {
-        try decryptWithoutVerifyingDetachedBinaryMessage(blockDataPacket, sessionKey)
     }
 
     static func verifyManifestSignature(
@@ -511,11 +506,56 @@ extension Decryptor {
 
 extension Decryptor: DecryptionResource {
 
-    func decryptKeyPacket(_ keyPacket: Data, decryptionKey: DecryptionKey) throws -> Data {
+    public func decryptBlock(_ blockDataPacket: DataPacket, sessionKey: SessionKey) throws -> Data {
+        try Decryptor.decryptWithoutVerifyingDetachedBinaryMessage(blockDataPacket, sessionKey)
+    }
+
+    public func decryptKeyPacket(_ keyPacket: Data, decryptionKey: DecryptionKey) throws -> Data {
         try Decryptor.decryptContentKeyPacket(keyPacket, decryptionKey: decryptionKey)
     }
 
-    func decryptInStream(url: URL, sessionKey: Data) throws {
+    public func decryptBinaryInStream(
+        cyphertextUrl: URL,
+        cleartextUrl: URL,
+        decryptionKeys: [DecryptionKey],
+        keyPacket: Data
+    ) throws {
+        // prepare files
+        if FileManager.default.fileExists(atPath: cleartextUrl.path) {
+            try FileManager.default.removeItem(at: cleartextUrl)
+        }
+        FileManager.default.createFile(atPath: cleartextUrl.path, contents: Data(), attributes: nil)
+
+        let readFileHandle = try FileHandle(forReadingFrom: cyphertextUrl)
+        defer { try? readFileHandle.close() }
+        let writeFileHandle = try FileHandle(forWritingTo: cleartextUrl)
+        defer { try? writeFileHandle.close() }
+        // cryptography
+
+        let decryptionKeyRing = try CoreDecryptor.buildPrivateKeyRing(with: decryptionKeys)
+        defer { decryptionKeyRing.clearPrivateParams() }
+        let sessionKey = try decryptionKeyRing.decryptSessionKey(keyPacket)
+
+        let ciphertextReader = CryptoGo.HelperMobile2GoReader(FileMobileReader(file: readFileHandle))
+
+        let plaintextMessageReader = try sessionKey.decryptStream(
+            ciphertextReader,
+            verifyKeyRing: nil,
+            verifyTime: CryptoGo.CryptoGetUnixTime()
+        )
+
+        let reader = CryptoGo.HelperGo2IOSReader(plaintextMessageReader)!
+        var isEOF: Bool = false
+        while !isEOF {
+            try autoreleasepool {
+                let result = try reader.read(Constants.maxBlockChunkSize)
+                try writeFileHandle.write(contentsOf: result.data ?? Data())
+                isEOF = result.isEOF
+            }
+        }
+    }
+
+    public func decryptInStream(url: URL, sessionKey: Data) throws {
         let readFileHandle = try FileHandle(forReadingFrom: url)
         defer { try? readFileHandle.close() }
         let cryptoSesionKey = try Decryptor.makeCryptoSessionKey(sessionKey)

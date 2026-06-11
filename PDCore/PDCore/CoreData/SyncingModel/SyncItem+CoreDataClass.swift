@@ -17,10 +17,9 @@
 
 import CoreData
 
-public typealias CoreDataSyncItem = SyncItem
-
 @objc(SyncItem)
-public class SyncItem: NSManagedObject {
+public class SyncItem: NSManagedObject, DomainConvertible {
+    public typealias DomainObject = ReportableSyncItem
 
     public typealias State = SyncItemState
 
@@ -46,6 +45,21 @@ public class SyncItem: NSManagedObject {
             fileProviderOperationRaw = Int64(newValue.rawValue)
         }
     }
+
+    public func toDomain() throws -> ReportableSyncItem {
+        ReportableSyncItem(
+            id: self.id,
+            modificationTime: self.modificationTime,
+            filename: self.filename ?? "",
+            location: self.location,
+            mimeType: self.mimeType,
+            fileSize: self.fileSize?.intValue,
+            operation: self.fileProviderOperation,
+            state: self.state,
+            progress: self.progress,
+            errorDescription: self.errorDescription?.split(separator: "\n").first?.description
+        )
+    }
 }
 
 extension SyncItemState {
@@ -55,6 +69,7 @@ extension SyncItemState {
         switch self {
         case .inProgress: 100
         case .errored: 50
+        case .paused: 49
         case .cancelled: 0
         case .excludedFromSync: 0
         case .finished: 0

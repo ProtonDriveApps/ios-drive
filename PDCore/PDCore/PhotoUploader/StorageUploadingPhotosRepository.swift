@@ -27,18 +27,60 @@ public final class StorageUploadingPhotosRepository: UploadingPrimaryPhotosRepos
     }
 
     public func getPhotos() -> [Photo] {
-        moc.performAndWait {
+        do {
+            let volumeId = try storage.getPhotosVolumeId(in: moc) ?? storage.getMyVolumeId(in: moc)
+            return storage.fetchUploadingPhotos(
+                volumeId: volumeId,
+                size: Constants.processingPhotoUploadsBatchSize,
+                moc: moc
+            )
+        } catch {
+            Log.error(error: error, domain: .photosUI)
+            return []
+        }
+    }
+    
+    public func getPendingPhotosForSDK() -> [Photo] {
+        let moc = storage.synchronousContextPool.acquire()
+        defer { storage.synchronousContextPool.relinquish(moc) }
+        
+        do {
+            let volumeId = try storage.getPhotosVolumeId(in: moc) ?? storage.getMyVolumeId(in: moc)
+            return storage.fetchUploadingPhotosForSDK(
+                volumeId: volumeId,
+                size: Constants.processingPhotoUploadsBatchSize,
+                moc: moc
+            )
+        } catch {
+            Log.error(error: error, domain: .photosUI)
+            return []
+        }
+    }
+
+    public func deleteInterruptPhotos() async {
+        await moc.perform { [moc, self] in
             do {
-                if let photoVolumeId = storage.getPhotosVolumeId(in: moc) {
-                    return storage.fetchUploadingPhotos(volumeId: photoVolumeId, size: Constants.processingPhotoUploadsBatchSize, moc: moc)
-                } else {
-                    let volumeId = try storage.getMyVolumeId(in: moc)
-                    return storage.fetchUploadingPhotos(volumeId: volumeId, size: Constants.processingPhotoUploadsBatchSize, moc: moc)
-                }
+                let volumeID = storage.getPhotosVolumeId(in: moc) ?? ""
+                let request = fetchInterruptedPhotos(volumeID: volumeID)
+                let photos = try moc.fetch(request)
+                photos.forEach { moc.delete($0) }
+                try moc.saveIfNeeded()
             } catch {
-                Log.error(error: error, domain: .photosUI)
-                return []
+                Log.error("Delete interrupt photos failed", error: error, domain: .uploader)
             }
         }
+    }
+}
+
+extension StorageUploadingPhotosRepository {
+    private func fetchInterruptedPhotos(volumeID: String) -> NSFetchRequest<CoreDataPhoto> {
+        let fetchRequest = NSFetchRequest<Photo>(entityName: "Photo")
+        fetchRequest.sortDescriptors = [NSSortDescriptor(key: #keyPath(Photo.captureTime), ascending: false)]
+        fetchRequest.predicate = NSPredicate(
+            format: "%K == %d AND %K == %@",
+            #keyPath(Photo.stateRaw), Photo.State.interrupted.rawValue,
+            #keyPath(Photo.volumeID), volumeID
+        )
+        return fetchRequest
     }
 }

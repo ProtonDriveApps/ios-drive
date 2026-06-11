@@ -40,6 +40,7 @@ enum PhotosAction: Int, Identifiable {
     case info
     case setAsAlbumCover
     case trash
+    case removeFromAlbum
     case more
 }
 

@@ -36,8 +36,10 @@ struct ProtonFilePreviewFactory {
             interactor: interactor,
             urlFactory: urlFactory,
             coordinator: coordinator,
-            errorViewModel: errorViewModel
+            errorViewModel: errorViewModel,
+            performanceController: tower.performanceMetricsController
         )
+        coordinator.openingController = controller
         return controller
     }
 
@@ -60,7 +62,9 @@ struct ProtonFilePreviewFactory {
             storageResource: LocalFileStorageResource(),
             messageHandler: UserMessageHandler(),
             urlInteractor: urlInteractor,
-            nameDataSource: nameDataSource
+            nameDataSource: nameDataSource,
+            performanceMetricsController: tower.performanceMetricsController,
+            deleter: InvalidNodesDeleter(context: tower.storage.backgroundContext)
         )
         let cookieStorage = tower.networking.getSession()?.sessionConfiguration.httpCookieStorage ?? HTTPCookieStorage.shared
         let actionsMenu = makeActionsMenu(identifier: identifier, coordinator: coordinator, openingController: openingController)
@@ -86,15 +90,14 @@ struct ProtonFilePreviewFactory {
 
         let editedNode = NameEditingNode(node: node)
         let nodeRenamer = NodeRenamer(
-            storage: tower.storage,
             cloudNodeRenamer: tower.client.renameEntry,
-            signersKitFactory: tower.sessionVault,
-            moc: tower.storage.backgroundContext
+            signersKitFactory: tower.sessionVault
         )
         let nameEditor = NodeNameEditor(
             storage: tower.storage,
             managedObjectContext: tower.storage.backgroundContext,
-            nodeRenamer: nodeRenamer
+            nodeRenamer: nodeRenamer,
+            nodeOperationPerformer: tower.getSdkNodeOperationPerformer()
         )
         let viewModel = EditNodeNameViewModel(node: editedNode, nameEditor: nameEditor, validator: NameValidations.userSelectedName)
         let formattingViewModel = FormattingFileViewModel(

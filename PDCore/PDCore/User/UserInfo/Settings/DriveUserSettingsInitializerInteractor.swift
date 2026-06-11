@@ -26,15 +26,18 @@ public final class DriveUserSettingsInitializerInteractor: DriveUserSettingsInit
     private let fetchUserSettingsResource: DriveUserSettingsRemoteResource
     private let localSettings: LocalSettings
     private let taskRunner: TaskRunner
+    private let connectionStateResource: ConnectionStateResource
 
     public init(
         fetchUserSettingsResource: DriveUserSettingsRemoteResource,
         localSettings: LocalSettings,
-        taskRunner: TaskRunner = DefaultTaskRunner()
+        taskRunner: TaskRunner = DefaultTaskRunner(),
+        connectionStateResource: ConnectionStateResource
     ) {
         self.fetchUserSettingsResource = fetchUserSettingsResource
         self.localSettings = localSettings
         self.taskRunner = taskRunner
+        self.connectionStateResource = connectionStateResource
     }
 
     public func bootstrap() async throws {
@@ -49,13 +52,20 @@ public final class DriveUserSettingsInitializerInteractor: DriveUserSettingsInit
                 do {
                     try await self.performFetchAndMerge()
                 } catch {
-                    Log.error("Fetch user settings failed", error: error, domain: .application)
+                    if error is NetworkStateError {
+                        Log.debug("Fetch user settings failed since device is offline", domain: .application)
+                    } else {
+                        Log.error("Fetch user settings failed", error: error, domain: .application)
+                    }
                 }
             }
         }
     }
 
     private func performFetchAndCache() async throws {
+        guard connectionStateResource.currentState.isReachable else {
+            throw NetworkStateError.deviceIsOffline
+        }
         let response = try await fetchUserSettingsResource.fetchUserSettings()
         let userValues = response.userSettings
         let defaultValues = response.defaults

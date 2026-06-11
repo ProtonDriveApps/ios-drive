@@ -36,8 +36,6 @@ public extension UITestsFlag {
     static let skipNewFeaturePromote = UITestsFlag(content: "--skip_new_feature_promote")
     /// When upload photo, stop removing invalid characters
     static let skipPhotoNameCorrection = UITestsFlag(content: "--skip_photo_name_correction")
-    static let overrideAlbumsFeatureFlagToFalse = UITestsFlag(content: "--override_albums_flag_to_false")
-    static let overrideAlbumsFeatureFlagToTrue = UITestsFlag(content: "--override_albums_flag_to_true")
     static let skipMigrationPopup = UITestsFlag(content: "--skip_migration_popup")
 }
 

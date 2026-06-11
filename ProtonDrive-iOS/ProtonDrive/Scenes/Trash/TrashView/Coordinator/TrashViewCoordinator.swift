@@ -25,12 +25,12 @@ final class TrashViewCoordinator: ObservableObject, SwiftUICoordinator {
 
     func start(_ context: Context) -> AnyView {
         let tower = context.tower
+        tower.performanceMetricsController?.startRecord(pageType: .trash)
         let restorer = TrashedNodeRestorer(client: tower.client, localRestorer: LocalNodeRestorer(context: tower.storage.backgroundContext))
         let deleter = TrashedNodeDeleter(client: tower.client, storage: tower.storage)
         let trashCleaner = TrashCleaner(client: tower.client, storage: tower.storage)
         let model = TrashModel(tower: tower, restorer: restorer, deleter: deleter, trashCleaner: trashCleaner)
-        let warningViewModel = PhotosMigrationWarningViewModel(controller: context.photosContainer.newPhotosContainer.migrationController)
-        let viewModel = TrashViewModel(model: model, featureFlagsController: context.featureFlagsController, warningViewModel: warningViewModel)
+        let viewModel = TrashViewModel(model: model, featureFlagsController: context.featureFlagsController)
         return TrashView(vm: viewModel).any()
     }
 

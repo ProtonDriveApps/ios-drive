@@ -27,7 +27,9 @@ final class BurstPhotoPreviewView: UIView, PreviewBadgeSupport {
     private var coverImageView: UIImageView?
     private var isBadgeHidden = true
     private var photoBadgeView: PhotoBadgeView?
+    private var badgeTopConstraint: NSLayoutConstraint?
     private weak var parentViewController: UIViewController?
+    private var lastLaidOutBounds: CGRect?
     
     init(isLoading: Bool, coverURL: URL, childrenURLs: [URL], parentViewController: UIViewController?) {
         self.isLoading = isLoading
@@ -46,6 +48,15 @@ final class BurstPhotoPreviewView: UIView, PreviewBadgeSupport {
         isBadgeHidden = isHidden
         photoBadgeView?.isHidden = isHidden
     }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard bounds.width > 0, bounds.height > 0 else { return }
+        guard bounds != lastLaidOutBounds else { return } // avoid repeated rebuild
+        lastLaidOutBounds = bounds
+        // Update badge layout after `coverImageView` get the correct bounds
+        setupBadgeLayout()
+    }
 }
 
 extension BurstPhotoPreviewView {
@@ -60,32 +71,36 @@ extension BurstPhotoPreviewView {
         imageView.fillSuperview()
         imageView.contentMode = .scaleAspectFit
         coverImageView = imageView
-        DispatchQueue.main.async {
-            self.setupBadge()
-        }
     }
     
-    private func setupBadge() {
+    func setupBadgeLayout() {
         guard
             let coverImageView,
             let imageSize = coverImageView.image?.size
         else { return }
         let rect = AVMakeRect(aspectRatio: imageSize, insideRect: coverImageView.bounds)
-        
-        if let photoBadgeView {
-            photoBadgeView.removeFromSuperview()
+
+        let badge: PhotoBadgeView
+        if let existingBadge = photoBadgeView {
+            badge = existingBadge
+        } else {
+            let newBadge = PhotoBadgeView(type: .burst(isLoading))
+            newBadge.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(newBadge)
+            NSLayoutConstraint.activate([
+                newBadge.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8)
+            ])
+            badgeTopConstraint = newBadge.topAnchor.constraint(equalTo: topAnchor, constant: rect.minY + 8)
+            badgeTopConstraint?.isActive = true
+            photoBadgeView = newBadge
+            let suffix = isLoading ? "loading" : "loaded"
+            newBadge.accessibilityIdentifier = "PhotoPreviewDetail.Burst.badge.\(suffix)"
+            setupBadgeTapGesture()
+            badge = newBadge
         }
-        let badge = PhotoBadgeView(type: .burst(isLoading))
-        photoBadgeView = badge
-        badge.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(badge)
-        NSLayoutConstraint.activate([
-            badge.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            badge.topAnchor.constraint(equalTo: topAnchor, constant: rect.minY + 8)
-        ])
-        let suffix = isLoading ? "loading" : "loaded"
-        badge.accessibilityIdentifier = "PhotoPreviewDetail.Burst.badge.\(suffix)"
-        setupBadgeTapGesture()
+
+        badgeTopConstraint?.constant = rect.minY + 8
+        badge.isHidden = isBadgeHidden
     }
     
     private func setupBadgeTapGesture() {

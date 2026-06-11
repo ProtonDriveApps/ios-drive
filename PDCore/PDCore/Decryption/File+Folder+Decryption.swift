@@ -32,7 +32,7 @@ public extension Node {
     }
 
     static let unknownNamePlaceholder = String.randomPlaceholder
-    
+
     var decryptedName: String {
         guard let moc = self.moc else {
             return Self.unknownNamePlaceholder
@@ -91,7 +91,7 @@ public extension Node {
                     decryptionKeys: parentNodeKey,
                     verificationKeys: verificationKeys
                 )
-            } catch let error where !(error is Decryptor.Errors) {
+            } catch let error {
                 DriveIntegrityErrorMonitor.reportMetadataError(for: self)
                 throw error
             }

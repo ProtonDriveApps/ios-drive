@@ -19,12 +19,14 @@ import Combine
 
 public protocol UserInfoController {
     var userInfo: AnyPublisher<UserInfo?, Never> { get }
+    var currentUser: UserInfo? { get }
 }
 
 final class UpdatingUserInfoController: UserInfoController {
     private let resource: UserInfoResource
     private var subject: CurrentValueSubject<UserInfo?, Never>
     private var cancellables = Set<AnyCancellable>()
+    var currentUser: UserInfo? { subject.value }
 
     var userInfo: AnyPublisher<UserInfo?, Never> {
         subject.eraseToAnyPublisher()

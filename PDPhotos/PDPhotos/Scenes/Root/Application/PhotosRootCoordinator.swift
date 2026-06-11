@@ -15,11 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import PDUIComponents
+
 protocol PhotosRootCoordinator {
     func openMenu()
     func close()
     func openAlbumCreationView()
-    func openMigrationSheet()
     func openTagsMigrationSheet()
     func openSubscription()
     func presentTagMigrationBanner()

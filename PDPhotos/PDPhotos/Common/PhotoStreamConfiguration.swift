@@ -19,5 +19,4 @@ import PDCore
 
 struct PhotoStreamConfiguration: Equatable {
     let volumeId: VolumeID
-    let isLegacyShare: Bool
 }

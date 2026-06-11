@@ -34,6 +34,7 @@ final class LaunchViewController: UIViewController {
     var onViewDidLoad: (() -> Void)?
     var onPresentAlert: ((FailingAlert) -> Void)?
     var onPresentAccountRecovery: ((APIService) -> Void)?
+    var onShake: (() -> Void)?
     private var swiftUIActionBarIsVisible: Bool = false
 
     override func viewDidLoad() {
@@ -84,7 +85,13 @@ final class LaunchViewController: UIViewController {
 
         NotificationCenter.default.post(.didDismissAlert)
     }
-    
+
+    override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+        if motion == .motionShake {
+            onShake?()
+        }
+    }
+
     override var preferredStatusBarStyle: UIStatusBarStyle {
         currentStatusBarStyle
     }

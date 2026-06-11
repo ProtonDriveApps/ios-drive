@@ -22,12 +22,23 @@ import Combine
 import PDUIComponents
 import PDLocalization
 
-class MenuViewModel: ObservableObject, LogoutRequesting {
-    typealias ProgressMenuSectionViewModel = ProgressMenuSectionViewModelGeneric<OfflineSaver>
+enum SDKMenuFlag: CaseIterable {
+    case isUsingSDKMainVolumeUpload
+    case isUsingSDKMainVolumeThumbnails
+    case isUsingSDKMainVolumeDownload
+    case isUsingSDKPhotoVolumeUpload
+    case isUsingSDKPhotoVolumeDownload
+    case isUsingSDKPhotoVolumeThumbnails
+    /// rename, trash...etc
+    case isUsingSDKNodeOperations
+}
 
+typealias SDKMenuFlags = Set<SDKMenuFlag>
+
+class MenuViewModel: ObservableObject, LogoutRequesting {
     private let model: MenuModel
-    private let offlineSaver: OfflineSaver
-    let downloads: ProgressMenuSectionViewModel
+    private let offlineAvailableProgressProvider: OfflineSaversProgressProvider
+    let downloads: ProgressMenuSectionViewModelGeneric
 
     @Published var accountInfo: AccountInfo = .blank
     @Published var usagePercent: Double = 0.0
@@ -36,11 +47,13 @@ class MenuViewModel: ObservableObject, LogoutRequesting {
     @Published var logsShareURL: URL?
     @Published var loadingLogs: Bool = false
     @Published var hasSharing: Bool
+    let sdkFlags: SDKMenuFlags
 
     private var cancellables: Set<AnyCancellable> = []
     private let selectedScreenSubject = CurrentValueSubject<Destination, Never>(.myFiles)
     private let featureFlagsController: FeatureFlagsControllerProtocol
     private let showStorageBonusPromoInteractor: ShowStorageBonusPromoInteractorProtocol
+    private let localSettings: LocalSettings
 
     var selectedScreenPublisher: AnyPublisher<Destination, Never> {
         selectedScreenSubject.eraseToAnyPublisher()
@@ -52,21 +65,26 @@ class MenuViewModel: ObservableObject, LogoutRequesting {
 
     init(
         model: MenuModel,
-        offlineSaver: OfflineSaver,
+        offlineAvailableProgressProvider: OfflineSaversProgressProvider,
         featureFlagsController: FeatureFlagsControllerProtocol,
-        showStorageBonusPromoInteractor: ShowStorageBonusPromoInteractorProtocol
+        showStorageBonusPromoInteractor: ShowStorageBonusPromoInteractorProtocol,
+        sdkFlags: SDKMenuFlags,
+        localSettings: LocalSettings
     ) {
         self.model = model
-        self.offlineSaver = offlineSaver
+        self.offlineAvailableProgressProvider = offlineAvailableProgressProvider
         self.featureFlagsController = featureFlagsController
         self.hasSharing = featureFlagsController.hasSharing
-        self.downloads = ProgressMenuSectionViewModel(
-            progressProvider: offlineSaver,
+        self.downloads = ProgressMenuSectionViewModelGeneric(
+            progressProvider: offlineAvailableProgressProvider,
             steadyTitle: Localization.available_offline_title,
             inProgressTitle: Localization.available_offline_downloading_files,
             iconName: "ic-availableoffline"
         )
         self.showStorageBonusPromoInteractor = showStorageBonusPromoInteractor
+        self.sdkFlags = sdkFlags
+        self.localSettings = localSettings
+        subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
@@ -116,6 +134,11 @@ class MenuViewModel: ObservableObject, LogoutRequesting {
     func accountHeaderViewModel() -> AccountHeaderViewModel {
         AccountHeaderViewModel(name: accountInfo.displayName, email: accountInfo.email)
     }
+
+    func toggleDebugMode() {
+        Log.debug("Toggle debug mode", domain: .userAction)
+        localSettings.enableDebugModeInThisLaunch.toggle()
+    }
 }
 
 extension MenuViewModel {
@@ -131,5 +154,3 @@ extension MenuViewModel {
         case storageBonusPromo
     }
 }
-
-extension OfflineSaver: PDUIComponents.ProgressFractionCompletedProvider {}

@@ -22,16 +22,16 @@ public struct ProtonFileAuthenticatedData {
 }
 
 final class ProtonFileAuthenticatedDataInteractor: ThrowingAsynchronousInteractor {
-    private let sessionInteractor: AuthenticatedWebSessionInteractor
+    private let sessionInteractor: AuthenticatedWebSessionInteractorProtocol
     private let urlFactory: ProtonFileAuthenticatedURLFactoryProtocol
 
-    init(sessionInteractor: AuthenticatedWebSessionInteractor, urlFactory: ProtonFileAuthenticatedURLFactoryProtocol) {
+    init(sessionInteractor: AuthenticatedWebSessionInteractorProtocol, urlFactory: ProtonFileAuthenticatedURLFactoryProtocol) {
         self.sessionInteractor = sessionInteractor
         self.urlFactory = urlFactory
     }
 
     func execute(with identifier: ProtonFileIdentifier) async throws -> ProtonFileAuthenticatedData {
-        let sessionData = try await sessionInteractor.execute()
+        let sessionData = try await sessionInteractor.execute(type: .protonFile)
         let url = try urlFactory.makeURL(identifier: identifier, sessionData: sessionData)
         return ProtonFileAuthenticatedData(url: url)
     }

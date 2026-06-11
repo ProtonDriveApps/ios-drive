@@ -18,13 +18,6 @@
 import Combine
 import Foundation
 
-public enum PhotoLibraryMediaType {
-    case image
-    case video
-    case audio
-    case unknown
-}
-
 public protocol PhotoBackupSettingsController {
     var isEnabled: AnyPublisher<Bool, Never> { get }
     var isNetworkConstrained: AnyPublisher<Bool, Never> { get }

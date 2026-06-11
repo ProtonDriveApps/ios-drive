@@ -28,6 +28,7 @@ class ComputerRootFolderViewModel: ObservableObject, FinderViewModel, FetchingVi
     private let localSettings: LocalSettings
     private let volumeIdsController: SharedVolumeIdsController
     let scrollToTopPublisher: AnyPublisher<TabBarItem, Never>?
+    let currentTab: TabBarItem? = .computers
 
     // MARK: FinderViewModel
     let model: FolderModel
@@ -71,7 +72,6 @@ class ComputerRootFolderViewModel: ObservableObject, FinderViewModel, FetchingVi
 
     let supportsLayoutSwitch = true
     let featureFlagsController: FeatureFlagsControllerProtocol
-    let topBanner: String? = nil
 
     @Published var isUploadDisclaimerVisible: Bool = false
 
@@ -86,14 +86,17 @@ class ComputerRootFolderViewModel: ObservableObject, FinderViewModel, FetchingVi
     // MARK: UploadingViewModel
     var childrenUploadCancellable: AnyCancellable?
     let showsUploadsErrorBanner: Bool = true
-    @Published var uploadsCount: Int = 0
-    @Published var uploadProgresses: UploadProgresses = [:]
+    @Published var hasReceivedUploadsUpdate: Bool = false
     var failedCount: Int = 0
     let nodeStatePolicy: NodeStatePolicy
 
     // MARK: DownloadingViewModel
     var childrenDownloadCancellable: AnyCancellable?
-    @Published var downloadProgresses: [ProgressTracker] = []
+    let progressTrackersController: ProgressTrackersControllerProtocol
+
+    lazy var nodeDownloadedResource: NodeDownloadedResource = {
+        NodeDownloadedResource(managedObjectContext: model.tower.storage.newBackgroundContext())
+    }()
 
     // MARK: SortingViewModel
     @Published var sorting: SortPreference
@@ -130,7 +133,8 @@ class ComputerRootFolderViewModel: ObservableObject, FinderViewModel, FetchingVi
         featureFlagsController: FeatureFlagsControllerProtocol,
         isSharedWithMe: Bool = false,
         volumeIdsController: SharedVolumeIdsController,
-        scrollToTopPublisher: AnyPublisher<TabBarItem, Never>?
+        scrollToTopPublisher: AnyPublisher<TabBarItem, Never>?,
+        progressTrackersController: ProgressTrackersControllerProtocol
     ) {
         self.localSettings = localSettings
         defer { self.model.loadFromCache() }
@@ -142,7 +146,8 @@ class ComputerRootFolderViewModel: ObservableObject, FinderViewModel, FetchingVi
         self.isSharedWithMe = isSharedWithMe
         self.volumeIdsController = volumeIdsController
         self.scrollToTopPublisher = scrollToTopPublisher
-        hasPlusFunctionality = !isSharedWithMe || node.getNodeRole() != .viewer
+        hasPlusFunctionality = !isSharedWithMe || node.getNodePermissions() != .view
+        self.progressTrackersController = progressTrackersController
 
         self.subscribeToSort()
         self.subscribeToChildren()
@@ -194,6 +199,10 @@ class ComputerRootFolderViewModel: ObservableObject, FinderViewModel, FetchingVi
 
     func applyAction(completion: @escaping ApplyActionCompletion) {
         completion()
+    }
+
+    func reportListIsShown() {
+        model.tower.performanceMetricsController?.reportTabToFirstItem(pageType: .computers)
     }
 }
 

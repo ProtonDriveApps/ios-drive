@@ -45,7 +45,7 @@ struct MenuCell: View {
 
                 Text(item.text)
                     .font(.body.weight(isHighlighted ? .semibold : .regular))
-                    .foregroundColor(ColorProvider.SidebarTextNorm)
+                    .foregroundColor( item.textColor ?? ColorProvider.SidebarTextNorm)
                     .accessibilityIdentifier(item.identifier)
 
                 Spacer()

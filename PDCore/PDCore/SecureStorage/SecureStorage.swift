@@ -78,7 +78,7 @@ public final class SecureStorage<T: Codable> {
                 do {
                     if let keychainAccessError = error as? Keychain.AccessError {
                         Log.error(error: keychainAccessError, domain: .storage)
-                        fatalError("Crashing because of keychain access error \(keychainAccessError.localizedDescription)")
+                        fatalError("\(ExceptionMessagesExcludedFromSentryCrashReport.keychainAccessErrored.rawValue) \(keychainAccessError.localizedDescription)")
                     } else {
                         try persistentStore.wipe()
                         Log.info("wiped persistent store \(label) because of: \(error.localizedDescription)", domain: .storage)
@@ -119,7 +119,7 @@ public final class SecureStorage<T: Codable> {
                         crossProcessNotifier?.post()
                     default:
                         Log.error(error: keychainAccessError, domain: .storage)
-                        fatalError("Crashing because of keychain access error \(keychainAccessError.localizedDescription)")
+                        fatalError("\(ExceptionMessagesExcludedFromSentryCrashReport.keychainAccessErrored.rawValue) \(keychainAccessError.localizedDescription)")
                     }
                 } else {
                     Log.error(error: error, domain: .storage)

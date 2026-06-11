@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDCoreIOS
 
 protocol ThumbnailsControllersContainerProtocol {
     func makeSmallThumbnailController(id: PhotoId) -> ThumbnailController
@@ -26,6 +27,8 @@ final class ThumbnailsControllersContainer: ThumbnailsControllersContainerProtoc
     struct Dependencies {
         let tower: Tower
         let metadataController: MetadataControllerProtocol
+        let performanceMetricsController: PerformanceMetricsControllerProtocol
+        let featureFlagsController: FeatureFlagsControllerProtocol
     }
 
     private let dependencies: Dependencies
@@ -38,8 +41,8 @@ final class ThumbnailsControllersContainer: ThumbnailsControllersContainerProtoc
         tower: dependencies.tower,
         type: .photos
     )
-    private lazy var smallThumbnailsRepository = makeSynchronousRepository()
-    private lazy var bigThumbnailsRepository = makeSynchronousRepository()
+    private lazy var smallThumbnailsRepository = makeSynchronousRepository(type: .default)
+    private lazy var bigThumbnailsRepository = makeSynchronousRepository(type: .photos)
     lazy var smallThumbnailsController = factory.makeSmallThumbnailsController(tower: dependencies.tower)
     lazy var bigThumbnailsController = factory.makeBigThumbnailsController(tower: dependencies.tower)
 
@@ -54,6 +57,8 @@ final class ThumbnailsControllersContainer: ThumbnailsControllersContainerProtoc
             urlsController: smallThumbnailsUrlsController,
             metadataController: dependencies.metadataController,
             synchronousRepository: smallThumbnailsRepository,
+            performanceMetricsController: dependencies.performanceMetricsController,
+            featureFlagsController: dependencies.featureFlagsController,
             id: id,
             type: .default
         )
@@ -66,14 +71,14 @@ final class ThumbnailsControllersContainer: ThumbnailsControllersContainerProtoc
             urlsController: bigThumbnailsUrlsController,
             metadataController: dependencies.metadataController,
             synchronousRepository: bigThumbnailsRepository,
+            performanceMetricsController: dependencies.performanceMetricsController,
+            featureFlagsController: dependencies.featureFlagsController,
             id: id,
             type: .photos
         )
     }
 
-    private func makeSynchronousRepository() -> SynchronousThumbnailRepository {
-        let configuration = MemoryManagedStringKeyedDataStorage.Configuration(countLimit: 300, totalCostLimit: 10_000_000)
-        let storage = MemoryManagedStringKeyedDataStorage(configuration: configuration)
-        return ConcreteSynchronousThumbnailRepository(storage: storage)
+    private func makeSynchronousRepository(type: ThumbnailType) -> SynchronousThumbnailRepository {
+        return ConcreteSynchronousThumbnailRepository(type: type)
     }
 }

@@ -31,7 +31,6 @@ public class DriveDependencyContainer {
 
     var appGroup: SettingsStorageSuite { Constants.appGroup }
     var authenticatedContainer: AuthenticatedDependencyContainer?
-    var windowScene: UIWindowScene!
     let hvHelper: HumanCheckHelper
     private(set) var autoLocker: Autolocker?
 

@@ -18,6 +18,7 @@
 import Combine
 import Foundation
 import PDCore
+import PDCoreIOS
 
 protocol ThumbnailController {
     var updatePublisher: AnyPublisher<Void, Never> { get }
@@ -40,10 +41,14 @@ final class LocalThumbnailController: ThumbnailController {
     private let metadataController: MetadataControllerProtocol
     private let synchronousRepository: SynchronousThumbnailRepository
     private let asynchronousRepository: AsynchronousThumbnailRepository
+    private let performanceMetricsController: PerformanceMetricsControllerProtocol
+    private let canUseSDK: Bool
     private let id: PhotoId
     private var cancellables = Set<AnyCancellable>()
     private var subject = PassthroughSubject<Void, Never>()
     private var isFailedSubject = CurrentValueSubject<Bool, Never>(false)
+    private var isWaitingForMetadata = false
+    @ThreadSafe var isBootsrtapped = false
 
     var updatePublisher: AnyPublisher<Void, Never> {
         subject.eraseToAnyPublisher()
@@ -53,17 +58,20 @@ final class LocalThumbnailController: ThumbnailController {
         isFailedSubject.eraseToAnyPublisher()
     }
 
-    init(thumbnailsController: ThumbnailsController, urlsController: ThumbnailURLsController, metadataController: MetadataControllerProtocol, synchronousRepository: SynchronousThumbnailRepository, asynchronousRepository: AsynchronousThumbnailRepository, id: PhotoId) {
+    init(thumbnailsController: ThumbnailsController, urlsController: ThumbnailURLsController, metadataController: MetadataControllerProtocol, synchronousRepository: SynchronousThumbnailRepository, asynchronousRepository: AsynchronousThumbnailRepository, performanceMetricsController: PerformanceMetricsControllerProtocol, canUseSDK: Bool, id: PhotoId) {
         self.thumbnailsController = thumbnailsController
         self.urlsController = urlsController
         self.metadataController = metadataController
         self.synchronousRepository = synchronousRepository
         self.asynchronousRepository = asynchronousRepository
+        self.performanceMetricsController = performanceMetricsController
+        self.canUseSDK = canUseSDK
         self.id = id
     }
 
     func bootstrap() {
-        cancel()
+        if isBootsrtapped { return }
+        isBootsrtapped = true
         thumbnailsController.readyIds
             .map { [weak self] ids in
                 guard let self = self else { return false }
@@ -72,7 +80,7 @@ final class LocalThumbnailController: ThumbnailController {
             .removeDuplicates()
             .filter { $0 }
             .sink { [weak self] _ in
-                self?.handleIsReady()
+                self?.handleLoadUpdate(.storedInFileSystem)
             }
             .store(in: &cancellables)
 
@@ -123,8 +131,10 @@ final class LocalThumbnailController: ThumbnailController {
 
     func load() {
         /// Start assessing thumbnail state in DB, unless it's already stored in memory cache.
-        if synchronousRepository.load(with: id) == nil {
+        if !synchronousRepository.hasData(with: id) {
             asynchronousRepository.load(id: id)
+        } else {
+            performanceMetricsController.fetchThumbnail(id: id, dataSource: .local)
         }
     }
 
@@ -138,33 +148,49 @@ final class LocalThumbnailController: ThumbnailController {
 
     // MARK: - Private
 
-    private func handleIsReady() {
-        asynchronousRepository.load(id: id)
-    }
-
     private func handleLoadUpdate(_ result: ThumbnailLoadResult) {
         switch result {
-        case let .data(data):
-            /// Data is decrypted, we can store to inmemory cache and publish update
-            synchronousRepository.store(image: data, id: id)
+        case .storedInFileSystem:
+            /// Data is decrypted in file system, we can publish update
+            performanceMetricsController.fetchThumbnail(id: id, dataSource: .local)
             subject.send()
         case .encrypted:
             /// Thumbnail has metadata in DB, but binary is not downloaded nor decrypted. We need to request processing.
-            Log.debug("Handle thumbnail load update: encrypted", domain: .thumbnails)
+            /// Does not require us to invoke SDK
+            Log.trace("Handle thumbnail load update: encrypted", domain: .thumbnails)
+            performanceMetricsController.fetchThumbnail(id: id, dataSource: .remote)
             thumbnailsController.load(id)
         case .missingURL:
             /// Thumbnail doesn't have download URL, need to batch download it
-            Log.debug("Handle thumbnail load update: missingURL", domain: .thumbnails)
-            urlsController.load(id)
+            Log.trace("Handle thumbnail load update: missingURL, will use SDK: \(canUseSDK)", domain: .thumbnails)
+            performanceMetricsController.fetchThumbnail(id: id, dataSource: .remote)
+
+            if canUseSDK {
+                // In SDK, batch loading is handled for us. ThumbnailLoader invokes SDK for us
+                thumbnailsController.load(id)
+            } else {
+                // In legacy code, we batch load URLs
+                urlsController.load(id)
+            }
+
         case .missingMetadata:
             /// Photo's metadata is not available, need to batch fetch it
-            Log.debug("Handle thumbnail load update: missingMetadata", domain: .thumbnails)
-            if id.id == "" {
+            if id.id.isEmpty {
                 // Album cover could be nil
-                Log.debug("PhotoID is empty", domain: .thumbnails)
+                Log.debug("Handle thumbnail load update: missingMetadata, photoID is empty", domain: .thumbnails)
                 return
             }
-            metadataController.loadOpportunistically([id])
+            Log.trace("Handle thumbnail load update: missingMetadata, will use SDK: \(canUseSDK)", domain: .thumbnails)
+            performanceMetricsController.fetchThumbnail(id: id, dataSource: .remote)
+
+            if canUseSDK {
+                // SDK will fetch metadata + thumbnail urls + decrypt
+                thumbnailsController.load(id)
+            } else {
+                // We need to batch fetch metadata before proceeding
+                isWaitingForMetadata = true
+                metadataController.loadOpportunistically([id])
+            }
         }
     }
 
@@ -174,6 +200,13 @@ final class LocalThumbnailController: ThumbnailController {
     }
 
     private func handleMetadataUpdate() {
+        // Metadata controller is shared and publishes multiple times. ThumbnailURL needs to be requested
+        // only when metadata requested by this object explicitly.
+        guard isWaitingForMetadata else {
+            return
+        }
+        isWaitingForMetadata = false
+
         // Once we have metadata, we can enqueue urls fetching
         urlsController.load(id)
     }

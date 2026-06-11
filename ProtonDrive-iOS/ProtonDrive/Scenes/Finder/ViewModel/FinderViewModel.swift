@@ -61,6 +61,7 @@ protocol FinderViewModel: NodeEditionViewModel, FlatNavigationBarDelegate, Scrol
     typealias ApplyActionCompletion = () -> Void
     var model: Model { get }
     var provedEmpty: Bool { get }
+    var currentTab: TabBarItem? { get }
 
     var sorting: SortPreference { get }
     var supportsSortingSwitch: Bool { get }
@@ -88,7 +89,7 @@ protocol FinderViewModel: NodeEditionViewModel, FlatNavigationBarDelegate, Scrol
     var leadingNavBarItems: [NavigationBarButton] { get }
     var lastUpdated: Date { get }
     var featureFlagsController: FeatureFlagsControllerProtocol { get }
-    var topBanner: String? { get }
+    var isUsingSDKForThumbnails: Bool { get }
 
     func refreshOnAppear()
     func didScrollToBottom()
@@ -100,6 +101,7 @@ protocol FinderViewModel: NodeEditionViewModel, FlatNavigationBarDelegate, Scrol
     var isUploadDisclaimerVisible: Bool { get }
     var lockedStateCancellable: AnyCancellable? { get set }
     var lockedStateBannerVisibility: LockedStateAlertVisibility { get set }
+    func reportListIsShown()
     func closeUploadDisclaimer()
 }
 
@@ -129,6 +131,7 @@ extension FinderViewModel {
             })
             .sink { [weak self] activeSorted, uploading in
                 guard let self = self, self.isVisible else { return }
+                self.model.tower.performanceMetricsController?.updateTab(cacheCount: activeSorted.count, in: .myFiles)
                 self.permanentChildren = activeSorted.map(NodeWrapper.init)
                 self.transientChildren = uploading.map(NodeWrapper.init)
             }
@@ -235,38 +238,26 @@ extension FinderViewModel where Self: UploadingViewModel, Self: DownloadingViewM
             from: node,
             // selection should not be available for uploading files
             selectionModel: node.state?.existsOnCloud == true ? self.prepareSelectionModel() : nil,
-            // progresses come from Uploader a little later that nodes from db
-            progressesAvailable: getNormalizedUploadProgresses() != nil,
-            progressTracker: makeFileProgressTracker(for: node),
-            downloadProgresses: self.downloadProgresses,
+            // progresses come from Uploader a little later that nodes from db. Waiting for notification to redraw.
+            progressesAvailable: hasReceivedUploadsUpdate,
             thumbnailLoader: self.model,
             nodeStatePolicy: nodeStatePolicy,
             featureFlagsController: featureFlagsController,
-            isSharedWithMeRoot: isSharedWithMeRoot
+            isSharedWithMeRoot: isSharedWithMeRoot,
+            progressTrackersController: progressTrackersController,
+            nodeDownloadedResource: nodeDownloadedResource
         )
     }
 
-    func makeFileProgressTracker(for node: Node) -> ProgressTracker? {
-        let uploadProgresses = getNormalizedUploadProgresses()
-        if let file = node as? File {
-            if let uploadID = file.uploadID,
-               let uploadProgress = uploadProgresses?[uploadID],
-               file.activeRevisionDraft != nil {
-                return ProgressTracker(progress: uploadProgress, direction: .upstream)
-            } else {
-                return downloadProgresses.first { $0.matches(file.id) }
-            }
-        }
-        return nil
-    }
-
-    func getNormalizedUploadProgresses() -> UploadProgresses? {
-        uploadsCount > 0 ? uploadProgresses : nil
-    }
-
     func isUploadFailed(node: Node) -> Bool {
-        let progressTracker = makeFileProgressTracker(for: node)
-        let areProgressesAvailable = getNormalizedUploadProgresses() != nil
+        guard let file = node as? File else {
+            return false
+        }
+        guard let uploadId = file.uploadID?.uuidString else {
+            return false
+        }
+        let progressTracker = progressTrackersController.getUploadProgress(for: uploadId)
+        let areProgressesAvailable = hasReceivedUploadsUpdate
         return nodeStatePolicy.isUploadFailed(for: node, progressTracker: progressTracker, areProgressesAvailable: areProgressesAvailable)
     }
 }
@@ -276,58 +267,70 @@ extension FinderViewModel where Self: DownloadingViewModel, Self: HasMultipleSel
         NodeCellWithProgressConfiguration(
             from: node,
             selectionModel: self.prepareSelectionModel(),
-            progressTracker: makeFileProgressTracker(for: node),
-            downloadProgresses: self.downloadProgresses,
             thumbnailLoader: self.model,
             nodeStatePolicy: DisabledNodeStatePolicy(),
             featureFlagsController: featureFlagsController,
-            isSharedWithMeRoot: isSharedWithMeRoot
+            isSharedWithMeRoot: isSharedWithMeRoot,
+            progressTrackersController: progressTrackersController,
+            nodeDownloadedResource: nodeDownloadedResource
         )
-    }
-
-    func makeFileProgressTracker(for node: Node) -> ProgressTracker? {
-        if let file = node as? File {
-            return downloadProgresses.first { $0.matches(file.id) }
-        }
-        return nil
     }
 }
 
 extension FinderViewModel where Self: UploadingViewModel, Self.Model: UploadsListing {
 
     func subscribeToChildrenUploading() {
-        self.childrenUploadCancellable?.cancel()
-        self.childrenUploadCancellable = self.model.childrenUploading()
-        .catch {  [weak self] error -> Empty<([File], [FileUploader.OperationID: FileUploader.CurrentProgress]), Error> in
-            switch error {
-            case UploaderErrors.canceled:
-                break // not all errors should be propagated to UI
+        Task { @MainActor in
+            self.childrenUploadCancellable?.cancel()
+            self.childrenUploadCancellable = self.model.childrenUploading()
+                .catch {  [weak self] error -> Empty<([File], [FileUploader.OperationID: FileUploader.CurrentProgress]), Error> in
+                    switch error {
+                    case UploaderErrors.canceled:
+                        break // not all errors should be propagated to UI
 
-            case let error where error is CloudSlot.Errors:
-                self?.genericErrors.send(error)
+                    case let error where error is CloudSlot.Errors:
+                        self?.genericErrors.send(error)
 
-            case let error where error is ValidationError<String>:
-                self?.genericErrors.send(error)
+                    case let error where error is ValidationError<String>:
+                        self?.genericErrors.send(error)
 
-            case let FileUploaderError.verificationError(childError):
-                self?.genericErrors.send(childError)
+                    case let FileUploaderError.verificationError(childError):
+                        self?.genericErrors.send(childError)
 
-            case let error as NSError where FinderError(error) == .noSpaceOnCloud:
-                self?.genericErrors.send(error)
-                fallthrough
+                    case let error as NSError where FinderError(error) == .noSpaceOnCloud:
+                        self?.genericErrors.send(error)
+                        fallthrough
 
-            default:
-                self?.uploadErrors.send(error)
-            }
+                    default:
+                        self?.uploadErrors.send(error)
+                    }
 
-            return .init()
+                    return .init()
+                }
+                .sink(receiveCompletion: { [weak self] _ in
+                    self?.subscribeToChildrenUploading()
+                }, receiveValue: { [weak self] files, progress in
+                    let trackersValues = progress.map { key, value in
+                        return (key.uuidString, ProgressTracker(progress: value, direction: .upstream))
+                    }
+                    let trackersDictionary = Dictionary(uniqueKeysWithValues: trackersValues)
+                    self?.progressTrackersController.setUploads(progresses: trackersDictionary)
+                    if self?.hasReceivedUploadsUpdate == false {
+                        self?.hasReceivedUploadsUpdate = true
+                    }
+                })
         }
-        .sink(receiveCompletion: { [weak self] _ in
-            self?.subscribeToChildrenUploading()
-        }, receiveValue: { [weak self] files, progress in
-            self?.uploadsCount = files.count
-            self?.uploadProgresses = progress
-        })
+    }
+
+    func subscribeToSDKNotify() {
+        Task { @MainActor in
+            guard let uploader = model.tower.getSdkFileUploader() else { return }
+            uploader.failures
+                .sink { [weak self] info in
+                    self?.genericErrors.send(info.1)
+                }
+                .store(in: &cancellables)
+        }
     }
 
     private func getVerificationError(from error: FileUploaderError) -> Error? {
@@ -341,23 +344,30 @@ extension FinderViewModel where Self: UploadingViewModel, Self.Model: UploadsLis
 
 extension FinderViewModel where Self: DownloadingViewModel, Self.Model: DownloadsListing {
     func subscribeToChildrenDownloading() {
+        Task { @MainActor in
+            self.subscribeToChildrenDownloadingAsync()
+        }
+    }
+
+    @MainActor private func subscribeToChildrenDownloadingAsync() {
         self.childrenDownloadCancellable?.cancel()
         self.childrenDownloadCancellable = self.model.childrenDownloading()
-        .receive(on: DispatchQueue.main)
-        .catch { [weak self] error -> Empty<[ProgressTracker], Error> in
-            let error: Error = (error as? ResponseError)?.underlyingError ?? error
-            self?.genericErrors.send(error)
-            return .init()
-        }
-        .sink(receiveCompletion: { [weak self] _ in
-            self?.subscribeToChildrenDownloading()
-        }, receiveValue: { [weak self] progresses in
-            self?.downloadProgresses = progresses
-        })
+            .receive(on: DispatchQueue.main)
+            .catch { [weak self] error -> Empty<ProgressTrackers, Error> in
+                let error: Error = (error as? ResponseError)?.underlyingError ?? error
+                self?.genericErrors.send(error)
+                return .init()
+            }
+            .sink(receiveCompletion: { [weak self] _ in
+                self?.subscribeToChildrenDownloading()
+            }, receiveValue: { [weak self] progresses in
+                // This only sets data to controller so only relevant subviews can subscribe and reload
+                self?.progressTrackersController.setDownloads(progresses: progresses)
+            })
     }
 
     func selected(file: File) {
-        self.model.download(node: file)
+        downloadFile(file: file)
     }
 }
 
@@ -372,18 +382,33 @@ extension FinderViewModel where Self.Model: NodesListing {
             return
         }
 
-        (self.model as? DownloadsListing)?.download(
-            node: node,
-            useRefreshableDownloadOperation: featureFlagsController.hasRefreshableBlockDownloadLink
-        )
+        downloadFile(file: file)
+    }
+
+    private func downloadFile(file: File) {
+        guard let downloadsListing = self.model as? DownloadsListing else {
+            return
+        }
+
+        if let sdkFileDownloader = downloadsListing.tower.getSdkFileDownloader() {
+            let fileIdentifier = file.identifier
+            Task {
+                try await sdkFileDownloader.download(file: fileIdentifier.any())
+            }
+        } else {
+            downloadsListing.download(
+                node: file,
+                useRefreshableDownloadOperation: true
+            )
+        }
     }
 
     func setFavorite(_ favorite: Bool, nodes: [Node]) {
-        model.tower.setFavourite(favorite, nodes: nodes) { _ in }
+        model.tower.setFavourite(favorite, nodes: nodes, moc: model.tower.storage.backgroundContext) { _ in }
     }
 
     func markOfflineAvailable(_ mark: Bool, nodes: [Node]) {
-        model.tower.markOfflineAvailable(mark, nodes: nodes) { _ in }
+        model.tower.markOfflineAvailable(mark, nodes: nodes, moc: model.tower.storage.backgroundContext) { _ in }
     }
 
     func removeMe(_ currentNode: Node, completion: @escaping (Result<Void, Error>) -> Void) {
@@ -435,6 +460,10 @@ extension FinderViewModel where Self.Model: NodesListing {
     }
 
     func sendToTrash(_ currentNodes: [Node]) async throws {
+        if let performer = model.tower.getSdkNodeOperationPerformer() {
+            try await trash(currentNodes, via: performer)
+            return
+        }
         guard let moc = currentNodes.first?.moc else {
             throw Node.noMOC()
         }
@@ -468,6 +497,15 @@ extension FinderViewModel where Self.Model: NodesListing {
         let error: Error = (error as? ResponseError)?.underlyingError ?? error
         genericErrors.send(error)
     }
+
+    private func trash(_ currentNodes: [Node], via performer: SDKNodeOperationPerformer) async throws {
+        let (ids, error) = try await performer.trash(nodes: currentNodes.map { $0.identifier.any() })
+        let downloaders: [DownloaderProtocol?] = [model.tower.downloader, model.tower.getSdkFileDownloader()]
+        for downloader in downloaders {
+            downloader?.cancel(operationsOf: ids)
+        }
+        if let error { throw error }
+    }
 }
 
 extension FinderViewModel {
@@ -493,5 +531,27 @@ struct DriveFinderUpload: Error {
 
     var localizedDescription: String {
         "Uploading file with no activeRevisionDraft"
+    }
+}
+
+extension FinderViewModel {
+    func startRecordingPerformance(node: Node) {
+        guard let file = node as? File else {
+            return
+        }
+        guard let controller = model.tower.performanceMetricsController else {
+            assert(false)
+            return
+        }
+        guard let type = currentTab?.toMetricTag else {
+            return
+        }
+        controller.startRecord(id: file.identifier.any(), pageType: type)
+    }
+}
+
+extension FinderViewModel where Model: FinderModel {
+    var isUsingSDKForThumbnails: Bool {
+        model.tower.getSdkThumbnailsDownloaderForFiles() != nil
     }
 }

@@ -19,29 +19,32 @@ import Combine
 import PDCore
 
 final class ForegroundTransitionController {
-    private let applicationStateResource: ApplicationRunningStateResource
+    private let applicationStateController: ApplicationStateController
+    private let lockedStateController: LockedStateControllerProtocol
     private let populatedInteractors: [CommandInteractor]
     private let interactors: [CommandInteractor]
     private var cancellables = Set<AnyCancellable>()
     
     init(
-        applicationStateResource: ApplicationRunningStateResource,
+        applicationStateController: ApplicationStateController,
         interactors: [CommandInteractor],
         populatedInteractors: [CommandInteractor],
-        populatedStateController: PopulatedStateControllerProtocol
+        populatedStateController: PopulatedStateControllerProtocol,
+        lockedStateController: LockedStateControllerProtocol
     ) {
-        self.applicationStateResource = applicationStateResource
+        self.applicationStateController = applicationStateController
         self.populatedInteractors = populatedInteractors
+        self.lockedStateController = lockedStateController
         self.interactors = interactors
 
-        applicationStateResource.state.sink { [weak self] state in
+        applicationStateController.state.sink { [weak self] state in
             self?.handle(state)
         }.store(in: &cancellables)
 
         // Combine both state publishers and filter for foreground and populated conditions
-        Publishers.CombineLatest(applicationStateResource.state, populatedStateController.state)
-            .filter { appState, populatedState in
-                appState == .foreground && populatedState == .populated
+        Publishers.CombineLatest3(applicationStateController.state, populatedStateController.state, lockedStateController.isLocked)
+            .filter { appState, populatedState, isLocked in
+                appState == .foreground && populatedState == .populated && !isLocked
             }
             .sink { [weak self] _ in
                 self?.handleExclusivelyPopulated()

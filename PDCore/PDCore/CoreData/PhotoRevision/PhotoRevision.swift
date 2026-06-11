@@ -24,6 +24,23 @@ public class PhotoRevision: Revision {
     @NSManaged public var exif: String
     @NSManaged public var transientClearExif: Data?
     @NSManaged public var contentHash: String?
+    /// Temporary property for the photo resource type
+    @NSManaged private var uploadResourceType: NSNumber?
+    public var uploadResourceTypeValue: Int? {
+        get {
+            // Due to an incorrect database setting, the stored value is `0` instead of `nil`.
+            // Since `PHAssetResourceType` has no case for `0`, we treat `0` as `nil`.
+            let value = uploadResourceType?.intValue
+            return value == 0 ? nil : value
+        }
+        set {
+            if let newValue {
+                self.setValue(NSNumber(integerLiteral: newValue), forKey: #keyPath(uploadResourceType))
+            } else {
+                self.setValue(nil, forKey: #keyPath(uploadResourceType))
+            }
+        }
+    }
 
     @NSManaged public var photo: Photo
 

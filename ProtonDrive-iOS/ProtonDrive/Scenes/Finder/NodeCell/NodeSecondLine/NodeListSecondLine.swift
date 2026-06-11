@@ -33,6 +33,7 @@ enum Badge: Equatable {
     case cloud
     case favorite
     case offline
+    case markedAsOffline
     case shared
     case sharedCollaboratively
     case bookmark

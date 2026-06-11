@@ -16,18 +16,21 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import PDCoreIOS
 
 struct PhotosRootNavigation: Equatable {
     let title: String?
     let leading: Item?
     let trailing: [Item]
 
-    static func `default`(isPaidUser: Bool, showTagMigrationSpinner: Bool) -> PhotosRootNavigation {
+    static func `default`(
+        isPaidUser: Bool,
+        showTagMigrationSpinner: Bool
+    ) -> PhotosRootNavigation {
         var trailing: [Item] = []
         if !isPaidUser { trailing.append(.subscribe) }
         if showTagMigrationSpinner { trailing.append(.tagMigrationSpinner) }
-
-        return .init(
+        return PhotosRootNavigation(
             title: nil,
             leading: .menu,
             trailing: trailing

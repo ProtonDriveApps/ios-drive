@@ -19,14 +19,16 @@ import Foundation
 
 public final class FileRenamingFileRotatorDecorator: FileLogRotator {
     private let fileManager = FileManager.default
-    private let rotationDirectory = PDFileManager.logsRotationDirectory
+    private let rotationDirectory: URL
     private let dateProvider: () -> Date
     private let rotator: FileLogRotator
 
     public init(
+        rotationDirectory: URL = PDFileManager.logsRotationDirectory,
         rotator: FileLogRotator,
         dateProvider: @escaping () -> Date = Date.init
     ) {
+        self.rotationDirectory = rotationDirectory
         self.rotator = rotator
         self.dateProvider = dateProvider
     }
@@ -42,7 +44,11 @@ public final class FileRenamingFileRotatorDecorator: FileLogRotator {
             try fileManager.moveItem(at: oldURL, to: newURL)
             return newURL
         } catch {
-            SentryClient.shared.recordError("LogCollectionError 😵🗂️. Failed to rename file: \(error)")
+            SentryClient.shared.recordError(
+                "LogCollectionError 😵🗂️. Failed to rename file: \(error)",
+                system: .default,
+                domain: .logs
+            )
             return oldURL
         }
     }

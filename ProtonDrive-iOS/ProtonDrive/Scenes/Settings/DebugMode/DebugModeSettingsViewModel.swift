@@ -28,9 +28,19 @@ final class DebugModeSettingsViewModel: ObservableObject {
     }
 
     private let localSettings: LocalSettings
+    private let coordinator: DebugModeSettingsCoordinator
 
-    init(localSettings: LocalSettings) {
+    init(localSettings: LocalSettings, coordinator: DebugModeSettingsCoordinator) {
         self.localSettings = localSettings
         self.isDebugModeEnabled = localSettings.debugModeEnabled
+        self.coordinator = coordinator
+    }
+
+    func didTapDiagnostics() {
+        coordinator.showStorageDiagnostics()
+    }
+
+    func didTapPhotoDiagnostics() {
+        coordinator.presentPhotoBackupDiagnostics()
     }
 }

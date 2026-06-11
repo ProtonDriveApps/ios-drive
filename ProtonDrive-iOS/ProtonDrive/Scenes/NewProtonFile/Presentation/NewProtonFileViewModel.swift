@@ -17,6 +17,7 @@
 
 import Combine
 import PDCore
+import PDCoreIOS
 import Foundation
 import PDLocalization
 
@@ -32,6 +33,8 @@ final class NewProtonFileViewModel: NewProtonFileViewModelProtocol {
     private let dateResource: DateResource
     private let dateFormatter: DateFormatterResource
     private let fileType: ProtonFileType
+    private let performanceMetricsController: PerformanceMetricsControllerProtocol?
+    private let eventsSystemManager: EventsSystemManager
     private var cancellables = Set<AnyCancellable>()
     private let subject = PassthroughSubject<String?, Never>()
 
@@ -39,13 +42,24 @@ final class NewProtonFileViewModel: NewProtonFileViewModelProtocol {
         subject.eraseToAnyPublisher()
     }
 
-    init(facade: NewProtonFileFacadeProtocol, openingController: ProtonFileOpeningControllerProtocol, messageHandler: UserMessageHandlerProtocol, dateResource: DateResource, dateFormatter: DateFormatterResource, fileType: ProtonFileType) {
+    init(
+        facade: NewProtonFileFacadeProtocol,
+        openingController: ProtonFileOpeningControllerProtocol,
+        messageHandler: UserMessageHandlerProtocol,
+        dateResource: DateResource,
+        dateFormatter: DateFormatterResource,
+        fileType: ProtonFileType,
+        performanceMetricsController: PerformanceMetricsControllerProtocol?,
+        eventsSystemManager: EventsSystemManager
+    ) {
         self.facade = facade
         self.openingController = openingController
         self.messageHandler = messageHandler
         self.dateResource = dateResource
         self.dateFormatter = dateFormatter
         self.fileType = fileType
+        self.performanceMetricsController = performanceMetricsController
+        self.eventsSystemManager = eventsSystemManager
         subscribeToUpdates()
     }
 
@@ -81,6 +95,11 @@ final class NewProtonFileViewModel: NewProtonFileViewModelProtocol {
             let localizedError = map(error: error)
             messageHandler.handleError(localizedError)
         case let .success(identifier):
+            performanceMetricsController?.startRecord(
+                id: .init(id: identifier.nodeID, volumeID: identifier.volumeID),
+                pageType: .myFiles // Can't create document in computers
+            )
+            eventsSystemManager.forcePolling(volumeIDs: [identifier.volumeID])
             openingController.openPreview(identifier)
         }
     }

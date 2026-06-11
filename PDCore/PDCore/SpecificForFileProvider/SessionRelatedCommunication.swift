@@ -19,10 +19,11 @@ import Foundation
 import ProtonCoreAuthentication
 import ProtonCoreNetworking
 import ProtonCoreServices
+import ProtonCoreUtilities
 
 public protocol SessionRelatedCommunicatorBetweenMainAppAndExtensions {
-
-    var isWaitingforNewChildSession: Bool { get }
+    
+    var isWaitingforNewChildSessionAvailability: Atomic<Bool> { get }
 
     func onChildSessionReady() async
     func askMainAppToProvideNewChildSession() async
@@ -73,37 +74,76 @@ public final class SessionRelatedCommunicatorForMainApp: SessionRelatedCommunica
     let isChildSessionIndependent = false
     #endif
     
-    private let authenticator: Authenticator
+    private let authenticator: AuthenticatorInterface
     private let sessionStorage: SessionStore
     private let childSessionKind: ChildSessionCredentialKind
     private let userDefaultsConfiguration: UserDefaultsConfiguration
     private let userDefaultsObservationCenter: UserDefaultsObservationCenter
-    public private(set) var isWaitingforNewChildSession = false
+    public private(set) var isWaitingforNewChildSessionAvailability: Atomic<Bool> = .init(false)
+    public private(set) var isFetchingChildSession: Atomic<Bool> = .init(false)
+    public private(set) var isObservingForSessionExpiration: Atomic<Bool> = .init(false)
+    
+    private var periodicCheckTask: Atomic<Task<Void, Error>?> = .init(nil)
+    private let periodicCheckIntervalInMilliseconds: Int
 
     private var userDefaults: UserDefaults { userDefaultsConfiguration.userDefaults }
     
     public init(userDefaultsConfiguration: UserDefaultsConfiguration,
+                customUserDefaultsObservationCenter: UserDefaultsObservationCenter? = nil,
+                periodicCheckIntervalInMilliseconds: Int = 5000,
                 sessionStorage: SessionStore,
                 childSessionKind: ChildSessionCredentialKind,
-                authenticator: Authenticator) {
+                authenticator: AuthenticatorInterface) {
         self.userDefaultsConfiguration = userDefaultsConfiguration
-        self.userDefaultsObservationCenter = UserDefaultsObservationCenter(userDefaults: userDefaultsConfiguration.userDefaults)
+        self.periodicCheckIntervalInMilliseconds = periodicCheckIntervalInMilliseconds
+        self.userDefaultsObservationCenter = customUserDefaultsObservationCenter ?? UserDefaultsObservationCenter(userDefaults: userDefaultsConfiguration.userDefaults)
         self.authenticator = authenticator
         self.sessionStorage = sessionStorage
         self.childSessionKind = childSessionKind
     }
     
     public func startObservingSessionChanges() {
+        guard isObservingForSessionExpiration.changeValue(to: true) else { return }
         userDefaultsObservationCenter.addObserver(self, of: userDefaultsConfiguration.sessionExpiredKeyPath) { [weak self] isExpired in
             guard let self, isExpired == true else { return }
             Task {
-                await self.askMainAppToProvideNewChildSession()
+                await self.askMainAppToProvideNewChildSession(onlyIfSessionIsExpired: true)
             }
+        }
+        tickTimer { [weak self] in
+            guard let self else { return false }
+            await askMainAppToProvideNewChildSession(onlyIfSessionIsExpired: true)
+            return true
+        }
+    }
+    
+    func tickTimer(operation: @escaping () async -> Bool) {
+        periodicCheckTask.mutate {
+            guard isObservingForSessionExpiration.value else {
+                if $0?.isCancelled == true { $0 = nil }
+                return
+            }
+            let task = Task { [weak self] in
+                // there is no need for handling the cancellation error. it will stop the operation, and this is all we care about
+                try Task.checkCancellation()
+                guard let periodicCheckIntervalInMilliseconds = self?.periodicCheckIntervalInMilliseconds else { return }
+                try await Task.sleep(for: .milliseconds(periodicCheckIntervalInMilliseconds))
+                guard self?.isObservingForSessionExpiration.value == true else { return }
+                try Task.checkCancellation()
+                guard await operation() else { return }
+                try Task.checkCancellation()
+                self?.tickTimer(operation: operation)
+            }
+            $0 = task
         }
     }
     
     public func stopObservingSessionChanges() {
         userDefaultsObservationCenter.removeObserver(self)
+        periodicCheckTask.mutate {
+            $0?.cancel()
+            isObservingForSessionExpiration.mutate { $0 = false }
+        }
     }
     
     deinit {
@@ -112,18 +152,29 @@ public final class SessionRelatedCommunicatorForMainApp: SessionRelatedCommunica
     
     // initial check on the app launch
     public func performInitialSetup() async {
-        if userDefaults[keyPath: userDefaultsConfiguration.sessionExpiredKeyPath] == true {
+        if isChildSessionExpired() {
             await askMainAppToProvideNewChildSession()
         }
     }
     
     public func askMainAppToProvideNewChildSession() async {
+        await askMainAppToProvideNewChildSession(onlyIfSessionIsExpired: false)
+    }
+    
+    private func askMainAppToProvideNewChildSession(onlyIfSessionIsExpired: Bool) async {
         guard let currentCredentials = sessionStorage.sessionCredential else { return }
         let parentSessionCredentials = Credential(currentCredentials)
         guard !parentSessionCredentials.isForUnauthenticatedSession else { return }
         do {
-            try await fetchNewChildSession(parentSessionCredential: parentSessionCredentials)
+            guard !onlyIfSessionIsExpired || isChildSessionExpired() else { return }
+            let valueWasChangedFromFalseToTrue = isWaitingforNewChildSessionAvailability.changeValue(to: true)
+            guard valueWasChangedFromFalseToTrue else {
+                Log.info("Not fetching new child session of kind \(childSessionKind) because fetching already in progress", domain: .sessionManagement)
+                return
+            }
+            _ = try await fetchNewChildSession(parentSessionCredential: parentSessionCredentials)
             onChildSessionReady()
+            self.isWaitingforNewChildSessionAvailability.mutate { $0 = false }
         } catch {
             Log.error("Fetching new child session failed", error: error, domain: .fileProvider)
         }
@@ -136,18 +187,21 @@ public final class SessionRelatedCommunicatorForMainApp: SessionRelatedCommunica
     }
     
     public func fetchNewChildSession(parentSessionCredential: Credential) async throws {
-        guard !isWaitingforNewChildSession else {
+        let valueWasChangedFromFalseToTrue = isFetchingChildSession.changeValue(to: true)
+        guard valueWasChangedFromFalseToTrue else {
             Log.info("Not fetching new child session of kind \(childSessionKind) because fetching already in progress", domain: .sessionManagement)
             return
         }
-        isWaitingforNewChildSession = true
         Log.info("Started fetching new child session of kind \(childSessionKind)", domain: .sessionManagement)
+        defer { isFetchingChildSession.mutate { $0 = false } }
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             authenticator.performForkingAndObtainChildSession(
                 parentSessionCredential, useCase: .forChildClientID(childClientID, independent: isChildSessionIndependent, payload: nil)
             ) { [weak self] result in
-                guard let self else { return }
-                self.isWaitingforNewChildSession = false
+                guard let self else {
+                    continuation.resume()
+                    return
+                }
                 switch result {
                 case .success(let newCredentials):
                     Log.info("Successfully fetched new child session of kind \(childSessionKind)", domain: .sessionManagement)
@@ -192,14 +246,26 @@ public final class SessionRelatedCommunicatorForExtension: SessionRelatedCommuni
     private let childSessionKind: ChildSessionCredentialKind
     private var userDefaults: UserDefaults { userDefaultsConfiguration.userDefaults }
     private let onChildSessionObtained: (Credential, ChildSessionCredentialKind) async -> Void
-    public private(set) var isWaitingforNewChildSession = false
+    public private(set) var isWaitingforNewChildSessionAvailability: Atomic<Bool> = .init(false)
+    public private(set) var isConsumingChildSession: Atomic<Bool> = .init(false)
+    public private(set) var isObservingForSessionReadiness: Atomic<Bool> = .init(false)
+    
+    private var periodicCheckTask: Atomic<Task<Void, Error>?> = .init(nil)
+    private let periodicCheckIntervalInMilliseconds: Int
+    
+    private let assertionProvider: AssertionProvider
 
-    public init(userDefaultsConfiguration: UserDefaultsConfiguration, 
+    public init(userDefaultsConfiguration: UserDefaultsConfiguration,
+                customUserDefaultsObservationCenter: UserDefaultsObservationCenter? = nil,
+                periodicCheckIntervalInMilliseconds: Int = 5000,
+                assertionProvider: AssertionProvider = SystemAssertionProvider.instance,
                 sessionStorage: SessionStore,
                 childSessionKind: ChildSessionCredentialKind,
                 onChildSessionObtained: @escaping (Credential, ChildSessionCredentialKind) async -> Void) {
         self.userDefaultsConfiguration = userDefaultsConfiguration
-        self.userDefaultsObservationCenter = UserDefaultsObservationCenter(userDefaults: userDefaultsConfiguration.userDefaults)
+        self.periodicCheckIntervalInMilliseconds = periodicCheckIntervalInMilliseconds
+        self.assertionProvider = assertionProvider
+        self.userDefaultsObservationCenter = customUserDefaultsObservationCenter ?? UserDefaultsObservationCenter(userDefaults: userDefaultsConfiguration.userDefaults)
         self.sessionStorage = sessionStorage
         self.childSessionKind = childSessionKind
         self.onChildSessionObtained = onChildSessionObtained
@@ -211,16 +277,47 @@ public final class SessionRelatedCommunicatorForExtension: SessionRelatedCommuni
     }
     
     public func startObservingSessionChanges() {
+        guard isObservingForSessionReadiness.changeValue(to: true) else { return }
         userDefaultsObservationCenter.addObserver(self, of: userDefaultsConfiguration.sessionReadyKeyPath) { [weak self] isReady in
             guard let self, isReady == true else { return }
             Task {
-                await self.onChildSessionReady()
+                await self.onChildSessionReady(onlyIfSessionIsReady: true)
             }
+        }
+        tickTimer { [weak self] in
+            guard let self else { return false }
+            await onChildSessionReady(onlyIfSessionIsReady: true)
+            return true
+        }
+    }
+    
+    func tickTimer(operation: @escaping () async -> Bool) {
+        periodicCheckTask.mutate {
+            guard isObservingForSessionReadiness.value else {
+                if $0?.isCancelled == true { $0 = nil }
+                return
+            }
+            let task = Task { [weak self] in
+                // there is no need for handling the cancellation error. it will stop the operation, and this is all we care about
+                try Task.checkCancellation()
+                guard let periodicCheckIntervalInMilliseconds = self?.periodicCheckIntervalInMilliseconds else { return }
+                try await Task.sleep(for: .milliseconds(periodicCheckIntervalInMilliseconds))
+                try Task.checkCancellation()
+                guard self?.isObservingForSessionReadiness.value == true else { return }
+                guard await operation() else { return }
+                try Task.checkCancellation()
+                self?.tickTimer(operation: operation)
+            }
+            $0 = task
         }
     }
     
     public func stopObservingSessionChanges() {
         userDefaultsObservationCenter.removeObserver(self)
+        periodicCheckTask.mutate {
+            $0?.cancel()
+            isObservingForSessionReadiness.mutate { $0 = false }
+        }
     }
     
     // initial check on the extension launch
@@ -234,9 +331,18 @@ public final class SessionRelatedCommunicatorForExtension: SessionRelatedCommuni
     }
     
     public func onChildSessionReady() async {
+        await onChildSessionReady(onlyIfSessionIsReady: false)
+    }
+    
+    private func onChildSessionReady(onlyIfSessionIsReady: Bool) async {
+        guard !onlyIfSessionIsReady || userDefaults.bool(forKey: userDefaultsConfiguration.sessionReadyPropertyKey.rawValue)
+        else { return }
+        let valueWasChangedFromFalseToTrue = isConsumingChildSession.changeValue(to: true)
+        guard valueWasChangedFromFalseToTrue else { return }
         sessionStorage.consumeChildSessionCredentials(kind: childSessionKind)
-        userDefaults.set(false, forKey: userDefaultsConfiguration.sessionReadyPropertyKey.rawValue)
-        isWaitingforNewChildSession = false
+        defer { isConsumingChildSession.mutate { $0 = false } }
+        defer { userDefaults.set(false, forKey: userDefaultsConfiguration.sessionReadyPropertyKey.rawValue) }
+        defer { isWaitingforNewChildSessionAvailability.mutate { $0 = false } }
         let credential: CoreCredential?
         switch childSessionKind {
         case .fileProviderExtension: credential = sessionStorage.sessionCredential
@@ -250,8 +356,8 @@ public final class SessionRelatedCommunicatorForExtension: SessionRelatedCommuni
     }
     
     public func askMainAppToProvideNewChildSession() async {
-        guard !isWaitingforNewChildSession else { return }
-        isWaitingforNewChildSession = true
+        let valueWasChangedFromFalseToTrue = isWaitingforNewChildSessionAvailability.changeValue(to: true)
+        guard valueWasChangedFromFalseToTrue else { return }
         Log.info("Child session of kind \(childSessionKind) expired written to user defaults", domain: .sessionManagement)
         userDefaults.set(true, forKey: userDefaultsConfiguration.sessionExpiredPropertyKey.rawValue)
     }
@@ -263,7 +369,7 @@ public final class SessionRelatedCommunicatorForExtension: SessionRelatedCommuni
     }
     
     public func fetchNewChildSession(parentSessionCredential: Credential) async throws {
-        assertionFailure("This method should never be called.")
+        assertionProvider.assertionFailure("This method should never be called.")
         throw AuthErrors.notImplementedYet("")
     }
     

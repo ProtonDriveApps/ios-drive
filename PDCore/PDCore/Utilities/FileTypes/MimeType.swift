@@ -40,11 +40,26 @@ public struct MimeType: Hashable {
     /// Failable initializer of a **MimeType** given a Uniform Type Identifier
     /// - Parameter uti: String representing a Uniform Type Identifier e.g.: "com.microsoft.word.doc", "public.png", "com.adobe.pdf"...
     public init?(uti: String) {
-        guard let preferredMIMEType = UTType(uti)?.preferredMIMEType else {
-            return nil
+        guard let utType = UTType(uti) else { return nil }
+        self.init(utType: utType)
+    }
+    
+    public init?(utType: UTType) {
+        if let mime = utType.preferredMIMEType {
+            value = mime
+            return
         }
-
-        value = preferredMIMEType
+        // There are some known UTIs, usually specific to a particular company/vendor
+        // that have no preferred MIME type. Example: Microsoft Word sets UTI to
+        // com.microsoft.word.openxmlformats.wordprocessingml.document which has
+        // no corresponding MIME type. For these UTIs we check their parent types (supertypes)
+        // hoping that they conform to a public UTI that does have MIME type.
+        // We pick the supertype that has the most parents (the most specific one).
+        let fallback = utType.supertypes
+            .filter { $0.preferredMIMEType != nil }
+            .max(by: { $0.supertypes.count < $1.supertypes.count })
+        guard let mime = fallback?.preferredMIMEType else { return nil }
+        value = mime
     }
 }
 
@@ -143,6 +158,7 @@ public extension MimeType {
     static let xul = MimeType(value: "application/vnd.mozilla.xul+xml")
     
     static let sevenZ = MimeType(value: "application/x-7z-compressed")
+    static let mkv = MimeType(value: "video/x-matroska")
 
     static let pages = MimeType(value: "application/vnd.apple.pages")
     static let numbers = MimeType(value: "application/vnd.apple.numbers")

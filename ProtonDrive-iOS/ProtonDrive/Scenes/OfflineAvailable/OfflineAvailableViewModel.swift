@@ -39,6 +39,7 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
     var isSharedWithMe: Bool = false
     var isRoot: Bool = true
     let hasPlusFunctionality = false
+    let currentTab: TabBarItem? = nil
     @Published var transientChildren: [NodeWrapper] = []
     @Published var permanentChildren: [NodeWrapper] = [] {
         didSet { selection.updateSelectable(Set(permanentChildren.map(\.node.identifier))) }
@@ -66,7 +67,6 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
 
     let supportsLayoutSwitch = true
     let featureFlagsController: FeatureFlagsControllerProtocol
-    @Published var topBanner: String?
 
     func refreshControlAction() {
         model.loadFromCache()
@@ -80,23 +80,26 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
     
     // MARK: DownloadingViewModel
     var childrenDownloadCancellable: AnyCancellable?
-    @Published var downloadProgresses: [ProgressTracker] = []
-    
+    let progressTrackersController: ProgressTrackersControllerProtocol
+
+    lazy var nodeDownloadedResource: NodeDownloadedResource = {
+        NodeDownloadedResource(managedObjectContext: model.tower.storage.newBackgroundContext())
+    }()
+
     // MARK: HasMultipleSelection
     lazy var selection = MultipleSelectionModel(selectable: Set<NodeIdentifier>())
     @Published var listState: ListState = .active
     private let validator: iOSSupportedSharesValidator
-    private let warningViewModel: PhotosMigrationWarningViewModelProtocol
 
     // MARK: others
-    init(model: OfflineAvailableModel, featureFlagsController: FeatureFlagsControllerProtocol, warningViewModel: PhotosMigrationWarningViewModelProtocol) {
+    init(model: OfflineAvailableModel, featureFlagsController: FeatureFlagsControllerProtocol, progressTrackersController: ProgressTrackersControllerProtocol) {
         defer { self.model.loadFromCache() }
         self.model = model
         self.sorting = model.sorting
         self.layout = Layout(preference: model.layout)
         self.featureFlagsController = featureFlagsController
         self.validator = iOSSupportedSharesValidator(storage: model.tower.storage)
-        self.warningViewModel = warningViewModel
+        self.progressTrackersController = progressTrackersController
 
         self.subscribeToChildren()
         self.subscribeToChildrenDownloading()
@@ -111,9 +114,6 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
                 self?.genericErrors.send(error)
             }
             .store(in: &cancellables)
-
-        warningViewModel.warning
-            .assign(to: &$topBanner)
     }
 
     func actionBarItems() -> [ActionBarButtonViewModel] {
@@ -136,6 +136,8 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
                 self.permanentChildren = activeSorted.filter { self.validator.isValid($0.shareID) }.map(NodeWrapper.init)
             }
     }
+
+    func reportListIsShown() {}
 }
 
 extension OfflineAvailableViewModel: CancellableStoring { }

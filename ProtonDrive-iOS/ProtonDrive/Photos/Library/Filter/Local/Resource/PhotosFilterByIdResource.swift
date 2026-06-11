@@ -26,7 +26,7 @@ final class DatabasePhotosFilterByIdResource: PhotosFilterByIdResource {
     private let storage: StorageManager
     private let policy: PhotoIdentifiersFilterPolicyProtocol
     private let managedObjectContext: NSManagedObjectContext
-    private static let formatter = ISO8601DateFormatter()
+    private static let formatter = ISO8601DateFormatter.default
 
     init(storage: StorageManager, policy: PhotoIdentifiersFilterPolicyProtocol) {
         self.storage = storage

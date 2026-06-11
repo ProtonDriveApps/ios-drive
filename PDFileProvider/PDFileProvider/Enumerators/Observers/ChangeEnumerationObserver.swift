@@ -27,7 +27,7 @@ public class ChangeEnumerationObserver: BaseEnumerationObserver, NSFileProviderC
         Log.trace("name: \(name)")
 
         let item = ReportableSyncItem(
-            id: Self.enumerationSyncItemIdentifier,
+            id: ChangeEnumerationObserver.enumerationSyncItemIdentifier,
             modificationTime: Date.now,
             filename: enumerationSyncItemName,
             location: nil,
@@ -36,7 +36,12 @@ public class ChangeEnumerationObserver: BaseEnumerationObserver, NSFileProviderC
             operation: .enumerateChanges,
             state: .inProgress,
             progress: 0)
-        syncStorage.upsert(item)
+        
+        Task {
+            await syncStorage.backgroundContextPool.withContext { context in
+                syncStorage.upsert(item, in: context)
+            }
+        }
     }
 
     public func didUpdate(_ updatedItems: [any NSFileProviderItemProtocol]) {
@@ -63,7 +68,7 @@ public class ChangeEnumerationObserver: BaseEnumerationObserver, NSFileProviderC
         Log.trace("name: \(name), error: \(error?.localizedDescription ?? "n/a")")
         
         let item = ReportableSyncItem(
-            id: Self.enumerationSyncItemIdentifier,
+            id: ChangeEnumerationObserver.enumerationSyncItemIdentifier,
             modificationTime: Date.now,
             filename: enumerationSyncItemName,
             location: nil,
@@ -74,7 +79,11 @@ public class ChangeEnumerationObserver: BaseEnumerationObserver, NSFileProviderC
             progress: error == nil ? 100 : 0,
             errorDescription: error?.localizedDescription)
 
-        syncStorage.upsert(item)
+        Task {
+            await syncStorage.backgroundContextPool.withContext { context in
+                syncStorage.upsert(item, in: context)
+            }
+        }
     }
 
     deinit {

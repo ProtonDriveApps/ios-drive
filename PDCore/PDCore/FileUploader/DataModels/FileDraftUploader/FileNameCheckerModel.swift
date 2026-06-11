@@ -15,8 +15,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-struct FileNameCheckerModel: Equatable {
+public struct FileNameCheckerModel: Equatable {
     let originalName: String
     let parent: NodeIdentifier
     let parentNodeHashKey: String
+
+    public init(originalName: String, parent: NodeIdentifier, parentNodeHashKey: String) {
+        self.originalName = originalName
+        self.parent = parent
+        self.parentNodeHashKey = parentNodeHashKey
+    }
 }

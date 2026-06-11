@@ -16,6 +16,9 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import Foundation
+import PDLocalization
+import Network
 
 public enum NetworkState: Equatable {
     case reachable(Interface)
@@ -28,27 +31,47 @@ public enum NetworkState: Equatable {
         case wifi
         case wired
     }
+
+    public var isReachable: Bool {
+        switch self {
+        case .reachable:
+            return true
+        case .unreachable:
+            return false
+        }
+    }
+}
+
+public enum NetworkStateError: Error, LocalizedError {
+    case deviceIsOffline
+
+    public var errorDescription: String? {
+        switch self {
+        case .deviceIsOffline:
+            return Localization.disconnection_view_title
+        }
+    }
 }
 
 public protocol NetworkStateInteractor {
     var state: AnyPublisher<NetworkState, Never> { get }
-    func execute()
+    func startMonitoring()
     func cancel()
 }
 
 public final class ConnectedNetworkStateInteractor: NetworkStateInteractor {
-    public let resource: NetworkStateResource
+    public let resource: ConnectionStateResource
 
     public var state: AnyPublisher<NetworkState, Never> {
         resource.state
     }
 
-    public init(resource: NetworkStateResource) {
+    public init(resource: ConnectionStateResource) {
         self.resource = resource
     }
 
-    public func execute() {
-        resource.execute()
+    public func startMonitoring() {
+        resource.startMonitoring()
     }
 
     public func cancel() {

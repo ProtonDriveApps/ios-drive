@@ -35,6 +35,7 @@ class SharedViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, 
     var lockedStateCancellable: AnyCancellable?
     var lockedStateBannerVisibility: LockedStateAlertVisibility = .hidden
     let scrollToTopPublisher: AnyPublisher<TabBarItem, Never>?
+    let currentTab: TabBarItem? = .shared
     @Published var transientChildren: [NodeWrapper] = []
     @Published var permanentChildren: [NodeWrapper] = []  {
         didSet { selection.updateSelectable(Set(permanentChildren.map(\.node.identifier))) }
@@ -71,7 +72,6 @@ class SharedViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, 
 
     let supportsLayoutSwitch = true
     let featureFlagsController: FeatureFlagsControllerProtocol
-    @Published var topBanner: String?
 
     func refreshControlAction() {
         fetchAllPages(isManualAction: true)
@@ -88,7 +88,11 @@ class SharedViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, 
 
     // MARK: DownloadingViewModel
     var childrenDownloadCancellable: AnyCancellable?
-    @Published var downloadProgresses: [ProgressTracker] = []
+    let progressTrackersController: ProgressTrackersControllerProtocol
+
+    lazy var nodeDownloadedResource: NodeDownloadedResource = {
+        NodeDownloadedResource(managedObjectContext: model.tower.storage.newBackgroundContext())
+    }()
 
     // MARK: SortingViewModel
     @Published var sorting: SortPreference
@@ -100,17 +104,16 @@ class SharedViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, 
     // MARK: HasMultipleSelection
     lazy var selection = MultipleSelectionModel(selectable: Set<NodeIdentifier>())
     @Published var listState: ListState = .active
-    private let warningViewModel: PhotosMigrationWarningViewModelProtocol
 
     // MARK: others
-    init(model: SharedModel, featureFlagsController: FeatureFlagsControllerProtocol, scrollToTopPublisher: AnyPublisher<TabBarItem, Never>?, warningViewModel: PhotosMigrationWarningViewModelProtocol) {
+    init(model: SharedModel, featureFlagsController: FeatureFlagsControllerProtocol, scrollToTopPublisher: AnyPublisher<TabBarItem, Never>?, progressTrackersController: ProgressTrackersControllerProtocol) {
         defer { self.model.loadFromCache() }
         self.model = model
         self.sorting = model.sorting
         self.layout = Layout(preference: model.layout)
         self.scrollToTopPublisher = scrollToTopPublisher
         self.featureFlagsController = featureFlagsController
-        self.warningViewModel = warningViewModel
+        self.progressTrackersController = progressTrackersController
 
         self.subscribeToSort()
         self.subscribeToChildren()
@@ -126,9 +129,10 @@ class SharedViewModel: ObservableObject, FinderViewModel, DownloadingViewModel, 
                 self?.genericErrors.send(error)
             }
             .store(in: &cancellables)
+    }
 
-        warningViewModel.warning
-            .assign(to: &$topBanner)
+    func reportListIsShown() {
+        model.tower.performanceMetricsController?.reportTabToFirstItem(pageType: .sharedByMe)
     }
 }
 

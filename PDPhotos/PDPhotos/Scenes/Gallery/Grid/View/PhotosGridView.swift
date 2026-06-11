@@ -117,6 +117,9 @@ struct PhotosGridView<
                                 view(from: $0)
                             }
                         }
+                        .onAppear {
+                            viewModel.reportListIsShown()
+                        }
 
                         bottomView
                             .padding(.top, 16)

@@ -32,9 +32,9 @@ public protocol BugReportFactoryProtocol {
 public final class BugReportFactory: BugReportFactoryProtocol {
 
     private let apiService: PMAPIService
-    private let sessionVault: SessionVault
+    private let sessionVault: SessionVault?
 
-    public init(apiService: PMAPIService, sessionVault: SessionVault) {
+    public init(apiService: PMAPIService, sessionVault: SessionVault?) {
         self.apiService = apiService
         self.sessionVault = sessionVault
     }
@@ -42,10 +42,11 @@ public final class BugReportFactory: BugReportFactoryProtocol {
     public func makeBugReportViewController() -> UIViewController {
         let service = BugReportService(api: apiService)
         let vm = ReportBugViewModel(service: service, sessionVault: sessionVault)
-        let vc = UIHostingController(rootView: ReportBugView(viewModel: vm))
+        let vc = ReportBugView(viewModel: vm).embeddedInHostingController()
         vc.title = Localization.report_bug_button
         vc.view.backgroundColor = ColorProvider.BackgroundNorm
         vc.modalPresentationStyle = .overFullScreen
+
         let nav = ModalNavigationViewController(rootViewController: vc)
         return nav
     }

@@ -15,7 +15,10 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "PDLocalization"
+            name: "PDLocalization",
+            resources: [
+                .process("Resources")
+            ]
         ),
     ]
 )

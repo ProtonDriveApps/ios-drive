@@ -19,6 +19,7 @@ import Foundation
 
 public protocol DateResource {
     func getDate() -> Date
+    func getPastDate() -> Date
 }
 
 public final class PlatformCurrentDateResource: DateResource {
@@ -26,5 +27,9 @@ public final class PlatformCurrentDateResource: DateResource {
 
     public func getDate() -> Date {
         return Date()
+    }
+
+    public func getPastDate() -> Date {
+        Date.distantPast
     }
 }

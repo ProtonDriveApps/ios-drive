@@ -68,15 +68,15 @@ extension EndpointWithRawResponse {
         return (try? JSONSerialization.jsonObject(with: data, options: .allowFragments)).flatMap { $0 as? [String: Any] }
     }
     
-    // playing it safe — only GET method respects "Retry-After"
-    // this can be changed for requests with other methods case-by-case
-    public var retryPolicy: ProtonRetryPolicy.RetryMode {
-        switch method {
-        case .get:
-            return .background
-        case .post, .put, .delete:
-            return .userInitiated
-        }
+    // ProtonCore must not retry — 429s are handled by `Client` + `RateLimitGate`.
+    public var retryPolicy: ProtonRetryPolicy.RetryMode { .userInitiated }
+
+    /// Bucket for shared 429 state. Derived from method + normalized URL path so
+    /// the family is identical to the one PDSDKCore computes for the same URL
+    /// via `RateLimitFamily.from(method:path:)`. Override on a specific Endpoint
+    /// type if its URL shape requires custom grouping.
+    public var rateLimitFamily: String {
+        RateLimitFamily.from(method: method.rawValue, path: request.url?.path ?? "/")
     }
 }
 

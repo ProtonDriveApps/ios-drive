@@ -23,16 +23,41 @@ public protocol BaseHeadersFactory {
 
 public final class DriveBaseHeadersFactory: BaseHeadersFactory {
     private let configuration: APIService.Configuration
+    private let featureFlags: ExternalFeatureFlagsResource?
 
-    public init(configuration: APIService.Configuration) {
+    public init(configuration: APIService.Configuration, featureFlags: ExternalFeatureFlagsResource? = nil) {
         self.configuration = configuration
+        self.featureFlags = featureFlags
     }
 
     public func makeHeaders() -> [String: String] {
-        [
+        var headers = [
             "x-pm-appversion": configuration.clientVersion,
             "Accept": "application/vnd.protonmail.v1+json",
             "Content-Type": "application/json;charset=utf-8"
         ]
+        if let features = getCoreClientFeatures() {
+            headers["x-pm-client-features"] = features
+        }
+        return headers
+    }
+
+    private func getCoreClientFeatures() -> String? {
+        let features = [
+            isPaymentsV2Enabled() ? "Drive.DriveiOSPaymentsV2" : nil
+        ].compactMap { $0 }
+
+        guard !features.isEmpty else {
+            return nil
+        }
+        return features.joined(separator: ",")
+    }
+
+    private func isPaymentsV2Enabled() -> Bool {
+        #if os(iOS)
+        return featureFlags?.isEnabled(flag: .driveiOSPaymentsV2) ?? false
+        #else
+        return false
+        #endif
     }
 }

@@ -41,6 +41,7 @@ final class PopulateViewController: UIViewController, LogoutRequesting {
     private func populate() {
         Task {
             do {
+                Log.info("Start bootstrap", domain: .applicationBootstrap)
                 try await viewModel.populate()
             } catch let error as NukingCacheError {
                 Log.error(error: error, domain: .application)

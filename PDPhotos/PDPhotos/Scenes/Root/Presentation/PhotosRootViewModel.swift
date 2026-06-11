@@ -25,7 +25,6 @@ enum PhotosRootViewState: Equatable {
     case loading
     case finished(PhotoStreamConfiguration)
     case message(String)
-    case migrating(MigrationPlaceholderTexts)
 
     var isFinished: Bool {
         if case .finished = self {
@@ -61,7 +60,6 @@ protocol PhotosRootViewModelProtocol: ObservableObject {
 
 final class PhotosRootViewModel: PhotosRootViewModelProtocol {
     private let bootstrapController: PhotoVolumeBootstrapControllerProtocol
-    private let migrationController: MigrationSheetAvailableControllerProtocol
     private let configuration: PhotosRootConfiguration
     private let coordinator: PhotosRootCoordinator
     private var cancellables = Set<AnyCancellable>()
@@ -74,7 +72,10 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
 
     @Published var state: PhotosRootViewState = .loading
     @Published var galleryType: GalleryType = .photos
-    @Published var navigation: PhotosRootNavigation? = .default(isPaidUser: false, showTagMigrationSpinner: false)
+    @Published var navigation: PhotosRootNavigation? = .default(
+        isPaidUser: false,
+        showTagMigrationSpinner: false
+    )
     @Published var areAlbumsEnabled: Bool = false
     private var isPaidUser = false {
         didSet {
@@ -85,7 +86,6 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
     init(
         bootstrapController: PhotoVolumeBootstrapControllerProtocol,
         selectionController: PhotosSelectionController,
-        migrationController: MigrationSheetAvailableControllerProtocol,
         configuration: PhotosRootConfiguration,
         coordinator: PhotosRootCoordinator,
         featureFlagsController: FeatureFlagsControllerProtocol,
@@ -95,7 +95,6 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
     ) {
         self.bootstrapController = bootstrapController
         self.selectionController = selectionController
-        self.migrationController = migrationController
         self.configuration = configuration
         self.coordinator = coordinator
         self.featureFlagsController = featureFlagsController
@@ -171,12 +170,6 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
         switch state {
         case .uninitialized:
             return nil
-        case .migrationInProgress:
-            let texts = MigrationPlaceholderTexts(
-                title: Localization.photo_migration_placeholder_title,
-                text: Localization.photo_migration_placeholder_text
-            )
-            return .migrating(texts)
         case .inProgress:
             return .loading
         case let .failed(message):
@@ -189,7 +182,7 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
     private func handleStateUpdate(_ state: PhotosRootViewState) {
         self.state = state
         // Albums tab is only visible when photo volume is used and when user is not in picker mode (creating album)
-        if case let .finished(streamConfiguration) = state, !streamConfiguration.isLegacyShare, !configuration.isPickingPhotos {
+        if case .finished = state, !configuration.isPickingPhotos {
             areAlbumsEnabled = true
         } else {
             areAlbumsEnabled = false
@@ -224,12 +217,6 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
 
     func onAppear(streamConfiguration: PhotoStreamConfiguration) {
         self.streamConfiguration = streamConfiguration
-        guard streamConfiguration.isLegacyShare && featureFlagsController.hasAlbums else {
-            return
-        }
-        if migrationController.isAvailable() {
-            coordinator.openMigrationSheet()
-        }
     }
 
     func handle(galleryType: GalleryType) {
@@ -242,7 +229,7 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
             let navigation = PhotosRootNavigation(
                 title: nil,
                 leading: .menu,
-                trailing: arePhotoVolumeActionsAllowed() ? [.plus] : []
+                trailing: [.plus]
             )
             setNavigation(navigation)
         }
@@ -278,13 +265,6 @@ final class PhotosRootViewModel: PhotosRootViewModelProtocol {
         if localSettings.tagsMigrationFinished {
             localSettings.isTagsMigrationSheetShown = true
         }
-    }
-
-    private func arePhotoVolumeActionsAllowed() -> Bool {
-        guard let streamConfiguration else {
-            return false
-        }
-        return !streamConfiguration.isLegacyShare && featureFlagsController.hasAlbumsActions
     }
 
     func handle(navigation: PhotosRootNavigation.Item) {

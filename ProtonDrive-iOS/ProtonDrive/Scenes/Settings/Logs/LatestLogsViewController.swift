@@ -17,6 +17,7 @@
 
 import UIKit
 import Combine
+import PDLocalization
 
 class LatestLogsViewController: UIViewController {
     var textView: UITextView!
@@ -33,7 +34,7 @@ class LatestLogsViewController: UIViewController {
         textView.fillSuperview()
 
         navigationItem.rightBarButtonItem = UIBarButtonItem(
-            title: "All logs",
+            title: Localization.all_logs_button,
             style: .plain,
             target: self,
             action: #selector(didTapExportAllLogs)

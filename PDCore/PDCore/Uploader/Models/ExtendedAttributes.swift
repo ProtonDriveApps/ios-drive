@@ -63,6 +63,7 @@ public class ExtendedAttributes: NSObject, Codable {
     }
 
     public struct Location: Codable, Equatable {
+        public let fieldName = "Location"
         public let latitude: Double
         public let longitude: Double
 
@@ -84,6 +85,7 @@ public class ExtendedAttributes: NSObject, Codable {
     }
     
     public struct Camera: Codable, Equatable {
+        public let fieldName = "Camera"
         public let captureTime: String?
         public let device: String?
         public let orientation: Int?
@@ -127,6 +129,7 @@ public class ExtendedAttributes: NSObject, Codable {
     }
     
     public struct Media: Codable, Equatable {
+        public let fieldName = "Media"
         public let width: Int?
         public let height: Int?
         public let duration: Double?
@@ -139,6 +142,7 @@ public class ExtendedAttributes: NSObject, Codable {
     }
     
     public struct iOSPhotos: Codable, Equatable {
+        public let fieldName = "iOS.photos"
         public let iCloudID: String?
         public let modificationTime: String?
         

@@ -46,10 +46,10 @@ public struct NodeCryptoMaterialReader: NodeCryptoMaterialReaderProtocol {
     public func readNode(identifier: AnyVolumeIdentifier) throws -> NodeCryptoMaterial {
         let node: Node = try Node.fetchOrThrow(identifier: identifier, allowSubclasses: true, in: self.moc)
 #if os(macOS)
-        let signersKit = try self.signersKitFactory.make(forSigner: .main)
+        let signersKit = try node.getContextShareAddressBasedSignersKit(signersKitFactory: self.signersKitFactory,
+                                                                        fallbackSigner: .main)
 #else
-        let addressID = try node.getContextShareAddressID()
-        let signersKit = try self.signersKitFactory.make(forAddressID: addressID)
+        let signersKit = try node.getContextShareAddressBasedSignersKit(signersKitFactory: self.signersKitFactory)
 #endif
 
         // For photo, reads parentNode

@@ -163,7 +163,9 @@ public class ItemEnumerationObserver: BaseEnumerationObserver, NSFileProviderEnu
     /// Called `intervalBeforeDeletion` seconds after `didFinish`.
     private func deleteAfterCompletion() async {
         Log.trace()
-         syncStorage.delete(id: Self.enumerationSyncItemIdentifier)
+        await syncStorage.backgroundContextPool.withContext { context in
+            syncStorage.delete(id: ItemEnumerationObserver.enumerationSyncItemIdentifier, in: context)
+        }
     }
 
     private func updateSyncItem(progress: Int? = nil, error: Error? = nil) {
@@ -181,7 +183,7 @@ public class ItemEnumerationObserver: BaseEnumerationObserver, NSFileProviderEnu
             Log.trace("computedState: \(computedState), computedProgress: \(computedProgress)")
 
             let item = ReportableSyncItem(
-                id: Self.enumerationSyncItemIdentifier,
+                id: ItemEnumerationObserver.enumerationSyncItemIdentifier,
                 modificationTime: Date.now,
                 filename: filename,
                 location: nil,
@@ -189,9 +191,11 @@ public class ItemEnumerationObserver: BaseEnumerationObserver, NSFileProviderEnu
                 fileSize: nil,
                 operation: .enumerateItems,
                 state: computedState,
-                progress: computedProgress,
+                progress: Double(computedProgress),
                 errorDescription: error?.localizedDescription)
-            syncStorage.upsert(item)
+            await syncStorage.backgroundContextPool.withContext { context in
+                syncStorage.upsert(item, in: context)
+            }
         }
     }
 

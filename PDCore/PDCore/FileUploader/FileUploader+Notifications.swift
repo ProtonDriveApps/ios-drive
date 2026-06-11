@@ -69,12 +69,4 @@ public extension Notification.Name {
     static var operationEnd: Notification.Name {
         Notification.Name("ch.protonmail.protondrive.operationEnd")
     }
-
-    static var logCollectionEnabled: Notification.Name {
-        Notification.Name("ch.protonmail.protondrive.logCollectionEnabled")
-    }
-
-    static var logCollectionDisabled: Notification.Name {
-        Notification.Name("ch.protonmail.protondrive.logCollectionDisabled")
-    }
 }

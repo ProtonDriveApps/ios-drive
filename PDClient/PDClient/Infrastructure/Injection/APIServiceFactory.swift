@@ -20,11 +20,20 @@ import Foundation
 public struct APIServiceFactory {
     public init() {}
 
-    public func makeService(configuration: APIService.Configuration) -> APIService {
-        APIService(configuration: configuration, baseHeadersFactory: makeBaseHeadersFactory(configuration: configuration))
+    public func makeService(
+        configuration: APIService.Configuration,
+        featureFlags: ExternalFeatureFlagsResource? = nil
+    ) -> APIService {
+        APIService(
+            configuration: configuration,
+            baseHeadersFactory: makeBaseHeadersFactory(configuration: configuration, featureFlags: featureFlags)
+        )
     }
 
-    public func makeBaseHeadersFactory(configuration: APIService.Configuration) -> BaseHeadersFactory {
-        DriveBaseHeadersFactory(configuration: configuration)
+    private func makeBaseHeadersFactory(
+        configuration: APIService.Configuration,
+        featureFlags: ExternalFeatureFlagsResource?
+    ) -> BaseHeadersFactory {
+        DriveBaseHeadersFactory(configuration: configuration, featureFlags: featureFlags)
     }
 }

@@ -19,16 +19,23 @@ import Foundation
 
 final class InMemoryStore<T: Codable> {
     private var value: T?
+    private let lock = NSLock()
     
     func retrieve() -> T? {
-        value
+        lock.lock()
+        defer { lock.unlock() }
+        return value
     }
     
     func update(_ newValue: T?) {
+        lock.lock()
+        defer { lock.unlock() }
         value = newValue
     }
     
     func wipe() {
+        lock.lock()
+        defer { lock.unlock() }
         value = nil
     }
 }

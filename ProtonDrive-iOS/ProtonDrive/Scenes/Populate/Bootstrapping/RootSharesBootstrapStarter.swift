@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDCoreIOS
 import PDClient
 
 final class RootSharesBootstrapStarter: AppBootstrapper {
@@ -30,19 +31,21 @@ final class RootSharesBootstrapStarter: AppBootstrapper {
     }
 
     func bootstrap() async throws {
-        do {
-            try await localStore.bootstrap()
-        } catch let error as NukingCacheError {
-            throw error
-        } catch {
+        try await measure(message: "Bootstrap RootShares", domain: .applicationBootstrap) {
             do {
-                try await remote.bootstrap()
+                try await localStore.bootstrap()
             } catch let error as NukingCacheError {
                 throw error
-            } catch let error as CredentialProviderError {
-                throw error
             } catch {
-                try await creating.bootstrap()
+                do {
+                    try await remote.bootstrap()
+                } catch let error as NukingCacheError {
+                    throw error
+                } catch let error as CredentialProviderError {
+                    throw error
+                } catch {
+                    try await creating.bootstrap()
+                }
             }
         }
     }

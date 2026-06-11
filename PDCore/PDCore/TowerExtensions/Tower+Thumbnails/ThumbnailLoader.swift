@@ -33,6 +33,7 @@ public enum ThumbnailLoaderError: Error {
     case thumbnailNotYetCreated
     case cancelled
     case other
+    case noAvailableSDKDownloader
 }
 
 public extension ThumbnailLoader {

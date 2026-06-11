@@ -15,9 +15,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import PDCore
+import PDCoreIOS
+
 final class PhotosPickerFactory {
     func makePhotoResource() -> PhotoPickerResource {
-        let loadResource = PhotoItemProviderLoadResource()
+        let loadResource = NSItemProviderLoadResource { filename in
+            PDFileManager.prepareUrlForFile(named: filename)
+        }
         return PhotoPickerResource(resource: loadResource)
     }
 

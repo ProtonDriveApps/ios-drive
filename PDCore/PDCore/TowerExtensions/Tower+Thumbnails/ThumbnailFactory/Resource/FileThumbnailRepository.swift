@@ -28,7 +28,7 @@ final class FileNodeThumbnailRepository: NodeThumbnailRepository {
         let moc = store.backgroundContext
 
         return try moc.performAndWait {
-            guard let file = File.fetch(identifier: fileID, in: moc) else {
+            guard let file = File.fetch(identifier: fileID, allowSubclasses: true, in: moc) else {
                 throw ThumbnailLoaderError.nonRecoverable
             }
 
@@ -37,6 +37,31 @@ final class FileNodeThumbnailRepository: NodeThumbnailRepository {
             }
 
             return try getThumbnail(from: revision)
+        }
+    }
+
+    func fetchThumbnailAsync(fileID: any VolumeIdentifiable) async throws -> Thumbnail {
+        let moc = store.backgroundContext
+
+        return try await moc.perform {
+            // `allowSubclasses` because we can have a `Photo` in SharedWithMe tab (it'd use file based thumbnail fetching)
+            guard let file = File.fetch(identifier: fileID, allowSubclasses: true, in: moc) else {
+                throw ThumbnailLoaderError.nonRecoverable
+            }
+
+            guard let revision = file.latestRevision else {
+                throw ThumbnailLoaderError.noValidRevision
+            }
+
+            if revision.uploadState == .created {
+                throw ThumbnailLoaderError.thumbnailNotYetCreated
+            }
+
+            guard let thumbnail = revision.thumbnails.first else {
+                throw ThumbnailLoaderError.nonRecoverable
+            }
+
+            return thumbnail
         }
     }
 

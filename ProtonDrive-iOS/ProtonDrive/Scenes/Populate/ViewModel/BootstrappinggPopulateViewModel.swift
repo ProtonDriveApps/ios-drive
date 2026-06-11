@@ -16,8 +16,9 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDCoreIOS
 
-final class BootstrappinggPopulateViewModel: PopulateViewModelProtocol {
+final class BootstrappingPopulateViewModel: PopulateViewModelProtocol {
     private let bootstrapper: AppBootstrapper
     private let onboardingObserver: OnboardingObserverProtocol
     private let coordinator: PopulateCoordinatorProtocol
@@ -36,7 +37,13 @@ final class BootstrappinggPopulateViewModel: PopulateViewModelProtocol {
     }
 
     func populate() async throws {
-        try await bootstrapper.bootstrap()
+        do {
+            try await bootstrapper.bootstrap()
+        } catch _ as NetworkStateError {
+            // nothing
+        } catch {
+            throw error
+        }
         onboardingObserver.startToObserveIsOnboardedStatus()
         await finish()
     }

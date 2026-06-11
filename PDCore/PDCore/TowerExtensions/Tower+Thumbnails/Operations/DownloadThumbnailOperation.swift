@@ -76,7 +76,8 @@ class DownloadThumbnailOperation: ThumbnailDecryptorOperation {
     private func redownloadURL(with thumbnailIdentifier: ThumbnailIdentifier) {
         redownloadTask = Task { [weak self] in
             guard let self = self, !self.isCancelled else { return }
-            let url = try await self.urlFetchInteractor.execute(thumbnailId: thumbnailIdentifier.thumbnailId, volumeId: thumbnailIdentifier.volumeId)
+            let moc = self.decryptor.store.backgroundContext
+            let url = try await self.urlFetchInteractor.execute(thumbnailId: thumbnailIdentifier.thumbnailId, volumeId: thumbnailIdentifier.volumeId, moc: moc)
             guard !self.isCancelled else { return }
             self.download(url)
         }

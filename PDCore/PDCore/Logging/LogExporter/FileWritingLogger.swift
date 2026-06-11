@@ -27,7 +27,7 @@ public protocol FileLogExporter {
 
 public final class FileWritingLogger: LoggerProtocol {
     private let fileManager = FileManager.default
-    private let workingDirectory = PDFileManager.logsWorkingDirectory
+    private let workingDirectory: URL
     private let formatter: ISO8601DateFormatter
 
     private let system: LogSystem
@@ -43,9 +43,11 @@ public final class FileWritingLogger: LoggerProtocol {
         logSystem: LogSystem,
         maxFileSize: UInt64,
         rotator: FileLogRotator,
+        workingDirectory: URL = PDFileManager.logsWorkingDirectory,
         formatter: ISO8601DateFormatter = .fileLogFormatter,
         dateProvider: @escaping () -> Date = Date.init
     ) {
+        self.workingDirectory = workingDirectory
         self.system = logSystem
         self.maxFileSize = maxFileSize
         self.logsFileURL = workingDirectory.appendingPathComponent(logSystem.name + ".log", isDirectory: false)

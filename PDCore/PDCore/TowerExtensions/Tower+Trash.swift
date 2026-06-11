@@ -17,6 +17,7 @@
 
 import Foundation
 import PDClient
+import CoreData
 
 public extension Tower {
     var didFetchAllTrash: Bool {
@@ -24,8 +25,7 @@ public extension Tower {
         set { storage.finishedFetchingTrash = newValue }
     }
 
-    private func trashNodeLocally(_ ids: [String]) {
-        let moc = storage.backgroundContext
+    private func trashNodeLocally(_ ids: [String], moc: NSManagedObjectContext) {
         moc.performAndWait {
             let newNodes = storage.fetchNodes(ids: ids, moc: moc)
             newNodes.forEach { node in
@@ -53,10 +53,9 @@ public extension Tower {
         }
     }
 
-    private func setToBeDeleted(_ ids: [String]) {
+    private func setToBeDeleted(_ ids: [String], moc: NSManagedObjectContext) {
         // should happen on a main context because changes a transient property relevant to main context only
         // moc.saveWithSpecialCheck() is not needed by same reason
-        let moc = storage.mainContext
         let nodes = storage.fetchNodes(ids: ids, moc: moc)
         moc.performAndWait {
             nodes.forEach {
@@ -65,8 +64,7 @@ public extension Tower {
         }
     }
 
-    private func restoreLocally(_ ids: [String]) {
-        let moc = storage.backgroundContext
+    private func restoreLocally(_ ids: [String], moc: NSManagedObjectContext) {
         let nodes = storage.fetchNodes(ids: ids, moc: moc)
         moc.performAndWait {
             nodes.forEach { $0.state = .active }
@@ -82,16 +80,16 @@ public extension Tower {
     }
 
     @available(iOS, deprecated, message: "Not used in iOS anymore, please use func trash(_ nodes: [TrashingNodeIdentifier]) async throws")
-    func trash(shareID: String, parentID: String, linkIDs: [String]) async throws {
+    func trash(shareID: String, parentID: String, linkIDs: [String], moc: NSManagedObjectContext) async throws {
         try await cloudSlot.trash(shareID: shareID, parentID: parentID, linkIDs: linkIDs)
-        self.trashNodeLocally(linkIDs)
+        self.trashNodeLocally(linkIDs, moc: moc)
     }
 
     func removeMember(shareID: String, memberID: String) async throws {
         try await cloudSlot.removeMember(shareID: shareID, memberID: memberID)
     }
 
-    func delete(_ nodes: [NodeIdentifier], completion: @escaping (Result<Void, Error>) -> Void) {
+    func delete(_ nodes: [NodeIdentifier], moc: NSManagedObjectContext, completion: @escaping (Result<Void, Error>) -> Void) {
         Task { [weak self] in
             var requestError: (any Error)?
             var links = [String]()
@@ -107,7 +105,7 @@ public extension Tower {
                 requestError = error
             }
 
-            self?.setToBeDeleted(links)
+            self?.setToBeDeleted(links, moc: moc)
 
             if let requestError = requestError {
                 completion(.failure(requestError))
@@ -120,7 +118,9 @@ public extension Tower {
 
 private extension Tower {
     func restoreLocally(_ ids: Set<String>) {
-        self.restoreLocally(Array(ids))
+        let context = storage.synchronousContextPool.acquire()
+        defer { storage.synchronousContextPool.relinquish(context) }
+        self.restoreLocally(Array(ids), moc: context)
     }
 }
 

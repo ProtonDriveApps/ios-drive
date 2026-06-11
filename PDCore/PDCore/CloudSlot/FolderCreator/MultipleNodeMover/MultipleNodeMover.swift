@@ -33,18 +33,21 @@ public final class MultipleNodeMover: MultipleNodeMoverProtocol {
     private let cloudMultipleNodeMover: CloudMultipleNodeMover
     private let infoReader: NodeCryptoMaterialReaderProtocol
     private let linksFactory: MultipleMovingNodeLinkFactoryProtocol
+    private let parentIDFetcher: NodeParentIDFetcher
     private let batchSize = 100
 
     public init(
         cloudMultipleNodeMover: @escaping CloudMultipleNodeMover,
         moc: NSManagedObjectContext,
         infoReader: NodeCryptoMaterialReaderProtocol,
-        linksFactory: MultipleMovingNodeLinkFactoryProtocol
+        linksFactory: MultipleMovingNodeLinkFactoryProtocol,
+        parentIDFetcher: NodeParentIDFetcher
     ) {
         self.moc = moc
         self.cloudMultipleNodeMover = cloudMultipleNodeMover
         self.infoReader = infoReader
         self.linksFactory = linksFactory
+        self.parentIDFetcher = parentIDFetcher
     }
 
     public func move(_ nodes: [Node], to newParent: Folder) async throws {
@@ -58,7 +61,10 @@ public final class MultipleNodeMover: MultipleNodeMoverProtocol {
             newParentInfo: newParentInfo
         )
         let successInfos = infosData.infos.filter { successLinks.contains($0.link.LinkID) }
+        let movedNodeIDs = Array(Set(successInfos.map(\.link.LinkID)))
+        let newParentID = newParent.id
         try await updateLocalDB(newParent: newParent, nodes: nodes, infos: successInfos)
+        
         if let requestError {
             throw requestError
         }

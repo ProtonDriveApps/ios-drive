@@ -63,11 +63,11 @@ final class ShareMetadataController: ShareMetadataProvider {
     }
 
     func getShareLink() throws -> SharedLink? {
-        let shareURLObj = node?.managedObjectContext?.performAndWait {
-            node?.directShares.first?.shareUrls.first
+        return try node?.managedObjectContext?.performAndWait {
+            guard let shareURLObj = node?.directShares.first?.shareUrls.first else { return nil }
+            let sharedLink = try SharedLink(shareURL: shareURLObj)
+            return sharedLink
         }
-        guard let shareURLObj else { return nil }
-        return try SharedLink(shareURL: shareURLObj)
     }
 
     func getDirectShare() async throws -> PDClient.Share {

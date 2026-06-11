@@ -24,30 +24,11 @@ struct ShareURLEndpoint: Endpoint {
         var links: [Link.LinkID: Link]?
     }
     
-    enum Parameters {
-        case recursive
-        case page(Int)
-        case pageSize(Int)
-
-        var queryItem: URLQueryItem {
-            switch self {
-            case .recursive:
-                return .init(name: "Recursive", value: "1")
-            case .page(let count):
-                return .init(name: "Page", value: "\(count)")
-            case .pageSize(let size):
-                return .init(name: "PageSize", value: "\(size)")
-            }
-        }
-    }
-    
     var request: URLRequest
     
-    init(shareID: Share.ShareID, parameters: [Parameters]? = nil, service: APIService, credential: ClientCredential) {
-        let queryItems = parameters?.map(\.queryItem)
-        
+    init(shareID: Share.ShareID, service: APIService, credential: ClientCredential) {
         // url
-        var url = service.url(of: "/shares", parameters: queryItems)
+        var url = service.url(of: "/shares")
         url.appendPathComponent(shareID)
         url.appendPathComponent("urls")
         

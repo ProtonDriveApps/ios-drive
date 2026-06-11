@@ -41,10 +41,10 @@ public final class NewProtonFilePayloadFactory: NewProtonFilePayloadFactoryProto
         let (parentFolder, signersKit) = try managedObjectContext.performAndWait {
             let folder: Folder = try storageManager.fetchExisting(id: parentIdentifier, moc: managedObjectContext)
 #if os(macOS)
-            let signersKit = try signersKitFactory.make(forSigner: .main)
+            let signersKit = try folder.getContextShareAddressBasedSignersKit(signersKitFactory: self.signersKitFactory,
+                                                                              fallbackSigner: .main)
 #else
-            let addressID = try folder.getContextShareAddressID()
-            let signersKit = try self.signersKitFactory.make(forAddressID: addressID)
+            let signersKit = try folder.getContextShareAddressBasedSignersKit(signersKitFactory: signersKitFactory)
 #endif
             return (try folder.encrypting(), signersKit)
         }

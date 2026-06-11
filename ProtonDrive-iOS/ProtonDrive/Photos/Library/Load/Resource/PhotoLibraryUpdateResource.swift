@@ -18,6 +18,7 @@
 import Combine
 import Photos
 import PDCore
+import PDPhotos
 
 final class LocalPhotoLibraryUpdateResource: NSObject, PhotoLibraryIdentifiersResource, PHPhotoLibraryChangeObserver {
     private let updateSubject = PassthroughSubject<PhotoIdentifiers, Never>()
@@ -25,6 +26,7 @@ final class LocalPhotoLibraryUpdateResource: NSObject, PhotoLibraryIdentifiersRe
     private let optionsFactory: PHFetchOptionsFactory
     private let queueRepository: PhotoLibraryIdentifiersQueueRepository
     private let measurementRepository: DurationMeasurementRepository
+    private let identifierStore: PhotoIdentifierStore
     private let syncQueue = DispatchQueue(label: "LocalPhotoLibraryUpdateResource.syncQueue", attributes: .concurrent)
     private let queue = OperationQueue(underlyingQueue: DispatchQueue(label: "LocalPhotoLibraryUpdateResource", qos: .utility, attributes: .concurrent))
 
@@ -40,11 +42,18 @@ final class LocalPhotoLibraryUpdateResource: NSObject, PhotoLibraryIdentifiersRe
             .eraseToAnyPublisher()
     }
 
-    init(mappingResource: PhotoLibraryMappingResource, optionsFactory: PHFetchOptionsFactory, queueRepository: PhotoLibraryIdentifiersQueueRepository, measurementRepository: DurationMeasurementRepository) {
+    init(
+        mappingResource: PhotoLibraryMappingResource,
+        optionsFactory: PHFetchOptionsFactory,
+        queueRepository: PhotoLibraryIdentifiersQueueRepository,
+        measurementRepository: DurationMeasurementRepository,
+        identifierStore: PhotoIdentifierStore
+    ) {
         self.mappingResource = mappingResource
         self.optionsFactory = optionsFactory
         self.queueRepository = queueRepository
         self.measurementRepository = measurementRepository
+        self.identifierStore = identifierStore
         _fetchResult = ThreadSafe(wrappedValue: nil, queue: syncQueue)
         _processedIdentifiers = ThreadSafe(wrappedValue: [], queue: syncQueue)
     }
@@ -73,21 +82,22 @@ final class LocalPhotoLibraryUpdateResource: NSObject, PhotoLibraryIdentifiersRe
     // MARK: - PHPhotoLibraryChangeObserver
 
     func photoLibraryDidChange(_ changeInstance: PHChange) {
-        Log.info("PHPhotoLibraryChangeObserver.photoLibraryDidChange 🌊", domain: .photosProcessing)
-        guard let details = getChangeDetails(with: changeInstance) else {
-            return
-        }
-
+        guard let details = getChangeDetails(with: changeInstance) else { return }
         let fetchResultAfterChanges = details.fetchResultAfterChanges
         let assets = details.insertedObjects + details.changedObjects
         let allIdentifiers = Set(mappingResource.map(assets: assets))
+        identifierStore.update(changedIdentifiers: Array(allIdentifiers))
+        logChangeInfo(
+            insertedObjects: details.insertedObjects,
+            changedObjects: details.changedObjects,
+            allIdentifiers: allIdentifiers
+        )
 
         let identifiers = allIdentifiers.subtracting(processedIdentifiers)
         guard !identifiers.isEmpty else {
             Log.info("skipping duplicate identifiers", domain: .photosProcessing)
             return
         }
-
         if isDebounceNeeded(for: identifiers) {
             // This api `photoLibraryDidChange` sometimes gets triggered twice for the same PHAsset. The asset undergoes some kind of processing so it's actually changed
             // the second time (modificationDate is different) so we're unable to mark it as duplicate by checking its metadata and also the content is different.
@@ -156,5 +166,22 @@ final class LocalPhotoLibraryUpdateResource: NSObject, PhotoLibraryIdentifiersRe
             .sink { [weak self] identifiers, fetchResultAfterChanges in
                 self?.enqueueUpdate(identifiers: identifiers, fetchResultAfterChanges: fetchResultAfterChanges)
             }
+    }
+
+    private func logChangeInfo(
+        insertedObjects: [PHAsset],
+        changedObjects: [PHAsset],
+        allIdentifiers: Set<PhotoIdentifier>
+    ) {
+        let insertedIDs = Set(insertedObjects.map(\.localIdentifier))
+        let insertedIdentifiers = allIdentifiers.filter { insertedIDs.contains($0.localIdentifier) }
+
+        let changedIDs = Set(changedObjects.map(\.localIdentifier))
+        let changedIdentifiers = allIdentifiers.filter { changedIDs.contains($0.localIdentifier) }
+
+        Log.info(
+            "photoLibraryDidChange insert \(insertedIdentifiers.map(\.cloudIdentifier)), change \(changedIdentifiers.map(\.cloudIdentifier))",
+            domain: .photosProcessing
+        )
     }
 }

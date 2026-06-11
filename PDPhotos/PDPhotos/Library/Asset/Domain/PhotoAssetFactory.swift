@@ -19,23 +19,40 @@ import Foundation
 import PDCore
 
 public struct PhotoAssetFactoryData {
-    public  let identifier: PhotoIdentifier
-    public  let url: URL
-    public  let mimeType: MimeType
-    public  let originalFilename: String
-    public  let filenameExtension: String
-    public  let width: Int
-    public  let height: Int
-    public  let exif: PhotoAsset.Exif
-    public  let isOriginal: Bool
-    public  let duration: Double?
-    public  let camera: PhotoAssetMetadata.Camera
-    public  let location: PhotoAssetMetadata.Location?
-    public  let tags: [PhotoTag]
+    public let identifier: PhotoIdentifier
+    public let mimeType: MimeType
+    public let originalFilename: String
+    public let filenameExtension: String
+    public let width: Int
+    public let height: Int
+    public let exif: PhotoAsset.Exif
+    public let isOriginal: Bool
+    public let duration: Double?
+    public let camera: PhotoAssetMetadata.Camera
+    public let location: PhotoAssetMetadata.Location?
+    public let tags: [PhotoTag]
+    public let contentHash: String
+    public let dataSize: Int
+    public let resourceType: Int
 
-    public init(identifier: PhotoIdentifier, url: URL, mimeType: MimeType, originalFilename: String, filenameExtension: String, width: Int, height: Int, exif: PhotoAsset.Exif, isOriginal: Bool, duration: Double?, camera: PhotoAssetMetadata.Camera, location: PhotoAssetMetadata.Location?, tags: [PhotoTag]) {
+    public init(
+        identifier: PhotoIdentifier,
+        mimeType: MimeType,
+        originalFilename: String,
+        filenameExtension: String,
+        width: Int,
+        height: Int,
+        exif: PhotoAsset.Exif,
+        isOriginal: Bool,
+        duration: Double?,
+        camera: PhotoAssetMetadata.Camera,
+        location: PhotoAssetMetadata.Location?,
+        tags: [PhotoTag],
+        contentHash: String,
+        dataSize: Int,
+        resourceType: Int
+    ) {
         self.identifier = identifier
-        self.url = url
         self.mimeType = mimeType
         self.originalFilename = originalFilename
         self.filenameExtension = filenameExtension
@@ -47,6 +64,9 @@ public struct PhotoAssetFactoryData {
         self.camera = camera
         self.location = location
         self.tags = tags
+        self.contentHash = contentHash
+        self.dataSize = dataSize
+        self.resourceType = resourceType
     }
 }
 
@@ -63,7 +83,6 @@ public final class LocalPhotoAssetFactory: PhotoAssetFactory {
 
     public func makeAsset(from data: PhotoAssetFactoryData) throws -> PhotoAsset {
         return PhotoAsset(
-            url: data.url,
             filename: makeName(from: data),
             mimeType: data.mimeType,
             exif: data.exif,
@@ -73,7 +92,11 @@ public final class LocalPhotoAssetFactory: PhotoAssetFactory {
                 location: data.location,
                 iOSPhotos: PhotoAssetMetadata.iOSPhotos(identifier: data.identifier.cloudIdentifier, modificationTime: data.identifier.modifiedDate)
             ),
-            tags: data.tags.compactMap { $0.rawValue }
+            tags: data.tags.compactMap { $0.rawValue },
+            contentHash: data.contentHash,
+            dataSize: data.dataSize,
+            resourceType: data.resourceType,
+            localIdentifier: data.identifier.localIdentifier
         )
     }
 

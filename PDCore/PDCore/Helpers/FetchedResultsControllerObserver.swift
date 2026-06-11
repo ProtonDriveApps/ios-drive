@@ -32,6 +32,9 @@ public final class FetchedResultsControllerObserver<ResultType: NSFetchRequestRe
     }
 
     public var fetchedResultsController: NSFetchedResultsController<ResultType>
+    public var managedObjectContext: NSManagedObjectContext {
+        fetchedResultsController.managedObjectContext
+    }
 
     public init(controller: NSFetchedResultsController<ResultType>, isAutomaticallyStarted: Bool = true) {
         fetchedResultsController = controller

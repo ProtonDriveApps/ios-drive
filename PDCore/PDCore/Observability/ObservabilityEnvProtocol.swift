@@ -23,3 +23,9 @@ public protocol ObservabilityEnvProtocol {
 }
 
 extension ObservabilityEnv: ObservabilityEnvProtocol {}
+
+extension ObservabilityEvent {
+    init<Labels>(name: String, value: Int, labels: Labels, version: ObservabilityEventVersion) where Payload == PayloadWithLabels<Labels>, Labels: Encodable {
+        self.init(name: name, version: version, data: .init(value: value, labels: labels))
+    }
+}

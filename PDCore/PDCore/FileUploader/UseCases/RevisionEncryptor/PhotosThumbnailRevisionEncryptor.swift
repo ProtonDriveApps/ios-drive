@@ -58,6 +58,16 @@ final class PhotosThumbnailRevisionEncryptor: ThumbnailRevisionEncryptor {
 
             let thumbnails = Set(encryptedThumbnails.map { self.makeThumbnail(from: $0.data, type: $0.type, volumeID: draft.volumeID) })
             revision.addToThumbnails(thumbnails)
+            #if os(iOS)
+            for thumbnail in thumbnails {
+                guard let data = thumbnail.clearData else { continue }
+                CoreDataThumbnail.saveClearDataToDisk(
+                    clearData: data,
+                    type: thumbnail.type,
+                    identifier: revision.file.identifierWithinManagedObjectContext
+                )
+            }
+            #endif
 
             if isCancelled {
                 self.moc.rollback()

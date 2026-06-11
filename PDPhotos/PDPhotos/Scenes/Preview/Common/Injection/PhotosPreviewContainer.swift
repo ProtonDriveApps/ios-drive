@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Combine
 import CoreData
 import Foundation
 import PDCore
@@ -24,6 +25,7 @@ import UIKit
 final class PhotosPreviewContainer {
     struct Dependencies {
         let id: PhotoId
+        let albumId: AlbumIdentifier?
         let tower: Tower
         let listController: PhotosListControllerProtocol
         let thumbnailsContainer: ThumbnailsControllersContainer
@@ -40,6 +42,7 @@ final class PhotosPreviewContainer {
     private let previewController: PhotosPreviewController
     private let modeController: PhotosPreviewModeController
     private let currentDetailController: PhotoPreviewCurrentDetailController
+    private let fileIsDownloadedSubject: PassthroughSubject<PhotoId, Never> = .init()
     private weak var coordinator: PhotosPreviewCoordinator?
 
     init(dependencies: Dependencies, gallerySceneContainer: GallerySceneContainer) {
@@ -76,6 +79,7 @@ final class PhotosPreviewContainer {
         let detailController = factory.makeDetailController(tower: dependencies.tower, currentDetailController: currentDetailController)
         return factory.makeDetailViewController(
             id: id,
+            albumId: dependencies.albumId,
             tower: dependencies.tower,
             coordinator: coordinator,
             thumbnailsContainer: dependencies.thumbnailsContainer,
@@ -84,7 +88,10 @@ final class PhotosPreviewContainer {
             detailController: detailController,
             photosManagedObjectContext: dependencies.photosManagedObjectContext,
             photoUploadedNotifier: dependencies.photoUploadedNotifier,
-            metadataController: dependencies.metadataController
+            metadataController: dependencies.metadataController,
+            performanceMetricsController: dependencies.parentDependencies.parentDependencies.performanceMetricsController,
+            featureFlagsController: dependencies.parentDependencies.parentDependencies.featureFlagsController,
+            fileIsDownloadedSubject: fileIsDownloadedSubject
         )
     }
 
@@ -125,12 +132,13 @@ final class PhotosPreviewContainer {
                     storageManager: tower.storage
                 ),
                 metadataController: dependencies.metadataController,
-                nativeSharePhotoController: makeNativeSharePhotoController(),
+                nativeSharePhotoController: makeNativeSharePhotoController(isPhotosStream: albumID == nil),
                 offlineAvailableController: offlineAvailableController,
                 streamConfiguration: streamConfiguration,
                 trashDialogFactory: trashDialogFactory,
                 userMessageHandler: UserMessageHandler(),
                 copyToStreamController: copyToStreamController,
+                fileIsDownloadedPublisher: fileIsDownloadedSubject.eraseToAnyPublisher(),
                 updateAlbumInteractor: makeUpdateAlbumInteractor(albumID: albumID, context: context, tower: tower)
             ),
             rootPhotoID: rootPhotoID,
@@ -139,13 +147,14 @@ final class PhotosPreviewContainer {
         return previewActionVM
     }
 
-    private func makeNativeSharePhotoController() -> NativeSharePhotoController {
+    private func makeNativeSharePhotoController(isPhotosStream: Bool) -> NativeSharePhotoController {
         let factory = GalleryScenesFactory()
         let tower = dependencies.tower
         let context = dependencies.parentDependencies.managedObjectContext
 
         let fileContentController = factory.makeFileContentController(
             tower: tower,
+            featureFlagsController: dependencies.parentDependencies.parentDependencies.featureFlagsController,
             moc: context,
             photoUploadedNotifier: dependencies.parentDependencies.parentDependencies.photoUploadedNotifier
         )

@@ -46,6 +46,7 @@ struct AlbumDetailView<ActionView: View>: View {
             detailLayer(geometry: geometry)
         }
         .toolbar(content: {
+            titleView
             trailingButton
             leadingButton
         })
@@ -143,12 +144,37 @@ extension AlbumDetailView {
         .accessibilityIdentifier("navigationBar.backButton")
     }
 
+    @ToolbarContentBuilder
+    var titleView: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            if viewModel.showSpinner {
+                ProtonSpinner(size: .custom(24), style: .inverted)
+                    .accessibilityIdentifier("AlbumDetailView.pullToRefresh.spinner")
+            } else {
+                Text(viewModel.title(offset: scrollViewOffset))
+                    .font(.title3)
+                    .foregroundStyle(.white.opacity(titleOpacity()))
+                    .accessibilityIdentifier("AlbumDetailView.pullToRefresh.text")
+            }
+        }
+    }
+
     private var floatingSelectionConfirmView: some View {
         FloatingConfirmSelectionButton(
             selectionNumber: .init(get: { viewModel.selectionNumber }, set: { _ in }),
             cancelAction: { viewModel.deselectAll() },
             addAction: { viewModel.selectionFinalized() }
         )
+    }
+
+    private func titleOpacity() -> Double {
+        if scrollViewOffset < 0 {
+            return 0
+        } else if scrollViewOffset > 50 {
+            return 1
+        } else {
+            return scrollViewOffset / 50.0
+        }
     }
 }
 
@@ -164,6 +190,7 @@ extension AlbumDetailView {
                 .frame(height: topInset)
             OffsettableScrollView { point in
                 scrollViewOffset = point.y
+                viewModel.offsetIsChanged(offset: point.y)
             } content: { _ in
                 VStack(spacing: 0) {
                     Rectangle()

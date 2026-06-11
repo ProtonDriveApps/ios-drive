@@ -104,8 +104,8 @@ final class NewFeaturePromoteViewModel: NewFeaturePromoteViewModelProtocol {
 
     private func makeIllustration(for feature: NewFeature) -> String {
         switch feature {
-        case .albums:
-            return "new_feature_albums"
+        case .scanDoc:
+            return "new_feature_scanDoc"
         case .uiTest:
             guard Constants.isUITest else {
                 assertionFailure()
@@ -117,8 +117,8 @@ final class NewFeaturePromoteViewModel: NewFeaturePromoteViewModelProtocol {
 
     private func makeTitle(for feature: NewFeature) -> String {
         switch feature {
-        case .albums:
-            return Localization.new_feature_albums_title
+        case .scanDoc:
+            return Localization.new_feature_scanDoc_title
         case .uiTest:
             guard Constants.isUITest else {
                 assertionFailure()
@@ -130,8 +130,8 @@ final class NewFeaturePromoteViewModel: NewFeaturePromoteViewModelProtocol {
 
     private func makeDescription(for feature: NewFeature) -> String {
         switch feature {
-        case .albums:
-            return Localization.new_feature_albums_desc
+        case .scanDoc:
+            return Localization.new_feature_scanDoc_desc
         case .uiTest:
             guard Constants.isUITest else {
                 assertionFailure()

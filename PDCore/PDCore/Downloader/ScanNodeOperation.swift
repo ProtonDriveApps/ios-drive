@@ -20,9 +20,24 @@ import PDClient
 
 class ScanNodeOperation: SynchronousOperation {
     typealias Completion = (Result<[Node], Error>) -> Void
+
+    enum Errors: Error, LocalizedError {
+        case deallocatedDependency(nodeID: String)
+        case unexpectedNodeType(nodeID: String)
+
+        var errorDescription: String? {
+            switch self {
+            case .deallocatedDependency(let nodeID):
+                "ScanNodeOperation dependency (cloudSlot/storage) was deallocated for node \(nodeID)"
+            case .unexpectedNodeType(let nodeID):
+                "ScanNodeOperation received non-Folder node for \(nodeID)"
+            }
+        }
+    }
     
     private var nodeID: NodeIdentifier
     private weak var cloudSlot: CloudSlotProtocol?
+    private weak var storage: StorageManager?
     private let shouldIncludeDeletedItems: Bool
     private var completion: Completion?
     
@@ -31,11 +46,13 @@ class ScanNodeOperation: SynchronousOperation {
     
     init(_ nodeID: NodeIdentifier,
          cloudSlot: CloudSlotProtocol,
+         storage: StorageManager,
          shouldIncludeDeletedItems: Bool = false,
          completionHandler: @escaping Completion)
     {
         self.nodeID = nodeID
         self.cloudSlot = cloudSlot
+        self.storage = storage
         self.shouldIncludeDeletedItems = shouldIncludeDeletedItems
         self.completion = completionHandler
         
@@ -52,8 +69,14 @@ class ScanNodeOperation: SynchronousOperation {
     override func start() {
         super.start()
         guard !self.isCancelled else { return }
-
-        self.cloudSlot?.scanNode(self.nodeID, linkProcessingErrorTransformer: { $1 }, handler: { [weak self] nodeResult in
+        guard let cloudSlot, let storage else {
+            Log.error("ScanNodeOperation: cloudSlot or storage was deallocated for node \(self.nodeID.nodeID)", domain: .downloader)
+            self.completion?(.failure(Errors.deallocatedDependency(nodeID: self.nodeID.nodeID)))
+            self.state = .finished
+            return
+        }
+        let moc = storage.backgroundContext
+        cloudSlot.scanNode(self.nodeID, linkProcessingErrorTransformer: { $1 }, moc: moc, handler: { [weak self] nodeResult in
             guard let self = self, !self.isCancelled else { return }
             switch nodeResult {
             case let .failure(error):
@@ -67,7 +90,10 @@ class ScanNodeOperation: SynchronousOperation {
                     node, shouldIncludeDeletedItems: self.shouldIncludeDeletedItems
                 )
                 
-            default: assert(false, "Should not scan File nodes in this operation")
+            case let .success(unexpectedNode):
+                Log.error("ScanNodeOperation received non-Folder node \(type(of: unexpectedNode)) for \(self.nodeID.nodeID)", domain: .downloader)
+                self.completion?(.failure(Errors.unexpectedNodeType(nodeID: self.nodeID.nodeID)))
+                self.state = .finished
             }
         })
     }
@@ -76,6 +102,13 @@ class ScanNodeOperation: SynchronousOperation {
     // usage of this technique is discouraged because recursive fetching is a heavy operation
     private func fetchChildrenFromAPI(_ node: Folder, shouldIncludeDeletedItems: Bool) {
         guard !self.isCancelled else { return }
+        guard let cloudSlot, let storage else {
+            Log.error("ScanNodeOperation: cloudSlot or storage was deallocated during fetchChildren for node \(self.nodeID.nodeID)", domain: .downloader)
+            self.completion?(.failure(Errors.deallocatedDependency(nodeID: self.nodeID.nodeID)))
+            self.state = .finished
+            return
+        }
+        let moc = storage.backgroundContext
         var params: [FolderChildrenEndpointParameters] = [
             .page(self.lastFetchedPage),
             .pageSize(self.pageSize)
@@ -83,16 +116,16 @@ class ScanNodeOperation: SynchronousOperation {
         if shouldIncludeDeletedItems {
             params.append(.showAll)
         }
-        
-        self.cloudSlot?.scanChildren(of: self.nodeID, parameters: params) { [weak self] resultChildren in
+
+        cloudSlot.scanChildren(of: self.nodeID, parameters: params, moc: moc) { [weak self] resultChildren in
             guard let self = self, !self.isCancelled else { return }
-            
+
             switch resultChildren {
             case let .failure(error):
                 Log.error("ScanChildren error", error: error, domain: .networking)
                 self.completion?(.failure(error))
                 self.state = .finished
-                
+
             case let .success(nodes) where nodes.count < self.pageSize:
                 // this is last page
                 Log.info("Fetched page #\(self.lastFetchedPage) last (\(nodes.count) nodes) children for node \(self.nodeID.nodeID)", domain: .networking)
@@ -100,11 +133,11 @@ class ScanNodeOperation: SynchronousOperation {
                     node.isChildrenListFullyFetched = true
                     try? node.managedObjectContext?.saveOrRollback()
                 }
-                
+
                 // return not `nodes` that we got for last page, but children from all pages
                 self.completion?(.success(Array(node.children)))
                 self.state = .finished
-                
+
             case .success:
                 // this is not last page and need to request next one
                 Log.info("Fetched page #\(self.lastFetchedPage) full (\(self.pageSize) nodes) for node \(self.nodeID.nodeID)", domain: .networking)

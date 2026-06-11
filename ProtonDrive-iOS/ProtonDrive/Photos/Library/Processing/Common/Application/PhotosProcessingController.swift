@@ -25,23 +25,34 @@ final class ConcretePhotosProcessingController: PhotosProcessingController {
     private let backupController: PhotosBackupController
     private let availableController: PhotosProcessingAvailableController
     private let processingResource: PhotosProcessingQueueResource
-    private let batchAvailableController: PhotosProcessingBatchAvailableController
     private let cleanUpController: CleanUpEventController
     private var cancellables = Set<AnyCancellable>()
     private let errorSubject = PassthroughSubject<Error, Never>()
     private var isProcessing = CurrentValueSubject<Bool, Never>(false)
+    private var retryCount: [PhotoIdentifier: Int] = [:]
+    private let failedIdentifiersResource: DeletedPhotosIdentifierStoreResource
+    private let progressRepository: PhotoLibraryLoadProgressRepository
 
     var errorPublisher: AnyPublisher<Error, Never> {
         errorSubject.eraseToAnyPublisher()
     }
 
-    init(identifiersController: PhotoLibraryIdentifiersController, backupController: PhotosBackupController, availableController: PhotosProcessingAvailableController, processingResource: PhotosProcessingQueueResource, batchAvailableController: PhotosProcessingBatchAvailableController, cleanUpController: CleanUpEventController) {
+    init(
+        identifiersController: PhotoLibraryIdentifiersController,
+        backupController: PhotosBackupController,
+        availableController: PhotosProcessingAvailableController,
+        processingResource: PhotosProcessingQueueResource,
+        cleanUpController: CleanUpEventController,
+        failedIdentifiersResource: DeletedPhotosIdentifierStoreResource,
+        progressRepository: PhotoLibraryLoadProgressRepository
+    ) {
         self.identifiersController = identifiersController
         self.backupController = backupController
         self.availableController = availableController
         self.processingResource = processingResource
-        self.batchAvailableController = batchAvailableController
         self.cleanUpController = cleanUpController
+        self.failedIdentifiersResource = failedIdentifiersResource
+        self.progressRepository = progressRepository
         subscribeToUpdates()
     }
 
@@ -70,11 +81,11 @@ final class ConcretePhotosProcessingController: PhotosProcessingController {
     }
 
     private func subscribeToProcessingEvents() {
-        Publishers.CombineLatest3(identifiersController.batch, batchAvailableController.isNextBatchPossible, isProcessing)
-            .filter { !$0.0.isEmpty && $0.1 && !$0.2 }
+        Publishers.CombineLatest(identifiersController.batch, isProcessing)
+            .filter { !$0.0.isEmpty && !$0.1 }
             .map { $0.0 }
             .sink { [weak self] identifiers in
-                Log.debug("ConcretePhotosProcessingController processing batch, count: \(identifiers.count)", domain: .photosProcessing)
+                Log.debug("Processing batch, count: \(identifiers.count)", domain: .photosProcessing)
                 self?.isProcessing.send(true)
                 self?.processingResource.execute(with: identifiers)
             }
@@ -101,10 +112,34 @@ final class ConcretePhotosProcessingController: PhotosProcessingController {
     }
 
     private func handle(_ context: PhotosProcessingContext) {
-        identifiersController.complete(unprocessedIdentifiers: Array(context.skippedIdentifiers.union(context.newIdentifiers)))
+        handleRetryIdentifiers(from: context)
         if let error = context.errors.first {
             errorSubject.send(error)
         }
         isProcessing.send(false)
+    }
+
+    /// Filter retryable identifiers
+    /// Some photos may encounter temporary issues in the `PhotosAssetsInteractor`, such as storage or network problems.
+    /// These failed identifiers can be retried, but each one is allowed a maximum of 3 attempts (including the initial try).
+    /// After 3 failed attempts, the identifier is added to `failedIdentifiers`, allowing the user to choose whether to skip or retry it.
+    private func handleRetryIdentifiers(from context: PhotosProcessingContext) {
+        var retryIdentifiers: Set<PhotoIdentifier> = []
+        var failedCount = 0
+        for (id, error) in context.skippedIdentifiersAndError {
+            var count = retryCount[id] ?? 1
+            count += 1
+            if count > 3 {
+                retryCount[id] = nil
+                failedIdentifiersResource.increment(cloudIdentifier: id.cloudIdentifier, error: error)
+                failedCount += 1
+            } else {
+                retryCount[id] = count
+                retryIdentifiers.insert(id)
+            }
+        }
+
+        identifiersController.complete(unprocessedIdentifiers: Array(retryIdentifiers.union(context.newIdentifiers)))
+        progressRepository.discard(failedCount)
     }
 }

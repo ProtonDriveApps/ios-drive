@@ -37,7 +37,7 @@ final class AlbumAllChildrenInteractor: AlbumAllChildrenInteractorProtocol {
         let listings = try await fetchAll(albumId: albumId)
         Log.info("Getting all album children metadata", domain: .albums)
         let allIdentifiers = listings.flatMap(\.allIds)
-        _ = try await metadataRepository.fetch(identifiers: allIdentifiers)
+        _ = try await metadataRepository.fetch(identifiers: allIdentifiers, forceToRefresh: false)
         return listings
     }
 

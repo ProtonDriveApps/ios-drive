@@ -15,10 +15,27 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import PDCore
 import UIKit
 
 extension UIApplication {
-    
+
+    func getActiveWindowScene() -> UIWindowScene? {
+        let scene = connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first(where: { $0.activationState == .foregroundActive })
+        if scene == nil {
+            Log.warning("No active window scene", domain: .ui)
+        }
+        return scene
+    }
+
+    func getAnyAttachedWindowScene() -> UIWindowScene? {
+        return connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first(where: { $0.activationState != .unattached })
+    }
+
     func rootViewController() -> UIViewController? {
         for scene in connectedScenes {
             if let windowScene = scene as? UIWindowScene {
@@ -49,9 +66,7 @@ extension UIApplication {
     }
 
     func topMostViewControllerFromAppWindow() -> UIViewController? {
-        guard let windowScene = connectedScenes
-                .compactMap({ $0 as? UIWindowScene })
-                .first(where: { $0.activationState == .foregroundActive }),
+        guard let windowScene = getActiveWindowScene(),
               let root = windowScene.windows.first?.rootViewController else {
             return nil
         }

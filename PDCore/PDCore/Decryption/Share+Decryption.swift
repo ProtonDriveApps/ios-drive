@@ -50,14 +50,14 @@ extension Share {
                 do {
                     return try nodeKeyDecryptedPassphrase(sharePassphrase, signature)
                 } catch is MemberDecryptableShareError {
-                    return try memberDecryptedPassphrase(sharePassphrase, signature)
+                    return try memberDecryptedPassphrase(sharePassphrase, signature, isCollaborativelyShared: true)
                 } catch {
                     Log.error(error: DecryptionError(error, "Share Passphrase", description: "ShareID: \(id) - Migrated share could not be decrypted 💔"), domain: .encryption)
-                    return try memberDecryptedPassphrase(sharePassphrase, signature)
+                    return try memberDecryptedPassphrase(sharePassphrase, signature, isCollaborativelyShared: true)
                 }
             } else {
                 // Main share, Photos share and Devices share and macOS flow (macOS does not have shared by URL)
-                return try memberDecryptedPassphrase(sharePassphrase, signature)
+                return try memberDecryptedPassphrase(sharePassphrase, signature, isCollaborativelyShared: isCollaborativelyShared)
             }
         } catch {
             Log.error(error: DecryptionError(error, "Share Passphrase", description: "ShareID: \(id)"), domain: .encryption)
@@ -65,9 +65,22 @@ extension Share {
         }
     }
 
-    private func memberDecryptedPassphrase(_ sharePassphrase: String, _ signature: String) throws -> String {
+    /// Decryption of Share's passphare using address keys.
+    /// For decryption it uses address keys fetched from vault mapped from addressID of a given Share.
+    /// Mapping of `addressID` can be found in `getAddressKeys`.
+    ///
+    /// - Parameters:
+    ///   - sharePassphrase: Encrypted passhprase of `Share` entity.
+    ///   - signature: Passhprase signature of `Share` entity.
+    ///   - isCollaborativelyShared: True marks a collaboratively shared item, additional verification (mapped by inviter's email) keys will be used for verification.
+    /// - Returns: Decrypted passphrase.
+    /// - Throws: An error if decryption fails. Doesn't throw when verification fails.
+    private func memberDecryptedPassphrase(_ sharePassphrase: String, _ signature: String, isCollaborativelyShared: Bool) throws -> String {
         let addressKeys = try getAddressKeys()
-        let verificationKeys = addressKeys.map(\.publicKey)
+        var verificationKeys = addressKeys.map(\.publicKey)
+        if isCollaborativelyShared, let inviterEmail = members.first?.inviter {
+            verificationKeys += SessionVault.current.getForeignPublicKeys(for: inviterEmail)
+        }
         let decryptionKeys = addressKeys.map(\.decryptionKey)
         let decrypted: VerifiedText
         do {
@@ -94,8 +107,22 @@ extension Share {
         }
     }
 
+    /// Decryption of Share's passphare using root node's keys.
+    /// For decryption it uses address keys fetched from vault mapped from addressID of a given Share.
+    /// Mapping of `addressID` can be found in `getAddressKeys`.
+    /// This function is used within collaborative sharing context (shared with me items), so will try to verify
+    /// using inviter's email's keys.
+    ///
+    /// - Parameters:
+    ///   - sharePassphrase: Encrypted passhprase of `Share` entity.
+    ///   - signature: Passhprase signature of `Share` entity.
+    /// - Returns: Decrypted passphrase.
+    /// - Throws: An error if decryption fails. Doesn't throw when verification fails.
     private func nodeKeyDecryptedPassphrase(_ sharePassphrase: String, _ signature: String) throws -> String {
-        let verificationKeys = try getAddressKeys().map(\.publicKey)
+        var verificationKeys = try getAddressKeys().map(\.publicKey)
+        if let inviterEmail = members.first?.inviter {
+            verificationKeys += SessionVault.current.getForeignPublicKeys(for: inviterEmail)
+        }
 
         guard let node = root else { throw invalidState("Share should have a root with NodeKey") }
         guard node.parentNode != nil else { throw MemberDecryptableShareError() }
@@ -129,21 +156,26 @@ extension Share {
     struct MemberDecryptableShareError: Error { }
 
     internal func getAddressKeys() throws -> [KeyPair] {
-        if let addressID = addressID {
-            if let addressKeys = SessionVault.current.getAddress(withID: addressID)?.activeKeys {
-                return addressKeys.compactMap(KeyPair.init)
-            }
-        }
-
-        guard let creator = creator else {
-            throw Errors.noCreator
-        }
-
-        guard let addressKeys = SessionVault.current.getAddress(for: creator)?.activeKeys else {
+        guard let addressID = try? getAddressID() else { // addressID is deprecated for SharedWithMe items, we should get it from memberships.
             throw SessionVault.Errors.noRequiredAddressKey
         }
-        let keys = addressKeys.compactMap(KeyPair.init)
-        return keys
+
+        if addressID.isEmpty {
+            Log.error("Share's addressID is empty", error: nil, domain: .metadata)
+        }
+        if let addressKeys = SessionVault.current.getAddress(withId: addressID)?.activeKeys {
+            if addressKeys.isEmpty {
+                Log.error("Address by addressID contains empty active keys", error: nil, domain: .sessionManagement)
+            }
+            let keys = addressKeys.compactMap(KeyPair.init)
+            if !addressKeys.isEmpty && keys.isEmpty {
+                Log.error("Unable to map address (fetched by addressID) keys to valid key pairs", error: nil, domain: .sessionManagement)
+            }
+            return keys
+        }
+
+        // We used to fallback to `creator`. This is very much deprecated and we should never use that attribute 'except in a UI display as "creator"'
+        throw SessionVault.Errors.noRequiredAddressKey
     }
 
     internal func getAddressPublicKeysOfShareCreator() throws -> [PublicKey] {

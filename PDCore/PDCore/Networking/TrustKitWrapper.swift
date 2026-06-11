@@ -15,7 +15,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Foundation
 import TrustKit
+import Combine
 import ProtonCoreEnvironment
 import ProtonCoreServices
 
@@ -44,9 +46,41 @@ public final class TrustKitFactory {
         TrustKitWrapper.setUp(delegate: delegate,
                               customConfiguration: configuration,
                               sharedContainerIdentifier: Constants.runningInExtension ? Constants.appGroup : nil)
-        TrustKit.setLoggerBlock { Log.info($0, domain: .trustKit) }
+        TrustKit.setLoggerBlock { TrustKitLogger.shared.collect($0) }
         let trustKit = TrustKitWrapper.current
         return trustKit
+    }
+}
+
+/// Prevent TrustKit from sending duplicate logs in a short period of time
+private final class TrustKitLogger {
+    static let shared = TrustKitLogger()
+
+    private let subject = PassthroughSubject<String, Never>()
+    private var cancellable: AnyCancellable?
+
+    private init() {
+        cancellable = subject
+            .collect(.byTime(DispatchQueue.main, .seconds(0.2)), options: nil)
+            .scan((last: Optional<String>.none, current: "")) { state, snapshot in
+                var logs: [String] = []
+                for log in snapshot {
+                    if logs.contains(log) { continue }
+                    logs.append(log)
+                }
+                return (last: state.current, current: logs.joined(separator: "\n"))
+            }
+            .sink { pair in
+                if pair.last == pair.current {
+                    Log.info("Same trustKit output as last time", domain: .trustKit)
+                } else {
+                    Log.info("\(pair.current)", domain: .trustKit)
+                }
+            }
+    }
+
+    func collect(_ line: String) {
+        subject.send(line)
     }
 }
 

@@ -32,6 +32,7 @@ final class DownloadFileOperation: SynchronousOperation, DownloadOperation {
     private let storage: StorageManager
     private var completion: Completion?
     private weak var cloudSlot: CloudSlotProtocol!
+    private let bytesCounterResource: BytesCounterResource
     public var progress: Progress
     private lazy var internalQueue: OperationQueue = {
         let queue = OperationQueue(maxConcurrentOperation: Constants.maxConcurrentBlockDownloadsPerFile,
@@ -60,6 +61,7 @@ final class DownloadFileOperation: SynchronousOperation, DownloadOperation {
         linkExpiredTime: TimeInterval = 30 * 60 - 60, // Link in backend side expired in 30 mins, 1 min for buffer
         expiredBuffer: TimeInterval = 5 * 60, // Buffer before link expired
         chunkSize: Int = 5,
+        bytesCounterResource: BytesCounterResource,
         completion: @escaping Completion
     ) {
         self.fileIdentifier = file.identifier
@@ -68,6 +70,7 @@ final class DownloadFileOperation: SynchronousOperation, DownloadOperation {
         self.endpointFactory = endpointFactory
         self.linkExpiredTime = linkExpiredTime
         self.expiredBuffer = expiredBuffer
+        self.bytesCounterResource = bytesCounterResource
         self.completion = completion
         self.progress = Progress(totalUnitCount: 0)
            
@@ -117,10 +120,11 @@ final class DownloadFileOperation: SynchronousOperation, DownloadOperation {
     
     private func initialRevision() async throws -> Revision {
         do {
+            let moc = storage.backgroundContext
             Log.info("Starts to download file details for \(fileIdentifier)", domain: .downloader)
-            let node = try await cloudSlot.scanNode(fileIdentifier, linkProcessingErrorTransformer: { $1 })
+            let node = try await cloudSlot.scanNode(fileIdentifier, linkProcessingErrorTransformer: { $1 }, moc: moc)
             let fileIdentifier = self.fileIdentifier
-            return try await storage.backgroundContext.perform {
+            return try await moc.perform {
                 guard let file = node as? File, let revision = file.activeRevision else {
                     let error = Errors.errorReadingMetadata
                     Log.error("Downloaded file details is in invalid state", error: error, domain: .downloader, context: LogContext("fileIdentifier: \(fileIdentifier)"))
@@ -188,12 +192,13 @@ final class DownloadFileOperation: SynchronousOperation, DownloadOperation {
     }
     
     private func update(revision: Revision) async throws -> Revision {
+        let moc = storage.backgroundContext
         guard !self.isCancelled, !Task.isCancelled else { return revision }
-        let revisionIdentifier = await storage.backgroundContext.perform { revision.identifier }
+        let revisionIdentifier = await moc.perform { revision.identifier }
         guard !self.isCancelled, !Task.isCancelled else { return revision }
         do {
             Log.info("Starts to scan revision for file: \(fileIdentifier), revision: \(revisionIdentifier)", domain: .downloader)
-            let updatedRevision = try await cloudSlot.scanRevision(revisionIdentifier)
+            let updatedRevision = try await cloudSlot.scanRevision(revisionIdentifier, moc: moc)
             return updatedRevision
         } catch {
             Log
@@ -208,7 +213,10 @@ final class DownloadFileOperation: SynchronousOperation, DownloadOperation {
     }
     
     private func finishOperationForEmpty(revision: Revision) async throws {
-        Log.info("Revision for \(fileIdentifier) is an empty file, creating empty file locally, revision: \(revision.identifier)", domain: .downloader)
+        let revisionIdentifier = storage.backgroundContext.performAndWait {
+            revision.identifier
+        }
+        Log.info("Revision for \(fileIdentifier) is an empty file, creating empty file locally, revision: \(revisionIdentifier)", domain: .downloader)
         try await self.createEmptyFile(in: revision) // will call completion
         self.state = .finished
     }
@@ -351,9 +359,12 @@ final class DownloadFileOperation: SynchronousOperation, DownloadOperation {
                 guard !self.isCancelled else { return }
                 switch result {
                 case .success(let intermediateUrl):
+                    // TODO: refactoring needed due to performance - manipulating and reading from file storage shouldn't block context's thread
                     block.managedObjectContext?.performAndWait { [fileIdentifier] in
                         do {
                             _ = try block.store(cypherfileFrom: intermediateUrl)
+                            let fileSize = (try? intermediateUrl.getFileSize()) ?? 0
+                            self.bytesCounterResource.add(bytes: fileSize)
                             Log.info("Download and save \(block.index)th block for file: \(fileIdentifier)", domain: .downloader)
                         } catch let error {
                             Log

@@ -18,8 +18,9 @@
 import UIKit
 import PDCore
 import PDUIComponents
+import PDCoreIOS
 
-class Deeplink {
+class Deeplink: CustomStringConvertible {
     typealias UnderlyingType = NodeIdentifier
     typealias CollectionType = [UnderlyingType]
     
@@ -28,7 +29,8 @@ class Deeplink {
     private var tab: NavigationBarButtonViewModel.RawValue?
     private var modal: UnderlyingType?
     private var chain: CollectionType?
-    
+    private var action: Action?
+
     private let lock = NSLock()
     
     func finalModal() -> UnderlyingType? {
@@ -39,7 +41,9 @@ class Deeplink {
         guard let raw = self.tab else { return nil }
         return NavigationBarButtonViewModel(rawValue: raw)
     }
-    
+
+    func finalAction() -> Action? { action }
+
     func next(after previous: UnderlyingType?) -> UnderlyingType? {
         guard let previous = previous else { return nil }
         guard let next = self.chain?.firstIndex(of: previous)?.advanced(by: 1) else { return nil }
@@ -70,7 +74,11 @@ class Deeplink {
         
         self.chain = chain
     }
-    
+
+    func inject(_ action: Action) {
+        self.action = action
+    }
+
     func invalidate() {
         /*
          This little delay lets the last screen of a deeplink to be pushed without animation, but all the following ones will have one. This is a workaround for change in iOS 14 where all deeplinks in NavigationLink are animated.
@@ -85,4 +93,27 @@ class Deeplink {
         self.chain = nil
         self.modal = nil
     }
+
+    var description: String {
+        if let chain {
+            return chain.map { $0.id }.joined(separator: "\n")
+        }
+        return ""
+    }
+
+    enum Action {
+        case scanDocument
+    }
+}
+
+extension Notification.Name {
+    static var deepLink: Notification.Name {
+        Notification.Name("ch.protondrive.deepLink")
+    }
+}
+
+struct DeepLinkNotification {
+    let menuDestination: MenuViewModel.Destination
+    let tab: TabBarItem?
+    let link: Deeplink
 }

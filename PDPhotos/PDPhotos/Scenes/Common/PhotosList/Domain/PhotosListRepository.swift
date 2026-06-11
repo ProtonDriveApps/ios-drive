@@ -20,4 +20,5 @@ import Combine
 protocol PhotosListRepository {
     var updatePublisher: AnyPublisher<[PhotosListSection], Never> { get }
     func setFilter(_ filter: PhotosListFilter)
+    func stopObserving()
 }

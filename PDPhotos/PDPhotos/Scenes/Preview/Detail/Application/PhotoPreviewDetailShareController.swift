@@ -17,6 +17,8 @@
 
 import Combine
 import Foundation
+import PDLocalization
+import PDCoreIOS
 
 protocol PhotoPreviewDetailShareController {
     func openShare()
@@ -65,7 +67,10 @@ final class CachingPhotoPreviewDetailShareController: PhotoPreviewDetailShareCon
     }
     
     private func coordinateToShare() {
-        guard let content else { return }
+        guard let content, !content.isLoading else {
+            UserMessageHandler().handleWarning(Localization.general_loading)
+            return
+        }
         
         if content.couldBeLivePhoto, let videoURL = content.childrenURLs.first {
             coordinator.openShareLivePhoto(imageURL: content.url, videoURL: videoURL)

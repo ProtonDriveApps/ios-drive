@@ -34,6 +34,12 @@ final class ReportBugViewModel: ObservableObject {
             updateSendButtonState()
         }
     }
+    let usernameField = UsernameField()
+    @Published var username: String
+    let emailField = EmailField()
+    @Published var email: String {
+        didSet { updateSendButtonState() }
+    }
 
     @Published var attachmentsField = AttachmentsField()
     @Published var areLogsAttached: Bool = false
@@ -48,16 +54,23 @@ final class ReportBugViewModel: ObservableObject {
 
     // MARK: - Dependencies
     private let service: BugReportServiceProtocol
-    private let sessionVault: SessionVault
+    private let sessionVault: SessionVault?
     private let messageHandler: UserMessageHandlerProtocol
     private let logsDirectory: URL
+    private let reportedSubject = PassthroughSubject<Void, Never>()
+    var reportedPublisher: AnyPublisher<Void, Never> {
+        reportedSubject.receive(on: DispatchQueue.main).eraseToAnyPublisher()
+    }
 
     // MARK: - Init
-    init(service: BugReportServiceProtocol, sessionVault: SessionVault, messageHandler: UserMessageHandlerProtocol = UserMessageHandler()) {
+    init(service: BugReportServiceProtocol, sessionVault: SessionVault?, messageHandler: UserMessageHandlerProtocol = UserMessageHandler()) {
         self.service = service
         self.sessionVault = sessionVault
         self.messageHandler = messageHandler
         self.logsDirectory = LogExporter().prepareArchivedLogsDirectory()
+        let emailValue = sessionVault?.currentAddress()?.email ?? ""
+        self.email = emailValue
+        self.username = sessionVault?.currentAddress()?.displayName ?? emailValue
     }
 
     @MainActor
@@ -66,11 +79,15 @@ final class ReportBugViewModel: ObservableObject {
         do {
             let report = makeReport()
             try await service.reportBug(report)
-            messageHandler.handleSuccess(Localization.report_bug_submission_success)
+            reportedSubject.send()
         } catch {
             Log.error(error: error, domain: .logs)
             messageHandler.handleError(PlainMessageError(Localization.report_bug_submission_failure + " \(error.localizedDescription)"))
         }
+    }
+
+    func presentSuccessBanner() {
+        messageHandler.handleSuccess(Localization.report_bug_submission_success)
     }
 
     func didTapLogs() {
@@ -114,8 +131,9 @@ final class ReportBugViewModel: ObservableObject {
         let logsSize = Double(selectedLogs.compactMap(\.fileSize).reduce(0, +))
         let mediaSize = Double(selectedMedia.compactMap(\.fileSize).reduce(0, +))
         let uploadsSize = ((logsSize + mediaSize) / (1024 * 1024))
+        let validEmail = email.isValidEmail()
 
-        let isValid = (messageSize >= 10) && (attachmentsCount <= 10) && (uploadsSize <= 50)
+        let isValid = (messageSize >= 10) && (attachmentsCount <= 10) && (uploadsSize <= 50) && validEmail
 
         uploadStatusText = attachmentsField.uploadStatusFormat(uploadsSize, attachmentsCount)
         isSendButtonActive = isValid
@@ -136,14 +154,6 @@ final class ReportBugViewModel: ObservableObject {
         )
     }
 
-    private var email: String {
-        sessionVault.currentAddress()?.email ?? ""
-    }
-
-    private var username: String {
-        sessionVault.currentAddress()?.displayName ?? email
-    }
-
     // MARK: - Cleanup
 
     deinit {
@@ -154,13 +164,24 @@ final class ReportBugViewModel: ObservableObject {
 
     struct TopicField {
         let title = Localization.report_bug_topic_field_title
-        let topics = ReportTopic.allCases
+        let topics = ReportTopic.allCases.sorted(by: { $0.name < $1.name })
     }
 
     struct MessageField {
         let title = Localization.report_bug_message_field_title
         let placeholder = Localization.report_bug_message_field_placeholder
         let warning = Localization.report_bug_message_field_warning
+    }
+
+    struct UsernameField {
+        let title = Localization.report_bug_account_field_title
+        let placeholder = Localization.report_bug_account_field_placeholder
+    }
+
+    struct EmailField {
+        let title = Localization.report_bug_email_field_title
+        let placeholder = Localization.report_bug_email_field_placeholder
+        let warning = Localization.report_bug_email_field_warning
     }
 
     struct AttachmentsField {

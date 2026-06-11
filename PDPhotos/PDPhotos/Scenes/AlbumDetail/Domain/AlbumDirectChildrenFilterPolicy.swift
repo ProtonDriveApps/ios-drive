@@ -33,10 +33,10 @@ final class AlbumDirectChildrenFilterPolicy: AlbumDirectChildrenFilterPolicyProt
     // This is not entirely reliable, as the photo limit is 10,000, and not all photos may be present locally.
     // There is a fallback mechanism in place if the backend detects that certain items are direct children of the album.
     func filter(photoIdentifiers: [AnyVolumeIdentifier]) async throws -> [AnyVolumeIdentifier] {
-        return await context.perform {
+        return await context.perform { [context] in
             var childIDs: [AnyVolumeIdentifier] = []
             for id in photoIdentifiers {
-                guard let photo = CoreDataPhoto.fetch(identifier: id, in: self.context) else {
+                guard let photo = CoreDataPhoto.fetch(identifier: id, in: context) else {
                     childIDs.append(id)
                     continue
                 }

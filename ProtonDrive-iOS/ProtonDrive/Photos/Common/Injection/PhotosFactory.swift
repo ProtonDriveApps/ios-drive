@@ -74,8 +74,7 @@ struct PhotosFactory {
         bootstrapController: PhotosBootstrapController,
         lockController: PhotoBackupConstraintController,
         b2bUserConstraintController: PhotoBackupConstraintController,
-        populatedStateController: PopulatedStateControllerProtocol,
-        featureFlagsController: FeatureFlagsControllerProtocol
+        populatedStateController: PopulatedStateControllerProtocol
     ) -> PhotosBackupController {
         return DrivePhotosBackupController(
             authorizationController: authorizationController,
@@ -83,8 +82,7 @@ struct PhotosFactory {
             bootstrapController: bootstrapController,
             lockController: lockController,
             b2BUserController: b2bUserConstraintController,
-            populatedStateController: populatedStateController,
-            featureFlagsController: featureFlagsController
+            populatedStateController: populatedStateController
         )
     }
 
@@ -100,13 +98,37 @@ struct PhotosFactory {
     }
 
     // swiftlint:disable:next function_parameter_count
-    func makeLoadController(backupController: PhotosBackupController, tower: Tower, cleanedUploadingStore: DeletedPhotosIdentifierStoreResource, cleanedPhotosRetryEvent: AnyPublisher<Void, Never>, progressRepository: PhotoLibraryLoadProgressRepository, settingsController: PhotoBackupSettingsController, identifiersController: PhotoLibraryIdentifiersController, skippableCache: PhotosSkippableCache, queueRepository: PhotoLibraryIdentifiersQueueRepository, computationalAvailabilityController: ComputationalAvailabilityController, measurementRepository: DurationMeasurementRepository) -> PhotoLibraryLoadController {
+    func makeLoadController(
+        backupController: PhotosBackupController,
+        tower: Tower,
+        cleanedUploadingStore: DeletedPhotosIdentifierStoreResource,
+        cleanedPhotosRetryEvent: AnyPublisher<Void, Never>,
+        progressRepository: PhotoLibraryLoadProgressRepository,
+        settingsController: PhotoBackupSettingsController,
+        identifiersController: PhotoLibraryIdentifiersController,
+        skippableCache: PhotosSkippableCache,
+        queueRepository: PhotoLibraryIdentifiersQueueRepository,
+        computationalAvailabilityController: ComputationalAvailabilityController,
+        measurementRepository: DurationMeasurementRepository,
+        photoIdentifierStore: PhotoIdentifierStore
+    ) -> PhotoLibraryLoadController {
         let mappingResource = LocalPhotoLibraryMappingResource()
         let optionsFactory = PHFetchOptionsFactory(supportedMediaTypes: settingsController.supportedMediaTypes, notOlderThan: settingsController.notOlderThan)
-        let identifiersRepository = ConcretePhotoLibraryIdentifiersRepository(mappingResource: mappingResource, optionsFactory: optionsFactory, skippableCache: skippableCache)
+        let identifiersRepository = ConcretePhotoLibraryIdentifiersRepository(
+            mappingResource: mappingResource,
+            optionsFactory: optionsFactory,
+            skippableCache: skippableCache,
+            identifierStore: photoIdentifierStore
+        )
         let interactor = LocalPhotoLibraryLoadInteractor(resources: [
             LocalPhotoLibraryFetchResource(identifiersRepository: identifiersRepository, measurementRepository: measurementRepository),
-            LocalPhotoLibraryUpdateResource(mappingResource: mappingResource, optionsFactory: optionsFactory, queueRepository: queueRepository, measurementRepository: measurementRepository),
+            LocalPhotoLibraryUpdateResource(
+                mappingResource: mappingResource,
+                optionsFactory: optionsFactory,
+                queueRepository: queueRepository,
+                measurementRepository: measurementRepository,
+                identifierStore: photoIdentifierStore
+            ),
             CleanedPhotoLibraryFetchResource(cleanedUploadingStore: cleanedUploadingStore, cleanedPhotosRetryEvent: cleanedPhotosRetryEvent, identifiersRepository: identifiersRepository, measurementRepository: measurementRepository)
         ])
         let scheduler = DispatchQueue.main.eraseToAnyScheduler()
@@ -165,15 +187,62 @@ struct PhotosFactory {
         StorageUploadingPhotosRepository(storage: tower.storage, moc: moc)
     }
 
-    func makePhotoUploaderFeeder(uploadingPhotosRepository: UploadingPrimaryPhotosRepository, isAvailableController: PhotosBackupUploadAvailableController, uploader: PhotoUploader, computationalAvailabilityController: ComputationalAvailabilityController) -> PhotoUploaderFeeder {
+    // swiftlint:disable:next function_parameter_count
+    func makePhotoUploaderFeeder(
+        tower: Tower,
+        isAvailableController: PhotosBackupUploadAvailableController,
+        uploader: PhotoUploader,
+        computationalAvailabilityController: ComputationalAvailabilityController,
+        feedProcessor: PhotoFeederPreprocessorProtocol,
+        feedSubject: PassthroughSubject<Void, Never>
+    ) -> PhotoUploaderFeeder {
         let shouldFeedPublisher = ComputationalAvailabilityControllerFeederEnabledAdapter(computationalAvailabilityController).isFeederEnabled
         return PhotoUploaderFeeder(
             uploader: uploader,
-            uploadingPhotosRepository: uploadingPhotosRepository,
+            sdkPhotoUploaderBlock: { [weak tower] in
+                tower?.getSdkPhotoUploader()
+            },
             notificationCenter: NotificationCenter.default,
             isBackupAvailable: isAvailableController.isAvailable,
-            newPhotoAvailable: NotificationCenter.default.getPublisher(for: .didImportPhotos, publishing: [PDCore.Photo].self),
-            shouldFeedPublisher: shouldFeedPublisher
+            shouldFeedPublisher: shouldFeedPublisher,
+            processor: feedProcessor,
+            feedSubject: feedSubject
+        )
+    }
+
+    // swiftlint:disable:next function_parameter_count
+    func makePhotoFeederProcessor(
+        tower: Tower,
+        failedIdentifiersResource: DeletedPhotosIdentifierStoreResource,
+        featureFlagsController: FeatureFlagsControllerProtocol,
+        feedPublisher: AnyPublisher<Void, Never>,
+        moc: NSManagedObjectContext,
+        photoIdentifierInquirer: PhotoIdentifierInquirer,
+        retryTriggerController: PhotoLibraryLoadRetryTriggerController,
+        settingsController: PhotoBackupSettingsController,
+        uploader: PhotoUploader,
+        uploadingPhotosRepository: UploadingPrimaryPhotosRepository
+    ) -> PhotoFeederPreprocessor {
+        let factory = PHFetchOptionsFactory(
+            supportedMediaTypes: settingsController.supportedMediaTypes,
+            notOlderThan: settingsController.notOlderThan
+        )
+        let sizeResource = PhotoCacheFolderSizeResource(storageSizeLimit: Constants.photosAssetsMaximalFolderSize)
+        return PhotoFeederPreprocessor(
+            dependencies: .init(
+                allowedBatchSize: PDCore.Constants.processingPhotoUploadsBatchSize,
+                failedIdentifiersResource: failedIdentifiersResource,
+                featureFlagsController: featureFlagsController,
+                feedPublisher: feedPublisher,
+                folderSizeResource: sizeResource,
+                optionsFactory: factory,
+                photoIdentifierInquirer: photoIdentifierInquirer,
+                retryTriggerController: retryTriggerController,
+                storageManager: tower.storage,
+                uploader: uploader,
+                sdkPhotoUploader: tower.getSdkPhotoUploader(),
+                uploadingPhotosRepository: uploadingPhotosRepository
+            )
         )
     }
 
@@ -209,7 +278,8 @@ struct PhotosFactory {
             encryptionQueue: encryptionQueue,
             verifierFactory: tower.uploadVerifierFactory,
             finishResource: telemetryContainer.makeUploadFinishResource(),
-            blocksMeasurementRepository: blocksMeasurementRepository
+            blocksMeasurementRepository: blocksMeasurementRepository,
+            uploadedBytesCounterResource: tower.uploadedBytesCounterResource
         )
         let measurementRepositoryFactory = ConcretePhotoUploadMeasurementRepositoryFactory(notifier: uploadDoneNotifier)
 
@@ -243,9 +313,18 @@ struct PhotosFactory {
         LocalPhotoLibraryLoadProgressController(interactor: repository)
     }
 
-    func makeBackupProgressController(tower: Tower, libraryProgressController: PhotosLoadProgressController, loadController: PhotoLibraryLoadController, photosMoc: NSManagedObjectContext) -> PhotosBackupProgressController {
-        let observer = FetchedResultsControllerObserver(controller: tower.storage.subscriptionToMyPrimaryUploadingPhotos(moc: photosMoc), isAutomaticallyStarted: false)
-        let uploadsRepository = DatabasePhotoUploadsRepository(observer: observer)
+    func makeBackupProgressController(
+        tower: Tower,
+        libraryProgressController: PhotosLoadProgressController,
+        loadController: PhotoLibraryLoadController,
+        photosMoc: NSManagedObjectContext,
+        isAvailableController: PhotosBackupUploadAvailableController
+    ) -> PhotosBackupProgressController {
+        let uploadsRepository = DatabasePhotoUploadsRepository(
+            isBackupAvailable: isAvailableController,
+            photosMoc: photosMoc,
+            storage: tower.storage
+        )
         let uploadsController = LocalPhotosUploadsProgressController(repository: uploadsRepository)
         return LocalPhotosBackupProgressController(libraryLoadController: libraryProgressController, uploadsController: uploadsController, loadController: loadController, debounceResource: CommonLoopDebounceResource())
     }
@@ -259,20 +338,8 @@ struct PhotosFactory {
         QuotaConstraintController(quotaController: quotaStateController)
     }
 
-    func makeLockConstraintController(tower: Tower, keymaker: Keymaker) -> PhotoBackupConstraintController {
-        let removedMainKeyPublisher = NotificationCenter.default.publisher(for: Keymaker.Const.removedMainKeyFromMemory)
-            .merge(with: NotificationCenter.default.publisher(for: Keymaker.Const.requestMainKey))
-            .filter { _ in keymaker.isProtected() == true }
-            .map { _ in Void() }
-            .receive(on: DispatchQueue.main)
-            .eraseToAnyPublisher()
-
-        let obtainedMainKeyPublisher = NotificationCenter.default.publisher(for: Keymaker.Const.obtainedMainKey)
-            .map { _ in Void() }
-            .receive(on: DispatchQueue.main)
-            .eraseToAnyPublisher()
-
-        return LockConstraintController(isLockedResource: keymaker.isLocked, removedMainKeyResource: removedMainKeyPublisher, obtainedMainKeyResource: obtainedMainKeyPublisher)
+    func makeLockConstraintController(lockedStateController: LockedStateControllerProtocol) -> PhotoBackupConstraintController {
+        return LockConstraintController(lockedStateController: lockedStateController)
     }
 
     func makeB2BUserConstraintController(tower: Tower, featureFlagsController: FeatureFlagsControllerProtocol) -> PhotoBackupConstraintController {
@@ -300,9 +367,19 @@ struct PhotosFactory {
         return LocalPhotosBackupStateController(progressController: progressController, failuresController: failuresController, completeController: completeController, settingsController: settingsController, authorizationController: authorizationController, networkController: networkController, quotaController: quotaController, availableSpaceController: availableSpaceController, featureFlagController: featureFlagController, applicationStateController: applicationStateController, loadController: loadController, migrationController: migrationConstraintController, strategy: PrioritizedPhotosBackupStateStrategy(), throttleResource: MainQueueThrottleResource())
     }
 
-    func makeComputationalAvailabilityController(extensionTaskController: BackgroundTaskStateController, processingTaskController: BackgroundTaskStateController) -> ComputationalAvailabilityController {
+    func makeComputationalAvailabilityController(
+        extensionTaskController: BackgroundTaskStateController,
+        processingTaskController: BackgroundTaskStateController,
+        lockedStateController: LockedStateControllerProtocol
+    ) -> ComputationalAvailabilityController {
         let stateController = ConcreteApplicationStateController(stateResource: iOSApplicationRunningStateResource())
-        return ConcreteComputationalAvailabilityController(processId: "photos", extensionController: extensionTaskController, processingController: processingTaskController, applicationStateController: stateController)
+        return ConcreteComputationalAvailabilityController(
+            processId: "photos",
+            extensionController: extensionTaskController,
+            processingController: processingTaskController,
+            applicationStateController: stateController,
+            lockedStateController: lockedStateController
+        )
     }
 
     func makeOpenAppReminderChildContainer(tower: Tower, globalWorker: WorkerState, appStateResource: ApplicationRunningStateResource) -> OpenAppReminderContainer {

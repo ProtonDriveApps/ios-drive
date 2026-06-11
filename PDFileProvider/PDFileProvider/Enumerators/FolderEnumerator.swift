@@ -90,7 +90,7 @@ public class FolderEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWit
     // MARK: Enumeration
     
     public func enumerateItems(for observer: NSFileProviderEnumerationObserver, startingAt page: NSFileProviderPage) {
-        Log.trace()
+        Log.event(.enumerateItems(.started(.init(containerType: .folder(nodeID.nodeID), pageNumber: page.int))))
 
         let observers = [observer, enumerationObserver?.items as? NSFileProviderEnumerationObserver].compactMap { $0 }
 
@@ -101,29 +101,23 @@ public class FolderEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWit
         do {
             try self.reinitializeModelIfNeeded()
         } catch {
-            observers.forEach { $0.finishEnumeratingWithError(Errors.mapToFileProviderError(Errors.failedToCreateModel)!) }
-            Log
-                .error(
-                    "Failed to enumerate items due to model failing to be created",
-                    error: error,
-                    domain: .enumerating
-                )
+            observers.forEach { $0.finishEnumeratingWithError(Errors.mapLegacyErrorToFileProviderError(Errors.failedToCreateModel)) }
+            Log.event(.enumerateItems(.failed(.init(containerType: .folder(nodeID.nodeID), error: "Failed to enumerate items due to model failing to be created"))))
             return
         }
         
-        Log.info("Enumerating items for \(~self.model.node)", domain: .enumerating)
-        
         self.model.loadFromCache()
         guard let moc = model.node.moc else {
-            observers.forEach { $0.finishEnumeratingWithError(Errors.mapToFileProviderError(Errors.failedToCreateModel)!) }
+            observers.forEach { $0.finishEnumeratingWithError(Errors.mapLegacyErrorToFileProviderError(Errors.failedToCreateModel)) }
+            Log.event(.enumerateItems(.failed(.init(containerType: .folder(nodeID.nodeID), error: "Failed to enumerate items due to model.node.moc being nil"))))
             return
         }
 
         let intPage = page.int
         if moc.performAndWait({ !self.model.node.isChildrenListFullyFetched }) {
-            self.fetchPageFromAPI(intPage, observers: observers)
+            self.fetchPageFromAPI(.folder(nodeID.nodeID), intPage, observers: observers, moc: moc)
         } else {
-            self.fetchPageFromDB(intPage, pageSize: pageSize, observers: observers)
+            self.fetchPageFromDB(.folder(nodeID.nodeID), intPage, pageSize: pageSize, observers: observers)
         }
     }
 
@@ -137,7 +131,7 @@ public class FolderEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWit
     public func enumerateChanges(for observer: NSFileProviderChangeObserver, from syncAnchor: NSFileProviderSyncAnchor) {
         Log.trace()
         let observers = [observer, enumerationObserver?.changes as? NSFileProviderChangeObserver].compactMap { $0 }
-        self.enumerateChanges(observers, syncAnchor)
+        self.enumerateChanges(self is RootEnumerator ? .rootContainer : .folder(nodeID.rawValue), observers, syncAnchor)
     }
 }
 

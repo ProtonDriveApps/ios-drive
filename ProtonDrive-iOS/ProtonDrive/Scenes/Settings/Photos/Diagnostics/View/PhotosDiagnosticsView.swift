@@ -21,13 +21,14 @@ import SwiftUI
 
 struct PhotosDiagnosticsView<ViewModel: PhotosDiagnosticsViewModelProtocol>: View {
     @ObservedObject var viewModel: ViewModel
+    @Environment(\.dismiss) private var dismiss
 
     init(viewModel: ViewModel) {
         self.viewModel = viewModel
     }
 
     var body: some View {
-        NavigatingView(title: viewModel.data.title, leading: EmptyView(), trailing: EmptyView()) {
+        NavigatingView(title: viewModel.data.title, leading: closeButton(), trailing: EmptyView()) {
             VStack(spacing: 10) {
                 if viewModel.data.isLoading {
                     ProgressView()
@@ -94,5 +95,11 @@ struct PhotosDiagnosticsView<ViewModel: PhotosDiagnosticsViewModelProtocol>: Vie
         .foregroundColor(ColorProvider.BrandNorm)
         .padding(12)
         .accessibilityIdentifier("PhotosDiagnostics.ExportButton")
+    }
+
+    private func closeButton() -> some View {
+        SimpleCloseButtonView {
+            dismiss()
+        }
     }
 }

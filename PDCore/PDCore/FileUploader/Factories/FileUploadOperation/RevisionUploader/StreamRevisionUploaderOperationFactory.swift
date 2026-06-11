@@ -29,6 +29,7 @@ class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
     let verifierFactory: UploadVerifierFactory
     let moc: NSManagedObjectContext
     let parallelEncryption: Bool
+    let uploadedBytesCounterResource: BytesCounterResource
 
     init(
         storage: StorageManager,
@@ -39,7 +40,8 @@ class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
         signersKitFactory: SignersKitFactoryProtocol,
         verifierFactory: UploadVerifierFactory,
         moc: NSManagedObjectContext,
-        parallelEncryption: Bool
+        parallelEncryption: Bool,
+        uploadedBytesCounterResource: BytesCounterResource
     ) {
         self.storage = storage
         self.client = client
@@ -50,6 +52,7 @@ class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
         self.verifierFactory = verifierFactory
         self.moc = moc
         self.parallelEncryption = parallelEncryption
+        self.uploadedBytesCounterResource = uploadedBytesCounterResource
     }
 
     func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> any UploadOperation {
@@ -96,7 +99,8 @@ class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
             queue: .serial,
             moc: moc
         )
-        return PageRevisionUploaderOperation(uploader: uploader, onError: onError)
+        let retryRevisionUploader = RetryPageRevisionUploader(decoratee: uploader, maximumRetryCount: 3, uploadID: id, page: page.index)
+        return PageRevisionUploaderOperation(uploader: retryRevisionUploader, onError: onError)
     }
 
     func makeCreatorOperation(_ id: UUID, _ page: RevisionPage, _ onError: @escaping OnUploadError) -> Operation {
@@ -123,7 +127,8 @@ class StreamRevisionUploaderOperationFactory: FileUploadOperationFactory {
             fullUploadableBlock: fullUploadableBlock,
             progressTracker: blockProgress,
             service: api,
-            credentialProvider: credentialProvider
+            credentialProvider: credentialProvider,
+            uploadedBytesCounterResource: uploadedBytesCounterResource
         )
         let session = URLSession.forUploading(delegate: uploader)
         uploader.session = session

@@ -31,7 +31,7 @@ protocol GroupToAlbumSheetPresenterProtocol {
 
 final class GroupToAlbumSheetPresenter: GroupToAlbumSheetPresenterProtocol {
     private let dependencies: Dependencies
-    private var rootViewController: UIViewController?
+    private weak var rootViewController: UIViewController?
 
     init(dependencies: Dependencies, rootViewController: UIViewController?) {
         self.dependencies = dependencies
@@ -54,10 +54,11 @@ final class GroupToAlbumSheetPresenter: GroupToAlbumSheetPresenterProtocol {
                 selectionController: selectionController
             )
             rootViewController.present(sheet, animated: false)
-        case .shareTo:
+        case .shareTo, .shareToWithoutNativeShare:
             let sheet = makeShareToSheet(
                 selectedPhotoIDs: selectedPhotoIDs,
-                selectionController: selectionController
+                selectionController: selectionController,
+                type: type
             )
             rootViewController.present(sheet, animated: false)
         }
@@ -85,7 +86,8 @@ final class GroupToAlbumSheetPresenter: GroupToAlbumSheetPresenterProtocol {
 
     private func makeShareToSheet(
         selectedPhotoIDs: Set<PhotoListingId>,
-        selectionController: PhotosSelectionController
+        selectionController: PhotosSelectionController,
+        type: GroupToAlbumSheetType
     ) -> UIViewController {
 
         let sheet = ShareToActionSheet(
@@ -93,7 +95,7 @@ final class GroupToAlbumSheetPresenter: GroupToAlbumSheetPresenterProtocol {
                 albumList: albumListing(tag: .shared) + albumListing(tag: .sharedWithMe),
                 selectionController: selectionController,
                 selectedPhotoIDs: selectedPhotoIDs,
-                type: .shareTo
+                type: type
             )
         )
         let host = SheetContainer(contentView: sheet).embeddedInHostingController()
@@ -181,4 +183,6 @@ extension GroupToAlbumSheetPresenter {
 enum GroupToAlbumSheetType {
     case groupToAlbum
     case shareTo
+    // Use when file is not downloaded yet
+    case shareToWithoutNativeShare
 }

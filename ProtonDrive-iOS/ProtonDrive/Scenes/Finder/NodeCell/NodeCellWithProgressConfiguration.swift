@@ -26,14 +26,16 @@ import PDLocalization
 class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration {
     @Published var node: Node
     @Published var progressCompleted: Double = 0
-    let thumbnailViewModel: ThumbnailImageViewModel?
+    @Published var availableOfflineFlags: NodeCellAvailableOfflineFlags = .notAvailable
+
+    let thumbnailViewModel: ThumbnailImageViewModel
     var nodeRowActionMenuViewModel: NodeRowActionMenuViewModel?
     var uploadManagementMenuViewModel: UploadManagementMenuViewModel?
     private let nodeStatePolicy: NodeStatePolicy
 
     private var cancellables = Set<AnyCancellable>()
     private var progressCancellable: AnyCancellable?
-    private var progressTracker: ProgressTracker?
+    @Published private var progressTracker: ProgressTracker?
     private var progressesAvailable: Bool
     private var progress: Progress? {
         self.progressTracker?.progress
@@ -42,17 +44,24 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
     let iconName: FileAssetName
     var name: String
     var isFavorite: Bool { node.isFavorite }
-    var isAvailableOffline: Bool { node.isAvailableOffline }
     var isShared: Bool { node.isShared }
     var hasSharing: Bool { featureFlagsController.hasSharing }
     var hasDirectShare: Bool { node.hasDirectShare }
     var lastModified: Date { node.modifiedDate }
-    var size: Int { node.size }
+    var size: Int {
+        if let file = node as? CoreDataFile {
+            return file.activeRevision?.size ?? file.size
+        } else {
+            return node.size
+        }
+    }
 
-    let progressDirection: ProgressTracker.Direction?
+    @Published var progressDirection: ProgressTracker.Direction?
     let isDisabled = false
     let selectionModel: CellSelectionModel?
-    let id: NodeIdentifier
+    lazy var id: NodeIdentifier = {
+        node.identifier // Using `node.identifierWithinManagedObjectContext` causes crashes for unknown reasons
+    }()
     var featureFlagsController: FeatureFlagsControllerProtocol
 
     var actionButtonAction: () -> Void = { }
@@ -60,39 +69,117 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
     var cancelUploadAction: () -> Void = { }
 
     var isSharedWithMeRoot: Bool
+    let progressTrackersController: ProgressTrackersControllerProtocol
+    let nodeDownloadedResource: NodeDownloadedResource
 
     init(from node: Node,
          fileTypeAsset: FileTypeAsset = .shared,
          selectionModel: CellSelectionModel? = nil,
          progressesAvailable: Bool = false,
-         progressTracker: ProgressTracker? = nil,
-         downloadProgresses: [ProgressTracker] = [],
          thumbnailLoader: ThumbnailLoader,
          nodeStatePolicy: NodeStatePolicy,
          featureFlagsController: FeatureFlagsControllerProtocol,
-         isSharedWithMeRoot: Bool
+         isSharedWithMeRoot: Bool,
+         progressTrackersController: ProgressTrackersControllerProtocol,
+         nodeDownloadedResource: NodeDownloadedResource
     ) {
         self.isSharedWithMeRoot = isSharedWithMeRoot
         self.progressesAvailable = progressesAvailable
         self.node = node
         self.selectionModel = selectionModel
-        self.id = node.identifier
         self.name = node.decryptedName
         self.nodeStatePolicy = nodeStatePolicy
 
         self.iconName = fileTypeAsset.getAsset(node.mimeType)
 
-        self.progressTracker = progressTracker
-        self.progressDirection = progressTracker?.direction
         self.thumbnailViewModel = ThumbnailImageViewModel(node: node, loader: thumbnailLoader)
         self.featureFlagsController = featureFlagsController
-        self.progressCancellable = progressTracker?.progressPublisher()?
+        self.progressTrackersController = progressTrackersController
+        self.nodeDownloadedResource = nodeDownloadedResource
+
+        subscribeToProgresses()
+        fetchAvailableOfflineIfNecessary()
+    }
+
+    // MARK: - Subscriptions to progress
+
+    private func subscribeToProgresses() {
+        if let file {
+            // `id` in case of download, `uploadID` in case of upload
+            let ids = [id.id, file.uploadID?.uuidString].compactMap({ $0 })
+            progressTrackersController.getPublisher(for: ids)
+                .sink { [weak self] progressTracker in
+                    self?.handleProgressTrackerUpdate(progressTracker)
+                }
+                .store(in: &cancellables)
+        } else {
+            // In case of folders, we need to refresh when children finish (and we don't necessarily have all their ids handy)
+            progressCancellable = progressTrackersController.getDownloadsPublisher()
+                .receive(on: DispatchQueue.main)
+                .throttle(for: .seconds(1), scheduler: DispatchQueue.main, latest: true)
+                .sink { [weak self] in
+                    self?.handleDownloadsUpdate()
+                }
+        }
+    }
+
+    private func handleProgressTrackerUpdate(_ progressTracker: ProgressTracker?) {
+        if self.progressTracker != nil && progressTracker == nil {
+            // Progress probably completed, since it was nilled. Need to refresh node info.
+            fetchAvailableOfflineIfNecessary()
+            progressCompleted = 0
+        } else if let progressTracker {
+            // New progress notified, transfer happening
+            subscribeToProgressCompleted(progressTracker)
+        }
+        self.progressTracker = progressTracker
+        progressDirection = progressTracker?.direction
+    }
+
+    private func subscribeToProgressCompleted(_ progressTracker: ProgressTracker) {
+        progressCancellable = progressTracker.progressPublisher()?
             .receive(on: DispatchQueue.main)
             .throttle(for: .milliseconds(300), scheduler: DispatchQueue.main, latest: true)
             .sink { [weak self] in
                 self?.progressCompleted = $0
             }
     }
+
+    private func handleDownloadsUpdate() {
+        guard availableOfflineFlags.isFolderDownloading else {
+            // Only relevant in scope of folder
+            return
+        }
+
+        // Refresh offline available flags
+        fetchAvailableOfflineIfNecessary()
+    }
+
+    // MARK: Available offline flags
+
+    private func fetchAvailableOfflineIfNecessary() {
+        guard node.isEligibleForAvailableOffline && (progress == nil || !isInProgress) else {
+            // If it's in progress, then we can avoid heavy operation below (the badge wouldn't be displayed anyway)
+            availableOfflineFlags = .notAvailable
+            return
+        }
+
+        nodeDownloadedResource.startLoading(for: id.any())
+            .sink { [weak self] value in
+                self?.handleIsAvailableOffline(value)
+            }
+            .store(in: &cancellables)
+    }
+
+    private func handleIsAvailableOffline(_ value: Bool) {
+        availableOfflineFlags = NodeCellAvailableOfflineFlags(
+            isAvailableOffline: value,
+            isFolderDownloading: node is Folder && !value,
+            isMarkedAsAvailableOffline: true
+        )
+    }
+
+    // MARK: Computed properties
 
     private var file: File? {
         node as? File
@@ -112,7 +199,11 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
     }
 
     var isInProgress: Bool {
-        self.progress?.isFinished == false && self.progress?.isCancelled == false
+        self.progress?.isFinished == false && self.progress?.isCancelled == false && isNotPaused()
+    }
+
+    private func isNotPaused() -> Bool {
+        ![Node.State.cloudImpediment, .interrupted, .paused].contains(node.state)
     }
 
     var uploadFailed: Bool {
@@ -161,12 +252,8 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
             return self.progressDirection == .upstream ? Localization.progress_status_uploading : Localization.progress_status_downloading
 
         case .some, .none:
-            return self.isFolderDownloading ? Localization.progress_status_downloading : self.defaultSecondLineSubtitle
+            return self.availableOfflineFlags.isFolderDownloading ? Localization.progress_status_downloading : self.defaultSecondLineSubtitle
         }
-    }
-
-    var isFolderDownloading: Bool {
-        (nodeType == .folder) && (node.isMarkedOfflineAvailable || node.isInheritingOfflineAvailable) && !node.isDownloaded
     }
 
     var percentageDownloaded: String {

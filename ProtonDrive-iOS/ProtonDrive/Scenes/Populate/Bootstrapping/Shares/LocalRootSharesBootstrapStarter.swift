@@ -42,7 +42,30 @@ final class LocalRootSharesBootstrapStarter: AppBootstrapper {
                 // May be non-migrated db or already migrated db, just non-empty
                 try self.validate(shares)
             }
+
+            let photoShares = self.storage.getShares(type: .photos, in: self.context)
+            try self.validate(photoShares: photoShares)
         }
+    }
+
+    private func validate(photoShares: [Share]) throws {
+        // and we'll advise to relogin
+        guard !photoShares.isEmpty else {
+            Log.info("There's no photo share yet", domain: .metadata)
+            return
+        }
+
+        guard photoShares.count == 1 else {
+            Log.error("Multiple photo shares found", error: nil, domain: .metadata)
+            throw NukingCacheError("Multiple photo shares found")
+        }
+
+        let photoShare = photoShares[0]
+        guard let addressID = photoShare.addressID, !addressID.isEmpty else {
+            Log.error("Photo share is missing addressID", error: nil, domain: .metadata)
+            throw NukingCacheError("Photo share doesn't have nonempty addressID")
+        }
+        Log.info("Photo volume: \(photoShare.volume?.id ?? "unknown"), share: \(photoShare.id)", domain: .applicationBootstrap)
     }
 
     private func validate(_ shares: [Share]) throws {
@@ -77,6 +100,7 @@ final class LocalRootSharesBootstrapStarter: AppBootstrapper {
             throw LocalRootSharesBootstrapStarterError.missingMembers
         } else {
             Log.info("Drive has local data available.", domain: .application)
+            Log.info("Main volume: \(volume.id), share: \(mainShare.id)", domain: .applicationBootstrap)
         }
     }
 

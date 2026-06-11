@@ -18,12 +18,15 @@
 import Combine
 import Foundation
 import PDCore
+import PDCoreIOS
 import PDClient
 import PDLocalization
 
 protocol ProtonFileWebViewModelProtocol {
     var title: AnyPublisher<String, Never> { get }
     var state: AnyPublisher<ProtonFileWebViewState, Never> { get }
+    var identifier: ProtonFileIdentifier { get }
+    var deleter: InvalidNodesDeleterProtocol { get }
     func startLoading()
     func isInternal(url: URL) -> Bool
     func openExternal(url: URL)
@@ -31,6 +34,8 @@ protocol ProtonFileWebViewModelProtocol {
     func openShare()
     func handleDownloadError()
     func cleanUp()
+    func reportPerformanceIfNeeded(url: URL)
+    func viewDisappear()
 }
 
 enum ProtonFileWebViewState: Equatable {
@@ -53,13 +58,18 @@ enum ProtonFileWebPreviewError: LocalizedError {
 }
 
 final class ProtonFileWebViewModel: ProtonFileWebViewModelProtocol {
-    private let identifier: ProtonFileIdentifier
+    /// Time to keep the preview VC alive after dismiss so the web editor can flush saves.
+    private static let deallocDelay: TimeInterval = Constants.isUnitTest ? 0.1 : 3
+
+    let identifier: ProtonFileIdentifier
     private let configuration: APIService.Configuration
     private let coordinator: ProtonFileCoordinatorProtocol
     private let storageResource: LocalStorageResource
     private let messageHandler: UserMessageHandlerProtocol
     private let urlInteractor: ProtonFileAuthenticatedDataFacadeProtocol
     private let nameDataSource: ProtonDocsDecryptedNameDataSource
+    private let performanceMetricsController: PerformanceMetricsControllerProtocol?
+    let deleter: InvalidNodesDeleterProtocol
     private var exportURL: URL?
     private var cancellables = Set<AnyCancellable>()
     private let titleSubject = CurrentValueSubject<String, Never>("")
@@ -80,7 +90,9 @@ final class ProtonFileWebViewModel: ProtonFileWebViewModelProtocol {
         storageResource: LocalStorageResource,
         messageHandler: UserMessageHandlerProtocol,
         urlInteractor: ProtonFileAuthenticatedDataFacadeProtocol,
-        nameDataSource: ProtonDocsDecryptedNameDataSource
+        nameDataSource: ProtonDocsDecryptedNameDataSource,
+        performanceMetricsController: PerformanceMetricsControllerProtocol?,
+        deleter: InvalidNodesDeleterProtocol
     ) {
         self.identifier = identifier
         self.configuration = configuration
@@ -89,6 +101,8 @@ final class ProtonFileWebViewModel: ProtonFileWebViewModelProtocol {
         self.messageHandler = messageHandler
         self.urlInteractor = urlInteractor
         self.nameDataSource = nameDataSource
+        self.performanceMetricsController = performanceMetricsController
+        self.deleter = deleter
         subscribeToUpdates()
     }
 
@@ -119,6 +133,12 @@ final class ProtonFileWebViewModel: ProtonFileWebViewModelProtocol {
     func startLoading() {
         urlInteractor.execute(with: identifier)
         nameDataSource.start()
+    }
+
+    func viewDisappear() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.deallocDelay) {
+            self.coordinator.releasePreviewViewController()
+        }
     }
 
     func isInternal(url: URL) -> Bool {
@@ -163,5 +183,27 @@ final class ProtonFileWebViewModel: ProtonFileWebViewModelProtocol {
         if let exportURL {
             try? storageResource.delete(at: exportURL)
         }
+    }
+
+    func reportPerformanceIfNeeded(url: URL) {
+        guard
+            let component = URLComponents(url: url, resolvingAgainstBaseURL: false),
+            let host = component.host,
+            host.contains("docs-editor"),
+            let items = component.queryItems,
+            let value = items.first(where: { $0.name == "type" })?.value
+        else { return }
+        let fileType: PerformanceMetric.FileType
+        if value == "doc" {
+            fileType = .protonDoc
+        } else if value == "sheet" {
+            fileType = .protonSheet
+        } else {
+            Log.warning("Unknown file type \(value)", domain: .metrics)
+            fileType = .other
+        }
+        let id = AnyVolumeIdentifier(id: identifier.linkId, volumeID: identifier.volumeId)
+        performanceMetricsController?.fetchFullContent(id: id, dataSource: .remote)
+        performanceMetricsController?.reportPreviewToFullContent(id: id, fileType: fileType)
     }
 }

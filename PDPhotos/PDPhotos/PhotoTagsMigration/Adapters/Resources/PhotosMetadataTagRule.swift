@@ -20,6 +20,8 @@ import Photos
 import PDCore
 import CoreData
 
+/// Analyze data using local photo metadata by reading photos from the device photo library
+/// Proceed only if the photo still exists
 final class PhotosMetadataTagRule: PhotoTagRule {
     private let assetResource: LocalPhotoLibraryAssetResource
     private let assetDataFetcher: PhotoAssetDataFetcherResource
@@ -83,14 +85,25 @@ final class PhotosMetadataTagRule: PhotoTagRule {
                 )
             }
 
-            let photoAsset = try await assetResource.executePhoto(with: assetData)
-            let newTaggingContext = extractTagsIfNeeded(taggingContext: context, photoAsset: photoAsset, identifier: identifier)
-            let xAttr = await extractXAttrInNeeded(
-                xAttrContext: analyzeResult.xAttrContext,
-                photoAsset: photoAsset,
-                photo: photo
-            )
-            return MigrationAnalyzeResult(taggingContext: newTaggingContext, xAttrContext: xAttr)
+            if assetData.resource.isVideo() {
+                let newTaggingContext = TaggingContext(assignedTags: context.assignedTags, control: .finished)
+                let photoAsset = try await assetResource.executeVideo(with: assetData, appendedAssetData: nil)
+                let xAttr = await extractXAttrInNeeded(
+                    xAttrContext: analyzeResult.xAttrContext,
+                    photoAsset: photoAsset,
+                    photo: photo
+                )
+                return MigrationAnalyzeResult(taggingContext: newTaggingContext, xAttrContext: xAttr)
+            } else {
+                let photoAsset = try await assetResource.executePhoto(with: assetData)
+                let newTaggingContext = extractTagsIfNeeded(taggingContext: context, photoAsset: photoAsset, identifier: identifier)
+                let xAttr = await extractXAttrInNeeded(
+                    xAttrContext: analyzeResult.xAttrContext,
+                    photoAsset: photoAsset,
+                    photo: photo
+                )
+                return MigrationAnalyzeResult(taggingContext: newTaggingContext, xAttrContext: xAttr)
+            }
         } catch {
             Log.error("PhotosMetadataTagRule failed for photo \(identifier.id).", error: error, domain: .photosTagMigration)
             throw error

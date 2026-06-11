@@ -29,6 +29,7 @@ import ProtonCoreServices
 import ProtonCorePasswordChange
 import PDLocalization
 import LocalAuthentication
+import PDPhotos
 
 final class SettingsAssembler {
 
@@ -43,27 +44,19 @@ final class SettingsAssembler {
             .prepend(row: PMAcknowledgementsConfiguration.acknowledgements(url: Self.url))
             .amend()
 
-        let accountSettings = PMSettingsSectionBuilder()
-            .title(Localization.setting_account_settings.uppercased())
-            .appendRowIfAvailable(
-                changePasswordRow(isLoginPassword: true, tower: tower, apiService: apiService)
-            )
-            .appendRowIfAvailable(
-                changePasswordRow(isLoginPassword: false, tower: tower, apiService: apiService)
-            )
-            .appendRowIfAvailable(
-                securityKeysRow(apiService: apiService)
-            )
-            .appendRowIfAvailable(
-                signInToAnotherDeviceRow(tower: tower, apiService: apiService)
-            )
-            .build()
+        let accountSettings = makeAccountSettings(tower: tower, apiService: apiService)
 
         let localOptions = PMSettingsSectionBuilder()
-            .appendRowIfAvailable(seeLatestLogsButton(tower.localSettings))
-            .appendRowIfAvailable(enableDebugMode(tower.localSettings, featureFlagsController: featureFlagsController))
-            .appendRowIfAvailable(exportLogsButton(tower.localSettings))
-            .appendRowIfAvailable(clearLogsButton(tower.localSettings))
+            .appendRowIfAvailable(seeLatestLogsButton())
+            .appendRowIfAvailable(
+                enableDebugMode(
+                    tower: tower,
+                    backupSettingsController: photosContainer.backupSettingsController,
+                    featureFlagsController: featureFlagsController
+                )
+            )
+            .appendRowIfAvailable(exportLogsButton())
+            .appendRowIfAvailable(clearLogsButton())
             .appendRow(clearCacheButton)
             .build()
 
@@ -96,6 +89,25 @@ final class SettingsAssembler {
         )
     }
 
+    @MainActor
+    static func makeAccountSettings(tower: Tower, apiService: APIService) -> PMSettingsSectionViewModel {
+        PMSettingsSectionBuilder()
+            .title(Localization.setting_account_settings.uppercased())
+            .appendRowIfAvailable(
+                changePasswordRow(isLoginPassword: true, tower: tower, apiService: apiService)
+            )
+            .appendRowIfAvailable(
+                changePasswordRow(isLoginPassword: false, tower: tower, apiService: apiService)
+            )
+            .appendRowIfAvailable(
+                securityKeysRow(apiService: apiService)
+            )
+            .appendRowIfAvailable(
+                signInToAnotherDeviceRow(tower: tower, apiService: apiService)
+            )
+            .build()
+    }
+
     static func makeDeleteAccountViewController(apiService: APIService, signoutManager: SignOutManager) -> DeleteAccountViewController {
         let accountViewModel = DeleteAccountViewModel(apiService: apiService, signoutManager: signoutManager)
         return DeleteAccountViewController(viewModel: accountViewModel)
@@ -113,12 +125,13 @@ final class SettingsAssembler {
         Bundle.main.url(forResource: "Acknowledgements", withExtension: "markdown")!
     }
 
-    static func exportLogsButton(_ featureFlags: LocalSettings) -> PMCellSuplier? {
-        guard featureFlags.driveiOSLogCollection == true && featureFlags.driveiOSLogCollectionDisabled == false else { return nil }
+    static func exportLogsButton() -> PMCellSuplier? {
         let configuration = PMLoadingLabelConfiguration(
             text: Localization.setting_export_logs,
             action: {
-                let logsURL = await LogExporter().export()
+                let logsURL = try await LogExporter().export { progress in
+                    UserMessageHandler().handleSuccess(progress.rawValue)
+                }
                 await presentShareViewController(logs: logsURL)
             },
             bundle: Bundle.main
@@ -126,8 +139,7 @@ final class SettingsAssembler {
         return configuration
     }
 
-    static func clearLogsButton(_ featureFlags: LocalSettings) -> PMCellSuplier? {
-        guard featureFlags.driveiOSLogCollection == true else { return nil }
+    static func clearLogsButton() -> PMCellSuplier? {
         let configuration = PMLoadingLabelConfiguration(
             text: Localization.setting_clear_logs,
             action: {
@@ -138,20 +150,20 @@ final class SettingsAssembler {
         return configuration
     }
 
-    static func enableDebugMode(_ featureFlags: LocalSettings, featureFlagsController: FeatureFlagsControllerProtocol) -> PMCellSuplier? {
-        guard featureFlagsController.hasDebugMode else { return nil }
+    static func enableDebugMode(
+        tower: Tower,
+        backupSettingsController: PhotoBackupSettingsController,
+        featureFlagsController: FeatureFlagsControllerProtocol
+    ) -> PMCellSuplier? {
+        guard featureFlagsController.hasDebugMode || tower.localSettings.enableDebugModeInThisLaunch else { return nil }
         let viewModel = BaseDrillDownCellViewModel(title: Localization.setting_debug_mode, preview: nil)
 
         return PMDrillDownConfiguration(viewModel: viewModel) {
-            let vm = DebugModeSettingsViewModel(localSettings: featureFlags)
-            let vc = UIHostingController(rootView: DebugModeSettingsView(viewModel: vm))
-            vc.title = Localization.setting_debug_mode
-            return vc
+            DebugModeSettingsCoordinator(backupSettingsController: backupSettingsController, tower: tower).start()
         }
     }
 
-    static func seeLatestLogsButton(_ featureFlags: LocalSettings) -> PMCellSuplier? {
-        guard featureFlags.driveiOSLogCollection == true && featureFlags.driveiOSLogCollectionDisabled == false else { return nil }
+    static func seeLatestLogsButton() -> PMCellSuplier? {
         return LatestLogsAssembler.assemble()
     }
 
@@ -180,10 +192,28 @@ final class SettingsAssembler {
         PMLoadingLabelConfiguration(
             text: Localization.setting_clear_local_cache,
             action: {
-                NotificationCenter.default.nukeCache(reason: "User clear cache")
+                Task { @MainActor in
+                    presentClearCacheAlert()
+                }
             },
             bundle: .main
         )
+    }
+
+    static func presentClearCacheAlert() {
+        guard let topVC = UIApplication.shared.topMostViewControllerFromAppWindow() else { return }
+        let alertVC = UIAlertController(
+            title: Localization.cached_clear_content_title,
+            message: Localization.cached_clear_content_message,
+            preferredStyle: .alert
+        )
+        alertVC.addAction(UIAlertAction(title: Localization.general_cancel, style: .cancel, handler: nil))
+        alertVC.addAction(
+            UIAlertAction(title: Localization.cached_clear_content_action, style: .destructive) { _ in
+                NotificationCenter.default.nukeCache(reason: "User clear cache")
+            }
+        )
+        topVC.present(alertVC, animated: true)
     }
 
     /// Provides the Account Recovery row for the settings, provided the FF is enabled
@@ -221,8 +251,8 @@ final class SettingsAssembler {
                                         viewControllerFactory: { item.controller })
     }
 
-    static func isSignInToAnotherDeviceEnabled(userInfo: ProtonCoreDataModel.UserInfo?) -> Bool {
-        let qrLoginOptedOut = userInfo?.edmOptOut == 1
+    static func isSignInToAnotherDeviceEnabled(userInfo: ProtonCoreDataModel.UserInfo) -> Bool {
+        let qrLoginOptedOut = userInfo.edmOptOut == 1
         let qrLoginFeatureDisabled = FeatureFlagsRepository.shared.isEnabled(CoreFeatureFlagType.easyDeviceMigrationDisabled)
         let isDeviceSecured: Bool = {
 #if targetEnvironment(simulator)
@@ -314,6 +344,7 @@ extension SettingsAssembler {
                                                     viewControllerFactory: { item.controller })
     }
 
+    // Warning, use with caution, `getCoreUserInfo` contains minimal data, others need to be filled from `currentUserSettings`
     private static func buildCoreUserInfo(tower: Tower) -> ProtonCoreDataModel.UserInfo? {
         guard let userInfo = tower.sessionVault.getCoreUserInfo(),
               let userSettings = tower.generalSettings.currentUserSettings else {
@@ -321,6 +352,9 @@ extension SettingsAssembler {
         }
         userInfo.passwordMode = userSettings.passwordMode
         userInfo.twoFactor = userSettings.twoFA.enabled
+        if let edmOptOut = userSettings.flags.edmOptOut {
+            userInfo.edmOptOut = edmOptOut
+        }
         return userInfo
     }
 

@@ -23,12 +23,13 @@ import ProtonCoreNetworking
 
 public enum Errors: Error, LocalizedError {
     case noMainShare
-    case nodeIdentifierNotFound
-    case nodeNotFound
+    case nodeIdentifierNotFound(identifier: NSFileProviderItemIdentifier)
+    case nodeNotFound(identifier: NSFileProviderItemIdentifier)
+    case nodeFoundInTrash(identifier: NSFileProviderItemIdentifier)
     case rootNotFound
     case revisionNotFound
     
-    case parentNotFound
+    case parentNotFound(identifier: NSFileProviderItemIdentifier)
     case childLimitReached
     case urlForUploadIsNil
     case urlForUploadHasNoSize
@@ -36,7 +37,7 @@ public enum Errors: Error, LocalizedError {
     case noAddressInTower
     case couldNotProduceSyncAnchor
     
-    case requestedItemForWorkingSet, requestedItemForTrash
+    case requestedItemForWorkingSet(identifier: NSFileProviderItemIdentifier), requestedItemForTrash(identifier: NSFileProviderItemIdentifier)
     case failedToCreateModel
 
     case itemCannotBeCreated
@@ -53,7 +54,7 @@ public enum Errors: Error, LocalizedError {
         switch self {
         case .noMainShare: return "No main share"
         case .nodeIdentifierNotFound: return "Item identifier not found"
-        case .nodeNotFound: return "Item not found"
+        case .nodeNotFound, .nodeFoundInTrash: return "Item not found"
         case .rootNotFound: return "Root not found for domain"
         case .revisionNotFound: return "Revision not found for item"
         case .parentNotFound: return "Parent not found for item"
@@ -87,10 +88,13 @@ public enum Errors: Error, LocalizedError {
 }
 
 extension Errors {
-    public static func mapToFileProviderError(_ error: Error?) -> Error? {
-        
+    
+    public static func mapLegacyErrorToFileProviderErrorIfPossible(_ error: Error?) -> Error? {
         guard let error else { return nil }
+        return mapLegacyErrorToFileProviderError(error)
+    }
         
+    public static func mapLegacyErrorToFileProviderError(_ error: Error) -> Error {
 #if os(iOS)
         Log.fireWarning(error: error as NSError)
 #endif
@@ -105,12 +109,13 @@ extension Errors {
             return NSFileProviderError.create(.syncAnchorExpired, from: error)
         case Errors.childLimitReached:
             return NSFileProviderError.create(.serverUnreachable, from: error)
-        case Errors.parentNotFound,
-            Errors.nodeIdentifierNotFound,
-            Errors.nodeNotFound,
-            Errors.requestedItemForWorkingSet,
-            Errors.requestedItemForTrash:
-            return NSFileProviderError.create(.noSuchItem, from: error)
+        case Errors.parentNotFound(let identifier),
+             Errors.nodeIdentifierNotFound(let identifier),
+             Errors.nodeNotFound(let identifier),
+             Errors.nodeFoundInTrash(let identifier),
+             Errors.requestedItemForWorkingSet(let identifier),
+             Errors.requestedItemForTrash(let identifier):
+            return NSError.fileProviderErrorForNonExistentItem(withIdentifier: identifier)
         case Errors.noAddressInTower:
             #if os(macOS)
             return NSFileProviderError.create(.notAuthenticated, from: error)
@@ -169,7 +174,8 @@ public extension NSFileProviderError {
             status,
             userInfo: [
                 NSDebugDescriptionErrorKey: "FP error code: \(status). Original error: \(error.localizedDescription)",
-                NSUnderlyingErrorKey: error
+                NSUnderlyingErrorKey: error,
+                NSLocalizedDescriptionKey: error.localizedDescription
             ]
         )
     }

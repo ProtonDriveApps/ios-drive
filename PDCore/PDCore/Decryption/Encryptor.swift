@@ -36,7 +36,7 @@ public class Encryptor {
 
     public init() {}
 
-    static func hmac(filename: String, parentHashKey: String) throws -> String {
+    public static func hmac(filename: String, parentHashKey: String) throws -> String {
         try CoreEncryptor.hmac(filename: filename, parentHashKey: parentHashKey)
     }
 

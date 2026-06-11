@@ -17,6 +17,7 @@
 
 import Foundation
 
+/// Works with v1 endpoints, v2 has different structure/naming
 public struct Link: Codable, Equatable {
     public typealias LinkID = String
     
@@ -34,10 +35,14 @@ public struct Link: Codable, Equatable {
     public var nameSignatureEmail: String?
     public var hash: String
     public var state: NodeState
+    @available(*, deprecated, message: "always null")
     public var expirationTime: TimeInterval?
+    @available(*, deprecated, message: "Encrypted size (for files of active revisions, better to use FileProperties > ActiveRevision > Size)")
     public var size: Int
     public var MIMEType: String
+    @available(*, deprecated, message: "Always returns 1")
     public var attributes: AttriburesMask
+    @available(*, deprecated, message: "Always returns 7, read+write+execute")
     public var permissions: PermissionMask
     public var nodeKey: String
     public var nodePassphrase: String
@@ -47,8 +52,11 @@ public struct Link: Codable, Equatable {
     public var modifyTime: TimeInterval
     public var trashed: TimeInterval?
     public var sharingDetails: SharingDetails?
+    @available(*, deprecated, message: "use SharingDetails.ShareURLs")
     public var nbUrls: Int
+    @available(*, deprecated, message: "use SharingDetails.ShareURLs")
     public var activeUrls: Int
+    @available(*, deprecated, message: "use SharingDetails.ShareURLs")
     public var urlsExpired: Int
     public var XAttr: String?
     public var fileProperties: FileProperties?
@@ -58,12 +66,12 @@ public struct Link: Codable, Equatable {
     public var albumProperties: AlbumProperties?
 
     public init(linkID: LinkID, parentLinkID: LinkID?, volumeID: String, type: LinkType, name: String,
-                nameSignatureEmail: String?, hash: String, state: NodeState, expirationTime: TimeInterval?,
-                size: Int, MIMEType: String, attributes: AttriburesMask, permissions: PermissionMask,
+                nameSignatureEmail: String?, hash: String, state: NodeState, expirationTime: TimeInterval? = nil,
+                size: Int, MIMEType: String, attributes: AttriburesMask = 1, permissions: PermissionMask = 7,
                 nodeKey: String, nodePassphrase: String, nodePassphraseSignature: String,
                 signatureEmail: String, createTime: TimeInterval, modifyTime: TimeInterval,
-                trashed: TimeInterval?, sharingDetails: SharingDetails?, nbUrls: Int, activeUrls: Int,
-                urlsExpired: Int, XAttr: String?, fileProperties: FileProperties?, folderProperties: FolderProperties?,
+                trashed: TimeInterval?, sharingDetails: SharingDetails?, nbUrls: Int = 0, activeUrls: Int = 0,
+                urlsExpired: Int = 0, XAttr: String?, fileProperties: FileProperties?, folderProperties: FolderProperties?,
                 documentProperties: DocumentProperties? = nil, photoProperties: PhotoProperties? = nil,
                 albumProperties: AlbumProperties? = nil) {
         self.linkID = linkID
@@ -186,7 +194,7 @@ public enum LinkType: Int, Codable, CaseIterable, Equatable {
     }
 }
 
-public enum NodeState: Int, Codable, Equatable {
+public enum NodeState: Int, Codable, Equatable, Sendable {
     case draft = 0
     case active = 1
     case deleted = 2
@@ -231,10 +239,19 @@ public struct PhotoProperties: Codable, Equatable {
     public var albums: [PhotoAlbum]
     // Could become nonoptional, but migration of `PersistedEvent`, relying on `Link`'s structure would be needed.
     public var tags: [Int]?
+
+    public init(albums: [PhotoAlbum], tags: [Int]?) {
+        self.albums = albums
+        self.tags = tags
+    }
 }
 
 public struct PhotoAlbum: Codable, Equatable {
     public var albumLinkID: String
+
+    public init(albumLinkID: String) {
+        self.albumLinkID = albumLinkID
+    }
 }
 
 public struct AlbumProperties: Codable, Equatable {
@@ -243,6 +260,14 @@ public struct AlbumProperties: Codable, Equatable {
     public var lastActivityTime: TimeInterval // last time a Photo was added to the Album
     public var nodeHashKey: String
     public var photoCount: Int
+    
+    public init(locked: Bool, coverLinkID: String? = nil, lastActivityTime: TimeInterval, nodeHashKey: String, photoCount: Int) {
+        self.locked = locked
+        self.coverLinkID = coverLinkID
+        self.lastActivityTime = lastActivityTime
+        self.nodeHashKey = nodeHashKey
+        self.photoCount = photoCount
+    }
 }
 
 public struct SharingDetails: Codable, Equatable {
@@ -260,8 +285,26 @@ public struct ShareURL: Codable, Equatable {
     public var token: String? // not always provided, according to docs
     public var expireTime: Date?
     public var createTime: Date
+    /// Number of Accesses (by access is meant download; first block is enough to increase the counter)
     public var numAccesses: Int
+    @available(*, deprecated, message: "")
     public var shareID: String
+
+    public init(
+        shareUrlID: String,
+        token: String? = nil,
+        expireTime: Date? = nil,
+        createTime: Date,
+        numAccesses: Int,
+        shareID: String
+    ) {
+        self.shareUrlID = shareUrlID
+        self.token = token
+        self.expireTime = expireTime
+        self.createTime = createTime
+        self.numAccesses = numAccesses
+        self.shareID = shareID
+    }
 }
 
 public typealias ShareURLShortMeta = ShareURL

@@ -84,7 +84,8 @@ struct AlbumDetailFactory {
             listController: listController,
             fetchingController: fetchingController,
             selectionController: selectionController,
-            streamConfiguration: parameters.container.streamConfiguration
+            streamConfiguration: parameters.container.streamConfiguration,
+            performanceMetricsController: tower.performanceMetricsController
         )
         let itemViewModelFactory = factory.makeItemViewModelFactory(
             fetchingController: fetchingController,
@@ -104,9 +105,16 @@ struct AlbumDetailFactory {
                 inviteeListLoadInteractor: AsyncRemoteInviteeListLoadInteractor(interactor: inviteeInteractor)
             )
         )
-        let leaveFlowController = makeLeaveFlowController(tower: tower, context: context, coordinator: coordinator, albumId: parameters.albumID)
+        let leaveFlowController = makeLeaveFlowController(
+            anchorController: parameters.container.anchorController,
+            tower: tower,
+            context: context,
+            coordinator: coordinator,
+            albumId: parameters.albumID
+        )
         let contentController = GalleryScenesFactory().makeFileContentController(
             tower: parameters.container.dependencies.tower,
+            featureFlagsController: mainContainer.dependencies.featureFlagsController,
             moc: parameters.container.dependencies.managedObjectContext,
             photoUploadedNotifier: parameters.container.dependencies.parentDependencies.photoUploadedNotifier
         )
@@ -130,9 +138,10 @@ struct AlbumDetailFactory {
                 featureFlagsController: mainContainer.dependencies.featureFlagsController,
                 inviteeListLoadController: inviteeListLoadController,
                 itemViewModelFactory: itemViewModelFactory,
+                metadataController: parameters.container.dependencies.metadataController,
                 photosGridViewModel: photoGridViewModel,
                 selectionController: selectionController,
-                thumbnailControllerContainer: parameters.container.dependencies.thumbnailsContainer,
+                thumbnailControllerContainer: parameters.container.dependencies.albumsThumbnailsContainer,
                 copyToStreamController: copyToStreamController
             ),
             configuration: parameters.configuration,
@@ -151,6 +160,7 @@ struct AlbumDetailFactory {
     }
 
     private func makeLeaveFlowController(
+        anchorController: PhotosListAnchorControllerProtocol,
         tower: Tower,
         context: NSManagedObjectContext,
         coordinator: AlbumDetailCoordinatorProtocol,
@@ -160,6 +170,7 @@ struct AlbumDetailFactory {
         let messageHandler = UserMessageHandler()
         return AlbumLeaveFlowController(
             dependencies: .init(
+                anchorController: anchorController,
                 context: context,
                 coordinator: coordinator,
                 client: tower.client,
@@ -209,6 +220,7 @@ struct AlbumDetailFactory {
         let factory = GalleryScenesFactory()
         let fileContentController = factory.makeFileContentController(
             tower: tower,
+            featureFlagsController: container.dependencies.parentDependencies.featureFlagsController,
             moc: context,
             photoUploadedNotifier: container.dependencies.parentDependencies.photoUploadedNotifier
         )

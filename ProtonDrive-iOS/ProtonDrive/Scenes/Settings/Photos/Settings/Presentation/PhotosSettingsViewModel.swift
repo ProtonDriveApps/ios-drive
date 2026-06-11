@@ -38,7 +38,6 @@ protocol PhotosSettingsViewModelProtocol: ObservableObject {
     var isPhotoFeatureDisabled: Bool { get }
     var isEnabled: Bool { get }
     var isMobileDataEnabled: Bool { get }
-    var topBanner: String? { get }
     func setEnabled(_ isEnabled: Bool)
     func setMobileDataEnabled(_ isEnabled: Bool)
 
@@ -50,7 +49,6 @@ final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
     @Published var isPhotoFeatureDisabled: Bool
     @Published var isEnabled = false
     @Published var isMobileDataEnabled = false
-    @Published var topBanner: String?
     @Published var isPhotoFeatureToggleInProgress = false
     private var isBackupEnabled = false
 
@@ -58,14 +56,13 @@ final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
     private let settingsController: PhotoBackupSettingsController
     private let startController: PhotosBackupStartController
     private let localSettings: LocalSettings
-    private let warningViewModel: PhotosMigrationWarningViewModelProtocol
     private let errorHandler: UserMessageHandlerProtocol
     private var cancellables = Set<AnyCancellable>()
     private let repository = ProtonCoreFeatureFlags.FeatureFlagsRepository.shared
     private let featureFlag = ProtonCoreDriveFeatureFlag.driveB2BPhotosUpload
 
     let backupTitle = Localization.setting_photo_backup
-    let mobileDataTitle = "Use mobile data to backup photos"
+    let mobileDataTitle = Localization.setting_use_cellular_to_backup
     let photoFeatureAlertCancelTitle = Localization.general_cancel
     let photoFeatureExplanation = Localization.photo_feature_explanation
 
@@ -73,14 +70,12 @@ final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
         settingsController: PhotoBackupSettingsController,
         startController: PhotosBackupStartController,
         localSettings: LocalSettings,
-        warningViewModel: PhotosMigrationWarningViewModelProtocol,
         b2bSettingsUpdateDataSource: UpdateB2BUserSettingsDataSource,
         errorHandler: UserMessageHandlerProtocol = UserMessageHandler()
     ) {
         self.settingsController = settingsController
         self.startController = startController
         self.localSettings = localSettings
-        self.warningViewModel = warningViewModel
         self.b2bSettingsUpdateDataSource = b2bSettingsUpdateDataSource
         self.errorHandler = errorHandler
 
@@ -129,27 +124,20 @@ final class PhotosSettingsViewModel: PhotosSettingsViewModelProtocol {
         settingsController.isEnabled
             .sink { [weak self] value in
                 self?.isBackupEnabled = value
-                self?.updateIsEnabledFlag()
+                self?.isEnabled = value
             }
             .store(in: &cancellables)
         settingsController.isNetworkConstrained
             .map { !$0 }
             .assign(to: &$isMobileDataEnabled)
-
-        warningViewModel.warning
-            .sink { [weak self] warning in
-                self?.topBanner = warning
-                self?.updateIsEnabledFlag()
-                self?.isPhotoFeatureDisabled = warning != nil
-            }
-            .store(in: &cancellables)
-    }
-
-    private func updateIsEnabledFlag() {
-        isEnabled = isBackupEnabled && topBanner == nil
     }
 
     func setEnabled(_ isEnabled: Bool) {
+        if isEnabled {
+            Log.info("User enables photo backup", domain: .application)
+        } else {
+            Log.info("User disable photo backup", domain: .application)
+        }
         if isEnabled {
             startController.start()
         } else {

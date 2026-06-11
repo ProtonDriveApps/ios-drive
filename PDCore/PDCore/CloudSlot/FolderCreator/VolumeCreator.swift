@@ -17,14 +17,16 @@
 
 import Foundation
 import PDClient
+import CoreData
 
 public protocol VolumeCreatingProtocol {
-    func createVolume() async throws -> Volume
+    var storage: StorageManager { get }
+    func createVolume(moc: NSManagedObjectContext) async throws -> Volume
 }
 
 public final class VolumeCreator: VolumeCreatingProtocol {
     let sessionVault: SessionVault
-    let storage: StorageManager
+    public let storage: StorageManager
     let client: Client
 
     public init(sessionVault: SessionVault, storage: StorageManager, client: Client) {
@@ -33,10 +35,9 @@ public final class VolumeCreator: VolumeCreatingProtocol {
         self.client = client
     }
 
-    public func createVolume() async throws -> Volume {
+    public func createVolume(moc: NSManagedObjectContext) async throws -> Volume {
         let folderName = "root"
         let signersKit = try sessionVault.make(forSigner: .main)
-        let context = storage.backgroundContext
 
         let address = signersKit.address
         let addressKey = signersKit.addressKey
@@ -61,11 +62,11 @@ public final class VolumeCreator: VolumeCreatingProtocol {
 
         let newVolume = try await client.postVolume(parameters: parameters)
 
-        return try await context.perform {
-            let volume = Volume.fetchOrCreate(id: newVolume.ID, in: context)
+        return try await moc.perform {
+            let volume = Volume.fetchOrCreate(id: newVolume.ID, in: moc)
             volume.type = .main
 
-            let share = Share.fetchOrCreate(id: newVolume.share.ID, in: context)
+            let share = Share.fetchOrCreate(id: newVolume.share.ID, in: moc)
             share.volumeID = newVolume.ID
             share.creator = address.email
             share.addressID = address.addressID
@@ -78,7 +79,7 @@ public final class VolumeCreator: VolumeCreatingProtocol {
             volume.shares.insert(share)
 
             let identifier = NodeIdentifier(newVolume.share.linkID, newVolume.share.ID, newVolume.ID)
-            let root: Folder = Folder.fetchOrCreate(identifier: identifier, in: context)
+            let root: Folder = Folder.fetchOrCreate(identifier: identifier, in: moc)
             root.setShareID(newVolume.share.ID)
             root.signatureEmail = address.email
             root.directShares.insert(share)
@@ -99,7 +100,7 @@ public final class VolumeCreator: VolumeCreatingProtocol {
             root.createdDate = Date()
             root.modifiedDate = Date()
 
-            try context.saveOrRollback()
+            try moc.saveOrRollback()
 
             return volume
         }

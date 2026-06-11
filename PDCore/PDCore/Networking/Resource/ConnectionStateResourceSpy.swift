@@ -29,6 +29,7 @@ public final class ConnectionStateResourceSpy: ConnectionStateResource {
     public var currentState: NetworkState { stateSubject.value }
     public var state: AnyPublisher<NetworkState, Never> { stateSubject.eraseToAnyPublisher() }
 
-    public func startMonitor() { startCallerCount += 1 }
+    public func startMonitoring() { startCallerCount += 1 }
+    public func cancel() {}
 }
 #endif

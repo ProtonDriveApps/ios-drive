@@ -18,6 +18,7 @@
 import SwiftUI
 import UIKit
 import PDCore
+import PDCoreIOS
 import UniformTypeIdentifiers
 import PDUIComponents // Not used but if removed I get compilation errors in SettingsAssembler: No such module 'PMSettings'
 
@@ -94,7 +95,12 @@ struct DocumentPicker: UIViewControllerRepresentable {
                             let item = URLContent(copyUrl, size)
                             fileResults.append(.success(item))
                         } catch {
-                            fileResults.append(.failure(error))
+                            if let outOfSpaceError = isOutOfSpaceError(error: error as NSError) {
+                                // The original error is too long to read
+                                fileResults.append(.failure(outOfSpaceError))
+                            } else {
+                                fileResults.append(.failure(error))
+                            }
                         }
                         group.leave()
                     }
@@ -106,6 +112,18 @@ struct DocumentPicker: UIViewControllerRepresentable {
             group.notify(queue: DispatchQueue.main) { [weak self] in
                 self?.parent.picker(didFinishPicking: fileResults)
             }
+        }
+        
+        private func isOutOfSpaceError(error: NSError) -> NSError? {
+            let outOfSpaceError = error.underlyingErrors.first { underlyingError in
+                let underlyingError = underlyingError as NSError
+                guard
+                    underlyingError.domain == NSPOSIXErrorDomain,
+                    underlyingError.code == 28
+                else { return false }
+                return true
+            }
+            return outOfSpaceError as? NSError
         }
     }
 }

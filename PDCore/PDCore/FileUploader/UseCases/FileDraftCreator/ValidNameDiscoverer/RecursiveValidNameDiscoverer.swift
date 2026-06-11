@@ -15,23 +15,31 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-final class RecursiveValidNameDiscoverer: ValidNameDiscoverer {
-    typealias FileName = String
-    typealias ParentHashKey = String
-    typealias Hasher = (FileName, ParentHashKey) throws -> String
+public final class RecursiveValidNameDiscoverer: ValidNameDiscoverer {
+    public typealias FileName = String
+    public typealias ParentHashKey = String
+    public typealias Hasher = (FileName, ParentHashKey) throws -> String
 
     private let hashChecker: AvailableHashChecker
     private let hasher: Hasher
     private let step: Int
 
-    init(hashChecker: AvailableHashChecker, step: Int = 15, hasher: @escaping Hasher = Encryptor.hmac) {
+    public init(hashChecker: AvailableHashChecker, step: Int = 15, hasher: @escaping Hasher = Encryptor.hmac) {
         self.hashChecker = hashChecker
         self.hasher = hasher
         self.step = step
     }
 
-    func findNextAvailableName(for file: FileNameCheckerModel, completion: @escaping (Result<NameHashPair, Error>) -> Void) {
+    public func findNextAvailableName(for file: FileNameCheckerModel, completion: @escaping (Result<NameHashPair, Error>) -> Void) {
         findNextAvailableName(for: file, offset: 0, completion: completion)
+    }
+
+    public func findNextAvailableName(for file: FileNameCheckerModel) async throws -> NameHashPair {
+        try await withCheckedThrowingContinuation { continuation in
+            findNextAvailableName(for: file, offset: 0) { result in
+                continuation.resume(with: result)
+            }
+        }
     }
 
     private func findNextAvailableName(for file: FileNameCheckerModel, offset: Int, completion: @escaping (Result<NameHashPair, Error>) -> Void) {

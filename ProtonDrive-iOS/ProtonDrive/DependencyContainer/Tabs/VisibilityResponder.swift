@@ -66,7 +66,7 @@ public final class ComputersTabVisibilityResponder: VisibilityResponder {
     }
 
     public func shouldShow(_ item: VisibilityItem) -> Bool {
-        featureFlags.hasComputers
+        true
     }
 }
 

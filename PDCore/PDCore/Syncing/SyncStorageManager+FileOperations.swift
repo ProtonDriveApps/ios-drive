@@ -21,14 +21,14 @@ public extension SyncStorageManager {
 
     /// If an item with a given identifier exists, it gets updated - otherwise it gets inserted.
     /// An update happens only if `matches(item)` evaluates to `true`.
-    func upsert(_ item: ReportableSyncItem, updateIf matches: (SyncItem) -> Bool = { _ in true }, in moc: NSManagedObjectContext? = nil) {
+    func upsert(_ item: ReportableSyncItem, updateIf matches: (SyncItem) -> Bool = { _ in true }, in moc: NSManagedObjectContext) {
         do {
-            let moc = moc ?? self.mainContext
-            if self.exists(with: item.id, entityName: "SyncItem", in: moc) {
-                Log.trace("Upsert - Updating \(item.filename)")
+
+            if self.exists(with: item.id, by: #keyPath(SyncItem.id), entityName: "SyncItem", in: moc) {
+                Log.trace("Upsert - Updating \(item.id)")
                 try self.update(syncItem: item, if: matches, in: moc)
             } else {
-                Log.trace("Upsert - Creating \(item.filename)")
+                Log.trace("Upsert - Creating \(item.id)")
                 try self.createItem(item, in: moc)
             }
         } catch {
@@ -36,13 +36,11 @@ public extension SyncStorageManager {
         }
     }
 
-    func updateTrash(identifier: String, in moc: NSManagedObjectContext? = nil) {
+    func updateTrash(identifier: String, in moc: NSManagedObjectContext) {
         Log.trace(identifier)
         do {
-            let moc = moc ?? self.mainContext
-
             try moc.performAndWait {
-                let syncItems: [SyncItem] = self.existing(with: [identifier], in: moc)
+                let syncItems: [SyncItem] = self.existing(with: [identifier], by: #keyPath(SyncItem.id), in: moc)
                 guard let syncItem = syncItems.first else {
                     throw SyncItemError.notFound
                 }
@@ -55,20 +53,17 @@ public extension SyncStorageManager {
         }
     }
 
-    func updateProgress(identifier: String, progress: Progress, in moc: NSManagedObjectContext? = nil) {
+    func updateProgress(identifier: String, progress: Progress, in moc: NSManagedObjectContext) {
         Log.trace(identifier)
-
-        let moc = moc ?? self.mainContext
-
         do {
             try moc.performAndWait {
-                let syncItems: [SyncItem] = self.existing(with: [identifier], in: moc)
+                let syncItems: [SyncItem] = self.existing(with: [identifier], by: #keyPath(SyncItem.id), in: moc)
                 guard let syncItem = syncItems.first else {
                     throw SyncItemError.notFound
                 }
-                let progressPercentage: Int
+                let progressPercentage: Double
                 if progress.totalUnitCount > 0 {
-                    progressPercentage = Int(Double(progress.completedUnitCount) / Double(progress.totalUnitCount) * 100)
+                    progressPercentage = Double(progress.completedUnitCount) / Double(progress.totalUnitCount) * 100
                 } else {
                     // if totalUnitCount is zero, it's because the file size is zero
                     progressPercentage = 100
@@ -82,14 +77,12 @@ public extension SyncStorageManager {
         }
     }
 
-    func updateItem(identifiedBy temporaryIdentifier: String, to createdItem: ReportableSyncItem, in moc: NSManagedObjectContext? = nil) {
+    func updateItem(identifiedBy temporaryIdentifier: String, to createdItem: ReportableSyncItem, in moc: NSManagedObjectContext) {
         Log.trace(temporaryIdentifier)
-
-        let moc = moc ?? self.mainContext
 
         do {
             try moc.performAndWait {
-                let syncItems: [SyncItem] = self.existing(with: [temporaryIdentifier], in: moc)
+                let syncItems: [SyncItem] = self.existing(with: [temporaryIdentifier], by: #keyPath(SyncItem.id), in: moc)
                 guard let syncItem = syncItems.first else {
                     throw SyncItemError.notFound
                 }
@@ -113,14 +106,12 @@ public extension SyncStorageManager {
         }
     }
 
-    func updateLocation(identifier: String, to location: String, in moc: NSManagedObjectContext? = nil) {
+    func updateLocation(identifier: String, to location: String, in moc: NSManagedObjectContext) {
         Log.trace(identifier)
-
-        let moc = moc ?? self.mainContext
 
         do {
             try moc.performAndWait {
-                let syncItems: [SyncItem] = self.existing(with: [identifier], in: moc)
+                let syncItems: [SyncItem] = self.existing(with: [identifier], by: #keyPath(SyncItem.id), in: moc)
                 guard let syncItem = syncItems.first else {
                     throw SyncItemError.notFound
                 }
@@ -135,16 +126,16 @@ public extension SyncStorageManager {
     // MARK: - Private
 
     private func update(syncItem item: ReportableSyncItem, if matches: (SyncItem) -> Bool, in moc: NSManagedObjectContext) throws {
-        Log.trace(item.filename)
+        Log.trace(item.id)
 
         return try moc.performAndWait {
-            let syncItems: [SyncItem] = self.existing(with: [item.id], in: moc)
+            let syncItems: [SyncItem] = self.existing(with: [item.id], by: #keyPath(SyncItem.id), in: moc)
             guard let syncItem = syncItems.first else {
                 throw SyncItemError.notFound
             }
 
             guard matches(syncItem) else {
-                Log.trace("Skipping update - \(item.filename)")
+                Log.trace("Skipping update - \(item.id)")
                 return
             }
 
@@ -165,7 +156,7 @@ public extension SyncStorageManager {
     }
 
     private func createItem(_ item: ReportableSyncItem, in moc: NSManagedObjectContext) throws {
-        Log.trace(item.filename)
+        Log.trace(item.id)
 
         return try moc.performAndWait {
             let syncItem: SyncItem = self.new(with: item.id, by: #keyPath(SyncItem.id), in: moc)

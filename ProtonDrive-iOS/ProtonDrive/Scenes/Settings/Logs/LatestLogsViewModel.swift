@@ -19,6 +19,7 @@ import Foundation
 import Combine
 import UIKit
 import PDCore
+import PDCoreIOS
 
 final class LatestLogsViewModel {
     let url: URL
@@ -67,13 +68,19 @@ final class LatestLogsViewModel {
     }
 
     func exportAllLogs() {
+        if isExporting { return }
         isExporting = true
 
         Task {
-            let url = await LogExporter().export()
-            await MainActor.run {
-                self.isExporting = false
-                self.logExported.send(url)
+            // exporter present error banner
+            let url = try? await LogExporter().export { progress in
+                UserMessageHandler().handleSuccess(progress.rawValue)
+            }
+            if let url {
+                await MainActor.run {
+                    self.isExporting = false
+                    self.logExported.send(url)
+                }
             }
         }
     }

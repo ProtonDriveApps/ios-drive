@@ -84,7 +84,7 @@ enum PhotoUITag: Tag {
             case .screenshots:
                 return InternalIcon.screenshot
             case .portraits:
-                return IconProvider.userCircle
+                return InternalIcon.portrait
             case .panoramas:
                 return InternalIcon.panoramas
             case .raw:

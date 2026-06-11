@@ -34,41 +34,60 @@ struct InvalidMetadataRelationshipError: LocalizedError {
 public extension NSManagedObjectContext {
 #if DEBUG
     /// Counts how many times the context is saved, to enable detecting when it happens too much.
-    static var saveCounter = Atomic<Int>(0)
+    static var saveCounter = Atomic<[ObjectIdentifier: Int]>([:])
 #endif
 
     /// Only performs a save if there are changes to commit.
     /// - Returns: `true` if a save was needed. Otherwise, `false`.
-    func saveIfNeeded() throws {
+    func saveIfNeeded(
+        file: String = #filePath,
+        function: String = #function,
+        line: Int = #line
+    ) throws {
         guard hasChanges else { return }
 
 #if DEBUG
-        Self.saveCounter.mutate { $0 += 1 }
-        Log.trace("Will save... \(Self.saveCounter.value.description)")
+        let identifier = ObjectIdentifier(self)
+        Self.saveCounter.mutate { $0[identifier, default: 0] += 1 }
+        let saveCounter = Self.saveCounter.value[identifier]?.description
+        Log.trace("Will save. Context: \(identifier), Counter: \(saveCounter)", file: file, function: function, line: line)
 #else
         Log.trace("Will save...")
 #endif
 
         #if os(iOS)
         guard !(persistentStoreCoordinator?.persistentStores.isEmpty ?? true) else {
-            Log.error("Executing save on moc which doesn't have a persistent store", error: nil, domain: .storage)
+            Log.error("Executing save on moc which doesn't have a persistent store", error: nil, domain: .storage, file: file, function: function, line: line)
             return
         }
         #endif
 
         try save()
-        Log.trace("Did save")
+#if DEBUG
+        Log.trace("Did save. Counter: \(saveCounter)", file: file, function: function, line: line)
+#endif
     }
 
     /// Attempts to save the changes in the NSManagedObjectContext
     /// on failure rollsback all the changes and throws the error that caused the failure
-    func saveOrRollback() throws {
+    func saveOrRollback(
+        file: String = #filePath,
+        function: String = #function,
+        line: Int = #line
+    ) throws {
         do {
-            try saveIfNeeded()
+            try saveIfNeeded(file: file, function: function, line: line)
         } catch {
             rollback()
             throw error
         }
+    }
+    
+    func resetCounter() {
+        let identifier = ObjectIdentifier(self)
+#if DEBUG
+        Self.saveCounter.mutate { $0[identifier, default: 0] = 0 }
+#endif
     }
 }
 

@@ -26,17 +26,6 @@ public extension ResponseError {
     private var isPhotoShareLegacyUsageError: Bool { httpCode == 422 && code == 201101 }
 
     var isRetryable: Bool {
-        #if os(iOS)
-        isExpiredResource ||
-        isFeatureDisabled ||
-        RetryPolicy.retryable.contains(httpCode) ||
-        RetryPolicy.retryable.contains(bestShotAtReasonableErrorCode)
-        #else
-        isRetryableIncludingInternetIssues
-        #endif
-    }
-
-    var isRetryableIncludingInternetIssues: Bool {
         // If any of `allUnderlyingErrorCodes` are contained in RetryPolicy.retryableIncludingInternetIssues, we consider the error retryable.
         isExpiredResource ||
         isFeatureDisabled ||

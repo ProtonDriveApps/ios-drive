@@ -42,6 +42,15 @@ protocol EventLoopPriorityPolicyProtocol {
 }
 
 final class EventLoopPriorityPolicy: EventLoopPriorityPolicyProtocol {
+    let timeConstants = EventLoopTimingConstants()
+    private var isDebug: Bool {
+        #if DEBUG
+        return Constants.isUnitTest ? false : true
+        #else
+        return false
+        #endif
+    }
+
     func getPriority(with data: EventLoopPriorityData) -> EventLoopExecutionPriority? {
         switch data.type {
         case .own:
@@ -54,38 +63,40 @@ final class EventLoopPriorityPolicy: EventLoopPriorityPolicyProtocol {
     }
 
     private func getOwnVolumePriority(with data: EventLoopPriorityData) -> EventLoopExecutionPriority? {
+        let threshold = timeConstants.ownedVolumeThreshold(isBackground: data.isRunningInBackground)
         if data.isRunningInBackground {
             // background
-            return getPriority(data: data, tresholdDelayInSeconds: 1800, isHighPriority: true)
+            return getPriority(data: data, thresholdDelayInSeconds: threshold, isHighPriority: true)
         } else {
             // foreground
-            return getPriority(data: data, tresholdDelayInSeconds: 30, isHighPriority: true)
+            return getPriority(data: data, thresholdDelayInSeconds: threshold, isHighPriority: true)
         }
     }
 
     func getSharedVolumePriority(with data: EventLoopPriorityData, isActive: Bool) -> EventLoopExecutionPriority? {
+        let threshold = timeConstants.sharedVolumeThreshold(isBackground: data.isRunningInBackground, isActive: isActive)
         if data.isRunningInBackground {
             // background
-            return getPriority(data: data, tresholdDelayInSeconds: 86400, isHighPriority: false)
+            return getPriority(data: data, thresholdDelayInSeconds: threshold, isHighPriority: false)
         } else if isActive {
             // foreground & active
-            return getPriority(data: data, tresholdDelayInSeconds: 30, isHighPriority: true)
+            return getPriority(data: data, thresholdDelayInSeconds: threshold, isHighPriority: true)
         } else {
             // foreground
-            return getPriority(data: data, tresholdDelayInSeconds: 600, isHighPriority: false)
+            return getPriority(data: data, thresholdDelayInSeconds: threshold, isHighPriority: false)
         }
     }
 
     private func getPriority(
         data: EventLoopPriorityData,
-        tresholdDelayInSeconds: Double,
+        thresholdDelayInSeconds: Double,
         isHighPriority: Bool
     ) -> EventLoopExecutionPriority? {
         let interval = data.currentDate.timeIntervalSince(data.lastDate)
         // Comparing two Doubles here, let's round to be sure
-        let secondsSinceTreshold = Int(round(interval - tresholdDelayInSeconds))
-        guard secondsSinceTreshold >= 0 else {
-            // current date doesn't satisfy the treshold delay
+        let secondsSinceThreshold = Int(round(interval - thresholdDelayInSeconds))
+        guard secondsSinceThreshold >= 0 else {
+            // current date doesn't satisfy the threshold delay
             return nil
         }
 
@@ -94,7 +105,7 @@ final class EventLoopPriorityPolicy: EventLoopPriorityPolicyProtocol {
             return .high
         } else {
             // Lower priority volume, but current date already satisfies the treshold delay
-            return .low(priority: secondsSinceTreshold)
+            return .low(priority: secondsSinceThreshold)
         }
     }
 }

@@ -15,8 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Combine
 import Foundation
 import PDCore
+import PDCoreIOS
 import ProtonCoreKeymaker
 
 class DriveBootstrapStarter: AppBootstrapper {
@@ -27,9 +29,34 @@ class DriveBootstrapStarter: AppBootstrapper {
     private let settingsBootstrapper: AppBootstrapper
     private let photosCacheBootstrapper: AppBootstrapper
     private let tagsMigrationFinishChecker: AppBootstrapper
-    private var autoLocker: Autolocker?
+    private let uploadingPhotosBootrapper: AppBootstrapper
+    private let paymentsBootstrapper: AppBootstrapper
+    private let autoLocker: Autolocker?
+    private let fileManagerBootstrapper: AppBootstrapper
+    private let duplicatePhotoListingBootstrapper: AppBootstrapper
+    private let sdkBootstrapStarter: AppBootstrapper
+    private let bootstrapStateController: BootstrapStateControllerProtocol
+    private let sdkRelatedInfrastructureBootstrapper: AppBootstrapper
+    private let filePathMigrationBootstrapStarter: AppBootstrapper
 
-    init(addressBootstrapper: AppBootstrapper, sharesBootstrapper: AppBootstrapper, volumesBootstrapper: AppBootstrapper, eventsBootstrapper: AppBootstrapper, settingsBootstrapper: AppBootstrapper, photosCacheBootstrapper: AppBootstrapper, tagsMigrationFinishChecker: AppBootstrapper, autoLocker: Autolocker?) {
+    init(
+        addressBootstrapper: AppBootstrapper,
+        sharesBootstrapper: AppBootstrapper,
+        volumesBootstrapper: AppBootstrapper,
+        eventsBootstrapper: AppBootstrapper,
+        settingsBootstrapper: AppBootstrapper,
+        photosCacheBootstrapper: AppBootstrapper,
+        tagsMigrationFinishChecker: AppBootstrapper,
+        autoLocker: Autolocker?,
+        uploadingPhotosBootrapper: AppBootstrapper,
+        paymentsBootstrapper: AppBootstrapper,
+        fileManagerBootstrapper: AppBootstrapper,
+        duplicatePhotoListingBootstrapper: AppBootstrapper,
+        sdkBootstrapStarter: AppBootstrapper,
+        bootstrapStateController: BootstrapStateControllerProtocol,
+        sdkRelatedInfrastructureBootstrapper: AppBootstrapper,
+        filePathMigrationBootstrapStarter: AppBootstrapper
+    ) {
         self.addressBootstrapper = addressBootstrapper
         self.sharesBootstrapper = sharesBootstrapper
         self.volumesBootstrapper = volumesBootstrapper
@@ -38,21 +65,47 @@ class DriveBootstrapStarter: AppBootstrapper {
         self.photosCacheBootstrapper = photosCacheBootstrapper
         self.tagsMigrationFinishChecker = tagsMigrationFinishChecker
         self.autoLocker = autoLocker
+        self.uploadingPhotosBootrapper = uploadingPhotosBootrapper
+        self.paymentsBootstrapper = paymentsBootstrapper
+        self.fileManagerBootstrapper = fileManagerBootstrapper
+        self.duplicatePhotoListingBootstrapper = duplicatePhotoListingBootstrapper
+        self.sdkBootstrapStarter = sdkBootstrapStarter
+        self.bootstrapStateController = bootstrapStateController
+        self.sdkRelatedInfrastructureBootstrapper = sdkRelatedInfrastructureBootstrapper
+        self.filePathMigrationBootstrapStarter = filePathMigrationBootstrapStarter
     }
 
     func bootstrap() async throws {
         do {
-            if let autoLocker, autoLocker.shouldAutolockNow() {
-                Log.debug("Skip bootstrap as autolocking is enabled", domain: .applicationBootstrap)
-                return
+            try await measure(message: "Drive bootstrap", domain: .applicationBootstrap) {
+                if let autoLocker, autoLocker.shouldAutolockNow() {
+                    Log.debug("Skip bootstrap as autolocking is enabled", domain: .applicationBootstrap)
+                    return
+                }
+                await AppShortcutManager().setShortcutForLoggedInUser()
+                // ‼️ Disclaimer: order of some of these matter, only those that don't matter should be inside task group. Update with caution!
+                try await fileManagerBootstrapper.bootstrap()
+                try await checkAddresses()
+                try await sdkBootstrapStarter.bootstrap()
+                try await withThrowingTaskGroup { group in
+                    group.addTask { try await self.checkRootShares() }
+                    group.addTask { try await self.bootstrapAdditionalSettings() }
+                    group.addTask { try await self.photosCacheBootstrapper.bootstrap() }
+                    group.addTask { try await self.uploadingPhotosBootrapper.bootstrap() }
+                    group.addTask { try await self.duplicatePhotoListingBootstrapper.bootstrap() }
+                    group.addTask { try await self.sdkRelatedInfrastructureBootstrapper.bootstrap() } // Needs to be callled after SDK bootstrapping!
+                    group.addTask { try await self.filePathMigrationBootstrapStarter.bootstrap() }
+                    try await group.waitForAll()
+                }
+                // This awake offlineSaver, needs to be executed after `relocationBootstrapStarter`
+                try await checkEvents()
+                Task.detached { [weak self] in
+                    // Not required for launch
+                    try await self?.paymentsBootstrapper.bootstrap()
+                    try await self?.checkTagsMigrationFinished()
+                }
+                bootstrapStateController.setBootstrapped()
             }
-            try await checkAddresses()
-            try await checkRootShares()
-            try await checkVolumes() // Intentionally performed only after root shares are checked
-            try await checkEvents()
-            try await bootstrapAdditionalSettings()
-            try await photosCacheBootstrapper.bootstrap()
-            try await checkTagsMigrationFinished()
         } catch {
             if let autoLocker, autoLocker.shouldAutolockNow() {
                 Log.debug("Ignore bootstrap error as autolocking is enabled", domain: .applicationBootstrap)
@@ -64,34 +117,33 @@ class DriveBootstrapStarter: AppBootstrapper {
 
     /// check if we have a valid address downloaded
     private func checkAddresses() async throws {
-        try await addressBootstrapper.bootstrap()
-        Log.info("Did check addresses", domain: .applicationBootstrap)
+        try await measure(message: "Check address", domain: .applicationBootstrap) {
+            try await addressBootstrapper.bootstrap()
+        }
     }
 
     /// Checks if we have a valid main share downloaded
     private func checkRootShares() async throws {
         try await sharesBootstrapper.bootstrap()
-        Log.info("Did check root shares", domain: .applicationBootstrap)
-    }
-
-    /// Checks if own volumes have a correct type assigned
-    private func checkVolumes() async throws {
-        try await volumesBootstrapper.bootstrap()
-        Log.info("Did check volumes", domain: .applicationBootstrap)
+        try await volumesBootstrapper.bootstrap() // Intentionally performed only after root shares are checked
     }
 
     /// Checks if we have a valid initial event downloaded
     private func checkEvents() async throws {
-        try await eventsBootstrapper.bootstrap()
-        Log.info("Did check events", domain: .applicationBootstrap)
+        try await measure(message: "Check events", domain: .applicationBootstrap) {
+            try await eventsBootstrapper.bootstrap()
+        }
     }
 
     private func bootstrapAdditionalSettings()  async throws {
-        try await settingsBootstrapper.bootstrap()
-        Log.info("Did check additional settings", domain: .applicationBootstrap)
+        try await measure(message: "Check additional settings", domain: .applicationBootstrap) {
+            try await settingsBootstrapper.bootstrap()
+        }
     }
 
     private func checkTagsMigrationFinished() async throws {
-        try await tagsMigrationFinishChecker.bootstrap()
+        try await measure(message: "Check tags migration", domain: .applicationBootstrap) {
+            try await tagsMigrationFinishChecker.bootstrap()
+        }
     }
 }

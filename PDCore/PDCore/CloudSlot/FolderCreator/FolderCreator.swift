@@ -22,19 +22,13 @@ public class FolderCreator {
     /// Typealias for one of the methods of PDCLient's Client.
     public typealias CloudFolderCreator = (Client.ShareID, NewFolderParameters) async throws -> NewFolder
 
-    private let moc: NSManagedObjectContext
-    private let storage: StorageManager
     private let signersKitFactory: SignersKitFactoryProtocol
     private let cloudFolderCreator: CloudFolderCreator
 
     public init(
-        storage: StorageManager,
         cloudFolderCreator: @escaping CloudFolderCreator,
         signersKitFactory: SignersKitFactoryProtocol,
-        moc: NSManagedObjectContext
     ) {
-        self.moc = moc
-        self.storage = storage
         self.signersKitFactory = signersKitFactory
         self.cloudFolderCreator = cloudFolderCreator
     }
@@ -50,16 +44,17 @@ public class FolderCreator {
     ///   - parent: The parent `Folder` under which the new folder will be created.
     /// - Returns: An asynchronously created `Folder` instance representing the new folder.
     /// - Throws: An error if any part of the folder creation process fails.
-    public func createFolder(_ name: String, parent: Folder) async throws -> Folder {
+    public func createFolder(_ name: String, parent: Folder, moc: NSManagedObjectContext) async throws -> Folder {
         let clearValidatedName = try name.validateNodeName(validator: NameValidations.iosName)
 
-        let (parentFolder, signersKit) = try await moc.perform {
-            let parent = parent.in(moc: self.moc)
+        let parentObjectID = parent.objectID
+        let (parentFolder, signersKit) = try await moc.perform { [moc, signersKitFactory] in
+            let parent: CoreDataFolder = try moc.typedObject(with: parentObjectID)
 #if os(macOS)
-            let signersKit = try self.signersKitFactory.make(forSigner: .main)
+            let signersKit = try parent.getContextShareAddressBasedSignersKit(signersKitFactory: signersKitFactory,
+                                                                              fallbackSigner: .main)
 #else
-            let addressID = try parent.getContextShareAddressID()
-            let signersKit = try self.signersKitFactory.make(forAddressID: addressID)
+            let signersKit = try parent.getContextShareAddressBasedSignersKit(signersKitFactory: signersKitFactory)
 #endif
             let parentFolder = try parent.encrypting()
             return (parentFolder, signersKit)
@@ -95,11 +90,12 @@ public class FolderCreator {
 
         let newFolderID = try await cloudFolderCreator(parentFolder.shareID, parameters).ID
 
-        return try await moc.perform {
-            let newFolder = Folder.make(from: createdFolder, id: newFolderID, moc: self.moc)
-            newFolder.parentFolder = parent.in(moc: self.moc)
+        return try await moc.perform { [moc] in
+            let parent: CoreDataFolder = try moc.typedObject(with: parentObjectID)
+            let newFolder = Folder.make(from: createdFolder, id: newFolderID, parent: parent, moc: moc)
+            newFolder.parentFolder = parent.in(moc: moc)
 
-            try self.moc.saveOrRollback()
+            try moc.saveOrRollback()
 
             return newFolder
         }
@@ -124,7 +120,13 @@ private struct CreatedFolder {
 
 private extension Folder {
     /// Create a new File from the `EncryptedImportedFile` model
-    static func make(from createdFolder: CreatedFolder, id: String, moc: NSManagedObjectContext) -> Folder {
+    static func make(
+        from createdFolder: CreatedFolder,
+        id: String,
+        parent: CoreDataFolder,
+        moc: NSManagedObjectContext
+    ) -> Folder {
+        let parent = parent.in(moc: moc)
         // Create new Folder
         let coreDataFolder: Folder
         switch Folder.fetchOrCreateIndicatingResult(id: id, volumeID: createdFolder.volumeID, in: moc) {
@@ -146,6 +148,9 @@ private extension Folder {
         coreDataFolder.nodePassphraseSignature = createdFolder.nodePassphraseSignature
         coreDataFolder.signatureEmail = createdFolder.nameSignatureEmail // Created at the same time as the nameSignatureEmail, no distinction between them
         coreDataFolder.nodeHashKey = createdFolder.nodeHashKey
+        // New created folder doesn't have children
+        coreDataFolder.isChildrenListFullyFetched = true
+        coreDataFolder.setIsInheritingOfflineAvailable(parent.isInheritingOfflineAvailable || parent.isAvailableOffline)
 
         #if os(macOS)
         coreDataFolder.isInheritingOfflineAvailable = createdFolder.isInheritingOfflineAvailable

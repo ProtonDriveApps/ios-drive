@@ -24,15 +24,14 @@ import PDUIComponents
 import ProtonCoreKeymaker
 import ProtonCoreServices
 import UIKit
+import ProtonCoreAuthentication
 
 // Main photos container. See `README.md` for more info.
 public final class PDPhotosContainer {
     let dependencies: Dependencies
     lazy var rootViewModel: RootViewModel = PDPhotosFactory().makeRootViewModel()
     lazy var sceneContainer = PhotosScenesContainer(parent: self)
-    public lazy var migrationController: PhotoVolumeMigrationControllerProtocol = makeMigrationController()
     lazy var bootstrapController: PhotoVolumeBootstrapControllerProtocol = makeBootstrapController()
-    lazy var migrationAvailableController = makeMigrationSheetAvailableController()
 
     public init(dependencies: Dependencies) {
         self.dependencies = dependencies
@@ -55,20 +54,11 @@ public final class PDPhotosContainer {
 extension PDPhotosContainer {
     private func makeBootstrapController() -> PhotoVolumeBootstrapControllerProtocol {
         PDPhotosFactory().makeBootstrapController(
-            migrationController: migrationController,
             tower: dependencies.tower,
             featureFlagsController: dependencies.featureFlagsController,
             shareCreationResource: dependencies.shareCreationResource,
             errorController: dependencies.legacyShareErrorController
         )
-    }
-
-    private func makeMigrationSheetAvailableController() -> MigrationSheetAvailableControllerProtocol {
-        PDPhotosFactory().makeMigrationSheetAvailableController(tower: dependencies.tower)
-    }
-
-    private func makeMigrationController() -> PhotoVolumeMigrationControllerProtocol {
-        PDPhotosFactory().makeMigrationController(tower: dependencies.tower)
     }
 }
 
@@ -104,6 +94,8 @@ public extension PDPhotosContainer {
         let legacyShareErrorController: ErrorSetControllerProtocol
         let photoTagsMigrationController: PhotoTagsMigrationController
         let tagsMigrationConstraint: MigrationConstraintController
+        let performanceMetricsController: PerformanceMetricsControllerProtocol
+        let authenticator: Authenticator
 
         public init(
             tower: Tower,
@@ -135,7 +127,9 @@ public extension PDPhotosContainer {
             shareCreationResource: PhotoShareCreationFinishResource,
             legacyShareErrorController: ErrorSetControllerProtocol,
             photoTagsMigrationController: PhotoTagsMigrationController,
-            tagsMigrationConstraint: MigrationConstraintController
+            tagsMigrationConstraint: MigrationConstraintController,
+            performanceMetricsController: PerformanceMetricsControllerProtocol,
+            authenticator: Authenticator
         ) {
             self.tower = tower
             self.keymaker = keymaker
@@ -167,6 +161,8 @@ public extension PDPhotosContainer {
             self.legacyShareErrorController = legacyShareErrorController
             self.photoTagsMigrationController = photoTagsMigrationController
             self.tagsMigrationConstraint = tagsMigrationConstraint
+            self.performanceMetricsController = performanceMetricsController
+            self.authenticator = authenticator
         }
     }
 }

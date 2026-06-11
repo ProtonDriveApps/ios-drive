@@ -41,8 +41,9 @@ final class ThumbnailIdentifierDownloadOperation: DownloadThumbnailOperation {
     private func execute() async {
         guard !isCancelled else { return }
 
+        let moc = decryptor.store.backgroundContext
         do {
-            let url = try await urlFetchInteractor.execute(thumbnailId: thumbnailWithId.thumbnailId, volumeId: thumbnailWithId.volumeId)
+            let url = try await urlFetchInteractor.execute(thumbnailId: thumbnailWithId.thumbnailId, volumeId: thumbnailWithId.volumeId, moc: moc)
             guard !isCancelled else { return }
             download(url)
         } catch {

@@ -61,11 +61,17 @@ class ExtendedAttributesRevisionEncryptor: RevisionEncryptor {
             
             do {
 #if os(macOS)
-                guard let signatureEmail = revision.signatureAddress else { throw RevisionEncryptorError.noSignatureEmailInRevision }
-                let signersKit = try self.signersKitFactory.make(forSigner: .address(signatureEmail))
+                func getSignatureAddress() throws -> String {
+                    guard let signatureAddress = revision.signatureAddress else {
+                        throw RevisionEncryptorError.noSignatureEmailInRevision
+                    }
+                    return signatureAddress
+                }
+                
+                let signersKit = try revision.file.getContextShareAddressBasedSignersKit(signersKitFactory: signersKitFactory,
+                                                                                         fallbackSigner: .address(getSignatureAddress()))
 #else
-                let addressID = try revision.file.getContextShareAddressID()
-                let signersKit = try signersKitFactory.make(forAddressID: addressID)
+                let signersKit = try revision.file.getContextShareAddressBasedSignersKit(signersKitFactory: signersKitFactory)
 #endif
                 let publicNodeKey = try Encryptor.getPublicKey(fromPrivateKey: revision.file.nodeKey)
                 let addressKey = signersKit.addressKey.privateKey
@@ -108,7 +114,7 @@ class ExtendedAttributesRevisionEncryptor: RevisionEncryptor {
     }
     
     func modificationDate(_ draft: CreatedRevisionDraft) -> String {
-        ISO8601DateFormatter().string(from: draft.localURL.contentModificationDate ?? Date())
+        ISO8601DateFormatter.default.string(from: draft.localURL.contentModificationDate ?? Date())
     }
     
     func digest() -> ExtendedAttributes.Digests {

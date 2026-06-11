@@ -66,6 +66,10 @@ struct OnboardingFlowTestsManager {
             localSettings.isOnboarded = true
             DebugConstants.removeCommandLine(flags: [.skipOnboarding])
         }
+
+        if DebugConstants.commandLineContains(flags: [.skipNotificationPermissions]) {
+            localSettings.isNoticationPermissionsSkipped = true
+        }
     }
 }
 

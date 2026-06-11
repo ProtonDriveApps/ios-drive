@@ -43,7 +43,7 @@ public extension Array where Element == String {
     }
 }
 
-extension String {
+public extension String {
     var canonicalEmailForm: String {
         replacingOccurrences(of: "[-_.]", with: "", options: [.regularExpression])
             .lowercased()

@@ -49,7 +49,7 @@ public class PostLoginServices {
         self.initialServices = initialServices
         self.activityObserver = activityObserver
         
-        let towerStorage = storage ?? StorageManager(suite: appGroup, sessionVault: initialServices.sessionVault)
+        let towerStorage = storage ?? StorageManager(suite: appGroup)
         self.metadataDBWasRecreated = StorageManager.metadataDBWasRecreated
 
         #if os(macOS)
@@ -109,7 +109,7 @@ public class PostLoginServices {
         // disconnect FileProvider extensions
         try? await signOutFileProvider()
         // destroy mainKey in Keychain
-        initialServices.mainKeyProvider.wipeMainKey()
+        try? initialServices.mainKeyProvider.wipeMainKeyOrError()
 
         cleanAPIServiceSessionAndNotifyIfNeeded(notify)
     }

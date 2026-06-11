@@ -26,9 +26,18 @@ protocol PhotoAssetDataFetcherResource {
 }
 
 final class DefaultPhotoAssetDataFetcherResource: PhotoAssetDataFetcherResource {
+    private let photoIdentifierInquirer: PhotoIdentifierInquirer
+
+    init(photoIdentifierInquirer: PhotoIdentifierInquirer) {
+        self.photoIdentifierInquirer = photoIdentifierInquirer
+    }
 
     func fetchAssetData(iCloudID: String) async -> PhotoAssetData? {
-        guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [iCloudID], options: nil).firstObject else {
+        guard let localIdentifier = photoIdentifierInquirer.localIdentifier(forCloudIdentifier: iCloudID) else {
+            Log.info("Could not find local identifier for iCloud", domain: .photosTagMigration)
+            return nil
+        }
+        guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject else {
             return nil
         }
 

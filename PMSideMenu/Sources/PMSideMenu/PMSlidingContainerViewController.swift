@@ -45,7 +45,9 @@ internal final class PMSlidingContainerViewController: UIViewController, PMSlidi
         self.init()
         
         self.setupAppearance()
-        self.controller = DriveSideMenuController(contentViewController: skeleton, menuViewController: menu)
+        let controller = DriveSideMenuController(contentViewController: skeleton, menuViewController: menu)
+        SideMenuController.preferences.basic.position = .above
+        self.controller = controller
         self.controller.delegate = self
 
         togglePublisher?

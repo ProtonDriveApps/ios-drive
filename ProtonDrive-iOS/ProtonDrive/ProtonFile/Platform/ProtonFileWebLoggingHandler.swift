@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDCoreIOS
 import WebKit
 
 final class ProtonFileWebLoggingHandler: NSObject, WKScriptMessageHandler {
@@ -40,8 +41,17 @@ final class ProtonFileWebLoggingHandler: NSObject, WKScriptMessageHandler {
     }
 
     private static let logScriptName = "driveConsoleLog"
+    private let deleter: InvalidNodesDeleterProtocol
+    private let identifier: AnyVolumeIdentifier
 
-    init(userContentController: WKUserContentController) {
+    init(
+        userContentController: WKUserContentController,
+        deleter: InvalidNodesDeleterProtocol,
+        identifier: AnyVolumeIdentifier
+    ) {
+        self.deleter = deleter
+        self.identifier = identifier
+
         super.init()
         let script = makeScript()
         userContentController.addUserScript(script)
@@ -113,6 +123,13 @@ final class ProtonFileWebLoggingHandler: NSObject, WKScriptMessageHandler {
         case .warning:
             Log.warning(body, domain: .protonDocs)
         case .error:
+            // Failed to load private document, {"message":"Unprocessable Entity","code":2501}
+            if let match = body.firstMatch(of: #/\"code"\s*:\s*(\d+)/#),
+               let code = Int(match.1) {
+                Task {
+                   try await deleter.deleteIfNeeded(identifiers: [identifier], errorCode: code)
+                }
+            }
             Log.error(body, error: nil, domain: .protonDocs)
         }
     }

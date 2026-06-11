@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDClient
+import CoreData
 
 public final class TrashedNodeDeleter {
 
@@ -81,7 +82,6 @@ public final class TrashedNodeDeleter {
 
     private func setToBeDeleted(_ ids: [AnyVolumeIdentifier]) async throws {
         let context = storage.mainContext
-
         try await context.perform {
             let nodes = Node.fetch(identifiers: Set(ids), allowSubclasses: true, in: context)
             nodes.forEach { $0.setToBeDeletedRecursivelly() }

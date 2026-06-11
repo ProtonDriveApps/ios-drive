@@ -28,6 +28,7 @@ public final class PhotoTagsMigrationFactory: MigrationCommandFactory {
     private let localSettings: LocalSettings
     private let client: Client
     private let downloader: Downloader
+    private let sdkDownloader: SDKFileDownloaderProtocol?
     private let sessionVault: SessionVault
     private let storageManager: StorageManager
     private let listingDataSource: PhotosListingDataSource
@@ -36,6 +37,8 @@ public final class PhotoTagsMigrationFactory: MigrationCommandFactory {
     private let lockConstraintController: PhotoBackupConstraintController
     private let connectionStateResource: ConnectionStateResource
     private let authorizationController: PhotoLibraryAuthorizationController
+    private let rootFolderRepository: PhotosRootFolderRepository
+    private let photoIdentifierInquirer: PhotoIdentifierInquirer
 
     public init(
         localSettings: LocalSettings,
@@ -44,15 +47,19 @@ public final class PhotoTagsMigrationFactory: MigrationCommandFactory {
         client: Client,
         sessionVault: SessionVault,
         downloader: Downloader,
+        sdkDownloader: SDKFileDownloaderProtocol?,
         listingDataSource: PhotosListingDataSource,
         photoUploadedNotifier: PhotoUploadedNotifier,
         lockConstraintController: PhotoBackupConstraintController,
         connectionStateResource: ConnectionStateResource,
-        authorizationController: PhotoLibraryAuthorizationController
+        authorizationController: PhotoLibraryAuthorizationController,
+        rootFolderRepository: PhotosRootFolderRepository,
+        photoIdentifierInquirer: PhotoIdentifierInquirer
     ) {
         self.localSettings = localSettings
         self.client = client
         self.downloader = downloader
+        self.sdkDownloader = sdkDownloader
         self.sessionVault = sessionVault
         self.storageManager = storageManager
         self.listingDataSource = listingDataSource
@@ -61,6 +68,8 @@ public final class PhotoTagsMigrationFactory: MigrationCommandFactory {
         self.lockConstraintController = lockConstraintController
         self.connectionStateResource = connectionStateResource
         self.authorizationController = authorizationController
+        self.rootFolderRepository = rootFolderRepository
+        self.photoIdentifierInquirer = photoIdentifierInquirer
     }
 
     public func makeMigrationCommand(volumeID: String) -> (Command & WorkingNotifier) {
@@ -68,16 +77,25 @@ public final class PhotoTagsMigrationFactory: MigrationCommandFactory {
         let contentResource = LocalPhotoLibraryFileContentResource()
         let assetFactory = LocalPhotoAssetFactory(nameStrategy: LocalPhotoLibraryFilenameStrategy())
         let exifResource = CoreImagePhotoLibraryExifResource(parser: CoreImagePhotoLibraryExifParser())
-        let assetResource = TagsLocalPhotoLibraryAssetResource(contentResource: contentResource, assetFactory: assetFactory, exifResource: exifResource, localSettings: localSettings)
-        let assetDataFetcher = DefaultPhotoAssetDataFetcherResource()
+        let assetResource = TagsLocalPhotoLibraryAssetResource(
+            contentResource: contentResource,
+            assetFactory: assetFactory,
+            exifResource: exifResource,
+            localSettings: localSettings,
+            rootFolderRepository: rootFolderRepository,
+            encryptionResource: Encryptor()
+        )
+        let assetDataFetcher = DefaultPhotoAssetDataFetcherResource(photoIdentifierInquirer: photoIdentifierInquirer)
         let xAttrBackfillAnalyzer = DefaultXAttrBackfillAnalyzer(exifResource: exifResource)
 
         let fileContentResource = DecryptedPhotoContentResource(
             managedObjectContext: storageManager.photosBackgroundContext,
             downloader: downloader,
+            sdkDownloader: sdkDownloader,
             fetchResource: PhotoFetchResource(storage: storageManager),
-            validationResource: PhotoURLValidationResource(),
             photoUploadedNotifier: photoUploadedNotifier,
+            performanceMetricsController: nil,
+            photoDecryptor: RemoteFileContentDecryptor(validator: EmptyFileURLValidationResource()), // We don't need to verify previewability
             isDetailedErrorNotified: false
         )
 
@@ -172,7 +190,8 @@ public final class PhotoTagsMigrationFactory: MigrationCommandFactory {
 
     public func makeStorageConstraintController() -> PhotoBackupConstraintController {
         let observer = FetchedResultsControllerObserver(
-            controller: storageManager.subscriptionToUploadingPhotos(moc: storageManager.photosBackgroundContext)
+            controller: storageManager.subscriptionToUploadingPhotos(moc: storageManager.photosBackgroundContext),
+            isAutomaticallyStarted: false
         )
         let resource = UploadingPhotoAssetsStorageSizeResource(observer: observer)
         let interactor = LocalPhotoAssetsStorageConstraintInteractor(resource: resource)

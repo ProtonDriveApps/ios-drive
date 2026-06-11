@@ -17,7 +17,8 @@
 
 import Foundation
 
-protocol ValidNameDiscoverer {
+public protocol ValidNameDiscoverer {
     typealias Completion = (Result<NameHashPair, Error>) -> Void
     func findNextAvailableName(for file: FileNameCheckerModel, completion: @escaping Completion)
+    func findNextAvailableName(for file: FileNameCheckerModel) async throws -> NameHashPair
 }

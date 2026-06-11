@@ -21,6 +21,7 @@ import PDCore
 final class GroupToAlbumActionSheetViewModel {
     let albumList: [AlbumListing]
     var isSingleSelection: Bool { selectedPhotoIDs.count == 1 }
+    var hasNativeShare: Bool { type != .shareToWithoutNativeShare }
     private let dependencies: Dependencies
     private let metadataController: MetadataControllerProtocol
     private let selectedPhotoIDs: Set<PhotoListingId>
@@ -52,6 +53,12 @@ final class GroupToAlbumActionSheetViewModel {
         case .shareTo:
             let sectionHeight: CGFloat = 52
             let actionNum: CGFloat = isSingleSelection ? 3 : 1
+            let actionListHeight: CGFloat = sectionHeight + actionNum * cellHeight
+            let albumListHeight: CGFloat = sectionHeight + CGFloat(albumList.count) * cellHeight
+            return actionListHeight + albumListHeight
+        case .shareToWithoutNativeShare:
+            let sectionHeight: CGFloat = 52
+            let actionNum: CGFloat = isSingleSelection ? 2 : 1
             let actionListHeight: CGFloat = sectionHeight + actionNum * cellHeight
             let albumListHeight: CGFloat = sectionHeight + CGFloat(albumList.count) * cellHeight
             return actionListHeight + albumListHeight

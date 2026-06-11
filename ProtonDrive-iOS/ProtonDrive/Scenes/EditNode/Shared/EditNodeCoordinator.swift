@@ -39,7 +39,7 @@ final class EditNodeCoordinator: SwiftUICoordinator {
         
         switch context.intention {
         case let .create(parent):
-            let vm = CreateFolderViewModel(folderCreator: model, validator: validator, parent: parent)
+            let vm = CreateFolderViewModel(folderCreator: model, validator: validator, parent: parent, eventsSystemManager: context.tower)
             let nfvm = FormattingFolderViewModel(initialName: nil, attributes: nameAttributes)
             return EditNodeUIKitView(vm: vm, nfvm: nfvm)
         case .rename(let node):

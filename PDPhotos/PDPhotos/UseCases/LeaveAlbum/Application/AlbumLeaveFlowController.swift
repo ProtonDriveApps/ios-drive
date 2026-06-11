@@ -24,7 +24,7 @@ import PDClient
 protocol AlbumLeaveFlowControllerProtocol {
     var leavingPublisher: AnyPublisher<Bool, Never> { get }
 
-    func presentAlert(parameters: AlbumLeaveParameters)
+    func presentAlert(parameters: AlbumLeaveParameters, leavingCallback: @escaping () -> Void)
 }
 
 final class AlbumLeaveFlowController: AlbumLeaveFlowControllerProtocol {
@@ -38,18 +38,23 @@ final class AlbumLeaveFlowController: AlbumLeaveFlowControllerProtocol {
         self.dependencies = dependencies
     }
 
-    func presentAlert(parameters: AlbumLeaveParameters) {
+    func presentAlert(parameters: AlbumLeaveParameters, leavingCallback: @escaping () -> Void) {
         let title = albumTitle(album: parameters.album)
         dependencies.coordinator.presentLeaveAlbumAlert(
             albumName: title,
             leaveWithoutSaving: { [weak self] in
+                leavingCallback()
                 self?.leaveAlbumWithoutSaving(album: parameters.album, shouldCopyPhotos: false)
             },
-            saveAndLeave: makeSaveAndLeaveBlock(parameters: parameters)
+            saveAndLeave: makeSaveAndLeaveBlock(parameters: parameters, leavingCallback: leavingCallback)
         )
     }
 
-    private func makeSaveAndLeaveBlock(parameters: AlbumLeaveParameters) -> (() -> Void)? {
+    private func makeSaveAndLeaveBlock(
+        parameters: AlbumLeaveParameters,
+        leavingCallback: @escaping () -> Void
+    ) -> (() -> Void)? {
+        leavingCallback()
         guard parameters.album.photoCount < 100 else {
             return nil
         }
@@ -68,6 +73,8 @@ extension AlbumLeaveFlowController {
         guard let memberID = album.memberID, let shareID = album.shareID else { return }
         let context = dependencies.context
         isLeaving.send(true)
+        let config = PhotosListConfiguration(volumeId: album.identifier.volumeID, albumId: album.identifier.id)
+        dependencies.anchorController.remove(for: .init(configuration: config, filter: .default))
         Task {
             do {
                 var copyOutput: CopyPhotosOutput?
@@ -80,6 +87,7 @@ extension AlbumLeaveFlowController {
                 try await dependencies.client.removeMember(shareID: shareID, memberID: memberID)
                 try await context.perform {
                     if let album = CoreDataAlbum.fetch(identifier: album.identifier, in: context) {
+                        album.photos.forEach(context.delete)
                         context.delete(album)
                     }
                     if let share = Share.fetch(id: shareID, in: context) {
@@ -122,6 +130,7 @@ extension AlbumLeaveFlowController {
 
 extension AlbumLeaveFlowController {
     struct Dependencies {
+        let anchorController: PhotosListAnchorControllerProtocol
         let context: NSManagedObjectContext
         let coordinator: AlbumDetailCoordinatorProtocol
         let client: ShareMemberAPIClient

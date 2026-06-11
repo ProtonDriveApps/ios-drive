@@ -25,7 +25,7 @@ enum AsynchronousThumbnailRepositoryError: Error {
 }
 
 enum ThumbnailLoadResult {
-    case data(Data)
+    case storedInFileSystem
     case encrypted
     case missingURL
     case missingMetadata
@@ -71,23 +71,52 @@ final class DatabaseAsynchronousThumbnailRepository: AsynchronousThumbnailReposi
     }
 
     private func loadAsynchronously(id: PhotoId) async {
-        let optionalResult: ThumbnailLoadResult? = await managedObjectContext.perform { [weak self] in
+        let optionalResult: DatabaseLoadResult? = await managedObjectContext.perform { [weak self] in
             guard !Task.isCancelled else {
                 return nil
             }
-            guard let thumbnail = self?.getThumbnail(id: id) else {
-                return ThumbnailLoadResult.missingMetadata
-            }
-            if let data = thumbnail.clearThumbnail {
-                return ThumbnailLoadResult.data(data)
-            } else if thumbnail.encrypted != nil {
-                return ThumbnailLoadResult.encrypted
-            } else {
-                return ThumbnailLoadResult.missingURL
+            return self?.loadInContext(id: id)
+        }
+        guard let optionalResult else {
+            return
+        }
+        let result = await makeResult(from: optionalResult)
+        await finish(with: result)
+    }
+
+    enum DatabaseLoadResult {
+        case data(Data, type: ThumbnailType, nodeId: NodeIdentifier)
+        case result(ThumbnailLoadResult)
+    }
+
+    private func makeResult(from internalResult: DatabaseLoadResult) async -> ThumbnailLoadResult {
+        switch internalResult {
+        case .data(let data, let type, let nodeId):
+            await CoreDataThumbnail.saveClearDataToDisk(clearData: data, type: type, identifier: nodeId)
+            return .storedInFileSystem
+        case .result(let thumbnailLoadResult):
+            return thumbnailLoadResult
+        }
+    }
+
+    private func loadInContext(id: PhotoId) -> DatabaseLoadResult {
+        guard let thumbnail = getThumbnail(id: id) else {
+            return .result(.missingMetadata)
+        }
+        let nodeID = NodeIdentifier(id.id, "", id.volumeID)
+        
+        for type in FileStorageType.allCases {
+            let url = PDFileManager.fileURL(for: nodeID, prefix: nil, storageType: type, shouldCreate: false)
+            if FileManager.default.fileExists(atPath: url.path) {
+                return .result(.storedInFileSystem)
             }
         }
-        if let result = optionalResult {
-            await finish(with: result)
+        if let data = thumbnail.clearThumbnail {
+            return .data(data, type: thumbnail.type, nodeId: nodeID)
+        } else if thumbnail.encrypted != nil {
+            return .result(.encrypted)
+        } else {
+            return .result(.missingURL)
         }
     }
 

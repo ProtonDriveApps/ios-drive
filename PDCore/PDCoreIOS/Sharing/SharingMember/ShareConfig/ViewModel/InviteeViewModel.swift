@@ -50,7 +50,7 @@ final class InviteeViewModel: ObservableObject {
     }
 
     var hasSharingEditing: Bool {
-        dependencies.featureFlagsController.hasSharingEditing
+        dependencies.featureFlagsController.hasSharing
     }
 
     func name(of email: String) -> String? {

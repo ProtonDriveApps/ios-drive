@@ -17,42 +17,42 @@
 
 import FileProvider
 import PDCore
+import CoreData
 import ProtonCoreObservability
 
 public class KeepDownloadedEnumerationManager {
     private static let keepDownloadedQueue = LocalItemsAwaitingEnumeration()
     private static let removeDownloadedQueue = LocalItemsAwaitingEnumeration()
 
-    private let storage: StorageManager
     private let fileSystemSlot: FileSystemSlot
     private let fileProviderManager: NSFileProviderManager
 
-    public init(storage: StorageManager,
-                fileSystemSlot: FileSystemSlot,
+    public init(fileSystemSlot: FileSystemSlot,
                 fileProviderManager: NSFileProviderManager) {
-        self.storage = storage
         self.fileSystemSlot = fileSystemSlot
         self.fileProviderManager = fileProviderManager
     }
 
-    public func setKeepDownloadedState(to keepDownloaded: Bool, for itemIdentifiers: [NSFileProviderItemIdentifier]) {
+    public func setKeepDownloadedState(to keepDownloaded: Bool, for itemIdentifiers: [NSFileProviderItemIdentifier], moc: NSManagedObjectContext) {
+        
+        setKeepDownloadedStateSync(to: keepDownloaded, for: itemIdentifiers, moc: moc)
+        let queue = keepDownloaded ? Self.keepDownloadedQueue : Self.removeDownloadedQueue
+        queue.push(itemIdentifiers)
+        
         Task {
-            await setKeepDownloadedState(to: keepDownloaded, for: itemIdentifiers)
-
-            let queue = keepDownloaded ? Self.keepDownloadedQueue : Self.removeDownloadedQueue
-
-            queue.push(itemIdentifiers)
-
             do {
+                Log.event(.signalEnumerator(.started(.init(containerType: .workingSet, reason: .keepDownloadedStateChanged))))
                 try await fileProviderManager.signalEnumerator(for: .workingSet)
+                Log.event(.signalEnumerator(.succeeded(.init(containerType: .workingSet, reason: .keepDownloadedStateChanged))))
             } catch {
+                Log.event(.signalEnumerator(.failed(.init(id: NSFileProviderItemIdentifier.workingSet.logIdentifier,
+                                                           error: error.localizedDescription))))
                 Log.error("Failed to signal enumerator", error: error, domain: .offlineAvailable)
             }
         }
     }
 
-    private func setKeepDownloadedState(to keepDownloaded: Bool, for itemIdentifiers: [NSFileProviderItemIdentifier]) async {
-        let moc = storage.backgroundContext
+    private func setKeepDownloadedStateSync(to keepDownloaded: Bool, for itemIdentifiers: [NSFileProviderItemIdentifier], moc: NSManagedObjectContext) {
         let nodeIdentifiers = itemIdentifiers.compactMap { itemIdentifier in
             return NodeIdentifier(itemIdentifier)
         }
@@ -60,7 +60,7 @@ public class KeepDownloadedEnumerationManager {
         let nodes = fileSystemSlot.getNodes(nodeIdentifiers, moc: moc)
 
         do {
-            try await moc.perform { [self] in
+            try moc.performAndWait { [self] in
                 rawSetKeepDownloadedState(to: keepDownloaded, for: nodes)
 
                 try moc.saveOrRollback()
@@ -90,9 +90,7 @@ public class KeepDownloadedEnumerationManager {
         }
     }
 
-    private func inheritKeepDownloadedState(for nodes: [Node]) {
-        let moc = storage.backgroundContext
-
+    private func inheritKeepDownloadedState(for nodes: [Node], moc: NSManagedObjectContext) {
         do {
             try moc.performAndWait { [self] in
                 let nodes = nodes.map { $0.in(moc: moc) }
@@ -114,20 +112,12 @@ public class KeepDownloadedEnumerationManager {
         }
     }
 
-    public func updateStateBasedOnParent(for nodes: [Node]) {
-        Task {
-            await updateStateBasedOnParent(for: nodes)
-        }
-    }
-
-    private func updateStateBasedOnParent(for nodes: [Node]) async {
-        let moc = storage.backgroundContext
-
+    public func updateStateBasedOnParent(for nodes: [Node], moc: NSManagedObjectContext) {
         var keepDownloadedNodes: [Node] = []
         var inheritKeepDownloadedNodes: [Node] = []
 
         do {
-            try await moc.perform { [self] in
+            try moc.performAndWait { [self] in
                 let nodes = nodes.map { $0.in(moc: moc) }
                 nodes.forEach { node in
                     if shouldUpdateKeepDownloadedStateBasedOnParent(for: node) {
@@ -150,10 +140,16 @@ public class KeepDownloadedEnumerationManager {
         let itemIdentifiers = updatedNodes.map { NSFileProviderItemIdentifier($0.identifier) }
         Self.keepDownloadedQueue.push(itemIdentifiers)
 
-        do {
-            try await fileProviderManager.signalEnumerator(for: .workingSet)
-        } catch {
-            Log.error("Failed to signal enumerator", error: error, domain: .offlineAvailable)
+        Task {
+            do {
+                Log.event(.signalEnumerator(.started(.init(containerType: .workingSet, reason: .keepDownloadedStateUpdatedBasedOnParent))))
+                try await fileProviderManager.signalEnumerator(for: .workingSet)
+                Log.event(.signalEnumerator(.succeeded(.init(containerType: .workingSet, reason: .keepDownloadedStateUpdatedBasedOnParent))))
+            } catch {
+                Log.event(.signalEnumerator(.failed(.init(id: NSFileProviderItemIdentifier.workingSet.logIdentifier,
+                                                          error: error.localizedDescription))))
+                Log.error("Failed to signal enumerator", error: error, domain: .offlineAvailable)
+            }
         }
     }
 
@@ -175,52 +171,61 @@ public class KeepDownloadedEnumerationManager {
         return !node.isMarkedOfflineAvailable && parent.isAvailableOffline
     }
 
-    public func processKeepDownloadedItems(_ observers: [NSFileProviderChangeObserver]) {
+    public func processKeepDownloadedItems(
+        _ observers: [NSFileProviderChangeObserver], moc: NSManagedObjectContext
+    ) {
         let identifiers = Self.keepDownloadedQueue.popNextPage()
         guard !identifiers.isEmpty else { return }
 
-        let enumeratedNodes = enumerateDownloadedItems(identifiers, observers: observers)
+        let enumeratedNodes = enumerateDownloadedItems(identifiers, observers: observers, moc: moc)
+        
+        keepChildrenDownloaded(for: enumeratedNodes, moc: moc)
 
         Task {
-            keepChildrenDownloaded(for: enumeratedNodes)
 
             do {
+                Log.event(.signalEnumerator(.started(.init(containerType: .workingSet, reason: .keepDownloadedStateProcessItems))))
                 try await fileProviderManager.signalEnumerator(for: .workingSet)
+                Log.event(.signalEnumerator(.succeeded(.init(containerType: .workingSet, reason: .keepDownloadedStateProcessItems))))
             } catch {
+                Log.event(.signalEnumerator(.failed(.init(id: NSFileProviderItemIdentifier.workingSet.logIdentifier,
+                                                           error: error.localizedDescription))))
                 Log.error("Failed to signal enumerator", error: error, domain: .offlineAvailable)
             }
         }
     }
 
-    public func processRemoveDownloadedItems(_ observers: [NSFileProviderChangeObserver]) {
+    public func processRemoveDownloadedItems(
+        _ observers: [NSFileProviderChangeObserver], moc: NSManagedObjectContext
+    ) {
         let identifiers = Self.removeDownloadedQueue.popNextPage()
         guard !identifiers.isEmpty else { return }
 
-        let enumeratedNodes = enumerateDownloadedItems(identifiers, observers: observers)
+        let enumeratedNodes = enumerateDownloadedItems(identifiers, observers: observers, moc: moc)
+        
+        keepChildrenDownloaded(for: enumeratedNodes, moc: moc)
+        evict(enumeratedNodes, moc: moc)
 
         Task {
-            keepChildrenDownloaded(for: enumeratedNodes)
-            evict(enumeratedNodes)
-
             do {
+                Log.event(.signalEnumerator(.started(.init(containerType: .workingSet, reason: .removeDownloadedStateChanged))))
                 try await fileProviderManager.signalEnumerator(for: .workingSet)
+                Log.event(.signalEnumerator(.succeeded(.init(containerType: .workingSet, reason: .removeDownloadedStateChanged))))
             } catch {
+                Log.event(.signalEnumerator(.failed(.init(id: NSFileProviderItemIdentifier.workingSet.logIdentifier,
+                                                           error: error.localizedDescription))))
                 Log.error("Failed to signal enumerator", error: error, domain: .offlineAvailable)
             }
         }
     }
 
-    private func evict(_ nodes: [Node]) {
-        let moc = storage.backgroundContext
-
+    private func evict(_ nodes: [Node], moc: NSManagedObjectContext) {
         let parentGroups = moc.performAndWait {
-            let nodes = nodes.map { $0.in(moc: moc) }
-
-            return nodes.reduce(into: [NSFileProviderItemIdentifier: [Node]]()) {
+            return nodes.reduce(into: [NSFileProviderItemIdentifier: [NSFileProviderItemIdentifier]]()) {
                 guard let parentFolder = $1.parentFolder else { return }
 
                 let key = parentFolder.isRoot ? NSFileProviderItemIdentifier.rootContainer : NSFileProviderItemIdentifier(parentFolder.identifier)
-                $0[key, default: []].append($1)
+                $0[key, default: []].append(NSFileProviderItemIdentifier($1.identifier))
             }
         }
 
@@ -228,18 +233,17 @@ public class KeepDownloadedEnumerationManager {
             // Continue with other operations asynchronously
             fileProviderManager.waitForChanges(below: parentIdentifier) { [self] error in
                 Task {
-                    guard let finishedNodes = parentGroups[parentIdentifier], !finishedNodes.isEmpty else { return }
+                    guard let evictionIdentifiers = parentGroups[parentIdentifier], !evictionIdentifiers.isEmpty else { return }
 
                     Log.trace("Will evict items")
-                    await evictNodes(finishedNodes)
+                    await evict(evictionIdentifiers)
                 }
             }
         }
     }
 
-    private func evictNodes(_ nodes: [Node]) async {
-        let itemIdentifiersToEvict = nodes.map { NSFileProviderItemIdentifier($0.identifier) }
-        await itemIdentifiersToEvict.forEach {
+    private func evict(_ identifiers: [NSFileProviderItemIdentifier]) async {
+        await identifiers.forEach {
             do {
                 // Still attempt to evict even if waiting for changes fails
                 try await fileProviderManager.evictItem(identifier: $0)
@@ -249,10 +253,13 @@ public class KeepDownloadedEnumerationManager {
         }
     }
 
-    private func enumerateDownloadedItems(_ identifiers: [NSFileProviderItemIdentifier],
-                                          observers: [NSFileProviderChangeObserver]) -> [Node] {
+    private func enumerateDownloadedItems(
+        _ identifiers: [NSFileProviderItemIdentifier],
+        observers: [NSFileProviderChangeObserver],
+        moc: NSManagedObjectContext
+    ) -> [Node] {
         let nodeIdentifiers = identifiers.compactMap { NodeIdentifier($0) }
-        let nodes = fileSystemSlot.getNodes(nodeIdentifiers)
+        let nodes = fileSystemSlot.getNodes(nodeIdentifiers, moc: moc)
 
         let nodeItems = nodes.compactMap { try? NodeItem(node: $0) }
         guard !nodeItems.isEmpty else { return [] }
@@ -263,16 +270,16 @@ public class KeepDownloadedEnumerationManager {
         return nodes
     }
 
-    private func keepChildrenDownloaded(for parents: [Node]) {
+    private func keepChildrenDownloaded(for parents: [Node], moc: NSManagedObjectContext) {
         guard !parents.isEmpty else { return }
 
         let children = parents.flatMap { node in
-            fileSystemSlot.getChildren(of: node.identifier, sorting: .default)
+            fileSystemSlot.getChildren(of: node.identifier, sorting: .default, moc: moc)
         }
 
         guard !children.isEmpty else { return }
 
-        inheritKeepDownloadedState(for: children)
+        inheritKeepDownloadedState(for: children, moc: moc)
 
         let childItemIdentifiers = children.map { NSFileProviderItemIdentifier($0.identifier) }
         Self.keepDownloadedQueue.push(childItemIdentifiers)

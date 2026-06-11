@@ -20,11 +20,11 @@ let package = Package(
         .package(name: "PDUIComponents", path: "../PDUIComponents"),
         .package(name: "PDContacts", path: "../PDContacts"),
 
-        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", exact: "32.7.1"),
+        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", exact: "37.0.1"),
         .package(url: "https://github.com/ProtonMail/apple-fusion.git", exact: "2.1.5"),
         .package(url: "https://github.com/ProtonMail/TrustKit.git", exact: "1.0.3"),
         .package(url: "https://github.com/ashleymills/Reachability.swift", exact: "5.2.4"),
-        .package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.19")
+        .package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.20"),
     ],
     targets: [
         .target(
@@ -76,6 +76,8 @@ let package = Package(
                 .product(name: "PDUIComponents", package: "PDUIComponents"),
                 .product(name: "PDContacts", package: "PDContacts"),
                 .product(name: "ProtonCorePaymentsUI", package: "protoncore_ios"),
+                .product(name: "ProtonCorePaymentsV2", package: "protoncore_ios"),
+                .product(name: "ProtonCorePaymentsUIV2", package: "protoncore_ios"),
             ],
             path: "PDCoreIOS"
         ),

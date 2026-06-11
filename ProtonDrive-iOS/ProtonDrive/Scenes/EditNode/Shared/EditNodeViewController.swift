@@ -81,7 +81,7 @@ final class EditNodeViewController: UIViewController {
     func setupNavigationBar() {
         navigationItem.leftBarButtonItem = UIBarButtonItem(customView: closeButton)
         navigationItem.rightBarButtonItem = actionButton
-        navigationItem.rightBarButtonItem?.isEnabled = false
+        navigationItem.rightBarButtonItem?.isEnabled = viewModel.shouldDoneButtonBeEnabledByDefault
     }
 
     private func showError(_ error: Error) {

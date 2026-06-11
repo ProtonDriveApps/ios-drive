@@ -22,11 +22,40 @@ public protocol ThumbnailProvider: AnyObject {
 
     var next: ThumbnailProvider? { get set }
 
-    func getThumbnail(from url: URL, ofSize size: CGSize) -> Image?
+    /// Generates thumbnail for file at given URL.
+    /// - Parameters:
+    ///   - url: URL to media
+    ///   - overrideMediaType: allows callers to provide a mediaType for files not matching conventional
+    ///   file names and extensions.
+    ///   - size: size for the expected thumbnail.
+    /// - Returns: an Image if the process was successful.
+    func getThumbnail(
+        from url: URL,
+        overrideMediaType: String?,
+        ofSize size: CGSize
+    ) -> Image?
 }
 
 public enum ThumbnailProviderFactory {
+    public static var defaultSynchronizedThumbnailProvider: SynchronizedThumbnailProviderProtocol {
+        return SynchronizedThumbnailProvider(thumbnailProvider: defaultThumbnailProvider)
+    }
+
     public static var defaultThumbnailProvider: ThumbnailProvider {
         CGImageThumbnailProvider(next: PDFThumbnailProvider(next: VideoThumbnailProvider()))
     }
+
+    public static var imageVideoThumbnailProvider: ThumbnailProvider {
+        return CGImageThumbnailProvider(next: VideoThumbnailProvider())
+    }
+
+    public static var SynchedImageVideoThumbnailProvider: SynchronizedThumbnailProviderProtocol {
+        return SynchronizedThumbnailProvider(thumbnailProvider: imageVideoThumbnailProvider)
+    }
+}
+
+public final class NoopThumbnailProvider: ThumbnailProvider {
+    public static let instance: NoopThumbnailProvider = .init()
+    public var next: ThumbnailProvider? { get { nil } set { _ = newValue } }
+    public func getThumbnail(from url: URL, overrideMediaType: String?, ofSize size: CGSize) -> Image? { nil }
 }

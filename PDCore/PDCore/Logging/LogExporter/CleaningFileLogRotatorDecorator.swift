@@ -19,7 +19,7 @@ import Foundation
 
 public final class CleaningFileLogRotatorDecorator: FileLogRotator {
     private let rotator: FileLogRotator
-    private let archiveDirectory = PDFileManager.logsArchiveDirectory
+    private let archiveDirectory: URL
     private let dateProvider: () -> Date
     private let fileManager = FileManager.default
 
@@ -27,11 +27,13 @@ public final class CleaningFileLogRotatorDecorator: FileLogRotator {
     public let maxLogAgeDays: Int
 
     public init(
+        archiveDirectory: URL = PDFileManager.logsArchiveDirectory,
         maximumArchiveSize: Int,
         maxLogAgeDays: Int = 30,
         rotator: FileLogRotator,
         dateProvider: @escaping () -> Date = Date.init
     ) {
+        self.archiveDirectory = archiveDirectory
         self.maximumArchiveSize = maximumArchiveSize
         self.maxLogAgeDays = maxLogAgeDays
         self.rotator = rotator
@@ -52,7 +54,11 @@ public final class CleaningFileLogRotatorDecorator: FileLogRotator {
                 try fileManager.removeItem(at: oldFile)
             }
         } catch {
-            SentryClient.shared.recordError("LogCollectionError 😵🗂️. Failed to delete old files: \(error)")
+            SentryClient.shared.recordError(
+                "LogCollectionError 😵🗂️. Failed to delete old files: \(error)",
+                system: .default,
+                domain: .logs
+            )
         }
     }
 
@@ -69,7 +75,11 @@ public final class CleaningFileLogRotatorDecorator: FileLogRotator {
                 try fileManager.removeItem(at: file)
             }
         } catch {
-            SentryClient.shared.recordError("LogCollectionError 😵🗂️. Failed to prune files by size: \(error)")
+            SentryClient.shared.recordError(
+                "LogCollectionError 😵🗂️. Failed to prune files by size: \(error)",
+                system: .default,
+                domain: .logs
+            )
         }
     }
 

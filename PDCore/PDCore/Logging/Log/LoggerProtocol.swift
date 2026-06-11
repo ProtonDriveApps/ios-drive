@@ -112,15 +112,15 @@ public struct StructuredLogEntry {
 
 /// Any information logged together with a message and/or error.
 public struct LogContext: CustomDebugStringConvertible {
-    public var context = [String: String]()
+    public var context = [String: Encodable]()
 
-    public init(_ string: String? = nil) {
-        if let string {
-            self.context["contextString"] = string
+    public init(_ value: Encodable? = nil, forKey key: String = "contextString") {
+        if let value {
+            self.context[key] = value
         }
     }
-
-    public subscript(key: String) -> String? {
+    
+    public subscript(key: String) -> Encodable? {
         get {
             context[key]
         }

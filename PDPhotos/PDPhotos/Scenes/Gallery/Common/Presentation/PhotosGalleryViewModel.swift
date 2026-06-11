@@ -42,7 +42,6 @@ final class PhotosGalleryViewModel: PhotosGalleryViewModelProtocol {
     private let fetchingStatusController: PhotosListFetchingStatusControllerProtocol
     private let errorController: ErrorController
     private let tagsController: GalleryTagsControllerProtocol
-    private let isLegacyShare: Bool
     private var cancellables = Set<AnyCancellable>()
     @Published var isRefreshing = false
     @Published var shouldShowFilterView = true
@@ -65,7 +64,6 @@ final class PhotosGalleryViewModel: PhotosGalleryViewModelProtocol {
         self.errorController = errorController
         self.configuration = configuration
         self.tagsController = tagsController
-        isLegacyShare = streamConfiguration.isLegacyShare
         subscribeToUpdates()
     }
 
@@ -100,7 +98,7 @@ final class PhotosGalleryViewModel: PhotosGalleryViewModelProtocol {
 
     private func map(isEmpty: Bool, isLoadingLocalState: Bool, status: PhotosListFetchingStatus) -> PhotosGalleryViewContent {
         if tagsController.getSelectedTag() == nil {
-            shouldShowFilterView = !isLegacyShare && !isEmpty
+            shouldShowFilterView = !isEmpty
         }
         switch status {
         case .hasBackedUpPhoto:

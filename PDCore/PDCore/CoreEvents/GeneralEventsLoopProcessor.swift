@@ -117,6 +117,10 @@ final class GeneralEventsLoopProcessor: EventLoopProcessor {
     
     func process(_ user: User) {
         guard user != userVault.userInfo else { return }
+        let keysInfo = user.keys.map { key in
+            "\(key.keyID.prefix(5)), isActive: \(key.active)"
+        }.joined(separator: ",")
+        Log.info("Storing new user info, keys: \(keysInfo)", domain: .events)
         userVault.storeUser(user)
     }
     
@@ -134,6 +138,10 @@ final class GeneralEventsLoopProcessor: EventLoopProcessor {
     }
     
     func process(_ addressUpdates: [AddressUpdate]) {
+        let keysInfo = addressUpdates.flatMap { $0.address?.keys ?? [] }.map { key in
+            "\(key.keyID.prefix(5)), isActive: \(key.active)"
+        }.joined(separator: ",")
+        Log.info("Processing addresses changes, keysInfo: \(keysInfo)", domain: .events)
         var processed = [SessionVault.AddressID: Address]()
         
         // add all currently present addresses

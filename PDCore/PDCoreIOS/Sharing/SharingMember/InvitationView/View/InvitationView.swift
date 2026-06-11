@@ -178,6 +178,7 @@ extension InvitationView {
                 }
                 
                 if candidate.isDuplicated {
+                    textFieldFocus = false
                     viewModel.presentDuplicatedInvitationError()
                 }
             }
@@ -270,7 +271,7 @@ extension InvitationView {
                             foregroundColor: ColorProvider.IconWeak,
                             iconSize: .init(width: 16, height: 16)
                         )
-                    )
+                    ).accessibilityIdentifier("InvitationView.settingsButton")
                 }
             )
         }

@@ -53,7 +53,8 @@ public struct Share: Codable {
     public var shareID: ShareID
     public var volumeID: Volume.VolumeID
     public var linkID: Link.LinkID
-    public var creator, addressID: String
+    public var creator: String
+    public let addressID: String?
     public var key, passphrase, passphraseSignature: String
     public let type: ´Type´
 
@@ -66,7 +67,7 @@ public struct Share: Codable {
     }
     
     public init(flags: Flags, shareID: ShareID, volumeID: Volume.VolumeID, linkID: Link.LinkID,
-                creator: String, addressID: String, key: String, 
+                creator: String, addressID: String?, key: String,
                 passphrase: String, passphraseSignature: String, type: ´Type´) {
         self.flags = flags
         self.shareID = shareID

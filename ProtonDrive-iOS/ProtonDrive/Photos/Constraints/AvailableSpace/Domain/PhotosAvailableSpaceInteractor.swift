@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import PDCore
 
 protocol PhotosAvailableSpaceInteractor {
     var constraint: AnyPublisher<Bool, Never> { get }
@@ -42,7 +43,11 @@ final class ConcretePhotosAvailableSpaceInteractor: PhotosAvailableSpaceInteract
     private func subscribeToUpdates() {
         resource.availableSpace
             .map { space in
-                space < Constants.photosNecessaryFreeStorage
+                let isConstrained = space < Constants.photosNecessaryFreeStorage
+                if isConstrained {
+                    Log.debug("Available space in temporary folder is too low: \(space)", domain: .storage)
+                }
+                return isConstrained
             }
             .removeDuplicates()
             .sink { [weak self] isConstrained in

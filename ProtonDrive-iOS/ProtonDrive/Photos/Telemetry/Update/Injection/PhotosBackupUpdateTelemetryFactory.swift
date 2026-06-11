@@ -35,6 +35,6 @@ struct PhotosBackupUpdateTelemetryFactory {
         let valuesRepository = ConcretePhotosBackupUpdateValuesRepository(uploadRepository: uploadRepository, scanningRepository: scanningRepository, duplicatesRepository: duplicatesRepository, throttlingRepository: throttlingRepository, storage: storage, duration: duration)
         let connectionFactory = PhotosTelemetryConnectionFactory(networkController: networkController)
         let dataFactory = ConcretePhotosBackupUpdateTelemetryDataFactory(repository: valuesRepository, userInfoFactory: userInfoFactory, connectionFactory: connectionFactory)
-        return ConcretePhotosBackupUpdateTelemetryController(telemetryController: telemetryController, stateController: stateController, valuesRepository: valuesRepository, timerResource: CommonRunLoopPausableTimerResource(duration: duration), dataFactory: dataFactory)
+        return ConcretePhotosBackupUpdateTelemetryController(telemetryController: telemetryController, stateController: stateController, valuesRepository: valuesRepository, timerResource: iOSPausableTimerResource(duration: duration), dataFactory: dataFactory)
     }
 }

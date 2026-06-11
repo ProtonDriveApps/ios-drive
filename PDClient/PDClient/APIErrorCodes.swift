@@ -16,6 +16,10 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 public enum APIErrorCodes: Int, Equatable {
+    case invalidValue = 2001 // INVALID_VALUE
+    case alreadyExists = 2500 // ALREADY_EXISTS
     case itemOrItsParentDeletedErrorCode = 2501 // NOT_EXISTS
+    case currentRevisionIsNotUpToDateErrorCode = 2511 // INCOMPATIBLE_STATE
+    case invalidManifestSignature = 200502 // SIGNATURE_VERIFICATION_FAILED
     case protonDocumentCannotBeCreatedFromMacOSAppErrorCode = 200701 // FILE_CREATION_NOT_ENABLED_FOR_DOCUMENTS
 }

@@ -25,12 +25,14 @@ protocol ProtonFileCoordinatorProtocol: URLCoordinatorProtocol {
     func openPreview(identifier: ProtonFileIdentifier)
     func openShare(url: URL, completion: @escaping () -> Void)
     func openRename(identifier: ProtonFileIdentifier)
+    func releasePreviewViewController()
 }
 
 final class ProtonFileCoordinator: ProtonFileCoordinatorProtocol {
     private let container: ProtonFilePreviewContainer
     weak var rootViewController: UIViewController?
-    private weak var previewViewController: UIViewController?
+    weak var openingController: ProtonFileOpeningControllerProtocol?
+    private var previewViewController: UIViewController?
 
     init(container: ProtonFilePreviewContainer) {
         self.container = container
@@ -43,12 +45,15 @@ final class ProtonFileCoordinator: ProtonFileCoordinatorProtocol {
     }
 
     func openPreview(identifier: ProtonFileIdentifier) {
-        guard let rootViewController else {
+        guard let rootViewController, let openingController else {
             return
         }
 
-        let openingController = container.makeController(rootViewController: rootViewController)
-        let previewViewController = container.makePreviewViewController(identifier: identifier, coordinator: self, openingController: openingController)
+        let previewViewController = container.makePreviewViewController(
+            identifier: identifier,
+            coordinator: self,
+            openingController: openingController
+        )
         let navigationViewController = ModalNavigationViewController(rootViewController: previewViewController)
         navigationViewController.modalPresentationStyle = .overFullScreen
         rootViewController.present(navigationViewController, animated: true)
@@ -86,5 +91,9 @@ final class ProtonFileCoordinator: ProtonFileCoordinatorProtocol {
         let navigationViewController = UINavigationController(rootViewController: viewController)
         navigationViewController.isModalInPresentation = true
         previewViewController.present(navigationViewController, animated: true)
+    }
+
+    func releasePreviewViewController() {
+        previewViewController = nil
     }
 }

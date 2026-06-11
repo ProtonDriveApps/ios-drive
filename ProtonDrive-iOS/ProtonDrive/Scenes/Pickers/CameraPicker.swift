@@ -18,6 +18,7 @@
 import SwiftUI
 import UIKit
 import PDCore
+import PDCoreIOS
 import PDUIComponents
 import CoreServices
 import AVFoundation

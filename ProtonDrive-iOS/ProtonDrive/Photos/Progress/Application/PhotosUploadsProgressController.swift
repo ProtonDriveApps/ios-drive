@@ -50,8 +50,8 @@ final class LocalPhotosUploadsProgressController: PhotosLoadProgressController {
     private func handleUpdate(_ count: PhotosUploadingCount) {
         if count.isInitialCount {
             totalCount = count.count
-            Log.info("Photos upload progress (initial): \(progress)", domain: .photosProcessing)
             let progress = PhotosBackupProgress(total: totalCount, inProgress: totalCount)
+            Log.info("Photos upload progress (initial): \(progress)", domain: .photosProcessing)
             subject.send(progress)
         } else {
             let progress = PhotosBackupProgress(total: totalCount, inProgress: count.count)

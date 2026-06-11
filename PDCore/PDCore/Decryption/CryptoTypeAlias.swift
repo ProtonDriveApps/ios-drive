@@ -33,7 +33,7 @@ public typealias Armored = String
 public typealias Passphrase = String
 
 typealias PlainData = Data
-typealias PlainText = String
+public typealias PlainText = String
 typealias ArmoredEncryptionKey = ArmoredKey
 typealias ArmoredSigningKey = ArmoredKey
 

@@ -41,6 +41,11 @@ public final class LocalPhotoLibraryAuthorizationResource: PhotoLibraryAuthoriza
             }
         }
     }
+    
+    public func authorize() async -> PhotoLibraryPermissions {
+        _ = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+        return getPermissions()
+    }
 
     private func update() {
         let permissions = getPermissions()

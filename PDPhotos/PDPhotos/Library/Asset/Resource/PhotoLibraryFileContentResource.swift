@@ -20,7 +20,6 @@ import PDCore
 import Photos
 
 public protocol PhotoLibraryFileContentResource {
-    func copyFile(with resource: PHAssetResource) async throws -> URL
     func getVideoDuration(at url: URL) -> Double
 }
 
@@ -28,27 +27,9 @@ public final class LocalPhotoLibraryFileContentResource: PhotoLibraryFileContent
 
     public init() { }
 
-    public func copyFile(with resource: PHAssetResource) async throws -> URL {
-        do {
-            let filename = try resource.getNormalizedFilename()
-            let url = PDFileManager.prepareUrlForPhotoFile(named: filename)
-            let options = makeOptions()
-            try await PHAssetResourceManager.default().writeData(for: resource, toFile: url, options: options)
-            return url
-        } catch let error as NSError {
-            throw DomainCodeError(error: error)
-        }
-    }
-
     public func getVideoDuration(at url: URL) -> Double {
         let asset = AVAsset(url: url)
         let duration = asset.duration
         return CMTimeGetSeconds(duration)
-    }
-
-    private func makeOptions() -> PHAssetResourceRequestOptions {
-        let options = PHAssetResourceRequestOptions()
-        options.isNetworkAccessAllowed = true
-        return options
     }
 }

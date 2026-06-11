@@ -91,6 +91,9 @@ struct TrashView: View {
                         })
                         .buttonStyle(CellButtonStyle(isEnabled: true, background: ColorProvider.BackgroundSecondary))
                     }
+                    .onAppear {
+                        vm.reportListIsShown()
+                    }
                 }
             }
         }

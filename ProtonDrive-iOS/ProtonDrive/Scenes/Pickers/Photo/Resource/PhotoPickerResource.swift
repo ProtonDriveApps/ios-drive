@@ -18,6 +18,7 @@
 import Combine
 import Foundation
 import PDCore
+import PDCoreIOS
 
 protocol PhotoPickerLoadResource {
     var resultsPublisher: AnyPublisher<[URLResult], Never> { get }

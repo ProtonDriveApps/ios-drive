@@ -25,9 +25,12 @@ final class PhotosSettingsContainer {
         let settingsController: PhotoBackupSettingsController
         let tower: Tower
         let backupStartController: PhotosBackupStartController
-        let migrationController: PhotoVolumeMigrationControllerProtocol
     }
     private let dependencies: Dependencies
+
+    var backupSettingsController: PhotoBackupSettingsController {
+        dependencies.settingsController
+    }
 
     init(dependencies: Dependencies) {
         self.dependencies = dependencies
@@ -35,6 +38,6 @@ final class PhotosSettingsContainer {
 
     func makeSettingsCell() -> PMCellSuplier {
         let factory = PhotosSettingsFactory()
-        return factory.makeSettingsCell(settingsController: dependencies.settingsController, tower: dependencies.tower, backupStartController: dependencies.backupStartController, migrationController: dependencies.migrationController)
+        return factory.makeSettingsCell(settingsController: dependencies.settingsController, tower: dependencies.tower, backupStartController: dependencies.backupStartController)
     }
 }

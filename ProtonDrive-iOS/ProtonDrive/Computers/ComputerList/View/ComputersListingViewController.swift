@@ -63,6 +63,14 @@ class ComputersViewController: UIViewController {
         navigationController?.navigationBar.isHidden = false
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if let collectionView = self.collectionView,
+           collectionView.numberOfItems(inSection: 0) > 0 {
+            viewModel.reportListIsShown()
+        }
+    }
+
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         navigationController?.navigationBar.isHidden = true
@@ -93,6 +101,7 @@ class ComputersViewController: UIViewController {
     private func setupBindings() {
         viewModel.$computers.sink { [weak self] computers in
             self?.collectionView.reloadData()
+            self?.viewModel.reportListIsShown()
             self?.updateEmptyState(isEmpty: computers.isEmpty)
             self?.refreshControl.endRefreshing()
             self?.initialLoader?.remove()

@@ -26,39 +26,38 @@ struct MoreSectionViewModel {
     let file: File
 
     var items: [MoreSectionItem] {
-        [shareIn].compactMap { $0 }
+        if canExportFile { return [.shareIn, .download] }
+        return []
     }
 }
 
 extension MoreSectionViewModel {
-    private var shareIn: MoreSectionItem? {
-        guard file.isDownloadable else {
-            return nil
+    private var canExportFile: Bool {
+        if file.activeRevision != nil, file.isDownloadable {
+            return true
+        } else {
+            return false
         }
-        guard let validBlocks = file.activeRevision?.blocksAreValid(),
-        validBlocks else { return nil }
-        return .shareIn
     }
 }
 
 extension MoreSectionViewModel {
     enum MoreSectionItem: String, SectionItemDisplayable {
         case shareIn
+        case download
 
         var text: String {
-            let name: String
             switch self {
-            case .shareIn: name = Localization.more_action_open_in
+            case .shareIn: return Localization.more_action_open_in
+            case .download: return Localization.more_action_download
             }
-            return name
         }
 
         var icon: Image {
-            let name: Image
             switch self {
-            case .shareIn: name = IconProvider.arrowOutFromRectangle
+            case .shareIn: return IconProvider.arrowOutFromRectangle
+            case .download: return IconProvider.arrowDownLine
             }
-            return name
         }
 
         var identifier: String {

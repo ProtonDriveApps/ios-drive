@@ -22,36 +22,38 @@ public extension SyncStorageManager {
     func countSyncsInProgress() -> Int {
         Log.trace()
         let predicate = NSPredicate(format: "inProgress == %d", true)
-        return count(with: predicate, in: backgroundContext)
+        return count(with: predicate, in: presentationContext)
     }
 
     func countEnumerationsInProgress() -> Int {
         Log.trace()
         let predicate = NSPredicate(format: "(fileProviderOperationRaw == %d OR fileProviderOperationRaw == %d) AND inProgress == %d", FileProviderOperation.enumerateItems.rawValue, FileProviderOperation.enumerateChanges.rawValue, true)
-        return count(with: predicate, in: backgroundContext)
+        return count(with: predicate, in: presentationContext)
     }
 
+    /// Reads the enumeration progress string (written wherever you see
+    /// `ItemEnumerationObserver.enumerationSyncItemIdentifier`)
     var itemEnumerationProgress: String? {
         let predicate = NSPredicate(format: "%K == %@", #keyPath(SyncItem.id), "enumerateItems")
-        let fetchedProgress: [String] = fetch(property: #keyPath(SyncItem.filename), with: predicate, in: backgroundContext)
+        let fetchedProgress: [String] = fetch(property: #keyPath(SyncItem.filename), with: predicate, in: presentationContext)
         return fetchedProgress.first
     }
 
     func countSyncErrors() -> Int {
         Log.trace()
-        return count(with: NSPredicate(format: "stateRaw == %d", SyncItemState.errored.rawValue), in: backgroundContext)
+        return count(with: NSPredicate(format: "stateRaw == %d", SyncItemState.errored.rawValue), in: presentationContext)
     }
 
     func countFinishedDeletions() -> Int {
         Log.trace()
-        return count(with: NSPredicate(format: "fileProviderOperationRaw == %d AND stateRaw == %d", FileProviderOperation.delete.rawValue, SyncItemState.finished.rawValue), in: backgroundContext)
+        return count(with: NSPredicate(format: "fileProviderOperationRaw == %d AND stateRaw == %d", FileProviderOperation.delete.rawValue, SyncItemState.finished.rawValue), in: presentationContext)
     }
 
     func lastSyncTime() -> TimeInterval? {
         Log.trace()
         let predicate = NSPredicate(value: true)
 
-        guard let maxValue = max(for: "modificationTime", with: predicate, in: backgroundContext) else {
+        guard let maxValue = max(for: "modificationTime", with: predicate, in: presentationContext) else {
             return nil
         }
         // Map from timeIntervalSinceReferenceDate, as stored by CoreData, to timeIntervalSince1970

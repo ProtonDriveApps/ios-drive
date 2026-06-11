@@ -15,7 +15,7 @@ let package = Package(
     ],
     dependencies: [
 
-        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", exact: "32.7.1"),
+        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", exact: "37.0.1"),
         .package(url: "https://github.com/ProtonMail/apple-fusion.git", exact: "2.1.5"),
     ],
     targets: [

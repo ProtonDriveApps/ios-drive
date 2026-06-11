@@ -24,20 +24,23 @@ import CoreData
 import PDPhotos
 
 public final class TagsMigrationFinishChecker: AppBootstrapper {
-    public typealias BootstrapClient = TagsMigrationAPIClient & PhotosListingDataSource & TagsMigrationAPIClient
+    public typealias BootstrapClient = TagsMigrationAPIClient & PhotosListingDataSource
     private let storageManager: StorageManager
     private let client: BootstrapClient
     private let localSettings: LocalSettings
     private let featureFlags: FeatureFlagsControllerProtocol
     private let clientUIDProvider: UploadClientUIDProvider
+    private let connectionStateResource: ConnectionStateResource
 
     public init(
+        connectionStateResource: ConnectionStateResource,
         storageManager: StorageManager,
         client: BootstrapClient,
         localSettings: LocalSettings,
         featureFlags: FeatureFlagsControllerProtocol,
         clientUIDProvider: UploadClientUIDProvider
     ) {
+        self.connectionStateResource = connectionStateResource
         self.storageManager = storageManager
         self.client = client
         self.localSettings = localSettings
@@ -46,8 +49,13 @@ public final class TagsMigrationFinishChecker: AppBootstrapper {
     }
 
     public func bootstrap() async throws {
+        guard connectionStateResource.currentState.isReachable else {
+            Log.info("Skip tag migration bootstrap since device is offline", domain: .applicationBootstrap)
+            return
+        }
         Log.info("Will fetch photos tag migration state on bootstrap.", domain: .photosTagMigration)
         guard featureFlags.hasPhotosTagsMigration, localSettings.tagsMigrationFinished != true else {
+            Log.info("Skip tag migration bootstrap FF is \(featureFlags.hasPhotosTagsMigration), is local finished: \(localSettings.tagsMigrationFinished)", domain: .photosTagMigration)
             return
         }
 

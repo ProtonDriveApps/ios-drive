@@ -22,21 +22,18 @@ import PDPhotos
 
 final class PhotosSettingsRowViewModel: PMDrillDownCellViewModel {
     private let settingsController: PhotoBackupSettingsController
-    private let warningViewModel: PhotosMigrationWarningViewModelProtocol
     private var cancellables = Set<AnyCancellable>()
     private var value: String?
 
-    init(settingsController: PhotoBackupSettingsController, warningViewModel: PhotosMigrationWarningViewModelProtocol) {
+    init(settingsController: PhotoBackupSettingsController) {
         self.settingsController = settingsController
-        self.warningViewModel = warningViewModel
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
-        settingsController.isEnabled.combineLatest(warningViewModel.warning)
-            .map { isEnabled, warning in
-                let shouldEnable = isEnabled && warning == nil
-                return shouldEnable ? Localization.general_on : Localization.general_off
+        settingsController.isEnabled
+            .map { isEnabled in
+                return isEnabled ? Localization.general_on : Localization.general_off
             }
             .sink { [weak self] value in
                 self?.value = value

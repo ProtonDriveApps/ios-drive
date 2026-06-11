@@ -20,6 +20,7 @@
 //  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
+import PDLocalization
 
 public enum LockTime: Equatable, RawRepresentable {
     case never
@@ -44,8 +45,8 @@ public enum LockTime: Equatable, RawRepresentable {
 
     var title: String {
         switch self {
-        case .never: return "After launch"
-        case .always: return "Always"
+        case .never: return Localization.auto_lock_timeout_after_launch
+        case .always: return Localization.auto_lock_timeout_always
         case let .every(minutes):
             let formatter = DateComponentsFormatter()
             formatter.allowedUnits = [.hour, .minute]

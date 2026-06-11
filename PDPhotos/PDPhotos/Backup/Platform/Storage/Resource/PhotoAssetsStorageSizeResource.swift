@@ -59,10 +59,7 @@ public final class UploadingPhotoAssetsStorageSizeResource: PhotoAssetsStorageSi
     }
 
     private func getSize(from photos: [Photo]) -> Int {
-        guard let managedObjectContext = photos.first?.moc else {
-            return 0
-        }
-
+        let managedObjectContext = observer.managedObjectContext
         return managedObjectContext.performAndWait {
             return photos.flatMap { $0.children + [$0] }.map { $0.size }.reduce(0, +)
         }

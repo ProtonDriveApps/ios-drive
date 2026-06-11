@@ -35,6 +35,7 @@ public extension DriveDependencyContainer {
         viewController.onViewDidLoad = coordinator.launchApp
         viewController.onPresentAlert = coordinator.presentAlert
         viewController.onPresentAccountRecovery = coordinator.presentAccountRecovery
+        viewController.onShake = coordinator.presentReportIssue
 
         window.makeKeyAndVisible()
     }
@@ -102,6 +103,7 @@ public extension DriveDependencyContainer {
     ) -> LaunchCoordinator {
         LaunchCoordinator(
             window: window,
+            networkService: networkService,
             viewController: viewController,
             startViewControllerFactory: makeStartViewController,
             failingAlertFactory: makeAlert

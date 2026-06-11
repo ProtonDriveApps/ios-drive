@@ -72,6 +72,10 @@ extension FileDraft {
     }
 
     func assertIsCommitingRevision(in moc: NSManagedObjectContext) throws {
-        try moc.performAndWait { guard file.in(moc: moc).isCommitingRevision() else { throw file.in(moc: moc).invalidState("The file is not in a commiting revision state.") } }
+        try moc.performAndWait {
+            guard file.in(moc: moc).isCommitingRevision() else {
+                throw file.in(moc: moc).invalidState("The file is not in a commiting revision state.")
+            }
+        }
     }
 }

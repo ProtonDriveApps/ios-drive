@@ -18,6 +18,12 @@
 import CoreData
 
 extension SyncStorageManager {
+    
+    public func fetchAll(moc: NSManagedObjectContext) async throws -> [SyncItem] {
+        try await moc.perform {
+            try moc.fetch(SyncItem.fetchRequest())
+        }
+    }
 
     func fetch(with predicate: NSPredicate, in moc: NSManagedObjectContext) -> [SyncItem] {
         Log.trace("Predicate: \(predicate.description)")
@@ -77,9 +83,9 @@ extension SyncStorageManager {
         }
     }
 
-    public func delete(id: String) {
+    public func delete(id: String, in moc: NSManagedObjectContext) {
         let predicate = NSPredicate(format: "%K == %@", #keyPath(SyncItem.id), "enumerateItems")
-        delete(with: predicate, in: backgroundContext)
+        delete(with: predicate, in: moc)
     }
 
     @discardableResult

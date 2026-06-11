@@ -18,17 +18,35 @@
 import PDCore
 
 final class ForegroundTransitionFactory {
-    func makeController(tower: Tower, pickerResource: PickerResource, populatedStateController: PopulatedStateControllerProtocol) -> ForegroundTransitionController {
+    func makeController(
+        tower: Tower,
+        pickerResource: PickerResource,
+        populatedStateController: PopulatedStateControllerProtocol,
+        lockedStateController: LockedStateControllerProtocol
+    ) -> ForegroundTransitionController {
         let interactors: [CommandInteractor] = [
             ChildSessionInteractor(sessionCommunicator: tower.sessionCommunicator)
         ]
 
         let populatedInteractors: [CommandInteractor] = [
-            InterruptedUploadsInteractor(storage: tower.storage, fileUploader: tower.fileUploader),
+            InterruptedUploadsInteractor(
+                storage: tower.storage,
+                fileUploader: tower.fileUploader,
+                tower: tower
+            ),
             InterruptedImportsInteractor(resource: pickerResource),
         ]
 
         let applicationStateResource = iOSApplicationRunningStateResource()
-        return ForegroundTransitionController(applicationStateResource: applicationStateResource, interactors: interactors, populatedInteractors: populatedInteractors, populatedStateController: populatedStateController)
+        /// Resumes multiple operations after app goes to foreground
+        /// 1. makes sure we have up to date child session
+        /// 2. when DB is unlocked, it auto resumes interrupted file uploads & imports
+        return ForegroundTransitionController(
+            applicationStateController: ConcreteApplicationStateController(stateResource: iOSApplicationRunningStateResource()),
+            interactors: interactors,
+            populatedInteractors: populatedInteractors,
+            populatedStateController: populatedStateController,
+            lockedStateController: lockedStateController
+        )
     }
 }

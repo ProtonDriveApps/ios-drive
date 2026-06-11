@@ -25,20 +25,16 @@ struct PhotosSettingsFactory {
     func makeSettingsCell(
          settingsController: PhotoBackupSettingsController,
          tower: Tower,
-         backupStartController: PhotosBackupStartController,
-         migrationController: PhotoVolumeMigrationControllerProtocol
+         backupStartController: PhotosBackupStartController
     ) -> PMCellSuplier {
-        let warningViewModel = PhotosMigrationWarningViewModel(controller: migrationController)
         let viewModel = PhotosSettingsRowViewModel(
-            settingsController: settingsController,
-            warningViewModel: warningViewModel
+            settingsController: settingsController
         )
         return PMDrillDownConfiguration(viewModel: viewModel) {
             makeSettingsView(
                 settingsController: settingsController,
                 tower: tower,
-                backupStartController: backupStartController,
-                warningViewModel: warningViewModel
+                backupStartController: backupStartController
             )
         }
     }
@@ -46,15 +42,13 @@ struct PhotosSettingsFactory {
     private func makeSettingsView(
         settingsController: PhotoBackupSettingsController,
         tower: Tower,
-        backupStartController: PhotosBackupStartController,
-        warningViewModel: PhotosMigrationWarningViewModelProtocol
+        backupStartController: PhotosBackupStartController
     ) -> UIViewController {
 
         let viewModel = PhotosSettingsViewModel(
             settingsController: settingsController,
             startController: backupStartController,
             localSettings: tower.localSettings,
-            warningViewModel: warningViewModel,
             b2bSettingsUpdateDataSource: tower.client
         )
         if Constants.buildType.isQaOrBelow {

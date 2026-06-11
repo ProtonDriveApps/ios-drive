@@ -34,16 +34,16 @@ final class CoreDataUploadBlockUrlDataSource: UploadBlockUrlDataSource {
 
     func getBlockUrl(for block: VerifiableBlock) async throws -> URL {
         return try managedObjectContext.performAndWait {
-            let revisionId = RevisionIdentifier(share: block.identifier.shareId, file: block.identifier.nodeId, revision: block.identifier.revisionId, volume: block.identifier.volumeId)
+            let revisionId = RevisionIdentifier(shareID: block.identifier.shareId, fileID: block.identifier.nodeId, revisionID: block.identifier.revisionId, volumeID: block.identifier.volumeId)
             guard let revision = storage.fetchRevision(id: revisionId, moc: managedObjectContext) else {
                 throw UploadVerifierError.missingRevision
             }
 
-            guard let block = revision.unsafeSortedUploadBlocks.first(where: { $0.index == block.index }) else {
+            guard let uploadBlock = revision.unsafeSortedUploadBlocks.first(where: { $0.index == block.index }) else {
                 throw UploadVerifierError.missingBlock
             }
 
-            guard let blockURL = block.localUrl else {
+            guard let blockURL = uploadBlock.localUrl else {
                 throw UploadVerifierError.missingBlockContent
             }
 

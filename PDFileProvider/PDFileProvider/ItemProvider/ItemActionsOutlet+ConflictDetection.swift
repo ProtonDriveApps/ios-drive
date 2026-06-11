@@ -17,6 +17,7 @@
 
 import FileProvider
 import PDCore
+import CoreData
 
 #if os(OSX)
 extension ItemActionsOutlet: ConflictDetection {
@@ -26,31 +27,32 @@ extension ItemActionsOutlet: ConflictDetection {
     public func identifyConflict(tower: Tower,
                                  basedOn item: NSFileProviderItem,
                                  changeType: ItemActionChangeType,
-                                 fields: NSFileProviderItemFields) async throws -> (ResolutionAction, Node?)? {
+                                 fields: NSFileProviderItemFields,
+                                 moc: NSManagedObjectContext) async throws -> (ResolutionAction, Node?)? {
 
         switch changeType {
         case .create:
-            return try await conflictOnCreate(tower: tower, item: item, fields: fields)
+            return try await conflictOnCreate(tower: tower, item: item, fields: fields, moc: moc)
 
         case .move(let version):
             // parent changed
-            return try await conflictOnMove(tower: tower, item: item, baseVersion: version, fields: fields)
+            return try await conflictOnMove(tower: tower, item: item, baseVersion: version, fields: fields, moc: moc)
 
         case .modifyMetadata(let version):
             // + renamed
-            return try await conflictOnMetadata(tower: tower, item: item, baseVersion: version, fields: fields)
+            return try await conflictOnMetadata(tower: tower, item: item, baseVersion: version, fields: fields, moc: moc)
 
         case .modifyContents(let version, let contentsURL):
-            return try await conflictOnContents(tower: tower, item: item, baseVersion: version, fields: fields, contents: contentsURL)
+            return try await conflictOnContents(tower: tower, item: item, baseVersion: version, fields: fields, contents: contentsURL, moc: moc)
 
         case .trash(version: let version), .delete(version: let version):
-            return try await conflictOnDelete(tower: tower, item: item, baseVersion: version)
+            return try await conflictOnDelete(tower: tower, item: item, baseVersion: version, moc: moc)
         }
     }
 
-    private func conflictOnCreate(tower: Tower, item: NSFileProviderItem, fields: NSFileProviderItemFields) async throws -> (ResolutionAction, Node?)? {
+    private func conflictOnCreate(tower: Tower, item: NSFileProviderItem, fields: NSFileProviderItemFields, moc: NSManagedObjectContext) async throws -> (ResolutionAction, Node?)? {
         // Create-ParentDelete
-        guard let parent = await tower.parentFolder(of: item) else {
+        guard let parent = await tower.parentFolder(of: item, in: moc) else {
             throw Errors.conflictIdentified(reason: "Trying to create item, but parent not found")
         }
 
@@ -62,7 +64,7 @@ extension ItemActionsOutlet: ConflictDetection {
         }
 
         // Create-Create/Rename/Move (Destination) - name conflict
-        if let conflictingNode = try await tower.nodeWithName(of: item) {
+        if let conflictingNode = try await tower.nodeWithName(of: item, moc: moc) {
             if item.isFolder && conflictingNode is Folder { // Folder-Folder -> pseudo
                 return (.ignore, conflictingNode)
             } else { // File-File, File-Folder or Folder-File
@@ -76,9 +78,10 @@ extension ItemActionsOutlet: ConflictDetection {
     private func conflictOnMove(tower: Tower,
                                 item: NSFileProviderItem,
                                 baseVersion version: NSFileProviderItemVersion,
-                                fields: NSFileProviderItemFields) async throws -> (ResolutionAction, Node?)? {
+                                fields: NSFileProviderItemFields,
+                                moc: NSManagedObjectContext) async throws -> (ResolutionAction, Node?)? {
         // Move-ParentDelete (Destination)
-        guard let parent = await tower.parentFolder(of: item) else {
+        guard let parent = await tower.parentFolder(of: item, in: moc) else {
             return (.ignore, nil)
         }
 
@@ -89,9 +92,9 @@ extension ItemActionsOutlet: ConflictDetection {
             return (.ignore, nil)
         }
 
-        if let conflictingNode = try await tower.nodeWithName(of: item) {
+        if let conflictingNode = try await tower.nodeWithName(of: item, moc: moc) {
             return conflictingNode.moc?.performAndWait {
-                if conflictingNode.identifier == tower.nodeIdentifier(for: item.itemIdentifier) {
+                if conflictingNode.identifier == tower.nodeIdentifier(for: item.itemIdentifier, moc: moc) {
                     // Move-Move (Pseudo) - everything's the same
                     return (.ignore, conflictingNode)
                 } else {
@@ -102,7 +105,7 @@ extension ItemActionsOutlet: ConflictDetection {
         }
 
         // Move-Delete
-        guard let remoteNode = await tower.node(itemIdentifier: item.itemIdentifier) else {
+        guard let remoteNode = await tower.node(itemIdentifier: item.itemIdentifier, in: moc) else {
             // The remote version may have been deleted
             return (.recreate, nil)
         }
@@ -145,14 +148,14 @@ extension ItemActionsOutlet: ConflictDetection {
         }
 
         // Move-Move (Cycle) - one of the new parent's ancestors is self
-        var remoteAncestor: Node? = await tower.node(itemIdentifier: item.parentItemIdentifier)
+        var remoteAncestor: Node? = await tower.node(itemIdentifier: item.parentItemIdentifier, in: moc)
         var remoteAncestorParentIdentifier: NodeIdentifier? = remoteAncestor?.moc?.performAndWait { remoteAncestor?.parentNode?.identifier }
         while let parentIdentifier = remoteAncestorParentIdentifier {
             if NodeIdentifier(item.itemIdentifier) == parentIdentifier {
                 return (.ignore, remoteNode)
             }
             
-            remoteAncestor = await tower.node(itemIdentifier: NSFileProviderItemIdentifier(parentIdentifier))
+            remoteAncestor = await tower.node(itemIdentifier: NSFileProviderItemIdentifier(parentIdentifier), in: moc)
             remoteAncestorParentIdentifier = remoteAncestor?.moc?.performAndWait { remoteAncestor?.parentNode?.identifier }
         }
 
@@ -162,10 +165,11 @@ extension ItemActionsOutlet: ConflictDetection {
     private func conflictOnMetadata(tower: Tower,
                                     item: NSFileProviderItem,
                                     baseVersion version: NSFileProviderItemVersion,
-                                    fields: NSFileProviderItemFields) async throws -> (ResolutionAction, Node?)? {
+                                    fields: NSFileProviderItemFields,
+                                    moc: NSManagedObjectContext) async throws -> (ResolutionAction, Node?)? {
         if fields.contains(.filename) {
             // Rename-ParentDelete
-            guard let parent = await tower.parentFolder(of: item) else {
+            guard let parent = await tower.parentFolder(of: item, in: moc) else {
                 throw Errors.conflictIdentified(reason: "Trying to rename item, but parent not found")
             }
 
@@ -176,9 +180,9 @@ extension ItemActionsOutlet: ConflictDetection {
                 throw Errors.conflictIdentified(reason: "Trying to rename item, but parent in trash")
             }
 
-            if let conflictingNode = try await tower.nodeWithName(of: item) {
+            if let conflictingNode = try await tower.nodeWithName(of: item, moc: moc) {
                 return conflictingNode.moc?.performAndWait {
-                    if conflictingNode.identifier == tower.nodeIdentifier(for: item.itemIdentifier) {
+                    if conflictingNode.identifier == tower.nodeIdentifier(for: item.itemIdentifier, moc: moc) {
                         // Rename-Rename (Pseudo) - everything's the same
                         return (.ignore, conflictingNode)
                     } else {
@@ -189,15 +193,14 @@ extension ItemActionsOutlet: ConflictDetection {
             }
 
             // Rename-Delete
-            guard let remoteNode = await tower.node(itemIdentifier: item.itemIdentifier) else {
+            guard let remoteNode = await tower.node(itemIdentifier: item.itemIdentifier, in: moc) else {
                 // The remote version may have been deleted
                 return (.recreate, nil)
             }
 
             // Rename-Trash
-            var remoteNodeState: Node.State!
-            remoteNode.moc!.performAndWait {
-                remoteNodeState = remoteNode.state
+            let remoteNodeState = moc.performAndWait {
+                remoteNode.state
             }
             guard remoteNodeState != .deleted else {
                 // The remote version has been trashed
@@ -207,7 +210,7 @@ extension ItemActionsOutlet: ConflictDetection {
             // Rename-Rename (Source) - same node ID but different name
             let oldItemsFilenameHash = MetadataVersion(from: version.metadataVersion)?.filenameHash
             var remoteName: String!
-            try remoteNode.moc!.performAndWait {
+            try moc.performAndWait {
                 remoteName = try remoteNode.decryptName()
             }
             let remoteNodesFilenameHash = ItemVersionHasher.hash(for: remoteName)
@@ -236,10 +239,11 @@ extension ItemActionsOutlet: ConflictDetection {
         item: NSFileProviderItem,
         baseVersion version: NSFileProviderItemVersion,
         fields: NSFileProviderItemFields,
-        contents newContent: URL?
+        contents newContent: URL?,
+        moc: NSManagedObjectContext
     ) async throws -> (ResolutionAction, Node?)? {
         // Edit-ParentDelete
-        guard let parent = await tower.parentFolder(of: item) else {
+        guard let parent = await tower.parentFolder(of: item, in: moc) else {
             // parent node has been deleted remotely
             throw Errors.conflictIdentified(reason: "Trying to edit file, but parent not found")
         }
@@ -252,7 +256,7 @@ extension ItemActionsOutlet: ConflictDetection {
         }
         
         // Edit-Delete
-        guard let remoteNode = await tower.node(itemIdentifier: item.itemIdentifier) else {
+        guard let remoteNode = await tower.node(itemIdentifier: item.itemIdentifier, in: moc) else {
             // file has been deleted remotely
             return (.recreate, nil)
         }
@@ -291,8 +295,13 @@ extension ItemActionsOutlet: ConflictDetection {
         return nil
     }
 
-    private func conflictOnDelete(tower: Tower, item: NSFileProviderItem, baseVersion version: NSFileProviderItemVersion) async throws -> (ResolutionAction, Node?)? {
-        guard let node = await tower.node(itemIdentifier: item.itemIdentifier) else {
+    private func conflictOnDelete(
+        tower: Tower,
+        item: NSFileProviderItem,
+        baseVersion version: NSFileProviderItemVersion,
+        moc: NSManagedObjectContext
+    ) async throws -> (ResolutionAction, Node?)? {
+        guard let node = await tower.node(itemIdentifier: item.itemIdentifier, in: moc) else {
             // node already deleted
             return (.ignore, nil)
         }

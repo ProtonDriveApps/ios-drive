@@ -28,11 +28,14 @@ final class CreateFolderViewModel: EditNodeViewModel {
     private let validator: Validator<String>
     private let folderCreator: FolderCreator
     private let parent: Folder
+    let shouldDoneButtonBeEnabledByDefault: Bool = false
+    private let eventsSystemManager: EventsSystemManager
 
-    init(folderCreator: FolderCreator, validator: Validator<String>, parent: Folder) {
+    init(folderCreator: FolderCreator, validator: Validator<String>, parent: Folder, eventsSystemManager: EventsSystemManager) {
         self.folderCreator = folderCreator
         self.validator = validator
         self.parent = parent
+        self.eventsSystemManager = eventsSystemManager
     }
 
     var title: String {
@@ -63,12 +66,14 @@ final class CreateFolderViewModel: EditNodeViewModel {
         }
 
         onPerformingRequest?()
+        let volumeIDs = [parent.identifier.volumeID]
         folderCreator.createFolder(with: name, parent: parent) { [weak self] result in
             DispatchQueue.main.async {
                 switch result {
                 case .failure(let error):
                     self?.onError?(error)
                 case .success:
+                    self?.eventsSystemManager.forcePolling(volumeIDs: volumeIDs)
                     self?.onSuccess?()
                 }
             }

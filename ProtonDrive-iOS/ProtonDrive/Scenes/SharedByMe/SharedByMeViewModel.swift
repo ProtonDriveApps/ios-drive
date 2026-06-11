@@ -59,32 +59,35 @@ class SharedByMeViewModel: ObservableObject, FinderViewModel, DownloadingViewMod
     var leadingNavBarItems: [NavigationBarButton] {
         self.listState.isSelecting ? [.apply(title: selection.selectAllText, disabled: false)] : [.menu]
     }
+    let currentTab: TabBarItem? = .shared
     var isRoot: Bool { true }
     public private(set) var lastUpdated: Date = .distantFuture
     let supportsSortingSwitch: Bool = true
     var permanentChildrenSectionTitle: String { self.sorting.title }
     let supportsLayoutSwitch = true
     let featureFlagsController: FeatureFlagsControllerProtocol
-    @Published var topBanner: String?
     // MARK: DownloadingViewModel
     var childrenDownloadCancellable: AnyCancellable?
-    @Published var downloadProgresses: [ProgressTracker] = []
+    let progressTrackersController: ProgressTrackersControllerProtocol
+
+    lazy var nodeDownloadedResource: NodeDownloadedResource = {
+        NodeDownloadedResource(managedObjectContext: model.tower.storage.newBackgroundContext())
+    }()
     // MARK: SortingViewModel
     @Published var sorting: SortPreference
     // MARK: HasMultipleSelection
     lazy var selection = MultipleSelectionModel(selectable: Set<NodeIdentifier>())
     @Published var listState: ListState = .active
     private let validator: iOSSupportedSharesValidator
-    private let warningViewModel: PhotosMigrationWarningViewModelProtocol
 
-    init(model: SharedByMeModel, featureFlagsController: FeatureFlagsControllerProtocol, warningViewModel: PhotosMigrationWarningViewModelProtocol) {
+    init(model: SharedByMeModel, featureFlagsController: FeatureFlagsControllerProtocol, progressTrackersController: ProgressTrackersControllerProtocol) {
         defer { self.model.loadFromCache() }
         self.model = model
         self.sorting = model.sorting
         self.layout = Layout(preference: model.layout)
         self.featureFlagsController = featureFlagsController
         self.validator = iOSSupportedSharesValidator(storage: model.tower.storage)
-        self.warningViewModel = warningViewModel
+        self.progressTrackersController = progressTrackersController
 
         self.subscribeToSort()
         self.subscribeToChildren()
@@ -100,9 +103,6 @@ class SharedByMeViewModel: ObservableObject, FinderViewModel, DownloadingViewMod
                 self?.genericErrors.send(error)
             }
             .store(in: &cancellables)
-
-        warningViewModel.warning
-            .assign(to: &$topBanner)
     }
 
     func didScrollToBottom() {
@@ -214,6 +214,10 @@ class SharedByMeViewModel: ObservableObject, FinderViewModel, DownloadingViewMod
             .trashMultiple,
             isOfflineAvailablePossible ? .offlineAvailableMultiple : nil
         ].compactMap { $0 }
+    }
+
+    func reportListIsShown() {
+        model.tower.performanceMetricsController?.reportTabToFirstItem(pageType: .sharedByMe)
     }
 }
 

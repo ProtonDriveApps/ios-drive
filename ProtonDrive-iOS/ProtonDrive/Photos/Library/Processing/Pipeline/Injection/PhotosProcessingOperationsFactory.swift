@@ -17,6 +17,8 @@
 
 import Foundation
 import PDCore
+import PDCoreIOS
+import class PDPhotos.PHFetchOptionsFactory
 
 protocol PhotosProcessingOperationsFactory {
     func makeContext(with identifiers: Set<PhotoIdentifier>) -> PhotosProcessingContext
@@ -34,8 +36,9 @@ final class ConcretePhotosProcessingOperationsFactory: PhotosProcessingOperation
     private let duplicatesMeasurementRepository: DurationMeasurementRepository
     private let scanningMeasurementRepository: DurationMeasurementRepository
     private let storageSizeLimit: Int
+    private let optionsFactory: PHFetchOptionsFactory
 
-    init(filterByIdResource: PhotosFilterByIdResource, assetsResource: PhotoLibraryAssetsResource, conflictInteractor: PhotoAssetCompoundsConflictInteractor, photosImporter: PhotoCompoundImporter, progressRepository: PhotoLibraryLoadProgressRepository, failedIdentifiersResource: DeletedPhotosIdentifierStoreResource, photoSkippableCache: PhotosSkippableCache, storageSizeLimit: Int, duplicatesMeasurementRepository: DurationMeasurementRepository, scanningMeasurementRepository: DurationMeasurementRepository) {
+    init(filterByIdResource: PhotosFilterByIdResource, assetsResource: PhotoLibraryAssetsResource, conflictInteractor: PhotoAssetCompoundsConflictInteractor, photosImporter: PhotoCompoundImporter, progressRepository: PhotoLibraryLoadProgressRepository, failedIdentifiersResource: DeletedPhotosIdentifierStoreResource, photoSkippableCache: PhotosSkippableCache, storageSizeLimit: Int, duplicatesMeasurementRepository: DurationMeasurementRepository, scanningMeasurementRepository: DurationMeasurementRepository, optionsFactory: PHFetchOptionsFactory) {
         self.filterByIdResource = filterByIdResource
         self.assetsResource = assetsResource
         self.conflictInteractor = conflictInteractor
@@ -46,21 +49,25 @@ final class ConcretePhotosProcessingOperationsFactory: PhotosProcessingOperation
         self.storageSizeLimit = storageSizeLimit
         self.duplicatesMeasurementRepository = duplicatesMeasurementRepository
         self.scanningMeasurementRepository = scanningMeasurementRepository
+        self.optionsFactory = optionsFactory
     }
 
     func makeContext(with identifiers: Set<PhotoIdentifier>) -> PhotosProcessingContext {
-        ConcretePhotosProcessingContext(initialIdentifiers: identifiers)
+        ConcretePhotosProcessingContext(
+            initialIdentifiers: identifiers,
+            errorMappingPolicy: FoundationPhotosAssetsErrorMappingPolicy()
+        )
     }
 
     func makeOperations(with context: PhotosProcessingContext) -> [Operation] {
         let filterSkippableInteractor = PhotosFilterSkippableInteractor(context: context, skippableCache: photoSkippableCache)
         let filterByIdInteractor = PhotosFilterByIdInteractor(context: context, resource: filterByIdResource, measurementRepository: scanningMeasurementRepository)
-        let assetsInteractor = PhotosAssetsInteractor(context: context, resource: assetsResource, sizeResource: ConcretePhotoCompoundsSizeResource(), errorPolicy: FoundationPhotoAssetErrorPolicy(), errorMappingPolicy: FoundationPhotosAssetsErrorMappingPolicy(), skippableCache: photoSkippableCache, sizeLimit: storageSizeLimit, measurementRepository: scanningMeasurementRepository)
+        let assetsInteractor = PhotosAssetsInteractor(context: context, resource: assetsResource, errorPolicy: FoundationPhotoAssetErrorPolicy(), errorMappingPolicy: FoundationPhotosAssetsErrorMappingPolicy(), skippableCache: photoSkippableCache, sizeLimit: storageSizeLimit, measurementRepository: scanningMeasurementRepository, optionsFactory: optionsFactory)
         let duplicateCheckInteractor = PhotosDuplicatesCheckInteractor(context: context, interactor: conflictInteractor, skippableCache: photoSkippableCache, measurementRepository: duplicatesMeasurementRepository)
         // Need to execute import and finish in a atomically to avoid race conditions.
         let finishInteractor = AggregatedAsynchronousExecution(executions: [
             PhotosImportInteractor(context: context, importer: photosImporter),
-            PhotosProcessingFinishInteractor(context: context, progressRepository: progressRepository, localStorageResource: LocalFileStorageResource(), failedIdentifiersResource: failedIdentifiersResource)
+            PhotosProcessingFinishInteractor(context: context, progressRepository: progressRepository, failedIdentifiersResource: failedIdentifiersResource)
         ])
 
         let filterSkippableOperation = AsynchronousExecutionOperation(execution: filterSkippableInteractor)

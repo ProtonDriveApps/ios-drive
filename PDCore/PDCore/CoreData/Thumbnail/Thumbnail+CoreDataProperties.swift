@@ -90,11 +90,20 @@ extension Thumbnail {
     }
 }
 
-@objc public enum ThumbnailType: Int16, Equatable, Comparable {
+@objc public enum ThumbnailType: Int16, Equatable, Comparable, Sendable, CaseIterable {
     case `default` = 1
     case photos = 2
     
     public static func < (lhs: ThumbnailType, rhs: ThumbnailType) -> Bool {
         lhs.rawValue < rhs.rawValue
+    }
+    
+    public var description: String {
+        switch self {
+        case .default:
+            return "default"
+        case .photos:
+            return "photos"
+        }
     }
 }

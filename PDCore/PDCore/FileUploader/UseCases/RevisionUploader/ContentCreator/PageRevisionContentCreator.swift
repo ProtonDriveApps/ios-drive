@@ -77,7 +77,9 @@ class PageRevisionContentCreator: ContentCreator {
             let revision = page.revision.in(moc: self.moc)
             let identifier = try revision.uploadableIdentifier()
 #if os(macOS)
-            let addressID = try signersKitFactory.make(forSigner: .address(identifier.signatureEmail)).address.addressID
+            let addressID = try revision.file.getContextShareAddressBasedSignersKit(
+                signersKitFactory: signersKitFactory, fallbackSigner: .address(identifier.signatureEmail)
+            ).address.addressID
 #else
             let addressID = try revision.file.getContextShareAddressID()
 #endif

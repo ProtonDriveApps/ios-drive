@@ -36,16 +36,13 @@ final class ProtectCoordinator: ProtectCoordinatorProtocol {
 
     private let humanVerificationHelper: HumanCheckHelper
     private var auxiliaryWindow: UIWindow?
-    private var scene: UIWindowScene
 
     init(
-        windowScene: UIWindowScene,
         viewController: ProtectViewController,
         humanVerificationHelper: HumanCheckHelper,
         lockedViewControllerFactory: @escaping () -> UIViewController,
         unlockedViewControllerFactory: @escaping () -> UIViewController
     ) {
-        self.scene = windowScene
         self.viewController = viewController
         self.humanVerificationHelper = humanVerificationHelper
         self.lockedViewControllerFactory = lockedViewControllerFactory
@@ -57,8 +54,14 @@ final class ProtectCoordinator: ProtectCoordinatorProtocol {
     }
 
     func onLocked() {
+        // The windowScene may be in `.background` or `.foregroundInactive` mode already.
+        // We mainly need to avoid using `.unattached` one.
+        guard let windowScene = UIApplication.shared.getAnyAttachedWindowScene() else {
+            Log.error("Failed to get any attached window scene", domain: .ui)
+            return
+        }
         let lockViewController = lockedViewControllerFactory()
-        auxiliaryWindow = UIWindow(rootViewController: lockViewController, windowScene: scene)
+        auxiliaryWindow = UIWindow(rootViewController: lockViewController, windowScene: windowScene)
     }
 
     func onUnlocked() {

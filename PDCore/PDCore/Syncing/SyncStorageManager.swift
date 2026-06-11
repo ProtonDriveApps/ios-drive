@@ -202,31 +202,38 @@ public final class SyncStorageManager: NSObject, ManagedStorage, RecoverableStor
     }
 
     let persistentContainer: NSPersistentContainer
-
-    public lazy var mainContext: NSManagedObjectContext = {
-        if Constants.runningInExtension {
-            return backgroundContext
-        } else {
-            let context = self.persistentContainer.viewContext
-            context.automaticallyMergesChangesFromParent = true
-            context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
-#if os(macOS)
-            Self.keepWeakReferenceToContext(context, in: contexts)
-#endif
-            return context
-        }
+    
+    // Used for reading to show the status in the UI. Used also for cleanup, because it should be
+    // immediately reflected in the UI, so we use the same context for it.
+    // Currently it is used by the main app and its SyncDBObserver with its FetchedResultObserver,
+    // plus for cleanup in both the main app and file provider extension (it's not *really* needed
+    // to use this one for cleanup in FPE, but we have a single cleanup implementation for simplicity).
+    public lazy var presentationContext: NSManagedObjectContext = {
+        newBackgroundContext()
     }()
 
-    public lazy var backgroundContext: NSManagedObjectContext = {
-        let context = self.persistentContainer.newBackgroundContext()
+    // Used for write operations that should result in the DB state change,
+    // but do not need to be immediately reflected in other contexts in the same process.
+    // Currently this is the case of create or upsert operations in File Provider Extension.
+    public lazy var backgroundContextPool: AsyncManagedObjectContextPool = {
+        AsyncManagedObjectContextPool(
+            configuration: .init(maxPoolSize: 32, mergePolicy: .mergeByPropertyStoreTrumpMergePolicyType, contextNamePrefix: "SyncStorageContext"),
+            contextFactory: { [self] mergePolicy in
+                newBackgroundContext(mergePolicy: NSMergePolicy(merge: mergePolicy))
+            }
+        )
+    }()
+
+    private func newBackgroundContext(mergePolicy: NSMergePolicy = .mergeByPropertyStoreTrump) -> NSManagedObjectContext {
+        let context = persistentContainer.newBackgroundContext()
         context.automaticallyMergesChangesFromParent = true
-        context.mergePolicy = NSMergePolicy.mergeByPropertyStoreTrump
+        context.mergePolicy = mergePolicy
 #if os(macOS)
         Self.keepWeakReferenceToContext(context, in: contexts)
 #endif
         return context
-    }()
-    
+    }
+
     private static let recoveryDatabaseName = "Recovery_\(databaseName)"
     private static let backupDatabaseName = "Backup_\(databaseName)"
     let contexts: Atomic<[WeakReference<NSManagedObjectContext>]> = .init([])
@@ -273,15 +280,20 @@ public final class SyncStorageManager: NSObject, ManagedStorage, RecoverableStor
         
         super.init()
         
+        // eager initialization to avoid lazy not being thread safe
+        _ = backgroundContextPool
+        _ = presentationContext
+        
         do {
-            try restoreFromBackup()
-            cleanupLeftoversFromPreviousRecoveryAttempt()
+            if Constants.runningInExtension,
+               RecoveryCoordination.isInProgress {
+                Log.info("Skipping recovery cleanup: main app resync in progress", domain: .storage)
+            } else {
+                try restoreFromBackup()
+                cleanupLeftoversFromPreviousRecoveryAttempt()
+            }
         } catch {
             Log.error("Restoring from backup failed", error: error, domain: .storage)
         }
-
-        #if DEBUG
-        Log.debug("💠 Sync CoreData model located at: \(self.persistentContainer.persistentStoreCoordinator.persistentStores)", domain: .storage)
-        #endif
     }
 }

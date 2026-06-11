@@ -25,7 +25,8 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
     let uploadSuccessRateMonitor = UploadSuccessRateMonitor()
     
     public let moc: NSManagedObjectContext
-    var isEnabled = true {
+    @available(*, deprecated, message: "Do not disable, keep the state unchanged")
+    public var isEnabled = true {
         didSet { Log.info("\(type(of: self)) isEnabled will become \(isEnabled)", domain: .uploader) }
     }
     var didSignOut = false {
@@ -150,6 +151,10 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
         guard isEnabled else {
             throw CanUploadError.uploaderNotEnabled
         }
+
+        guard file.nameSignatureEmail != nil else {
+            throw CanUploadError.invalidFileData
+        }
     }
     
     enum CanUploadError: Error, LocalizedError {
@@ -158,6 +163,7 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
         case uploaderNotEnabled
         case processingOperationAlreadyExists
         case fileAlreadyUploaded
+        case invalidFileData
     }
 
     func pauseFileUpload(id: UUID) {
@@ -167,6 +173,11 @@ public class FileUploader: OperationProcessor<FileUploaderOperation>, ErrorContr
     public func deleteUploadingFile(_ file: File, error: PhotosFailureUserError? = nil) {
         moc.perform { [weak self] in
             guard let self else { return }
+            guard file.moc != nil else {
+                // Cannot do anything, the file is already deleted
+                Log.info("Calling deleteUploadingFile - cannot delete file, it's already deleted", domain: .uploader)
+                return
+            }
 
             let file = file.in(moc: self.moc)
             self.performDeletionOfUploadingFileOutsideMOC(file)

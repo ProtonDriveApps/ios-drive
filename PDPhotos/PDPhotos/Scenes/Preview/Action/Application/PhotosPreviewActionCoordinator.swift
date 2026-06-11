@@ -27,7 +27,7 @@ protocol PhotosPreviewActionCoordinatorProtocol {
     func set(rootViewController: UIViewController)
     func openPhotoInfo(id: PhotoId)
     func openSharingConfiguration(for id: PhotoId, type: SharingConfigType)
-    func openShareToSheet(selectionController: PhotosSelectionController)
+    func openShareToSheet(selectionController: PhotosSelectionController, isDownloaded: Bool)
     func presentGroupToAlbumActionSheet(selectionController: PhotosSelectionController)
 }
 
@@ -91,8 +91,9 @@ final class PhotosPreviewActionCoordinator: PhotosPreviewActionCoordinatorProtoc
             )?.openSharingConfig(sharingType: type)
     }
 
-    func openShareToSheet(selectionController: PhotosSelectionController) {
-        groupToAlbumController.presentActionSheet(type: .shareTo, selectionController: selectionController)
+    func openShareToSheet(selectionController: PhotosSelectionController, isDownloaded: Bool) {
+        let type: GroupToAlbumSheetType = isDownloaded ? .shareTo : .shareToWithoutNativeShare
+        groupToAlbumController.presentActionSheet(type: type, selectionController: selectionController)
     }
 
     func presentGroupToAlbumActionSheet(selectionController: PhotosSelectionController) {

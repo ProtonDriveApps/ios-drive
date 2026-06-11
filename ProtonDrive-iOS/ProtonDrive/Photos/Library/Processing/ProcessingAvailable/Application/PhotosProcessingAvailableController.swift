@@ -51,6 +51,7 @@ final class ConcretePhotosProcessingAvailableController: PhotosProcessingAvailab
     private func subscribeToUpdates() {
         Publishers.CombineLatest3(backupController.isAvailable, constraintsController.constraints, computationalAvailabilityController.availability)
             .map { availability, constraints, computationalAvailability -> PhotosProcessingAvailability in
+                var constraints = constraints.filter { $0 != .storage }
                 guard availability == .available && constraints.isEmpty else {
                     return .none
                 }

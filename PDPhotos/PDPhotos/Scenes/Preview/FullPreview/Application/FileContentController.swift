@@ -18,6 +18,8 @@
 import Foundation
 import Combine
 import PDCore
+import PDCoreIOS
+import PDSDKCore
 
 protocol FileContentController {
     var content: AnyPublisher<FileContent, Error> { get }
@@ -30,6 +32,17 @@ enum FileContentError: Error {
     case failedVideo
     case unsupportedPhoto
     case unsupportedVideo
+    case fileVerification
+
+    init(error: Error) {
+        if let verificationError = error as? FileVerificationError {
+            self = .fileVerification
+        } else if let contentError = error as? FileContentError {
+            self = contentError
+        } else {
+            self = .failedPhoto
+        }
+    }
 }
 
 final class LocalFileContentController: FileContentController {
@@ -64,13 +77,10 @@ final class LocalFileContentController: FileContentController {
     }
 
     func execute(with id: any VolumeIdentifiable) {
-        resource.execute(with: id)
+        resource.execute(with: id, downloadMainOnly: false)
     }
 
     func clear() {
         resource.cancel()
-        guard let lastFileContent else { return }
-        try? storageResource.delete(at: lastFileContent.url)
-        lastFileContent.childrenURLs.forEach { try? storageResource.delete(at: $0) }
     }
 }

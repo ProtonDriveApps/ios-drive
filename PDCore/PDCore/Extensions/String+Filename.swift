@@ -24,7 +24,7 @@ public extension String {
     }
 
     func filenameSanitizedForFilesystem() -> String {
-        return self.replacing(#/[/]/#, with: "_")
+        return replacingOccurrences(of: "/", with: "_")
     }
 
     func appendingProtonExtensionIfNecessary(basedOn mimeType: String) -> String {
@@ -56,5 +56,56 @@ public extension String {
         default:
             return self
         }
+    }
+    
+    /// Masks the basename of a filename while preserving its extension.
+    ///
+    /// The masking rules are:
+    /// - If the basename length is greater than 2:
+    ///   Keeps the first and last character, and replaces the middle characters
+    ///   with `{n}`, where `n` is the number of removed characters.
+    ///   - Example: `"abcd.jpg"` → `"a{2}d.jpg"`
+    ///
+    /// - If the basename length is 2 or fewer:
+    ///   Masks the entire basename as `{n}`, where `n` is the length of the basename.
+    ///   - Example: `"ab.jpg"` → `"{2}.jpg"`
+    ///   - Example: `"a.jpg"` → `"{1}.jpg"`
+    ///
+    /// - If the filename has no extension, the same rules apply to the full string.
+    ///   - Example: `"abc"` → `"a{1}c"`
+    ///
+    /// - The file extension (including the dot) is preserved unchanged.
+    ///
+    /// - Parameter filename: The original filename (e.g., `"example.png"`).
+    /// - Returns: A masked filename string following the rules above.
+    func maskFilename() -> String {
+        let filename = self
+        // Find last dot for extension
+        let dotIndex = filename.lastIndex(of: ".")
+        
+        let name: String
+        let ext: String
+        
+        if let dot = dotIndex {
+            name = String(filename[..<dot])
+            ext = String(filename[dot...])
+        } else {
+            name = filename
+            ext = ""
+        }
+        
+        let length = name.count
+        
+        // If too short, mask entire name
+        if length <= 2 {
+            return "{\(length)}\(ext)"
+        }
+        
+        // Normal masking
+        let first = name.first!
+        let last = name.last!
+        let hiddenCount = length - 2
+        
+        return "\(first){\(hiddenCount)}\(last)\(ext)"
     }
 }

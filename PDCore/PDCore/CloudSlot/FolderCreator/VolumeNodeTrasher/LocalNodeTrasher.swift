@@ -29,10 +29,10 @@ final class LocalNodeTrasher: LocalNodeTrasherProtocol {
     }
 
     func trashLocally(_ linkIDs: [AnyVolumeIdentifier]) async throws {
-        try await context.perform {
-            let nodes = Node.fetch(identifiers: Set(linkIDs), allowSubclasses: true, in: self.context)
+        try await context.perform { [context] in
+            let nodes = Node.fetch(identifiers: Set(linkIDs), allowSubclasses: true, in: context)
             nodes.forEach { $0.state = .deleted }
-            try self.context.saveOrRollback()
+            try context.saveOrRollback()
         }
     }
 }

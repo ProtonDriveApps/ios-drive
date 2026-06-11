@@ -25,18 +25,18 @@ final class MyFilesNotificationsPermissionsContainer {
     private let controller: NotificationsPermissionsController
     private var coordinator: NotificationsPermissionsCoordinator?
 
-    init(tower: Tower, windowScene: UIWindowScene, flowController: NotificationsPermissionsFlowController) {
+    init(tower: Tower, flowController: NotificationsPermissionsFlowController) {
         controller = specificFactory.makeController(tower: tower, flowController: flowController)
-        startPermissionsCoordinator(flowController: flowController, windowScene: windowScene)
+        startPermissionsCoordinator(flowController: flowController)
     }
 
-    private func startPermissionsCoordinator(flowController: NotificationsPermissionsFlowController, windowScene: UIWindowScene) {
+    private func startPermissionsCoordinator(flowController: NotificationsPermissionsFlowController) {
         #if DEBUG
         if DebugConstants.commandLineContains(flags: [.uiTests, .skipNotificationPermissions]) {
             return
         }
         #endif
 
-        coordinator = commonFactory.makePermissionsCoordinator(controller: controller, flowController: flowController, windowScene: windowScene, type: .myFiles)
+        coordinator = commonFactory.makePermissionsCoordinator(controller: controller, flowController: flowController, type: .myFiles)
     }
 }

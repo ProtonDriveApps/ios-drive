@@ -16,8 +16,8 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 public struct NameHashPair: Equatable {
-    let name: String
-    let hash: String
+    public let name: String
+    public let hash: String
 
     public init(name: String, hash: String) {
         self.name = name

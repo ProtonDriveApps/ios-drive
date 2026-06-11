@@ -26,7 +26,7 @@ class NodeCellSimpleConfiguration: ObservableObject, NodeCellConfiguration {
     var iconName: FileAssetName
     var name: String
     var isFavorite: Bool
-    var isAvailableOffline: Bool
+    var availableOfflineFlags: NodeCellAvailableOfflineFlags
     var isShared: Bool
     var hasSharing: Bool
     var hasDirectShare: Bool
@@ -48,7 +48,7 @@ class NodeCellSimpleConfiguration: ObservableObject, NodeCellConfiguration {
     let selectionModel: CellSelectionModel? = nil
     let id: NodeIdentifier
 
-    let thumbnailViewModel: ThumbnailImageViewModel?
+    let thumbnailViewModel: ThumbnailImageViewModel
     let nodeRowActionMenuViewModel: NodeRowActionMenuViewModel? = nil
     let featureFlagsController: FeatureFlagsControllerProtocol
 
@@ -62,7 +62,11 @@ class NodeCellSimpleConfiguration: ObservableObject, NodeCellConfiguration {
         self.iconName = fileTypeAsset.getAsset(node.mimeType)
         self.name = node.decryptedName
         self.isFavorite = node.isFavorite
-        self.isAvailableOffline = node.isAvailableOffline
+        self.availableOfflineFlags = NodeCellAvailableOfflineFlags(
+            isAvailableOffline: node.isAvailableOffline,
+            isFolderDownloading: false, // Only relevant in other screens
+            isMarkedAsAvailableOffline: node.isEligibleForAvailableOffline
+        )
         self.isShared = node.isShared
         self.hasDirectShare = node.hasDirectShare
         self.isSharedCollaboratively = node.isSharedWithMeRoot

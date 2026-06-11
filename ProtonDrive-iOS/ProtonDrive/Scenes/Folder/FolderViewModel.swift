@@ -28,6 +28,7 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
     private let localSettings: LocalSettings
     private let volumeIdsController: SharedVolumeIdsController
     let scrollToTopPublisher: AnyPublisher<TabBarItem, Never>?
+    let currentTab: TabBarItem?
 
     // MARK: FinderViewModel
     let model: FolderModel
@@ -91,7 +92,6 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
 
     let supportsLayoutSwitch = true
     let featureFlagsController: FeatureFlagsControllerProtocol
-    let topBanner: String? = nil
 
     @Published var isUploadDisclaimerVisible: Bool = false
 
@@ -106,8 +106,7 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
     // MARK: UploadingViewModel
     var childrenUploadCancellable: AnyCancellable?
     let showsUploadsErrorBanner: Bool = true
-    @Published var uploadsCount: Int = 0
-    @Published var uploadProgresses: UploadProgresses = [:]
+    @Published var hasReceivedUploadsUpdate: Bool = false
     var failedCount: Int {
         return transientChildren.map(\.node).filter(isUploadFailed).count
     }
@@ -115,7 +114,6 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
 
     // MARK: DownloadingViewModel
     var childrenDownloadCancellable: AnyCancellable?
-    @Published var downloadProgresses: [ProgressTracker] = []
 
     // MARK: SortingViewModel
     @Published var sorting: SortPreference
@@ -144,6 +142,11 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
 
     // MARK: others
     var isPaidUser = false
+    let progressTrackersController: ProgressTrackersControllerProtocol
+
+    lazy var nodeDownloadedResource: NodeDownloadedResource = {
+        NodeDownloadedResource(managedObjectContext: model.tower.storage.newBackgroundContext())
+    }()
 
     init(
         localSettings: LocalSettings,
@@ -153,7 +156,8 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
         featureFlagsController: FeatureFlagsControllerProtocol,
         isSharedWithMe: Bool = false,
         volumeIdsController: SharedVolumeIdsController,
-        scrollToTopPublisher: AnyPublisher<TabBarItem, Never>?
+        scrollToTopPublisher: AnyPublisher<TabBarItem, Never>?,
+        progressTrackersController: ProgressTrackersControllerProtocol
     ) {
         self.localSettings = localSettings
         defer { self.model.loadFromCache() }
@@ -165,12 +169,15 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
         self.isSharedWithMe = isSharedWithMe
         self.volumeIdsController = volumeIdsController
         self.scrollToTopPublisher = scrollToTopPublisher
-        hasPlusFunctionality = !isSharedWithMe || node.getNodeRole() != .viewer
+        self.currentTab = isSharedWithMe ? .sharedWithMe : .files
+        hasPlusFunctionality = !isSharedWithMe || node.getNodePermissions() != .view
+        self.progressTrackersController = progressTrackersController
 
         self.subscribeToSort()
         self.subscribeToChildren()
         self.subscribeToChildrenUploading()
         self.subscribeToChildrenDownloading()
+        self.subscribeToSDKNotify()
         self.selection.unselectOnEmpty(for: self)
         self.subscribeToLayoutChanges()
         self.subscribeToUserInfoUpdates()
@@ -224,18 +231,22 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
             return []
         }
 
-        switch node.getNodeRole() {
-        case .admin, .editor:
+        switch node.getNodePermissions() {
+        case .administrate, .edit:
             return [
                 .trashMultiple,
                 .moveMultiple,
                 isOfflineAvailablePossible ? .offlineAvailableMultiple : nil
             ].compactMap { $0 }
-        case .viewer:
+        case .view:
             return [
                 isOfflineAvailablePossible ? .offlineAvailableMultiple : nil
             ].compactMap { $0 }
         }
+    }
+
+    func reportListIsShown() {
+        model.tower.performanceMetricsController?.reportTabToFirstItem(pageType: .myFiles)
     }
 }
 

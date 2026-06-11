@@ -19,8 +19,10 @@ import Foundation
 
 public struct Flags: Codable, Equatable {
     public let welcomed: Int
-    
-    public init(welcomed: Int) {
+    public let edmOptOut: Int? // Making it optional to allow backward compatibility (this struct is stored)
+
+    public init(welcomed: Int, edmOptOut: Int?) {
         self.welcomed = welcomed
+        self.edmOptOut = edmOptOut
     }
 }

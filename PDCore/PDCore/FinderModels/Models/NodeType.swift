@@ -71,40 +71,37 @@ extension Node {
     public var isDownloaded: Bool {
         switch self {
         case is File:
-            return (self as? File)?.activeRevision?.blocksAreValid() ?? false
-            
+            guard
+                let file = self as? File,
+                !file.isProtonFile,
+                let revision = file.activeRevision
+            else { return false }
+            #if os(iOS)
+            if DecryptedFileManager.validatedDecryptedFilePath(identifier: file.identifierWithinManagedObjectContext) != nil {
+                return true
+            }
+            #endif
+            return revision.isAvailableLocally()
+
         case is Folder:
             guard let folder = self as? Folder else { return false }
             
             if !folder.isChildrenListFullyFetched {
                 return false
             }
-            
-            // children Files - just checks the blocks
-            if folder.children
-                .filter({ $0 is File })
-                .contains(where: { !$0.isDownloaded && $0.isDownloadable })
-            {
-                return false
+
+            let vaildChildren = folder.children.filter { $0.state != .deleted }
+            for child in vaildChildren {
+                if let folder = child as? CoreDataFolder {
+                    if folder.isChildrenListFullyFetched == false || folder.isDownloaded == false {
+                        return false
+                    }
+                } else if let file = child as? CoreDataFile {
+                    if file.isDownloadable && file.isDownloaded == false {
+                        return false
+                    }
+                }
             }
-            
-            // children Folders - whether all children pages are fetched
-            if nil != folder.children
-                .compactMap({ $0 as? Folder })
-                .first(where: { $0.isChildrenListFullyFetched == false })
-            {
-                return false
-            }
-            
-            // children Folders - involves recusion over child's children
-            if nil != folder.children
-                .filter({ $0 is Folder })
-                .first(where: { $0.isDownloaded == false })
-            {
-                return false
-            }
-            
-            // did not find not-downloaded children in the subtree
             return true
             
         default:
@@ -117,8 +114,12 @@ extension Node {
         #if os(macOS)
         isMarkedOfflineAvailable || isInheritingOfflineAvailable
         #else
-        (isMarkedOfflineAvailable || isInheritingOfflineAvailable) && isDownloaded
+        return isEligibleForAvailableOffline && isDownloaded
         #endif
+    }
+
+    public var isEligibleForAvailableOffline: Bool {
+        isMarkedOfflineAvailable || isInheritingOfflineAvailable
     }
 
     public var isTrashInheriting: Bool {

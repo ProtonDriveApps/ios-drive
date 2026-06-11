@@ -22,10 +22,13 @@ import Combine
 public final class FetchedObjectsObserver<ResultType: NSFetchRequestResult&Equatable>: NSObject, NSFetchedResultsControllerDelegate, ObservableObject {
     public var objectWillChange = ObservableObjectPublisher()
     private var cache: [ResultType] = []
-    private var fetchedResultsController: NSFetchedResultsController<ResultType>
+    private var fetchedResultsController: NSFetchedResultsController<ResultType>?
+    private let onDeinit: () -> Void
     
-    public init(_ fetchedResultsController: NSFetchedResultsController<ResultType>) {
+    public init(_ fetchedResultsController: NSFetchedResultsController<ResultType>,
+                onDeinit: @escaping () -> Void = {}) {
         self.fetchedResultsController = fetchedResultsController
+        self.onDeinit = onDeinit
         super.init()
         fetchedResultsController.delegate = self
     }
@@ -62,17 +65,26 @@ public final class FetchedObjectsObserver<ResultType: NSFetchRequestResult&Equat
     }
     
     public func start() {
+        guard let fetchedResultsController else {
+            assertionFailure("fetchedResultsController must not be nil at the start")
+            return
+        }
         do {
             try fetchedResultsController.performFetch()
         } catch let error {
-            assert(false, error.localizedDescription)
+            assertionFailure(error.localizedDescription)
         }
         objectWillChange.send()
     }
     
     public var fetchedObjects: [ResultType] {
         // Use with caution, needs to be called on the moc's queue
-        self.cache = fetchedResultsController.fetchedObjects ?? []
+        self.cache = fetchedResultsController?.fetchedObjects ?? []
         return self.cache
+    }
+    
+    deinit {
+        fetchedResultsController = nil
+        onDeinit()
     }
 }

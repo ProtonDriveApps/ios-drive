@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Combine
 import Foundation
 import ProtonCoreNetworking
 import ProtonCoreServices
@@ -23,18 +24,23 @@ import PMEventsManager
 public typealias UserSettings = PMEventsManager.UserSettings
 
 public final class GeneralSettings {
-    @SecureStorage(label: "userSettings") private(set) var userSettings: UserSettings?
+    @SecureStorage(label: "userSettings") public private(set) var currentUserSettings: UserSettings?
+    public private(set) var userSettings: CurrentValueSubject<UserSettings?, Never> = .init(nil)
+
     private let network: ProtonCoreServices.APIService
     private let localSettings: LocalSettings
-    
-    init(mainKeyProvider: MainKeyProvider, network: ProtonCoreServices.APIService, localSettings: LocalSettings) {
+    private let connectionStateResource: ConnectionStateResource
+
+    init(
+        mainKeyProvider: MainKeyProvider,
+        network: ProtonCoreServices.APIService,
+        localSettings: LocalSettings,
+        connectionStateResource: ConnectionStateResource
+    ) {
         self.network = network
         self.localSettings = localSettings
-        self._userSettings.configure(with: mainKeyProvider)
-    }
-
-    public var currentUserSettings: UserSettings? {
-        userSettings
+        self.connectionStateResource = connectionStateResource
+        self._currentUserSettings.configure(with: mainKeyProvider)
     }
 
     public func fetchUserSettings() {
@@ -65,14 +71,16 @@ public final class GeneralSettings {
     }
 
     public func storeUserSettings(_ userSettings: UserSettings) {
-        self.userSettings = userSettings
-        
+        self.currentUserSettings = userSettings
+
         self.localSettings.optOutFromTelemetry = userSettings.optOutFromTelementry
         self.localSettings.optOutFromCrashReports = userSettings.optOutFromCrashReports
+
+        self.userSettings.send(userSettings)
     }
 
     public func cleanUp() {
-        try? _userSettings.wipeValue()
+        try? _currentUserSettings.wipeValue()
     }
 
 }
@@ -148,13 +156,20 @@ extension GeneralSettings: ProtonUserSettingsStarterInteractorProtocol {
                 do {
                     try await fetchAndStoreUserSettings()
                 } catch {
-                    Log.error("Fetch Proton user settings failed", error: error, domain: .application)
+                    if error is NetworkStateError {
+                        Log.debug("Fetch Proton user settings failed since device is offline", domain: .application)
+                    } else {
+                        Log.error("Fetch Proton user settings failed", error: error, domain: .application)
+                    }
                 }
             }
         }
     }
 
     private func fetchAndStoreUserSettings() async throws {
+        guard connectionStateResource.currentState.isReachable else {
+            throw NetworkStateError.deviceIsOffline
+        }
         let response: GetGeneralSettingsResponse = try await fetchGeneralSettingsAsync()
         storeUserSettings(response.userSettings)
     }

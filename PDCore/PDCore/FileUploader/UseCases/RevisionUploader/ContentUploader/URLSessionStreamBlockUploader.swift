@@ -40,19 +40,22 @@ final class URLSessionStreamBlockUploader: URLSessionContentUploader {
     private let uploadBlock: UploadBlock
     private let service: Service
     private let credentialProvider: CredentialProvider
+    private let uploadedBytesCounterResource: BytesCounterResource
 
     init(
         uploadBlock: UploadBlock,
         fullUploadableBlock: FullUploadableBlock,
         progressTracker: Progress,
         service: Service,
-        credentialProvider: CredentialProvider
+        credentialProvider: CredentialProvider,
+        uploadedBytesCounterResource: BytesCounterResource
     ) {
         self.uploadBlock = uploadBlock
         self.service = service
         self.credentialProvider = credentialProvider
         self.remoteURL = fullUploadableBlock.remoteURL
         self.localURL = fullUploadableBlock.localURL
+        self.uploadedBytesCounterResource = uploadedBytesCounterResource
         super.init(progressTracker: progressTracker)
     }
 
@@ -226,6 +229,9 @@ extension URLSessionStreamBlockUploader {
 extension URLSessionStreamBlockUploader {
     private func saveUploadedBlockState() {
         guard let moc = uploadBlock.moc else { return }
+
+        let bytes = localURL.fileSize ?? 0
+        uploadedBytesCounterResource.add(bytes: bytes)
 
         moc.performAndWait { [weak self] in
             guard let self, !self.isCancelled else { return }

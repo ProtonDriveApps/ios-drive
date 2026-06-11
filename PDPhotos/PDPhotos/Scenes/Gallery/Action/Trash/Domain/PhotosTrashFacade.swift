@@ -23,3 +23,5 @@ protocol PhotosTrashFacade {
 }
 
 final class AsyncPhotosTrashFacade: ThrowingAsynchronousFacade<PhotosTrashInteractor, PhotoIdsSet, Void>, PhotosTrashFacade {}
+
+final class AsyncSDKPhotosTrashFacade: ThrowingAsynchronousFacade<SDKPhotosTrashInteractor, PhotoIdsSet, Void>, PhotosTrashFacade {}

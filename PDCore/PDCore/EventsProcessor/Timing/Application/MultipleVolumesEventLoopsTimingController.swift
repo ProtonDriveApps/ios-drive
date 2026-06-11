@@ -52,12 +52,12 @@ final class MultipleVolumesEventLoopsTimingController: EventLoopsTimingControlle
     private func fillInitialDate(for volumeId: VolumeID) {
         if executionHistory[volumeId] == nil {
             // Store the initial time when volume was registered. The delays are counter from this point forward
-            executionHistory[volumeId] = dateResource.getDate()
+            executionHistory[volumeId] = dateResource.getPastDate()
         }
     }
 
     func getInterval() -> Double {
-        return 30
+        EventLoopTimingConstants().eventLoopRefillInterval
     }
 
     func getReadyLoops(possible: [LoopID]) -> [LoopID] {
@@ -111,3 +111,17 @@ final class MultipleVolumesEventLoopsTimingController: EventLoopsTimingControlle
         }
     }
 }
+
+#if DEBUG
+extension MultipleVolumesEventLoopsTimingController {
+    func getExecutionHistory() -> [VolumeID: Date] {
+        guard Constants.isUnitTest else { return [:] }
+        return executionHistory
+    }
+
+    func setExecutionHistory(key: VolumeID, date: Date) {
+        guard Constants.isUnitTest else { return }
+        executionHistory[key] = date
+    }
+}
+#endif

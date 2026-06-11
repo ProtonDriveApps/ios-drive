@@ -37,9 +37,19 @@ public struct PhotoAssetData {
     }
 }
 
+public struct AppendedAssetData {
+    public var cameraInfo: PhotoAssetMetadata.Camera
+    public var location: PhotoAssetMetadata.Location?
+
+    public init(cameraInfo: PhotoAssetMetadata.Camera, location: PhotoAssetMetadata.Location?) {
+        self.cameraInfo = cameraInfo
+        self.location = location
+    }
+}
+
 public protocol PhotoLibraryAssetResource {
     func executePhoto(with data: PhotoAssetData) async throws -> PhotoAsset
-    func executeVideo(with data: PhotoAssetData) async throws -> PhotoAsset
+    func executeVideo(with data: PhotoAssetData, appendedAssetData: AppendedAssetData?) async throws -> PhotoAsset
 }
 
 public class LocalPhotoLibraryAssetResource: PhotoLibraryAssetResource {
@@ -47,50 +57,87 @@ public class LocalPhotoLibraryAssetResource: PhotoLibraryAssetResource {
     fileprivate let assetFactory: PhotoAssetFactory
     fileprivate let exifResource: PhotoLibraryExifResource
     private let localSettings: LocalSettings
+    private let rootFolderRepository: PhotosRootFolderRepository
+    private let encryptionResource: EncryptionResource
 
     public init(
         contentResource: PhotoLibraryFileContentResource,
         assetFactory: PhotoAssetFactory,
         exifResource: PhotoLibraryExifResource,
-        localSettings: LocalSettings
+        localSettings: LocalSettings,
+        rootFolderRepository: PhotosRootFolderRepository,
+        encryptionResource: EncryptionResource
     ) {
         self.contentResource = contentResource
         self.assetFactory = assetFactory
         self.exifResource = exifResource
         self.localSettings = localSettings
+        self.rootFolderRepository = rootFolderRepository
+        self.encryptionResource = encryptionResource
     }
 
     public func executePhoto(with data: PhotoAssetData) async throws -> PhotoAsset {
-        let url = try await contentResource.copyFile(with: data.resource)
-        return try await execute(with: data, url: url, duration: nil)
-    }
-
-    public func executeVideo(with data: PhotoAssetData) async throws -> PhotoAsset {
-        let url = try await contentResource.copyFile(with: data.resource)
-        let duration = contentResource.getVideoDuration(at: url)
-        return try await execute(with: data, url: url, duration: duration)
-    }
-
-    fileprivate func execute(with data: PhotoAssetData, url: URL, duration: Double?) async throws -> PhotoAsset {
-        let isVideo = data.resource.isVideo()
-        let exif = try await getExif(from: data.resource, url: url)
-        let cameraInfo = await exifResource.getCameraInfo(at: url, isVideo: isVideo)
+        let (properties, contentHash, dataSize) = try await readImageProperty(from: data.resource, creationDate: data.asset.creationDate)
+        let cameraInfo = exifResource.getCameraInfo(from: properties)
         let mime = getMimeType(from: data)
-        let location = await exifResource.getLocation(at: url, isVideo: isVideo)
+        let location = getLocation(from: data.asset, or: properties)
+
         let factoryData = PhotoAssetFactoryData(
             identifier: data.identifier,
-            url: url,
             mimeType: mime,
             originalFilename: data.originalFilename,
             filenameExtension: data.fileExtension,
             width: data.asset.pixelWidth,
             height: data.asset.pixelHeight,
-            exif: exif,
+            exif: Data(),
+            isOriginal: data.isOriginal,
+            duration: nil,
+            camera: makeCameraInfo(data: data, camera: cameraInfo),
+            location: location,
+            tags: getPhotoTag(from: data, isRaw: mime.isRaw, isFrontCamera: cameraInfo.isFrontCamera),
+            contentHash: contentHash,
+            dataSize: dataSize,
+            resourceType: data.resource.type.rawValue
+        )
+        return try assetFactory.makeAsset(from: factoryData)
+    }
+
+    /// - Parameters:
+    ///   - appendedAssetData: For Live photo video, Live photo video can't read AVAsset
+    public func executeVideo(with data: PhotoAssetData, appendedAssetData: AppendedAssetData?) async throws -> PhotoAsset {
+        let (contentHash, dataSize) = try await readVideoContentHash(from: data.resource, creationDate: data.asset.creationDate)
+        let mime = getMimeType(from: data)
+
+        let cameraInfo: PhotoAssetMetadata.Camera
+        let location: PhotoAssetMetadata.Location?
+        let duration: Double
+        if let appendedAssetData {
+            cameraInfo = appendedAssetData.cameraInfo
+            location = appendedAssetData.location
+            duration = 1.4 // Approximate value for live photo, can't get correct value since AVAsset is not available
+        } else {
+            let avAsset = try await readAvAsset(from: data.asset)
+            cameraInfo = await exifResource.getCameraInfo(asset: avAsset)
+            location = await getLocation(from: data.asset, or: avAsset)
+            duration = data.asset.duration
+        }
+
+        let factoryData = PhotoAssetFactoryData(
+            identifier: data.identifier,
+            mimeType: mime,
+            originalFilename: data.originalFilename,
+            filenameExtension: data.fileExtension,
+            width: data.asset.pixelWidth,
+            height: data.asset.pixelHeight,
+            exif: Data(),
             isOriginal: data.isOriginal,
             duration: duration,
             camera: makeCameraInfo(data: data, camera: cameraInfo),
             location: location,
-            tags: getPhotoTag(from: data, isRaw: mime.isRaw, isFrontCamera: cameraInfo.isFrontCamera)
+            tags: getPhotoTag(from: data, isRaw: mime.isRaw, isFrontCamera: cameraInfo.isFrontCamera),
+            contentHash: contentHash,
+            dataSize: dataSize,
+            resourceType: data.resource.type.rawValue
         )
         return try assetFactory.makeAsset(from: factoryData)
     }
@@ -107,6 +154,24 @@ public class LocalPhotoLibraryAssetResource: PhotoLibraryAssetResource {
             return exifResource.getPhotoExif(at: url)
         } else {
             return await exifResource.getVideoExif(at: url)
+        }
+    }
+
+    private func getLocation(from asset: PHAsset, or properties: NSDictionary) -> PhotoAssetMetadata.Location? {
+        if let assetLocation = asset.location {
+            let coordinate = assetLocation.coordinate
+            return PhotoAssetMetadata.Location(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        } else {
+            return exifResource.getLocation(from: properties)
+        }
+    }
+
+    private func getLocation(from asset: PHAsset, or avAsset: AVAsset) async -> PhotoAssetMetadata.Location? {
+        if let assetLocation = asset.location {
+            let coordinate = assetLocation.coordinate
+            return PhotoAssetMetadata.Location(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        } else {
+            return await exifResource.getLocation(asset: avAsset)
         }
     }
 
@@ -155,23 +220,106 @@ public class LocalPhotoLibraryAssetResource: PhotoLibraryAssetResource {
     }
 }
 
-public class TagsLocalPhotoLibraryAssetResource: LocalPhotoLibraryAssetResource {
+// MARK: - in place read data
+extension LocalPhotoLibraryAssetResource {
+    /// Read image properties dictionary and content hash
+    /// - Returns: (Properties dictionary, content hash, data size)
+    private func readImageProperty(from resource: PHAssetResource, creationDate: Date?) async throws -> (NSDictionary, String, Int) {
+        let sha1 = SHA1DigestBuilder()
+        let resourceOption = PHAssetResourceRequestOptions()
+        resourceOption.isNetworkAccessAllowed = true
+        let key = try rootFolderRepository.getEncryptionInfo().hashKey
+        let encryptionResource = self.encryptionResource
+        let accumulator = IncrementalImagePropertyAccumulator.imageIO()
+        var dataSize = 0
 
-    override public func executePhoto(with data: PhotoAssetData) async throws -> PhotoAsset {
-        let url = try await contentResource.copyFile(with: data.resource)
-        defer {
-            try? FileManager.default.removeItem(at: url)
+        return try await withCheckedThrowingContinuation { continuation in
+            PHAssetResourceManager.default().requestData(for: resource, options: resourceOption) { chunk in
+                dataSize += chunk.count
+                sha1.add(chunk)
+                accumulator.append(chunk)
+            } completionHandler: { error in
+                if let error {
+                    Log.debug("Local identifier \(resource.assetLocalIdentifier), createtionDate: \(creationDate ?? .distantPast)", domain: .photosProcessing)
+                    Log.error("Request image data from iCloud failed, resource type: \(resource.type)", error: error, domain: .photosProcessing)
+                    continuation.resume(throwing: Errors.cloudAssetNotAvailable)
+                } else {
+                    guard let properties = accumulator.finalize() else {
+                        continuation.resume(throwing: Errors.dataNotAvailable)
+                        return
+                    }
+                    let sha1Hex = sha1.getResult().hexString()
+                    do {
+                        let contentHash = try encryptionResource.makeHmac(string: sha1Hex, hashKey: key)
+                        continuation.resume(returning: (properties, contentHash, dataSize))
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
         }
-        return try await execute(with: data, url: url, duration: nil)
     }
 
-    override public func executeVideo(with data: PhotoAssetData) async throws -> PhotoAsset {
-        assert(false, "This method should not be called.")
-        let url = try await contentResource.copyFile(with: data.resource)
-        defer {
-            try? FileManager.default.removeItem(at: url)
+    /// - Returns: (content hash, data size)
+    private func readVideoContentHash(from resource: PHAssetResource, creationDate: Date?) async throws -> (String, Int) {
+        let sha1 = SHA1DigestBuilder()
+        let resourceOption = PHAssetResourceRequestOptions()
+        resourceOption.isNetworkAccessAllowed = true
+        let key = try rootFolderRepository.getEncryptionInfo().hashKey
+        let encryptionResource = self.encryptionResource
+        var dataSize = 0
+        return try await withCheckedThrowingContinuation { continuation in
+            PHAssetResourceManager.default().requestData(for: resource, options: resourceOption) { data in
+                dataSize += data.count
+                sha1.add(data)
+            } completionHandler: { error in
+                if let error {
+                    Log.debug("Local identifier \(resource.assetLocalIdentifier), createtionDate: \(creationDate ?? .distantPast)", domain: .photosProcessing)
+                    Log.error("Request video data from iCloud failed, resource type: \(resource.type)", error: error, domain: .photosProcessing)
+                    continuation.resume(throwing: Errors.cloudAssetNotAvailable)
+                } else {
+                    let sha1Hex = sha1.getResult().hexString()
+                    do {
+                        let contentHash = try encryptionResource.makeHmac(string: sha1Hex, hashKey: key)
+                        continuation.resume(returning: (contentHash, dataSize))
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
         }
-        let duration = contentResource.getVideoDuration(at: url)
-        return try await execute(with: data, url: url, duration: duration)
+    }
+
+    private func readAvAsset(from asset: PHAsset) async throws -> AVAsset {
+        let videoOption = PHVideoRequestOptions()
+        videoOption.isNetworkAccessAllowed = true
+        videoOption.version = .current
+        videoOption.deliveryMode = .automatic
+        return try await withCheckedThrowingContinuation { continuation in
+            PHImageManager.default().requestAVAsset(forVideo: asset, options: videoOption) { avAsset, _, info in
+                if let avAsset {
+                    continuation.resume(returning: avAsset)
+                } else {
+                    Log.error("Failed to load AVAsset: \(info?.description ?? "")", error: nil, domain: .photosProcessing)
+                    continuation.resume(throwing: Errors.avAssetNotAvailable)
+                }
+            }
+        }
+    }
+}
+
+extension LocalPhotoLibraryAssetResource {
+    public enum Errors: Error {
+        case avAssetNotAvailable
+        case dataNotAvailable
+        case selfIsReleased
+        case cloudAssetNotAvailable
+    }
+}
+
+public class TagsLocalPhotoLibraryAssetResource: LocalPhotoLibraryAssetResource {
+
+    override public func executeVideo(with data: PhotoAssetData, appendedAssetData: AppendedAssetData?) async throws -> PhotoAsset {
+        return try await super.executeVideo(with: data, appendedAssetData: nil)
     }
 }

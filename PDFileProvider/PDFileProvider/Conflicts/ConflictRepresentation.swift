@@ -17,6 +17,7 @@
 
 import PDCore
 import FileProvider
+import CoreData
 
 public enum ItemActionChangeType {
     case create
@@ -33,7 +34,9 @@ public protocol ConflictDetection {
         tower: Tower,
         basedOn item: NSFileProviderItem,
         changeType: ItemActionChangeType,
-        fields: NSFileProviderItemFields) async throws -> (ResolutionAction, Node?)?
+        fields: NSFileProviderItemFields,
+        moc: NSManagedObjectContext
+    ) async throws -> (ResolutionAction, Node?)?
 
 }
 
@@ -47,7 +50,8 @@ public protocol ConflictResolution {
         and conflictingNode: Node?,
         applying action: ResolutionAction,
         fields: NSFileProviderItemFields,
-        progress: Progress?
+        progress: Progress?,
+        moc: NSManagedObjectContext
     ) async throws -> NSFileProviderItem
 
 }

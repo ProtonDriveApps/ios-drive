@@ -40,6 +40,10 @@ public class PMSettingsViewController: UITableViewController {
             footerView.setTitle(footerText)
             tableView.tableFooterView = footerView
         }
+
+        viewModel.sectionsDidUpdate = { [weak self] index in
+            self?.tableView.reloadSections([index], with: .automatic)
+        }
     }
 
     private func addNavigationBarButton() {

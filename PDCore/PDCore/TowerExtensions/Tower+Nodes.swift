@@ -21,13 +21,12 @@ import FileProvider
 import PDClient
 
 extension Tower {
-    public func rootFolderAvailable() -> Bool {
-        rootFolderIdentifier() != nil
+    public func rootFolderAvailable(moc: NSManagedObjectContext) -> Bool {
+        rootFolderIdentifier(moc: moc) != nil
     }
     
-    public func rootFolderIdentifier() -> NodeIdentifier? {
+    public func rootFolderIdentifier(moc: NSManagedObjectContext) -> NodeIdentifier? {
         var rootIdentifier: NodeIdentifier?
-        let moc = self.storage.backgroundContext
         moc.performAndWait {
             guard let root = fetchRootFolder(in: moc) else { return }
             rootIdentifier = root.identifier
@@ -45,18 +44,20 @@ extension Tower {
         return moc.performAndWait { mainShare.root as? Folder }
     }
     
-    public func folderForNodeIdentifier(_ nodeId: NodeIdentifier) -> Folder? {
-        guard let node = fileSystemSlot?.getNode(nodeId) else { return nil }
+    public func folderForNodeIdentifier(_ nodeId: NodeIdentifier, moc: NSManagedObjectContext) -> Folder? {
+        guard let node = fileSystemSlot?.getNode(nodeId, moc: moc) else { return nil }
         guard let folder = node as? Folder else {
-            return node.parentLink
+            return moc.performAndWait {
+                node.parentLink
+            }
         }
         return folder
     }
     
-    public func createFolder(named name: String, under parent: Folder, handler: @escaping (Result<Folder, Error>) -> Void) {
+    public func createFolder(named name: String, under parent: Folder, moc: NSManagedObjectContext, handler: @escaping (Result<Folder, Error>) -> Void) {
         Task {
             do {
-                let folder = try await cloudSlot.createFolder(name, parent: parent)
+                let folder = try await cloudSlot.createFolder(name, parent: parent, moc: moc)
                 handler(.success(folder))
             } catch {
                 handler(.failure(error))
@@ -65,15 +66,14 @@ extension Tower {
     }
     
     @available(*, deprecated, message: "Wrap the functionality in a standalone object, this should not be responsibility of Tower")
-    public func rename(node: NodeIdentifier, cleartextName newName: String, handler: @escaping (Result<Node, Error>) -> Void) {
+    public func rename(node: NodeIdentifier, cleartextName newName: String, moc: NSManagedObjectContext, handler: @escaping (Result<Node, Error>) -> Void) {
         Task {
             do {
-                let managedObjectContext = storage.backgroundContext
-                guard let node = storage.fetchNode(id: node, moc: managedObjectContext) else {
+                guard let node = storage.fetchNode(id: node, moc: moc) else {
                     return handler(.failure(NSError(domain: "Failed to find Node", code: 0, userInfo: nil)))
                 }
 
-                let isProtonFile = managedObjectContext.performAndWait {
+                let isProtonFile = moc.performAndWait {
                     (node as? File)?.isProtonFile ?? false
                 }
 
@@ -89,7 +89,7 @@ extension Tower {
                     newMime = URL(fileURLWithPath: newName).mimeType()
                 }
 
-                try await cloudSlot.rename(node, to: newName, mimeType: newMime)
+                try await cloudSlot.rename(node, to: newName, mimeType: newMime, moc: moc)
                 handler(.success(node))
             } catch {
                 handler(.failure(error))
@@ -97,14 +97,14 @@ extension Tower {
         }
     }
     
-    public func setFavourite(_ favorite: Bool, nodes: [Node], handler: @escaping (Result<[Node], Error>) -> Void) {
+    public func setFavourite(_ favorite: Bool, nodes: [Node], moc: NSManagedObjectContext, handler: @escaping (Result<[Node], Error>) -> Void) {
         // local operation - no need for scratchpad moc as it can't fail
-        self.storage.backgroundContext.performAndWait {
-            let nodes = nodes.map { $0.in(moc: self.storage.backgroundContext) }
+        moc.performAndWait {
+            let nodes = nodes.map { $0.in(moc: moc) }
             nodes.forEach { $0.isFavorite = favorite }
             
             do {
-                try self.storage.backgroundContext.saveOrRollback()
+                try moc.saveOrRollback()
                 handler(.success(nodes))
             } catch let error {
                 handler(.failure(error))
@@ -112,18 +112,16 @@ extension Tower {
         }
     }
     
-    public func markOfflineAvailable(_ mark: Bool, nodes: [Node], handler: @escaping (Result<[Node], Error>) -> Void) {
-        // performing this on background context will make observation by OfflineSaver less error-prone
-        // local operation - no need for scratchpad moc as it can't fail
-        self.storage.backgroundContext.perform {
-            let nodes = nodes.map { $0.in(moc: self.storage.backgroundContext) }
+    public func markOfflineAvailable(_ mark: Bool, nodes: [Node], moc: NSManagedObjectContext, handler: @escaping (Result<[Node], Error>) -> Void) {
+        moc.perform {
+            let nodes = nodes.map { $0.in(moc: moc) }
             nodes.forEach {
                 $0.isMarkedOfflineAvailable = mark
                 Log.info("Will toggle offline available mark to: \(mark). Node:\($0.identifier)", domain: .offlineAvailable)
             }
 
             do {
-                try self.storage.backgroundContext.saveOrRollback()
+                try moc.saveOrRollback()
                 handler(.success(nodes))
             } catch {
                 Log.error("Failed marking nodes as offline available", error: error, domain: .offlineAvailable)
@@ -132,10 +130,9 @@ extension Tower {
         }
     }
 
-    public func move(nodeID nodeIdentifier: NodeIdentifier, under newParent: Folder, with newName: String? = nil, handler: @escaping (Result<Node, Error>) -> Void) {
+    public func move(nodeID nodeIdentifier: NodeIdentifier, under newParent: Folder, with newName: String? = nil, moc: NSManagedObjectContext, handler: @escaping (Result<Node, Error>) -> Void) {
         Task {
             do {
-                let moc = self.storage.backgroundContext
                 guard let node = self.storage.fetchNode(id: nodeIdentifier, moc: moc) else {
                     return handler(.failure(CloudSlot.Errors.noNodeFound))
                 }
@@ -147,7 +144,7 @@ extension Tower {
                 }
                 
                 let name = try await decryptedName(node, moc, newName)
-                try await cloudSlot.move(node: node, to: newParent, name: name)
+                try await cloudSlot.move(node: node, to: newParent, name: name, moc: moc)
                 handler(.success(node))
             } catch {
                 handler(.failure(error))

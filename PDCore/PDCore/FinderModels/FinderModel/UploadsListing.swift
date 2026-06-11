@@ -51,36 +51,67 @@ public struct URLContent {
 }
 
 extension UploadsListing {
+    @MainActor
     public func childrenUploading() -> AnyPublisher<([File], [FileUploader.OperationID: FileUploader.CurrentProgress]), Error> {
-        childrenUploadingObserver.objectWillChange
+        return childrenUploadingObserver.objectWillChange
             .setFailureType(to: Error.self)
-            .combineLatest(tower.fileUploader.progressPublisher())
+            .combineLatest(tower.fileUploader.progressPublisher(), sdkProgressPublisher())
             .throttle(for: 0.02, scheduler: DispatchQueue.main, latest: true)
-            .map { [unowned self] (_, progresses) in
-                return (self.childrenUploadingObserver.fetchedObjects, progresses)
+            .map { [unowned self] (_, progresses, sdkProgresses) in
+                let mergedProgresses = progresses.merging(sdkProgresses) { oldValue, newValue in newValue }
+                return (self.childrenUploadingObserver.fetchedObjects, mergedProgresses)
             }
             .removeDuplicates(by: { previous, current in
                 return previous.0 == current.0 && previous.1 == current.1
             })
             .eraseToAnyPublisher()
     }
-    
+
+    @MainActor
+    func sdkProgressPublisher() -> AnyPublisher<[FileUploader.OperationID: FileUploader.CurrentProgress], Error> {
+        guard let sdkFileUploader = tower.getSdkFileUploader() else {
+            return Just<[FileUploader.OperationID: FileUploader.CurrentProgress]>([:])
+                .setFailureType(to: Error.self)
+                .eraseToAnyPublisher()
+        }
+
+        return sdkFileUploader.progresses
+                .setFailureType(to: Error.self)
+                .merge(
+                    with: sdkFileUploader.failures
+                        .flatMap { _ in Empty<[FileUploader.OperationID: FileUploader.CurrentProgress], Error>() }
+                )
+                .eraseToAnyPublisher()
+    }
+
     public func loadUploadsFromCache() {
         self.childrenUploadingObserver.start()
     }
     
     public func pauseUpload(file: File) {
         guard let uploadID = file.uploadID else { return }
-        tower.fileUploader.pauseFileUpload(id: uploadID)
+        if let sdkUploader = tower.getSdkFileUploader() {
+            Task { @MainActor in
+                await sdkUploader.pause(identifier: file.genericIdentifier)
+            }
+        } else {
+            tower.fileUploader.pauseFileUpload(id: uploadID)
+        }
     }
     
     public func cancelUpload(file: File) {
-        tower.fileUploader.deleteUploadingFile(file, error: nil)
+        if let sdkUploader = tower.getSdkFileUploader() {
+            Task.detached {
+                try await sdkUploader.deleteUploadingFile(identifier: file.identifier.any())
+            }
+        } else {
+            tower.fileUploader.deleteUploadingFile(file, error: nil)
+        }
     }
     
     public func uploadFile(_ content: URLContent, to folder: Folder) throws {
-        guard let newFile = try? tower.fileImporter.importFile(from: content.url, to: folder),
-              content.size == content.url.fileSize else {
+        let newFile = try tower.fileImporter.importFile(from: content.url, to: folder)
+        guard content.size == content.url.fileSize else {
             assert(false, "Failed to create File")
             throw URLConsistencyError.urlSizeMismatch
         }
@@ -92,6 +123,14 @@ extension UploadsListing {
     }
 
     public func restartUpload(node: File) {
-        tower.fileUploader.upload(node, completion: { _ in })
+        if let sdkUploader = tower.getSdkFileUploader() {
+            Task {
+                let identifier = node.genericIdentifier
+                // Should resume if paused, otherwise starts from scratch
+                _ = try await sdkUploader.upload(identifier: identifier)
+            }
+        } else {
+            tower.fileUploader.upload(node, completion: { _ in })
+        }
     }
 }

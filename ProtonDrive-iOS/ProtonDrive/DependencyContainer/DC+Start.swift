@@ -36,6 +36,9 @@ public extension DriveDependencyContainer {
         let navigationController = UINavigationController(rootViewController: viewController)
         navigationController.navigationBar.isHidden = true
         navigationController.interactivePopGestureRecognizer?.isEnabled = false
+        if #available(iOS 26.0, *) {
+            navigationController.interactiveContentPopGestureRecognizer?.isEnabled = false
+        }
         return navigationController
     }
 

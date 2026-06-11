@@ -41,11 +41,21 @@ final class LocalPhotoThumbnailIdsRepository: PhotoThumbnailIdsRepository {
     private func getId(photo: Photo, type: ThumbnailType) -> AnyVolumeIdentifier? {
         let thumbnail = photo.photoRevision.thumbnails.first(where: { $0.type == type })
 
-        if let id = thumbnail?.id {
-            return AnyVolumeIdentifier(id: id, volumeID: photo.volumeID)
-        } else {
-            Log.error("Failed to retrieve thumbnail id.", error: nil, domain: .photosUI)
+        guard let id = thumbnail?.id else {
+            var context = LogContext(photo.genericIdentifierWithinManagedObjectContext.debugDesc, forKey: "photoID")
+            context["thumbnailCount"] = photo.photoRevision.thumbnails.count.description
+            Log.error("Failed to retrieve \(type.description) thumbnail id.", error: nil, domain: .thumbnails, context: context)
             return nil
         }
+
+        guard !id.isEmpty else {
+            var context = LogContext(photo.genericIdentifier.debugDesc, forKey: "photoID")
+            context["revisionID"] = photo.photoRevision.id
+            Log.error("Getting empty thumbnailId", error: nil, domain: .thumbnails, context: context)
+            assertionFailure("Should not happen, photo: \(photo.identifier), revision: \(photo.photoRevision.id)")
+            return nil
+        }
+
+        return AnyVolumeIdentifier(id: id, volumeID: photo.volumeID)
     }
 }

@@ -26,7 +26,7 @@ public actor RevisionDecryptor {
             let revision = revision.in(moc: moc)
             #if os(macOS)
             guard revision.size > 0 else {
-                let url = try revision.clearURL()
+                let url = try revision.temporaryClearURL(shouldCreate: false)
                 FileManager.default.createFile(atPath: url.path, contents: nil)
                 return url
             }

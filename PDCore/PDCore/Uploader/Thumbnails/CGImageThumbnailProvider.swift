@@ -26,10 +26,21 @@ final class CGImageThumbnailProvider: ThumbnailProvider {
         self.next = next
     }
 
-    func getThumbnail(from url: URL, ofSize size: CGSize) -> Image? {
-        guard MimeType(fromFileExtension: url.pathExtension)?.isImage == true else {
-            return next?.getThumbnail(from: url, ofSize: size)
+    func getThumbnail(from url: URL, overrideMediaType: String?, ofSize size: CGSize) -> Image? {
+        let mimeType = overrideMediaType.flatMap { MimeType(value: $0) } ?? MimeType(fromFileExtension: url.pathExtension)
+
+        guard mimeType?.isImage == true else {
+            return next?.getThumbnail(from: url, overrideMediaType: overrideMediaType, ofSize: size)
         }
+
+        #if os(iOS)
+        if Constants.runningInExtension,
+           let fileSize = try? url.getFileSize(),
+           fileSize > 22 * 1024 * 1024 {
+            // Image larger than 22 MB is easy to exceed memory limitation
+            return next?.getThumbnail(from: url, overrideMediaType: overrideMediaType, ofSize: size)
+        }
+        #endif
 
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,

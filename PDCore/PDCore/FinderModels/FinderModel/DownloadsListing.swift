@@ -16,21 +16,66 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Combine
+import Foundation
 
 public protocol DownloadsListing: AnyObject {
     var tower: Tower! { get }
 }
 
+public typealias ProgressTrackers = [String: ProgressTracker]
+
 extension DownloadsListing {
-    public func childrenDownloading() -> AnyPublisher<[ProgressTracker], Error> {
-        self.tower.downloader!.downloadProcessesAndErrors()
+    @MainActor
+    public func childrenDownloading() -> AnyPublisher<ProgressTrackers, Error> {
+        let legacyPublisher = tower.downloader!.downloadProcessesAndErrors()
+        if let sdkDownloader = tower.getSdkFileDownloader() {
+            let sdkPublisher = makeSDKProgresses(sdkDownloader: sdkDownloader)
+            return legacyPublisher
+                .combineLatest(sdkPublisher)
+                .map { legacyProgresses, sdkProgresses in
+                    return legacyProgresses.merging(sdkProgresses, uniquingKeysWith: { $1 })
+                }
+                .mapError { $0 }
+                .eraseToAnyPublisher()
+        } else {
+            return legacyPublisher
+        }
     }
-    
+
+    @MainActor
+    private func makeSDKProgresses(sdkDownloader: SDKFileDownloaderProtocol) -> AnyPublisher<ProgressTrackers, Error> {
+        let failurePublisher = sdkDownloader.failures
+            .first() // only care about the first emission
+            .flatMap { value in
+                Fail<ProgressTrackers, Error>(error: value.1)
+            }
+            .eraseToAnyPublisher()
+        let combinedPublisher = sdkDownloader.progresses
+            .map { progresses in
+                let keysAndValues = progresses.map { progressEntry in
+                    let progress = progressEntry.value
+                    progress.fileURL = URL(string: progressEntry.key.id) // This is necessary to `match` progresses against files
+                    return (progressEntry.key.id, ProgressTracker(progress: progress, direction: .downstream))
+                }
+                return Dictionary(uniqueKeysWithValues: keysAndValues)
+            }
+            .setFailureType(to: Error.self)
+            .merge(with: failurePublisher)
+        return combinedPublisher.eraseToAnyPublisher()
+    }
+
     public func download(node: Node, useRefreshableDownloadOperation: Bool = false) {
         let file = node as! File // TODO: later will need to download folders as trees
         tower.downloader?.scheduleDownloadWithBackgroundSupport(
             cypherdataFor: file,
             useRefreshableDownloadOperation: useRefreshableDownloadOperation
-        ) { _ in }
+        ) { result in
+            switch result {
+            case .success(let file):
+                _ = try? file.activeRevision?.decryptFile()
+            case .failure:
+                break
+            }
+        }
     }
 }

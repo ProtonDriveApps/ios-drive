@@ -20,6 +20,7 @@ import PDCore
 import ProtonCoreUIFoundations
 import PDUIComponents
 import Combine
+import PDCoreIOS
 
 struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
     @Environment(\.acknowledgedNotEnoughStorage) var acknowledgedNotEnoughStorage
@@ -37,6 +38,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
     private let isList: Bool
     private let isEnabled: Bool
     private let index: Int
+    private let identifier: AnyVolumeIdentifier
 
     init(
         node: Node,
@@ -54,6 +56,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
         self.menuItem = menuItem
         self.isList = isList
         self.isEnabled = !finderViewModel.childViewModel(for: node).isDisabled
+        self.identifier = node.identifier.any()
     }
 
     var body: some View {
@@ -97,7 +100,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
 
          Original radar: FB7840140
          */
-        let binding = Binding(get: { self.deeplinkTo.wrappedValue == node.identifier.nodeID },
+        let binding = Binding(get: { self.deeplinkTo.wrappedValue == identifier.id },
                               set: { if !$0 { self.deeplinkTo.wrappedValue = nil } })
 
         return NavigationLink(destination: nextView, isActive: binding) {
@@ -124,7 +127,8 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 presentedSheet: presentedSheet,
                 menuItem: menuItem,
                 index: index,
-                onTap: { [unowned vm] in
+                onTap: { [weak vm] in
+                    guard let vm else { return }
                     onCellTap(cellViewModel: vm, node: node)
                 },
                 onLongPress: { [weak vm] in
@@ -137,7 +141,8 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 presentedSheet: presentedSheet,
                 menuItem: menuItem,
                 index: index,
-                onTap: { [unowned vm] in
+                onTap: { [weak vm] in
+                    guard let vm else { return }
                     onCellTap(cellViewModel: vm, node: node)
                 },
                 onLongPress: { [weak vm] in
@@ -151,7 +156,8 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 presentedSheet: presentedSheet,
                 menuItem: menuItem,
                 index: index,
-                onTap: { [unowned vm] in
+                onTap: { [weak vm] in
+                    guard let vm else { return }
                     onCellTap(cellViewModel: vm, node: node)
                 },
                 onLongPress: { [weak vm] in
@@ -170,7 +176,8 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 presentedSheet: presentedSheet,
                 menuItem: menuItem,
                 index: index,
-                onTap: { [unowned vm] in
+                onTap: { [weak vm] in
+                    guard let vm else { return }
                     onCellTap(cellViewModel: vm, node: node)
                 },
                 onLongPress: { [weak vm] in
@@ -183,7 +190,8 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 presentedSheet: presentedSheet,
                 menuItem: menuItem,
                 index: index,
-                onTap: { [unowned vm] in
+                onTap: { [weak vm] in
+                    guard let vm else { return }
                     onCellTap(cellViewModel: vm, node: node)
                 },
                 onLongPress: { [weak vm] in
@@ -197,7 +205,8 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 presentedSheet: presentedSheet,
                 menuItem: menuItem,
                 index: index,
-                onTap: { [unowned vm] in
+                onTap: { [weak vm] in
+                    guard let vm else { return }
                     onCellTap(cellViewModel: vm, node: node)
                 },
                 onLongPress: { [weak vm] in
@@ -266,7 +275,7 @@ struct FinderCell<ViewModel: ObservableFinderViewModel>: View {
                 finderViewModel.download(node: node)
 
             case is Folder:
-                deeplinkTo.wrappedValue = node.identifier.nodeID
+                deeplinkTo.wrappedValue = identifier.id
 
             default:
                 assert(false, "unknown cell type")

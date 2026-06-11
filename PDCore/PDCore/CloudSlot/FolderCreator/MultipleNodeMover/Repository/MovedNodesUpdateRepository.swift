@@ -25,14 +25,20 @@ public protocol MovedNodesUpdateRepositoryProtocol {
 // This avoids waiting for events and improves UX
 public final class MovedNodesUpdateRepository: MovedNodesUpdateRepositoryProtocol {
     private let moc: NSManagedObjectContext
+    private let parentIDFetcher: NodeParentIDFetcher
 
-    public init(moc: NSManagedObjectContext) {
+    public init(moc: NSManagedObjectContext, parentIDFetcher: NodeParentIDFetcher) {
         self.moc = moc
+        self.parentIDFetcher = parentIDFetcher
     }
 
     public func updateLocalDB(newParent: Folder, nodes: [Node], infos: [MultipleMovingNode.LinkInfo]) async throws {
-        try await moc.perform {
+        let movedNodeIDs = Array(Set(infos.map(\.link.LinkID)))
+
+        let newParentID = try await moc.perform {
             let newParent = newParent.in(moc: self.moc)
+            let newParentID = newParent.id
+
             for node in nodes {
                 let node = node.in(moc: self.moc)
                 guard let info = infos.first(where: { $0.link.LinkID == node.id }) else { continue }
@@ -56,6 +62,7 @@ public final class MovedNodesUpdateRepository: MovedNodesUpdateRepositoryProtoco
             }
 
             try self.moc.saveOrRollback()
+            return newParentID
         }
     }
 }

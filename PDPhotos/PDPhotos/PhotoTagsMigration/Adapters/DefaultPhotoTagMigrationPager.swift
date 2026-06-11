@@ -59,7 +59,7 @@ final class DefaultPhotoTagMigrationPager: PhotoTagMigrationPager {
                 Log.debug("No new photos in this batch to process.", domain: .photosTagMigration)
             } else {
                 Log.debug("Fetching metadata for \(identifiers.count) photos.", domain: .photosTagMigration)
-                _ = try await metadataRepository.fetch(identifiers: identifiers)
+                _ = try await metadataRepository.fetch(identifiers: identifiers, forceToRefresh: false)
                 Log.debug("Successfully fetched metadata.", domain: .photosTagMigration)
             }
 

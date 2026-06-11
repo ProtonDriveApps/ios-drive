@@ -19,12 +19,19 @@ import Foundation
 import Combine
 import PDClient
 
-protocol DownloaderProtocol: AnyObject {
-    func cancel(operationsOf identifiers: [NodeIdentifier])
+public protocol DownloaderProtocol: AnyObject {
+    func cancelAll()
     func cancel(operationsOf identifiers: [any VolumeIdentifiable])
 }
 
-public class Downloader: NSObject, ProgressTrackerProvider, DownloaderProtocol {
+public protocol TrackableDownloader {
+    @MainActor
+    var isActivePublisher: AnyPublisher<Bool, Never> { get }
+    @MainActor
+    var bytesCounterResource: BytesCounterResource { get }
+}
+
+public class Downloader: NSObject, ProgressTrackerProvider, DownloaderProtocol, TrackableDownloader {
     public typealias Enumeration = (Node) -> Void
     private static let downloadFail: NSNotification.Name = .init("ch.protondrive.PDCore.downloadFail")
     
@@ -45,38 +52,42 @@ public class Downloader: NSObject, ProgressTrackerProvider, DownloaderProtocol {
     
     var cloudSlot: CloudSlotProtocol
     var storage: StorageManager
-    let endpointFactory: EndpointFactory
-    let successRateMonitor = DownloadSuccessRateMonitor()
+    private let endpointFactory: EndpointFactory
+    private let successRateMonitor = DownloadSuccessRateMonitor()
+    public let bytesCounterResource: BytesCounterResource
+
+    public var isActivePublisher: AnyPublisher<Bool, Never> {
+        return downloadsPublisher()
+            .receive(on: DispatchQueue.main)
+            .map { identifiers in
+                !identifiers.isEmpty
+            }
+            .removeDuplicates()
+            .eraseToAnyPublisher()
+    }
+
     internal lazy var queue: OperationQueue = {
         let queue = OperationQueue(maxConcurrentOperation: Constants.maxConcurrentInflightFileDownloads,
                                    name: "File Download - All Files")
         return queue
     }()
-    
-    init(cloudSlot: CloudSlotProtocol, storage: StorageManager, endpointFactory: EndpointFactory) {
+
+    init(
+        cloudSlot: CloudSlotProtocol,
+        storage: StorageManager,
+        endpointFactory: EndpointFactory,
+        bytesCounterResource: BytesCounterResource
+    ) {
         self.cloudSlot = cloudSlot
         self.storage = storage
         self.endpointFactory = endpointFactory
+        self.bytesCounterResource = bytesCounterResource
     }
     
     public func cancelAll() {
         Log.info("Downloader.cancelAll, will cancel all downloads", domain: .downloader)
         successRateMonitor.cancelAll()
         self.queue.cancelAllOperations()
-    }
-    
-    public func cancel(operationsOf identifiers: [NodeIdentifier]) {
-        Log.info("Downloader.cancel(operationsOf:), will cancel downloads of \(identifiers)", domain: .downloader)
-        successRateMonitor.cancel(identifiers: identifiers)
-
-        queue.operations
-            .compactMap { $0 as? DownloadOperation }
-            .filter { operation in
-                identifiers.contains { identifier in
-                    operation.identifier.id == identifier.nodeID && operation.identifier.volumeID == identifier.volumeID
-                }
-            }
-            .forEach { $0.cancel() }
     }
 
     public func cancel(operationsOf identifiers: [any VolumeIdentifiable]) {
@@ -144,7 +155,8 @@ public class Downloader: NSObject, ProgressTrackerProvider, DownloaderProtocol {
     @discardableResult
     public func scheduleDownloadOfflineAvailable(cypherdataFor file: File,
                                                  completion: @escaping (Result<File, Error>) -> Void) -> Operation {
-        scheduleDownload(cypherdataFor: file) { [weak self, weak file] result in
+        // TODO: this should be using `useRefreshableDownloadOperation: true` on iOS. But it should also be deleted once we switch to SDK
+        scheduleDownload(cypherdataFor: file, useRefreshableDownloadOperation: false) { [weak self, weak file] result in
             if let self, let file {
                 self.reportDownloadResult(node: file, result: result)
             }
@@ -169,7 +181,13 @@ public class Downloader: NSObject, ProgressTrackerProvider, DownloaderProtocol {
         let identifier = file.identifier
         if isMacOS() || !useRefreshableDownloadOperation {
             /// Legacy for mac, can be removed after 2025 Feb, once macOS migrated to DDK
-            let operation = LegacyDownloadFileOperation(file, cloudSlot: self.cloudSlot, endpointFactory: endpointFactory, storage: storage) { [weak self] result in
+            let operation = LegacyDownloadFileOperation(
+                file,
+                cloudSlot: self.cloudSlot,
+                endpointFactory: endpointFactory,
+                storage: storage,
+                bytesCounterResource: bytesCounterResource
+            ) { [weak self] result in
                 self?.clearUnavailableFileIfNeeded(identifier: identifier, error: result.error)
                 result.sendNotificationIfFailure(with: Self.downloadFail)
                 completion(result)
@@ -177,7 +195,13 @@ public class Downloader: NSObject, ProgressTrackerProvider, DownloaderProtocol {
             self.queue.addOperation(operation)
             return operation
         } else {
-            let operation = DownloadFileOperation(file, cloudSlot: self.cloudSlot, endpointFactory: endpointFactory, storage: storage) { [weak self] result in
+            let operation = DownloadFileOperation(
+                file,
+                cloudSlot: self.cloudSlot,
+                endpointFactory: endpointFactory,
+                storage: storage,
+                bytesCounterResource: bytesCounterResource
+            ) { [weak self] result in
                 self?.clearUnavailableFileIfNeeded(identifier: identifier, error: result.error)
                 result.sendNotificationIfFailure(with: Self.downloadFail)
                 completion(result)
@@ -192,12 +216,15 @@ public class Downloader: NSObject, ProgressTrackerProvider, DownloaderProtocol {
                               enumeration: @escaping Enumeration,
                               completion: @escaping (Result<Folder, Error>) -> Void) -> Operation
     {
-        let downloadTree = DownloadTreeOperation(node: folder,
-                                                 cloudSlot: self.cloudSlot,
-                                                 storage: storage,
-                                                 enumeration: enumeration,
-                                                 endpointFactory: endpointFactory,
-                                                 completion: completion)
+        let downloadTree = DownloadTreeOperation(
+            node: folder,
+            cloudSlot: self.cloudSlot,
+            storage: storage,
+            enumeration: enumeration,
+            endpointFactory: endpointFactory,
+            bytesCounterResource: bytesCounterResource,
+            completion: completion
+        )
         self.queue.addOperation(downloadTree)
         return downloadTree
     }
@@ -207,12 +234,16 @@ public class Downloader: NSObject, ProgressTrackerProvider, DownloaderProtocol {
                              enumeration: @escaping Enumeration,
                              completion: @escaping (Result<Folder, Error>) -> Void) -> Operation
     {
-        let scanChildren = ScanChildrenOperation(node: folder,
-                                                 cloudSlot: self.cloudSlot,
-                                                 storage: storage,
-                                                 enumeration: enumeration,
-                                                 endpointFactory: endpointFactory,
-                                                 completion: completion)
+        Log.info("Downloader - scan \(folder.identifier.id)", domain: .downloader)
+        let scanChildren = ScanChildrenOperation(
+            node: folder,
+            cloudSlot: self.cloudSlot,
+            storage: storage,
+            enumeration: enumeration,
+            endpointFactory: endpointFactory,
+            bytesCounterResource: bytesCounterResource,
+            completion: completion
+        )
         self.queue.addOperation(scanChildren)
         return scanChildren
     }
@@ -223,13 +254,16 @@ public class Downloader: NSObject, ProgressTrackerProvider, DownloaderProtocol {
                           cancelToken: CancelToken? = nil,
                           shouldIncludeDeletedItems: Bool = true,
                           completion: @escaping (Result<[Node], Error>) -> Void) throws -> OperationWithProgress {
-        let scanTree = try ScanTreesOperation(folders: folders,
-                                          cloudSlot: self.cloudSlot,
-                                          storage: storage,
-                                          enumeration: enumeration,
-                                          endpointFactory: endpointFactory,
-                                          shouldIncludeDeletedItems: shouldIncludeDeletedItems,
-                                          completion: completion)
+        let scanTree = try ScanTreesOperation(
+            folders: folders,
+            cloudSlot: self.cloudSlot,
+            storage: storage,
+            enumeration: enumeration,
+            endpointFactory: endpointFactory,
+            shouldIncludeDeletedItems: shouldIncludeDeletedItems,
+            bytesCounterResource: bytesCounterResource,
+            completion: completion
+        )
         cancelToken?.onCancel = { [weak scanTree] in
             scanTree?.cancel()
             completion(.failure(CocoaError(.userCancelled)))
@@ -271,8 +305,18 @@ public class Downloader: NSObject, ProgressTrackerProvider, DownloaderProtocol {
 }
 
 extension Downloader {
-    public func downloadProcessesAndErrors() -> AnyPublisher<[ProgressTracker], Error> {
+    public func downloadProcessesAndErrors() -> AnyPublisher<[String: ProgressTracker], Error> {
         self.progressPublisher(direction: .downstream)
+            .compactMap { progresses -> ProgressTrackers in
+                let keysAndValues = progresses.compactMap { progressTracker -> (String, ProgressTracker)? in
+                    guard let id = progressTracker.id else {
+                        return nil
+                    }
+                    return (id, progressTracker)
+                }
+                // To prevent crash caused by duplicate dictionary keys
+                return ProgressTrackers(keysAndValues, uniquingKeysWith: { _, new in new })
+            }
             .setFailureType(to: Error.self)
             .merge(with: NotificationCenter.default.throwIfFailure(with: Self.downloadFail))
             .eraseToAnyPublisher()

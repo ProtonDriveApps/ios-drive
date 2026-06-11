@@ -37,9 +37,11 @@ class AditionalSettingsStarter: AppBootstrapper {
     }
 
     func bootstrap() async throws {
-        try await driveSettingsInitializer.bootstrap()
-        try await protonSettingsInitializer.bootstrap()
-        try await b2bUserStatusStarter.bootstrap()
-        try? await checklistBootstrapper.bootstrap()
+        async let _ = try await driveSettingsInitializer.bootstrap()
+        async let _ = try await protonSettingsInitializer.bootstrap()
+        async let _ = try await b2bUserStatusStarter.bootstrap()
+        Task.detached { [weak self] in
+            try? await self?.checklistBootstrapper.bootstrap()
+        }
     }
 }

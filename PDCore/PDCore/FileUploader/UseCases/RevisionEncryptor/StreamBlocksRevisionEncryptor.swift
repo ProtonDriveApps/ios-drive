@@ -46,11 +46,17 @@ final class StreamRevisionEncryptor: RevisionEncryptor {
                 let revision = draft.revision.in(moc: self.moc)
                 revision.removeOldBlocks(in: self.moc)
 #if os(macOS)
-                guard let signatureAddress = revision.signatureAddress else { throw RevisionEncryptorError.noSignatureEmailInRevision }
-                let signersKit = try signersKitFactory.make(forSigner: .address(signatureAddress))
+                func getSignatureAddress() throws -> String {
+                    guard let signatureAddress = revision.signatureAddress else {
+                        throw RevisionEncryptorError.noSignatureEmailInRevision
+                    }
+                    return signatureAddress
+                }
+                
+                let signersKit = try revision.file.getContextShareAddressBasedSignersKit(signersKitFactory: signersKitFactory,
+                                                                                         fallbackSigner: .address(getSignatureAddress()))
 #else
-                let addressId = try revision.file.getContextShareAddressID()
-                let signersKit = try signersKitFactory.make(forAddressID: addressId)
+                let signersKit = try revision.file.getContextShareAddressBasedSignersKit(signersKitFactory: signersKitFactory)
 #endif
                 let uploadBlocks = try self.createEncryptedBlocks(draft, revision: revision, signersKit: signersKit)
                 try self.finalize(uploadBlocks, revision: revision, cleanupCleartext: draft.localURL, signersKit: signersKit, id: draft.uploadID)

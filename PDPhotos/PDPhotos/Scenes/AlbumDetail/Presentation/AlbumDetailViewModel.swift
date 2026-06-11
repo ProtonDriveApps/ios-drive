@@ -29,6 +29,7 @@ struct AlbumDetailConstants {
     static let share = Localization.general_share
     static let cancel = Localization.general_cancel
     static let deselectAll = Localization.general_deselect_all
+    static let pullToRefresh = Localization.text_pull_to_refresh
 
     static let coverHeight: CGFloat = 226
 }
@@ -42,6 +43,7 @@ final class AlbumDetailViewModel: ObservableObject {
     @Published var isAddingPhotos = false
     @Published var isSelecting = false
     @Published var showNavigationTitle = false
+    @Published var showSpinner = false
 
     let configuration: PhotosRootConfiguration
     private let dependencies: Dependencies
@@ -51,6 +53,13 @@ final class AlbumDetailViewModel: ObservableObject {
     private var coverViewModel: AlbumDetailCoverViewModel?
     private var infoViewModel: AlbumDetailInfoViewModel?
     private var gridViewModel: AlbumDetailGridViewModel?
+    private let refreshThreshold: Double = 50
+
+    /// If the user's finger is still on the screen—even after exceeding the threshold again
+    /// the data shouldn't refresh a second time
+    private var canRefresh = true
+    /// Is refreshing photo list
+    private var isRefreshing = false
 
     init(
         dependencies: Dependencies,
@@ -74,7 +83,7 @@ final class AlbumDetailViewModel: ObservableObject {
 
     func tapMore() {
         guard let album else { return }
-        if albumRole == .admin {
+        if albumRole.canAdministrate {
             dependencies.coordinator.openMoreActionSheet(
                 renameParameter: .init(
                     albumID: album.identifier,
@@ -97,17 +106,35 @@ final class AlbumDetailViewModel: ObservableObject {
                             parameters: .init(
                                 photoIdentifiers: identifiers,
                                 album: album
-                            )
+                            ),
+                            deletingCallback: { [weak self] in
+                                self?.dependencies.photosGridViewModel.stopObserving()
+                            }
                         )
                     }
+                },
+                leaveAlbumHandler: albumRole == .owner ? nil : { [weak self] in
+                    guard let self, let album = self.album else { return }
+                    self.leaveAlbum(album)
                 }
             )
         } else {
+            dependencies.photosGridViewModel.reportListIsShown()
             dependencies.coordinator.openMoreActionSheetForGuest(leaveAlbumHandler: { [weak self] in
                 guard let self, let album = self.album else { return }
-                self.dependencies.albumLeaveFlowController.presentAlert(parameters: .init(album: album))
+                self.leaveAlbum(album)
             })
         }
+    }
+
+    private func leaveAlbum(_ album: Album) {
+        dependencies.albumLeaveFlowController.presentAlert(
+            parameters: .init(album: album),
+            leavingCallback: { [weak self] in
+                // Prevent grid view refresh due to album and contextShare are deleted
+                self?.dependencies.photosGridViewModel.stopObserving()
+            }
+        )
     }
 
     func deselectAll() {
@@ -166,6 +193,23 @@ final class AlbumDetailViewModel: ObservableObject {
         gridViewModel = viewModel
         return viewModel
     }
+
+    func title(offset: Double) -> String {
+        AlbumDetailConstants.pullToRefresh
+    }
+
+    func offsetIsChanged(offset: Double) {
+        if offset > refreshThreshold, canRefresh {
+            canRefresh = false
+            isRefreshing = true
+            if let id = album?.identifier {
+                dependencies.metadataController.loadImmediatelly([id], forceToRefresh: true)
+            }
+            dependencies.photosGridViewModel.refresh()
+        }
+        if offset < 2 { canRefresh = true }
+        showSpinner = isRefreshing || !canRefresh
+    }
 }
 
 // MARK: - Navigation bar
@@ -201,6 +245,7 @@ extension AlbumDetailViewModel {
 extension AlbumDetailViewModel {
     private func subscribeToUpdates() {
         dependencies.albumRepository.updatePublisher
+            .removeDuplicates()
             .sink { [weak self] album in
                 guard let self, let album else { return }
                 self.album = album
@@ -226,6 +271,11 @@ extension AlbumDetailViewModel {
             .assign(to: &$isDeletingAlbum)
         dependencies.addToAlbumController.isAdding
             .assign(to: &$isAddingPhotos)
+        dependencies.photosGridViewModel.isRefreshingPublisher
+            .sink { [weak self] value in
+                self?.isRefreshing = value
+            }
+            .store(in: &cancellables)
     }
 }
 

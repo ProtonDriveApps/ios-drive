@@ -20,7 +20,7 @@ import ProtonCoreUIFoundations
 import PDLocalization
 
 enum MenuItem {
-    case myFiles
+    case home
     case trash
     case servicePlans
     case settings
@@ -31,7 +31,7 @@ enum MenuItem {
 
     var icon: Image {
         switch self {
-        case .myFiles: return IconProvider.drive
+        case .home: return IconProvider.house
         case .trash: return IconProvider.trash
         case .servicePlans: return IconProvider.pencil
         case .settings: return IconProvider.cogWheel
@@ -44,7 +44,7 @@ enum MenuItem {
 
     var text: String {
         switch self {
-        case .myFiles: return Localization.menu_text_my_files
+        case .home: return Localization.menu_text_home
         case .trash: return Localization.menu_text_trash
         case .servicePlans: return Localization.menu_text_subscription
         case .settings: return Localization.menu_text_settings
@@ -55,7 +55,13 @@ enum MenuItem {
         }
     }
 
-    /// Will produce identifier with the following shape: `MenuItem.myFiles`
+    var textColor: Color? {
+        switch self {
+        default: return nil
+        }
+    }
+
+    /// Will produce identifier with the following shape: `MenuItem.home`
     var identifier: String {
         "MenuItem.\(self)"
     }

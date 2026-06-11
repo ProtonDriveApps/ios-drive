@@ -16,14 +16,22 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 /// Service responsible for fetching drive checklist status and storing it in LocalSettings.
+
+import PDCore
+
 public final class DriveChecklistBootstrapper: AppBootstrapper {
     private let repository: StorageBonusPromoStatusRepositoryProtocol
+    private let connectionStateResource: ConnectionStateResource
 
-    init(repository: StorageBonusPromoStatusRepositoryProtocol) {
+    init(repository: StorageBonusPromoStatusRepositoryProtocol, connectionStateResource: ConnectionStateResource) {
         self.repository = repository
+        self.connectionStateResource = connectionStateResource
     }
 
     public func bootstrap() async throws {
+        guard connectionStateResource.currentState.isReachable else {
+            throw NetworkStateError.deviceIsOffline
+        }
         try await repository.fetchStoragePromoStatus()
     }
 }

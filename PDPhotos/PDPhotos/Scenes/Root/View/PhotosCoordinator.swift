@@ -21,6 +21,7 @@ import SwiftUI
 import UIKit
 import PDCoreIOS
 import PDLocalization
+import PDUIComponents
 
 final class PhotosCoordinator: PhotosRootCoordinator {
     private let container: PDPhotosContainer
@@ -51,17 +52,6 @@ final class PhotosCoordinator: PhotosRootCoordinator {
 
     func close() {
         rootViewController?.dismiss(animated: true)
-    }
-
-    func openMigrationSheet() {
-        let factory = MigrationSheetFactory()
-        let sheetViewController = factory.makeSheet(
-            migrationController: container.migrationController,
-            availableController: container.migrationAvailableController
-        )
-        sheetViewController.modalPresentationStyle = .overFullScreen
-        sheetViewController.view.backgroundColor = .clear
-        rootViewController?.present(sheetViewController, animated: false)
     }
 
     func openTagsMigrationSheet() {

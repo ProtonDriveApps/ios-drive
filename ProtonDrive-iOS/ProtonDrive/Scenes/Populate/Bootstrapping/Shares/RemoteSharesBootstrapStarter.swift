@@ -29,37 +29,45 @@ final class RemoteSharesBootstrapStarter: AppBootstrapper {
     private let listShares: () async throws -> [ListSharesEndpoint.Response.Share]
     private let bootstrapRoot: (_ nodeID: String, _ shareID: String) async throws -> Root
     private let featureFlagsController: FeatureFlagsControllerProtocol
+    private let connectionStateResource: ConnectionStateResource
 
     init(
         listShares: @escaping () async throws -> [ListSharesEndpoint.Response.Share],
         bootstrapRoot: @escaping (_ nodeID: String, _ shareID: String) async throws -> Root,
         featureFlagsController: FeatureFlagsControllerProtocol,
-        storage: StorageManager
+        storage: StorageManager,
+        connectionStateResource: ConnectionStateResource
     ) {
         self.storage = storage
         self.context = storage.backgroundContext
         self.listShares = listShares
         self.featureFlagsController = featureFlagsController
         self.bootstrapRoot = bootstrapRoot
+        self.connectionStateResource = connectionStateResource
     }
 
     func bootstrap() async throws {
         let remoteRootShares = try await fetchRemoteRootShares()
         let (mainShare, otherRootShares) = try validate(remoteRootShares)
+        var messages = [
+            "Main volume: \(mainShare.volumeID), share: \(mainShare.shareID)",
+        ]
+        for share in otherRootShares {
+            messages.append("Other volume: \(share.volumeID), share: \(share.shareID), type: \(share.volumeType)")
+        }
+        Log.info(messages.joined(separator: "\n"), domain: .applicationBootstrap)
+
         try await bootstrap(mainShare, otherRootShares)
     }
 
     private func fetchRemoteRootShares() async throws -> [Share] {
-        if featureFlagsController.hasComputers {
-            try await listShares()
-                .filter { $0.state == .active }
-                .filter { $0.type != .standard }
-        } else {
-            try await listShares()
-                .filter { $0.state == .active }
-                .filter { $0.type != .standard }
-                .filter { $0.type != .device }
+        guard connectionStateResource.currentState.isReachable else {
+            if try await hasCache() { return [] }
+            throw NetworkStateError.deviceIsOffline
         }
+        return try await listShares()
+            .filter { $0.state == .active }
+            .filter { $0.type != .standard }
     }
 
     private func validate(_ shares: [Share]) throws -> (mainShare: Share, otherRootShares: [Share]) {
@@ -96,16 +104,26 @@ final class RemoteSharesBootstrapStarter: AppBootstrapper {
         }
 
         // Caching the bootstrapped shares
-        try await self.cache(roots)
+        try await self.cache(roots, shares: [mainShare] + otherRootShares)
     }
 
-    private func cache(_ roots: [Root]) async throws {
-        try await context.perform {
+    private func cache(_ roots: [Root], shares: [Share]) async throws {
+        try await context.perform { [context] in
             for root in roots {
-                self.storage.updateShare(root.share, in: self.context)
-                self.storage.updateLink(root.link, using: self.context)
+                guard let share = shares.first(where: { $0.shareID == root.share.shareID }) else { continue }
+                self.storage.updateShare(root.share, in: context)
+                let volume = Volume.fetchOrCreate(id: share.volumeID, in: context)
+                volume.type = share.volumeType == .regular ? .main : .photo
+                self.storage.updateLink(root.link, using: context)
             }
             try self.context.saveOrRollback()
+        }
+    }
+
+    private func hasCache() async throws -> Bool {
+        try await context.perform { [context] in
+            let shares = try self.storage.fetchShares(moc: context)
+            return shares.isEmpty == false
         }
     }
 }

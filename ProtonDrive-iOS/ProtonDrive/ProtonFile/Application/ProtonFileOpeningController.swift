@@ -23,7 +23,7 @@ import PDCoreIOS
 import PDUIComponents
 import SafariServices
 
-protocol ProtonFileOpeningControllerProtocol {
+protocol ProtonFileOpeningControllerProtocol: AnyObject {
     func openPreview(_ identifier: NodeIdentifier)
     func openPreview(_ url: URL)
     func openExternally(_ identifier: NodeIdentifier)
@@ -34,12 +34,14 @@ final class ProtonFileOpeningController: ProtonFileOpeningControllerProtocol {
     private let urlFactory: ProtonFileNonAuthenticatedURLFactoryProtocol
     private let coordinator: ProtonFileCoordinatorProtocol
     private let errorViewModel: ProtonFileErrorViewModelProtocol
+    private let performanceController: PerformanceMetricsControllerProtocol?
 
-    init(interactor: ProtonFileIdentifierInteractorProtocol, urlFactory: ProtonFileNonAuthenticatedURLFactoryProtocol, coordinator: ProtonFileCoordinatorProtocol, errorViewModel: ProtonFileErrorViewModelProtocol) {
+    init(interactor: ProtonFileIdentifierInteractorProtocol, urlFactory: ProtonFileNonAuthenticatedURLFactoryProtocol, coordinator: ProtonFileCoordinatorProtocol, errorViewModel: ProtonFileErrorViewModelProtocol, performanceController: PerformanceMetricsControllerProtocol?) {
         self.interactor = interactor
         self.urlFactory = urlFactory
         self.coordinator = coordinator
         self.errorViewModel = errorViewModel
+        self.performanceController = performanceController
     }
 
     func openPreview(_ identifier: NodeIdentifier) {
@@ -54,6 +56,10 @@ final class ProtonFileOpeningController: ProtonFileOpeningControllerProtocol {
     func openPreview(_ url: URL) {
         do {
             let identifier = try interactor.getIdentifier(for: url)
+            performanceController?.startRecord(
+                id: AnyVolumeIdentifier(id: identifier.linkId, volumeID: identifier.volumeId),
+                pageType: .myFiles // This call is only invoked from FP for now. (Which only displays main volume docs)
+            )
             coordinator.openPreview(identifier: identifier)
         } catch {
             handleError(error)

@@ -22,8 +22,9 @@
 import PDLocalization
 
 public final class PMSettingsViewModel: PMSettingsViewModelProtocol {
-    public let sections: [PMSettingsSectionViewModel]
+    public private(set) var sections: [PMSettingsSectionViewModel]
     public let version: String
+    public var sectionsDidUpdate: ((Int) -> Void)?
 
     public init(sections: [PMSettingsSectionViewModel], version: String) {
         self.sections = sections
@@ -36,5 +37,11 @@ public final class PMSettingsViewModel: PMSettingsViewModelProtocol {
 
     public var footer: String? {
         Localization.setting_app_version(version: version)
+    }
+
+    public func update(section: PMSettingsSectionViewModel) {
+        guard let index = sections.firstIndex(where: { $0.title == section.title }) else { return }
+        sections[index] = section
+        sectionsDidUpdate?(index)
     }
 }

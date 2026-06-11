@@ -17,6 +17,7 @@
 
 import Combine
 import PDClient
+import CoreData
 import Foundation
 
 public enum NodesFetchingErrors: Error {
@@ -30,6 +31,7 @@ public protocol NodesFetching: AnyObject {
     var currentNodeID: NodeIdentifier! { get set }
     var pageSize: Int { get }
     var lastFetchedPage: Int { get set }
+    var isUsingSDKForThumbnails: Bool { get }
 }
 
 extension NodesFetching {
@@ -50,7 +52,7 @@ extension NodesFetching {
 extension NodesFetching where Self: NodesSorting {
     // Similar functionality is also implemented in PDCore's ScanNodeOperation
     // usage of this technique is discouraged because recursive fetching is a heavy operation
-    public func fetchChildrenFromAPI(proceedTillLastPage: Bool) -> AnyPublisher<(nodes: [Node], isLastPage: Bool), Error> {
+    public func fetchChildrenFromAPI(proceedTillLastPage: Bool, moc: NSManagedObjectContext) -> AnyPublisher<(nodes: [Node], isLastPage: Bool), Error> {
         Future<[Node], Error> { [unowned self] promise in
             guard let cloud = self.tower.cloudSlot else {
                 assert(false, NodesFetchingErrors.noCloudInjected.localizedDescription)
@@ -59,9 +61,11 @@ extension NodesFetching where Self: NodesSorting {
             var params: [FolderChildrenEndpointParameters] = [
                 .page(self.lastFetchedPage),
                 .pageSize(self.pageSize),
-                .thumbnails,
             ]
-            
+            if !isUsingSDKForThumbnails { // When using SDK, we don't want the metadata to include thumbnail params
+                params.append(.thumbnails)
+            }
+
             if let sort = self.sorting.apiSorting {
                 params.append(.sortBy(sort))
                 params.append(.order(self.sorting.apiOrder))
@@ -69,7 +73,7 @@ extension NodesFetching where Self: NodesSorting {
             let parameters = params
             Task {
                 do {
-                    let children = try await cloud.scanChildren(of: self.currentNodeID, parameters: parameters)
+                    let children = try await cloud.scanChildren(of: self.currentNodeID, parameters: parameters, moc: moc)
                     promise(.success(children))
                 } catch {
                     promise(.failure(error))
@@ -96,7 +100,7 @@ extension NodesFetching where Self: NodesSorting {
             } else {
                 // this is not last page and need to request next one
                 self.lastFetchedPage += 1
-                return self.fetchChildrenFromAPI(proceedTillLastPage: proceedTillLastPage)
+                return self.fetchChildrenFromAPI(proceedTillLastPage: proceedTillLastPage, moc: moc)
             }
         }
         .eraseToAnyPublisher()

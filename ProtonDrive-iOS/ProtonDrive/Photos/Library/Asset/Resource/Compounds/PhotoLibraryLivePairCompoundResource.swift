@@ -89,7 +89,8 @@ final class ConcretePhotoLibraryLivePairCompoundResource: PhotoLibraryLivePairCo
         let photoData = PhotoAssetData(identifier: identifier, asset: asset, resource: resources.photo, originalFilename: resources.photoFilename, fileExtension: resources.photoFilename.fileExtension, isOriginal: isOriginal)
         let videoData = PhotoAssetData(identifier: identifier, asset: asset, resource: resources.video, originalFilename: resources.videoFilename, fileExtension: resources.videoFilename.fileExtension, isOriginal: isOriginal)
         let photoAsset = try await assetResource.executePhoto(with: photoData)
-        let videoAsset = try await assetResource.executeVideo(with: videoData)
+        let appendedData = AppendedAssetData(cameraInfo: photoAsset.metadata.camera, location: photoAsset.metadata.location)
+        let videoAsset = try await assetResource.executeVideo(with: videoData, appendedAssetData: appendedData)
         return PhotoAssetCompound(primary: photoAsset, secondary: [videoAsset])
     }
 }

@@ -29,7 +29,7 @@ class DriveEventsLoop: EventsLoop {
     private let conveyor: EventsConveyor
     private let observers: [EventsListener]
     private let processor: DriveEventsLoopProcessorType
-    private let eventsSystemManager: EventsSystemManager
+    private weak var eventsSystemManager: EventsSystemManager? // Tower is injected, which creates retain cycle
 
     private let mode: DriveEventsLoopMode
     
@@ -39,7 +39,7 @@ class DriveEventsLoop: EventsLoop {
          conveyor: EventsConveyor,
          observers: [EventsListener],
          mode: DriveEventsLoopMode,
-         eventsSystemManager: EventsSystemManager
+         eventsSystemManager: EventsSystemManager?
     ) {
         Log.trace()
 
@@ -120,7 +120,7 @@ class DriveEventsLoop: EventsLoop {
         }
         
         if mode.contains(.processRecords) {
-            try performProcessing()
+            try await performProcessing()
         }
     }
     
@@ -148,12 +148,12 @@ class DriveEventsLoop: EventsLoop {
         }
     }
 
-    func performProcessing() throws {
+    func performProcessing() async throws {
         Log.trace()
 
         conveyor.prepareForProcessing()
         
-        let affectedNodes = try processor.process()
+        let affectedNodes = try await processor.process()
         observers.forEach {
             $0.processorAppliedEvents(affecting: affectedNodes)
         }
@@ -174,8 +174,11 @@ class DriveEventsLoop: EventsLoop {
         if let responseError = error as? ResponseError, responseError.responseCode == 2011 {
             // 2011: You do not have any share memberships in this volume.
             #if os(iOS)
-            DispatchQueue.main.async {
-                self.eventsSystemManager.removeSharedVolumesEventLoops(volumeIds: [self.volumeID])
+            DispatchQueue.main.async { [weak self] in
+                guard let self else {
+                    return
+                }
+                self.eventsSystemManager?.removeSharedVolumesEventLoops(volumeIds: [self.volumeID])
             }
             #endif
             return

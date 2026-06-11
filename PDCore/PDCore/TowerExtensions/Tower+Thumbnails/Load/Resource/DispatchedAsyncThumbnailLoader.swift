@@ -20,7 +20,7 @@ import Combine
 
 final class DispatchedAsyncThumbnailLoader: CancellableThumbnailLoader {
     private let thumbnailLoader: CancellableThumbnailLoader
-    private var requestedIds = [AnyVolumeIdentifier: WeakReference<BlockOperation>]()
+    private var requestedIds = [AnyVolumeIdentifier: WeakReference<Operation>]()
     private let throttlingQueue = OperationQueue(maxConcurrentOperation: 3)
 
     init(thumbnailLoader: CancellableThumbnailLoader) {
@@ -47,6 +47,10 @@ final class DispatchedAsyncThumbnailLoader: CancellableThumbnailLoader {
         requestedIds = requestedIds.filter { $0.value.reference != nil }
     }
 
+    func loadThumbnailAsync(with id: Identifier) async {
+        fatalError("Not implemented")
+    }
+
     func cancelThumbnailLoading(_ id: Identifier) {
         requestedIds[id.any()]?.reference?.cancel()
         thumbnailLoader.cancelThumbnailLoading(id)
@@ -57,7 +61,8 @@ final class DispatchedAsyncThumbnailLoader: CancellableThumbnailLoader {
         thumbnailLoader.cancelAll()
     }
 
-    private func makeRequestOperation(with id: Identifier) -> BlockOperation {
+    private func makeRequestOperation(with id: Identifier) -> Operation {
+        #if os(macOS)
         let operation = BlockOperation()
         operation.addExecutionBlock { [weak self, weak operation] in
             guard !(operation?.isCancelled ?? true) else {
@@ -66,5 +71,11 @@ final class DispatchedAsyncThumbnailLoader: CancellableThumbnailLoader {
             self?.thumbnailLoader.loadThumbnail(with: id)
         }
         return operation
+        #else
+        let operation = AsynchronousBlockOperation { [weak self] in
+            await self?.thumbnailLoader.loadThumbnailAsync(with: id)
+        }
+        return operation
+        #endif
     }
 }

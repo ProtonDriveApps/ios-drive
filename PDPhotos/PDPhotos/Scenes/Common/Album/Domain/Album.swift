@@ -18,7 +18,7 @@
 import Foundation
 import PDCore
 
-struct Album {
+struct Album: Equatable {
     let identifier: AnyVolumeIdentifier
     let locked: Bool
     let coverLinkID: String?

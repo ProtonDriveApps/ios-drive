@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PMSettings
+import PDLocalization
 
 final class LatestLogsSettingsRowViewModel: PMDrillDownCellViewModel {
     var accessibilityIdentifier: String { "LatestLogsSettingsRow.\(title)" }
@@ -26,9 +27,7 @@ final class LatestLogsSettingsRowViewModel: PMDrillDownCellViewModel {
         nil
     }
 
-    var title: String {
-        "See latest logs"
-    }
+    var title: String { Localization.setting_see_latest_logs }
 }
 
 final class BaseDrillDownCellViewModel: PMDrillDownCellViewModel {

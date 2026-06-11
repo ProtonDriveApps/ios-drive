@@ -69,13 +69,15 @@ struct ShareToActionSheet: View {
                 }
                 .accessibilityIdentifier("ShareToActionSheet.sendLinkButton")
 
-                actionButton(
-                    icon: IconProvider.threeDotsHorizontal,
-                    title: Localization.menu_section_title_more
-                ) {
-                    viewModel.nativeShare()
+                if viewModel.hasNativeShare {
+                    actionButton(
+                        icon: IconProvider.threeDotsHorizontal,
+                        title: Localization.menu_section_title_more
+                    ) {
+                        viewModel.nativeShare()
+                    }
+                    .accessibilityIdentifier("ShareToActionSheet.nativeShareButton")
                 }
-                .accessibilityIdentifier("ShareToActionSheet.nativeShareButton")
             }
         }
     }

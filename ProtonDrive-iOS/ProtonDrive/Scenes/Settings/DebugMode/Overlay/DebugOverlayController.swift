@@ -63,10 +63,7 @@ final class DebugOverlayController {
     private func showOverlay() {
         guard window == nil else { return }
 
-        guard let scene = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .first(where: { $0.activationState == .foregroundActive }) else {
-            Log.warning("🟡 No active window scene for DebugOverlay", domain: .logs)
+        guard let scene = UIApplication.shared.getActiveWindowScene() else {
             return
         }
 

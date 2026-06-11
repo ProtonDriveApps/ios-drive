@@ -33,6 +33,7 @@ class BasePhotosActionViewModel {
     let favoritingController: FavoritingControllerProtocol
     let trashDialogFactory: TrashDialogFactoryProtocol
     let userMessageHandler: UserMessageHandlerProtocol
+    let configuration: PhotosRootConfiguration
 
     private var currentSelection: PhotoIdsSet?
     private var fetchedMetadata: PhotoIdsSet = []
@@ -54,7 +55,8 @@ class BasePhotosActionViewModel {
         metadataController: MetadataControllerProtocol,
         favoritingController: FavoritingControllerProtocol,
         trashDialogFactory: TrashDialogFactoryProtocol,
-        userMessageHandler: UserMessageHandlerProtocol
+        userMessageHandler: UserMessageHandlerProtocol,
+        configuration: PhotosRootConfiguration
     ) {
         self.coordinator = coordinator
         self.selectionController = selectionController
@@ -65,6 +67,7 @@ class BasePhotosActionViewModel {
         self.favoritingController = favoritingController
         self.trashDialogFactory = trashDialogFactory
         self.userMessageHandler = userMessageHandler
+        self.configuration = configuration
 
         subscribeToUpdates()
         handleSelectionUpdate()
@@ -108,7 +111,7 @@ class BasePhotosActionViewModel {
         }
 
         // The photo gallery is visible from a tabbar, so we need to hide the tabbar during multiple selection for the photos gallery
-        if type == .photoGallery {
+        if type == .photoGallery, !configuration.isPickingPhotos {
             coordinator.updateTabBar(isHidden: isSelecting)
         }
 
@@ -123,7 +126,10 @@ class BasePhotosActionViewModel {
     }
 
     private func handleFileUpdate(_ content: FileContent?) {
-        guard let content else { return }
+        guard let content, !content.isLoading else {
+            UserMessageHandler().handleWarning(Localization.general_loading)
+            return
+        }
 
         if content.couldBeLivePhoto, let videoURL = content.childrenURLs.first {
             coordinator.openNativeShareForLivePhoto(imageURL: content.url, videoURL: videoURL) { [weak self] in
@@ -178,7 +184,8 @@ class BasePhotosActionViewModel {
     private func loadMetadata() {
         let selection = selectionController.getAllIds()
         let remoteIds = selection.subtracting(fetchedMetadata)
-        guard !remoteIds.isEmpty else {
+        if remoteIds.isEmpty {
+            handleMetadataUpdate()
             return
         }
 
@@ -187,7 +194,7 @@ class BasePhotosActionViewModel {
         currentSelection = remoteIds
         // Immediate loading guarantees callback when metadata is fetched
         // Callback guarantees correct loading state
-        metadataController.loadImmediatelly(Array(remoteIds))
+        metadataController.loadImmediatelly(Array(remoteIds), forceToRefresh: false)
     }
 
     // MARK: - Actions generation

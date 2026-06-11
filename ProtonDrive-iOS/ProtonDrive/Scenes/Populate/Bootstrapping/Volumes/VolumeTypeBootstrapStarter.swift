@@ -18,6 +18,7 @@
 import CoreData
 import Foundation
 import PDCore
+import PDCoreIOS
 
 final class VolumeTypeBootstrapStarter: AppBootstrapper {
     private let storage: StorageManager
@@ -29,19 +30,21 @@ final class VolumeTypeBootstrapStarter: AppBootstrapper {
     }
 
     func bootstrap() async throws {
-        try await managedObjectContext.perform {
-            var volumes = self.storage.volumes(moc: self.managedObjectContext)
+        try await measure(message: "Fillin volume type", domain: .applicationBootstrap) {
+            try await managedObjectContext.perform {
+                var volumes = self.storage.volumes(moc: self.managedObjectContext)
 
-            if let mainVolumeIndex = volumes.firstIndex(where: { $0.shares.contains(where: { $0.type == .main }) }) {
-                // Need to remove main volume from the array, otherwise wrong volume may be found below (due to legacy photo share)
-                let mainVolume = volumes.remove(at: mainVolumeIndex)
-                self.updateVolumeIfNeeded(volume: mainVolume, type: .main)
-            }
-            if let photoVolume = volumes.first(where: { $0.shares.contains(where: { $0.type == .photos }) }) {
-                self.updateVolumeIfNeeded(volume: photoVolume, type: .photo)
-            }
+                if let mainVolumeIndex = volumes.firstIndex(where: { $0.shares.contains(where: { $0.type == .main }) }) {
+                    // Need to remove main volume from the array, otherwise wrong volume may be found below (due to legacy photo share)
+                    let mainVolume = volumes.remove(at: mainVolumeIndex)
+                    self.updateVolumeIfNeeded(volume: mainVolume, type: .main)
+                }
+                if let photoVolume = volumes.first(where: { $0.shares.contains(where: { $0.type == .photos }) }) {
+                    self.updateVolumeIfNeeded(volume: photoVolume, type: .photo)
+                }
 
-            try self.managedObjectContext.saveOrRollback()
+                try self.managedObjectContext.saveOrRollback()
+            }
         }
     }
 

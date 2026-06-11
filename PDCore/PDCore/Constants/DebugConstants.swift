@@ -20,9 +20,10 @@
 import Foundation
 
 public struct UITestsFlag {
-    let content: String
+    public let content: String
 
     public static let uiTests = UITestsFlag(content: "--uitests")
+    public static let featureFlagsOverrides = UITestsFlag(content: "--feature_flags_overrides")
 
     public init(content: String) {
         self.content = content
@@ -39,6 +40,13 @@ public struct DebugConstants {
         let flagsRaw = flags.map(\.content)
         let flagsToKeep = Set(CommandLine.arguments).subtracting(flagsRaw)
         CommandLine.arguments = Array(flagsToKeep)
+    }
+
+    public static func getValueOf(flag: UITestsFlag) -> String? {
+        guard let line = Set(CommandLine.arguments).first(where: { $0.starts(with: flag.content) }) else {
+            return nil
+        }
+        return String(line.trimmingPrefix(flag.content + ":"))
     }
 }
 

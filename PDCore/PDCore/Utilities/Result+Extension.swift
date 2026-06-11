@@ -33,12 +33,12 @@ extension Notification {
 }
 
 extension NotificationCenter {
-    func throwIfFailure<Value>(with name: Notification.Name) -> AnyPublisher<[Value], Error> {
+    func throwIfFailure<Value>(with name: Notification.Name) -> AnyPublisher<[String: Value], Error> {
         self.publisher(for: name)
         .setFailureType(to: Error.self)
         .compactMap { $0.unpackFailure() }
         .tryMap { throw $0 }
-        .map { [] }
+        .map { [:] }
         .eraseToAnyPublisher()
     }
 }

@@ -34,9 +34,12 @@ final class PhotoLibraryPlainCompoundResource: PhotoLibraryCompoundResource {
         // PHAsset can contain live photo.
         do {
             // If it does, we make live compounds and then compound for all other resources.
-            return try await executeLiveBasedPhoto(with: identifier, asset: asset)
+            let compounds = try await executeLiveBasedPhoto(with: identifier, asset: asset)
+            Log.info("Load live photo asset \(identifier.localIdentifier)", domain: .photosProcessing)
+            return compounds
         } catch {
             // If it doesn't, we fall back to retrieving plain files.
+            Log.info("Load plain asset \(identifier.cloudIdentifier)", domain: .photosProcessing)
             return try await executePlainPhoto(with: identifier, asset: asset)
         }
     }
@@ -90,7 +93,7 @@ final class PhotoLibraryPlainCompoundResource: PhotoLibraryCompoundResource {
 
     private func loadAsset(with data: PhotoAssetData, isVideo: Bool) async throws -> PhotoAsset {
         if isVideo {
-            return try await assetResource.executeVideo(with: data)
+            return try await assetResource.executeVideo(with: data, appendedAssetData: nil)
         } else {
             return try await assetResource.executePhoto(with: data)
         }

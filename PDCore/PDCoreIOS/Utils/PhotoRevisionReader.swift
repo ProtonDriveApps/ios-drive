@@ -47,7 +47,9 @@ public struct PhotoRevisionReader: PhotoRevisionReaderProtocol {
         in managedContext: NSManagedObjectContext
     ) throws -> RevisionProperty? {
         guard let photo = CoreDataPhoto.fetch(identifier: photoIdentifier, in: managedContext) else { return nil }
+        let attributes = try photo.photoRevision.decryptedExtendedAttributes()
         return RevisionProperty(
+            decryptedExtendedAttributes: attributes,
             signatureEmail: try photo.signatureEmail ?! "Signature email is nil",
             nodeKey: photo.nodeKey,
             revisionID: photo.photoRevision.id
@@ -56,12 +58,19 @@ public struct PhotoRevisionReader: PhotoRevisionReaderProtocol {
 }
 
 public struct RevisionProperty {
+    public let decryptedExtendedAttributes: ExtendedAttributes
     public let signatureEmail: String
     /// Photo node key
     public let nodeKey: String
     public let revisionID: String
 
-    public init(signatureEmail: String, nodeKey: String, revisionID: String) {
+    public init(
+        decryptedExtendedAttributes: ExtendedAttributes,
+        signatureEmail: String,
+        nodeKey: String,
+        revisionID: String
+    ) {
+        self.decryptedExtendedAttributes = decryptedExtendedAttributes
         self.signatureEmail = signatureEmail
         self.nodeKey = nodeKey
         self.revisionID = revisionID

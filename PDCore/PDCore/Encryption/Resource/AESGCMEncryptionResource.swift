@@ -18,19 +18,21 @@
 import CryptoKit
 import Foundation
 
-struct AESGCMEncryptionResult {
+public struct AESGCMEncryptionResult {
     let encryptedData: Data
     let key: Data
 }
 
-protocol AESGCMEncryptionResource {
+public protocol AESGCMEncryptionResource {
     /// Encrypts using 32 bytes symmetric key, 16 bytes generated initialization vector
     /// Result is `[iv]ciphertext[tag]`
     func encrypt(data: Data) throws -> AESGCMEncryptionResult
 }
 
-final class CryptoKitAESGCMEncryptionResource: AESGCMEncryptionResource {
-    func encrypt(data: Data) throws -> AESGCMEncryptionResult {
+public final class CryptoKitAESGCMEncryptionResource: AESGCMEncryptionResource {
+    public init() {}
+
+    public func encrypt(data: Data) throws -> AESGCMEncryptionResult {
         let key = SymmetricKey(size: .bits256)
         let keyData = key.withUnsafeBytes {
             return Data(Array($0))

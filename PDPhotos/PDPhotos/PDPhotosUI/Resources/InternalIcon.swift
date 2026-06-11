@@ -46,6 +46,7 @@ struct ImageSet {
     let cloudArrowDown = ImageIcon(name: "ic-cloud-arrow-down")
     let fileAlbumNoPadding = ImageIcon(name: "ic-file-album-no-padding")
     let chevronUpDown = ImageIcon(name: "ic-chevron-up-down")
+    let portrait = ImageIcon(name: "ic-portrait")
     // Illustrations
     let photosOnboarding = ImageIcon(name: "photos_onboarding")
     let photosOnboardingOld = ImageIcon(name: "photos_onboarding_old")

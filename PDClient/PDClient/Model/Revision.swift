@@ -22,7 +22,7 @@ public struct RevisionShort: Codable, Equatable {
     public var createTime: TimeInterval
     public var size: Int
     public var manifestSignature: String? // can be nil if revision is a draft
-    public var signatureAddress: String
+    public var signatureAddress: String?
     public var state: NodeState
     public var thumbnailDownloadUrl: URL?
     private var thumbnail: Int
@@ -33,7 +33,7 @@ public struct RevisionShort: Codable, Equatable {
         NSNumber.init(value: thumbnail).boolValue
     }
 
-    public init(ID: Revision.RevisionID, createTime: TimeInterval, size: Int, manifestSignature: String, signatureAddress: String, state: NodeState, thumbnailDownloadUrl: URL? = nil, thumbnail: Int, thumbnails: [Thumbnail]? = nil, photo: Photo? = nil) {
+    public init(ID: Revision.RevisionID, createTime: TimeInterval, size: Int, manifestSignature: String, signatureAddress: String?, state: NodeState, thumbnailDownloadUrl: URL? = nil, thumbnail: Int, thumbnails: [Thumbnail]? = nil, photo: Photo? = nil) {
         self.ID = ID
         self.createTime = createTime
         self.size = size
@@ -48,14 +48,14 @@ public struct RevisionShort: Codable, Equatable {
     
 }
 
-public struct Revision: Codable {
+public struct Revision: Codable, Sendable {
     public typealias RevisionID = String
 
     public var ID: RevisionID
     public var createTime: TimeInterval
     public var size: Int
-    public var manifestSignature: String
-    public var signatureAddress: String
+    public var manifestSignature: String?
+    public var signatureAddress: String?
     public var state: NodeState
     public var blocks: [Block]
     public var thumbnail: Int
@@ -66,9 +66,9 @@ public struct Revision: Codable {
     public init(ID: RevisionID, 
                 createTime: TimeInterval,
                 size: Int,
-                manifestSignature: String,
-                signatureAddress: String,
-                state: NodeState, 
+                manifestSignature: String?,
+                signatureAddress: String?,
+                state: NodeState,
                 blocks: [Block],
                 thumbnail: Int,
                 thumbnailHash: String?,
@@ -88,12 +88,20 @@ public struct Revision: Codable {
     }
 }
 
-public struct Block: Codable {
+public struct Block: Codable, Sendable {
     public var index: Int
     public var hash: String
     public var URL: URL
     public var encSignature: String?
     public var signatureEmail: String?
+    
+    public init(index: Int, hash: String, URL: URL, encSignature: String?, signatureEmail: String?) {
+        self.index = index
+        self.hash = hash
+        self.URL = URL
+        self.encSignature = encSignature
+        self.signatureEmail = signatureEmail
+    }
 }
 
 public struct Thumbnail: Codable, Equatable {
@@ -118,5 +126,25 @@ public struct Photo: Codable, Equatable {
     public var relatedPhotosLinkIDs: [String]?
     public var hash: String // name hash
     public var contentHash: String? // optional due to backward compatibility of events
+    @available(*, deprecated, message: "Clients persist exif information in xAttr instead")
     public var exif: String?
+
+    public init(
+        linkID: String,
+        captureTime: TimeInterval,
+        addedTime: Date?,
+        mainPhotoLinkID: String?,
+        relatedPhotosLinkIDs: [String]?,
+        hash: String,
+        contentHash: String?
+    ) {
+        self.linkID = linkID
+        self.captureTime = captureTime
+        self.addedTime = addedTime
+        self.mainPhotoLinkID = mainPhotoLinkID
+        self.relatedPhotosLinkIDs = relatedPhotosLinkIDs
+        self.hash = hash
+        self.contentHash = contentHash
+        self.exif = nil
+    }
 }

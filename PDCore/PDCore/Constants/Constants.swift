@@ -93,7 +93,7 @@ public enum Constants {
 
     // MARK: Photos upload
     public static let discreteMaxConcurrentContentUploadOperationsPhotos = 1 // Maximum number of content operations (blocks + thumbnail) processed at the same time per page
-    public static let processingPhotoUploadsBatchSize = 10 // Max number of photos added to the uploader queue at once
+    public static let processingPhotoUploadsBatchSize = 4 // Max number of photos added to the uploader queue at once
 
     // MARK: - ShareURL
     public static let maxAccesses = 0
@@ -111,4 +111,20 @@ public enum Constants {
 
     // MARK: - Build type features
     public static var buildFeatures: BuildFeatures = .default
+
+    static let isUnitTest: Bool = {
+        #if DEBUG
+        return ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        #else
+        return false
+        #endif
+    }()
+
+    static let isUITest: Bool = {
+        #if DEBUG
+        return ProcessInfo.processInfo.arguments.contains("--uitests")
+        #else
+        return false
+        #endif
+    }()
 }

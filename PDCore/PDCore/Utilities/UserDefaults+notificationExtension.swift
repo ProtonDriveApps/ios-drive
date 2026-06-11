@@ -39,7 +39,7 @@ public extension UserDefaults {
     @objc dynamic var childSessionExpired: Bool {
         return bool(forKey: NotificationPropertyKeys.childSessionExpiredKey.rawValue)
     }
-    
+
     @objc dynamic var ddkSessionReady: Bool {
         return bool(forKey: NotificationPropertyKeys.ddkSessionReadyKey.rawValue)
     }

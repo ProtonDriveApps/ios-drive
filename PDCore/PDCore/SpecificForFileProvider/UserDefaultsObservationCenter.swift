@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import Foundation
+import ProtonCoreUtilities
 
 public final class UserDefaultsObservationCenter {
     private class Observation {
@@ -29,7 +30,7 @@ public final class UserDefaultsObservationCenter {
     }
 
     private let store: UserDefaults
-    private var observations = [Observation]()
+    private var observations: Atomic<[Observation]> = .init([])
     
     private let additionalLogging: Bool
     private let instanceIdentifier = UUID()
@@ -43,17 +44,20 @@ public final class UserDefaultsObservationCenter {
     }
 
     deinit {
-        observations.forEach { observation in
-            if additionalLogging {
-                Log.debug("UserDefaultsObservationCenter \(instanceIdentifier.uuidString): removing observation \(observation)", domain: .syncing)
+        observations.mutate {
+            $0.forEach { observation in
+                if additionalLogging {
+                    Log.debug("UserDefaultsObservationCenter \(instanceIdentifier.uuidString): removing observation \(observation)", domain: .syncing)
+                }
+                observation.keyValueObservation.invalidate()
             }
-            observation.keyValueObservation.invalidate()
         }
         if additionalLogging {
             Log.debug("UserDefaultsObservationCenter deinit: \(instanceIdentifier.uuidString)", domain: .syncing)
         }
     }
 
+    /// Observes changes to a keyPath until removed
     public func addObserver<Value>(_ observer: AnyObject, of key: KeyPath<UserDefaults, Value>, using handler: @escaping (Value?) -> Void) {
         let additionalLogging = self.additionalLogging
         let instanceIdentifier = self.instanceIdentifier
@@ -64,24 +68,26 @@ public final class UserDefaultsObservationCenter {
             handler(change.newValue)
         }
         let observation = Observation(observer: observer, keyValueObservation: keyValueObservation)
-        self.observations.append(observation)
+        self.observations.mutate { $0.append(observation) }
         if additionalLogging {
             Log.debug("UserDefaultsObservationCenter \(instanceIdentifier.uuidString) \(key): adding observation \(observation)", domain: .syncing)
         }
     }
 
     public func removeObserver(_ observer: AnyObject) {
-        self.observations = observations.filter { observation in
-            // Clear up any deallocated observers as well as this observer
-            if observation.observer == nil || observer === observation.observer {
-                observation.keyValueObservation.invalidate()
-                if additionalLogging {
-                    Log.debug("UserDefaultsObservationCenter \(instanceIdentifier.uuidString): removing observation \(observation)", domain: .syncing)
+        observations.mutate {
+            $0 = $0.filter { observation in
+                // Clear up any deallocated observers as well as this observer
+                if observation.observer == nil || observer === observation.observer {
+                    observation.keyValueObservation.invalidate()
+                    if additionalLogging {
+                        Log.debug("UserDefaultsObservationCenter \(instanceIdentifier.uuidString): removing observation \(observation)", domain: .syncing)
+                    }
+                    return false
                 }
-                return false
+                
+                return true
             }
-
-            return true
         }
     }
 }

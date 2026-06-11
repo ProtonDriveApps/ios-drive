@@ -65,8 +65,8 @@ class PMLoadingLabelCell: PMSettingsBaseCell {
         activityIndicator.startAnimating()
 
         Task {
-            try? await action()
-            setCellLoading()
+            defer { setCellLoading() }
+            try await action()
         }
     }
 

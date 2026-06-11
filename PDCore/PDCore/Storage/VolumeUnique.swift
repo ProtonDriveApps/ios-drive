@@ -33,9 +33,12 @@ public struct AnyVolumeIdentifier: VolumeIdentifiable {
         self.volumeID = volumeID
     }
 
+    public var debugDesc: String {
+        "\(volumeID)~\(id)"
+    }
 }
 
-public protocol VolumeIdentifiable: Hashable, Equatable {
+public protocol VolumeIdentifiable: Hashable, Equatable, Sendable {
     var id: String { get }
     var volumeID: String { get }
 }
@@ -86,23 +89,30 @@ extension VolumeUnique {
 
     // Method to fetch multiple entities based on a set of VolumeIdentifier
     public static func fetch<T: VolumeIdentifiable & Hashable>(identifiers: Set<T>, allowSubclasses: Bool = false, in context: NSManagedObjectContext) -> [Self] {
-        var resultEntities: [Self] = []
-        for identifier in identifiers {
-            if let entity = fetch(id: identifier.id, volumeID: identifier.volumeID, allowSubclasses: allowSubclasses, in: context) {
-                resultEntities.append(entity)
+        Dictionary(grouping: identifiers, by: \.volumeID)
+            .flatMap { volumeID, group in
+                let results = fetch(ids: Set(group.map(\.id)), volumeID: volumeID, allowSubclasses: allowSubclasses, in: context)
+                return Dictionary(grouping: results, by: \.id)
+                    .compactMap { _, entities in entities.first }
             }
-        }
-        return resultEntities
     }
 
     // Method to fetch multiple entities based on a set of VolumeIdentifier
     public static func fetchOrThrow<T: VolumeIdentifiable & Hashable>(identifiers: Set<T>, allowSubclasses: Bool = false, in context: NSManagedObjectContext) throws -> [Self] {
-        var resultEntities: [Self] = []
-        for identifier in identifiers {
-            let entity: Self = try fetchOrThrow(identifier: identifier, allowSubclasses: allowSubclasses, in: context)
-            resultEntities.append(entity)
-        }
-        return resultEntities
+        try Dictionary(grouping: identifiers, by: \.volumeID)
+            .flatMap { volumeID, group in
+                let results = fetch(ids: Set(group.map(\.id)), volumeID: volumeID, allowSubclasses: allowSubclasses, in: context)
+                // Deduplicate results by ID — CoreData may return multiple rows per ID
+                let uniqueResults = Dictionary(grouping: results, by: \.id)
+                    .compactMap { _, entities in entities.first }
+                let foundIDs = Set(uniqueResults.map(\.id))
+                let requestedIDs = Set(group.map(\.id))
+                let missingIDs = requestedIDs.subtracting(foundIDs)
+                guard missingIDs.isEmpty else {
+                    throw DriveError("\(Self.self) with id \(missingIDs.first ?? "unknown") in volume \(volumeID) should have been saved, but was not found in store.")
+                }
+                return uniqueResults
+            }
     }
 
     // Method to create a new entity
@@ -152,8 +162,10 @@ extension VolumeUnique {
             return nil
         }
         if fetched.count > 1 {
-            assertionFailure("There should not be more than one volume unique entity with the same id & volume combination")
             let entityName = fetchRequest.entityName ?? ""
+            // intentional, log information for local development
+            Log.debug("Multiple entities found for volume unique entity \(entityName) with id \(id) and volumeID \(volumeID)", domain: .metadata)
+            assertionFailure("There should not be more than one volume unique entity with the same id & volume combination")
             Log.warning("Multiple entities found for volume unique entity \(entityName) with id \(id) and volumeID \(volumeID)", domain: .metadata, sendToSentryIfPossible: true)
         }
         return fetched.first

@@ -60,7 +60,7 @@ public final class NetworkErrorHandlingCommand: Command, WorkingNotifier {
             workingSubject.send(false)
         } catch let error as ResponseError {
             workingSubject.send(false)
-            if error.isRetryableIncludingInternetIssues {
+            if error.isRetryable {
                 Log.info("Received networking issue, will retry after exponential backoff", domain: .networking)
                 try? await Task.sleep(for: .seconds(ExponentialBackoffWithJitter.getDelay(attempt: attempt)))
                 await executeWithPotentialRetry(attempt: attempt + 1)

@@ -15,11 +15,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import AVKit
 import Combine
-import ProtonCoreUIFoundations
+import PDCore
 import PDUIComponents
-import UIKit
+import ProtonCoreUIFoundations
 import SwiftUI
+import UIKit
 
 final class PhotosPreviewViewController<ViewModel: PhotosPreviewViewModelProtocol>: UIPageViewController, UIPageViewControllerDataSource, UIPageViewControllerDelegate {
     private let viewModel: ViewModel
@@ -54,6 +56,16 @@ final class PhotosPreviewViewController<ViewModel: PhotosPreviewViewModelProtoco
         super.viewWillAppear(animated)
         if UIDevice.current.userInterfaceIdiom == .phone {
             lockOrientationIfNeeded(in: .allButUpsideDown)
+        }
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        do {
+            // Video items can configure the audio session and reset it when the preview is closed
+            try AVAudioSession.sharedInstance().setActive(false)
+        } catch {
+            Log.error("setting AVAudioSession active failed", error: error, domain: .photosUI)
         }
     }
 

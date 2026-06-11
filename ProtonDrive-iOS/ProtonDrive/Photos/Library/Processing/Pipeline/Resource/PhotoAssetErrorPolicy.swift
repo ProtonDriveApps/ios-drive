@@ -18,6 +18,7 @@
 import Foundation
 import Photos
 import PDCore
+import PDPhotos
 
 enum PhotoAssetErrorPolicyResult {
     case generic(Error)
@@ -48,7 +49,11 @@ final class FoundationPhotoAssetErrorPolicy: PhotoAssetErrorPolicy {
     }
 
     private func isMissingAsset(error: Error) -> Bool {
-        return isInvalidIdentifier(error: error) || isInvalidAsset(error: error)
+        return isInvalidIdentifier(error: error) || isInvalidAsset(error: error) || isICloudError(error: error)
+    }
+    
+    private func isICloudError(error: Error) -> Bool {
+        error is LocalPhotoLibraryAssetResource.Errors
     }
 
     private func getUpdatedIdentifier(error: Error) -> PhotoIdentifier? {
@@ -72,15 +77,16 @@ final class FoundationPhotoAssetErrorPolicy: PhotoAssetErrorPolicy {
             return false
         }
 
-        var codes = [
-            PHPhotosError.Code.notEnoughSpace,
-            .accessRestricted,
+        var codes: [Int] = [
+            PHPhotosError.Code.notEnoughSpace.rawValue,
+            PHPhotosError.Code.accessRestricted.rawValue,
+            -1 // Unknown error inside `Photos`
         ]
         if #available(iOS 16, *) {
-            codes.append(.networkError)
+            codes.append(PHPhotosError.Code.networkError.rawValue)
         }
         let code = (error as NSError).code
-        return codes.map(\.rawValue).contains(code)
+        return codes.contains(code)
     }
 
     private func isInvalidIdentifier(error: Error) -> Bool {

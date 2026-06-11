@@ -27,7 +27,8 @@ protocol AlbumDetailCoordinatorProtocol {
     func openMoreActionSheet(
         renameParameter: AlbumRenameViewModel.Parameters,
         renameHandler: @escaping (Error?) -> Void,
-        deleteAlbumHandler: @escaping () -> Void
+        deleteAlbumHandler: @escaping () -> Void,
+        leaveAlbumHandler: (() -> Void)?
     )
     func openMoreActionSheetForGuest(
         leaveAlbumHandler: @escaping () -> Void
@@ -76,19 +77,22 @@ final class AlbumDetailCoordinator: AlbumDetailCoordinatorProtocol, NavigationBa
     func openMoreActionSheet(
         renameParameter: AlbumRenameViewModel.Parameters,
         renameHandler: @escaping (Error?) -> Void,
-        deleteAlbumHandler: @escaping () -> Void
+        deleteAlbumHandler: @escaping () -> Void,
+        leaveAlbumHandler: (() -> Void)?
     ) {
         guard let nav = navigationController else { return }
         ActionSheet.presentAlbumMoreActionSheet(
             on: nav,
-            currentSort: .newestFirst
-        ) { sort in
-            
-        } tapRename: { [weak self] in
-            self?.openRenameView(parameter: renameParameter, renameHandler: renameHandler)
-        } tapDeleteAlbum: {
-            deleteAlbumHandler()
-        }
+            currentSort: .newestFirst,
+            tapSort: { sort in
+                // no-op
+            },
+            tapRename: { [weak self] in
+                self?.openRenameView(parameter: renameParameter, renameHandler: renameHandler)
+            },
+            tapDeleteAlbum: deleteAlbumHandler,
+            tapLeaveAlbum: leaveAlbumHandler
+        )
     }
 
     func openMoreActionSheetForGuest(

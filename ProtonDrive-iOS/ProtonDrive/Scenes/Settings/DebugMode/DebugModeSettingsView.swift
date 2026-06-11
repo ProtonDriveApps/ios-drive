@@ -26,26 +26,36 @@ struct DebugModeSettingsView: View {
 
     var body: some View {
         VStack {
-            NotificationBanner(message: Localization.setting_debug_mode_instructions_body, style: .inverted, padding: .vertical)
+            Toggle(Localization.setting_debug_mode, isOn: $viewModel.isDebugModeEnabled)
+                .tint(ColorProvider.BrandNorm)
+                .padding(.horizontal)
+                .padding(.vertical, 12)
 
-            VStack {
+            NotificationBanner(
+                message: Localization.setting_debug_mode_instructions_body,
+                style: .normal,
+                padding: .vertical
+            )
+            .padding(.bottom)
 
-                HStack {
-                    Text(Localization.setting_debug_mode)
-                        .font(.headline)
+            diagnosticsCell(title: "Storage Diagnostics", action: viewModel.didTapDiagnostics)
+            diagnosticsCell(title: "Photo Backup Diagnostics", action: viewModel.didTapPhotoDiagnostics)
 
-                    Spacer()
-                    
-                    Toggle("", isOn: $viewModel.isDebugModeEnabled)
-                        .tint(ColorProvider.BrandNorm)
-                        .labelsHidden()
-                }
-                .padding(.bottom)
-
-                Spacer()
-            }
-            .padding()
+            Spacer()
         }
         .background(ColorProvider.BackgroundNorm)
+    }
+
+    func diagnosticsCell(title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .foregroundStyle(ColorProvider.TextNorm)
+
+            Spacer()
+
+            Image(uiImage: IconProvider.arrowRight)
+                .foregroundStyle(ColorProvider.IconHint)
+        }
+        .padding(.horizontal)
     }
 }

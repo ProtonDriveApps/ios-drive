@@ -20,5 +20,6 @@ import PDCore
 
 protocol DownloadingViewModel: AnyObject {
     var childrenDownloadCancellable: AnyCancellable? { get set }
-    var downloadProgresses: [ProgressTracker] { get set }
+    var progressTrackersController: ProgressTrackersControllerProtocol { get }
+    var nodeDownloadedResource: NodeDownloadedResource { get }
 }

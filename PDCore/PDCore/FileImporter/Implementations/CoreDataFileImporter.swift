@@ -60,10 +60,10 @@ final class CoreDataFileImporter: FileImporter {
 
     private func makeEncryptedImportedFile(_ url: URL, _ folder: Folder, _ localID: String? = nil) throws -> EncryptedImportedFile {
 #if os(macOS)
-        let signersKit = try generateSignersKit()
+        let signersKit = try folder.getContextShareAddressBasedSignersKit(signersKitFactory: self.signersKitFactory,
+                                                                          fallbackSigner: .main)
 #else
-        let addressID = try folder.getContextShareAddressID()
-        let signersKit = try signersKitFactory.make(forAddressID: addressID)
+        let signersKit = try folder.getContextShareAddressBasedSignersKit(signersKitFactory: signersKitFactory)
 #endif
         let clientUID = uploadClientUIDProvider.getUploadClientUID()
         let parent = try folder.encrypting()
@@ -98,9 +98,5 @@ final class CoreDataFileImporter: FileImporter {
             resourceURL: url,
             localID: localID
         )
-    }
-
-    private func generateSignersKit() throws -> SignersKit {
-        try signersKitFactory.make(forSigner: .main)
     }
 }

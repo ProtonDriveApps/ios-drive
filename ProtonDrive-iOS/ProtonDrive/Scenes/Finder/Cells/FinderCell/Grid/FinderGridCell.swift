@@ -95,16 +95,17 @@ struct FinderGridCell<ViewModel: NodeCellConfiguration>: View where ViewModel: O
                 FileAssetImageProvider.icon(for: vm.iconName)
                     .resizable()
                     .frame(width: placeholderSize, height: placeholderSize)
+                    .accessibilityIdentifier("thumbnail.placeholder.\(vm.name)")
             },
             thumbnail: { thumbnail in
                 Image(uiImage: thumbnail)
                     .resizable()
                     .scaledToFill()
                     .allowsHitTesting(false)
+                    .accessibilityIdentifier("thumbnail.image.\(vm.name)")
             }
         )
         .frame(width: GridCellConstants.thumbnailSize.width, height: GridCellConstants.thumbnailSize.height)
-        .accessibilityIdentifier("thumbnail.\(vm.name)")
         .accessibilityLabel(Localization.accessibility_open_file(fileName: vm.name))
         .clipped()
         .cornerRadius(8)

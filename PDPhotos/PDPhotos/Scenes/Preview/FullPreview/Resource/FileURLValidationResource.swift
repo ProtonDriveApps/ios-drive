@@ -57,3 +57,9 @@ final class PhotoURLValidationResource: FileURLValidationResource {
         }
     }
 }
+
+final class EmptyFileURLValidationResource: FileURLValidationResource {
+    func validate(file: File, url: URL) async throws {
+        // no-op
+    }
+}

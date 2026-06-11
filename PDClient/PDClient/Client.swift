@@ -34,13 +34,23 @@ public class Client {
     public let credentialProvider: CredentialProvider
     public let service: APIService
     public let networking: DriveAPIService
+    public let rateLimitGate: RateLimitGate
+    /// Maximum number of attempts (initial + retries) for a single logical request.
+    /// Mirrors `HttpClientResilience.Configuration.forDriveAPICalls.maxNumberOfTries`.
+    public var maxRetryCount: Int = 6
     public var errorMonitor: ErrorMonitor?
     internal let backgroundQueue = DispatchQueue(label: "Client", attributes: .concurrent)
 
-    public init(credentialProvider: CredentialProvider, service: APIService, networking: DriveAPIService) {
+    public init(
+        credentialProvider: CredentialProvider,
+        service: APIService,
+        networking: DriveAPIService,
+        rateLimitGate: RateLimitGate
+    ) {
         self.credentialProvider = credentialProvider
         self.service = service
         self.networking = networking
+        self.rateLimitGate = rateLimitGate
     }
 
     public func credential() throws -> ClientCredential {
@@ -55,22 +65,84 @@ public class Client {
         }
     }
 
-    func request<E: Endpoint, Response>(_ endpoint: E, completionExecutor: CompletionBlockExecutor = .asyncMainExecutor, completion: @escaping (Result<Response, Error>) -> Void) where Response == E.Response {
-        networking.request(from: endpoint, completionExecutor: completionExecutor) { [errorMonitor] result in
-            errorMonitor?.monitorWithContext(endpoint, result)
-            completion(result)
+    public func request<E: Endpoint, Response>(
+        _ endpoint: E,
+        completionExecutor: CompletionBlockExecutor = .asyncMainExecutor
+    ) async throws -> Response where Response == E.Response {
+        do {
+            let value = try await performRequestHandling429(
+                endpoint,
+                completionExecutor: completionExecutor,
+                attemptsRemaining: maxRetryCount
+            )
+            return value
+        } catch {
+            errorMonitor?.monitorWithContext(endpoint, Result<Response, Error>.failure(error))
+            throw error
         }
     }
-    public func request<E: Endpoint, Response>(_ endpoint: E, completionExecutor: CompletionBlockExecutor = .asyncMainExecutor) async throws -> Response where Response == E.Response {
-        return try await withCheckedThrowingContinuation { continuation in
-            request(endpoint, completionExecutor: completionExecutor) { result in
-                switch result {
-                case .success(let response):
-                    continuation.resume(returning: response)
-                case .failure(let error):
-                    continuation.resume(throwing: error)
-                }
+
+    private func performRequestHandling429<E: Endpoint, Response>(
+        _ endpoint: E,
+        completionExecutor: CompletionBlockExecutor,
+        attemptsRemaining: Int
+    ) async throws -> Response where Response == E.Response {
+        await rateLimitGate.waitIfNeeded(family: endpoint.rateLimitFamily)
+        let (result, response) = await performSingleAttempt(endpoint, completionExecutor: completionExecutor)
+
+        // Not rate-limited → return whatever we got.
+        guard let response, response.statusCode == 429 else {
+            return try result.get()
+        }
+
+        // 429 → update the gate so siblings/successors wait.
+        let retryAfter = response.value(forHTTPHeaderField: "Retry-After")
+            .flatMap { RateLimitGate.parseRetryAfterValue($0) }
+        await rateLimitGate.recordRateLimited(
+            retryAfter: retryAfter,
+            family: endpoint.rateLimitFamily,
+            source: endpoint.path
+        )
+
+        guard attemptsRemaining > 1 else {
+            return try result.get()
+        }
+
+        return try await performRequestHandling429(
+            endpoint,
+            completionExecutor: completionExecutor,
+            attemptsRemaining: attemptsRemaining - 1
+        )
+    }
+
+    private func performSingleAttempt<E: Endpoint, Response>(
+        _ endpoint: E,
+        completionExecutor: CompletionBlockExecutor
+    ) async -> (Result<Response, Error>, HTTPURLResponse?) where Response == E.Response {
+        await withCheckedContinuation { (continuation: CheckedContinuation<(Result<Response, Error>, HTTPURLResponse?), Never>) in
+            networking.request(
+                from: endpoint,
+                completionExecutor: completionExecutor
+            ) { (result: Result<Response, Error>, response: HTTPURLResponse?) in
+                continuation.resume(returning: (result, response))
             }
+        }
+    }
+
+    func request<E: Endpoint, Response>(
+        _ endpoint: E,
+        completionExecutor: CompletionBlockExecutor = .asyncMainExecutor,
+        completion: @escaping (Result<Response, Error>) -> Void
+    ) where Response == E.Response {
+        Task {
+            let result: Result<Response, Error>
+            do {
+                let value = try await request(endpoint, completionExecutor: completionExecutor)
+                result = .success(value)
+            } catch {
+                result = .failure(error)
+            }
+            completionExecutor.execute { completion(result) }
         }
     }
 

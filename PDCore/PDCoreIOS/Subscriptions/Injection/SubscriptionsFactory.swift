@@ -18,11 +18,31 @@
 import PDCore
 import ProtonCoreKeymaker
 import ProtonCorePayments
+import ProtonCorePaymentsV2
+import ProtonCorePaymentsUIV2
 import ProtonCoreServices
+import PDClient
 import UIKit
 
 struct SubscriptionsFactory {
-    func makeRootViewController(tower: Tower, keymaker: Keymaker, networkService: PMAPIService) -> UIViewController {
+    func makeRootViewController(
+        tower: Tower,
+        keymaker: Keymaker,
+        networkService: PMAPIService,
+        featureFlagsController: FeatureFlagsControllerProtocol
+    ) -> UIViewController {
+        if featureFlagsController.hasPaymentsV2 {
+            return makeV2ViewController(tower: tower)
+        } else {
+            return makeLegacyViewController(tower: tower, keymaker: keymaker, networkService: networkService)
+        }
+    }
+
+    private func makeLegacyViewController(
+        tower: Tower,
+        keymaker: Keymaker,
+        networkService: PMAPIService
+    ) -> UIViewController {
         let payments = Payments(
             inAppPurchaseIdentifiers: SubscriptionConstants.drivePlanIDs,
             apiService: networkService,
@@ -35,6 +55,14 @@ struct SubscriptionsFactory {
             userId: tower.sessionVault.clientCredential()?.userID,
             activeUsername: tower.sessionVault.getAccountInfo()?.displayName,
             payments: payments
+        )
+    }
+
+    private func makeV2ViewController(tower: Tower) -> UIViewController {
+        SubscriptionV2ViewController(
+            payments: PaymentsV2(),
+            coreAPIService: tower.networking,
+            messageHander: UserMessageHandler()
         )
     }
 }

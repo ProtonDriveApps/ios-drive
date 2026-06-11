@@ -55,7 +55,7 @@ struct TelemetryEndpoint: Endpoint {
 
     init(events: [TelemetryEventInfo], service: APIService, credential: ClientCredential) throws {
         // url
-        var components = service.baseComponents
+        var components = service.configuration.driveApiBaseComponents
         components.path = "/data/v1/stats/multiple"
         let url = try components.asURL()
 

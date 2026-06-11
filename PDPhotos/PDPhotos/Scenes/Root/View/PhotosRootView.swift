@@ -102,8 +102,6 @@ struct PhotosRootView<
                 config: PlaceholderViewConfiguration(image: .type(.genericError), title: text, message: ""),
                 refresh: viewModel.start
             )
-        case let .migrating(texts):
-            MigrationPlaceholderView(texts: texts)
         }
     }
 }

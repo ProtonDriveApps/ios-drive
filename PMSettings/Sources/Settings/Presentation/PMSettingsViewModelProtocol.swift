@@ -23,4 +23,13 @@ public protocol PMSettingsViewModelProtocol {
     var pageTitle: String { get }
     var sections: [PMSettingsSectionViewModel] { get }
     var footer: String? { get }
+    var sectionsDidUpdate: ((Int) -> Void)? { get set }
+
+    func update(section: PMSettingsSectionViewModel)
+}
+
+extension PMSettingsViewModelProtocol {
+    func update(section: PMSettingsSectionViewModel) {
+        assertionFailure("Not implemented")
+    }
 }

@@ -17,16 +17,17 @@
 
 import FileProvider
 import PDCore
+import CoreData
 
 extension ItemActionsOutlet: ConflictResolution {
 
     // swiftlint:disable:next function_parameter_count
-    public func resolveConflict(tower: Tower, between item: NSFileProviderItem, with url: URL?, and conflictingNode: Node?, applying action: ResolutionAction, fields: NSFileProviderItemFields, progress: Progress?) async throws -> NSFileProviderItem {
+    public func resolveConflict(tower: Tower, between item: NSFileProviderItem, with url: URL?, and conflictingNode: Node?, applying action: ResolutionAction, fields: NSFileProviderItemFields, progress: Progress?, moc: NSManagedObjectContext) async throws -> NSFileProviderItem {
         switch action {
         case .ignore:
             // if the conflict is direct, then `conflictingNode` will be the remote version of item,
             // however in the case of indirect conflicts, will represent a different node
-            guard let remoteNode = await tower.node(itemIdentifier: item.itemIdentifier) else {
+            guard let remoteNode = await tower.node(itemIdentifier: item.itemIdentifier, in: moc) else {
                 guard let conflictingNode else {
                     throw Errors.itemDeleted
                 }
@@ -43,61 +44,61 @@ extension ItemActionsOutlet: ConflictResolution {
             return try NodeItem(node: remoteNode)
 
         case .recreate:
-            guard let parent = await tower.parentFolder(of: item) else {
-                throw Errors.parentNotFound
+            guard let parent = await tower.parentFolder(of: item, in: moc) else {
+                throw Errors.parentNotFound(identifier: item.parentItemIdentifier)
             }
             if item.isFolder {
-                let recreatedFolder = try await tower.createFolder(named: item.filename, under: parent)
+                let recreatedFolder = try await tower.createFolder(named: item.filename, under: parent, moc: moc)
                 return try NodeItem(node: recreatedFolder)
             } else {
-                let (recreatedFile, context) = try await fileCreationProvider().createFile(
-                    tower: tower, item: item, with: url, under: parent, progress: progress, logOperation: true
+                let recreatedFile = try await fileCreationProvider().createFile(
+                    tower: tower, item: item, with: url, under: parent, progress: progress, logOperation: true, moc: moc
                 )
-                return try await context.perform {
+                return try await moc.perform {
                     try NodeItem(node: recreatedFile)
                 }
             }
 
         case .createWithUniqueSuffix:
             let newItem = NodeItem(item: item, filename: item.conflictName(with: (conflictingNode != nil) ? .nameClash : .edit))
-            guard let parent = await tower.parentFolder(of: item) else {
-                throw Errors.parentNotFound
+            guard let parent = await tower.parentFolder(of: item, in: moc) else {
+                throw Errors.parentNotFound(identifier: item.parentItemIdentifier)
             }
             if item.isFolder {
-                let createdNode = try await tower.createFolder(named: newItem.filename, under: parent)
+                let createdNode = try await tower.createFolder(named: newItem.filename, under: parent, moc: moc)
                 return try NodeItem(node: createdNode)
             } else {
-                let (createdFile, context) = try await fileCreationProvider().createFile(
-                    tower: tower, item: newItem, with: url, under: parent, progress: progress, logOperation: true
+                let createdFile = try await fileCreationProvider().createFile(
+                    tower: tower, item: newItem, with: url, under: parent, progress: progress, logOperation: true, moc: moc
                 )
-                return try await context.perform {
+                return try await moc.perform {
                     try NodeItem(node: createdFile)
                 }
             }
 
         case .renameWithUniqueSuffix:
             let newItem = NodeItem(item: item, filename: item.conflictName(with: .nameClash))
-            guard let nodeIdentifier = tower.nodeIdentifier(for: newItem.itemIdentifier) else {
+            guard let nodeIdentifier = tower.nodeIdentifier(for: newItem.itemIdentifier, moc: moc) else {
                 assertionFailure("Could not create nodeIdentifier from newItem.itemIdentifier: \(newItem.itemIdentifier.debugDescription)")
-                throw NSFileProviderError(.noSuchItem)
+                throw NSError.fileProviderErrorForNonExistentItem(withIdentifier: newItem.itemIdentifier)
             }
 
-            _ = try await tower.rename(node: nodeIdentifier, cleartextName: newItem.filename)
+            _ = try await tower.rename(node: nodeIdentifier, cleartextName: newItem.filename, moc: moc)
 
             return newItem
 
         case .moveAndRenameWithUniqueSuffix:
             let newItem = NodeItem(item: item, filename: item.conflictName(with: .nameClash))
-            guard let nodeIdentifier = tower.nodeIdentifier(for: newItem.itemIdentifier) else {
+            guard let nodeIdentifier = tower.nodeIdentifier(for: newItem.itemIdentifier, moc: moc) else {
                 assertionFailure("Could not create nodeIdentifier from newItem.itemIdentifier: \(newItem.itemIdentifier.debugDescription)")
-                throw NSFileProviderError(.noSuchItem)
+                throw NSError.fileProviderErrorForNonExistentItem(withIdentifier: newItem.itemIdentifier)
             }
 
-            guard let newParent = await tower.parentFolder(of: newItem) else {
-                throw Errors.parentNotFound
+            guard let newParent = await tower.parentFolder(of: newItem, in: moc) else {
+                throw Errors.parentNotFound(identifier: newItem.parentItemIdentifier)
             }
 
-            _ = try await tower.move(nodeID: nodeIdentifier, under: newParent, withNewName: newItem.filename)
+            _ = try await tower.move(nodeID: nodeIdentifier, under: newParent, withNewName: newItem.filename, moc: moc)
 
             return newItem
         }

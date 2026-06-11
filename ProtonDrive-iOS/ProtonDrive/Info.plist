@@ -101,10 +101,16 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_Proxyman._tcp</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Use camera to upload photos and videos to the Drive, or to scan QR codes.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Use FaceID to unlock the app or scan QR codes.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Atlantis would use Bonjour Service to discover Proxyman app from your local network. Atlantis uses it to transfer the data from your iOS app to Proxyman macOS for debugging purposes.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Use microphone to upload videos to the Drive</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
@@ -133,6 +139,8 @@
 		<string>fetch</string>
 		<string>processing</string>
 	</array>
+	<key>UIDesignRequiresCompatibility</key>
+	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

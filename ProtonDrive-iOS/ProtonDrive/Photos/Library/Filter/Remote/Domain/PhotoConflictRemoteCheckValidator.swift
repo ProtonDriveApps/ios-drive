@@ -28,13 +28,11 @@ enum PhotoConflictRemoteCheckResult: Equatable {
 }
 
 final class ConcretePhotoConflictRemoteCheckValidator: PhotoConflictRemoteCheckValidator {
-    private let hashInteractor: PhotoContentHashInteractor
     private let clientUIDProvider: UploadClientUIDProvider
     private let linkIdRepository: LocalPhotoLinkIdRepository
 
     // TODO: some of the dependencies are not used now, but are necessary for handling drafts
-    init(hashInteractor: PhotoContentHashInteractor, clientUIDProvider: UploadClientUIDProvider, linkIdRepository: LocalPhotoLinkIdRepository) {
-        self.hashInteractor = hashInteractor
+    init(clientUIDProvider: UploadClientUIDProvider, linkIdRepository: LocalPhotoLinkIdRepository) {
         self.clientUIDProvider = clientUIDProvider
         self.linkIdRepository = linkIdRepository
     }
@@ -54,13 +52,14 @@ final class ConcretePhotoConflictRemoteCheckValidator: PhotoConflictRemoteCheckV
             return .upload
         }
 
+        let cloudID = localItem.primary.asset.metadata.iOSPhotos.identifier
         switch primaryRemoteItem.linkState {
         case .draft:
             // TODO: Will not happen because we're filtering out drafts above
-            Log.debug("Duplicate check: draft primary: \(primaryLocalHash.nameHash)", domain: .photosProcessing)
+            Log.debug("Duplicate check: draft primary: \(cloudID)", domain: .photosProcessing)
             return .skip
         case .trashed:
-            Log.info("Duplicate check: trashed primary: \(primaryLocalHash.nameHash). Skipping.", domain: .photosProcessing)
+            Log.info("Duplicate check: trashed primary: \(cloudID). Skipping.", domain: .photosProcessing)
             return .skip
         case .active:
             return try validateActive(primaryItem: primaryRemoteItem, primaryLocalHash: primaryLocalHash, localItem: localItem, remoteItems: remoteItems)
@@ -77,15 +76,15 @@ final class ConcretePhotoConflictRemoteCheckValidator: PhotoConflictRemoteCheckV
         }
 
         let secondaryCheck = try validateSecondary(localItem: localItem, remoteItems: remoteItems)
-        let nameHashes = localItem.allIdentifiers.map { $0.nameHash }
+        let cloudIdentifier = localItem.primary.asset.metadata.iOSPhotos.identifier
         switch secondaryCheck {
         case .skip:
             // All secondary are uploaded. Skip it.
-            Log.debug("Duplicate check: nothing to add, skipping: \(nameHashes)", domain: .photosProcessing)
+            Log.debug("Duplicate check: nothing to add, skipping: \(cloudIdentifier)", domain: .photosProcessing)
             return .skip
         case let .upload(secondary):
             // Some secondary need to be reuploaded.
-            Log.debug("Duplicate check: some secondary missing: \(nameHashes)", domain: .photosProcessing)
+            Log.debug("Duplicate check: some secondary missing: \(cloudIdentifier)", domain: .photosProcessing)
             return .partialUpload(primaryUploadID: primaryLinkId, secondary: secondary)
         }
     }
@@ -128,7 +127,6 @@ final class ConcretePhotoConflictRemoteCheckValidator: PhotoConflictRemoteCheckV
     }
 
     private func makeHash(from identifier: PhotoAssetIdentifier) throws -> PhotoHashes {
-        let contentHash = try hashInteractor.makeContentHash(from: identifier.url)
-        return PhotoHashes(nameHash: identifier.nameHash, contentHash: contentHash)
+        return PhotoHashes(nameHash: identifier.nameHash, contentHash: identifier.asset.contentHash)
     }
 }

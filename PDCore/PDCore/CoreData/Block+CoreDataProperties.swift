@@ -38,20 +38,17 @@ extension Block: VolumeUnique {
         if FileManager.default.fileExists(atPath: self.temporaryUrl!.path) {
             return self.temporaryUrl
         }
-        if FileManager.default.fileExists(atPath: self.permanentUrl!.path) {
-            return self.permanentUrl
-        }
         return nil
     }
     
-    fileprivate var temporaryUrl: URL? {
+    var temporaryUrl: URL? {
         guard let path = self.localPath else { return nil }
         return PDFileManager.cypherBlocksCacheDirectory.appendingPathComponent(path)
     }
     
-    fileprivate var permanentUrl: URL? {
+    var permanentUrl: URL? {
         guard let path = self.localPath else { return nil }
-        return PDFileManager.cypherBlocksPermanentDirectory.appendingPathComponent(path)
+        return PDFileManager.permanentDataDirectory.appendingPathComponent(path)
     }
     
     func move(to newBase: Downloader.DownloadLocation) throws {
@@ -74,7 +71,7 @@ extension Block: VolumeUnique {
 
 extension DownloadBlock {
     func store(cypherfileFrom intermediateUrl: URL) throws -> URL {
-        let blockFilename = UUID().uuidString
+        let blockFilename = "Download-\(UUID().uuidString)"
         self.localPath = blockFilename
         
         let localUrl = self.temporaryUrl!

@@ -32,11 +32,11 @@ final class UploadSectionViewModel {
     }
 
     var items: [[UploadSectionItem]] {
-        guard folder.getNodeRole() != .viewer else {
+        guard folder.getNodePermissions() != .view else {
             return [[]]
         }
         let firstSection = [photo, takePhoto, .importFile].compactMap { $0 }
-        let secondSection = [.createFolder, newDocument, newSheet].compactMap { $0 }
+        let secondSection = [.createFolder, .createDocument, newSheet, .scanDocument].compactMap { $0 }
         return [firstSection, secondSection].filter { !$0.isEmpty }
     }
 
@@ -46,13 +46,6 @@ final class UploadSectionViewModel {
 
     private var takePhoto: UploadSectionItem? {
         UIImagePickerController.isSourceTypeAvailable(.camera) ? .takePhoto : nil
-    }
-
-    private var newDocument: UploadSectionItem? {
-        guard featureFlagsController.hasProtonDocumentCreation else {
-            return nil
-        }
-        return .createDocument
     }
 
     private var newSheet: UploadSectionItem? {
@@ -69,6 +62,7 @@ final class UploadSectionViewModel {
         case createFolder
         case createDocument
         case createSheet
+        case scanDocument
 
         var text: String  {
             let name: String
@@ -79,6 +73,7 @@ final class UploadSectionViewModel {
             case .createFolder: name = Localization.create_folder_title
             case .createDocument: name = Localization.create_document_button
             case .createSheet: name = Localization.create_sheet_button
+            case .scanDocument: name = Localization.scan_document_button
             }
             return name
         }
@@ -97,6 +92,8 @@ final class UploadSectionViewModel {
                 return Image("ic-brand-proton-docs")
             case .createSheet:
                 return Image("ic-brand-proton-sheet")
+            case .scanDocument:
+                return Image("ic_scan")
             }
         }
 

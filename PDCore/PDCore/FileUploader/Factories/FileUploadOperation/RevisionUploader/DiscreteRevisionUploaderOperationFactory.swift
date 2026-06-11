@@ -34,6 +34,7 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
     let uploadQueue: OperationQueue
     private let blocksMeasurementRepository: FileUploadBlocksMeasurementRepositoryProtocol?
     let session = URLSession.forUploading()
+    private let uploadedBytesCounterResource: BytesCounterResource
 
     init(
         storage: StorageManager,
@@ -47,7 +48,8 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
         parallelEncryption: Bool,
         globalPagesQueue: OperationQueue? = nil,
         globalUploadQueue: OperationQueue? = nil,
-        blocksMeasurementRepository: FileUploadBlocksMeasurementRepositoryProtocol? = nil
+        blocksMeasurementRepository: FileUploadBlocksMeasurementRepositoryProtocol? = nil,
+        uploadedBytesCounterResource: BytesCounterResource
     ) {
         self.storage = storage
         self.client = client
@@ -63,6 +65,7 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
         uploadQueue = globalUploadQueue ?? OperationQueue(maxConcurrentOperation: Constants.maxConcurrentPageOperations)
         uploadQueue.qualityOfService = .userInitiated
         self.blocksMeasurementRepository = blocksMeasurementRepository
+        self.uploadedBytesCounterResource = uploadedBytesCounterResource
     }
 
     func make(from draft: FileDraft, completion: @escaping OnUploadCompletion) -> any UploadOperation {
@@ -161,7 +164,8 @@ class DiscreteRevisionUploaderOperationFactory: FileUploadOperationFactory {
             session: session,
             apiService: api,
             credentialProvider: credentialProvider,
-            moc: moc
+            moc: moc,
+            uploadedBytesCounterResource: uploadedBytesCounterResource
         )
 
         return BlockUploaderOperation(

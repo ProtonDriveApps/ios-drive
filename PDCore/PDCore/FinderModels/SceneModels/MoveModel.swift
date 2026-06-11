@@ -48,6 +48,10 @@ public final class MoveModel: FinderModel, NodesListing, NodesFetching, NodesSor
     private var moveCancellable: AnyCancellable?
     public var nodeIdsToMove: [NodeIdentifier]
     public var nodeToMoveParentId: NodeIdentifier
+    public var isUsingSDKForThumbnails: Bool {
+        tower.getSdkThumbnailsDownloaderForFiles() != nil
+    }
+
     public init(tower: Tower, node: Folder, nodeID: NodeIdentifier, nodesToMoveID: [NodeIdentifier], nodeToMoveParentID: NodeIdentifier) {
         self.tower = tower
         self.node = node
@@ -79,13 +83,14 @@ extension MoveModel {
         // 4. call handler when all done
         let nodeIds = self.nodeIdsToMove
         let node = self.node
+        let moc = self.tower.storage.backgroundContext
         
         self.moveCancellable?.cancel()
         self.moveCancellable = self.nodeIdsToMove.compactMap { nodeID in
             Deferred {
                 Future<NodeIdentifier, Error> { [weak self] promise in
                     Log.info("Start move call: \(nodeID)", domain: .networking)
-                    self?.tower.move(nodeID: nodeID, under: node) { result in
+                    self?.tower.move(nodeID: nodeID, under: node, moc: moc) { result in
                         Log.info("Finish move call: \(nodeID)", domain: .networking)
                         switch result {
                         case .success(let node):

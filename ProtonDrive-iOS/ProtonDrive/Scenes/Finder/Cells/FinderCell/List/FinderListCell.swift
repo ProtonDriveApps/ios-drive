@@ -148,12 +148,14 @@ private extension FinderListCell {
                 FileAssetImageProvider.icon(for: vm.iconName)
                     .resizable()
                     .frame(width: 40, height: 40, alignment: .leading)
+                    .accessibilityIdentifier("thumbnail.placeholder.\(vm.name)")
             } thumbnail: { thumbnail in
                 Image(uiImage: thumbnail)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(width: 40, height: 40)
                     .cornerRadius(8)
+                    .accessibilityIdentifier("thumbnail.image.\(vm.name)")
             }
             .frame(width: 40)
             .transition(.asymmetric(insertion: .slide, removal: .identity))
@@ -168,12 +170,12 @@ private extension FinderListCell {
                         .font(.system(size: 14, weight: .bold))
                 }
                 .offset(x: 5, y: 5)
+                .accessibilityIdentifier("thumbnail.initial.\(vm.name)")
             }
 
         }
         .frame(width: 40, height: 40)
         .transition(.asymmetric(insertion: .slide, removal: .identity))
-        .accessibilityIdentifier("thumbnail.\(vm.name)")
     }
 
     private func defaultCellButton(_ button: NodeCellButton) -> some View {

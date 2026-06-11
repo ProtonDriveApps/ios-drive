@@ -43,7 +43,7 @@ final class DirectChildrenInAlbumFetchInteractor: DirectChildrenInAlbumFetchInte
             anchorID = result.anchorID
             guard result.hasMore else { break }
         }
-        _ = try await dependencies.metadataRepository.fetch(identifiers: Array(photoIdentifiers))
+        _ = try await dependencies.metadataRepository.fetch(identifiers: Array(photoIdentifiers), forceToRefresh: false)
         return photoIdentifiers
     }
 

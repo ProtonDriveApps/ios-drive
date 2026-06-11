@@ -17,19 +17,32 @@
 
 import Foundation
 import CoreData
+import Photos
 
 public class CoreDataPhotoImporter: PhotoImporter {
     private let moc: NSManagedObjectContext
     private let signersKitFactory: SignersKitFactoryProtocol
     private let uploadClientUIDProvider: UploadClientUIDProvider
+    private let skippable: PhotosSkippableCache
 
-    public init(moc: NSManagedObjectContext, signersKitFactory: SignersKitFactoryProtocol, uploadClientUIDProvider: UploadClientUIDProvider) {
+    public init(
+        moc: NSManagedObjectContext,
+        signersKitFactory: SignersKitFactoryProtocol,
+        uploadClientUIDProvider: UploadClientUIDProvider,
+        skippable: PhotosSkippableCache
+    ) {
         self.moc = moc
         self.signersKitFactory = signersKitFactory
         self.uploadClientUIDProvider = uploadClientUIDProvider
+        self.skippable = skippable
     }
 
     public func `import`(_ asset: PhotoAsset, folder: Folder, encryptingFolder: EncryptingFolder) throws -> Photo {
+        if let data = hasBeenImported(asset: asset) {
+            Log.debug("Asset \(asset.localIdentifier) has been imported", domain: .photosProcessing)
+            return data
+        }
+        
         let addressID = try folder.getContextShareAddressID()
         let signersKit = try signersKitFactory.make(forAddressID: addressID)
         let root = folder
@@ -50,7 +63,7 @@ public class CoreDataPhotoImporter: PhotoImporter {
         coreDataPhoto.name = encryptedName
         coreDataPhoto.nodeHash = hash
         coreDataPhoto.mimeType = asset.mimeType.value
-        coreDataPhoto.size = try asset.url.getFileSize()
+        coreDataPhoto.size = asset.dataSize
         coreDataPhoto.nodeKey = nodeKeyPack.key
         coreDataPhoto.nodePassphrase = nodeKeyPack.passphrase
         coreDataPhoto.nodePassphraseSignature = nodeKeyPack.signature
@@ -61,14 +74,16 @@ public class CoreDataPhotoImporter: PhotoImporter {
         coreDataPhoto.signatureEmail = signersKit.address.email
         coreDataPhoto.nameSignatureEmail = signersKit.address.email
         coreDataPhoto.uploadID = uuid
-        coreDataPhoto.createdDate = Date()
-        coreDataPhoto.modifiedDate = Date()
+        coreDataPhoto.createdDate = asset.metadata.camera.captureTime ?? Date()
+        coreDataPhoto.modifiedDate = asset.metadata.iOSPhotos.modificationTime ?? Date()
         coreDataPhoto.captureTime = asset.metadata.camera.captureTime ?? Date()
         coreDataPhoto.tags = asset.tags
 
         // Temporary values
-        let metadata = TemporalMetadata(metadata: asset.metadata).base64Encoded()
-        coreDataPhoto.tempBase64Metadata = metadata
+        let metadata = try metadata(from: asset)
+        let tempMetadata = TemporalMetadata(metadata: metadata).base64Encoded()
+        coreDataPhoto.tempBase64Metadata = tempMetadata
+        coreDataPhoto.localIdentifier = asset.localIdentifier
 
         // Start Photo with the .interrupted state
         coreDataPhoto.state = .interrupted
@@ -88,8 +103,8 @@ public class CoreDataPhotoImporter: PhotoImporter {
         coreDataPhotoRevision.volumeID = folder.volumeID
         coreDataPhotoRevision.exif = encryptedExif.base64EncodedString()
         coreDataPhotoRevision.uploadState = .created
-        coreDataPhotoRevision.uploadSize = try asset.url.getFileSize()
-        coreDataPhotoRevision.normalizedUploadableResourceURL = asset.url
+        coreDataPhotoRevision.uploadSize = asset.dataSize
+        coreDataPhotoRevision.uploadResourceTypeValue = asset.resourceType
         coreDataPhotoRevision.signatureAddress = signersKit.address.email
 
         // Relationships
@@ -98,8 +113,58 @@ public class CoreDataPhotoImporter: PhotoImporter {
         coreDataPhoto.activeRevisionDraft = coreDataPhotoRevision
         coreDataPhoto.parentFolder = root
 
-        Log.info("\(type(of: self)) will create Photo with uploadID: \(uuid).", domain: .photosProcessing)
-
+        Log.info("Import Photo with uploadID: \(uuid) for asset \(asset.metadata.iOSPhotos.identifier), resource type: \(asset.resourceType)", domain: .photosProcessing)
         return coreDataPhoto
+    }
+
+    // Prevent duplicate asset import to avoid photo redundancy
+    private func hasBeenImported(asset: PhotoAsset) -> CoreDataPhoto? {
+        let request = CoreDataPhoto.photoFetchRequest()
+        // For photo that be edited after uploading
+        let statusPredicate = NSPredicate(format: "%K != %d", #keyPath(Photo.stateRaw), Photo.State.active.rawValue)
+        let idPredicate = NSPredicate(format: "localIdentifier == %@", asset.localIdentifier)
+        request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [idPredicate, statusPredicate])
+
+        let result = try? moc.fetch(request)
+        return result?.first(where: { photo in
+            photo.photoRevision.uploadResourceTypeValue == asset.resourceType &&
+            photo.decryptedName.lowercased() == asset.filename.lowercased()
+        })
+    }
+
+    private func metadata(from asset: PhotoAsset) throws -> PhotoAssetMetadata {
+        let (isUpdated, newCloudIdentifier) = cloudIdentifier(from: asset)
+        var metadata = asset.metadata
+        guard isUpdated else { return metadata }
+        let oldIOSPhoto = metadata.iOSPhotos
+
+        let pendingFiles = try skippable.pendingFiles(identifier: metadata.iOSPhotos) ?! "Failed to get pending number"
+        let iOSPhoto = PhotoAssetMetadata.iOSPhotos(
+            identifier: newCloudIdentifier,
+            modificationTime: asset.metadata.iOSPhotos.modificationTime
+        )
+        metadata = metadata.copy(with: iOSPhoto)
+        skippable.recordFiles(identifier: iOSPhoto, filesToUpload: pendingFiles)
+        skippable.markAsSkippable(oldIOSPhoto, skippableFiles: pendingFiles)
+        return metadata
+    }
+
+    /// Update cloud identifier if needed
+    /// - Returns: (isUpdated, cloudIdentifier)
+    private func cloudIdentifier(from asset: PhotoAsset) -> (Bool, String) {
+        // When a photo is accessed immediately after being taken,
+        // its cloud identifier may still be incomplete.
+        // Example (incomplete): 4ADE1042-925C-4658-9652-A663D85B23D3:001:
+        // Example (complete):   4ADE1042-925C-4658-9652-A663D85B23D3:001:AT+GAjj04PhngzYZMVjhI1c/Cg7W
+        let assetCloudIdentifier = asset.metadata.iOSPhotos.identifier
+        let components = assetCloudIdentifier.split(separator: ":")
+        if components.count == 3 { return (false, assetCloudIdentifier) }
+        let mapping = PHPhotoLibrary.shared().cloudIdentifierMappings(forLocalIdentifiers: [asset.localIdentifier])
+        if let identifier = try? mapping[asset.localIdentifier]?.get() {
+            let isCompleted = identifier.stringValue.split(separator: ":").count == 3
+            return (isCompleted, identifier.stringValue)
+        } else {
+            return (false, assetCloudIdentifier)
+        }
     }
 }

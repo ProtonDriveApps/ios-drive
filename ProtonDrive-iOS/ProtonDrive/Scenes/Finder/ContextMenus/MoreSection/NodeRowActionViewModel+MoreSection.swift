@@ -34,12 +34,19 @@ extension NodeRowActionMenuViewModel {
     private func singleMoreRows(for type: MoreSectionItem, environment: Environment) -> ContextMenuItem {
         switch type {
         case .shareIn: return shareIn(type, environment: environment)
+        case .download: return download(type, environment: environment)
         }
     }
     
     private func shareIn(_ type: MoreSectionItem, environment: Environment) -> ContextMenuItem {
         ContextMenuItem(sectionItem: type, handler: {
-            environment.shareIn(file: node as! File)
+            environment.openIn(file: node as! CoreDataFile)
+        })
+    }
+    
+    private func download(_ type: MoreSectionItem, environment: Environment) -> ContextMenuItem {
+        ContextMenuItem(sectionItem: type, handler: {
+            environment.download(file: node as! CoreDataFile)
         })
     }
 }

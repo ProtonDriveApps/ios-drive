@@ -207,6 +207,10 @@ extension PMAPIClient: AuthDelegate {
         Log.info("Update credential callback from PMCommon", domain: .networking)
         self.sessionStore.storeCredential(CoreCredential(auth))
     }
+    
+    public func isSignedIn() -> Bool {
+        sessionStore.isSignedIn()
+    }
 }
 
 extension PMAPIClient: HumanVerifyDelegate {

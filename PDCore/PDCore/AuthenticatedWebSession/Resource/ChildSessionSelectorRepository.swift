@@ -21,13 +21,13 @@ import ProtonCoreAuthentication
 import ProtonCoreNetworking
 import ProtonCoreServices
 
-struct ChildSessionSelectorRequest {
+public struct ChildSessionSelectorRequest {
     let childClientID: String
     let isIndependent: Bool
     let payload: Data
 }
 
-protocol ChildSessionSelectorRepositoryProtocol {
+public protocol ChildSessionSelectorRepositoryProtocol {
     func execute(with request: ChildSessionSelectorRequest) async throws -> String
 }
 
@@ -35,16 +35,16 @@ enum ChildSessionSelectorRepositoryError: Error {
     case missingCredential
 }
 
-final class ChildSessionSelectorRepository: ChildSessionSelectorRepositoryProtocol {
+public final class ChildSessionSelectorRepository: ChildSessionSelectorRepositoryProtocol {
     private let sessionStorage: SessionStore
     private let authenticator: Authenticator
 
-    init(sessionStorage: SessionStore, authenticator: Authenticator) {
+    public init(sessionStorage: SessionStore, authenticator: Authenticator) {
         self.sessionStorage = sessionStorage
         self.authenticator = authenticator
     }
 
-    func execute(with request: ChildSessionSelectorRequest) async throws -> String {
+    public func execute(with request: ChildSessionSelectorRequest) async throws -> String {
         guard let sessionCredential = sessionStorage.sessionCredential else {
             throw ChildSessionSelectorRepositoryError.missingCredential
         }

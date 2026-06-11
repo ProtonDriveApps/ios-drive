@@ -24,6 +24,9 @@ public protocol PhotosSkippableStorage {
     func checkSkippableStatus(identifier: Identifier) -> SkippableStatus
     func batchMarkAsSkippable(data: [Identifier: Int])
     func clean()
+    #if DEBUG
+    func debugPrint()
+    #endif
 }
 
 public enum SkippableStatus {
@@ -100,6 +103,14 @@ public class UserDefaultsPhotosSkippableStorage: PhotosSkippableStorage {
             self.inMemorySet = self.loadSetFromStore()
         }
     }
+
+    #if DEBUG
+    public func debugPrint() {
+        for data in inMemorySet {
+            Log.debug(String(describing: data.export()), domain: .photosProcessing)
+        }
+    }
+    #endif
 
     private func loadSetFromStore() -> Set<InMemoryData> {
         var set: Set<InMemoryData> = Set()

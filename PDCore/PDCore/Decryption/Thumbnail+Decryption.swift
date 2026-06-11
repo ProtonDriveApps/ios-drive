@@ -46,7 +46,7 @@ extension Thumbnail {
         }
     }
 
-    internal func decrypt(sessionKey: Data) throws -> Data {
+    internal func decrypt(sessionKey: Data, decryptionResource: DecryptionResource = Decryptor()) throws -> Data {
         do {
             guard let thumbnailDataPacket = encrypted else {
                 throw Error.blockDataNotDownloaded
@@ -57,38 +57,70 @@ extension Thumbnail {
                 throw Error.tamperedThumbnail
             }
 
-            let addressKeys = try revision.getAddressPublicKeysOfRevision()
-            let decrypted: VerifiedBinary
             do {
-                decrypted = try Decryptor.decryptAndVerifyThumbnail(
-                    thumbnailDataPacket,
-                    contentSessionKey: sessionKey,
-                    verificationKeys: addressKeys
-                )
+                let decryptedData = try decryptionResource.decryptBlock(thumbnailDataPacket, sessionKey: sessionKey)
+                
+                self.clearData = decryptedData
+                return decryptedData
             } catch let error where !(error is Decryptor.Errors) {
                 DriveIntegrityErrorMonitor.reportContentError(for: revision.file)
                 throw error
             }
-
-            switch decrypted {
-            case .verified(let thumbnail):
-                self.clearData = thumbnail
-                return thumbnail
-
-            case .unverified(let thumbnail, let error):
-                let hasSignatureEmail = !(revision.signatureAddress?.isEmpty ?? true)
-                if hasSignatureEmail {
-                    // Anonymous upload file thumbnail doesn't have signature
-                    Log.error(error: SignatureError(error, "Thumbnail Passphrase", description: "RevisionID: \(revision.id) \nLinkID: \(revision.file.id) \nVolumeID: \(revision.file.volumeID)"), domain: .encryption, sendToSentryIfPossible: revision.file.isSignatureVerifiable())
-                }
-                self.clearData = thumbnail
-                return thumbnail
-            }
-
         } catch {
             Log.error(error: DecryptionError(error, "Thumbnail", description: "RevisionID: \(revision.id) \nLinkID: \(revision.file.id) \nVolumeID: \(revision.file.volumeID)"), domain: .encryption)
             throw error
         }
     }
 
+    #if os(iOS)
+    public static func saveClearDataToDisk(
+        clearData: Data,
+        type: ThumbnailType,
+        identifier: NodeIdentifier,
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line,
+        completion: (() -> Void)? = nil
+    ) {
+        DispatchQueue.global().async {
+            let storageType = preferredStorageType(identifier: identifier)
+            let url = PDFileManager.createThumbnailURL(for: identifier, type: type, storageType: storageType)
+            do {
+                if FileManager.default.fileExists(atPath: url.path) {
+                    try FileManager.default.removeItem(atPath: url.path)
+                }
+                try clearData.write(to: url)
+            } catch {
+                let parent = url.deletingLastPathComponent()
+                let hasParent = FileManager.default.fileExists(atPath: parent.path)
+                Log.error("Save clear data to disk failed, has parent? \(hasParent)", error: error, domain: .photosUI, file: file, function: function, line: line)
+            }
+            completion?()
+        }
+    }
+
+    public static func saveClearDataToDisk(
+        clearData: Data,
+        type: ThumbnailType,
+        identifier: NodeIdentifier
+    ) async {
+        await withCheckedContinuation { continuation in
+            saveClearDataToDisk(
+                clearData: clearData,
+                type: type,
+                identifier: identifier,
+                completion: {
+                    continuation.resume()
+                }
+            )
+        }
+    }
+    
+    private static func preferredStorageType(identifier: NodeIdentifier) -> FileStorageType {
+        let permanentURL = PDFileManager
+            .fileURL(for: identifier, prefix: nil, storageType: .permanent, shouldCreate: false)
+        if FileManager.default.fileExists(atPath: permanentURL.path) { return .permanent }
+        return .temporary
+    }
+    #endif // os(iOS)
 }

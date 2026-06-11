@@ -20,24 +20,16 @@ import CoreData
 import PDCore
 import UIKit
 
-struct CancelationError: Error { }
-
 final class CoreDataFilePreviewRepository: FilePreviewRepository {
     private let context: NSManagedObjectContext
     private let file: File
 
-    private var cleartextUrl: URL?
+    @ThreadSafe private var cleartextUrl: URL?
     private var isCancelled = false
 
     init(context: NSManagedObjectContext, file: File) {
         self.context = context
         self.file = file
-        NotificationCenter.default.addObserver(
-                    self,
-                    selector: #selector(cleanup),
-                    name: UIApplication.willTerminateNotification,
-                    object: nil
-                )
     }
     
     func getURL() -> URL {
@@ -48,47 +40,73 @@ final class CoreDataFilePreviewRepository: FilePreviewRepository {
             return URL.blank
         }
     }
+    
+    func requiresDecryption() async throws -> Bool {
+        let objectID = file.objectID
+        let decryptedPath = try await context.perform { [context] in
+            let file: CoreDataFile = try context.typedObject(with: objectID)
+            guard let revision = file.activeRevision else {
+                throw file.invalidState("No active revision in file")
+            }
+            return revision.validatedDecryptedFilePath()
+        }
+        if let decryptedPath {
+            cleartextUrl = try decryptedPath.hardLink(filename: file.decryptedName)
+            return false
+        } else {
+            return true
+        }
+    }
 
     func loadFile() async throws {
         Log.info("Will start decrypting the file", domain: .fileManager)
-        return try await context.perform {
+        let objectID = file.objectID
+        return try await context.perform { [context] in
             do {
-                let file = self.file.in(moc: self.context)
+                let file: CoreDataFile = try context.typedObject(with: objectID)
                 guard self.cleartextUrl == nil, let revision = file.activeRevision else {
                     throw file.invalidState("No active revision in file")
                 }
 
-                let cleartextUrl = try revision.clearURL()
-                self.cleartextUrl = cleartextUrl
-                _ = try revision.decryptFileToURL(cleartextUrl, isCancelled: &self.isCancelled)
+                // The decrypted file is stored at `{UserID}/{VolumeID}/{NodeID}/clear`
+                // Create a hard link that points to this location
+                // so the preview view and share sheet can display the correct file name
+                //
+                // In Finder, you will see two files: `clear` and `{name}.{ext}`
+                // The folder size will appear doubled because Finder simply sums the size of each entry
+                // However, both files reference the same inode, so no data is actually duplicated
+                // You can run `ls -li path_to_folder` to confirm that they point to the same inode
+                // And `du -h path_to_folder` to see actual disk usage
+                let realLink = try revision.decryptFile(isCancelled: &self.isCancelled)
+                let hardLink = try realLink.hardLink(filename: file.decryptedName)
+                self.cleartextUrl = hardLink
                 if self.isCancelled {
-                    self.cleanup()
                     self.cleartextUrl = nil
-                    throw CancelationError()
+                    throw CancellationError()
                 }
             } catch {
-                self.cleanup()
                 self.cleartextUrl = nil
                 throw error
             }
         }
     }
 
+    func getFileMetadata() async -> (AnyVolumeIdentifier, MimeType) {
+        await context.perform { [context] in
+            let file = self.file.in(moc: context)
+            let id = file.identifierWithinManagedObjectContext.any()
+            let mimeType = MimeType(value: file.mimeType)
+            return (id, mimeType)
+        }
+    }
+
     deinit {
         cancel()
-        cleanup()
     }
 }
 
 extension CoreDataFilePreviewRepository {
     func cancel() {
         self.isCancelled = true
-    }
-
-    @objc private func cleanup() {
-        if let url = self.cleartextUrl {
-            try? FileManager.default.removeItemIncludingUniqueDirectory(at: url)
-            self.cleartextUrl = nil
-        }
     }
 }

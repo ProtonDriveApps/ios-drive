@@ -33,7 +33,7 @@ struct ShareSRPEndpoint: Endpoint {
     
     init(service: APIService) {
         // url
-        var components = service.baseComponents
+        var components = service.configuration.driveApiBaseComponents
         components.path = "/auth/modulus"
         let url = components.url!
         

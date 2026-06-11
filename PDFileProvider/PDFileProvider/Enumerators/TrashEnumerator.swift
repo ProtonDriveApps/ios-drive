@@ -54,7 +54,9 @@ public final class TrashEnumerator: NSObject, NSFileProviderEnumerator {
     
     public func enumerateItems(for observer: NSFileProviderEnumerationObserver, startingAt page: NSFileProviderPage) {
         Log.trace()
+        Log.event(.enumerateItems(.started(.init(containerType: .trashContainer, pageNumber: page.int))))
         observer.finishEnumerating(upTo: nil)
+        Log.event(.enumerateItems(.succeeded(.init(containerType: .trashContainer, itemEnumerationMode: .db, enumeratedItemIDs: [], hasMorePages: false))))
     }
     
     // MARK: Changes
@@ -66,12 +68,14 @@ public final class TrashEnumerator: NSObject, NSFileProviderEnumerator {
     
     public func enumerateChanges(for observer: NSFileProviderChangeObserver, from syncAnchor: NSFileProviderSyncAnchor) {
         Log.trace()
+        Log.event(.enumerateChanges(.started(.init(containerType: .trashContainer, syncAnchor: syncAnchor.rawValue.base64EncodedString()))))
         observer.finishEnumeratingChanges(upTo: syncAnchor, moreComing: false)
+        Log.event(.enumerateChanges(.succeeded(.init(containerType: .trashContainer, updatedItemIDs: [], deletedItemIDs: [], newSyncAnchor: nil))))
     }
 }
 
 extension TrashEnumerator: EnumeratorWithChanges {
-    internal var shareID: String { self.tower.rootFolderIdentifier()!.shareID }
+    internal var shareID: String { self.tower.rootFolderIdentifier(moc: self.tower.storage.backgroundContext)!.shareID }
     internal var eventsManager: EventsSystemManager { self.tower }
     internal var fileSystemSlot: FileSystemSlot { self.tower.fileSystemSlot! }
     internal var cloudSlot: CloudSlotProtocol { self.tower.cloudSlot! }

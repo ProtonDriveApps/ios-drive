@@ -63,6 +63,16 @@ public final class DefaultMigrationConstraintController: MigrationConstraintCont
         .map { base, volumeID, isEnabled in
             let (networkOK, lockOK, storageOK, authOK) = base
             let allOK = networkOK && lockOK && storageOK && authOK && isEnabled
+
+            let message = [
+                "Tag migration constraint: \(allOK)",
+                "Network: \(networkOK)",
+                "Lock: \(lockOK)",
+                "Storage: \(storageOK)",
+                "Photo library authorization: \(authOK)",
+                "Photo volume ID: \(volumeID)",
+            ]
+            Log.info(message.joined(separator: "\n"), domain: .photosTagMigration)
             return (allOK, volumeID)
         }
         .removeDuplicates {

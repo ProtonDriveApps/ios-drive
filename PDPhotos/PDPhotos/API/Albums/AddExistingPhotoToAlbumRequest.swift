@@ -77,7 +77,7 @@ public struct AddExistingPhotosToAlbumResponse: Codable {
     }
     
     public struct Detail: Codable {
-        /// Always sent, can be same as "LinkID"
-        public let newLinkID: String
+        /// can be same as "LinkID"
+        public let newLinkID: String?
     }
 }

@@ -49,6 +49,8 @@ extension NodeRowActionMenuViewModel {
             return createDocument(type, vm: vm, environment: environment)
         case .createSheet:
             return createSheet(type, vm: vm, environment: environment)
+        case .scanDocument:
+            return scanToPDF(type, vm: vm, environment: environment)
         }
     }
     
@@ -90,7 +92,7 @@ extension NodeRowActionMenuViewModel {
 
     private func scanToPDF(_ type: UploadSectionItem, vm: UploadSectionViewModel, environment: Environment) -> ContextMenuItem {
         ContextMenuItem(sectionItem: type, handler: {
-            environment.onDismiss()
+            environment.scanDocument()
         })
     }
 

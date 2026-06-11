@@ -44,7 +44,7 @@ final class IncompleteThumbnailDownloaderOperation: DownloadThumbnailOperation {
         guard !self.isCancelled else { return }
 
         let thumbnailType = typeStrategy.getType().rawValue
-        let parameters = RevisionThumbnailParameters(shareId: id.share, fileId: id.file, revisionId: id.revision, type: Int(thumbnailType))
+        let parameters = RevisionThumbnailParameters(shareId: id.shareID, fileId: id.fileID, revisionId: id.revisionID, type: Int(thumbnailType))
         cloud.downloadThumbnailURL(parameters: parameters) { [weak self] result in
             guard let self = self,
                   !self.isCancelled else {

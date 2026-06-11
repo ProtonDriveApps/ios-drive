@@ -25,7 +25,7 @@ struct BadgeGroupView: View {
     let featureFlagsController: FeatureFlagsControllerProtocol
     let isGridView: Bool
     let parentIdentifier: String
-    
+
     var body: some View {
         let background: Color = isGridView ? ColorProvider.BackgroundSecondary : .clear
         let size: CGFloat = isGridView ? 20 : 12
@@ -54,6 +54,9 @@ struct BadgeGroupView: View {
         if badges.contains(.offline) {
             RoundIconSmall(icon: IconProvider.arrowDownCircle, color: ColorProvider.TextWeak, background: background, backgroundSize: size)
                 .accessibilityIdentifier("\(parentIdentifier).RoundIconSmall.offline")
+        } else if badges.contains(.markedAsOffline) {
+            ProtonSpinner(size: .small)
+                .accessibilityIdentifier("\(parentIdentifier).RoundIconSmall.offlineInProgress")
         }
     }
 }

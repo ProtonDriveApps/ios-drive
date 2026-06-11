@@ -58,6 +58,7 @@ class SharedWithMeViewModel: ObservableObject, FinderViewModel, DownloadingViewM
     let isSharedWithMeRoot: Bool = true
     let hasPlusFunctionality = false
     private var isUpdatingSilent: Bool = false
+    let currentTab: TabBarItem? = .sharedWithMe 
 
     var nodeName: String {
         self.listState.isSelecting ? self.titleDuringSelection() : Localization.tab_bar_title_shared_with_me
@@ -81,7 +82,11 @@ class SharedWithMeViewModel: ObservableObject, FinderViewModel, DownloadingViewM
 
     // MARK: DownloadingViewModel
     var childrenDownloadCancellable: AnyCancellable?
-    @Published var downloadProgresses: [ProgressTracker] = []
+    let progressTrackersController: ProgressTrackersControllerProtocol
+
+    lazy var nodeDownloadedResource: NodeDownloadedResource = {
+        NodeDownloadedResource(managedObjectContext: model.tower.storage.newBackgroundContext())
+    }()
 
     // MARK: SortingViewModel
     @Published var sorting: SortPreference
@@ -95,7 +100,6 @@ class SharedWithMeViewModel: ObservableObject, FinderViewModel, DownloadingViewM
     }
 
     let featureFlagsController: FeatureFlagsControllerProtocol
-    let topBanner: String? = nil
 
     // MARK: HasMultipleSelection
     lazy var selection = MultipleSelectionModel(selectable: Set<NodeIdentifier>())
@@ -110,7 +114,8 @@ class SharedWithMeViewModel: ObservableObject, FinderViewModel, DownloadingViewM
         bookmarksContainer: BookmarkContainer,
         featureFlagsController: FeatureFlagsControllerProtocol,
         volumeIdsController: SharedVolumeIdsController,
-        scrollToTopPublisher: AnyPublisher<TabBarItem, Never>
+        scrollToTopPublisher: AnyPublisher<TabBarItem, Never>,
+        progressTrackersController: ProgressTrackersControllerProtocol
     ) {
         defer { self.model.loadFromCache() }
         self.model = model
@@ -124,6 +129,7 @@ class SharedWithMeViewModel: ObservableObject, FinderViewModel, DownloadingViewM
         self.pendingInvitationsContainer = pendingInvitationsContainer
         self.pendingInvitationsViewModel = pendingInvitationsContainer.makePendingInvitationsStatusViewModel()
         self.bookmarksContainer = bookmarksContainer
+        self.progressTrackersController = progressTrackersController
 
         self.scrollToTopPublisher = scrollToTopPublisher
         self.subscribeToSort()
@@ -147,7 +153,9 @@ class SharedWithMeViewModel: ObservableObject, FinderViewModel, DownloadingViewM
             })
             .sink { [weak self] activeSorted, _ in
                 guard let self = self, self.isVisible else { return }
-                self.permanentChildren = activeSorted.filter(dropBookmarksIfDisabled).map(NodeWrapper.init)
+                let children = activeSorted.filter(dropBookmarksIfDisabled)
+                self.model.tower.performanceMetricsController?.updateTab(cacheCount: children.count, in: .sharedWithMe)
+                self.permanentChildren = children.map(NodeWrapper.init)
             }
     }
 
@@ -269,6 +277,10 @@ class SharedWithMeViewModel: ObservableObject, FinderViewModel, DownloadingViewM
             onlyOneSelected ? .removeMe : nil,
             isOfflineAvailablePossible ? .offlineAvailableMultiple : nil
         ].compactMap { $0 }
+    }
+
+    func reportListIsShown() {
+        model.tower.performanceMetricsController?.reportTabToFirstItem(pageType: .sharedWithMe)
     }
 }
 

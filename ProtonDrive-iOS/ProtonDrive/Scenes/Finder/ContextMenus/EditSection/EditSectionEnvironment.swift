@@ -126,10 +126,17 @@ final class EditSectionEnvironment {
     }
 
     // MARK: - More
-    func shareIn(file: File) {
+    func openIn(file: CoreDataFile) {
         onDismiss()
         DispatchQueue.main.async {
-            self.modal.wrappedValue = .file(file: file, share: true)
+            self.modal.wrappedValue = .openIn(file: file)
+        }
+    }
+    
+    func download(file: CoreDataFile) {
+        onDismiss()
+        DispatchQueue.main.async {
+            self.modal.wrappedValue = .downloadToDevice(file: file)
         }
     }
 
@@ -173,6 +180,13 @@ final class EditSectionEnvironment {
         onDismiss()
         DispatchQueue.main.async {
             self.modal.wrappedValue = .createSheet(parentIdentifier: parentIdentifier)
+        }
+    }
+
+    func scanDocument() {
+        onDismiss()
+        DispatchQueue.main.async {
+            self.modal.wrappedValue = .scanDocument
         }
     }
 }

@@ -49,10 +49,12 @@ struct EventsFactory {
     func makeEventsLoop(tower: Tower, conveyor: EventsConveyor, volumeId: String) -> DriveEventsLoop {
         Log.trace()
         let processor = DriveEventsLoopProcessor(
+            volumeID: volumeId,
             cloudSlot: tower.cloudSlot,
             conveyor: conveyor,
             storage: tower.storage,
-            externalInvitationConverter: tower.externalInvitationConverter
+            externalInvitationConverter: tower.externalInvitationConverter,
+            nodeTreeOperator: tower.nodeTreeOperator
         )
         return DriveEventsLoop(
             volumeID: volumeId,

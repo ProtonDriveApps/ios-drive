@@ -38,18 +38,31 @@ protocol PhotoFullPreviewController {
     func clear()
 }
 
-enum PhotoFullPreviewError: Error, Equatable {
+enum PhotoFullPreviewError: Error, Equatable, LocalizedError {
+    /// Thumbnail is not available
     case noPreviewAvailable
+    /// Download file failed
     case fullPreviewNotAvailable(FileContentError)
+    
+    var errorDescription: String? {
+        switch self {
+        case .noPreviewAvailable:
+            return "No preview available"
+        case .fullPreviewNotAvailable(let error):
+            return "File is not available \(error)"
+        }
+    }
 }
 
 // Will return full thumbnail for photo or full asset video url.
 final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
     private let id: PhotoId
+    private let buildType: BuildType
     private let detailController: PhotoPreviewDetailController
     private let fullThumbnailController: ThumbnailController
     private let smallThumbnailController: ThumbnailController
     private let contentController: FileContentController
+    private let messageHandler: UserMessageHandlerProtocol
     private let publisher = ObservableObjectPublisher()
     private var fullPreview: PhotoFullPreview?
     private var cancellables = Set<AnyCancellable>()
@@ -63,12 +76,22 @@ final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
         errorSubject.eraseToAnyPublisher()
     }
 
-    init(id: PhotoId, detailController: PhotoPreviewDetailController, fullThumbnailController: ThumbnailController, smallThumbnailController: ThumbnailController, contentController: FileContentController) {
+    init(
+        id: PhotoId,
+        buildType: BuildType,
+        detailController: PhotoPreviewDetailController,
+        fullThumbnailController: ThumbnailController,
+        smallThumbnailController: ThumbnailController,
+        contentController: FileContentController,
+        messageHandler: UserMessageHandlerProtocol
+    ) {
         self.id = id
+        self.buildType = buildType
         self.detailController = detailController
         self.fullThumbnailController = fullThumbnailController
         self.smallThumbnailController = smallThumbnailController
         self.contentController = contentController
+        self.messageHandler = messageHandler
         subscribeToUpdates()
     }
 
@@ -106,7 +129,7 @@ final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
 
     private func handleFullPreviewError(_ error: Error) {
         // Pass generic error if no specific is given
-        let contentError = (error as? FileContentError) ?? .failedPhoto
+        let contentError = FileContentError(error: error)
         errorSubject.send(PhotoFullPreviewError.fullPreviewNotAvailable(contentError))
 
         // Fallback to thumbnails loading

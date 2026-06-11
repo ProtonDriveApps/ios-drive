@@ -27,7 +27,8 @@ extension ActionSheet {
         currentSort: PhotoSort,
         tapSort: @escaping (PhotoSort) -> Void,
         tapRename: @escaping () -> Void,
-        tapDeleteAlbum: @escaping () -> Void
+        tapDeleteAlbum: @escaping () -> Void,
+        tapLeaveAlbum: (() -> Void)?
     ) {
         var sheet: PMActionSheet!
         let items: [PMActionSheetItem] = [
@@ -48,8 +49,18 @@ extension ActionSheet {
                     sheet.dismiss(animated: true)
                     sheet = nil
                 }
-            )
-        ]
+            ),
+            tapLeaveAlbum.map { tapLeaveAlbum in
+                makeDeleteAlbumItem(
+                    title: Localization.action_leave_album,
+                    handler: { _ in
+                        tapLeaveAlbum()
+                        sheet.dismiss(animated: true)
+                        sheet = nil
+                    }
+                )
+            }
+        ].compactMap { $0 }
         let group = PMActionSheetItemGroup(items: items, style: .clickable)
         sheet = PMActionSheet(headerView: nil, itemGroups: [group])
         sheet.presentAt(viewController, hasTopConstant: false, animated: true)

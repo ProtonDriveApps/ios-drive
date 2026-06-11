@@ -46,7 +46,7 @@ final class SharingConfigViewModel: ObservableObject, SharingConfigUpdater {
     }
     
     var hasSharingInvitations: Bool {
-        dependencies.featureFlagsController.hasSharingInvitations
+        dependencies.featureFlagsController.hasSharing
     }
 
     var hasPublicLinkView: Bool {

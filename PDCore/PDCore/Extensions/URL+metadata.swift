@@ -58,4 +58,26 @@ public extension URL {
     var creationDate: Date {
         (try? resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .distantPast
     }
+    
+    func maskFilename() -> String {
+        return lastPathComponent.maskFilename()
+    }
+    
+    var lastTwoPathComponents: String? {
+        guard pathComponents.count >= 2 else { return nil }
+        
+        let lastTwoComponents = pathComponents.suffix(2)
+        return lastTwoComponents.joined(separator: "/")
+    }
 }
+
+#if os(iOS)
+public extension URL {
+    func hardLink(filename: String) throws -> URL {
+        let hardLink = deletingLastPathComponent().appending(path: filename)
+        try? FileManager.default.removeItem(at: hardLink)
+        try FileManager.default.linkItem(at: self, to: hardLink)
+        return hardLink
+    }
+}
+#endif

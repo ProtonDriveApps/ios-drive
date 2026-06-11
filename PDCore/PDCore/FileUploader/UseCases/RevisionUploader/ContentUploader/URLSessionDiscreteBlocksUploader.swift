@@ -22,6 +22,7 @@ import CoreData
 final class URLSessionDiscreteBlocksUploader: URLSessionDataTaskUploader, ContentUploader {
     private let uploadBlock: UploadBlock
     private let fullUploadableBlock: FullUploadableBlock
+    private let uploadedBytesCounterResource: BytesCounterResource
 
     init(
         uploadBlock: UploadBlock,
@@ -31,10 +32,12 @@ final class URLSessionDiscreteBlocksUploader: URLSessionDataTaskUploader, Conten
         session: URLSession,
         apiService: APIService,
         credentialProvider: CredentialProvider,
-        moc: NSManagedObjectContext
+        moc: NSManagedObjectContext,
+        uploadedBytesCounterResource: BytesCounterResource
     ) {
         self.uploadBlock = uploadBlock
         self.fullUploadableBlock = fullUploadableBlock
+        self.uploadedBytesCounterResource = uploadedBytesCounterResource
         super.init(uploadID: uploadID, progressTracker: progressTracker, session: session, apiService: apiService, credentialProvider: credentialProvider, moc: moc)
     }
 
@@ -58,13 +61,15 @@ final class URLSessionDiscreteBlocksUploader: URLSessionDataTaskUploader, Conten
             
             guard !isCancelled else { return }
 
-            let size: Int = moc.performAndWait { [weak self] in
+            let originalSize: Int = moc.performAndWait { [weak self] in
                 guard let self else { return 0 }
                 return uploadBlock.clearSize
             }
-            upload(data, originalSize: size, request: endpoint.request) { [weak self] result in
+            let uploadedBytesCount = data.count
+            upload(data, originalSize: originalSize, request: endpoint.request) { [weak self] result in
                 guard let self = self, !self.isCancelled else { return }
 
+                self.uploadedBytesCounterResource.add(bytes: uploadedBytesCount)
                 self.handle(result, completion: completion)
             }
 

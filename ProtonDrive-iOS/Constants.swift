@@ -217,13 +217,13 @@ extension Constants {
         return false
     }
 
-    static var isUnitTest: Bool {
+    static let isUnitTest: Bool = {
         #if DEBUG
         return ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
         #else
         return false
         #endif
-    }
+    }()
 
     private static var dynamicDomain: String? {
         if let domain = Bundle.main.infoDictionary?["DYNAMIC_DOMAIN"] as? String, !domain.isEmpty {
@@ -292,10 +292,24 @@ extension Constants {
         let hasSignUp = false
         #endif
 
+        #if HAS_FILE_PROVIDER
+        let hasFileProvider = true
+        #else
+        let hasFileProvider = false
+        #endif
+
         return BuildFeatures(
             hasPayments: hasPayments,
             hasUnlimitedPicker: hasUnlimitedPicker,
-            hasSignUp: hasSignUp
+            hasSignUp: hasSignUp,
+            hasFileProvider: hasFileProvider
         )
+    }
+}
+
+extension Constants {
+    enum UniversalLink: String {
+        case singIn = "protondrive://signin"
+        case shareExtension = "protondrive://share-extension"
     }
 }

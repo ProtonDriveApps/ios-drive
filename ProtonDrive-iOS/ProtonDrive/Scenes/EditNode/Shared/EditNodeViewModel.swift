@@ -22,11 +22,12 @@ protocol EditNodeViewModel: AnyObject {
     var onSuccess: (() -> Void)? { get set }
     var onPerformingRequest: (() -> Void)? { get set }
     var onDismiss: (() -> Void)? { get set }
-    
+
     var title: String { get }
     var buttonText: String { get }
     var placeHolder: String { get }
     var fullName: String { get }
+    var shouldDoneButtonBeEnabledByDefault: Bool { get }
 
     func validate(_ proposal: String) -> [ValidationError<String>]
     func setName(to name: String)

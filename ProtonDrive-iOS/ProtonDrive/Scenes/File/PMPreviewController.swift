@@ -16,9 +16,9 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import QuickLook
+import PDCore
 
 final class PMPreviewController: QLPreviewController {
-    var share: Bool?
     var model: FileModel!
 
     override func viewWillAppear(_ animated: Bool) {
@@ -30,13 +30,9 @@ final class PMPreviewController: QLPreviewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        guard shouldShare,
-        let item = currentPreviewItem else { return }
-        share(item)
-    }
-
-    private var shouldShare: Bool {
-        share ?? false
+        // This is not an exact timestamp, it may be affected by view rendering.
+        // There could be up to a 0.5-second difference between the reported time and the actual UX
+        model.viewDidAppear()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -44,25 +40,6 @@ final class PMPreviewController: QLPreviewController {
             lockOrientationIfNeeded(in: .portrait)
         }
         super.viewWillDisappear(animated)
-    }
-
-    private func share(_ item: QLPreviewItem) {
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            let vc = UIActivityViewController(activityItems: [item], applicationActivities: nil)
-            vc.popoverPresentationController?.sourceView = self.view
-            present(vc, animated: true, completion: nil)
-        } else {
-            // In iPad if wants to use UIActivityViewController, needs to assign `sourceItem`
-            // But there is no way to access share button from QLPreviewController
-            // Use this hacky way to trigger share button 
-            guard let nav = children.first as? UINavigationController else { return }
-            let barSubViews = nav.navigationBar.subviews
-            guard
-                let contentView = barSubViews.first(where: { $0.description.contains("UINavigationBarContentView") }),
-                let stackView = contentView.subviews.first(where: { $0.description.contains("UIButtonBarStackView") })
-            else { return }
-            stackView.subviews.first?.gestureRecognizers?.first?.state = .ended
-        }
     }
 }
 

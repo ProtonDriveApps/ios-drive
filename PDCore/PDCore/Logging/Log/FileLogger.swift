@@ -39,7 +39,7 @@ public enum FileLog: String {
     }
 }
 
-public final class FileLogger: FileLoggerProtocol {
+public class FileLogger: FileLoggerProtocol {
     /// After log file size reaches 1MB in size it is moved to archive and new log file is created
     public let maxFileSize = 1024 * 1024
 
@@ -70,37 +70,44 @@ public final class FileLogger: FileLoggerProtocol {
 
     // TODO: https://jira.protontech.ch/browse/DRVIOS-2126
     private var fileLogName: String {
-        var name: String = "log-ProtonDrive"
+        var baseName: String = "log-ProtonDrive"
         if PDCore.Constants.runningInExtension {
-            name += Platform.appRunningOniOS ? "FileProvideriOS" : "FileProviderMac"
+            baseName += Platform.appRunningOniOS ? "FileProvideriOS" : "FileProviderMac"
         } else {
-            name += Platform.appRunningOniOS ? "iOS" : "Mac"
+            baseName += Platform.appRunningOniOS ? "iOS" : "Mac"
         }
 
         if oneFilePerRun {
             if let clientVersion = Constants.clientVersion {
-                name += "_v\(clientVersion)"
+                baseName += "_v\(clientVersion)"
             }
-            name += "_" + ProcessInfo.processInfo.processIdentifier.description
+            baseName += "_" + ProcessInfo.processInfo.processIdentifier.description
         }
 
         if let subdirectory, !subdirectory.isEmpty {
-            return subdirectory + "/" + name + ".log"
+            return subdirectory + "/" + baseName + fileExtension
         } else {
-            return name + ".log"
+            return baseName + fileExtension
         }
     }
-    
-    private let tempFileDateFormatter: DateFormatter = {
+
+    var fileExtension: String {
+        ".log"
+    }
+
+    private static let tempFileDateFormatter: DateFormatter = {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "YYMMddHHmmssSSS"
         return dateFormatter
     }()
 
+    private let logLineDateFormatter: ISO8601DateFormatter
+
     public init(process: FileLog, subdirectory: String? = nil, oneFilePerRun: Bool, compressedLogsDisabled: @escaping () -> Bool) {
         self.compressedLogsDisabled = compressedLogsDisabled
         self.subdirectory = subdirectory ?? ""
         self.oneFilePerRun = oneFilePerRun
+        self.logLineDateFormatter = .fileLogFormatter
     }
 
     deinit {
@@ -109,17 +116,16 @@ public final class FileLogger: FileLoggerProtocol {
 
     // the file logger never sends to sentry, regardless of the parameter value
     // swiftlint:disable:next function_parameter_count
-    public func log(_ level: LogLevel, message: String, system: LogSystem, domain: LogDomain, context: LogContext?, sendToSentryIfPossible _: Bool, file: String, function: String, line: Int) {
+    public func log(_ level: LogLevel, message: String, system: LogSystem, domain: LogDomain, context: LogContext?, sendToSentryIfPossible: Bool, file: String, function: String, line: Int) {
         self.queue.async { [weak self] in
-            let lineSeparator = "\n"
+            guard let self = self else { return }
 
-            var message = message
-            if let contextString = context?.debugDescription, !contextString.isEmpty {
-                message += "; \(contextString)"
+            let lineSeparator = "\n"
+            guard let message = formatMessage(level: level, message: message, system: system, domain: domain, context: context, sendToSentryIfPossible: sendToSentryIfPossible, file: file, function: function, line: line) else {
+                return
             }
             if let data = ("\(message)\(lineSeparator)").data(using: .utf8) {
                 do {
-                    guard let self = self else { return }
                     try self.getFileHandleAtTheEndOfFile()?.write(contentsOf: data)
                     try self.rotateLogFileIfNeeded()
                 } catch {
@@ -130,13 +136,22 @@ public final class FileLogger: FileLoggerProtocol {
         }
     }
 
+    func formatMessage(level: LogLevel, message: String, system: LogSystem, domain: LogDomain, context: LogContext?, sendToSentryIfPossible _: Bool, file: String, function: String, line: Int) -> String? {
+        let dateTime = logLineDateFormatter.string(from: Date())
+        var message = dateTime + " | " + message
+        if let contextString = context?.debugDescription, !contextString.isEmpty {
+            message += "; \(contextString)"
+        }
+        return message
+    }
+
     public func openFile() throws {
         try? closeFile()
 
         if !oneFilePerRun, let recentTempFile = try? tempFiles().last {
             fileHandle = try FileHandle(forWritingTo: recentTempFile)
         } else {
-            let tempFileURL = fileURL.deletingPathExtension().appendingPathExtension(tempFileDateFormatter.string(from: Date()) + ".log")
+            let tempFileURL = fileURL.deletingPathExtension().appendingPathExtension(Self.tempFileDateFormatter.string(from: Date()) + ".log")
 
             let logFileDirectory = fileURL.deletingLastPathComponent()
 

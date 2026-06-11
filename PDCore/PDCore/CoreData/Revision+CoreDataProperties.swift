@@ -36,23 +36,25 @@ extension Revision: VolumeUnique {
     @NSManaged public var xAttributes: String?
 }
 extension PhotoRevision {
+    #if os(iOS)
     /// URL of the clear text resource before it's encrypted.
     override public var normalizedUploadableResourceURL: URL? {
         get {
             guard let url = self.uploadableResourceURL,
-                  let path = PDFileManager.getLastTwoPathComponents(from: url) else {
+                  let path = url.lastTwoPathComponents else {
                 return nil
             }
             return PDFileManager.cleartextPhotosCacheDirectory.appendingPathComponent(path)
         } set {
             if let newValue = newValue,
-               let path = PDFileManager.getLastTwoPathComponents(from: newValue) {
+               let path = newValue.lastTwoPathComponents {
                 uploadableResourceURL = PDFileManager.cleartextPhotosCacheDirectory.appendingPathComponent(path)
             } else {
                 uploadableResourceURL = nil
             }
         }
     }
+    #endif
 }
 // MARK: - Custom Upload properties
 extension Revision {
@@ -68,13 +70,13 @@ extension Revision {
     @objc public var normalizedUploadableResourceURL: URL? {
         get {
             guard let url = self.uploadableResourceURL,
-                  let path = PDFileManager.getLastTwoPathComponents(from: url) else {
+                  let path = url.lastTwoPathComponents else {
                 return nil
             }
             return PDFileManager.cleartextCacheDirectory.appendingPathComponent(path)
         } set {
             if let newValue = newValue,
-               let path = PDFileManager.getLastTwoPathComponents(from: newValue) {
+               let path = newValue.lastTwoPathComponents {
                 uploadableResourceURL = PDFileManager.cleartextCacheDirectory.appendingPathComponent(path)
             } else {
                 uploadableResourceURL = nil
@@ -142,7 +144,7 @@ extension Revision {
 
 public extension Revision {
     var identifier: RevisionIdentifier {
-        RevisionIdentifier(share: file.shareId, file: file.id, revision: id, volume: volumeID)
+        RevisionIdentifier(shareID: file.shareId, fileID: file.id, revisionID: id, volumeID: volumeID)
     }
 }
 

@@ -18,6 +18,7 @@
 import Foundation
 import CoreData
 import PDClient
+import ProtonCoreLog
 
 public typealias CoreDataNode = Node
 
@@ -93,13 +94,25 @@ public class Node: NSManagedObject, VolumeUnique {
 
     final func findRootNode() -> Node {
         var currentNode: Node = self
+        var visited = Set<String>()
 
         // Traverse up the parent chain until the root node (node with no parent) is found
         while let parentNode = currentNode.parentNode {
+            guard visited.insert(parentNode.id).inserted else {
+                Log.error("Cycle detected in node tree at node \(parentNode.id)", domain: .metadata)
+                break
+            }
             currentNode = parentNode
         }
 
         return currentNode
+    }
+
+    // MARK: Available offline
+
+    public func setIsInheritingOfflineAvailable(_ value: Bool) {
+        // Only inherit `true` if is actually downloadable
+        isInheritingOfflineAvailable = value && isDownloadable
     }
 }
 

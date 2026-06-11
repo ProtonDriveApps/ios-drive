@@ -32,6 +32,7 @@ final class LocalPhotosListRepository: PhotosListRepository {
     private var cancellables = Set<AnyCancellable>()
     private let subject = PassthroughSubject<[PhotosListSection], Never>()
     private let backgroundQueue = DispatchQueue(label: "LocalPhotosRepository", qos: .userInteractive)
+    @ThreadSafe private var isObserving = true
 
     var updatePublisher: AnyPublisher<[PhotosListSection], Never> {
         subject.eraseToAnyPublisher()
@@ -50,6 +51,11 @@ final class LocalPhotosListRepository: PhotosListRepository {
         self.offlineAvailableResource = offlineAvailableResource
         self.mappingResource = mappingResource
         setupObserver()
+    }
+
+    func stopObserving() {
+        isObserving = false
+        observer = nil
     }
 
     func setFilter(_ filter: PhotosListFilter) {
@@ -76,12 +82,13 @@ final class LocalPhotosListRepository: PhotosListRepository {
 
     private func subscribeToUpdates(observer: Observer, configuration: PhotosListConfiguration, filter: PhotosListFilter?) {
         Publishers.CombineLatest(observer.objectWillChange, offlineAvailableResource.inProgressIds)
-            .throttle(for: .milliseconds(250), scheduler: backgroundQueue, latest: true)
+            .throttle(for: .seconds(1), scheduler: backgroundQueue, latest: true)
             .map { [weak self] update -> [PhotosListSection] in
-                guard let self = self else { return [] }
-                let startDate = Date()
+                guard let self = self, isObserving else { return [] }
+                let start = CFAbsoluteTimeGetCurrent()
                 let sections = self.makeSections(observer: observer, configuration: configuration, downloadingIds: update.1, filter: filter)
-                let mappingDurationInMilliseconds = Date().timeIntervalSince(startDate) * 1000
+                let end = CFAbsoluteTimeGetCurrent()
+                let mappingDurationInMilliseconds = (end - start) * 1000
                 if mappingDurationInMilliseconds > 500 {
                     Log.warning("Mapping of photo sections took \(mappingDurationInMilliseconds)ms.", domain: .photosUI)
                 }

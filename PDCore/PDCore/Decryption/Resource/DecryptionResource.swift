@@ -19,6 +19,13 @@ import Foundation
 import ProtonCoreKeyManager
 
 public protocol DecryptionResource {
+    func decryptBlock(_ blockDataPacket: DataPacket, sessionKey: SessionKey) throws -> Data
+    func decryptBinaryInStream(
+        cyphertextUrl: URL,
+        cleartextUrl: URL,
+        decryptionKeys: [DecryptionKey],
+        keyPacket: Data
+    ) throws
     func decryptInStream(url: URL, sessionKey: Data) throws
     func decryptKeyPacket(_ keyPacket: Data, decryptionKey: DecryptionKey) throws -> Data
 }

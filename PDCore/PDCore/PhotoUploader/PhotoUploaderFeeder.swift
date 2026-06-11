@@ -22,58 +22,92 @@ public final class PhotoUploaderFeeder {
     private var cancellables = Set<AnyCancellable>()
     private let queue = DispatchQueue(label: "PhotoUploaderFeeder", qos: .background)
     private let notificationCenter: NotificationCenter
+    private let processor: PhotoFeederPreprocessorProtocol
+    private let feedSubject: PassthroughSubject<Void, Never>
 
     private let uploader: PhotoUploader
-    private let uploadingPhotosRepository: UploadingPrimaryPhotosRepository
+    private let sdkPhotoUploaderBlock: () -> SDKFileUploaderProtocol?
     private let shouldFeedPublisher: AnyPublisher<Bool, Never>
     private var uploadPendingPhotosSubscription: AnyCancellable?
+    @ThreadSafe private var isFeederAvailable = true
+
+    private var sdkPhotoUploader: SDKFileUploaderProtocol? {
+        sdkPhotoUploaderBlock()
+    }
 
     public init(
         uploader: PhotoUploader,
-        uploadingPhotosRepository: UploadingPrimaryPhotosRepository,
+        sdkPhotoUploaderBlock: @escaping () -> SDKFileUploaderProtocol?,
         notificationCenter: NotificationCenter,
         isBackupAvailable: AnyPublisher<Bool, Never>,
-        newPhotoAvailable: AnyPublisher<[Photo], Never>,
-        shouldFeedPublisher: AnyPublisher<Bool, Never>
+        shouldFeedPublisher: AnyPublisher<Bool, Never>,
+        processor: PhotoFeederPreprocessorProtocol,
+        feedSubject: PassthroughSubject<Void, Never>
     ) {
         self.uploader = uploader
-        self.uploadingPhotosRepository = uploadingPhotosRepository
+        self.sdkPhotoUploaderBlock = sdkPhotoUploaderBlock
         self.notificationCenter = notificationCenter
         self.shouldFeedPublisher = shouldFeedPublisher
+        self.processor = processor
+        self.feedSubject = feedSubject
 
+        /// Is backup available (is enabled and has no constraints - `LocalPhotosBackupUploadAvailableController`)
         isBackupAvailable
             .removeDuplicates()
             .receive(on: queue)
             .sink { [weak self] isAvailable in
                 guard let self else { return }
                 Log.info("📸📀 Backup is enabled: \(isAvailable)", domain: .uploader)
-                self.uploader.isEnabled = isAvailable
+                self.isFeederAvailable = isAvailable
 
                 if isAvailable {
                     self.subscribeToQueuedUploads()
                     self.processPendingPhotos()
                 } else {
+                    self.processor.suspend()
                     self.uploadPendingPhotosSubscription?.cancel()
                     self.uploadPendingPhotosSubscription = nil
                     self.uploader.onUploadsDisabled()
+                    Task { @MainActor in
+                        await self.sdkPhotoUploader?.pauseAll()
+                    }
                 }
             }.store(in: &cancellables)
 
+        // Is the app running in the foreground, unlocked... etc
+        // ConcreteComputationalAvailabilityController
         shouldFeedPublisher
             .sink {  [weak self] shouldFeed in
                 guard let self else { return }
                 if shouldFeed {
                     Log.info("📸🥣✅ resume all operations", domain: .uploader)
                     self.uploader.queue.isSuspended = false
-                    notificationCenter.post(name: .uploadPendingPhotos)
+                    Task {
+                        await self.resumePausedSDKUploads()
+                    }
                 } else {
                     Log.info("📸🥣❌ pause all operations", domain: .uploader)
                     self.uploader.queue.isSuspended = true
+                    Task { @MainActor in
+                        await self.sdkPhotoUploader?.pauseAll()
+                    }
                 }
             }.store(in: &cancellables)
     }
 
+    @MainActor
+    private func resumePausedSDKUploads() async {
+        guard let sdkPhotoUploader else {
+            return
+        }
+        // Resume pending operations
+        await sdkPhotoUploader.resumePausedUploads()
+        // Invoke feeder to add more to queue if necessary
+        notificationCenter.post(name: .uploadPendingPhotos)
+    }
+
     func subscribeToQueuedUploads() {
+        /// Fire when a photo is uploaded or a photo is imported
         let continueUploadPublisher = notificationCenter.getPublisher(for: .uploadPendingPhotos, publishing: Void.self).eraseToAnyPublisher()
         let feedingPublisher = shouldFeedPublisher.filter { $0 }.map { _ in Void() }
             .handleEvents(receiveOutput: {
@@ -90,14 +124,10 @@ public final class PhotoUploaderFeeder {
     }
 
     private func processPendingPhotos() {
-        let processingPhotos = uploader.getExecutableOperationsCount()
-
-        if  processingPhotos < Constants.processingPhotoUploadsBatchSize / 2 {
-            let photos = self.uploadingPhotosRepository.getPhotos()
-            Log.info("📸☁️✅ Photo upload scheduled willAdd: \(photos.count) Total: \(photos.count + processingPhotos)", domain: .uploader)
-            self.uploader.upload(files: photos)
-        } else {
-            Log.info("📸☁️⚠️ Photo upload  currently \(processingPhotos) photos in queue", domain: .uploader)
+        guard isFeederAvailable else {
+            Log.info("📸☁️ No need to feed photos, we don't have a feed available.", domain: .uploader)
+            return
         }
+        feedSubject.send()
     }
 }

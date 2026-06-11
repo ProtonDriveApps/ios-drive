@@ -93,6 +93,7 @@ public struct ShareListing: Codable {
     public let createTime: Int?
     public let modifyTime: Int?
     public let linkID: String
+    public let volumeType: VolumeType
 
     public enum ´Type´: Int, Codable {
         case main = 1
@@ -105,5 +106,10 @@ public struct ShareListing: Codable {
         case active = 1
         case deleted = 2
         case restored = 3
+    }
+
+    public enum VolumeType: Int, Codable {
+        case regular = 1
+        case photo = 2
     }
 }

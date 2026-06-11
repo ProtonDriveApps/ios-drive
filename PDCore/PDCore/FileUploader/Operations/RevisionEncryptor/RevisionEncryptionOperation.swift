@@ -45,7 +45,7 @@ final class RevisionEncryptionOperation: AsynchronousOperation, UploadOperation 
 
         record()
         NotificationCenter.default.post(name: .operationStart, object: draft.uri)
-        Log.info("STAGE: 1 🏞📦 Encrypt revision started. UUID: \(id.uuidString)", domain: .uploader)
+        logStartInfo(draft)
 
         do {
             let revisionDraft = try draft.getCreatedRevisionDraft()
@@ -70,6 +70,32 @@ final class RevisionEncryptionOperation: AsynchronousOperation, UploadOperation 
             NotificationCenter.default.post(name: .operationEnd, object: draft.uri)
             onError(error)
         }
+    }
+
+    private func logStartInfo(_ draft: FileDraft) {
+        var messages: [String] = [
+            "STAGE: 1 🏞📦 Encrypt revision started. UUID: \(id.uuidString)"
+        ]
+        if let moc = draft.file.moc {
+            moc.performAndWait {
+                if let photo = draft.file as? CoreDataPhoto {
+                    messages.append("photo captureDate: \(photo.captureTime)")
+                    if photo.parent == nil {
+                        messages.append("Main photo, has \(photo.children.count) children")
+                    } else {
+                        messages.append("Children photo")
+                    }
+                    if let iCloudID = photo.iCloudID() {
+                        messages.append("identifier: \(iCloudID)")
+                    }
+                } else {
+                    messages.append("file createDate: \(draft.file.createdDate)")
+                }
+                messages.append("mimeType: \(draft.mimeType.value)")
+                messages.append("sizeInKB: \(draft.roundedKilobytes)")
+            }
+        }
+        Log.info("\(messages.joined(separator: ", "))", domain: .uploader)
     }
 
     override func cancel() {

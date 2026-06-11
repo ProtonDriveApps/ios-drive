@@ -29,9 +29,12 @@ final class PhotosFilterByIdInteractor: AsynchronousExecution {
     }
 
     func execute() async {
-        Log.info("1️⃣ executing", domain: .photosProcessing)
         measurementRepository.start()
         let identifiers = await resource.execute(with: Array(context.validIdentifiers)).validIdentifiers
+        Log.info(
+            "1️⃣ Remove pending uploading, \(context.validIdentifiers.count) -> \(identifiers.count)",
+            domain: .photosProcessing
+        )
         context.completeIdentifiersValidation(identifiers: identifiers)
         measurementRepository.stop()
     }

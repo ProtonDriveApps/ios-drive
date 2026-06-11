@@ -18,10 +18,14 @@
 import Foundation
 
 enum ThumbnailModel {
+    /// Have encrypted data locally, need to decrypt it
     case full(FullThumbnail)
+    /// Have downloadable URL, need to download and decrypt it 
     case inProgress(InProgressThumbnail)
     case revisionId(IncompleteThumbnail)
     case thumbnailId(ThumbnailIdentifier)
+    /// SDK only needs file identifier to download thumbnail
+    case thumbnailIdForSDK(any VolumeIdentifiable)
 }
 
 /// `FullThumbnail` represents a thumbnail object that has available the locally its encrypted data. Can be found on fully downloaded thumbnails or thumbnails that were created and uploaded

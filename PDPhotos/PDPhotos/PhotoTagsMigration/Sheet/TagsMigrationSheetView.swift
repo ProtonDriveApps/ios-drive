@@ -116,7 +116,6 @@ struct TagsMigrationSheetView<ViewModel: TagsMigrationSheetViewModelProtocol>: V
     private func contentView(geometry: GeometryProxy) -> some View {
         VStack(spacing: 0) {
             try? makeImage()
-                .frame(height: 227)
                 .padding(.bottom, 24)
             Text(viewModel.headline)
                 .modifier(
@@ -127,26 +126,26 @@ struct TagsMigrationSheetView<ViewModel: TagsMigrationSheetViewModelProtocol>: V
                         textColor: ColorProvider.TextNorm
                     )
                 )
-                .padding(.bottom, 16)
+                .padding(.bottom, 22)
                 .accessibilityIdentifier("TagMigrationSheetView.headline")
             texts
-                .padding(.bottom, 40)
+                .padding(.bottom, 47)
+                .padding(.horizontal, 14)
             button
         }
     }
 
     @ViewBuilder
     private func makeImage() throws -> some View {
-        let url = try Bundle.module.url(forResource: "TagMigrationAnimation", withExtension: "json") ?! "Invalid asset"
-        let data = try Data(contentsOf: url)
-        try LottieView(animation: .from(data: data))
-            .playing(loopMode: .playOnce)
+        InternalIcon.tagMigrationSheetIllustration
+            .resizable()
+            .frame(height: 227.77)
     }
 
     private var texts: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 19) {
             ForEach(viewModel.items) { item in
-                HStack {
+                HStack(spacing: 16) {
                     ZStack {
                         Circle()
                             .fill(ColorProvider.BackgroundSecondary)

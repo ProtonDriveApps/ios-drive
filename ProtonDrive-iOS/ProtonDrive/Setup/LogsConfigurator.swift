@@ -22,11 +22,8 @@ import ProtonCoreDoh
 import ProtonCoreLog
 import ProtonCoreFeatureFlags
 import PMEventsManager
-import Combine
 
 final class LogsConfigurator {
-    private var cancellables: Set<AnyCancellable> = []
-
     private var localSettings: LocalSettings
     private var logSystem: LogSystem
     private var defaultHost: String
@@ -36,18 +33,10 @@ final class LogsConfigurator {
         self.localSettings = localSettings
         self.defaultHost = defaultHost
         self.configureLogger()
+    }
 
-        // Creates the logger exporter the first time the users logs in into the app
-        localSettings.publisher(for: \.logCollectionEnabled)
-            .removeDuplicates()
-            .filter { $0 == true } // Only if we go from not enabled to enabled, roll-out flag
-            .removeDuplicates() // Just once
-            .filter { _ in Log.exporter is BlankFileLogExporter } // After the first login if we have not initiated the exporter we do it here
-            .sink { [weak self] _ in
-                guard let self = self else { return }
-                configureLogger()
-            }
-            .store(in: &cancellables)
+    deinit {
+        disableLogger()
     }
 
     private func configureLogger() {
@@ -62,6 +51,32 @@ final class LogsConfigurator {
         DispatchQueue.main.async { [defaultHost] in
             PMLog.setExternalLoggerHost(defaultHost)
         }
+        PMLog.callback = { message, level in
+            switch level {
+            case .fatal:
+                Log.error(message, error: nil, domain: .coreLibrary, sendToSentryIfPossible: false)
+            case .error:
+                Log.error(message, error: nil, domain: .coreLibrary, sendToSentryIfPossible: false)
+            case .warn:
+                Log.warning(message, domain: .coreLibrary)
+            case .info:
+                Log.info(message, domain: .coreLibrary)
+            case .debug:
+                Log.debug(message, domain: .coreLibrary)
+            case .trace:
+                Log.trace(message)
+            }
+        }
+    }
+
+    private func disableLogger() {
+        Log.logger = DebugLogger()
+        PDClient.logInfo = { _ in }
+        PDClient.logError = { _ in }
+        DispatchQueue.main.async {
+            PMLog.disableExternalLogging()
+        }
+        PMLog.callback = { message, level in }
     }
 
     private func makeProductionBuildLogger() -> LoggerProtocol {
@@ -69,7 +84,7 @@ final class LogsConfigurator {
         let levels: [LogLevel] = [.info, .error, .warning, .debug]
 
         let compoundLogger = CompoundLogger(loggers: [
-            makeFeatureFlagEnabledLogger(),
+            makeFileWritingLogger(),
             ProductionLogger(),
         ].compactMap { $0 })
 
@@ -82,22 +97,18 @@ final class LogsConfigurator {
 
     private func makeDebugBuildLogger() -> LoggerProtocol {
         let compoundLogger = CompoundLogger(loggers: [
-            makeFeatureFlagEnabledLogger(),
+            makeFileWritingLogger(),
             DebugLogger(),
         ].compactMap { $0 })
 
         return AndFilteredLogger(
             logger: compoundLogger,
             domains: LogDomain.iOSDomains,
-            levels: [.info, .error, .warning, .debug]
+            levels: [.info, .error, .warning, .debug, .trace]
         )
     }
 
-    private func makeFeatureFlagEnabledLogger() -> LoggerProtocol? {
-        guard localSettings.logCollectionEnabled == true && !(localSettings.logCollectionDisabled == true) else {
-            return nil
-        }
-
+    private func makeFileWritingLogger() -> LoggerProtocol? {
         // The maximum size of the log file is set to 10MB
         let logMaxFileSize: UInt64 = 10 * 1024 * 1024
 
@@ -109,8 +120,7 @@ final class LogsConfigurator {
                 rotator: makeFileLogsRotator()
             )
             Log.exporter = makeExporter(fileWritingLogger: fileLogger)
-            let featureFlagsEnabledLogger = FeatureFlagsEnablesLogsCollectionLoggerDecorator(decoratee: fileLogger, store: localSettings)
-            return LogsQueueDispatchingLogger(logger: featureFlagsEnabledLogger, queue: .logsQueue)
+            return LogsQueueDispatchingLogger(logger: fileLogger, queue: .logsQueue)
         } catch {
             // If the log directory cannot be created, we should fall back to a silent logger
             return nil

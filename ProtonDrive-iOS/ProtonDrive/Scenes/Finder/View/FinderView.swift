@@ -65,9 +65,6 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
                 if vm.lockedStateBannerVisibility != .hidden {
                     lockedStateBannerView
                 }
-                vm.topBanner.map {
-                    NotificationBanner(message: $0, style: .transparent, padding: .none)
-                }
 
                 finderView
             }
@@ -92,7 +89,6 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
         .presentView(item: presentModal, style: .fullScreenWithBlender) {
             self.coordinator.go(to: $0).environmentObject(root).environmentObject(TabBarViewViewModel())
         }
-        .dialogSheet(item: $menuItem, model: dialogSheetModel())
         .onReceive(root.closeCurrentSheet) { _ in
             presentedSheet = nil
             presentModal.wrappedValue = nil
@@ -111,6 +107,26 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
         }
         .modifier(HeaderScrollObserver<GridOrListSection1OffsetPreferenceKey>(visible: $headersShadowVisible1))
         .modifier(HeaderScrollObserver<GridOrListSection2OffsetPreferenceKey>(visible: $headersShadowVisible2))
+        .onReceive(coordinator.presentModalSubject) { destination in
+            destination.map {
+                startRecordingPerformance(destination: $0)
+            }
+        }
+    }
+
+    private func startRecordingPerformance(destination: FinderCoordinator.Destination) {
+        switch destination {
+        case .none, .folder, .importPhoto, .importDocument, .camera, .createFolder, .nodeDetails, .rename, .move, .shareLink, .configShareMember, .createDocument, .createSheet, .openIn, .scanDocument, .servicePlans, .noSpaceLeftCloud, .noSpaceLeftLocally, .downloadToDevice:
+            break
+        case .file(let file):
+            vm.startRecordingPerformance(node: file)
+        case .protonFile(let file):
+            vm.startRecordingPerformance(node: file)
+        case .openInBrowser(let file):
+            vm.startRecordingPerformance(node: file)
+        case .openBookmark(let bookmark):
+            vm.startRecordingPerformance(node: bookmark)
+        }
     }
 
     @ViewBuilder var finderView: some View {
@@ -120,7 +136,7 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
                     Section(header: uploadingBar, footer: Spacer(minLength: 30)) {
                         uploadDisclaimer
                         ForEach(vm.transientChildren.indices, id: \.self) { index in
-                            nodeRow(vm.transientChildren[index], isList: true, index: index)
+                            nodeRow(isList: true, index: index, childrenList: vm.transientChildren)
                         }
                     }
                 }
@@ -128,11 +144,15 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
                 if !vm.permanentChildren.isEmpty {
                     Section(header: listHeader, footer: listFooter) {
                         ForEach(vm.permanentChildren.indices, id: \.self) { index in
-                            nodeRow(isList: vm.layout == .list, index: index)
+                            nodeRow(isList: vm.layout == .list, index: index, childrenList: vm.permanentChildren)
                         }
+                    }
+                    .onAppear {
+                        vm.reportListIsShown()
                     }
                 }
             }, invitationViewsFactory: invitationViewsFactory)
+            .dialogSheet(item: $menuItem, model: dialogSheetModel())
 
             if vm.needsNoConnectionBackground {
                 NoConnectionView(isUpdating: $vm.isUpdating, refresh: vm.refreshOnAppear)
@@ -156,7 +176,7 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
             }
         }
     }
-    
+
     @ViewBuilder var lockedStateBannerView: some View {
         if vm.lockedStateBannerVisibility != .hidden {
             let lockedStateVM = LockedStateTopBannerViewModel(lockedStateBannerVisibiliy: vm.lockedStateBannerVisibility)
@@ -176,10 +196,10 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
     }
 
     @ViewBuilder
-    private func nodeRow(isList: Bool, index: Int) -> some View {
+    private func nodeRow(isList: Bool, index: Int, childrenList: [NodeWrapper]) -> some View {
         // There are crash reports with invalid index, that's why we try to access it safely.
         // Not sure what's the root cause, possibly `permanentChildren` gets changed by another thread.
-        vm.permanentChildren[safe: index].map {
+        childrenList[safe: index].map {
             nodeRow($0, isList: isList, index: index)
         }
     }

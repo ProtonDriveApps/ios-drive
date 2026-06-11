@@ -24,7 +24,8 @@ public protocol ConnectionStateResource {
     var currentState: NetworkState { get }
     var state: AnyPublisher<NetworkState, Never> { get }
 
-    func startMonitor()
+    func startMonitoring()
+    func cancel()
 }
 
 /// Monitors the device's connection status.
@@ -33,21 +34,34 @@ public protocol ConnectionStateResource {
 public final class MonitorConnectionStateResource: ConnectionStateResource {
     private let doh: DoHInterface
     private let hostPingInteractor: HostPingInteractorProtocol
-    private let monitorQueue = DispatchQueue(label: "com.proton.drive.connectionstateresource")
+    private let monitorQueue = DispatchQueue(label: "com.proton.drive.connectionstateresource.monitor")
     private let pathMonitor: NWPathMonitor
     private let stateSubject = CurrentValueSubject<NetworkState, Never>(.reachable(.other))
     private var timer: Timer?
     private var doubleCheckAttempt = 1
-    public private(set) var currentState: NetworkState = .reachable(.other) {
+    private let reportingQueue = DispatchQueue(label: "com.proton.drive.connectionstateresource.report")
+    private var lastLog = ""
+
+    #if DEBUG
+    /// When set, overrides the real network state
+    private var simulatedState: NetworkState?
+    #endif
+
+    public var currentState: NetworkState {
+        reportingQueue.sync { _currentState }
+    }
+
+    private var _currentState: NetworkState = .reachable(.other) {
         didSet {
-            if currentState == .unreachable {
+            if _currentState == .unreachable {
                 doubleCheckConnectionStatus()
             } else {
                 invalidateTimer()
             }
-            stateSubject.send(currentState)
+            publishCurrentState()
         }
     }
+
     public var state: AnyPublisher<NetworkState, Never> {
         stateSubject
             .removeDuplicates()
@@ -60,20 +74,51 @@ public final class MonitorConnectionStateResource: ConnectionStateResource {
         self.hostPingInteractor = HostPingInteractor(urlSession: urlSession, doh: doh)
         self.pathMonitor = NWPathMonitor()
         pathMonitor.pathUpdateHandler = { [weak self] path in
-            Task { [weak self] in
+            Task {
                await self?.handleUpdate(path)
             }
         }
     }
 
-    public func startMonitor() {
+    /// Internal init for testing — allows injecting a custom ping interactor.
+    init(doh: DoHInterface, hostPingInteractor: HostPingInteractorProtocol) {
+        self.doh = doh
+        self.hostPingInteractor = hostPingInteractor
+        self.pathMonitor = NWPathMonitor()
+        pathMonitor.pathUpdateHandler = { [weak self] path in
+            Task {
+               await self?.handleUpdate(path)
+            }
+        }
+    }
+
+    public func startMonitoring() {
         pathMonitor.start(queue: monitorQueue)
+    }
+
+    public func cancel() {
+        pathMonitor.cancel()
+        invalidateTimer()
+    }
+
+    // MARK: - Simulation support
+
+    private func publishCurrentState() {
+        let state = _currentState
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            #if DEBUG
+            self.stateSubject.send(self.simulatedState ?? state)
+            #else
+            self.stateSubject.send(state)
+            #endif
+        }
     }
 }
 
 // MARK: - Analyze connection status
 extension MonitorConnectionStateResource {
-    private func handleUpdate(_ path: NWPath) async {
+    func handleUpdate(_ path: NWPath) async {
         if await isReachable(path) {
             reportOnline(path)
         } else {
@@ -87,31 +132,39 @@ extension MonitorConnectionStateResource {
         // If it's the only available connection, assume the device is offline.
         let expected: Set<NWInterface.InterfaceType> = [.cellular, .wifi, .wiredEthernet]
         let intersection = expected.intersection(Set(path.availableInterfaces.map(\.type)))
-        if path.usesInterfaceType(.wifi) {
-            // The Wi-Fi router may be disconnected or not connected to the internet.
+        if path.usesInterfaceType(.wifi) || path.usesInterfaceType(.wiredEthernet) || path.usesInterfaceType(.cellular) {
+            // The router may be not connected to the internet. Cellular might have data off at the network operator level.
             return await hostPingInteractor.execute()
         } else {
             return !intersection.isEmpty
         }
     }
 
-    private func reportOffline(_ path: NWPath) {
-        logUpdate(with: path, isReachable: false)
-        currentState = .unreachable
+    func reportOffline(_ path: NWPath) {
+        reportingQueue.sync {
+            logUpdate(with: path, isReachable: false)
+            _currentState = .unreachable
+        }
     }
 
-    private func reportOnline(_ path: NWPath) {
-        logUpdate(with: path, isReachable: true)
-
-        if path.usesInterfaceType(.cellular) {
-            currentState = .reachable(.cellular)
-        } else if path.usesInterfaceType(.wifi) {
-            currentState = .reachable(.wifi)
-        } else if path.usesInterfaceType(.wiredEthernet) {
-            currentState = .reachable(.wired)
-        } else {
-            // Otherwise we don't know the state
-            currentState = .unreachable
+    func reportOnline(_ path: NWPath) {
+        reportingQueue.sync {
+            logUpdate(with: path, isReachable: true)
+            
+            if path.usesInterfaceType(.cellular) {
+                _currentState = .reachable(.cellular)
+            } else if path.usesInterfaceType(.wifi) {
+                _currentState = .reachable(.wifi)
+            } else if path.usesInterfaceType(.wiredEthernet) {
+                _currentState = .reachable(.wired)
+            } else if path.usesInterfaceType(.other) {
+                _currentState = .reachable(.other)
+            } else if path.usesInterfaceType(.loopback) {
+                _currentState = .reachable(.loopback)
+            } else {
+                // Otherwise we don't know the state, but we know it's reachable, so let's default to other
+                _currentState = .reachable(.other)
+            }
         }
     }
 
@@ -126,7 +179,10 @@ extension MonitorConnectionStateResource {
             " possibly use VPN: \(path.usesInterfaceType(.other))",
             " is using proxy: \(isUsingProxy())"
         ]
-        Log.info(messages.joined(separator: "\n"), domain: .networking)
+        let log = messages.joined(separator: "\n")
+        if lastLog == log { return } // don't spam log file 
+        lastLog = log
+        Log.info(log, domain: .networking)
     }
 
     private func makeInterfaceLog(path: NWPath, interface: NWInterface) -> String {
@@ -160,7 +216,10 @@ extension MonitorConnectionStateResource {
 // MARK: - Double check timer
 extension MonitorConnectionStateResource {
     private func doubleCheckConnectionStatus() {
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else {
+                return
+            }
             let interval = ExponentialBackoffWithJitter.getDelay(attempt: self.doubleCheckAttempt)
             self.doubleCheckAttempt += 1
             self.timer?.invalidate()
@@ -168,24 +227,67 @@ extension MonitorConnectionStateResource {
                 withTimeInterval: interval,
                 repeats: false,
                 block: { [weak self] _ in
-                    self?.monitorQueue.async { [weak self] in
-                        let attempt = self?.doubleCheckAttempt ?? -1
-                        Log.debug("The \(attempt)th time to check the device connection status", domain: .networking)
-                        guard let path = self?.pathMonitor.currentPath else { return }
-                        Task {
-                            await self?.handleUpdate(path)
-                        }
-                    }
+                    self?.performCurrentPathCheck()
                 }
             )
         }
     }
 
+    private func performCurrentPathCheck() {
+        monitorQueue.async { [weak self] in
+            DispatchQueue.main.async {
+                let attempt = self?.doubleCheckAttempt ?? -1
+                Log.debug("The \(attempt)th time to check the device connection status", domain: .networking)
+            }
+            guard let path = self?.pathMonitor.currentPath else { return }
+            Task {
+                await self?.handleUpdate(path)
+            }
+        }
+    }
+
     private func invalidateTimer() {
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else {
+                return
+            }
             self.doubleCheckAttempt = 1
             self.timer?.invalidate()
             self.timer = nil
         }
     }
 }
+
+#if DEBUG
+// MARK: - Network Simulation via Darwin Notifications
+public extension DarwinNotification.Name {
+    static let simulateNetworkOffline = DarwinNotification.Name("ch.protonmail.drive.debug.network.offline")
+    static let simulateNetworkOnline = DarwinNotification.Name("ch.protonmail.drive.debug.network.online")
+}
+
+extension MonitorConnectionStateResource {
+    /// Sets the simulated network state directly.
+    /// - Parameter state: The network state to simulate, or nil to use real network state.
+    public func setSimulatedState(_ state: NetworkState?) {
+        simulatedState = state
+        publishCurrentState()
+    }
+
+    /// Starts observing Darwin notifications for network simulation (QA toggle + UI tests).
+    public func startObservingSimulationCommands(notificationCenter: DarwinNotificationCenter = .shared) {
+        notificationCenter.addObserver(self, for: .simulateNetworkOffline) { [weak self] _ in
+            DispatchQueue.main.async {
+                Log.info("Network simulation: going offline", domain: .networking)
+                self?.setSimulatedState(.unreachable)
+            }
+        }
+
+        notificationCenter.addObserver(self, for: .simulateNetworkOnline) { [weak self] _ in
+            DispatchQueue.main.async {
+                Log.info("Network simulation: going online", domain: .networking)
+                self?.setSimulatedState(nil)
+            }
+        }
+    }
+}
+#endif

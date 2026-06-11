@@ -20,13 +20,25 @@ import PDCore
 final class InterruptedUploadsInteractor: CommandInteractor {
     let storage: StorageManager
     let fileUploader: FileUploader
-    
-    init(storage: StorageManager, fileUploader: FileUploader) {
+    weak var tower: Tower?
+
+    init(storage: StorageManager, fileUploader: FileUploader, tower: Tower) {
         self.storage = storage
         self.fileUploader = fileUploader
+        self.tower = tower
     }
     
     func execute() {
+        if let sdkFileUploader = tower?.getSdkFileUploader() {
+            Task { @MainActor in
+                await sdkFileUploader.resumePausedUploads()
+            }
+        } else {
+            executeLegacyUpload()
+        }
+    }
+
+    private func executeLegacyUpload() {
         storage.photosSecondaryBackgroundContext.perform { [weak self] in
             guard let self else { return }
             let interruptedFiles = storage.fetchFilesInterrupted(moc: storage.photosSecondaryBackgroundContext)

@@ -58,7 +58,7 @@ final class EditSectionViewModel: ObservableObject {
             return [.copyBookmark]
         }
 
-        if featureFlagsController.hasSharing && node.getNodeRole() == .admin {
+        if featureFlagsController.hasSharing && node.getNodeRole().canShare {
             shareSection.append(configShareMember)
         }
 
@@ -73,13 +73,14 @@ final class EditSectionViewModel: ObservableObject {
         if isSharedWithMeRoot {
             return [download].compactMap { $0 }
         } else {
-            switch node.getNodeRole() {
+            let role = node.getNodeRole()
+            switch role {
             case .viewer:
                 return [download].compactMap { $0 }
             case .editor:
                 return [download, rename, move].compactMap { $0 }
-            case .admin:
-                if featureFlagsController.hasSharing {
+            case .admin, .owner:
+                if featureFlagsController.hasSharing || !role.canShare {
                     return [download, rename, move].compactMap { $0 }
                 } else {
                     return [download, shareLink, rename, move].compactMap { $0 }
@@ -89,19 +90,19 @@ final class EditSectionViewModel: ObservableObject {
     }
 
     var thirdSectionItems: [EditSectionItem] {
-        if let bookmark = node as? CoreDataBookmark {
+        if node is CoreDataBookmark {
             return [.removeBookmark]
         }
 
         if isSharedWithMeRoot {
             return [.details(isFile: isFile), .removeMe].compactMap { $0 }
         } else {
-            switch node.getNodeRole() {
-            case .viewer:
+            switch node.getNodePermissions() {
+            case .view:
                 return [.details(isFile: isFile)].compactMap { $0 }
-            case .editor:
+            case .edit:
                 return [openInBrowser, .details(isFile: isFile), .remove].compactMap { $0 }
-            case .admin:
+            case .administrate:
                 return [openInBrowser, .details(isFile: isFile), .remove].compactMap { $0 }
             }
         }
@@ -139,7 +140,8 @@ final class EditSectionViewModel: ObservableObject {
     
     private var download: EditSectionItem? {
         guard node.isDownloadable else { return nil }
-        return .download(isMarked: node.isMarkedOfflineAvailable)
+        let isMarked = node.isMarkedOfflineAvailable || node.isInheritingOfflineAvailable
+        return .download(isMarked: isMarked)
     }
 
     private var shareLink: EditSectionItem? {

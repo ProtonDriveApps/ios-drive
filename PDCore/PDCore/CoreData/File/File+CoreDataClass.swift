@@ -23,4 +23,15 @@ public typealias CoreDataFile = File
 @objc(File)
 public class File: Node {
 
+    override public func prepareForDeletion() {
+        super.prepareForDeletion()
+        
+        #if os(iOS)
+        // Folder contains file and thumbnails 
+        for type in FileStorageType.allCases {
+            let url = PDFileManager.fileFolder(for: volumeBasedIdentifier, storageType: type, shouldCreate: false)
+            try? FileManager.default.removeItem(at: url)
+        }
+        #endif
+    }
 }

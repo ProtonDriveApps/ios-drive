@@ -33,15 +33,18 @@ protocol PhotosGridViewModelProtocol: ObservableObject {
     var configuration: PhotosRootConfiguration { get }
     var selectionNumber: Int { get }
     var isRefreshing: Bool { get }
+    var isRefreshingPublisher: AnyPublisher<Bool, Never> { get }
     var navigation: PhotosRootNavigation? { get }
     func didShowLastItem()
     func deselectAll()
     func selectionFinalized()
     func refresh()
     func onAppear()
+    func stopObserving()
     func setUpdatedScrollOffset()
     func updateTopItem(_ item: PhotoGridViewItem)
     func handle(navigation: PhotosRootNavigation.Item)
+    func reportListIsShown()
 }
 
 public enum PhotosPaginationStatus: Equatable {
@@ -61,6 +64,7 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
     private let scrollerController: GridScrollerControllerProtocol?
     private let scrollToItemSubject = PassthroughSubject<AnyVolumeIdentifier, Never>()
     private let scrollToTopPublisher: AnyPublisher<TabBarItem, Never>
+    private let performanceMetricsController: PerformanceMetricsControllerProtocol?
 
     @Published var isRefreshing = false
     @Published var sections: [PhotosGridViewSection] = []
@@ -70,6 +74,9 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
 
     var sectionsUpdatePublisher: AnyPublisher<[PhotosGridViewSection], Never> {
         $sections.eraseToAnyPublisher()
+    }
+    var isRefreshingPublisher: AnyPublisher<Bool, Never> {
+        $isRefreshing.eraseToAnyPublisher()
     }
     @Published var selectionNumber: Int = 0
     let configuration: PhotosRootConfiguration
@@ -89,7 +96,8 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
         remoteAlbumFetchController: RemoteAlbumFetchControllerProtocol?,
         scrollToTopPublisher: AnyPublisher<TabBarItem, Never>,
         streamConfiguration: PhotoStreamConfiguration,
-        scrollerController: GridScrollerControllerProtocol?
+        scrollerController: GridScrollerControllerProtocol?,
+        performanceMetricsController: PerformanceMetricsControllerProtocol?
     ) {
         self.controller = controller
         self.monthFormatter = monthFormatter
@@ -101,14 +109,17 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
         self.remoteAlbumFetchController = remoteAlbumFetchController
         self.streamConfiguration = streamConfiguration
         self.scrollerController = scrollerController
+        self.performanceMetricsController = performanceMetricsController
         subscribeToUpdates()
         handleSelectionUpdate()
     }
 
     func onAppear() {
-        if !streamConfiguration.isLegacyShare {
-            remoteAlbumFetchController?.execute(input: .all)
-        }
+        remoteAlbumFetchController?.execute(input: .all)
+    }
+
+    func stopObserving() {
+        controller.stopObserving()
     }
 
     func didShowLastItem() {
@@ -124,6 +135,7 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
     }
 
     func refresh() {
+        Log.debug("Pull down to refresh photo listings", domain: .userAction)
         isRefreshing = true
         fetchingController.reset()
     }
@@ -139,10 +151,12 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
     private func subscribeToUpdates() {
         controller.sections
             .sink { [weak self] sections in
+                let count = sections.reduce(0) { $0 + $1.photos.count }
+                self?.performanceMetricsController?.updateTab(cacheCount: count, in: .photos)
                 self?.handle(sections)
             }
             .store(in: &cancellables)
-        
+
         fetchingController.errorPublisher
             .sink { [weak self] error in
                 Log.error(error: error, domain: .photosProcessing)
@@ -264,5 +278,9 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
         case .deselectAll:
             selectionController.deselectAll()
         }
+    }
+
+    func reportListIsShown() {
+        performanceMetricsController?.reportTabToFirstItem(pageType: .photos)
     }
 }

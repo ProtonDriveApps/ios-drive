@@ -25,6 +25,7 @@ public protocol PhotoUploadedNotifier {
     var uploadedNotifier: AnyPublisher<PhotoID, Never> { get }
     
     func uploadCompleted(fileDraft: FileDraft)
+    func uploadCompleted(photo: CoreDataPhoto?)
 }
 
 /// Notify when a photo is uploaded, includes its children contents
@@ -34,26 +35,36 @@ public final class ConcretePhotoUploadedNotifier: PhotoUploadedNotifier {
     public var uploadedNotifier: AnyPublisher<PhotoID, Never> {
         uploadedSubject.receive(on: DispatchQueue.main).eraseToAnyPublisher()
     }
-    
+
     public init(moc: NSManagedObjectContext) {
         self.moc = moc
     }
-    
+
     public func uploadCompleted(fileDraft: FileDraft) {
         moc.perform { [weak self] in
             guard let self, let photo = fileDraft.file as? Photo else { return }
-
-            let mainPhoto = photo.parent ?? photo
-            if self.isAllContentUploaded(mainPhoto: mainPhoto) {
-                uploadedSubject.send(mainPhoto.id)
-            }
+            self.sendNotifyIfNeeded(photo: photo)
         }
     }
-    
+
+    public func uploadCompleted(photo: CoreDataPhoto?) {
+        moc.perform { [weak self] in
+            guard let self, let photo = photo?.in(moc: moc) else { return }
+            self.sendNotifyIfNeeded(photo: photo)
+        }
+    }
+
+    private func sendNotifyIfNeeded(photo: CoreDataPhoto) {
+        let mainPhoto = photo.parent ?? photo
+        if self.isAllContentUploaded(mainPhoto: mainPhoto) {
+            uploadedSubject.send(mainPhoto.id)
+        }
+    }
+
     private func isAllContentUploaded(mainPhoto: Photo) -> Bool {
         let allPhotos = [mainPhoto] + mainPhoto.children
         let notUploadedIdx = allPhotos.firstIndex(where: { $0.state != .active })
-        
+
         return notUploadedIdx == nil
     }
 

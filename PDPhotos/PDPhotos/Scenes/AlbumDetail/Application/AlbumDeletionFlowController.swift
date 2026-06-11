@@ -24,7 +24,7 @@ import ProtonCoreNetworking
 protocol AlbumDeletionFlowControllerProtocol {
     var deletingPublisher: AnyPublisher<Bool, Never> { get }
 
-    func presentAlert(parameters: AlbumDeletionFlowController.Parameters) async throws
+    func presentAlert(parameters: AlbumDeletionFlowController.Parameters, deletingCallback: @escaping () -> Void) async throws
 }
 
 final class AlbumDeletionFlowController: AlbumDeletionFlowControllerProtocol {
@@ -42,23 +42,24 @@ final class AlbumDeletionFlowController: AlbumDeletionFlowControllerProtocol {
         self.dependencies = dependencies
     }
 
-    func presentAlert(parameters: Parameters) async throws {
+    func presentAlert(parameters: Parameters, deletingCallback: @escaping () -> Void) async throws {
         failedDueToLackingMetadata = false
         let children = try await dependencies.filterPolicy.filter(photoIdentifiers: parameters.photoIdentifiers)
         if children.isEmpty {
-            await presentDeleteAlert(album: parameters.album)
+            await presentDeleteAlert(album: parameters.album, deletingCallback: deletingCallback)
         } else {
-            await presentSaveWarning(children: children, album: parameters.album)
+            await presentSaveWarning(children: children, album: parameters.album, deletingCallback: deletingCallback)
         }
     }
 }
 
 // MARK: - Present alert related
 extension AlbumDeletionFlowController {
-    private func presentDeleteAlert(album: Album) async {
+    private func presentDeleteAlert(album: Album, deletingCallback: @escaping () -> Void) async {
         await MainActor.run {
             let title = albumTitle(album: album)
             dependencies.coordinator.presentDeleteAlbumAlert(albumName: title) { [weak self] in
+                deletingCallback()
                 self?.delete(album: album, option: .softDelete)
             }
         }
@@ -66,16 +67,19 @@ extension AlbumDeletionFlowController {
 
     private func presentSaveWarning(
         children: [AnyVolumeIdentifier],
-        album: Album
+        album: Album,
+        deletingCallback: @escaping () -> Void
     ) async {
         await MainActor.run {
             let title = albumTitle(album: album)
             dependencies.coordinator.presentDeleteAlbumAndMovePhotosAlert(
                 albumName: title,
                 moveAndRemove: { [weak self] in
+                    deletingCallback()
                     self?.delete(album: album, option: .moveAndSoftDelete(children: children))
                 },
                 deleteWithoutSaving: { [weak self] in
+                    deletingCallback()
                     self?.delete(album: album, option: .forceDelete)
                 }
             )
@@ -163,7 +167,7 @@ extension AlbumDeletionFlowController {
             case .softDelete:
                 // Has remote photos
                 // Need to check user's intentions and potentially retry with the full children list
-                await presentSaveWarning(children: childrenIdentifiers, album: album)
+                await presentSaveWarning(children: childrenIdentifiers, album: album, deletingCallback: {})
                 isDeleting.send(false)
             case .forceDelete:
                 assert(false, "Force delete shouldn't have this error")

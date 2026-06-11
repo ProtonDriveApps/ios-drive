@@ -45,7 +45,9 @@ extension AuthenticatedDependencyContainer {
             togglePublisher: DriveNotification.toggleSideMenu.publisher
         )
         sideMenuCoordinator.delegate = slidingViewController
-        sideMenuViewController.onMenuDidSelect = sideMenuCoordinator.go(to:)
+        sideMenuViewController.onMenuDidSelect = { [sideMenuCoordinator] destination in
+            sideMenuCoordinator.go(to: destination)
+        }
         slidingViewController.onMenuToggle = { isMenuOpen in
             UIApplication.setStatusBarStyle(isMenuOpen ? .lightContent : .default)
         }
@@ -54,31 +56,60 @@ extension AuthenticatedDependencyContainer {
     }
 
     private func makeSideMenuViewController() -> SideMenuViewController {
-        guard let offlineSaver = tower.offlineSaver else { fatalError("offlineSaver must be non-nil in the iOS app") }
         tower.subscribeToCleanUpNotifications()
         let showStorageInteractor = StorageBonusPromoFactory().makeShowStorageBonusPromoInteractor(tower: tower)
         let menuModel = MenuModel(sessionVault: tower.sessionVault)
-        let menuViewModel = MenuViewModel(model: menuModel, offlineSaver: offlineSaver, featureFlagsController: featureFlagsController, showStorageBonusPromoInteractor: showStorageInteractor)
+        let menuViewModel = MenuViewModel(
+            model: menuModel,
+            offlineAvailableProgressProvider: OfflineSaversProgressProvider(offlineSavers: tower.offlineSavers),
+            featureFlagsController: featureFlagsController,
+            showStorageBonusPromoInteractor: showStorageInteractor,
+            sdkFlags: getSDKMenuFlags(),
+            localSettings: tower.localSettings
+        )
         return SideMenuViewController(menuViewModel: menuViewModel)
+    }
+    
+    private func getSDKMenuFlags() -> SDKMenuFlags {
+        #if HAS_BETA_FEATURES
+        let sdkFlags: [SDKMenuFlag] = [
+            tower.getSdkFileUploader().isNotNil ? SDKMenuFlag.isUsingSDKMainVolumeUpload : nil,
+            tower.getSdkPhotoUploader().isNotNil ? SDKMenuFlag.isUsingSDKPhotoVolumeUpload : nil,
+            tower.getSdkFileDownloader().isNotNil ? SDKMenuFlag.isUsingSDKMainVolumeDownload : nil,
+            tower.getSdkPhotoDownloader().isNotNil ? SDKMenuFlag.isUsingSDKPhotoVolumeDownload : nil,
+            tower.getSdkThumbnailsDownloaderForFiles().isNotNil ? SDKMenuFlag.isUsingSDKMainVolumeThumbnails : nil,
+            tower.getSdkThumbnailsDownloaderForPhotos().isNotNil ? SDKMenuFlag.isUsingSDKPhotoVolumeThumbnails : nil,
+            tower.getSdkNodeOperationPerformer().isNotNil ? SDKMenuFlag.isUsingSDKNodeOperations : nil
+        ].compactMap { $0 }
+        return Set(sdkFlags)
+        #else
+        return []
+        #endif
     }
 
     private func makeSideMenuCoordinator(_ viewController: SideMenuViewController) -> SideMenuCoordinator {
         return SideMenuCoordinator(
             viewController: viewController,
             ratingBoosterFlowController: ratingBoosterFlowController,
-            myFilesFactory: { self.makeTabBarViewControllerFactory() },
-            sharedByMeFactory: { self.makeSharedViewController() },
+            sceneInitStateController: sceneInitStateController,
+            generalSettings: tower.generalSettings,
+            myFilesFactory: { self.makeTabBarViewControllerFactory(deepLink: $0) },
+            sharedByMeFactory: { self.makeSharedViewController(deepLink: $0) },
             trashFactory: makeTrashViewController,
             offlineAvailableFactory: makeOfflineAvailableViewController,
             settingsFactory: makeSettingsViewController,
             plansFactory: makePlansViewController,
             storageBonusPromoFactory: makeStorageBonusPromoViewController,
-            reportBugFactory: makeReportBugViewController
+            reportBugFactory: makeReportBugViewController,
+            makeAccountSettingsSection: makeAccountSettingsSection
         )
     }
 
-    private func makeTabBarViewControllerFactory() -> UIViewController {
-        let childrenFactory = makeChildrenFactory()
+    private func makeTabBarViewControllerFactory(deepLink: DeepLinkNotification?) -> UIViewController {
+        if let tabItem = TabBarItem(rawValue: tower.localSettings.defaultHomeTabTag) {
+            tower.performanceMetricsController?.startRecord(pageType: tabItem.toMetricTag)
+        }
+        let childrenFactory = makeChildrenFactory(deepLink: deepLink)
         let coordinator = TabBarCoordinator(childrenFactory: childrenFactory.makeChildren)
         let viewModel = TabBarViewModel(
             isTabBarHiddenPublisher: NotificationCenter.default.getPublisher(for: DriveNotification.tabBar.name, publishing: Bool.self).eraseToAnyPublisher(),
@@ -87,14 +118,16 @@ extension AuthenticatedDependencyContainer {
             localSettings: tower.localSettings,
             volumeIdsController: tower.sharedVolumeIdsController,
             featureFlagsController: featureFlagsController,
-            ratingBoosterFlowController: ratingBoosterFlowController
+            ratingBoosterFlowController: ratingBoosterFlowController,
+            performanceMetricsController: tower.performanceMetricsController,
+            deepLinkNotification: deepLink
         )
         let tabBarController = HidableTabBarController(viewModel: viewModel, children: childrenFactory.makeChildren())
         coordinator.tabBarController = tabBarController
         return tabBarController
     }
 
-    private func makeChildrenFactory() -> TabBarChildrenFactoryProtocol {
+    private func makeChildrenFactory(deepLink: DeepLinkNotification?) -> TabBarChildrenFactoryProtocol {
         let visibilityPolicy = VisibilityPolicy(responders: [
             PhotosTabVisibilityResponder(localSettings: localSettings, repository: ProtonCoreFeatureFlags.FeatureFlagsRepository.shared),
             ComputersTabVisibilityResponder(featureFlags: featureFlagsController),
@@ -103,6 +136,7 @@ extension AuthenticatedDependencyContainer {
         ])
         return TabBarChildrenFactory(
             visibilityPolicy: visibilityPolicy,
+            deepLink: deepLink,
             makeFilesViewControllerFactory: makeFilesViewControllerFactory,
             makePhotosViewController: makePhotosViewController,
             makeSharedViewController: makeSharedViewController,
@@ -111,9 +145,9 @@ extension AuthenticatedDependencyContainer {
         )
     }
 
-    private func makeFilesViewControllerFactory() -> UIViewController {
+    private func makeFilesViewControllerFactory(deepLink: Deeplink?) -> UIViewController {
         let scrollToTopPublisher = scrollToTopSubject.eraseToAnyPublisher()
-        let coordinator = FinderCoordinator(container: self, photoPickerCoordinator: pickersContainer.getPhotoCoordinator(), scrollToTopPublisher: scrollToTopPublisher)
+        let coordinator = FinderCoordinator(container: self, deeplink: deepLink, photoPickerCoordinator: pickersContainer.getPhotoCoordinator(), scrollToTopPublisher: scrollToTopPublisher)
         let myFilesRootFetcher = MyFilesRootFetcher(storage: tower.storage)
         let rootFolderView = RootFolderView(nodeID: myFilesRootFetcher.getRoot(), coordinator: coordinator).any()
         let rootView = RootView(vm: RootViewModel(), activeArea: { rootFolderView })
@@ -130,22 +164,11 @@ extension AuthenticatedDependencyContainer {
         let rootView = RootView(vm: RootViewModel(), activeArea: { rootFolderView })
         let vc = UIHostingController(rootView: rootView)
         coordinator.rootViewController = vc
-        configureForTabBar(vc, tabBarItem: .files)
+        configureForTabBar(vc, tabBarItem: .computers)
         return vc
     }
 
-    private func makePhotosViewController() -> UIViewController {
-        #if DEBUG
-        // TODO: next MR remove legacy photos also for tests (will need to adjust e2e tests)
-        if DebugConstants.commandLineContains(flags: [.uiTests, .overrideAlbumsFeatureFlagToFalse]) {
-            return makeOldPhotosScreen()
-        }
-        #endif
-
-        return makeNewPhotosScreen()
-    }
-
-    private func makeNewPhotosScreen() -> UIViewController {
+    private func makePhotosViewController(deepLink: Deeplink?) -> UIViewController {
         let viewController = photosContainer.newPhotosContainer.makeRootViewController(configuration: .init())
         viewController.view.backgroundColor = ColorProvider.BackgroundNorm
         let nav = UINavigationController(rootViewController: viewController)
@@ -153,13 +176,7 @@ extension AuthenticatedDependencyContainer {
         return nav
     }
 
-    private func makeOldPhotosScreen() -> UIViewController {
-        let vc = photosContainer.makeRootViewController()
-        configureForTabBar(vc, tabBarItem: .photos)
-        return vc
-    }
-
-    private func makeSharedViewController() -> UIViewController {
+    private func makeSharedViewController(deepLink: Deeplink?) -> UIViewController {
         let scrollToTopPublisher = scrollToTopSubject.eraseToAnyPublisher()
         let coordinator = FinderCoordinator(container: self, photoPickerCoordinator: pickersContainer.getPhotoCoordinator(), scrollToTopPublisher: scrollToTopPublisher)
         let rootSharedView = RootSharedView(coordinator: coordinator)
@@ -170,7 +187,7 @@ extension AuthenticatedDependencyContainer {
         return vc
     }
 
-    private func makeSharedWithMeViewController() -> UIViewController {
+    private func makeSharedWithMeViewController(deepLink: Deeplink?) -> UIViewController {
         let scrollToTopPublisher = scrollToTopSubject.eraseToAnyPublisher()
         let coordinator = FinderCoordinator(container: self, isSharedWithMe: true, photoPickerCoordinator: pickersContainer.getPhotoCoordinator(), scrollToTopPublisher: scrollToTopPublisher)
         let view = RootSharedWithMeView(coordinator: coordinator)
@@ -182,7 +199,7 @@ extension AuthenticatedDependencyContainer {
     }
 
     @MainActor
-    private func makeComputersViewController() -> UIViewController {
+    private func makeComputersViewController(deepLink: Deeplink?) -> UIViewController {
         let coordinator = ComputersCoordinator(
             deviceRootViewControllerFactory: { [weak self] in
                 guard let self else { return UIViewController() }
@@ -208,7 +225,7 @@ extension AuthenticatedDependencyContainer {
         let observer = ComputersObserverInteractor(repository: devicesRepository)
         let scanner = ComputersScannerInteractor(remote: tower.client, cache: tower.storage)
         let loadStateRepository = ComputersLoadStateRepository(localSettings: tower.localSettings)
-        let viewModel = ComputersViewModel(scanner: scanner, observer: observer, loadStateRepository: loadStateRepository, messageHandler: UserMessageHandler(), coordinator: coordinator)
+        let viewModel = ComputersViewModel(scanner: scanner, observer: observer, loadStateRepository: loadStateRepository, messageHandler: UserMessageHandler(), coordinator: coordinator, performanceMetricsController: tower.performanceMetricsController)
         let rootViewController = ComputersViewController(viewModel: viewModel, cellFactory: cellFactory)
         configureForTabBar(rootViewController, tabBarItem: .computers)
         let nc = MenuNavigationViewController(rootViewController: rootViewController)
@@ -229,13 +246,13 @@ extension AuthenticatedDependencyContainer {
         let nodeRenamer = DeviceRenamer(
             storage: tower.storage,
             cloudNodeRenamer: tower.client.renameEntry,
-            signersKitFactory: tower.sessionVault,
-            moc: tower.storage.backgroundContext
+            signersKitFactory: tower.sessionVault
         )
         let nameEditor = NodeNameEditor(
             storage: tower.storage,
             managedObjectContext: tower.storage.backgroundContext,
-            nodeRenamer: nodeRenamer
+            nodeRenamer: nodeRenamer,
+            nodeOperationPerformer: tower.getSdkNodeOperationPerformer()
         )
         let viewModel = EditNodeNameViewModel(node: editedNode, nameEditor: nameEditor, validator: NameValidations.userSelectedName)
         let formattingViewModel = FormattingFileViewModel(
@@ -289,8 +306,7 @@ extension AuthenticatedDependencyContainer {
     }
 
     private func makePlansViewController() -> UIViewController {
-        let dependencies = SubscriptionsContainer.Dependencies(tower: tower, keymaker: keymaker, networkService: networkService)
-        let container = SubscriptionsContainer(dependencies: dependencies)
+        let container = makeSubscriptionsContainer()
         let viewController = container.makeRootViewController()
         return MenuNavigationViewController(rootViewController: viewController)
     }
@@ -316,6 +332,11 @@ extension AuthenticatedDependencyContainer {
             photosContainer: photosContainer.settingsContainer,
             featureFlagsController: featureFlagsController
         )
+    }
+
+    @MainActor
+    private func makeAccountSettingsSection() -> PMSettingsSectionViewModel {
+        SettingsAssembler.makeAccountSettings(tower: tower, apiService: networkService)
     }
 }
 

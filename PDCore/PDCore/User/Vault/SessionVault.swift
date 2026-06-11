@@ -23,7 +23,15 @@ import ProtonCoreDataModel
 import PDClient
 import Combine
 
-public class SessionVault: CredentialProvider, ObservableObject {
+#if canImport(UIKit)
+import UIKit
+#endif
+
+#if canImport(AppKit)
+import AppKit
+#endif
+
+public class SessionVault: CredentialProvider, ObservableObject, ForeignKeysVault {
     public typealias AddressID = String
     public typealias Key = ProtonCoreDataModel.Key
     
@@ -37,7 +45,18 @@ public class SessionVault: CredentialProvider, ObservableObject {
     }
 
     static var current: SessionVault! // 🧨
+    private struct AddressKeysSnapshot: Equatable {
+        let addressID: String
+        let keys: [Key]
+    }
+
+    #if DEBUG
+    internal var unlockedAddressPrivateKeyDerivationForTests: ((Key) throws -> Data)?
+    #endif
+
     internal var mainKeyProvider: MainKeyProvider!
+    private let unlockedAddressKeyCache: UnlockedAddressKeyCache
+    private let stateLock = NSLock()
     
     // secure properties below must be only ever written to and read from the main app
     // the label differs from the property name to keep backwards compatibility with the older clients after property was renamed
@@ -112,6 +131,7 @@ public class SessionVault: CredentialProvider, ObservableObject {
 
     @SecureStorage(label: "passphrases", caching: Constants.runningInExtension) private(set) var passphrases: [AddressID: String]?
     @SecureStorage(label: "publicKeys", caching: Constants.runningInExtension) private(set) var publicKeys: [String: [PublicKey]]?
+    @SecureStorage(label: "foreignPublicKeys", caching: Constants.runningInExtension) private(set) var foreignPublicKeys: [String: [PublicKey]]?
     @SecureStorage(label: "addressIDPublicKeys", caching: Constants.runningInExtension) private(set) var addressIDPublicKeys: [String: [PublicKey]]?
     @SecureStorage(label: "addresses", caching: Constants.runningInExtension) public private(set) var addresses: [Address]? {
         didSet { objectWillChange.send() }
@@ -131,8 +151,25 @@ public class SessionVault: CredentialProvider, ObservableObject {
         (fileProviderExtensionChildSessionCredential ?? temporaryLockerStorageForFileProviderExtensionChildSessionCredential)?.UID
     }
 
-    public init(mainKeyProvider: MainKeyProvider) {
+    public init(
+        mainKeyProvider: MainKeyProvider,
+        dateResource: DateResource = PlatformCurrentDateResource(),
+        timerResource: TimerResource = PlatformTimerResource(),
+        unlockedAddressPrivateKeyCacheLifetime: TimeInterval = 10 * 60,
+        unlockedAddressPrivateKeyDerivationWaitTimeout: DispatchTimeInterval = .seconds(5)
+    ) {
+        let cache = UnlockedAddressKeyCache(
+            derivation: nil,
+            dateResource: dateResource,
+            timerResource: timerResource,
+            lifetime: unlockedAddressPrivateKeyCacheLifetime,
+            derivationWaitTimeout: unlockedAddressPrivateKeyDerivationWaitTimeout
+        )
+        self.unlockedAddressKeyCache = cache
         self.mainKeyProvider = mainKeyProvider
+        // This ensures the main key is read from the keychain and loaded into memory early
+        // in the app initialization process, before it's used for all the secrets property wrappers.
+        _ = try? mainKeyProvider.mainKeyOrError
         
         if Constants.runningInExtension {
             self._fileProviderExtensionChildSessionCredential.configure(with: mainKeyProvider)
@@ -153,6 +190,7 @@ public class SessionVault: CredentialProvider, ObservableObject {
         self._passphrases.configure(with: mainKeyProvider, notifying: true)
         self._addresses.configure(with: mainKeyProvider, notifying: true)
         self._publicKeys.configure(with: mainKeyProvider, notifying: true)
+        self._foreignPublicKeys.configure(with: mainKeyProvider, notifying: true)
         self._addressIDPublicKeys.configure(with: mainKeyProvider, notifying: true)
         self._uploadClientUID.configure(with: mainKeyProvider)
         self._deviceUUID.configure(with: mainKeyProvider)
@@ -161,6 +199,7 @@ public class SessionVault: CredentialProvider, ObservableObject {
         migrateSaltsStorage()
         
         Self.current = self
+        cache.derivation = self
     }
 
     // MainKey is not necesserily available at this point, so we are only allowed to operate on **cypherdata** without decrypting it
@@ -344,7 +383,7 @@ extension SessionVault: SessionStore {
             Log.info("New child session credentials \(newChildSessionCredentials.UID) consumed in the extension",
                      domain: .sessionManagement)
         } else {
-            Log.info("New child session credentials consumed in the extension",
+            Log.info("New child session credentials of type \(kind) consumed in the extension",
                      domain: .sessionManagement)
         }
         switch kind {
@@ -380,23 +419,51 @@ extension SessionVault: SessionStore {
     }
 
     public func storeUser(_ user: User) {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        let keysChanged = userInfo?.keys != user.keys
         self.userInfo = user
+        if keysChanged {
+            clearUnlockedAddressPrivateKeyCache()
+        }
     }
 
     public func storeAddresses(_ addresses: [Address]) {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        let currentAddressKeys = Self.makeAddressKeysSnapshot(from: self.addresses)
+        let newAddressKeys = Self.makeAddressKeysSnapshot(from: addresses)
         self.addresses = addresses
         var keys = [String: [PublicKey]]()
         for address in addresses {
             keys[address.email.canonicalEmailForm] = address.activePublicKeys
         }
         self.publicKeys = keys
+        if currentAddressKeys != newAddressKeys {
+            clearUnlockedAddressPrivateKeyCache()
+        }
+    }
+
+    /// - Parameters:
+    ///   - keys: [canonicalEmailForm: [public keys]]
+    public func storeForeignPublicKeys(_ keys: [String: [PublicKey]]) {
+        foreignPublicKeys = keys
     }
 
     public func storePassphrases(_ passphrases: [AddressID: Passphrase]) {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        let passphrasesChanged = self.passphrases != passphrases
         self.passphrases = passphrases
+        if passphrasesChanged {
+            clearUnlockedAddressPrivateKeyCache()
+        }
     }
 
     public func signOut() {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        clearUnlockedAddressPrivateKeyCache()
         try? _applicationParentSessionCredential.wipeValue()
         try? _fileProviderExtensionChildSessionCredential.wipeValue()
         try? _fileProviderExtensionDDKChildSessionCredential.wipeValue()
@@ -408,6 +475,7 @@ extension SessionVault: SessionStore {
         try? _addresses.wipeValue()
         try? _uploadClientUID.wipeValue()
         try? _publicKeys.wipeValue()
+        try? _foreignPublicKeys.wipeValue()
         try? _addressIDPublicKeys.wipeValue()
         #if os(iOS)
         try? mainKeyProvider.wipeMainKeyOrError()
@@ -446,6 +514,7 @@ public protocol SessionStore {
     func getUserPassphrase() throws -> String
 
     func signOut()
+    func isSignedIn() -> Bool
 }
 
 extension SessionVault {
@@ -509,24 +578,11 @@ extension SessionVault {
     
     public func addressPassphrase(for addressKey: Key) throws -> String {
         guard let userInfo = self.userInfo else {
-            throw Errors.passphrasesVaultEmpty
+            throw Errors.userNotFound
         }
         let userPassphrase = try getUserPassphrase()
         let addressKeyPassphrase = try addressKey._passphrase(userKeys: userInfo.keys, mailboxPassphrase: userPassphrase)
         return addressKeyPassphrase
-    }
-    
-    private func userKeyAndPassphrase(for addressKey: Key) throws -> (Key, String) {
-        guard let passphrases = self.passphrases, let userInfo = self.userInfo else {
-            throw Errors.passphrasesVaultEmpty
-        }
-        let userKeysWithPassphrases = Set(passphrases.map(\.key)).intersection(Set(userInfo.keys.map(\.keyID)))
-        guard let userKey = self.userInfo?.keys.first(where: { userKeysWithPassphrases.contains($0.keyID) }),
-            let passphrase = passphrases[userKey.keyID] else
-        {
-            throw Errors.noRequiredPassphrase
-        }
-        return (userKey, passphrase)
     }
 
     public func updatePassphrases(for userKeys: [Key], mailboxPassphrase: String) throws {
@@ -540,6 +596,42 @@ extension SessionVault {
         }
         storePassphrases(newPassphrases)
     }
+
+    public func unlockedAddressPrivateKeyData(for key: Key) throws -> Data {
+        return try unlockedAddressKeyCache.unlockedAddressPrivateKeyData(for: key)
+    }
+
+    func cachedUnlockedAddressPrivateKey(for key: Key) -> Data? {
+        return unlockedAddressKeyCache.cachedUnlockedAddressPrivateKey(for: key)
+    }
+
+    func cacheUnlockedAddressPrivateKey(_ data: Data, for key: Key) {
+        unlockedAddressKeyCache.cacheUnlockedAddressPrivateKey(data, for: key)
+    }
+
+    func clearUnlockedAddressPrivateKeyCache() {
+        unlockedAddressKeyCache.clear()
+    }
+
+    private static func makeAddressKeysSnapshot(from addresses: [Address]?) -> [AddressKeysSnapshot] {
+        (addresses ?? []).map { address in
+            AddressKeysSnapshot(addressID: address.addressID, keys: address.keys)
+        }
+    }
+}
+
+extension SessionVault: UnlockedAddressKey {
+    public func deriveUnlockedAddressPrivateKeyData(for key: Key) throws -> Data {
+        #if DEBUG
+        if let unlockedAddressPrivateKeyDerivationForTests {
+            return try unlockedAddressPrivateKeyDerivationForTests(key)
+        }
+        #endif
+        let lockedAddressKey = try executeAndUnwrap { CryptoGo.CryptoNewKeyFromArmored(key.privateKey, &$0) }
+        let decryptedAddressPassphrase = try addressPassphrase(for: key)
+        let unlockedAddressKey = try lockedAddressKey.unlock(decryptedAddressPassphrase.data(using: .utf8))
+        return try unlockedAddressKey.serialize()
+    }
 }
 
 extension SessionVault {
@@ -550,7 +642,9 @@ extension SessionVault {
 
     public func currentAddress() -> Address? {
         guard let userInfo else {
-            assert(false, "Drive can not work with accounts without emails - they are needed for cryptography")
+            if !Constants.isUITest {
+                assert(false, "Drive can not work with accounts without emails - they are needed for cryptography")
+            }
             Log.error("User info is nil", error: nil, domain: .sessionManagement)
             return nil
         }
@@ -580,16 +674,12 @@ extension SessionVault {
         return self.addresses?.first(where: { $0.email.canonicalEmailForm == canonicalForm })
     }
 
-    public func getAddress(withId id: String) -> Address? {
-        return self.addresses?.first(where: { $0.addressID == id })
-    }
-
-    public func getAddress(withID addressID: String) -> Address? {
-        return self.addresses?.first(where: { $0.addressID == addressID })
+    public func getAddress(withId addressId: String) -> Address? {
+        return self.addresses?.first(where: { $0.addressID == addressId })
     }
 
     public func getEmail(addressId: String) -> String? {
-        return addresses?.first(where: { $0.addressID == addressId })?.email
+        return getAddress(withId: addressId)?.email
     }
 
     public func getPublicKeys(for email: String) -> [PublicKey] {
@@ -597,6 +687,16 @@ extension SessionVault {
             // fallback for legacy users who logged in before publicKeys caching was introduced
             return getAddress(for: email)?.activePublicKeys ?? []
         }
+        let ownKeys = cachedPublicKeys[email.canonicalEmailForm] ?? []
+        if !ownKeys.isEmpty {
+            return ownKeys
+        } else {
+            return getForeignPublicKeys(for: email)
+        }
+    }
+
+    public func getForeignPublicKeys(for email: String) -> [PublicKey] {
+        let cachedPublicKeys = foreignPublicKeys ?? [:]
         return cachedPublicKeys[email.canonicalEmailForm] ?? []
     }
 

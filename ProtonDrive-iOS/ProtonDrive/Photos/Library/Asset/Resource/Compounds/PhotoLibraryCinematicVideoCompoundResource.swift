@@ -37,6 +37,7 @@ final class PhotoLibraryCinematicVideoCompoundResource: PhotoLibraryCompoundReso
     /// - Returns: Array of PhotoAssetCompound objects, containing the primary and secondary assets. These are representations of the photos as Proton Drive expects them.
     func execute(with identifier: PhotoIdentifier, asset: PHAsset) async throws -> [PhotoAssetCompound] {
         do {
+            Log.info("Load cinematic asset \(identifier.cloudIdentifier)", domain: .photosProcessing)
             return try await executeCinematicVideo(with: identifier, asset: asset)
         } catch {
             Log.error("failed to load cinematic video, falling back to plain resource", error: nil, domain: .photosProcessing)
@@ -69,7 +70,7 @@ final class PhotoLibraryCinematicVideoCompoundResource: PhotoLibraryCompoundReso
                 fileExtension: try originalResource.getNormalizedFilename().fileExtension,
                 isOriginal: true
             )
-            let resource = try await assetResource.executeVideo(with: adjustedResource)
+            let resource = try await assetResource.executeVideo(with: adjustedResource, appendedAssetData: nil)
             return [resource]
         } else {
             var photoAssetData = [PhotoAssetData]()
@@ -86,7 +87,7 @@ final class PhotoLibraryCinematicVideoCompoundResource: PhotoLibraryCompoundReso
                 )
             }
             return try await photoAssetData.asyncMap {
-                return try await assetResource.executeVideo(with: $0)
+                return try await assetResource.executeVideo(with: $0, appendedAssetData: nil)
             }
         }
 

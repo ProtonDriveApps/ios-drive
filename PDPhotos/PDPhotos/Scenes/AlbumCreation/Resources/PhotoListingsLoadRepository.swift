@@ -61,11 +61,12 @@ final class PhotoListingsLoadRepository: PhotoListingsLoadRepositoryProtocol {
             return nil
         }
         let isVideo = mimeTypeResource.isVideo(mimeType: photo.mimeType)
+
         return PhotoListing.Metadata(
             isShared: photo.isShared,
             hasDirectShare: photo.hasDirectShare,
             isVideo: isVideo,
-            isAvailableOffline: photo.isMarkedOfflineAvailable && photo.isDownloaded,
+            isAvailableOffline: photo.isMarkedOfflineAvailable && photo.isDownloaded && photo.children.allSatisfy { $0.isDownloaded },
             isDownloading: photo.isMarkedOfflineAvailable,
             burstChildrenCount: photo.canBeBurstPhoto ? photo.children.count : nil,
             isFavorite: (photo.tags ?? []).contains(PhotoTag.favorites.rawValue)

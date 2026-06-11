@@ -44,7 +44,7 @@ class MoveViewModel: ObservableObject, FinderViewModel, HasRefreshControl, Fetch
     let isSharedWithMe = false
     let isRoot: Bool = false
     let hasPlusFunctionality = false
-    let topBanner: String? = nil
+    var currentTab: TabBarItem?
 
     var nodeName: String {
         guard let node = node else {
@@ -129,6 +129,8 @@ class MoveViewModel: ObservableObject, FinderViewModel, HasRefreshControl, Fetch
         self.subscribeToChildren()
         self.subscribeToLayoutChanges()
     }
+
+    func reportListIsShown() {}
 }
 
 extension MoveViewModel: CancellableStoring { }

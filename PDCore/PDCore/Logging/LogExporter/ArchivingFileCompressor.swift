@@ -46,7 +46,11 @@ public final class ArchivingFileCompressor: FileLogRotator {
                 try processFile(file)
             }
         } catch {
-            SentryClient.shared.recordError("LogCollectionError 😵🗂️. Failed to list files in directory: \(error)")
+            SentryClient.shared.recordError(
+                "LogCollectionError 😵🗂️. Failed to list files in directory: \(error)",
+                system: .default,
+                domain: .logs
+            )
         }
     }
 
@@ -57,7 +61,7 @@ public final class ArchivingFileCompressor: FileLogRotator {
 
         if let lastZip = existingZips.last,
            let existingSize = lastZip.fileSize,
-           let archive = try? Archive(url: lastZip, accessMode: .update) {
+           let archive = try? Archive(url: lastZip, accessMode: .update, pathEncoding: nil) {
 
             let sizeMBExisting = Double(existingSize) / (1024 * 1024)
 

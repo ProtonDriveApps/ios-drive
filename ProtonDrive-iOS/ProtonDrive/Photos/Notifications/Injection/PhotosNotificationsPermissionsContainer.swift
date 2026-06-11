@@ -25,15 +25,14 @@ final class PhotosNotificationsPermissionsContainer {
 
     init(
         tower: Tower,
-        windowScene: UIWindowScene,
         backupAvailableController: PhotosBackupUploadAvailableController,
         flowController: NotificationsPermissionsFlowController
     ) {
         controller = PhotosNotificationsPermissionsFactory().makeController(tower: tower, flowController: flowController, backupAvailableController: backupAvailableController)
-        startPermissionsCoordinator(flowController: flowController, windowScene: windowScene)
+        startPermissionsCoordinator(flowController: flowController)
     }
 
-    private func startPermissionsCoordinator(flowController: NotificationsPermissionsFlowController, windowScene: UIWindowScene) {
+    private func startPermissionsCoordinator(flowController: NotificationsPermissionsFlowController) {
         #if DEBUG
         if DebugConstants.commandLineContains(flags: [.uiTests, .skipNotificationPermissions]) {
             return
@@ -41,6 +40,6 @@ final class PhotosNotificationsPermissionsContainer {
         #endif
         
         let commonFactory = NotificationsPermissionsFactory()
-        coordinator = commonFactory.makePermissionsCoordinator(controller: controller, flowController: flowController, windowScene: windowScene, type: .photos)
+        coordinator = commonFactory.makePermissionsCoordinator(controller: controller, flowController: flowController, type: .photos)
     }
 }

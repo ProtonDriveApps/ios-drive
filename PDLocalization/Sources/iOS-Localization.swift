@@ -113,9 +113,21 @@ public class Localization {
     /// "%d album shared with you"
     public static func albums_pending_invitations_specific_title(count: Int) -> String { String(format: localized(key: "albums_pending_invitations_specific_title", table: "iOS-Localizable"), count) }
 
+    /// "Button to export all logs "
+    /// "All logs"
+    public static var all_logs_button: String { localized(key: "all_logs_button", table: "iOS-Localizable") }
+
     /// "Text shown on the welcome page when user is not logged in "
     /// "The convenience of cloud storage and the security of encryption technology. Finally a cloud storage solution you can trust."
     public static var authentication_welcome_text: String { localized(key: "authentication_welcome_text", table: "iOS-Localizable") }
+
+    /// "Enable auto lock when app is launched "
+    /// "After launch"
+    public static var auto_lock_timeout_after_launch: String { localized(key: "auto_lock_timeout_after_launch", table: "iOS-Localizable") }
+
+    /// "Always enable auto lock"
+    /// "Always"
+    public static var auto_lock_timeout_always: String { localized(key: "auto_lock_timeout_always", table: "iOS-Localizable") }
 
     /// "Text to indicate downloading"
     /// "Downloading files..."
@@ -132,6 +144,18 @@ public class Localization {
     /// "Title of available offline page"
     /// "Available offline"
     public static var available_offline_title: String { localized(key: "available_offline_title", table: "iOS-Localizable") }
+
+    /// "Alert action for clearing locally cached files in the app"
+    /// "Clear content cache"
+    public static var cached_clear_content_action: String { localized(key: "cached_clear_content_action", table: "iOS-Localizable") }
+
+    /// "Alert message for clearing locally cached files in the app"
+    /// "Are you sure you want to clear content cache? This will also remove your offline available content."
+    public static var cached_clear_content_message: String { localized(key: "cached_clear_content_message", table: "iOS-Localizable") }
+
+    /// "Alert title for clearing locally cached files in the app"
+    /// "Clear content cache"
+    public static var cached_clear_content_title: String { localized(key: "cached_clear_content_title", table: "iOS-Localizable") }
 
     /// "Alert message displayed when required permissions are missing."
     /// "Change app permissions in Settings"
@@ -257,9 +281,45 @@ public class Localization {
     /// "We cannot read contents of this folder"
     public static var disconnection_folder_message: String { localized(key: "disconnection_folder_message", table: "iOS-Localizable") }
 
-    /// "Title shown in the view when device is disconnected"
-    /// "Your device has no connection"
-    public static var disconnection_view_title: String { localized(key: "disconnection_view_title", table: "iOS-Localizable") }
+    /// "Action title to apply selected action to all duplicated items "
+    /// "Apply to all duplicates"
+    public static var duplication_handler_action_apply_all: String { localized(key: "duplication_handler_action_apply_all", table: "iOS-Localizable") }
+
+    /// "Action description"
+    /// "Keep both items"
+    public static var duplication_handler_action_desc_keep_both: String { localized(key: "duplication_handler_action_desc_keep_both", table: "iOS-Localizable") }
+
+    /// "Action description"
+    /// "Replace the existing item with the new one"
+    public static var duplication_handler_action_desc_replace: String { localized(key: "duplication_handler_action_desc_replace", table: "iOS-Localizable") }
+
+    /// "Action description"
+    /// "Don’t upload this item"
+    public static var duplication_handler_action_desc_skip: String { localized(key: "duplication_handler_action_desc_skip", table: "iOS-Localizable") }
+
+    /// "Action for moving to the next duplicated item"
+    /// "Continue"
+    public static var duplication_handler_action_title_continue: String { localized(key: "duplication_handler_action_title_continue", table: "iOS-Localizable") }
+
+    /// "Action title for keeping existing and new item"
+    /// "Keep Both"
+    public static var duplication_handler_action_title_keep_both: String { localized(key: "duplication_handler_action_title_keep_both", table: "iOS-Localizable") }
+
+    /// "Action title for replacing an existing item with a new one"
+    /// "Replace"
+    public static var duplication_handler_action_title_replace: String { localized(key: "duplication_handler_action_title_replace", table: "iOS-Localizable") }
+
+    /// "Action title for stopping upload new item"
+    /// "Skip"
+    public static var duplication_handler_action_title_skip: String { localized(key: "duplication_handler_action_title_skip", table: "iOS-Localizable") }
+
+    /// "Action sheet subtitle"
+    /// "An item named %1$(filename)@ already exists in this location"
+    public static func duplication_handler_view_subtitle(filename: String) -> String { String(format: localized(key: "duplication_handler_view_subtitle", table: "iOS-Localizable"), filename) }
+
+    /// "Action sheet title"
+    /// "Duplicate found"
+    public static var duplication_handler_view_title: String { localized(key: "duplication_handler_view_title", table: "iOS-Localizable") }
 
     /// "Placeholder of date picker"
     /// "Date"
@@ -634,6 +694,10 @@ public class Localization {
     /// "Done"
     public static var general_done: String { localized(key: "general_done", table: "iOS-Localizable") }
 
+    /// "Text to indicate a file is downloaded"
+    /// "Downloaded"
+    public static var general_downloaded: String { localized(key: "general_downloaded", table: "iOS-Localizable") }
+
     /// "Downloading"
     public static var general_downloading: String { localized(key: "general_downloading", table: "iOS-Localizable") }
 
@@ -792,6 +856,10 @@ public class Localization {
     /// "Upgrade"
     public static var general_upgrade: String { localized(key: "general_upgrade", table: "iOS-Localizable") }
 
+    /// "Button title. for example upload a file"
+    /// "Upload"
+    public static var general_upload: String { localized(key: "general_upload", table: "iOS-Localizable") }
+
     /// "Uploading"
     public static var general_uploading: String { localized(key: "general_uploading", table: "iOS-Localizable") }
 
@@ -861,6 +929,9 @@ public class Localization {
     /// "Report a problem"
     public static var menu_text_feedback: String { localized(key: "menu_text_feedback", table: "iOS-Localizable") }
 
+    /// "Home"
+    public static var menu_text_home: String { localized(key: "menu_text_home", table: "iOS-Localizable") }
+
     /// "Sign out"
     public static var menu_text_logout: String { localized(key: "menu_text_logout", table: "iOS-Localizable") }
 
@@ -887,6 +958,10 @@ public class Localization {
     /// "Trash"
     public static var menu_text_trash: String { localized(key: "menu_text_trash", table: "iOS-Localizable") }
 
+    /// "Action to download file to device"
+    /// "Download"
+    public static var more_action_download: String { localized(key: "more_action_download", table: "iOS-Localizable") }
+
     /// "Action to open file in some app"
     /// "Open in..."
     public static var more_action_open_in: String { localized(key: "more_action_open_in", table: "iOS-Localizable") }
@@ -895,17 +970,24 @@ public class Localization {
     /// "Move here"
     public static var move_action_move_here: String { localized(key: "move_action_move_here", table: "iOS-Localizable") }
 
+    /// "Document name"
+    public static var name_document_placeholder: String { localized(key: "name_document_placeholder", table: "iOS-Localizable") }
+
+    /// "Title view"
+    /// "Name your scan"
+    public static var name_document_title: String { localized(key: "name_document_title", table: "iOS-Localizable") }
+
     /// "Name for newly created document, timestamp is dynamic"
     /// "Untitled document %@"
     public static func new_document_title(timestamp: String) -> String { String(format: localized(key: "new_document_title", table: "iOS-Localizable"), timestamp) }
 
-    /// "Message on albums what\'s new page"
-    /// "Organize your memories with our new Albums feature. Filter by videos, favorites, and more—all with the end-to-end encryption you trust."
-    public static var new_feature_albums_desc: String { localized(key: "new_feature_albums_desc", table: "iOS-Localizable") }
+    /// "Message on scan document what\'s new page"
+    /// "Convert paper documents into encrypted PDFs.\nTap + in the top-right corner, then select Scan Document."
+    public static var new_feature_scanDoc_desc: String { localized(key: "new_feature_scanDoc_desc", table: "iOS-Localizable") }
 
-    /// "Title for albums what\'s new page"
-    /// "Photo albums are here!"
-    public static var new_feature_albums_title: String { localized(key: "new_feature_albums_title", table: "iOS-Localizable") }
+    /// "Title for scan document what\'s new page"
+    /// "Scan documents in one tap"
+    public static var new_feature_scanDoc_title: String { localized(key: "new_feature_scanDoc_title", table: "iOS-Localizable") }
 
     /// "Title for new feature promotion popup"
     /// "What\'s new!"
@@ -1157,6 +1239,14 @@ public class Localization {
     /// "Full preview of this format is not supported."
     public static var photo_preview_error_unsupported_format: String { localized(key: "photo_preview_error_unsupported_format", table: "iOS-Localizable") }
 
+    /// "An error text appears if the local file SHA-1 differs from the remote value"
+    /// "Please try again later."
+    public static var photo_preview_error_verification_text: String { localized(key: "photo_preview_error_verification_text", table: "iOS-Localizable") }
+
+    /// "An error title appears if the local file SHA-1 differs from the remote value"
+    /// "Download verification failed"
+    public static var photo_preview_error_verification_title: String { localized(key: "photo_preview_error_verification_title", table: "iOS-Localizable") }
+
     /// "Error title shown when video cannot be loaded"
     /// "Unable to load this video"
     public static var photo_preview_error_video_title: String { localized(key: "photo_preview_error_video_title", table: "iOS-Localizable") }
@@ -1313,6 +1403,16 @@ public class Localization {
     /// "Last updated: %@"
     public static func refresh_last_update(time: String) -> String { String(format: localized(key: "refresh_last_update", table: "iOS-Localizable"), time) }
 
+    /// "Button to remove selected photos from the album"
+    /// "Remove from album"
+    public static var remove_from_album_action: String { localized(key: "remove_from_album_action", table: "iOS-Localizable") }
+
+    /// "Enter your Proton username or email"
+    public static var report_bug_account_field_placeholder: String { localized(key: "report_bug_account_field_placeholder", table: "iOS-Localizable") }
+
+    /// "Proton Account user name or email"
+    public static var report_bug_account_field_title: String { localized(key: "report_bug_account_field_title", table: "iOS-Localizable") }
+
     /// "Add from files"
     public static var report_bug_attachment_field_add_from_files: String { localized(key: "report_bug_attachment_field_add_from_files", table: "iOS-Localizable") }
 
@@ -1331,6 +1431,15 @@ public class Localization {
 
     /// "Report a problem"
     public static var report_bug_button: String { localized(key: "report_bug_button", table: "iOS-Localizable") }
+
+    /// "Let us know where we can reach you"
+    public static var report_bug_email_field_placeholder: String { localized(key: "report_bug_email_field_placeholder", table: "iOS-Localizable") }
+
+    /// "Contact email address"
+    public static var report_bug_email_field_title: String { localized(key: "report_bug_email_field_title", table: "iOS-Localizable") }
+
+    /// "Please provide valid email address"
+    public static var report_bug_email_field_warning: String { localized(key: "report_bug_email_field_warning", table: "iOS-Localizable") }
 
     /// "Please describe your issue and include any error messages..."
     public static var report_bug_message_field_placeholder: String { localized(key: "report_bug_message_field_placeholder", table: "iOS-Localizable") }
@@ -1359,6 +1468,9 @@ public class Localization {
     /// "Decryption"
     public static var report_topic_decryption_title: String { localized(key: "report_topic_decryption_title", table: "iOS-Localizable") }
 
+    /// "Document"
+    public static var report_topic_docs_title: String { localized(key: "report_topic_docs_title", table: "iOS-Localizable") }
+
     /// "Encryption"
     public static var report_topic_encryption_title: String { localized(key: "report_topic_encryption_title", table: "iOS-Localizable") }
 
@@ -1376,6 +1488,9 @@ public class Localization {
 
     /// "Sharing"
     public static var report_topic_sharing_title: String { localized(key: "report_topic_sharing_title", table: "iOS-Localizable") }
+
+    /// "Spreadsheet"
+    public static var report_topic_sheets_title: String { localized(key: "report_topic_sheets_title", table: "iOS-Localizable") }
 
     /// "Error message displayed on the photo backup issue page"
     /// "Unable to connect to iCloud"
@@ -1437,6 +1552,10 @@ public class Localization {
     /// "Save shared photo"
     public static var save_shared_photo: String { localized(key: "save_shared_photo", table: "iOS-Localizable") }
 
+    /// "Button title to scan document"
+    /// "Scan document"
+    public static var scan_document_button: String { localized(key: "scan_document_button", table: "iOS-Localizable") }
+
     /// "Section title "
     /// "ABOUT"
     public static var setting_about: String { localized(key: "setting_about", table: "iOS-Localizable") }
@@ -1464,8 +1583,8 @@ public class Localization {
     /// "Biometry"
     public static var setting_biometry: String { localized(key: "setting_biometry", table: "iOS-Localizable") }
 
-    /// "Setting option to clear local cache"
-    /// "Clear local cache"
+    /// "Setting option to clear local cache (content)"
+    /// "Clear content cache"
     public static var setting_clear_local_cache: String { localized(key: "setting_clear_local_cache", table: "iOS-Localizable") }
 
     /// "Clear logs cache"
@@ -1510,6 +1629,10 @@ public class Localization {
     /// "Language"
     public static var setting_language: String { localized(key: "setting_language", table: "iOS-Localizable") }
 
+    /// "Title of latest logs view"
+    /// "Latest logs"
+    public static var setting_latest_logs: String { localized(key: "setting_latest_logs", table: "iOS-Localizable") }
+
     /// "Setting option to photo backup"
     /// "Photos backup"
     public static var setting_photo_backup: String { localized(key: "setting_photo_backup", table: "iOS-Localizable") }
@@ -1525,6 +1648,10 @@ public class Localization {
     /// "Title of security key page "
     /// "Security keys"
     public static var setting_security_key: String { localized(key: "setting_security_key", table: "iOS-Localizable") }
+
+    /// "Title of see latest logs row"
+    /// "See latest logs"
+    public static var setting_see_latest_logs: String { localized(key: "setting_see_latest_logs", table: "iOS-Localizable") }
 
     /// "Storage setting section title"
     /// "Storage"
@@ -1575,9 +1702,21 @@ public class Localization {
     /// "Terms of service"
     public static var setting_terms_of_service: String { localized(key: "setting_terms_of_service", table: "iOS-Localizable") }
 
+    /// "Option to enable photo backups using mobile data."
+    /// "Use mobile data to backup photos"
+    public static var setting_use_cellular_to_backup: String { localized(key: "setting_use_cellular_to_backup", table: "iOS-Localizable") }
+
     /// "Title of default home tab setting"
     /// "Default home tab"
     public static var settings_default_home_tab: String { localized(key: "settings_default_home_tab", table: "iOS-Localizable") }
+
+    /// "Action to save shared link as text file"
+    /// "Text file"
+    public static var shareExt_alert_action_textFile: String { localized(key: "shareExt_alert_action_textFile", table: "iOS-Localizable") }
+
+    /// "Alert message to user want to save the shared link as text file or discard"
+    /// "Save the link as"
+    public static var shareExt_alert_msg_save_link_as: String { localized(key: "shareExt_alert_msg_save_link_as", table: "iOS-Localizable") }
 
     /// "The action for coping share link"
     /// "Copy link"
@@ -1595,6 +1734,10 @@ public class Localization {
     /// "Save Burst"
     public static var share_action_save_burst_photo: String { localized(key: "share_action_save_burst_photo", table: "iOS-Localizable") }
 
+    /// "Action to save shared file in the current location"
+    /// "Save here"
+    public static var share_action_save_here: String { localized(key: "share_action_save_here", table: "iOS-Localizable") }
+
     /// "Action to save image"
     /// "Save Image"
     public static var share_action_save_image: String { localized(key: "share_action_save_image", table: "iOS-Localizable") }
@@ -1602,6 +1745,10 @@ public class Localization {
     /// "Action to save live photo"
     /// "Save Live Photo"
     public static var share_action_save_live_photo: String { localized(key: "share_action_save_live_photo", table: "iOS-Localizable") }
+
+    /// "Action title, save to {location}"
+    /// "Save to"
+    public static var share_action_save_to: String { localized(key: "share_action_save_to", table: "iOS-Localizable") }
 
     /// "The action for showing system share sheet"
     /// "Share"
@@ -2105,6 +2252,10 @@ public class Localization {
     /// "Something gone wrong, please try again later"
     public static var technical_error_placeholder: String { localized(key: "technical_error_placeholder", table: "iOS-Localizable") }
 
+    /// "Label text is shown when pull down"
+    /// "Pull to refresh"
+    public static var text_pull_to_refresh: String { localized(key: "text_pull_to_refresh", table: "iOS-Localizable") }
+
     /// "Button title for deleting item. e.g. Delete file, Delete item, Delete folder..etc"
     /// "Delete %@"
     public static func trash_action_delete_file_button(type: String) -> String { String(format: localized(key: "trash_action_delete_file_button", table: "iOS-Localizable"), type) }
@@ -2144,6 +2295,14 @@ public class Localization {
     /// "Title of the share folder when no items are trashed"
     /// "Trash is empty"
     public static var trash_empty_title: String { localized(key: "trash_empty_title", table: "iOS-Localizable") }
+
+    /// "An error if the user tries to save a file from the share extension without being logged in"
+    /// "Please authenticate before saving file(s)"
+    public static var universalLink_incoming_auth_error: String { localized(key: "universalLink_incoming_auth_error", table: "iOS-Localizable") }
+
+    /// "An error if the user opens ProtonFile without being logged in"
+    /// "Please authenticate before opening the file"
+    public static var universalLink_protonFile_auth_error: String { localized(key: "universalLink_protonFile_auth_error", table: "iOS-Localizable") }
 
     /// "View title shown on unlock app page "
     /// "Unlock App"
@@ -2245,6 +2404,10 @@ public class Localization {
     /// "Shown in tray app"
     /// "Detecting remote changes"
     public static var detecting_remote_changes: String { localized(key: "detecting_remote_changes", table: "shared-Localizable") }
+
+    /// "Title shown in the view when device is disconnected"
+    /// "Your device has no connection"
+    public static var disconnection_view_title: String { localized(key: "disconnection_view_title", table: "shared-Localizable") }
 
     /// "Gallery title to display the album gallery"
     /// "Albums"

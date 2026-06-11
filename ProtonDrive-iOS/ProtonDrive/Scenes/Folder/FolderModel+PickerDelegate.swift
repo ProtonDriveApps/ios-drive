@@ -17,6 +17,7 @@
 
 import UIKit
 import PDCore
+import PDCoreIOS
 import PDLocalization
 
 enum PickerError: Error, LocalizedError {
@@ -33,13 +34,13 @@ enum PickerError: Error, LocalizedError {
 }
 
 extension FolderModel: PickerDelegate {
-    func picker(didFinishPicking items: [URLResult]) {
+    public func picker(didFinishPicking items: [URLResult]) {
         var errors = [Error]()
         for item in items {
             switch item {
             case .success(let content):
                 do {
-                    try uploadFile(content, to: currentFolder)
+                    try upload(content: content)
                 } catch {
                     errors.append(error)
                 }
@@ -50,6 +51,21 @@ extension FolderModel: PickerDelegate {
         if !errors.isEmpty {
             let error = PickerError.importFailures(errors: errors)
             errorSubject.send(error)
+        }
+    }
+
+    private func upload(content: URLContent) throws {
+        guard let sdkUploader = tower.getSdkFileUploader() else {
+            try uploadFile(content, to: currentFolder)
+            return
+        }
+        let newFile = try tower.fileImporter.importFile(from: content.url, to: currentFolder, with: nil)
+        guard content.size == content.url.fileSize else {
+            assert(false, "Failed to create File")
+            throw URLConsistencyError.urlSizeMismatch
+        }
+        Task {
+            try await sdkUploader.upload(identifier: newFile.identifier.any())
         }
     }
 }

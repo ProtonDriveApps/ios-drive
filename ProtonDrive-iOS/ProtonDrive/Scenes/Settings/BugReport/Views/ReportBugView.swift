@@ -21,6 +21,7 @@ import ProtonCoreUIFoundations
 import PDUIComponents
 
 struct ReportBugView: View {
+    @EnvironmentObject var hostingProvider: ViewControllerProvider
     @StateObject var viewModel: ReportBugViewModel
     @State private var showDocumentPicker = false
     @State private var showImagePicker = false
@@ -41,6 +42,11 @@ struct ReportBugView: View {
         .onTapGesture {
             dismissKeyBoard()
         }
+        .onReceive(viewModel.reportedPublisher) { _ in
+            hostingProvider.viewController?.navigationController?.dismiss(animated: true, completion: {
+                self.viewModel.presentSuccessBanner()
+            })
+        }
         .sheet(isPresented: $showDocumentPicker) {
             BugDocumentPicker { selectMedia in
                 viewModel.updateMedia(selectMedia)
@@ -58,6 +64,8 @@ struct ReportBugView: View {
     private var formContent: some View {
         VStack(alignment: .leading, spacing: 20) {
             topicPickerField
+            usernameField
+            emailField
             messageField
             attachmentsField
             Spacer()
@@ -67,21 +75,67 @@ struct ReportBugView: View {
     private var topicPickerField: some View {
         BugReportFormField(label: viewModel.topicField.title) {
             HStack {
-                Spacer()
-                Picker("", selection: $viewModel.selectedTopic) {
+                Menu {
                     ForEach(viewModel.topicField.topics, id: \.self) { topic in
-                        Text(topic.name).tag(topic.rawValue)
+                        Button {
+                            viewModel.selectedTopic = topic
+                        } label: {
+                            Text(topic.name)
+                                .tint(ColorProvider.TextNorm)
+                        }
                     }
+                } label: {
+                    HStack {
+                        Text(viewModel.selectedTopic.name)
+                            .foregroundColor(ColorProvider.TextNorm)
+                        Spacer()
+                        IconProvider.chevronDown
+                            .foregroundColor(ColorProvider.IconNorm)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color.clear)
+                    .cornerRadius(8)
                 }
-                .frame(minWidth: 80)
-                .pickerStyle(MenuPickerStyle())
-                .padding(.trailing, 10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(ColorProvider.BrandNorm, lineWidth: 1)
+                )
             }
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(ColorProvider.BrandNorm, lineWidth: 1)
-            )
-            .tint(ColorProvider.TextNorm)
+        }
+    }
+
+    private var usernameField: some View {
+        BugReportFormField(label: viewModel.usernameField.title) {
+            VStack(alignment: .leading, spacing: 6) {
+                TextEditorWithPlaceholder(text: $viewModel.username, placeholder: viewModel.usernameField.placeholder)
+                    .padding(2)
+                    .frame(minHeight: 44, maxHeight: 200)
+                    .autocorrectionDisabled()
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(ColorProvider.BrandNorm, lineWidth: 1)
+                    )
+            }
+        }
+    }
+
+    private var emailField: some View {
+        BugReportFormField(label: viewModel.emailField.title) {
+            VStack(alignment: .leading, spacing: 6) {
+                TextEditorWithPlaceholder(text: $viewModel.email, placeholder: viewModel.emailField.placeholder)
+                    .padding(2)
+                    .frame(minHeight: 44, maxHeight: 200)
+                    .autocorrectionDisabled()
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(ColorProvider.BrandNorm, lineWidth: 1)
+                    )
+
+                Text(viewModel.emailField.warning)
+                    .font(.callout)
+                    .foregroundColor(ColorProvider.TextWeak)
+            }
         }
     }
 

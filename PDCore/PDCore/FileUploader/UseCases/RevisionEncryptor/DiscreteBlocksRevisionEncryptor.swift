@@ -60,11 +60,12 @@ final class DiscreteBlocksRevisionEncryptor: RevisionEncryptor {
                 self.progress.complete()
                 completion(.success)
             } catch BlockGenerationError.cancelled {
+                Log.info("STAGE: 1.2 Encrypt blocks 📦📦 cancelled ⚠️", domain: .uploader)
                 onCancelBlocksCleanUp()
                 // why wasn't the completion block called before?
                 completion(.failure(BlockGenerationError.cancelled))
             } catch {
-                Log.info("STAGE: 1.2 Encrypt blocks 📦📦 finished ❌", domain: .uploader)
+                Log.error("STAGE: 1.2 Encrypt blocks 📦📦 finished ❌", error: error, domain: .uploader)
                 let userError = mapToUserError(error: error)
                 completion(.failure(userError))
             }
@@ -122,13 +123,17 @@ extension DiscreteBlocksRevisionEncryptor {
     private func getSignersKit(for revision: Revision) throws -> SignersKit {
         guard !isCancelled else { throw BlockGenerationError.cancelled }
 #if os(macOS)
-        guard let signatureAddress = revision.signatureAddress else {
-            throw RevisionEncryptorError.noSignatureEmailInRevision
+        func getSignatureAddress() throws -> String {
+            guard let signatureAddress = revision.signatureAddress else {
+                throw RevisionEncryptorError.noSignatureEmailInRevision
+            }
+            return signatureAddress
         }
-        return try signersKitFactory.make(forSigner: .address(signatureAddress))
+        
+        return try revision.file.getContextShareAddressBasedSignersKit(signersKitFactory: self.signersKitFactory,
+                                                                       fallbackSigner: .address(getSignatureAddress()))
 #else
-        let addressID = try revision.file.getContextShareAddressID()
-        return try signersKitFactory.make(forAddressID: addressID)
+        return try revision.file.getContextShareAddressBasedSignersKit(signersKitFactory: signersKitFactory)
 #endif
     }
 

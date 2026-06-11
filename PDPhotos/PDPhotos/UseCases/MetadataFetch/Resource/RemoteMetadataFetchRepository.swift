@@ -20,7 +20,7 @@ import PDClient
 import PDCore
 
 public protocol RemoteMetadataFetchRepositoryProtocol {
-    func fetch(identifiers: [AnyVolumeIdentifier]) async throws -> [AnyVolumeIdentifier]
+    func fetch(identifiers: [AnyVolumeIdentifier], forceToRefresh: Bool) async throws -> [AnyVolumeIdentifier]
 }
 
 final class RemoteMetadataFetchRepository: RemoteMetadataFetchRepositoryProtocol {
@@ -32,8 +32,14 @@ final class RemoteMetadataFetchRepository: RemoteMetadataFetchRepositoryProtocol
         self.client = client
     }
 
-    func fetch(identifiers: [AnyVolumeIdentifier]) async throws -> [AnyVolumeIdentifier] {
-        let (fetchedIDs, remoteIDs) = await classify(identifiers: identifiers)
+    func fetch(identifiers: [AnyVolumeIdentifier], forceToRefresh: Bool) async throws -> [AnyVolumeIdentifier] {
+        let fetchedIDs, remoteIDs: [AnyVolumeIdentifier]
+        if forceToRefresh {
+            fetchedIDs = []
+            remoteIDs = identifiers
+        } else {
+            (fetchedIDs, remoteIDs) = await classify(identifiers: identifiers)
+        }
         let chunks = remoteIDs.splitIntoChunksByVolume()
         let links = try await withThrowingTaskGroup(of: [Link].self) { [weak self] taskGroup in
             for chunk in chunks {

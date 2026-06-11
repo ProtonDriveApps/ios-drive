@@ -18,6 +18,6 @@
 import Foundation
 
 protocol NetworkConstrained {
-    var networkMonitor: NetworkStateResource { get set }
+    var networkMonitor: ConnectionStateResource { get set }
     var isNetworkReachable: Bool { get set }
 }

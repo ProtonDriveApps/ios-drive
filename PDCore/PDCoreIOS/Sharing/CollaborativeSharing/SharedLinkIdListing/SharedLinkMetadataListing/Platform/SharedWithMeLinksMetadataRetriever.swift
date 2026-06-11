@@ -18,20 +18,27 @@
 import Foundation
 import PDClient
 import PDCore
+import PDContacts
 
 public final class SharedWithMeLinksMetadataRetriever: SharedLinkRetriever {
     private let remoteShareDataSource: RemoteShareMetadataDataSource
     private let remoteLinksDataSource: RemoteLinksMetadataByVolumeDataSource
     private let sharedWithMeLinksCache: SharedWithMeMetadataCache
+    private let contactsController: ContactsControllerProtocol
+    private let keysVault: ForeignKeysVault
 
     public init(
         remoteShareDataSource: RemoteShareMetadataDataSource,
         remoteLinksDataSource: RemoteLinksMetadataByVolumeDataSource,
-        sharedWithMeLinksCache: SharedWithMeMetadataCache
+        sharedWithMeLinksCache: SharedWithMeMetadataCache,
+        contactsController: ContactsControllerProtocol,
+        keysVault: ForeignKeysVault
     ) {
         self.remoteShareDataSource = remoteShareDataSource
         self.remoteLinksDataSource = remoteLinksDataSource
         self.sharedWithMeLinksCache = sharedWithMeLinksCache
+        self.contactsController = contactsController
+        self.keysVault = keysVault
     }
 
     public func retrieve(dataSource: SharedLinkIdDataSource) async throws {
@@ -46,17 +53,44 @@ public final class SharedWithMeLinksMetadataRetriever: SharedLinkRetriever {
         }
 
         let sharedGroups = links.groupByVolume(maxSize: 50)
+        var allEmails = Set<String>()
 
         for sharedGroup in sharedGroups {
             do {
-                try await self.processBootstrap(for: sharedGroup)
+                let links = try await self.cacheMetadata(for: sharedGroup)
+                let emails = links.compactMap { $0.nameSignatureEmail }
+                allEmails.formUnion(emails)
             } catch {
                 Log.error("Failed to process shared group for volume \(sharedGroup.volumeId)", error: error, domain: .sharing)
             }
         }
+
+        await synchronizeForeignPublicKeys(emails: allEmails)
     }
 
-    private func processBootstrap(for volumeGroup: VolumeGroup) async throws {
+    private func synchronizeForeignPublicKeys(emails: Set<String>) async {
+        let foreignKeys = await withTaskGroup(of: (String, [PublicKey]).self) { group in
+            for email in emails {
+                group.addTask {
+                    let keys = try? await self.contactsController.fetchInternalPublicKeys(email: email)
+                    let publicKeys = (keys ?? []).map(\.publicKey)
+                    return (email.canonicalEmailForm, publicKeys)
+                }
+            }
+
+            var foreignPublicKeys = [String: [PublicKey]]()
+            // Collect all results from the task group
+            for await item in group {
+                foreignPublicKeys[item.0] = item.1
+            }
+            return foreignPublicKeys
+        }
+        await MainActor.run {
+            keysVault.storeForeignPublicKeys(foreignKeys)
+        }
+    }
+
+    private func cacheMetadata(for volumeGroup: VolumeGroup) async throws -> [Link] {
         let linkIds = volumeGroup.items.map(\.linkId)
         let items = volumeGroup.items
         let volumeId = volumeGroup.volumeId
@@ -80,6 +114,8 @@ public final class SharedWithMeLinksMetadataRetriever: SharedLinkRetriever {
             }
             try await group.waitForAll()
         }
+
+        return linksResponse.links
     }
 }
 

@@ -64,6 +64,7 @@ class DefaultFileDraftCreator: FileDraftCreator {
             } else if error is NSManagedObject.NoMOCError {
                 completion(.failure(error))
             } else {
+                Log.error("Create file draft failed", error: error, domain: .uploader)
                 let userError = PhotosFailureUserError.encryptionFailed
                 completion(.failure(userError))
             }
@@ -120,7 +121,9 @@ class DefaultFileDraftCreator: FileDraftCreator {
         
         try moc.performAndWait { [weak self] in
             guard let self, !self.isCancelled else { return }
-            
+            #if os(iOS)
+            updateThumbnailDataLocation(file: file, uploaded: uploaded)
+            #endif
             file.id = uploaded.fileID
             file.activeRevisionDraft?.id = uploaded.revisionID
             
@@ -132,5 +135,28 @@ class DefaultFileDraftCreator: FileDraftCreator {
             try moc.saveOrRollback()
         }
     }
-    
+
+    #if os(iOS)
+    /// Move clear thumbnail data form temp location to real location after getting node identifier
+    private func updateThumbnailDataLocation(file: File, uploaded: RemoteUploadedNewFile) {
+        guard let revision = file.activeRevisionDraft else { return }
+        var pathPair: [(URL, URL)] = []
+        for thumbnail in revision.thumbnails {
+            let identifier = file.identifierWithinManagedObjectContext
+            guard let tempURL = PDFileManager.thumbnailURL(for: identifier, type: thumbnail.type) else { continue }
+            let nodeID = NodeIdentifier(uploaded.fileID, identifier.shareID, identifier.volumeID)
+            let realURL = PDFileManager
+                .createThumbnailURL(for: nodeID, type: thumbnail.type, storageType: .temporary)
+            pathPair.append((tempURL, realURL))
+        }
+
+        DispatchQueue.global().async {
+            let fileManager = FileManager.default
+            for (tempURL, realURL) in pathPair {
+                guard fileManager.fileExists(atPath: tempURL.path) else { continue }
+                try? fileManager.moveItem(at: tempURL, to: realURL)
+            }
+        }
+    }
+    #endif
 }

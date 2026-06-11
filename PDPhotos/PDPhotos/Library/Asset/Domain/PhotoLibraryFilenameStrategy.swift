@@ -28,7 +28,7 @@ public final class LocalPhotoLibraryFilenameStrategy: PhotoLibraryFilenameStrate
     public func makeModifiedFilename(originalFilename: String, filenameExtension: String) -> String {
         // Doing this to keep consistency between original & modified files
         if originalFilename.fileExtension != filenameExtension {
-            Log.debug("Using original filename's extension \(originalFilename.fileExtension) instead of the current one \(filenameExtension).", domain: .photosProcessing)
+            Log.debug("This is a modified asset and has a different extension \(filenameExtension) than the original photo \(originalFilename.fileExtension)", domain: .photosProcessing)
         }
         let filenameWithoutExtension = originalFilename.fileName
         let filename = [filenameWithoutExtension, "modified"].joinedNonEmpty(separator: "_")

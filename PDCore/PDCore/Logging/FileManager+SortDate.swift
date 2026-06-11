@@ -39,7 +39,7 @@ extension FileManager {
         }
 
         guard let date = attributes[.creationDate] as? Date else {
-            Log.error("Failed to get creationDate attribute", domain: .fileManager, context: LogContext("File: \(url .path)"))
+            Log.error("Failed to get creationDate attribute", domain: .fileManager)
             return nil
         }
         return date

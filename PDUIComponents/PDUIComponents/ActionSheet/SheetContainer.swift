@@ -26,9 +26,17 @@ public struct SheetContainer<Content: View>: View {
     @State private var tabViewHeight: CGFloat?
     @State private var verticalOffset: CGFloat = 0
     private var contentView: Content
+    private var isBackgroundTapDismissEnabled: Bool
+    private var isDragDismissEnabled: Bool
 
-    public init(contentView: Content) {
+    public init(
+        contentView: Content,
+        isBackgroundTapDismissEnabled: Bool = true,
+        isDragDismissEnabled: Bool = true
+    ) {
         self.contentView = contentView
+        self.isBackgroundTapDismissEnabled = isBackgroundTapDismissEnabled
+        self.isDragDismissEnabled = isDragDismissEnabled
     }
 
     public var body: some View {
@@ -38,7 +46,9 @@ public struct SheetContainer<Content: View>: View {
                     .ignoresSafeArea(.all)
                     .opacity(opacity)
                     .onTapGesture {
-                        dismiss()
+                        if isBackgroundTapDismissEnabled {
+                            dismiss()
+                        }
                     }
 
                 VStack(spacing: 0) {
@@ -52,24 +62,7 @@ public struct SheetContainer<Content: View>: View {
                 }
                 .offset(y: verticalOffset)
                 .offset(y: isVisible ? 0 : geometry.size.height)
-                .gesture(
-                    DragGesture(minimumDistance: 1)
-                        .onChanged { value in
-                            let horizontalOffset = value.translation.width
-                            let verticalOffset = value.translation.height
-                            guard abs(verticalOffset) > abs(horizontalOffset) else { return }
-                            self.verticalOffset = max(0, verticalOffset)
-                        }
-                        .onEnded { value in
-                            if value.predictedEndTranslation.height > geometry.size.height - 50 {
-                                dismiss()
-                            } else {
-                                withAnimation(.spring()) {
-                                    verticalOffset = 0
-                                }
-                            }
-                        }
-                )
+                .gesture(dragGesture(geometry: geometry))
 
             }
             .ignoresSafeArea()
@@ -80,6 +73,27 @@ public struct SheetContainer<Content: View>: View {
                 }
             })
         })
+    }
+
+    private func dragGesture(geometry: GeometryProxy) -> some Gesture {
+        DragGesture(minimumDistance: 1)
+            .onChanged { value in
+                guard isDragDismissEnabled else { return }
+                let horizontalOffset = value.translation.width
+                let verticalOffset = value.translation.height
+                guard abs(verticalOffset) > abs(horizontalOffset) else { return }
+                self.verticalOffset = max(0, verticalOffset)
+            }
+            .onEnded { value in
+                guard isDragDismissEnabled else { return }
+                if value.predictedEndTranslation.height > geometry.size.height - 50 {
+                    dismiss()
+                } else {
+                    withAnimation(.spring()) {
+                        verticalOffset = 0
+                    }
+                }
+            }
     }
 
     @ViewBuilder

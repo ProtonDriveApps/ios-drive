@@ -25,9 +25,11 @@ final class PDFThumbnailProvider: ThumbnailProvider {
         self.next = next
     }
 
-    func getThumbnail(from url: URL, ofSize size: CGSize) -> Image? {
-        guard MimeType(fromFileExtension: url.pathExtension) == .pdf else {
-            return next?.getThumbnail(from: url, ofSize: size)
+    func getThumbnail(from url: URL, overrideMediaType: String?, ofSize size: CGSize) -> Image? {
+        let mimeType = overrideMediaType.flatMap { MimeType(value: $0) } ?? MimeType(fromFileExtension: url.pathExtension)
+
+        guard mimeType == .pdf else {
+            return next?.getThumbnail(from: url, overrideMediaType: overrideMediaType, ofSize: size)
         }
 
         let document = PDFDocument(url: url)?.page(at: .zero)

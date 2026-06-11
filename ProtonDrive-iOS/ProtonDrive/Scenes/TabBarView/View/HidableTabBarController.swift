@@ -30,7 +30,7 @@ final class HidableTabBarController: UITabBarController, UITabBarControllerDeleg
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
         setViewControllers(children, animated: false)
-        let homeTabTag = viewModel.defaultHomeTab
+        let homeTabTag = viewModel.currentTabItem.tag
         let currentTab = TabBarItem(rawValue: homeTabTag)?.title ?? "unknown"
         Log.info("[TabBar] Initial tab at launch: \(currentTab), total tabs: \(children.count)", domain: .userAction)
         guard let selectedViewController = children.first(where: { $0.tabBarItem.tag == homeTabTag }) else { return }
@@ -101,6 +101,7 @@ final class HidableTabBarController: UITabBarController, UITabBarControllerDeleg
     }
 
     override func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
+        viewModel.reportPerformance(selectedIndex: item.tag)
         viewModel.selectTab(tag: item.tag)
     }
 
@@ -110,7 +111,7 @@ final class HidableTabBarController: UITabBarController, UITabBarControllerDeleg
           #available (iOS 18.0, *),
           UIDevice.current.userInterfaceIdiom == .pad
         else { return }
-//        mode = .tabBar
+
         traitOverrides.horizontalSizeClass = .compact
         view.addSubview(tabBar)
         let tabContainerClassName = "_UITabContainerView"

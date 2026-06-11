@@ -21,7 +21,7 @@ import PDPhotos
 import SwiftUI
 
 struct PhotosDiagnosticsFactory {
-    func makeView(tower: Tower, settingsController: PhotoBackupSettingsController) -> AnyView {
+    func makeView(tower: Tower, settingsController: PhotoBackupSettingsController) -> PhotosDiagnosticsView<PhotosDiagnosticsViewModel> {
         let dumpInteractor = TreeDumpInteractorFactory().make(sorter: { $0 < $1 }, obfuscator: { _ in })
         let interactor = PhotosDiagnosticsInteractor(
             libraryRepository: makeLibraryDumpRepository(settingsController: settingsController),
@@ -36,7 +36,7 @@ struct PhotosDiagnosticsFactory {
 
         let facade = ConcretePhotosDiagnosticsFacade(interactor: interactor)
         let diagnosticsViewModel = PhotosDiagnosticsViewModel(facade: facade)
-        return PhotosDiagnosticsView(viewModel: diagnosticsViewModel).any()
+        return PhotosDiagnosticsView(viewModel: diagnosticsViewModel)
     }
 
     private func makeLibraryDumpRepository(settingsController: PhotoBackupSettingsController) -> TreeRepository {

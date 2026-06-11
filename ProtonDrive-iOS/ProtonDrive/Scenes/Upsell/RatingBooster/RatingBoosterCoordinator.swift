@@ -24,13 +24,10 @@ protocol RatingBoosterCoordinatorProtocol {
 }
 
 final class RatingBoosterCoordinator: RatingBoosterCoordinatorProtocol {
-    private let windowScene: UIWindowScene
-    
-    init(windowScene: UIWindowScene) {
-        self.windowScene = windowScene
-    }
-    
     func presentRatingPopup() {
+        guard let windowScene = UIApplication.shared.getActiveWindowScene() else {
+            return
+        }
         Task {
             await AppStore.requestReview(in: windowScene)
         }

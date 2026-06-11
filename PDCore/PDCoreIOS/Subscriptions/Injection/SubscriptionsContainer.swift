@@ -25,11 +25,13 @@ public final class SubscriptionsContainer {
         let tower: Tower
         let keymaker: Keymaker
         let networkService: PMAPIService
+        let featureFlagsController: FeatureFlagsControllerProtocol
 
-        public init(tower: Tower, keymaker: Keymaker, networkService: PMAPIService) {
+        public init(tower: Tower, keymaker: Keymaker, networkService: PMAPIService, featureFlagsController: FeatureFlagsControllerProtocol) {
             self.tower = tower
             self.keymaker = keymaker
             self.networkService = networkService
+            self.featureFlagsController = featureFlagsController
         }
     }
 
@@ -41,6 +43,11 @@ public final class SubscriptionsContainer {
 
     public func makeRootViewController() -> UIViewController {
         let factory = SubscriptionsFactory()
-        return factory.makeRootViewController(tower: dependencies.tower, keymaker: dependencies.keymaker, networkService: dependencies.networkService)
+        return factory.makeRootViewController(
+            tower: dependencies.tower,
+            keymaker: dependencies.keymaker,
+            networkService: dependencies.networkService,
+            featureFlagsController: dependencies.featureFlagsController
+        )
     }
 }

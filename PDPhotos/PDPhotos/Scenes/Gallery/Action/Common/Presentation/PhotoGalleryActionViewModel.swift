@@ -34,7 +34,8 @@ final class PhotoGalleryActionViewModel: BasePhotosActionViewModel, PhotosAction
         favoritingController: any FavoritingControllerProtocol,
         trashDialogFactory: any TrashDialogFactoryProtocol,
         userMessageHandler: any UserMessageHandlerProtocol,
-        streamConfiguration: PhotoStreamConfiguration
+        streamConfiguration: PhotoStreamConfiguration,
+        configuration: PhotosRootConfiguration
     ) {
         self.streamConfiguration = streamConfiguration
 
@@ -47,7 +48,8 @@ final class PhotoGalleryActionViewModel: BasePhotosActionViewModel, PhotosAction
             metadataController: metadataController,
             favoritingController: favoritingController,
             trashDialogFactory: trashDialogFactory,
-            userMessageHandler: userMessageHandler
+            userMessageHandler: userMessageHandler,
+            configuration: configuration
         )
     }
 
@@ -71,14 +73,12 @@ final class PhotoGalleryActionViewModel: BasePhotosActionViewModel, PhotosAction
     }
 
     func allSelectionActions(for ids: Set<AnyVolumeIdentifier>) -> Set<PhotosAction> {
-        var actions: Set<PhotosAction> = [.availableOffline, .trash]
-
-        if featureFlagsController.hasAlbumsActions && !streamConfiguration.isLegacyShare {
-            actions.insert(.toggleFavorite)
-            actions.insert(.createAlbum)
-        }
-
-        return actions
+        return [
+            .availableOffline,
+            .trash,
+            .toggleFavorite,
+            .createAlbum
+        ]
     }
 
     func singleSelectionActions(for ids: Set<AnyVolumeIdentifier>) -> Set<PhotosAction> {
@@ -100,7 +100,7 @@ final class PhotoGalleryActionViewModel: BasePhotosActionViewModel, PhotosAction
 
         var actions: Set<PhotosAction> = []
 
-        if featureFlagsController.hasAlbumsActions && hasAlbumsSharing() {
+        if hasSharing() {
             actions.insert(.shareMultiple)
         }
 
@@ -136,7 +136,7 @@ extension PhotoGalleryActionViewModel {
             break
         case .unFavorite:
             break
-        case .save:
+        case .save, .removeFromAlbum:
             break // not available in gallery context
         }
     }
@@ -150,7 +150,7 @@ extension PhotoGalleryActionViewModel {
             return
         }
 
-        if hasAlbumsSharing() {
+        if hasSharing() {
             coordinator.openShareToSheet(selectionController: selectionController)
         } else if let id = getSingleId() {
             coordinator.openShare(id: id)
@@ -195,7 +195,7 @@ extension PhotoGalleryActionViewModel {
         return .placeholder
     }
 
-    private func hasAlbumsSharing() -> Bool {
-        return featureFlagsController.hasAlbumsSharing && !streamConfiguration.isLegacyShare
+    private func hasSharing() -> Bool {
+        return featureFlagsController.hasSharing
     }
 }

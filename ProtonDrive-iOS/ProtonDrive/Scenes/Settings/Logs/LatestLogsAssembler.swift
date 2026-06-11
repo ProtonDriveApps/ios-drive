@@ -18,6 +18,7 @@
 import Foundation
 import PMSettings
 import PDCore
+import PDLocalization
 
 enum LatestLogsAssembler {
     static func assemble() -> PMCellSuplier {
@@ -27,7 +28,7 @@ enum LatestLogsAssembler {
             let url = PDFileManager.logsWorkingDirectory.appendingPathComponent("ch.proton.drive.ios.app.log", isDirectory: false)
             let vm = LatestLogsViewModel(url: url)
             let vc = LatestLogsViewController()
-            vc.title = "Latest logs"
+            vc.title = Localization.setting_latest_logs
             vc.viewModel = vm
             return vc
         }

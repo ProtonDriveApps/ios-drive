@@ -26,21 +26,24 @@ protocol TabBarChildrenFactoryProtocol {
 
 final class TabBarChildrenFactory: TabBarChildrenFactoryProtocol {
     private let visibilityPolicy: VisibilityPolicy
-    private let makeFilesViewControllerFactory: () -> UIViewController
-    private let makePhotosViewController: () -> UIViewController
-    private let makeSharedViewController: () -> UIViewController
-    private let makeSharedWithMeViewController: () -> UIViewController
-    private let makeComputersViewController: () -> UIViewController
+    private let deepLink: DeepLinkNotification?
+    private let makeFilesViewControllerFactory: (Deeplink?) -> UIViewController
+    private let makePhotosViewController: (Deeplink?) -> UIViewController
+    private let makeSharedViewController: (Deeplink?) -> UIViewController
+    private let makeSharedWithMeViewController: (Deeplink?) -> UIViewController
+    private let makeComputersViewController: (Deeplink?) -> UIViewController
 
     init(
         visibilityPolicy: VisibilityPolicy,
-        makeFilesViewControllerFactory: @escaping () -> UIViewController,
-        makePhotosViewController: @escaping () -> UIViewController,
-        makeSharedViewController: @escaping () -> UIViewController,
-        makeSharedWithMeViewController: @escaping () -> UIViewController,
-        makeComputersViewController: @escaping () -> UIViewController
+        deepLink: DeepLinkNotification?,
+        makeFilesViewControllerFactory: @escaping (Deeplink?) -> UIViewController,
+        makePhotosViewController: @escaping (Deeplink?) -> UIViewController,
+        makeSharedViewController: @escaping (Deeplink?) -> UIViewController,
+        makeSharedWithMeViewController: @escaping (Deeplink?) -> UIViewController,
+        makeComputersViewController: @escaping (Deeplink?) -> UIViewController
     ) {
         self.visibilityPolicy = visibilityPolicy
+        self.deepLink = deepLink
         self.makeFilesViewControllerFactory = makeFilesViewControllerFactory
         self.makePhotosViewController = makePhotosViewController
         self.makeSharedViewController = makeSharedViewController
@@ -50,27 +53,31 @@ final class TabBarChildrenFactory: TabBarChildrenFactoryProtocol {
 
     func makeChildren() -> [UIViewController] {
         var viewControllers: [UIViewController] = []
-
         // My Files is always shown
-        viewControllers.append(makeFilesViewControllerFactory())
+        viewControllers.append(makeFilesViewControllerFactory(deepLink(for: .files)))
 
         // Photos tab
         if visibilityPolicy.shouldShow(.photosTab) {
-            viewControllers.append(makePhotosViewController())
+            viewControllers.append(makePhotosViewController(deepLink(for: .photos)))
         }
 
         // Computers tab
         if visibilityPolicy.shouldShow(.computersTab) {
-            viewControllers.append(makeComputersViewController())
+            viewControllers.append(makeComputersViewController(deepLink(for: .computers)))
         }
 
         // Sharing tabs (mutually exclusive)
         if visibilityPolicy.shouldShow(.sharedWithMeTab) {
-            viewControllers.append(makeSharedWithMeViewController())
+            viewControllers.append(makeSharedWithMeViewController(deepLink(for: .sharedWithMe)))
         } else if visibilityPolicy.shouldShow(.sharedTab) {
-            viewControllers.append(makeSharedViewController())
+            viewControllers.append(makeSharedViewController(deepLink(for: .shared)))
         }
 
         return viewControllers
+    }
+
+    private func deepLink(for tab: TabBarItem) -> Deeplink? {
+        guard let deepLink, let linkTab = deepLink.tab else { return nil }
+        return tab.tag == linkTab.tag ? deepLink.link : nil
     }
 }

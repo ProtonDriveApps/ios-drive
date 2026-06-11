@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDCoreIOS
 
 final class PhotosCacheBootstrapper: AppBootstrapper {
     private let previousUserRepository: PreviouslyLoggedInUserRepositoryProtocol
@@ -27,20 +28,22 @@ final class PhotosCacheBootstrapper: AppBootstrapper {
     }
 
     func bootstrap() async throws {
-        let user = try previousUserRepository.getPreviousUser()
-        switch user {
-        case .differentUser:
-            // New user, need to replace the hash and wipe the photos cache
-            Log.info("Different user logged in, cleaning up photos cache", domain: .photosProcessing)
-            photosSkippableStorage.clean()
-            try previousUserRepository.storeCurrentUser()
-        case .sameUser:
-            // Same user is logged in, we can keep cache
-            Log.info("Same user logged in, keeping photos cache intact.", domain: .photosProcessing)
-        case .missingInfo:
-            // Happens when upgrading app from version 1.45.0 or new install 
-            Log.warning("There's no user hash stored, skipping photos cache cleanup", domain: .photosProcessing)
-            try previousUserRepository.storeCurrentUser()
+        try measure(message: "photos cache bootstrap", domain: .applicationBootstrap) {
+            let user = try previousUserRepository.getPreviousUser()
+            switch user {
+            case .differentUser:
+                // New user, need to replace the hash and wipe the photos cache
+                Log.info("Different user logged in, cleaning up photos cache", domain: .photosProcessing)
+                photosSkippableStorage.clean()
+                try previousUserRepository.storeCurrentUser()
+            case .sameUser:
+                // Same user is logged in, we can keep cache
+                Log.info("Same user logged in, keeping photos cache intact.", domain: .photosProcessing)
+            case .missingInfo:
+                // Happens when upgrading app from version 1.45.0 or new install
+                Log.warning("There's no user hash stored, skipping photos cache cleanup", domain: .photosProcessing)
+                try previousUserRepository.storeCurrentUser()
+            }
         }
     }
 }

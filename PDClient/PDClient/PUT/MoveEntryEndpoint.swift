@@ -18,7 +18,7 @@
 import Foundation
 
 public struct MoveEntryEndpoint: Endpoint {
-    public struct Parameters: Codable {
+    public struct Parameters: Codable, Sendable {
         public let Name: String
         public let NodePassphrase: String
         public let Hash: String

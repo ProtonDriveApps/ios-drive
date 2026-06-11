@@ -48,6 +48,17 @@ public class FileProviderEventsListener: EventsListener {
         // signaling is cheap so we will ping these every time
         self.manager?.signalEnumerator(for: .rootContainer, completionHandler: completion)
         self.manager?.signalEnumerator(for: .trashContainer, completionHandler: completion)
-        self.manager?.signalEnumerator(for: .workingSet, completionHandler: completion)
+        Log.event(.signalEnumerator(.started(.init(containerType: .workingSet, reason: .eventsApplied))))
+        self.manager?.signalEnumerator(for: .workingSet) { error in
+            if let error {
+                Log.event(.signalEnumerator(.failed(.init(
+                    id: NSFileProviderItemIdentifier.workingSet.logIdentifier,
+                    error: error.localizedDescription
+                ))))
+            } else {
+                Log.event(.signalEnumerator(.succeeded(.init(containerType: .workingSet, reason: .eventsApplied))))
+            }
+            completion(error)
+        }
     }
 }

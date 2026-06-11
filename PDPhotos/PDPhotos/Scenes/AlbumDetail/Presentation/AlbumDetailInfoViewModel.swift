@@ -38,10 +38,14 @@ final class AlbumDetailInfoViewModel: ObservableObject {
     @Published var isSaveAllLoading = false
 
     var canAddPhotos: Bool {
-        if albumRole == .admin { return true }
-        // Guarded by killswitch
-        if albumRole == .editor && dependencies.featureFlagsController.hasCopy { return true }
-        return false
+        switch albumRole {
+        case .viewer:
+            return false
+        case .editor, .admin:
+            return dependencies.featureFlagsController.hasCopy
+        case .owner:
+            return true
+        }
     }
 
     init(configuration: PhotosRootConfiguration, dependencies: Dependencies, shouldOpenInvitation: Bool) {
@@ -105,9 +109,9 @@ final class AlbumDetailInfoViewModel: ObservableObject {
         let date = dependencies.dateFormatter.string(from: album.lastActivityTime)
         info = "\(date) • \(Localization.item_plural_type_with_num(num: album.photoCount))"
         albumRole = album.role
-        isSharingAvailable = albumRole == .admin && dependencies.featureFlagsController.hasAlbumsSharing
+        isSharingAvailable = albumRole.canShare && dependencies.featureFlagsController.hasSharing
 
-        if albumRole == .admin, let shareID = album.shareID, !hasCheckedInvitation {
+        if albumRole.canShare, let shareID = album.shareID, !hasCheckedInvitation {
             hasCheckedInvitation = true
             dependencies.inviteeListLoadController.execute(shareID: shareID)
         }
@@ -117,7 +121,7 @@ final class AlbumDetailInfoViewModel: ObservableObject {
             tapShare()
         }
 
-        let canSaveAll = album.role != .admin && album.photoCount < 100
+        let canSaveAll = album.role != .owner && album.photoCount < 100
         saveAllButton = canSaveAll ? Localization.general_save_all : nil
     }
 }
