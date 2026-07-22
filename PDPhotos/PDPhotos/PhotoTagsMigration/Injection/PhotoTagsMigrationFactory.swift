@@ -28,7 +28,7 @@ public final class PhotoTagsMigrationFactory: MigrationCommandFactory {
     private let localSettings: LocalSettings
     private let client: Client
     private let downloader: Downloader
-    private let sdkDownloader: SDKFileDownloaderProtocol?
+    private let sdkDownloader: SDKFileDownloaderProtocol
     private let sessionVault: SessionVault
     private let storageManager: StorageManager
     private let listingDataSource: PhotosListingDataSource
@@ -47,7 +47,7 @@ public final class PhotoTagsMigrationFactory: MigrationCommandFactory {
         client: Client,
         sessionVault: SessionVault,
         downloader: Downloader,
-        sdkDownloader: SDKFileDownloaderProtocol?,
+        sdkDownloader: SDKFileDownloaderProtocol,
         listingDataSource: PhotosListingDataSource,
         photoUploadedNotifier: PhotoUploadedNotifier,
         lockConstraintController: PhotoBackupConstraintController,
@@ -90,7 +90,6 @@ public final class PhotoTagsMigrationFactory: MigrationCommandFactory {
 
         let fileContentResource = DecryptedPhotoContentResource(
             managedObjectContext: storageManager.photosBackgroundContext,
-            downloader: downloader,
             sdkDownloader: sdkDownloader,
             fetchResource: PhotoFetchResource(storage: storageManager),
             photoUploadedNotifier: photoUploadedNotifier,

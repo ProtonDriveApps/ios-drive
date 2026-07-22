@@ -102,14 +102,14 @@ public class FolderEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWit
             try self.reinitializeModelIfNeeded()
         } catch {
             observers.forEach { $0.finishEnumeratingWithError(Errors.mapLegacyErrorToFileProviderError(Errors.failedToCreateModel)) }
-            Log.event(.enumerateItems(.failed(.init(containerType: .folder(nodeID.nodeID), error: "Failed to enumerate items due to model failing to be created"))))
+            Log.event(.enumerateItems(.failed(.init(containerType: .folder(nodeID.nodeID), errorMessage: "Failed to enumerate items due to model failing to be created"))))
             return
         }
         
         self.model.loadFromCache()
         guard let moc = model.node.moc else {
             observers.forEach { $0.finishEnumeratingWithError(Errors.mapLegacyErrorToFileProviderError(Errors.failedToCreateModel)) }
-            Log.event(.enumerateItems(.failed(.init(containerType: .folder(nodeID.nodeID), error: "Failed to enumerate items due to model.node.moc being nil"))))
+            Log.event(.enumerateItems(.failed(.init(containerType: .folder(nodeID.nodeID), errorMessage: "Failed to enumerate items due to model.node.moc being nil"))))
             return
         }
 

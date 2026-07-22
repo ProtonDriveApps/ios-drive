@@ -109,7 +109,7 @@ public class SentryClient {
             // drop the logs from within the SentryClient file itself, to avoid the possible loop
             return
         }
-        var extra = logEntry.context?.context ?? [:]
+        var extra = logEntry.context?.jsonDictionary ?? [:]
         extra["callSite"] = "[\(logEntry.threadNumber)] \(logEntry.file).\(logEntry.function):\(logEntry.line)"
         let event = Event(level: logEntry.level.toSentryLevel)
         event.message = SentryMessage(formatted: logEntry.message)

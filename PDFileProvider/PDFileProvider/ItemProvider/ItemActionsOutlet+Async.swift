@@ -171,62 +171,12 @@ extension ItemActionsOutlet {
                         completionHandler(nil, [], false, CocoaError(.userCancelled))
                         return
                     }
-#if os(macOS)
                     completionHandler(nil, [], false, error)
-#else
-                    if let code = error.responseCode, code == 2500 {
-                        // A file or folder with that name already exists
-                        do {
-                            let availableName = try await self.findNextAvailableName(tower: tower, itemTemplate: itemTemplate, moc: moc)
-                            self.createItem(
-                                tower: tower,
-                                basedOn: itemTemplate,
-                                fields: fields,
-                                contents: url,
-                                options: options,
-                                request: request,
-                                filename: availableName,
-                                pool: pool,
-                                completionHandler: completionHandler
-                            )
-                        } catch {
-                            completionHandler(nil, [], false, error)
-                        }
-                    } else {
-                        completionHandler(nil, [], false, error)
-                    }
-#endif
                 }
             }
         }
         taskCancellation = { task.cancel() }
         return cancellingProgress
-    }
-
-    private func findNextAvailableName(tower: Tower, itemTemplate: NSFileProviderItem, moc: NSManagedObjectContext) async throws -> String? {
-        guard
-            let parent = await tower.parentFolder(of: itemTemplate, in: moc),
-            let context = parent.managedObjectContext
-        else {
-            Log.error("Can't find parent folder or context is nil", domain: .fileProvider)
-            return nil
-        }
-        guard let validNameDiscoverer else {
-            Log.error("Valid name discoverer is nil", domain: .fileProvider)
-            return nil
-        }
-        let (id, parentHashKey) = try await context.perform {
-            let id = parent.identifierWithinManagedObjectContext
-            let hashKey = try parent.decryptNodeHashKey()
-            return (id, hashKey)
-        }
-        let model = FileNameCheckerModel(
-            originalName: itemTemplate.filename,
-            parent: id,
-            parentNodeHashKey: parentHashKey
-        )
-        let namePair = try await validNameDiscoverer.findNextAvailableName(for: model)
-        return namePair.name
     }
 }
 // swiftlint:enable function_parameter_count

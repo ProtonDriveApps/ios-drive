@@ -25,8 +25,10 @@ import UIKit
 
 final class PhotosPreviewViewController<ViewModel: PhotosPreviewViewModelProtocol>: UIPageViewController, UIPageViewControllerDataSource, UIPageViewControllerDelegate {
     private let viewModel: ViewModel
+    private let actionViewModel: PhotosPreviewActionViewModel
     private let factory: PhotosPreviewDetailFactory
     private let actionViewController: UIViewController
+    private var overflowBarButtonItem: UIBarButtonItem?
     private var cancellables = Set<AnyCancellable>()
     private var interactionController: UIPercentDrivenInteractiveTransition?
     private let customTransitionDelegate = PhotosPreviewModalTransitioningDelegate()
@@ -34,8 +36,14 @@ final class PhotosPreviewViewController<ViewModel: PhotosPreviewViewModelProtoco
     private var actionViewBottomConstraint: NSLayoutConstraint?
     private var actionViewTopConstraint: NSLayoutConstraint?
 
-    init(viewModel: ViewModel, factory: PhotosPreviewDetailFactory, actionViewController: UIViewController) {
+    init(
+        viewModel: ViewModel,
+        actionViewModel: PhotosPreviewActionViewModel,
+        factory: PhotosPreviewDetailFactory,
+        actionViewController: UIViewController
+    ) {
         self.viewModel = viewModel
+        self.actionViewModel = actionViewModel
         self.factory = factory
         self.actionViewController = actionViewController
         super.init(transitionStyle: .scroll, navigationOrientation: .horizontal)
@@ -80,6 +88,13 @@ final class PhotosPreviewViewController<ViewModel: PhotosPreviewViewModelProtoco
             self?.handleUpdate()
         }
         .store(in: &cancellables)
+
+        actionViewModel.$actions
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] actions in
+                self?.updateOverflowMenu(actions.more)
+            }
+            .store(in: &cancellables)
 
         viewModel.resetPreviewPublisher
             .sink { [weak self] direction in
@@ -201,6 +216,30 @@ extension PhotosPreviewViewController {
         let isNavigationBarHidden = viewModel.mode == .default
         navigationController?.setNavigationBarHidden(!isNavigationBarHidden, animated: true)
         updateBottomActionView(isVisible: isNavigationBarHidden)
+        updateOverflowMenu(actionViewModel.actions.more)
+    }
+
+    private func updateOverflowMenu(_ actions: [PhotosAction]?) {
+        guard let actions, !actions.isEmpty else {
+            navigationItem.rightBarButtonItem = nil
+            return
+        }
+
+        let menuActions = PhotosActionBarMapping.makeUIActions(from: actions) { [weak self] action in
+            self?.actionViewModel.handle(action: action)
+        }
+        let menu = UIMenu(children: menuActions)
+
+        if overflowBarButtonItem == nil {
+            let barButtonItem = UIBarButtonItem(image: IconProvider.threeDotsHorizontal, menu: menu)
+            barButtonItem.accessibilityIdentifier = "PhotosPreview.Button.MoreSingle"
+            barButtonItem.tintColor = ColorProvider.IconNorm
+            overflowBarButtonItem = barButtonItem
+        } else {
+            overflowBarButtonItem?.menu = menu
+        }
+
+        navigationItem.rightBarButtonItem = overflowBarButtonItem
     }
 
     private func setupFirstPreview() {

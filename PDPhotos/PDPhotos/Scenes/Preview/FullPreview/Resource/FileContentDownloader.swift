@@ -33,8 +33,7 @@ protocol FileContentDownloader<FileType> {
 
 final class RemoteFileContentDownloader<T: File>: FileContentDownloader {
     typealias FileType = T
-    private let downloader: Downloader
-    private let sdkDownloader: SDKFileDownloaderProtocol?
+    private let sdkDownloader: SDKFileDownloaderProtocol
     private let managedObjectContext: NSManagedObjectContext
     private var capturedContinuations: [AnyVolumeIdentifier: CheckedContinuation<T, any Error>] = [:]
     private let performanceMetricsController: PerformanceMetricsControllerProtocol?
@@ -42,12 +41,10 @@ final class RemoteFileContentDownloader<T: File>: FileContentDownloader {
 
     init(
         managedObjectContext: NSManagedObjectContext,
-        downloader: Downloader,
         performanceMetricsController: PerformanceMetricsControllerProtocol?,
-        sdkDownloader: SDKFileDownloaderProtocol?
+        sdkDownloader: SDKFileDownloaderProtocol
     ) {
         self.managedObjectContext = managedObjectContext
-        self.downloader = downloader
         self.performanceMetricsController = performanceMetricsController
         self.sdkDownloader = sdkDownloader
     }
@@ -60,8 +57,7 @@ final class RemoteFileContentDownloader<T: File>: FileContentDownloader {
         capturedContinuations.values.forEach { $0.resume(throwing: FileContentResourceError.cancelled) }
         capturedContinuations = [:]
         if let id {
-            downloader.cancel(operationsOf: [id])
-            sdkDownloader?.cancel(operationsOf: [id.any()])
+            sdkDownloader.cancel(operationsOf: [id.any()])
         }
         self.id = nil
     }
@@ -95,34 +91,8 @@ final class RemoteFileContentDownloader<T: File>: FileContentDownloader {
             return file
         }
         
-        if let sdkDownloader {
-            _ = try await sdkDownloader.download(file: file.genericIdentifier)
-            return file
-        } else {
-            return try await downloadViaLegacy(file: file, cacheState: cacheState)
-        }
-    }
-
-    private func downloadViaLegacy(file: FileType, cacheState: [String: Bool]) async throws -> FileType {
-        return try await withCheckedThrowingContinuation { [weak self] continuation in
-            self?.managedObjectContext.perform {
-                self?.capturedContinuations[file.genericIdentifierWithinManagedObjectContext] = continuation
-                self?.downloader.scheduleDownloadWithBackgroundSupport(cypherdataFor: file) { result in
-                    guard let continuation = self?.capturedContinuations[file.genericIdentifier] else {
-                        return
-                    }
-                    self?.capturedContinuations[file.genericIdentifier] = nil
-                    switch result {
-                    case .success:
-                        // To ensure the object is within the same context,
-                        // return the file instead of the object associated with .success
-                        continuation.resume(returning: file)
-                    case .failure(let failure):
-                        continuation.resume(throwing: failure)
-                    }
-                }
-            }
-        }
+        _ = try await sdkDownloader.download(file: file.genericIdentifier)
+        return file
     }
 
     /// - Parameter files: Files need to be downloaded

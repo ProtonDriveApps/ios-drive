@@ -36,11 +36,11 @@ public extension ThumbnailProvider {
         return compressed
     }
 
-    func defaultThumbnailData(fileUrl: URL, overrideMediaType: String? = nil, ofSize: CGSize) -> Data? {
-        if let thumbnail = getThumbnail(from: fileUrl, overrideMediaType: overrideMediaType, ofSize: ofSize) {
+    func getThumbnailData(fileUrl: URL, overrideMediaType: String? = nil, ofSize size: ThumbnailSize) -> Data? {
+        if let thumbnail = getImage(from: fileUrl, overrideMediaType: overrideMediaType, ofSize: size.maxPixelSize) {
             return try? compress(
                 image: thumbnail,
-                maxThumbnailWeight: PDCore.Constants.thumbnailMaxWeight,
+                maxThumbnailWeight: size.maxBytesCount,
                 isCancelled: { Task.isCancelled }
             ).imageData
         }

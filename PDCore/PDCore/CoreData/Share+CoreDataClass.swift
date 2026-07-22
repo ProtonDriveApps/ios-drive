@@ -233,17 +233,17 @@ extension StorageManager {
     }
 
     @discardableResult
-    public func updateLinks(_ links: [PDClient.Link], in moc: NSManagedObjectContext) -> [Node] {
+    public func updateLinks(_ links: [PDClient.Link], isRootNodeOptional: Bool = false, in moc: NSManagedObjectContext) -> [Node] {
         var nodes: [Node] = []
         for link in links {
-            nodes.append(updateLink(link, using: moc))
+            nodes.append(updateLink(link, isRootNodeOptional: isRootNodeOptional, using: moc))
 
         }
         return nodes
     }
 
     @discardableResult
-    public func updateLink(_ link: PDClient.Link, fetchingSharedWithMeRoot: Bool = false, using moc: NSManagedObjectContext) -> Node {
+    public func updateLink(_ link: PDClient.Link, isRootNodeOptional: Bool = false, using moc: NSManagedObjectContext) -> Node {
         let node: Node
         switch link.type {
         case .file:
@@ -318,34 +318,13 @@ extension StorageManager {
             node = album
         }
 
-        if let sharingDetails = link.sharingDetails {
-            let share = Share.fetchOrCreate(id: sharingDetails.shareID, in: moc)
-            share.volumeID = link.volumeID
-            share.type = getShareType(share)
-            node.addToDirectShares(share)
-
-            let types: [Share.ShareType] = [.main, .photos, .device]
-            if types.contains(share.type) {
-                node.setShareID(share.id)
-            }
-
-            if let shareURLMeta = sharingDetails.shareUrl {
-                updateShareURL(shareURLMeta, in: moc)
-                node.isShared = true
-            } else {
-                share.shareUrls.forEach(moc.delete)
-                node.isShared = false
-            }
-        } else {
-            node.directShares.forEach(moc.delete)
-            node.isShared = false
-        }
+        updateSharingDetails(link, to: node, moc: moc)
 
         if let parentLinkID = link.parentLinkID {
             if let photo = node as? Photo {
-                updatePhotoParent(link: link, photo: photo, parentLinkID: parentLinkID, isRootNodeOptional: fetchingSharedWithMeRoot, moc: moc)
+                updatePhotoParent(link: link, photo: photo, parentLinkID: parentLinkID, isRootNodeOptional: isRootNodeOptional, moc: moc)
             } else {
-                updateParent(link: link, node: node, parentLinkID: parentLinkID, isRootNodeOptional: fetchingSharedWithMeRoot, moc: moc)
+                updateParent(link: link, node: node, parentLinkID: parentLinkID, isRootNodeOptional: isRootNodeOptional, moc: moc)
             }
         } else {
             node.setShareID(node.directShares.first?.id ?? "")
@@ -425,6 +404,64 @@ extension StorageManager {
             let thumbnail = Thumbnail.make(id: id, downloadURL: nil, revision: revision, type: type, hash: hash, in: moc)
             thumbnail.volumeID = revision.volumeID
             return thumbnail
+        }
+    }
+}
+
+// MARK: - update sharingDetails
+extension StorageManager {
+    private func updateSharingDetails(
+        _ link: PDClient.Link,
+        to node: CoreDataNode,
+        moc: NSManagedObjectContext
+    ) {
+        let linkModifyTime = link.modifyTime
+        guard let sharingDetails = link.sharingDetails else {
+            for directShare in Array(node.directShares) {
+                removeOutdatedShareURL(in: directShare, linkModifyTime: linkModifyTime, node: node, moc: moc)
+            }
+            node.isShared = node.directShares.contains { !$0.shareUrls.isEmpty }
+            return
+        }
+
+        let share = Share.fetchOrCreate(id: sharingDetails.shareID, in: moc)
+        share.volumeID = link.volumeID
+        share.type = getShareType(share)
+        node.addToDirectShares(share)
+
+        let types: [Share.ShareType] = [.main, .photos, .device]
+        if types.contains(share.type) {
+            node.setShareID(share.id)
+        }
+
+        if let shareURLMeta = sharingDetails.shareUrl {
+            updateShareURL(shareURLMeta, in: moc)
+            node.isShared = true
+        } else {
+            removeOutdatedShareURL(in: share, linkModifyTime: linkModifyTime, node: node, moc: moc)
+            node.isShared = !share.shareUrls.isEmpty
+        }
+    }
+
+    private func removeOutdatedShareURL(
+        in share: CoreDataShare,
+        linkModifyTime: TimeInterval,
+        node: CoreDataNode,
+        moc: NSManagedObjectContext
+    ) {
+        guard !share.shareUrls.isEmpty else { return }
+
+        for url in Array(share.shareUrls) {
+            if url.createTime.timeIntervalSince1970 <= linkModifyTime {
+                moc.delete(url) // outdated shareURL
+                share.removeFromShareUrls(url)
+            }
+            // shareURL createTime is newer than stale link.modifyTime
+            // skip deletion to prevent race.
+        }
+        if share.shareUrls.isEmpty {
+            moc.delete(share)
+            node.removeFromDirectShares(share)
         }
     }
 }

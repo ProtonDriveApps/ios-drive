@@ -133,7 +133,7 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
             })
             .sink { [weak self] activeSorted, _ in
                 guard let self = self, self.isVisible else { return }
-                self.permanentChildren = activeSorted.filter { self.validator.isValid($0.shareID) }.map(NodeWrapper.init)
+                self.permanentChildren = activeSorted.filter { self.validator.isValid($0.shareId) }.map(NodeWrapper.init)
             }
     }
 

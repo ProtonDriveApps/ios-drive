@@ -18,8 +18,12 @@
 import PDCore
 
 final class QuotaUpdatesFactory {
-    func makeController(tower: Tower, photoUploader: PhotoUploader?) -> QuotaUpdatesController {
-        let interactor = FilesAndPhotosUploadsRestartingQuotaUpdatesInteractor(photosUploader: photoUploader, fileUploader: tower.fileUploader, storage: tower.storage)
+    func makeController(tower: Tower, photoUploader: SDKFileUploaderProtocol?) -> QuotaUpdatesController {
+        let interactor = FilesAndPhotosUploadsRestartingQuotaUpdatesInteractor(
+            photosUploader: photoUploader,
+            fileUploader: tower.sdkObjects.fileUploader,
+            storage: tower.storage
+        )
         return QuotaUpdatesController(publisher: tower.sessionVault.availableQuotaPublisher, interactor: interactor)
     }
 }

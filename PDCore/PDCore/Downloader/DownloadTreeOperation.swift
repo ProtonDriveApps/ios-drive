@@ -110,6 +110,8 @@ class TreeParsingOperation<ReturnType>: SynchronousOperation, OperationWithProgr
     }
 }
 
+#if os(iOS)
+
 /// Downloads whole tree of Drive objects under a Folder, including ecnrypted blocks of active revisions of files
 class DownloadTreeOperation: TreeParsingOperation<Folder>, @unchecked Sendable {
     
@@ -131,7 +133,6 @@ class DownloadTreeOperation: TreeParsingOperation<Folder>, @unchecked Sendable {
                     // need to download only files that are not downloaded yet
                     return revision.isAvailableLocally() == false
                 }.map { file in
-#if os(iOS)
                     DownloadFileOperation(
                         file,
                         cloudSlot: self.cloudSlot,
@@ -147,24 +148,6 @@ class DownloadTreeOperation: TreeParsingOperation<Folder>, @unchecked Sendable {
                             self?.recursiveScanErrors.append(error)
                         }
                     }
-#else
-                    /// Legacy for mac, can be removed after 2025 Feb, once macOS migrated to DDK
-                    LegacyDownloadFileOperation(
-                        file,
-                        cloudSlot: self.cloudSlot,
-                        endpointFactory: self.endpointFactory,
-                        storage: self.storage,
-                        bytesCounterResource: self.bytesCounterResource
-                    ) { [weak self] in
-                        // remember error or execute enumeration block
-                        switch $0 {
-                        case .success(let node):
-                            self?.enumeration?(node)
-                        case .failure(let error):
-                            self?.recursiveScanErrors.append(error)
-                        }
-                    }
-#endif
                 }
                 downloadFiles.forEach(self.finish.addDependency)
                 self.internalQueue.addOperations(downloadFiles, waitUntilFinished: false)
@@ -179,6 +162,8 @@ class DownloadTreeOperation: TreeParsingOperation<Folder>, @unchecked Sendable {
         return operation
     }
 }
+
+#endif
 
 class ScanTreesOperation: TreeParsingOperation<[Node]>, @unchecked Sendable {
     

@@ -50,7 +50,7 @@ extension EnumeratorWithItemsFromAPI {
         self.fetchFromAPICancellable = self.model.fetchChildrenFromAPI(proceedTillLastPage: false, moc: moc)
         .sink { completion in
             if case let .failure(error) = completion {
-                Log.event(.enumerateItems(.failed(.init(containerType: containerType, error: error.localizedDescription))))
+                Log.event(.enumerateItems(.failed(.init(containerType: containerType, error: error))))
                 let fsError = Errors.mapLegacyErrorToFileProviderError(error)
                 observers.forEach { $0.finishEnumeratingWithError(fsError) }
             } else {

@@ -31,10 +31,10 @@ public struct CacheCleanupStrategy: OptionSet {
     public static let cleanOnlyMetadataDB: CacheCleanupStrategy = [.cleanMetadata]
     public static let doNotCleanAnything: CacheCleanupStrategy = []
 
-    var shouldCleanEvents: Bool { contains(.cleanEvents) }
-    var shouldCleanMetadata: Bool { contains(.cleanMetadata) }
-    var shouldCleanUserSpecificSettings: Bool { contains(.cleanUserSpecificSettings) }
-    var shouldCleanBackupCache: Bool { contains(.cleanBackupCache) }
+    public var shouldCleanEvents: Bool { contains(.cleanEvents) }
+    public var shouldCleanMetadata: Bool { contains(.cleanMetadata) }
+    public var shouldCleanUserSpecificSettings: Bool { contains(.cleanUserSpecificSettings) }
+    public var shouldCleanBackupCache: Bool { contains(.cleanBackupCache) }
 
     public let rawValue: Int
     

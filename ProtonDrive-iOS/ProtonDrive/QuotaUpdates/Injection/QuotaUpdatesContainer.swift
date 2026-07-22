@@ -20,7 +20,7 @@ import PDCore
 final class QuotaUpdatesContainer {
     private let controller: QuotaUpdatesController
 
-    init(tower: Tower, photoUploader: PhotoUploader? = nil) {
+    init(tower: Tower, photoUploader: SDKFileUploaderProtocol? = nil) {
         let factory = QuotaUpdatesFactory()
         controller = factory.makeController(tower: tower, photoUploader: photoUploader)
     }

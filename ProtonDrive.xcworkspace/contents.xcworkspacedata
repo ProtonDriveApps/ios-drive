@@ -32,9 +32,6 @@
       location = "group:PDSDKCore">
    </FileRef>
    <FileRef
-      location = "group:PDUploadVerifier">
-   </FileRef>
-   <FileRef
       location = "group:PDFileProvider">
    </FileRef>
    <FileRef

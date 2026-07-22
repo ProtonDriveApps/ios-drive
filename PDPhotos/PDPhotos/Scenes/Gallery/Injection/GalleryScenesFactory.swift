@@ -419,10 +419,9 @@ struct GalleryScenesFactory {
     }
 
     func makeTrashController(tower: Tower) -> PhotosTrashController {
-        if let performer = tower.getSdkNodeOperationPerformer() {
-            let downloaders: [DownloaderProtocol?] = [tower.downloader, tower.getSdkPhotoDownloader()]
+        if let performer = tower.sdkObjects.nodeOperationPerformer {
             let interactor = SDKPhotosTrashInteractor(
-                downloaders: downloaders,
+                downloader: tower.sdkObjects.photoDownloader,
                 performer: performer
             )
             let facade = AsyncSDKPhotosTrashFacade(interactor: interactor)
@@ -515,8 +514,7 @@ struct GalleryScenesFactory {
     ) -> FileContentController {
         let contentResource = DecryptedPhotoContentResource(
             managedObjectContext: moc,
-            downloader: tower.downloader,
-            sdkDownloader: tower.getSdkPhotoDownloader(),
+            sdkDownloader: tower.sdkObjects.photoDownloader,
             fetchResource: PhotoFetchResource(storage: tower.storage),
             photoUploadedNotifier: photoUploadedNotifier,
             performanceMetricsController: tower.performanceMetricsController,
@@ -534,7 +532,7 @@ struct GalleryScenesFactory {
         LocalOfflineAvailableResource(
             tower: tower,
             downloader: tower.downloader,
-            sdkDownloader: tower.getSdkPhotoDownloader(),
+            sdkDownloader: tower.sdkObjects.photoDownloader,
             storage: tower.storage,
             managedObjectContext: managedObjectContext
         )

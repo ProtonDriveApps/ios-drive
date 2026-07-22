@@ -30,6 +30,7 @@ struct PhotoDownloadInput {
     let destinationUrl: URL
     let clearSize: Int
     let shareID: String
+    let filename: String
 }
 
 final class PhotoDownloaderCache: PhotoDownloaderCacheProtocol {
@@ -62,7 +63,8 @@ final class PhotoDownloaderCache: PhotoDownloaderCacheProtocol {
                 temporaryUrl: temporaryUrl,
                 destinationUrl: destinationUrl,
                 clearSize: photo.size,
-                shareID: photo.shareID
+                shareID: photo.shareID,
+                filename: photo.decryptedName
             )
         }
     }

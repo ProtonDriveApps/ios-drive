@@ -129,7 +129,7 @@ final class AlbumActionViewModel: BasePhotosActionViewModel, PhotosActionViewMod
         }
 
         return [
-            .trash,
+            .removeFromAlbum,
             .availableOffline,
             .toggleFavorite
         ]
@@ -157,7 +157,7 @@ final class AlbumActionViewModel: BasePhotosActionViewModel, PhotosActionViewMod
 
         return [
             .save,
-            .trash,
+            .removeFromAlbum,
             .availableOffline,
             .toggleFavorite,
             .shareNative,
@@ -173,7 +173,7 @@ final class AlbumActionViewModel: BasePhotosActionViewModel, PhotosActionViewMod
 
         return [
             .save,
-            .trash,
+            .removeFromAlbum,
             .availableOffline,
             .toggleFavorite
         ]

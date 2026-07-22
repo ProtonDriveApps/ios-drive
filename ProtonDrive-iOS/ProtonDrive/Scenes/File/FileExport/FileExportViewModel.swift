@@ -22,6 +22,7 @@ import Combine
 final class FileExportViewModel {
     private let file: CoreDataFile
     private let tower: Tower
+    private var downloader: SDKFileDownloaderProtocol { tower.sdkObjects.fileDownloader }
     
     init(file: CoreDataFile, tower: Tower) {
         self.file = file
@@ -46,67 +47,32 @@ final class FileExportViewModel {
 
     func cancel() {
         let id = file.genericIdentifier
-        if let downloader = tower.getSdkFileDownloader() {
-            downloader.cancel(operationsOf: [id])
-        }
-        tower.downloader.cancel(operationsOf: [id])
+        downloader.cancel(operationsOf: [id])
     }
     
     func download() async throws {
-        if let sdkFileDownloader = tower.getSdkFileDownloader() {
-            let id = file.genericIdentifier
-            do {
-                try await sdkFileDownloader.download(file: id)
-            } catch {
-                if let cancelError = error as? SDKDownloadErrors, cancelError == .cancelled {
-                    throw FileExportError.cancelled
-                } else {
-                    Log.error("Download file failed", error: error, domain: .sdk)
-                    throw FileExportError.sdkError(error.localizedDescription)
-                }
-            }
-        } else {
-            try await withCheckedThrowingContinuation { [weak self] (continuation: CheckedContinuation<Void, Error>) in
-                guard let self else { return }
-                tower.downloader.scheduleDownloadWithBackgroundSupport(cypherdataFor: file) { [weak self, weak file] result in
-                    guard let self, let file else {
-                        continuation.resume(throwing: FileExportError.cancelled)
-                        return
-                    }
-                    switch result {
-                    case .success:
-                        continuation.resume(returning: ())
-                    case .failure(let failure):
-                        Log.error("Download file via legacy failed", error: failure, domain: .downloader)
-                        continuation.resume(throwing: FileExportError.legacyError(failure.localizedDescription))
-                    }
-                }
-            }
-            await decryptLegacyDownloadIfNeeded(file: file)
-        }
-    }
-    
-    private func decryptLegacyDownloadIfNeeded(file: CoreDataFile) async {
-        let objectID = file.objectID
-        await tower.storage.backgroundContextPool.performInContext { context in
-            guard let existingFile: CoreDataFile = try? context.typedObject(with: objectID) else { return }
-            do {
-                _ = try existingFile.activeRevision?.decryptFile()
-            } catch {
-                Log.error("Decrypt file failed", error: error, domain: .downloader)
+        let id = file.genericIdentifier
+        do {
+            try await downloader.download(file: id)
+        } catch {
+            if let cancelError = error as? SDKDownloadErrors, cancelError == .cancelled {
+                throw FileExportError.cancelled
+            } else {
+                Log.error("Download file failed", error: error, domain: .sdk)
+                throw FileExportError.sdkError(error.localizedDescription)
             }
         }
     }
-    
-    func filePath() throws -> URL {
-        let identifier = file.volumeBasedIdentifier
-        guard let path = DecryptedFileManager.validatedDecryptedFilePath(identifier: identifier) else {
+
+    func filePath() async throws -> URL {
+        do {
+            if DecryptedFileManager.validatedDecryptedFilePath(identifier: file.identifier) == nil {
+                try await DecryptedFileManager.decryptLegacyBlocksIfNeeded(file: file)
+            }
+            return try DecryptedFileManager.ensureHardLink(identifier: file.genericIdentifier, filename: file.decryptedName)
+        } catch DecryptedFileManagerError.noDecryptedFile {
             Log.error("No local file after downloading", error: nil, domain: .downloader)
             throw FileExportError.notLocalAvailable
-        }
-        do {
-            let filePath = try path.hardLink(filename: file.decryptedName)
-            return filePath
         } catch {
             Log.error("Make hard link failed", error: error, domain: .downloader)
             throw FileExportError.linkFailed(error.localizedDescription)

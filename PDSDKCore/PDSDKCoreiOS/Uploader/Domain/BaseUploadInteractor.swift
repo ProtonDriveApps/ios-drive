@@ -33,8 +33,9 @@ class BaseUploadInteractor {
 
     func cancel(token: UUID) async {
         do {
+            let isPaused = await isPaused(token: token)
             Log.debug("Cancelling upload: \(token.uuidString)", domain: .sdk)
-            try await operationCancelPerformer.cancelUpload(cancellationToken: token)
+            try await operationCancelPerformer.cancelUpload(cancellationToken: token, isPausedOperation: isPaused)
         } catch {
             Log.error("Cancel upload task failed", error: error, domain: .sdk)
         }

@@ -19,17 +19,17 @@ import Foundation
 import CoreData
 
 public struct TrashedNodesCleaner: Sendable {
-    private let downloaders: [DownloaderProtocol]
+    private let downloader: DownloaderProtocol
 
-    public init(downloaders: [DownloaderProtocol]) {
-        self.downloaders = downloaders
+    public init(downloader: DownloaderProtocol) {
+        self.downloader = downloader
     }
 
     // Run in NSManagedObjectContext
     public func cancelAndDeleteDownloadingTask(files: [CoreDataFile], in moc: NSManagedObjectContext) {
-        let ids = files.map(\.identifierWithinManagedObjectContext)
+        let ids = files.map(\.genericIdentifierWithinManagedObjectContext)
         Log.debug("Cancel \(ids.count) downloads", domain: .downloader)
-        downloaders.forEach { $0.cancel(operationsOf: ids) }
+        downloader.cancel(operationsOf: ids)
 
         files.forEach { deleteDownloadingBlock(from: $0, in: moc) }
     }

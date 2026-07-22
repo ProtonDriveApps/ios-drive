@@ -19,44 +19,29 @@ import Foundation
 
 @MainActor
 public final class UploadSpeedContainer {
-    private let legacyController: UploadSpeedController
-    private var sdkController: UploadSpeedController?
-    private var sdkPhotoController: UploadSpeedController?
+    private var sdkController: UploadSpeedController
+    private var sdkPhotoController: UploadSpeedController
 
     public init(
-        legacyUploadingQueue: TrackableUploadingQueue,
-        legacyBytesCounterResource: BytesCounterResource,
-        sdkUploader: SDKFileUploaderProtocol?,
-        sdkPhotoUploader: SDKFileUploaderProtocol?,
+        sdkUploader: SDKFileUploaderProtocol,
+        sdkPhotoUploader: SDKFileUploaderProtocol,
         processEligibilityController: ProcessEligibilityController
     ) {
-        legacyController = UploadSpeedController(
-            uploadingQueue: legacyUploadingQueue,
+        sdkController = UploadSpeedController(
+            uploadingQueue: sdkUploader,
             processEligibilityController: processEligibilityController,
-            bytesCounterResource: legacyBytesCounterResource,
+            bytesCounterResource: sdkUploader.bytesCounterResource,
             timerResource: iOSPausableTimerResource(duration: UploadSpeedConstants.tickInterval),
             metricResource: ObservabilityUploadSpeedMetricResource(),
-            pipeline: .legacy
+            pipeline: .default
         )
-        if let sdkUploader {
-            sdkController = UploadSpeedController(
-                uploadingQueue: sdkUploader,
-                processEligibilityController: processEligibilityController,
-                bytesCounterResource: sdkUploader.bytesCounterResource,
-                timerResource: iOSPausableTimerResource(duration: UploadSpeedConstants.tickInterval),
-                metricResource: ObservabilityUploadSpeedMetricResource(),
-                pipeline: .default
-            )
-        }
-        if let sdkPhotoUploader {
-            sdkPhotoController = UploadSpeedController(
-                uploadingQueue: sdkPhotoUploader,
-                processEligibilityController: processEligibilityController,
-                bytesCounterResource: sdkPhotoUploader.bytesCounterResource,
-                timerResource: iOSPausableTimerResource(duration: UploadSpeedConstants.tickInterval),
-                metricResource: ObservabilityUploadSpeedMetricResource(),
-                pipeline: .default
-            )
-        }
+        sdkPhotoController = UploadSpeedController(
+            uploadingQueue: sdkPhotoUploader,
+            processEligibilityController: processEligibilityController,
+            bytesCounterResource: sdkPhotoUploader.bytesCounterResource,
+            timerResource: iOSPausableTimerResource(duration: UploadSpeedConstants.tickInterval),
+            metricResource: ObservabilityUploadSpeedMetricResource(),
+            pipeline: .default
+        )
     }
 }

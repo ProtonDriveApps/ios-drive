@@ -98,10 +98,28 @@ extension ItemActionsOutlet: ConflictResolution {
                 throw Errors.parentNotFound(identifier: newItem.parentItemIdentifier)
             }
 
-            _ = try await tower.move(nodeID: nodeIdentifier, under: newParent, withNewName: newItem.filename, moc: moc)
+            // tower.move no-ops silently when newParent == currentParent (Tower+Nodes.swift),
+            // so the rename would be lost. Use tower.rename instead,
+            // which always executes and carries name + MIME in one call.
+            guard let existingNode = await tower.node(itemIdentifier: newItem.itemIdentifier, in: moc),
+                  let nodeMoc = existingNode.moc else {
+                throw Errors.nodeNotFound(identifier: newItem.itemIdentifier)
+            }
+            let currentParentID: NodeIdentifier? = nodeMoc.performAndWait { existingNode.parentNode?.identifier }
+            if currentParentID == newParent.identifier {
+                Log.warning("moveAndRenameWithUniqueSuffix received with unchanged parent — applying rename only", domain: .fileProvider)
+                _ = try await tower.rename(node: nodeIdentifier, cleartextName: newItem.filename, mimeType: item.contentType?.preferredMIMEType, moc: moc)
+            } else {
+                _ = try await tower.move(
+                    nodeID: nodeIdentifier,
+                    under: newParent,
+                    withNewName: newItem.filename,
+                    moc: moc
+                )
+            }
 
             return newItem
         }
     }
-    
+
 }

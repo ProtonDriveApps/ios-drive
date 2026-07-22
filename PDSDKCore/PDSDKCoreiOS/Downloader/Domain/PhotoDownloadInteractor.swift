@@ -70,6 +70,8 @@ final class PhotoDownloadInteractor: FileDownloadInteractorProtocol {
             )
             // We will move from temporary url to normal cache url (where revision expects it)
             try cacheResource.finalizeDownload(for: downloadInput)
+            _ = try? DecryptedFileManager.ensureHardLink(identifier: identifier, filename: downloadInput.filename)
+            Log.debug("Finish to download photo \(identifier.id)", domain: .sdk)
         } catch {
             cacheResource.cleanUp(for: downloadInput)
             throw error

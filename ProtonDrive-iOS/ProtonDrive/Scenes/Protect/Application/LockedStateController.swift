@@ -17,40 +17,49 @@
 
 import Combine
 import PDCore
+import PDCoreIOS
+import Foundation
 
 // Object that holds state of applock. It's the single source of truth to be used by lower levels of app.
 // `isLocked` will be true if the main key is not present (wiped after locking).
 protocol LockedStateControllerProtocol {
     var isLocked: AnyPublisher<Bool, Never> { get }
+    func resetLockState()
 }
 
+/// Source of truth for the app's lock state
+/// The app is considered locked if it cannot retrieve the main key
 final class LockedStateController: LockedStateControllerProtocol {
-    private let eventsTriggerController: EventsTriggerController
+    private let isLockedSubject: CurrentValueSubject<Bool, Never>
     private let refreshableStorageResource: RefreshableStorageResource
-    private let subject: CurrentValueSubject<Bool, Never>
     private var cancellables = Set<AnyCancellable>()
 
     var isLocked: AnyPublisher<Bool, Never> {
-        subject
+        isLockedSubject
             .removeDuplicates()
             .eraseToAnyPublisher()
     }
 
     init(
-        eventsTriggerController: EventsTriggerController,
         refreshableStorageResource: RefreshableStorageResource,
         isLocked: @escaping () -> Bool,
         removedMainKeyPublisher: AnyPublisher<Void, Never>,
         obtainedMainKeyPublisher: AnyPublisher<Void, Never>
     ) {
-        self.eventsTriggerController = eventsTriggerController
         self.refreshableStorageResource = refreshableStorageResource
         let isLocked = isLocked()
-        subject = CurrentValueSubject(isLocked)
-        subscribeToUpdates(removedMainKeyPublisher: removedMainKeyPublisher, obtainedMainKeyPublisher: obtainedMainKeyPublisher)
+        isLockedSubject = CurrentValueSubject(isLocked)
+        subscribeToUpdates(
+            removedMainKeyPublisher: removedMainKeyPublisher,
+            obtainedMainKeyPublisher: obtainedMainKeyPublisher
+        )
     }
 
-    func subscribeToUpdates(
+    func resetLockState() {
+        isLockedSubject.send(false)
+    }
+
+    private func subscribeToUpdates(
         removedMainKeyPublisher: AnyPublisher<Void, Never>,
         obtainedMainKeyPublisher: AnyPublisher<Void, Never>
     ) {
@@ -68,14 +77,14 @@ final class LockedStateController: LockedStateControllerProtocol {
 
         refreshableStorageResource.completion
             .sink { [weak self] in
-                self?.subject.send(false)
+                self?.isLockedSubject.send(false)
             }
             .store(in: &cancellables)
     }
 
     private func handleLocked() {
         refreshableStorageResource.cancel()
-        subject.send(true)
+        isLockedSubject.send(true)
     }
 
     private func handleObtainedMainKey() {
@@ -84,6 +93,5 @@ final class LockedStateController: LockedStateControllerProtocol {
         // with the current codebase.
         // Once finished, the `refreshableStorageResource` should notify to allow us set the unlocked flag
         refreshableStorageResource.resetMemoryState()
-        eventsTriggerController.forcePolling(volumeIDs: [])
     }
 }

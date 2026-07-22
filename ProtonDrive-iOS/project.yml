@@ -83,8 +83,6 @@ packages:
     path: ../PDLocalization
   PDUIComponents:
     path: ../PDUIComponents
-  PDUploadVerifier:
-    path: ../PDUploadVerifier
   PMEventsManager:
     path: ../PMEventsManager
   PMSettings:

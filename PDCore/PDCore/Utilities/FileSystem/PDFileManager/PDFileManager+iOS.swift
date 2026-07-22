@@ -56,7 +56,10 @@ extension PDFileManager {
 
 extension PDFileManager {
     public static func getUserID() -> String {
-        assert(currentUserID != nil)
+        if currentUserID == nil && !Constants.isUITest && !Constants.isUnitTest {
+            // Prevent test crashes caused by missing userID
+            assertionFailure("currentUserID is nil")
+        }
         return currentUserID ?? "unknown"
     }
     

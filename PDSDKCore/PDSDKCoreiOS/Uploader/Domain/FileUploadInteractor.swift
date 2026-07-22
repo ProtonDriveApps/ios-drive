@@ -145,6 +145,7 @@ final class FileUploadInteractor: BaseUploadInteractor, FileUploadInteractorProt
         case .paused:
             Log.debug("Paused upload \(token.uuidString)", domain: .sdk)
         case .error(let error):
+            NotificationCenter.default.post(name: .didFindIssueOnFileUpload, object: nil)
             Log.error("Failed to upload file, \(error.localizedDescription)", error: error, domain: .sdk, context: context)
         }
     }

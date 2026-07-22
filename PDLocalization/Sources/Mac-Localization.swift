@@ -52,6 +52,7 @@ enum SupportedLanguage: String, CaseIterable {
 
 public class Localization {
     public static var isUITest = false
+    public static var bundlePreferredLocalization: String? { Bundle.main.preferredLocalizations.first }
     private static let defaultLanguage = "en"
     private static let availableLanguages = SupportedLanguage.allCases.map { $0.rawValue }
     private static let preferredLanguages: [String] = {

@@ -17,8 +17,6 @@
 
 import Foundation
 
-public protocol UploadOperation: IdentifiableOperation, OperationWithProgress, RecordableOperation { }
-
 public protocol DownloadOperation: OperationWithProgress {
     var identifier: AnyVolumeIdentifier { get }
 }
@@ -36,24 +34,5 @@ extension OperationWithProgress {
     
     func fingerprint(progress: Progress, _ id: URL?) {
         progress.fileURL = id
-    }
-}
-
-public protocol IdentifiableOperation: Operation, Identifiable {
-    var id: UUID { get }
-}
-
-public protocol RecordableOperation where Self: Operation {
-    var recordingName: String { get }
-
-    func record()
-}
-
-public extension RecordableOperation where Self: UploadOperation {
-    var recordingName: String { "uploading" }
-
-    func record() {
-//        Uncomment next line for recording coredata object for tests
-//        PDFileManager.copyMetadata(stage: recordingName)
     }
 }

@@ -184,8 +184,7 @@ public class InitialServices {
         let sessionVault = SessionVault(mainKeyProvider: mainKeyProvider)
         let authenticator = Authenticator(api: networking)
 
-        let sessionRelatedCommunicator = sessionRelatedCommunicatorFactory(sessionVault, authenticator) { [weak networking] credential, kind in
-            guard kind == .fileProviderExtension else { return }
+        let sessionRelatedCommunicator = sessionRelatedCommunicatorFactory(sessionVault, authenticator) { [weak networking] credential in
             networking?.setSessionUID(uid: credential.UID)
         }
 

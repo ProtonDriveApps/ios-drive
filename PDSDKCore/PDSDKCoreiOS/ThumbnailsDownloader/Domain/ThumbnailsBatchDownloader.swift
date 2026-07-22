@@ -125,7 +125,7 @@ actor ThumbnailsBatchDownloader {
         for request in requests {
             await tokenStore.setToken(batchToken, for: request.identifier, type: type)
         }
-
+        Log.info("Batch download \(requests.count) thumbnails", domain: .thumbnails)
         var resolvedIndices = Set<Int>()
 
         do {
@@ -137,7 +137,10 @@ actor ThumbnailsBatchDownloader {
             )
 
             for try await thumbnail in stream {
-                guard let thumbnail else { continue }
+                guard let thumbnail else {
+                    Log.debug("Skip because thumbnail data is nil", domain: .thumbnails)
+                    continue
+                }
                 try await cacheResource.storeThumbnails([thumbnail], type: type)
                 let identifier = thumbnail.fileUid.any
                 await tokenStore.remove(for: identifier, type: type)
@@ -155,12 +158,14 @@ actor ThumbnailsBatchDownloader {
                 resolvedIndices.insert(index)
                 Log.warning(
                     "Thumbnail stream completed without yield for \(request.identifier.debugDesc), type: \(type), token: \(batchToken.uuidString)",
-                    domain: .sdk
+                    domain: .thumbnails
                 )
                 await tokenStore.remove(for: request.identifier, type: type)
                 request.continuation.resume(returning: nil)
             }
+            Log.info("Batch download of \(requests.count) thumbnails finished", domain: .thumbnails)
         } catch {
+            Log.error("Batch download thumbnail failed", error: error, domain: .thumbnails)
             for (index, request) in requests.enumerated() where !resolvedIndices.contains(index) {
                 await tokenStore.remove(for: request.identifier, type: type)
                 request.continuation.resume(throwing: error)
@@ -182,6 +187,7 @@ actor ThumbnailsBatchDownloader {
             case .success(let id):
                 request.continuation.resume(returning: id)
             case .failure(let error):
+                Log.error("Download thumbnail \(identifier.debugDesc) failed", error: error, domain: .thumbnails)
                 request.continuation.resume(throwing: error)
             }
         }

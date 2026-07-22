@@ -19,6 +19,8 @@ import Foundation
 
 public enum ResponseCode: Int {
     case tooManyChildren = 200300
+    case nestingTooDeep = 200301
     case insufficientQuota = 200001
     case insufficientSpace = 200002
+    case alreadyExists = 2500
 }

@@ -76,6 +76,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func sceneWillEnterForeground(_ scene: UIScene) {
         Log.info("sceneWillEnterForeground", domain: .application)
         Log.info("App version: \(Constants.clientVersion), \(DeviceInfo().info)", domain: .application)
+        Log.info("Language bundle \(Localization.bundle.bundleURL.lastPathComponent), bundle preferred language: \(Localization.bundlePreferredLocalization ?? "unknown")", domain: .application)
         NotificationCenter.default.post(.checkAuthentication)
         if (try? container.authenticatedContainer?.keymaker.mainKeyOrError) != nil {
             container.authenticatedContainer?.tower.forcePolling(volumeIDs: [])

@@ -25,7 +25,6 @@ public struct SDKOperationPerformerFactory {
 
     public func makeFilePerformer(tower: Tower) async throws -> FileOperationPerformer {
         do {
-            let featureFlags = tower.featureFlags
             let observabilityReporter = makeReporter(sessionVault: tower.sessionVault)
             let sdkOperationPerformer = try await FileOperationPerformer(
                 protonDriveClientConfiguration: makeConfiguration(tower: tower),
@@ -48,7 +47,6 @@ public struct SDKOperationPerformerFactory {
 
     public func makePhotoPerformer(tower: Tower) async throws -> PhotosOperationPerformer {
         do {
-            let featureFlags = tower.featureFlags
             let observabilityReporter = makeReporter(sessionVault: tower.sessionVault)
             let photosPerformer = try await PhotosOperationPerformer(
                 protonDriveClientConfiguration: makeConfiguration(tower: tower),

@@ -25,6 +25,8 @@ import PDLocalization
 
 extension DriveDependencyContainer {
     func makeAuthenticateViewController() -> AuthenticateViewController {
+        // Reset lock state to prepare for the next login
+        lockedStateController.resetLockState()
         let viewModel = makeAuthenticatorViewModel()
         let authenticator = makeAuthenticator()
         return AuthenticateViewController(viewModel: viewModel, authenticator: authenticator)

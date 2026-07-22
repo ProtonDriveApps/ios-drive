@@ -37,11 +37,12 @@ struct PhotosGridView<
     private let minimumNumberOfColumns: CGFloat = 3
     private let preferableItemWidth: CGFloat = 128
     private let idealSectionHeaderHeight: CGFloat = 45
+    private let sectionFooterHeight: CGFloat = 10
     private let spacing: CGFloat = 1.5
+    private let topItemResolver = PhotosGridTopItemResolver()
     @State var bottomPadding: CGFloat = 0
     @State var isScrolled = false
     private let coordinateSpace = "PhotosGridViewCoordinateSpace"
-    @State private var contentBounds: CGRect = .zero
 
     init(
         viewModel: ViewModel,
@@ -97,10 +98,12 @@ struct PhotosGridView<
 
     private var content: some View {
         GeometryReader { geometry in
+            let topItemLayout = makeTopItemLayout(width: geometry.size.width)
             OffsettableScrollView(
                 showsIndicator: !viewModel.isUsingCustomScroller,
                 onOffsetChanged: { offset in
                     updateScrollFlag(offset: offset)
+                    updateTopItem(offset: offset, geometry: geometry, layout: topItemLayout)
                 },
                 onRefresh: { [viewModel] in
                     viewModel.refresh()
@@ -138,17 +141,6 @@ struct PhotosGridView<
                             proxy.scrollTo(item, anchor: anchor)
                         }
                     }
-                    .onPreferenceChange(ChildViewFramePreferenceKey.self) { childFrames in
-                        var visibleChildFrames = [PhotoGridViewItem: CGRect]()
-                        let topSectionFrame = CGRect(x: 0, y: 0, width: geometry.size.width, height: 150)
-                        for (item, childFrame) in childFrames where topSectionFrame.intersects(childFrame) {
-                            visibleChildFrames[item] = childFrame
-                        }
-                        let sortedItems = visibleChildFrames.keys.sorted(by: { $0.captureTime > $1.captureTime })
-                        if let topChild = sortedItems.first {
-                            viewModel.updateTopItem(topChild)
-                        }
-                    }
                 }
             )
         }
@@ -167,13 +159,17 @@ struct PhotosGridView<
         }
     }
 
-    private func columns(width: CGFloat) -> [GridItem] {
-        let widthForExtraColumns = preferableItemWidth * (minimumNumberOfColumns + 1) + spacing * (minimumNumberOfColumns - 1)
-        if width >= widthForExtraColumns {
-            return [GridItem(.adaptive(minimum: preferableItemWidth, maximum: .infinity), spacing: spacing)]
-        } else {
-            return Array(repeating: .init(.flexible(), spacing: spacing), count: 3)
+    private func updateTopItem(offset: CGPoint, geometry: GeometryProxy, layout: PhotosGridTopItemResolver.Layout) {
+        let topTrackingY: CGFloat = 158
+        let scrollViewMinY = geometry.frame(in: .global).minY
+        let contentY = max(0, -offset.y + topTrackingY - scrollViewMinY)
+
+        guard
+            let item = topItemResolver.resolveTopItem(sections: viewModel.sections, contentY: contentY, layout: layout)
+        else {
+            return
         }
+        viewModel.updateTopItem(item)
     }
 
     private func view(from section: PhotosGridViewSection) -> some View {
@@ -181,14 +177,6 @@ struct PhotosGridView<
             ForEach(Array(section.items.enumerated()), id: \.element.id) { tuple in
                 item(tuple.element, "\(section.title)_\(tuple.offset)")
                     .aspectRatio(itemAspectRatio, contentMode: .fit)
-                    .overlay(
-                        GeometryReader { geometry in
-                            Color.clear.preference(
-                                key: ChildViewFramePreferenceKey.self,
-                                value: [tuple.element: geometry.frame(in: .global)]
-                            )
-                        }
-                    )
             }
         }, header: {
             Text(section.title)
@@ -199,9 +187,11 @@ struct PhotosGridView<
                 .padding(EdgeInsets(top: 14, leading: 16, bottom: 8, trailing: 16))
                 .frame(idealHeight: idealSectionHeaderHeight)
         }, footer: {
-            Spacer().frame(height: 10)
+            Spacer().frame(height: sectionFooterHeight)
         })
-        .background(ColorProvider.BackgroundNorm)
+        .background {
+            ColorProvider.BackgroundNorm
+        }
     }
 
     private var bottomView: some View {
@@ -273,6 +263,44 @@ struct PhotosGridView<
     }
 }
 
+// MARK: - Layout
+extension PhotosGridView {
+    private func columns(width: CGFloat) -> [GridItem] {
+        // Any change here should be reflected in `numberOfColumns(width` below, to allow size & offset calculation
+        let widthForExtraColumns = preferableItemWidth * (minimumNumberOfColumns + 1) + spacing * (minimumNumberOfColumns - 1)
+        if width >= widthForExtraColumns {
+            return [GridItem(.adaptive(minimum: preferableItemWidth, maximum: .infinity), spacing: spacing)]
+        } else {
+            return Array(repeating: .init(.flexible(), spacing: spacing), count: Int(minimumNumberOfColumns))
+        }
+    }
+
+    private func numberOfColumns(width: CGFloat) -> Int {
+        let widthForExtraColumns = preferableItemWidth * (minimumNumberOfColumns + 1) + spacing * (minimumNumberOfColumns - 1)
+        guard width >= widthForExtraColumns else {
+            return Int(minimumNumberOfColumns)
+        }
+        return max(Int(minimumNumberOfColumns), Int((width + spacing) / (preferableItemWidth + spacing)))
+    }
+
+    private func itemWidth(width: CGFloat, columns: CGFloat) -> CGFloat {
+        let totalSpacing = spacing * (columns - 1)
+        return (width - totalSpacing) / columns
+    }
+
+    private func makeTopItemLayout(width: CGFloat) -> PhotosGridTopItemResolver.Layout {
+        let columns = numberOfColumns(width: width)
+        return PhotosGridTopItemResolver.Layout(
+            columnCount: columns,
+            itemWidth: itemWidth(width: width, columns: CGFloat(columns)),
+            itemAspectRatio: itemAspectRatio,
+            rowSpacing: spacing,
+            sectionHeaderHeight: idealSectionHeaderHeight,
+            sectionFooterHeight: sectionFooterHeight
+        )
+    }
+}
+
 private struct ActionViewHeightKey: PreferenceKey {
     typealias Value = CGFloat
 
@@ -283,10 +311,3 @@ private struct ActionViewHeightKey: PreferenceKey {
     }
 }
 
-private struct ChildViewFramePreferenceKey: PreferenceKey {
-    static var defaultValue: [PhotoGridViewItem: CGRect] = [:]
-
-    static func reduce(value: inout [PhotoGridViewItem: CGRect], nextValue: () -> [PhotoGridViewItem: CGRect]) {
-        value.merge(nextValue(), uniquingKeysWith: { $1 })
-    }
-}

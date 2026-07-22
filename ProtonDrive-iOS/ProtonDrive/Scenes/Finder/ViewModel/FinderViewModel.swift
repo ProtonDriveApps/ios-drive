@@ -89,7 +89,6 @@ protocol FinderViewModel: NodeEditionViewModel, FlatNavigationBarDelegate, Scrol
     var leadingNavBarItems: [NavigationBarButton] { get }
     var lastUpdated: Date { get }
     var featureFlagsController: FeatureFlagsControllerProtocol { get }
-    var isUsingSDKForThumbnails: Bool { get }
 
     func refreshOnAppear()
     func didScrollToBottom()
@@ -283,19 +282,14 @@ extension FinderViewModel where Self: UploadingViewModel, Self.Model: UploadsLis
         Task { @MainActor in
             self.childrenUploadCancellable?.cancel()
             self.childrenUploadCancellable = self.model.childrenUploading()
-                .catch {  [weak self] error -> Empty<([File], [FileUploader.OperationID: FileUploader.CurrentProgress]), Error> in
+                .catch {  [weak self] error -> Empty<([File], [UUID: Progress]), Error> in
                     switch error {
-                    case UploaderErrors.canceled:
-                        break // not all errors should be propagated to UI
 
                     case let error where error is CloudSlot.Errors:
                         self?.genericErrors.send(error)
 
                     case let error where error is ValidationError<String>:
                         self?.genericErrors.send(error)
-
-                    case let FileUploaderError.verificationError(childError):
-                        self?.genericErrors.send(childError)
 
                     case let error as NSError where FinderError(error) == .noSpaceOnCloud:
                         self?.genericErrors.send(error)
@@ -324,20 +318,12 @@ extension FinderViewModel where Self: UploadingViewModel, Self.Model: UploadsLis
 
     func subscribeToSDKNotify() {
         Task { @MainActor in
-            guard let uploader = model.tower.getSdkFileUploader() else { return }
+            let uploader = model.tower.sdkObjects.fileUploader
             uploader.failures
                 .sink { [weak self] info in
                     self?.genericErrors.send(info.1)
                 }
                 .store(in: &cancellables)
-        }
-    }
-
-    private func getVerificationError(from error: FileUploaderError) -> Error? {
-        if case let .verificationError(error) = error {
-            return error
-        } else {
-            return nil
         }
     }
 }
@@ -389,18 +375,7 @@ extension FinderViewModel where Self.Model: NodesListing {
         guard let downloadsListing = self.model as? DownloadsListing else {
             return
         }
-
-        if let sdkFileDownloader = downloadsListing.tower.getSdkFileDownloader() {
-            let fileIdentifier = file.identifier
-            Task {
-                try await sdkFileDownloader.download(file: fileIdentifier.any())
-            }
-        } else {
-            downloadsListing.download(
-                node: file,
-                useRefreshableDownloadOperation: true
-            )
-        }
+        downloadsListing.download(node: file)
     }
 
     func setFavorite(_ favorite: Bool, nodes: [Node]) {
@@ -460,7 +435,7 @@ extension FinderViewModel where Self.Model: NodesListing {
     }
 
     func sendToTrash(_ currentNodes: [Node]) async throws {
-        if let performer = model.tower.getSdkNodeOperationPerformer() {
+        if let performer = model.tower.sdkObjects.nodeOperationPerformer {
             try await trash(currentNodes, via: performer)
             return
         }
@@ -500,10 +475,7 @@ extension FinderViewModel where Self.Model: NodesListing {
 
     private func trash(_ currentNodes: [Node], via performer: SDKNodeOperationPerformer) async throws {
         let (ids, error) = try await performer.trash(nodes: currentNodes.map { $0.identifier.any() })
-        let downloaders: [DownloaderProtocol?] = [model.tower.downloader, model.tower.getSdkFileDownloader()]
-        for downloader in downloaders {
-            downloader?.cancel(operationsOf: ids)
-        }
+        model.tower.sdkObjects.fileDownloader.cancel(operationsOf: ids)
         if let error { throw error }
     }
 }
@@ -547,11 +519,5 @@ extension FinderViewModel {
             return
         }
         controller.startRecord(id: file.identifier.any(), pageType: type)
-    }
-}
-
-extension FinderViewModel where Model: FinderModel {
-    var isUsingSDKForThumbnails: Bool {
-        model.tower.getSdkThumbnailsDownloaderForFiles() != nil
     }
 }

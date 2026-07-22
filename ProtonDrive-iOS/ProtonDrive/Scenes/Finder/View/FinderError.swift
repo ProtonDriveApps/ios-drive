@@ -18,6 +18,7 @@
 import Foundation
 import ProtonCoreNetworking
 import PDCore
+import PDSDKCoreiOS
 
 enum FinderError: Error, Equatable {
     static func == (lhs: FinderError, rhs: FinderError) -> Bool {
@@ -27,36 +28,49 @@ enum FinderError: Error, Equatable {
     case noSpaceOnCloud
     case noSpaceOnDevice
     case toast(error: Error?)
-
-        init(_ error: Error?) {
-            switch error {
-            case let (error as ResponseError):
-                if let nsError = error.underlyingError {
-                    self = Self.checkSpaceError(for: nsError)
-                } else {
-                    self = Self.toast(error: error)
-                }
-            case let error as NSError:
-                self = Self.checkSpaceError(for: error)
-            default:
-                self = .toast(error: error)
-            }
+    
+    init(_ error: Error?) {
+        guard let error else {
+            self = .toast(error: error)
+            return
         }
-
-        private static func checkSpaceError(for error: Error) -> FinderError {
-            if case FileUploaderError.insuficientSpace = error {
-                return .noSpaceOnCloud
-            } else if (error as NSError).matches(UploaderErrors.lackOfSpaceOnDiskError) || (error as NSError).matches(UploaderErrors.lackOfSpaceOnDeviceError) {
-                return .noSpaceOnDevice
+        switch error {
+        case let (error as ResponseError):
+            if let nsError = error.underlyingError {
+                self = Self.checkSpaceError(for: nsError)
             } else {
-                return .toast(error: error)
+                self = Self.toast(error: error)
             }
+        case let (error as SDKUploadErrors):
+            if case .noSpaceOnCloud = error {
+                self = .noSpaceOnCloud
+            } else {
+                self = Self.checkSpaceError(for: error)
+            }
+        case let error as NSError:
+            self = Self.checkSpaceError(for: error)
+        default:
+            self = .toast(error: error)
         }
-
+    }
+    
+    private static func checkSpaceError(for error: Error) -> FinderError {
+        if (error as NSError).matches(UploaderErrors.lackOfSpaceOnDiskError) ||
+            (error as NSError).matches(UploaderErrors.lackOfSpaceOnDeviceError) {
+            return .noSpaceOnDevice
+        }
+        return .toast(error: error)
+    }
 }
 
 private extension NSError {
     func matches(_ error: UploaderErrors.ErrorElements) -> Bool {
         return domain == error.domain && code == error.code
     }
+}
+
+enum UploaderErrors {
+    public typealias ErrorElements = (domain: String, code: Int)
+    public static var lackOfSpaceOnDiskError: ErrorElements { (NSCocoaErrorDomain, NSFileWriteOutOfSpaceError) }
+    public static var lackOfSpaceOnDeviceError: ErrorElements { (NSPOSIXErrorDomain, 28) }
 }

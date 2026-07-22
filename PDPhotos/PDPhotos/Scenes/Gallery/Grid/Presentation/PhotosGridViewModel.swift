@@ -65,6 +65,7 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
     private let scrollToItemSubject = PassthroughSubject<AnyVolumeIdentifier, Never>()
     private let scrollToTopPublisher: AnyPublisher<TabBarItem, Never>
     private let performanceMetricsController: PerformanceMetricsControllerProtocol?
+    private var lastTopItemId: AnyVolumeIdentifier?
 
     @Published var isRefreshing = false
     @Published var sections: [PhotosGridViewSection] = []
@@ -145,11 +146,14 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
     }
 
     func updateTopItem(_ item: PhotoGridViewItem) {
+        guard lastTopItemId != item.id else { return }
+        lastTopItemId = item.id
         scrollerController?.setCurrentItem(item)
     }
 
     private func subscribeToUpdates() {
         controller.sections
+            .removeDuplicates()
             .sink { [weak self] sections in
                 let count = sections.reduce(0) { $0 + $1.photos.count }
                 self?.performanceMetricsController?.updateTab(cacheCount: count, in: .photos)

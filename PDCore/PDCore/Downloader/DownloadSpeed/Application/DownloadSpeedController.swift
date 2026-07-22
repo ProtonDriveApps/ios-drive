@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+#if os(iOS)
+
 import Combine
 import Foundation
 
@@ -117,3 +119,5 @@ final class DownloadSpeedController {
         metricResource.sendMetric(speed: speedInKiBps, isBackground: isInBackground, pipeline: pipeline)
     }
 }
+
+#endif

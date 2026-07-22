@@ -60,9 +60,6 @@ public final class FolderModel: FinderModel, FinderErrorModel, ThumbnailLoader, 
     
     // MARK: others
     public let userInfoController: UserInfoController?
-    public var isUsingSDKForThumbnails: Bool {
-        tower.getSdkThumbnailsDownloaderForFiles() != nil
-    }
 
     /// Constructor for main thread, uses UISlot for subscriptions
     public init(tower: Tower, node: Folder, nodeID: NodeIdentifier, userInfoController: UserInfoController? = nil) {
@@ -140,17 +137,15 @@ public final class FolderModel: FinderModel, FinderErrorModel, ThumbnailLoader, 
     /// Synchronously return remote node.
     /// Needs to be synchronous because it will be indirectly called from `enumerateItems(for:startingAt:)`
     private static func fetchRemoteNode(tower: Tower, nodeID: NodeIdentifier, moc: NSManagedObjectContext) -> Node? {
-        var result: Node?
-        let semaphore = DispatchSemaphore(value: 0)
-
         assert(!Thread.isMainThread)
-        Task {
-            result = try await tower.cloudSlot.scanNode(nodeID, linkProcessingErrorTransformer: { $1 }, moc: moc)
-            semaphore.signal()
+        do {
+            return try SyncAwait.run {
+                try await tower.cloudSlot.scanNode(nodeID, linkProcessingErrorTransformer: { $1 }, moc: moc)
+            }
+        } catch {
+            Log.error("fetchRemoteNode failed: \(error)", domain: .fileProvider)
+            return nil
         }
-
-        semaphore.wait()
-        return result
     }
 #endif
 

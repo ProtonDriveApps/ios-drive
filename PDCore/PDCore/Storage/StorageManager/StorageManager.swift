@@ -345,8 +345,12 @@ public class StorageManager: NSObject, ManagedStorage, RecoverableStorage, Refre
     public lazy var backgroundContextPool: AsyncManagedObjectContextPool = {
         AsyncManagedObjectContextPool(
             configuration: .init(maxPoolSize: 32, mergePolicy: .mergeByPropertyObjectTrumpMergePolicyType, contextNamePrefix: "StorageManagerPoolContext"),
-            contextFactory: { [self] mergePolicy in
-                newBackgroundContext(mergePolicy: NSMergePolicy(merge: mergePolicy))
+            contextFactory: { [weak self] mergePolicy in
+                guard let self else {
+                    assertionFailure("StorageManager deallocated")
+                    return NSManagedObjectContext(.privateQueue)
+                }
+                return newBackgroundContext(mergePolicy: NSMergePolicy(merge: mergePolicy))
             }
         )
     }()
@@ -355,8 +359,12 @@ public class StorageManager: NSObject, ManagedStorage, RecoverableStorage, Refre
         SyncManagedObjectContextPool(
             mergePolicy: .mergeByPropertyObjectTrumpMergePolicyType,
             contextNamePrefix: "StorageManagerSynchronousPoolContext"
-        ) { [self] mergePolicy in
-            newBackgroundContext(mergePolicy: NSMergePolicy(merge: mergePolicy))
+        ) { [weak self] mergePolicy in
+            guard let self else {
+                assertionFailure("StorageManager deallocated")
+                return NSManagedObjectContext(.privateQueue)
+            }
+            return newBackgroundContext(mergePolicy: NSMergePolicy(merge: mergePolicy))
         }
     }()
 

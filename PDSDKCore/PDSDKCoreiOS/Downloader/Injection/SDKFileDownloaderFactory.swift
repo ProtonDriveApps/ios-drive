@@ -34,6 +34,7 @@ public struct SDKDownloaderFactory {
             ),
             bytesCounterResource: ThreadSafeBytesCounterResource(),
             tokenStore: CancellationTokenStore(),
+            inFlightStore: InFlightDownloadStore(),
             domain: .file
         )
     }
@@ -50,6 +51,7 @@ public struct SDKDownloaderFactory {
             ),
             bytesCounterResource: ThreadSafeBytesCounterResource(),
             tokenStore: CancellationTokenStore(),
+            inFlightStore: InFlightDownloadStore(),
             domain: .photo
         )
     }

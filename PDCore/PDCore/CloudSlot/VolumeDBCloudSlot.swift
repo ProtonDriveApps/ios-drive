@@ -232,30 +232,6 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
         fatalError("Just used by macOS")
     }
 
-    func createNewFileDraft(_ draft: UploadableFileDraft, completion: @escaping CloudFileDraftCreatorCompletion) {
-        cloudSlot.createNewFileDraft(draft, completion: completion)
-    }
-
-    func checkAvailableHashes(among nameHashPairs: [NameHashPair], onFolder folder: NodeIdentifier, completion: @escaping AvailableHashCheckerCompletion) {
-        cloudSlot.checkAvailableHashes(among: nameHashPairs, onFolder: folder, completion: completion)
-    }
-
-    func create(from revision: UploadableRevision, onCompletion: @escaping CloudContentCreatorCompletion) {
-        cloudSlot.create(from: revision, onCompletion: onCompletion)
-    }
-
-    func commit(_ revision: CommitableRevision, completion: @escaping (Result<Void, any Error>) -> Void) {
-        cloudSlot.commit(revision, completion: completion)
-    }
-
-    func checkUploadedRevision(_ id: RevisionIdentifier, completion: @escaping (Result<XAttrs, any Error>) -> Void) {
-        cloudSlot.checkUploadedRevision(id, completion: completion)
-    }
-
-    func createRevision(for file: NodeIdentifier, onCompletion: @escaping (Result<RevisionIdentifier, any Error>) -> Void) {
-        cloudSlot.createRevision(for: file, onCompletion: onCompletion)
-    }
-
     func update(_ links: [LinkMeta], of shareID: ShareMeta.ShareID, in moc: NSManagedObjectContext) -> [NodeObj] {
         var nodes: [Node] = []
         for link in links {

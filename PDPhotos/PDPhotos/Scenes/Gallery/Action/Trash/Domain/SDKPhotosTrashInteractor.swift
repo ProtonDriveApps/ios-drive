@@ -20,19 +20,17 @@ import Foundation
 import PDCore
 
 final class SDKPhotosTrashInteractor: ThrowingAsynchronousInteractor {
-    private let downloaders: [DownloaderProtocol?]
+    private let downloader: DownloaderProtocol
     private let performer: SDKNodeOperationPerformer
 
-    init(downloaders: [DownloaderProtocol?], performer: SDKNodeOperationPerformer) {
-        self.downloaders = downloaders
+    init(downloader: DownloaderProtocol, performer: SDKNodeOperationPerformer) {
+        self.downloader = downloader
         self.performer = performer
     }
 
     func execute(with input: PhotoIdsSet) async throws {
         let (affectedIDs, error) = try await performer.trash(nodes: Array(input))
-        for downloader in downloaders {
-            downloader?.cancel(operationsOf: affectedIDs)
-        }
+        downloader.cancel(operationsOf: affectedIDs)
         if let error {
             throw error
         }

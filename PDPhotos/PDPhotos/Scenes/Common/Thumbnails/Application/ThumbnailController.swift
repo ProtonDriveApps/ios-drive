@@ -42,7 +42,6 @@ final class LocalThumbnailController: ThumbnailController {
     private let synchronousRepository: SynchronousThumbnailRepository
     private let asynchronousRepository: AsynchronousThumbnailRepository
     private let performanceMetricsController: PerformanceMetricsControllerProtocol
-    private let canUseSDK: Bool
     private let id: PhotoId
     private var cancellables = Set<AnyCancellable>()
     private var subject = PassthroughSubject<Void, Never>()
@@ -58,14 +57,13 @@ final class LocalThumbnailController: ThumbnailController {
         isFailedSubject.eraseToAnyPublisher()
     }
 
-    init(thumbnailsController: ThumbnailsController, urlsController: ThumbnailURLsController, metadataController: MetadataControllerProtocol, synchronousRepository: SynchronousThumbnailRepository, asynchronousRepository: AsynchronousThumbnailRepository, performanceMetricsController: PerformanceMetricsControllerProtocol, canUseSDK: Bool, id: PhotoId) {
+    init(thumbnailsController: ThumbnailsController, urlsController: ThumbnailURLsController, metadataController: MetadataControllerProtocol, synchronousRepository: SynchronousThumbnailRepository, asynchronousRepository: AsynchronousThumbnailRepository, performanceMetricsController: PerformanceMetricsControllerProtocol, id: PhotoId) {
         self.thumbnailsController = thumbnailsController
         self.urlsController = urlsController
         self.metadataController = metadataController
         self.synchronousRepository = synchronousRepository
         self.asynchronousRepository = asynchronousRepository
         self.performanceMetricsController = performanceMetricsController
-        self.canUseSDK = canUseSDK
         self.id = id
     }
 
@@ -162,16 +160,10 @@ final class LocalThumbnailController: ThumbnailController {
             thumbnailsController.load(id)
         case .missingURL:
             /// Thumbnail doesn't have download URL, need to batch download it
-            Log.trace("Handle thumbnail load update: missingURL, will use SDK: \(canUseSDK)", domain: .thumbnails)
+            Log.trace("Handle thumbnail load update: missingURL", domain: .thumbnails)
             performanceMetricsController.fetchThumbnail(id: id, dataSource: .remote)
 
-            if canUseSDK {
-                // In SDK, batch loading is handled for us. ThumbnailLoader invokes SDK for us
-                thumbnailsController.load(id)
-            } else {
-                // In legacy code, we batch load URLs
-                urlsController.load(id)
-            }
+            thumbnailsController.load(id)
 
         case .missingMetadata:
             /// Photo's metadata is not available, need to batch fetch it
@@ -180,17 +172,11 @@ final class LocalThumbnailController: ThumbnailController {
                 Log.debug("Handle thumbnail load update: missingMetadata, photoID is empty", domain: .thumbnails)
                 return
             }
-            Log.trace("Handle thumbnail load update: missingMetadata, will use SDK: \(canUseSDK)", domain: .thumbnails)
+            Log.trace("Handle thumbnail load update: missingMetadata", domain: .thumbnails)
             performanceMetricsController.fetchThumbnail(id: id, dataSource: .remote)
 
-            if canUseSDK {
-                // SDK will fetch metadata + thumbnail urls + decrypt
-                thumbnailsController.load(id)
-            } else {
-                // We need to batch fetch metadata before proceeding
-                isWaitingForMetadata = true
-                metadataController.loadOpportunistically([id])
-            }
+            // SDK will fetch metadata + thumbnail urls + decrypt
+            thumbnailsController.load(id)
         }
     }
 

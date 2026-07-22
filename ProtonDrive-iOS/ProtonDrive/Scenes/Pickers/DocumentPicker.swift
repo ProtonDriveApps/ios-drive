@@ -68,8 +68,11 @@ struct DocumentPicker: UIViewControllerRepresentable {
         }
 
         func documentPicker(_ controller: Controller, didPickDocumentsAt urls: [URL]) {
-            DispatchQueue.global(qos: .default).async {
-                self.processFiles(at: urls)
+            Task {
+                let results = await processFiles(at: urls)
+                await MainActor.run {
+                    parent.picker(didFinishPicking: results)
+                }
             }
         }
 
@@ -77,43 +80,68 @@ struct DocumentPicker: UIViewControllerRepresentable {
             parent.close()
         }
 
-        private func processFiles(at urls: [URL]) {
-
-            let coordinator: NSFileCoordinator = NSFileCoordinator(filePresenter: nil)
-            var error: NSError?
-            var fileResults: [URLResult] = []
-            let group = DispatchGroup()
-
-            for urlFromPicker in urls {
-                group.enter()
-
-                if let size = urlFromPicker.fileSize {
-                    coordinator.coordinate(readingItemAt: urlFromPicker, options: [], error: &error) { _ in
-                        do {
-                            let copyUrl = PDFileManager.prepareUrlForFile(named: urlFromPicker.lastPathComponent)
-                            try FileManager.default.copyItem(at: urlFromPicker, to: copyUrl)
-                            let item = URLContent(copyUrl, size)
-                            fileResults.append(.success(item))
-                        } catch {
-                            if let outOfSpaceError = isOutOfSpaceError(error: error as NSError) {
-                                // The original error is too long to read
-                                fileResults.append(.failure(outOfSpaceError))
-                            } else {
-                                fileResults.append(.failure(error))
-                            }
-                        }
-                        group.leave()
-                    }
-                } else {
-                    fileResults.append(.failure(URLConsistencyError.noURLSize))
+        private func processFiles(at urls: [URL]) async -> [URLResult] {
+            await withTaskGroup(of: URLResult.self) { group in
+                for url in urls {
+                    group.addTask { await self.processURL(url) }
                 }
-            }
-
-            group.notify(queue: DispatchQueue.main) { [weak self] in
-                self?.parent.picker(didFinishPicking: fileResults)
+                var results: [URLResult] = []
+                for await result in group {
+                    results.append(result)
+                }
+                return results
             }
         }
-        
+
+        private func processURL(_ url: URL) async -> URLResult {
+            do {
+                let resourceValues = try url.resourceValues(forKeys: [.isDirectoryKey])
+                if resourceValues.isDirectory == true {
+                    return .failure(PickerError.unsupportedFileType(fileExtension: url.pathExtension))
+                }
+            } catch {
+                Log.error("Read resource value fails", error: error, domain: .fileManager, sendToSentryIfPossible: false)
+                return .failure(error)
+            }
+
+            guard let size = url.fileSize else {
+                return .failure(URLConsistencyError.noURLSize)
+            }
+
+            return await copyPickerURL(url, size: size)
+        }
+
+        private func copyPickerURL(_ url: URL, size: Int) async -> URLResult {
+            await withCheckedContinuation { continuation in
+                let coordinator = NSFileCoordinator(filePresenter: nil)
+                var coordinationError: NSError?
+                var didResume = false
+                func resumeOnce(with result: URLResult) {
+                    guard !didResume else { return }
+                    didResume = true
+                    continuation.resume(returning: result)
+                }
+
+                coordinator.coordinate(readingItemAt: url, options: [], error: &coordinationError) { _ in
+                    do {
+                        let copyUrl = PDFileManager.prepareUrlForFile(named: url.lastPathComponent)
+                        try FileManager.default.copyItem(at: url, to: copyUrl)
+                        resumeOnce(with: .success(URLContent(copyUrl, size)))
+                    } catch {
+                        if let outOfSpaceError = isOutOfSpaceError(error: error as NSError) {
+                            // The original error is too long to read
+                            resumeOnce(with: .failure(outOfSpaceError))
+                        } else {
+                            resumeOnce(with: .failure(error))
+                        }
+                    }
+                }
+                if let coordinationError {
+                    resumeOnce(with: .failure(coordinationError))
+                }
+            }
+        }
+
         private func isOutOfSpaceError(error: NSError) -> NSError? {
             let outOfSpaceError = error.underlyingErrors.first { underlyingError in
                 let underlyingError = underlyingError as NSError

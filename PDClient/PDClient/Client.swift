@@ -35,6 +35,7 @@ public class Client {
     public let service: APIService
     public let networking: DriveAPIService
     public let rateLimitGate: RateLimitGate
+    public let upgradeRequirementsParser: UpgradeRequirementsParser
     /// Maximum number of attempts (initial + retries) for a single logical request.
     /// Mirrors `HttpClientResilience.Configuration.forDriveAPICalls.maxNumberOfTries`.
     public var maxRetryCount: Int = 6
@@ -45,12 +46,14 @@ public class Client {
         credentialProvider: CredentialProvider,
         service: APIService,
         networking: DriveAPIService,
-        rateLimitGate: RateLimitGate
+        rateLimitGate: RateLimitGate,
+        upgradeRequirementsParser: UpgradeRequirementsParser
     ) {
         self.credentialProvider = credentialProvider
         self.service = service
         self.networking = networking
         self.rateLimitGate = rateLimitGate
+        self.upgradeRequirementsParser = upgradeRequirementsParser
     }
 
     public func credential() throws -> ClientCredential {
@@ -89,6 +92,8 @@ public class Client {
     ) async throws -> Response where Response == E.Response {
         await rateLimitGate.waitIfNeeded(family: endpoint.rateLimitFamily)
         let (result, response) = await performSingleAttempt(endpoint, completionExecutor: completionExecutor)
+        
+        upgradeRequirementsParser.parse(responseHeaders: response?.headers.dictionary)
 
         // Not rate-limited → return whatever we got.
         guard let response, response.statusCode == 429 else {

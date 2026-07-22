@@ -43,7 +43,6 @@ public class PostLoginServices {
                 eventObservers: [EventsListener] = [],
                 eventProcessingMode: DriveEventsLoopMode,
                 eventLoopInterval: Double,
-                uploadVerifierFactory: UploadVerifierFactory,
                 activityObserver: @escaping ((NSUserActivity) -> Void))
     {
         self.initialServices = initialServices
@@ -73,7 +72,6 @@ public class PostLoginServices {
                            eventObservers: eventObservers,
                            eventProcessingMode: eventProcessingMode,
                            eventLoopInterval: eventLoopInterval,
-                           uploadVerifierFactory: uploadVerifierFactory,
                            localSettings: initialServices.localSettings,
                            populatedStateController: populatedStateController,
                            connectionStateResource: initialServices.connectionStateResource

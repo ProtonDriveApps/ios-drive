@@ -19,11 +19,11 @@ import Foundation
 import PDCore
 
 final class FilesAndPhotosUploadsRestartingQuotaUpdatesInteractor: QuotaUpdatesInteractor {
-    let photosUploader: FileUploader?
-    let fileUploader: FileUploader
+    let photosUploader: SDKFileUploaderProtocol?
+    let fileUploader: SDKFileUploaderProtocol
     let storage: StorageManager
 
-    init(photosUploader: FileUploader?, fileUploader: FileUploader, storage: StorageManager) {
+    init(photosUploader: SDKFileUploaderProtocol?, fileUploader: SDKFileUploaderProtocol, storage: StorageManager) {
         self.photosUploader = photosUploader
         self.fileUploader = fileUploader
         self.storage = storage
@@ -33,19 +33,41 @@ final class FilesAndPhotosUploadsRestartingQuotaUpdatesInteractor: QuotaUpdatesI
         var storageLeft = freeSpace
 
         let waitingFiles = storage.fetchWaitingFiles(maxSize: storageLeft)
+        var fileIDs: [AnyVolumeIdentifier] = []
         for waitingFile in waitingFiles {
             guard storageLeft > Constants.Photos.minimalSpaceForAllowingUpload else { break }
             storageLeft -= waitingFile.size
-            fileUploader.upload(waitingFile.file) { _ in }
+            fileIDs.append(waitingFile.file.genericIdentifier)
+        }
+        Task.detached { [weak self] in
+            guard let self else { return }
+            do {
+                for id in fileIDs {
+                    _ = try await fileUploader.upload(identifier: id)
+                }
+            } catch {
+                Log.error("Upload file after quota update failed", error: error, domain: .uploader)
+            }
         }
 
-        guard storageLeft > 0 else { return }
+        guard storageLeft > 0, let photosUploader else { return }
 
         let waitingPhotos = storage.fetchMyWaitingPhotos(maxSize: storageLeft)
+        var photoIDs: [AnyVolumeIdentifier] = []
         for waitingPhoto in waitingPhotos {
             guard storageLeft > Constants.Photos.minimalSpaceForAllowingUpload else { break }
             storageLeft -= waitingPhoto.size
-            photosUploader?.upload(waitingPhoto.photo) { _ in }
+            photoIDs.append(waitingPhoto.photo.genericIdentifier)
+        }
+        Task.detached { [weak self] in
+            guard let self else { return }
+            do {
+                for id in photoIDs {
+                    _ = try await photosUploader.upload(identifier: id)
+                }
+            } catch {
+                Log.error("Upload file after quota update failed", error: error, domain: .uploader)
+            }
         }
     }
 }

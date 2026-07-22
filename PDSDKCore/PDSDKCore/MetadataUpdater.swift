@@ -1,4 +1,3 @@
-
 // Copyright (c) 2024 Proton AG
 //
 // This file is part of Proton Drive.
@@ -113,7 +112,10 @@ public protocol MetadataUpdaterProtocol {
     /// Marks the end of an operation. When the in-flight count returns to zero, every cache
     /// is emptied — orphaned entries from cancellations or thrown operations are cleared
     /// at the next quiescence point.
-    func endOperation()
+    func endOperation(context: EndOperationContext)
+    /// Releases one paused-upload cache hold when a paused upload is cancelled.
+    /// May wipe caches if no operations are in flight and no holds remain.
+    func cancelPausedOperation()
     func finishTrashMacNodes(nodes: [SDKNodeUid], moc: NSManagedObjectContext) async throws
     func finishTrashIOSNodes(nodes: [SDKNodeUid], results: [TrashNodeResult], moc: NSManagedObjectContext) async throws -> ([AnyVolumeIdentifier], Error?)
 }
@@ -121,11 +123,35 @@ public protocol MetadataUpdaterProtocol {
 extension MetadataUpdaterProtocol {
     /// Brackets `body` with `beginOperation()` / `endOperation()`. Decrements run on every exit
     /// path, including thrown errors.
-    public func withOperation<T>(_ body: () async throws -> T) async rethrows -> T {
+    public func withOperation<T>(
+        _ body: (EndOperationContext) async throws -> T
+    ) async rethrows -> T {
+        let context = EndOperationContext()
         beginOperation()
-        defer { endOperation() }
-        return try await body()
+        defer { endOperation(context: context) }
+        return try await body(context)
     }
+}
+
+/// Outcome flags for a `withOperation` / `endOperation` bracket.
+///
+/// Upload pause/resume spans multiple brackets. Performers set these before
+/// `endOperation` runs so `MetadataUpdater` can retain or release cached HTTP
+/// responses when `inFlightOperations` returns to zero.
+public final class EndOperationContext {
+    /// Upload was paused (`successfulCancellation`). Retain cached HTTP responses
+    /// until the upload is resumed or cancelled.
+    public var retainsPausedOperations = false
+    /// Set when servicing a previously paused upload (`operation.isPaused()` at bracket start).
+    /// Releases the hold taken at pause when this bracket ends. Re-pause in the same
+    /// bracket sets `retainsPausedOperations`, netting to zero (+1 −1).
+    public var releasesPausedOperations = false
+
+    // Meaning of (retainsPausedOperations, releasesPausedOperations):
+    // (false, false): Normal operation; no pause or resume involved.
+    // (false, true): Resuming a previously paused operation.
+    // (true, false): Pausing the current operation.
+    // (true, true): Operation is resumed and then paused again within the same bracket.
 }
 
 public final class MetadataUpdater: MetadataUpdaterProtocol, @unchecked Sendable {
@@ -139,7 +165,7 @@ public final class MetadataUpdater: MetadataUpdaterProtocol, @unchecked Sendable
 
     /// All caches consolidated under a single lock to minimise synchronisation overhead.
     ///
-    /// Cache growth is bounded by `inFlightOperations`: every public operation on
+    /// Cache growth is bounded by `inFlightOperations` and `pausedCacheHoldCount` : every public operation on
     /// `MetadataUpdater` brackets itself with `enterOperation()` / `exitOperation()`,
     /// and when the counter returns to zero `exitOperation` nukes every cache. The counter
     /// and the arrays share the same `Atomic` lock, so the decrement-and-clear is atomic
@@ -155,6 +181,8 @@ public final class MetadataUpdater: MetadataUpdaterProtocol, @unchecked Sendable
         /// Number of operations currently bracketed by `enterOperation` / `exitOperation`.
         /// Caches are emptied whenever this returns to zero.
         var inFlightOperations: Int = 0
+        /// Number of paused operations, to prevent caches are emptied unexpectedly
+        var pausedOperations = 0
 
         var createFile: [CacheEntry<CreateFileCall>] = []
         var commitRevision: [CacheEntry<CommitRevisionCall>] = []
@@ -164,14 +192,30 @@ public final class MetadataUpdater: MetadataUpdaterProtocol, @unchecked Sendable
         var loadFileLinkDetail: [CacheEntry<LoadLinkDetailCall>] = []
         var loadPhotoLinkDetail: [CacheEntry<LoadLinkDetailCall>] = []
 
+        #if DEBUG
+        // Survives `exitOperation()` quiescence so tests can inspect requests across operations.
+        var recordedRequests: [RecordedRequest] = []
+        #endif
+
         mutating func enterOperation() {
             inFlightOperations += 1
         }
 
-        mutating func exitOperation() {
+        mutating func exitOperation(context: EndOperationContext) {
             assert(inFlightOperations > 0, "exitOperation() called without a matching enterOperation()")
             inFlightOperations -= 1
-            if inFlightOperations == 0 {
+            if context.retainsPausedOperations {
+                pausedOperations += 1
+            }
+            if context.releasesPausedOperations {
+                pausedOperations -= 1
+            }
+            assert(pausedOperations >= 0)
+            removeCacheIfNeeded()
+        }
+
+        mutating func removeCacheIfNeeded() {
+            if inFlightOperations == 0, pausedOperations == 0 {
                 createFile.removeAll()
                 commitRevision.removeAll()
                 revisionMetadata.removeAll()
@@ -237,8 +281,16 @@ public final class MetadataUpdater: MetadataUpdaterProtocol, @unchecked Sendable
         caches.mutate { $0.enterOperation() }
     }
 
-    public func endOperation() {
-        caches.mutate { $0.exitOperation() }
+    public func endOperation(context: EndOperationContext) {
+        caches.mutate { $0.exitOperation(context: context) }
+    }
+
+    public func cancelPausedOperation() {
+        caches.mutate { store in
+            store.pausedOperations -= 1
+            assert(store.pausedOperations >= 0)
+            store.removeCacheIfNeeded()
+        }
     }
 
     #if os(macOS)
@@ -585,7 +637,7 @@ public final class MetadataUpdater: MetadataUpdaterProtocol, @unchecked Sendable
         }
 
         try await moc.perform {
-            _ = self.storage.updateLinks(links, in: moc)
+            _ = self.storage.updateLinks(links, isRootNodeOptional: true, in: moc)
             try moc.saveIfNeeded()
         }
     }
@@ -617,7 +669,7 @@ public final class MetadataUpdater: MetadataUpdaterProtocol, @unchecked Sendable
         }
 
         try await moc.perform {
-            _ = self.storage.updateLinks(links, in: moc)
+            _ = self.storage.updateLinks(links, isRootNodeOptional: true, in: moc)
             try moc.saveIfNeeded()
         }
     }
@@ -822,6 +874,12 @@ public final class MetadataUpdater: MetadataUpdaterProtocol, @unchecked Sendable
     ) {
         let now = Date()
         caches.mutate { store in
+            #if DEBUG
+            store.recordedRequests.append(
+                RecordedRequest(method: method, path: path, statusCode: responseStatusCode, timestamp: now)
+            )
+            #endif
+
             // Identify the request shape and whether a missing operation bracket should warn
             // in DEBUG. The two loadLinkDetail variants are excluded because listing/enumerate
             // flows hit POST /links legitimately without being wrapped.
@@ -1197,7 +1255,9 @@ extension MetadataUpdater {
                 consumeResult = .failure(error)
             }
         }
-        guard let createFileCall = try consumeResult.get() else { throw makeNoCachedResponseError("createFileCallCache") }
+        guard let createFileCall = try consumeResult.get() else {
+            throw makeNoCachedResponseError("createFileCallCache")
+        }
         return createFileCall
     }
 
@@ -1444,4 +1504,28 @@ extension MetadataUpdater {
     }
 }
 
+// MARK: - Request introspection (DEBUG-only)
+
+public struct RecordedRequest: Sendable, Equatable {
+    public let method: HTTPMethod
+    public let path: String
+    public let statusCode: Int
+    public let timestamp: Date
+}
+
+extension MetadataUpdater {
+    public var recordedRequests: [RecordedRequest] { caches.value.recordedRequests }
+
+    public func recordedRequests(since index: Int) -> [RecordedRequest] {
+        let all = caches.value.recordedRequests
+        guard index <= all.count else { return [] }
+        return Array(all[index...])
+    }
+
+    public func clearRecordedRequests() {
+        caches.mutate { $0.recordedRequests.removeAll() }
+    }
+}
+
 #endif
+

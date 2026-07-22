@@ -27,6 +27,7 @@ public protocol PhotosSkippableCache {
     func isSkippable(_ identifier: Identifier) -> Bool
     func checkSkippableStatus(_ identifier: Identifier) -> SkippableStatus
     func clean()
+    func cacheCount() -> Int 
     #if DEBUG
     func debugPrint()
     #endif
@@ -79,7 +80,11 @@ public final class ConcretePhotosSkippableCache: PhotosSkippableCache {
         let identifier = prepare(identifier)
         return storage.checkSkippableStatus(identifier: identifier)
     }
-    
+
+    public func cacheCount() -> Int {
+        storage.cacheCount()
+    }
+
     public func batchMarkAsSkippable(_ data: [Identifier: Int]) {
         var result: [Identifier: Int] = [:]
         for (id, value) in data {
@@ -150,6 +155,7 @@ public final class BlankPhotosSkippableCache: PhotosSkippableCache {
     public func batchMarkAsSkippable(_ data: [Identifier: Int]) {}
 
     public func clean() {}
+    public func cacheCount() -> Int { 0 }
     #if DEBUG
     public func debugPrint() { }
     #endif

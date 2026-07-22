@@ -33,7 +33,7 @@ public class CoredataSharedWithMeLinkMetadataCache: SharedWithMeMetadataCache {
         try context.performAndWait {
             do {
                 storage.updateShare(share, in: context)
-                let node = storage.updateLink(link, fetchingSharedWithMeRoot: true, using: context)
+                let node = storage.updateLink(link, isRootNodeOptional: true, using: context)
                 node.isSharedWithMeRoot = true
                 try context.saveOrRollback()
             } catch {

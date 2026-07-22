@@ -69,7 +69,7 @@ final class SettingsAssembler {
                                    accountRecovery: accountRecovery)
             )
             .appendRow(PMHostConfiguration(
-                viewController: makeDeleteAccountViewController(apiService: apiService, signoutManager: tower))
+                viewController: makeDeleteAccountViewController(apiService: apiService))
             )
             .build()
 
@@ -108,8 +108,8 @@ final class SettingsAssembler {
             .build()
     }
 
-    static func makeDeleteAccountViewController(apiService: APIService, signoutManager: SignOutManager) -> DeleteAccountViewController {
-        let accountViewModel = DeleteAccountViewModel(apiService: apiService, signoutManager: signoutManager)
+    static func makeDeleteAccountViewController(apiService: APIService) -> DeleteAccountViewController {
+        let accountViewModel = DeleteAccountViewModel(apiService: apiService)
         return DeleteAccountViewController(viewModel: accountViewModel)
     }
 
@@ -143,11 +143,29 @@ final class SettingsAssembler {
         let configuration = PMLoadingLabelConfiguration(
             text: Localization.setting_clear_logs,
             action: {
-                NotificationCenter.default.post(name: .nukeLogs)
+                Task { @MainActor in
+                    presentClearLogAlert()
+                }
             },
             bundle: Bundle.main
         )
         return configuration
+    }
+    
+    static func presentClearLogAlert() {
+        guard let topVC = UIApplication.shared.topMostViewControllerFromAppWindow() else { return }
+        let alertVC = UIAlertController(
+            title: Localization.log_clear_alert_title,
+            message: Localization.log_clear_alert_message,
+            preferredStyle: .alert
+        )
+        alertVC.addAction(UIAlertAction(title: Localization.general_cancel, style: .cancel, handler: nil))
+        alertVC.addAction(
+            UIAlertAction(title: Localization.log_clear_alert_action, style: .destructive) { _ in
+                NotificationCenter.default.post(name: .nukeLogs)
+            }
+        )
+        topVC.present(alertVC, animated: true)
     }
 
     static func enableDebugMode(

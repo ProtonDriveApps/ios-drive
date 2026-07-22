@@ -177,14 +177,23 @@ public class LocalPhotoLibraryAssetResource: PhotoLibraryAssetResource {
 
     private func makeCameraInfo(data: PhotoAssetData, camera: PhotoAssetMetadata.Camera) -> PhotoAssetMetadata.Camera {
         let earliestDate = Date(timeIntervalSince1970: 0)
-        let defaultDate = Date(timeIntervalSince1970: -3061152000)
-        // When EXIF creation date is empty, `data.asset.creationDate` is `Jan 1, 1904`, time stamp `-3061152000`
         var captureTime = camera.captureTime ?? data.asset.creationDate ?? camera.modificationTime ?? earliestDate
-        // BE doesn't allow the default date, update captureTime when we get default date 
-        if captureTime == defaultDate {
+        // When EXIF creation date is empty, `data.asset.creationDate` is `Jan 1, 1904`, time stamp `-3061152000`
+        // BE doesn't allow the default date, update captureTime when we get default date
+        if captureTime == Date(timeIntervalSince1970: -3061152000) {
             captureTime = camera.modificationTime ?? earliestDate
         }
         captureTime = captureTime > earliestDate ? captureTime : earliestDate
+        
+        if captureTime.timeIntervalSince1970 < -6847804800 || captureTime.timeIntervalSince1970 > 4102444799 {
+            // These are current BE constraints, can change any time, but we want to log to understand which data source is giving us nonsense data.
+            // In next iteration, we can try improve the fallbacking
+            let captureTimeFromExif = camera.captureTime.map { "\($0)" } ?? "nil"
+            let creationDateFromAsset = data.asset.creationDate.map { "\($0)" } ?? "nil"
+            let modificationTimeFromExif = camera.modificationTime.map { "\($0)" } ?? "nil"
+            let context = "captureTime: \(captureTime), captureTimeFromExif: \(captureTimeFromExif), creationDateFromAsset: \(creationDateFromAsset), modificationTimeFromExif: \(modificationTimeFromExif)"
+            Log.error("Photo with invalid capture time", error: nil, domain: .photosProcessing, context: LogContext(context))
+        }
 
         return PhotoAssetMetadata.Camera(
             captureTime: captureTime,

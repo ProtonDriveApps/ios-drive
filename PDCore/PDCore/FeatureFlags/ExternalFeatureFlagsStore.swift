@@ -33,8 +33,6 @@ extension LocalSettings: ExternalFeatureFlagsStore {
         case .pushNotificationIsEnabled: pushNotificationIsEnabled = value
         case .oneDollarPlanUpsellEnabled: oneDollarPlanUpsellEnabled = value
         case .driveDisablePhotosForB2B: driveDisablePhotosForB2B = value
-        case .driveDDKIntelEnabled: driveDDKIntelEnabled = value
-        case .driveDDKDisabled: driveDDKDisabled = value
         case .driveMacSyncRecoveryDisabled: driveMacSyncRecoveryDisabled = value
         case .driveMacPromoBannerDisabled: driveMacPromoBannerDisabled = value
         case .driveMacGradualRolloutChannelEnabled: driveMacGradualRolloutChannelEnabled = value
@@ -66,15 +64,10 @@ extension LocalSettings: ExternalFeatureFlagsStore {
         // Payments
         case .driveiOSPaymentsV2: driveiOSPaymentsV2 = value
         // SDK
-        case .driveiOSSDKUploadMain: driveiOSSDKUploadMain = value
-        case .driveiOSSDKUploadPhoto: driveiOSSDKUploadPhoto = value
-        case .driveiOSSDKDownloadMain: driveiOSSDKDownloadMain = value
-        case .driveiOSSDKDownloadPhoto: driveiOSSDKDownloadPhoto = value
         case .driveiOSSDKNodeOperations: driveiOSSDKNodeOperations = value
         case .driveCryptoEncryptBlocksWithPgpAead: driveCryptoEncryptBlocksWithPgpAead = value
-        case .driveMacSDKUploadMainDisabled: driveMacSDKUploadMainDisabled = value
-        case .driveMacSDKDownloadMainDisabled: driveMacSDKDownloadMainDisabled = value
         case .driveMacFileProviderBatchingDisabled: driveMacFileProviderBatchingDisabled = value
+        case .driveMacDecryptPassphraseIterativeDisabled: driveMacDecryptPassphraseIterativeDisabled = value
         case .driveDownloadVerificationDisabled: driveDownloadVerificationDisabled = value
         case .driveUploadVerificationDisabled: driveUploadVerificationDisabled = value
         }
@@ -90,8 +83,6 @@ extension LocalSettings: ExternalFeatureFlagsStore {
         case .pushNotificationIsEnabled: return pushNotificationIsEnabled
         case .oneDollarPlanUpsellEnabled: return oneDollarPlanUpsellEnabled
         case .driveDisablePhotosForB2B: return driveDisablePhotosForB2B
-        case .driveDDKIntelEnabled: return driveDDKIntelEnabled
-        case .driveDDKDisabled: return driveDDKDisabled
         case .driveMacSyncRecoveryDisabled: return driveMacSyncRecoveryDisabled
         case .driveMacPromoBannerDisabled: return driveMacPromoBannerDisabled
         case .driveMacGradualRolloutChannelEnabled: return driveMacGradualRolloutChannelEnabled
@@ -122,15 +113,10 @@ extension LocalSettings: ExternalFeatureFlagsStore {
         // Payments
         case .driveiOSPaymentsV2: return driveiOSPaymentsV2
         // SDK
-        case .driveiOSSDKUploadMain: return driveiOSSDKUploadMain
-        case .driveiOSSDKUploadPhoto: return driveiOSSDKUploadPhoto
-        case .driveiOSSDKDownloadMain: return driveiOSSDKDownloadMain
-        case .driveiOSSDKDownloadPhoto: return driveiOSSDKDownloadPhoto
         case .driveiOSSDKNodeOperations: return driveiOSSDKNodeOperations
         case .driveCryptoEncryptBlocksWithPgpAead: return driveCryptoEncryptBlocksWithPgpAead
-        case .driveMacSDKUploadMainDisabled: return driveMacSDKUploadMainDisabled
-        case .driveMacSDKDownloadMainDisabled: return driveMacSDKDownloadMainDisabled
         case .driveMacFileProviderBatchingDisabled: return driveMacFileProviderBatchingDisabled
+        case .driveMacDecryptPassphraseIterativeDisabled: return driveMacDecryptPassphraseIterativeDisabled
         case .driveDownloadVerificationDisabled: return driveDownloadVerificationDisabled
         case .driveUploadVerificationDisabled: return driveUploadVerificationDisabled
         }

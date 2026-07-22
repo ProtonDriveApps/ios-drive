@@ -30,8 +30,9 @@ import Foundation
 
 public class Localization {
     public static var isUITest = false
+    public static var bundlePreferredLocalization: String? { Bundle.main.preferredLocalizations.first }
     private static let defaultLanguage = "en"
-    private static let bundle: Bundle = {
+    public static let bundle: Bundle = {
         if isUITest {
             return enBundle
         }
@@ -596,6 +597,10 @@ public class Localization {
     /// "Failed to import %@: %@"
     public static func file_pickup_error(files: String, error: String) -> String { String(format: localized(key: "file_pickup_error", table: "iOS-Localizable"), files, error) }
 
+    /// "An error that occurs when the user tries to upload an unsupported file type"
+    /// "The file type ”%@” is not supported"
+    public static func file_pickup_unsupported(fileExtension: String) -> String { String(format: localized(key: "file_pickup_unsupported", table: "iOS-Localizable"), fileExtension) }
+
     /// "Concat with other string, e.g. Restore 4 files, Delete 1 file"
     /// "%d File"
     public static func file_plural_type_with_num(num: Int) -> String { String(format: localized(key: "file_plural_type_with_num", table: "iOS-Localizable"), num) }
@@ -911,12 +916,28 @@ public class Localization {
     /// "The app will keep your screen awake to ensure faster backups."
     public static var locking_banner_message: String { localized(key: "locking_banner_message", table: "iOS-Localizable") }
 
+    /// "Alert action to confirm user wants to clear logs"
+    /// "Clear"
+    public static var log_clear_alert_action: String { localized(key: "log_clear_alert_action", table: "iOS-Localizable") }
+
+    /// "Alert message to confirm user wants to clear logs"
+    /// "Are you sure you want to clear the logs?"
+    public static var log_clear_alert_message: String { localized(key: "log_clear_alert_message", table: "iOS-Localizable") }
+
+    /// "Alert title to confirm user wants to clear logs"
+    /// "Clear logs"
+    public static var log_clear_alert_title: String { localized(key: "log_clear_alert_title", table: "iOS-Localizable") }
+
     /// "By logging out, all files saved for offline will be deleted from your device"
     public static var logout_alert_message: String { localized(key: "logout_alert_message", table: "iOS-Localizable") }
 
     /// "Alert title shown when user attempts to logout"
     /// "Are you sure?"
     public static var logout_alert_title: String { localized(key: "logout_alert_title", table: "iOS-Localizable") }
+
+    /// "Placeholder for search field in latest logs"
+    /// "Search logs"
+    public static var logs_search_placeholder: String { localized(key: "logs_search_placeholder", table: "iOS-Localizable") }
 
     /// "Side menu section title"
     /// "More"

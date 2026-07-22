@@ -79,12 +79,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate, hasPushNotificationServic
         featureFlagsRepository.resetFlagOverride(CoreFeatureFlagType.easyDeviceMigrationDisabled)
 
         Log.debug("PDFileManager appGroupTemporaryDirectory: \(PDFileManager.appGroupTemporaryDirectory.path())", domain: .storage)
-        
-        // If you have many Macbooks on the same WiFi Network, you can specify your Macbook's name
-        // Find your Macbook's name by opening Proxyman App -> Certificate Menu -> Install Certificate for iOS -> With Atlantis
-        // Click on "How to start Atlantis"
-        // let hostName = "ansons-macbook-pro-2.local."
-        Atlantis.start(hostName: nil)
+
+        if !Constants.isUITest && !Constants.isUnitTest {
+            // If you have many Macbooks on the same WiFi Network, you can specify your Macbook's name
+            // Find your Macbook's name by opening Proxyman App -> Certificate Menu -> Install Certificate for iOS -> With Atlantis
+            // Click on "How to start Atlantis"
+            // let hostName = "ansons-macbook-pro-2.local."
+            Atlantis.start(hostName: nil)
+        }
         #endif
         BackgroundModesRegistry.register()
 

@@ -30,7 +30,6 @@ public enum Errors: Error, LocalizedError {
     case revisionNotFound
     
     case parentNotFound(identifier: NSFileProviderItemIdentifier)
-    case childLimitReached
     case urlForUploadIsNil
     case urlForUploadHasNoSize
     case urlForUploadFailedCopying
@@ -58,7 +57,6 @@ public enum Errors: Error, LocalizedError {
         case .rootNotFound: return "Root not found for domain"
         case .revisionNotFound: return "Revision not found for item"
         case .parentNotFound: return "Parent not found for item"
-        case .childLimitReached: return "Folder limit reached. Organize items into subfolders to continue syncing."
         case .urlForUploadIsNil: return "No URL for file upload"
         case .urlForUploadHasNoSize: return "File under URL for file upload has no size"
         case .urlForUploadFailedCopying: return "File under URL for file upload cannot be processed"
@@ -107,8 +105,6 @@ extension Errors {
             
         case Errors.rootNotFound, Errors.noMainShare:
             return NSFileProviderError.create(.syncAnchorExpired, from: error)
-        case Errors.childLimitReached:
-            return NSFileProviderError.create(.serverUnreachable, from: error)
         case Errors.parentNotFound(let identifier),
              Errors.nodeIdentifierNotFound(let identifier),
              Errors.nodeNotFound(let identifier),
@@ -145,6 +141,9 @@ extension Errors {
             return NSFileProviderError(.noSuchItem)
 #endif
             
+        case OutOfSyncRecoveryError.nodeRemoved:
+            return NSFileProviderError.create(.noSuchItem, from: error)
+
         case let responseError as ResponseError
             where responseError.responseCode == APIErrorCodes.protonDocumentCannotBeCreatedFromMacOSAppErrorCode.rawValue:
             return NSFileProviderError.create(.excludedFromSync, from: error)

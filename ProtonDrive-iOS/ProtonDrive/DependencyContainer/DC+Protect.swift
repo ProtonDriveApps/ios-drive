@@ -21,21 +21,48 @@ import PDCoreIOS
 import ProtonCoreKeymaker
 import ProtonCoreServices
 import ProtonCoreHumanVerification
-import PDUploadVerifier
 import PDSDKCore
 import PDSDKCoreiOS
 
 extension DriveDependencyContainer {
     @MainActor
     func makeProtectViewController() async -> UIViewController {
+        let factory = ProtectViewControllerFactory(
+            lockedStateController: lockedStateController,
+            keymaker: keymaker,
+            networkService: networkService
+        ) { [weak self] controller in
+            guard let self else { return UIViewController() }
+            let authenticatedContainer = await self.initializeAuthenticatedDependencies(
+                lockedStateController: controller
+            )
+            return authenticatedContainer.makePopulateViewController(lockedStateController: controller)
+        }
+        return factory.makeProtectViewController()
+    }
+
+    @MainActor
+    private func initializeAuthenticatedDependencies(
+        lockedStateController: LockedStateControllerProtocol
+    ) async -> AuthenticatedDependencyContainer {
         let populatedController = PopulatedStateController()
         let tower = await initializeTowerInBackgroundQueue(populatedController: populatedController)
+        signOutManager.appIsUnlocked(tower: tower)
         let featureFlagsController = FeatureFlagsController(
             buildType: Constants.buildType,
             featureFlagsStore: localSettings,
             updateRepository: tower.featureFlags
         )
-
+        let photoUploadedNotifier = ConcretePhotoUploadedNotifier(moc: tower.storage.photosSecondaryBackgroundContext)
+        let failedPhotosResource = InMemoryDeletedPhotosIdentifierStoreResource()
+        let photosSkippableCacheStorage = UserDefaultsPhotosSkippableStorage()
+        await initializeSDK(
+            tower: tower,
+            featureFlagsController: featureFlagsController,
+            photoUploadedNotifier: photoUploadedNotifier,
+            failedPhotosResource: failedPhotosResource,
+            photosSkippableCacheStorage: photosSkippableCacheStorage
+        )
         let authenticatedContainer = AuthenticatedDependencyContainer(
             tower: tower,
             keymaker: keymaker,
@@ -45,18 +72,41 @@ extension DriveDependencyContainer {
             authenticator: authenticator,
             populatedStateController: populatedController,
             autoLocker: autoLocker,
-            featureFlagsController: featureFlagsController
+            featureFlagsController: featureFlagsController,
+            photoUploadedNotifier: photoUploadedNotifier,
+            failedPhotosResource: failedPhotosResource,
+            photosSkippableCacheStorage: photosSkippableCacheStorage,
+            lockedStateController: lockedStateController
         )
 
         self.authenticatedContainer = authenticatedContainer
+        return authenticatedContainer
+    }
 
-        return await authenticatedContainer.makeProtectViewController()
+    func initializeSDK(
+        tower: Tower,
+        featureFlagsController: FeatureFlagsControllerProtocol,
+        photoUploadedNotifier: PhotoUploadedNotifier,
+        failedPhotosResource: DeletedPhotosIdentifierStoreResource,
+        photosSkippableCacheStorage: PhotosSkippableStorage
+    ) async {
+        let skippableCache = ConcretePhotosSkippableCache(storage: photosSkippableCacheStorage)
+        let sdkBootstrapper = SDKBootstrapStarter(
+            dependencies: .init(
+                tower: tower,
+                featureFlagsController: featureFlagsController,
+                connectionStateResource: tower.connectionStateResource,
+                keymaker: keymaker,
+                photoUploadedNotifier: photoUploadedNotifier,
+                skippableCache: skippableCache,
+                failedPhotosResource: failedPhotosResource
+            )
+        )
+        try? await sdkBootstrapper.bootstrap()
     }
 
     func initializeTowerInBackgroundQueue(populatedController: PopulatedStateControllerProtocol) async -> Tower {
         Log.info("Initializing Tower", domain: .application)
-        let storageManager = StorageManager(suite: Constants.appGroup)
-        
         let tower = Tower(
             storage: storageManager,
             eventStorage: EventStorageManager(suiteUrl: appGroup.directoryUrl),
@@ -70,56 +120,11 @@ extension DriveDependencyContainer {
             eventObservers: [],
             eventProcessingMode: .full,
             eventLoopInterval: 90,
-            uploadVerifierFactory: ConcreteUploadVerifierFactory(),
             localSettings: localSettings,
             populatedStateController: populatedController,
             connectionStateResource: connectionStateResource
         )
+        tower.subscribe(isLockedPublisher: lockedStateController.isLocked)
         return tower
-    }
-}
-
-extension AuthenticatedDependencyContainer {
-    @MainActor
-    func makeProtectViewController() async -> UIViewController {
-        let viewController = ProtectViewController()
-        let coordinator = makeProtectCoordinator(controller: lockedStateController, viewController: viewController)
-        let viewModel = makeProtectViewModel(controller: lockedStateController, coordinator: coordinator)
-        viewController.viewModel = viewModel
-        return viewController
-    }
-
-    private func makeProtectViewModel(controller: LockedStateControllerProtocol, coordinator: ProtectCoordinatorProtocol) -> ProtectViewModel {
-        return ProtectViewModel(
-            controller: controller,
-            lockManager: tower,
-            signoutManager: tower,
-            coordinator: coordinator
-        )
-    }
-
-    private func makeProtectCoordinator(controller: LockedStateControllerProtocol, viewController: ProtectViewController) -> ProtectCoordinatorProtocol {
-        let humanHelper = makeHumanVerificationHelper(networkService)
-        humanCheckHelper = humanHelper
-        return ProtectCoordinator(
-            viewController: viewController,
-            humanVerificationHelper: humanHelper,
-            lockedViewControllerFactory: makeLockViewController,
-            unlockedViewControllerFactory: { [unowned self] in
-                self.makePopulateViewController(lockedStateController: controller)
-            }
-        )
-    }
-
-    private func makeHumanVerificationHelper(_ networkService: PMAPIService) -> HumanCheckHelper {
-        let helper = HumanCheckHelper(
-            apiService: networkService,
-            supportURL: URL(string: "https://protonmail.com/support/knowledge-base/human-verification/")!,
-            inAppTheme: { .matchSystem },
-            clientApp: .drive
-        )
-        // We're replacing the delegate set in the creation of InitialServices, so the HV delegate in iOS will be HumanCheckHelper instead of PMAPIClient, which still will be the HV delegate in macOS
-        networkService.humanDelegate = helper
-        return helper
     }
 }

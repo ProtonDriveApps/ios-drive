@@ -33,10 +33,8 @@ typealias ResponseError = ProtonCoreNetworking.ResponseError
 public class Tower: NSObject {
     typealias CoreEventLoopManager = EventPeriodicScheduler<GeneralEventsLoopWithProcessor, DriveEventsLoop>
 
-    public let fileUploader: FileUploader
     public let fileImporter: FileImporter
     public let revisionImporter: RevisionImporter
-    public let uploadVerifierFactory: UploadVerifierFactory
     public let downloader: Downloader!
     public let refresher: RefreshingNodesServiceProtocol
     public let uiSlot: UISlot!
@@ -46,27 +44,29 @@ public class Tower: NSObject {
     public let sessionCommunicator: SessionRelatedCommunicatorBetweenMainAppAndExtensions
     public let localSettings: LocalSettings
     public let paymentsStorage: PaymentsSecureStorage
-    public var offlineSavers = [OfflineSaverProtocol]()
     public let connectionStateResource: ConnectionStateResource
     public let performanceMetricsController: PerformanceMetricsControllerProtocol?
     public let parentIDFetcher: NodeParentIDFetcher
-
-    public var photoUploader: FileUploader?
 
     public let api: PDClient.APIService
     public let storage: StorageManager
     public let syncStorage: SyncStorageManager?
     public let client: PDClient.Client
     public let rateLimitGate: RateLimitGate
+    public let upgradeRequirementsParser: UpgradeRequirementsParser
     public let addressManager: AddressManager
-    internal var thumbnailLoader: CancellableThumbnailLoader
     public let generalSettings: GeneralSettings
     public let featureFlags: FeatureFlagsRepository
-    public let parallelEncryption: Bool
     public let entitlementsManager: EntitlementsManagerProtocol
     private var cancellables = Set<AnyCancellable>()
     public let uploadedBytesCounterResource: BytesCounterResource
     public let clientConfiguration: PDClient.APIService.Configuration
+    /// iOS specific 
+    private(set) var thumbnailLoader: CancellableThumbnailLoader?
+
+    #if os(iOS)
+    public var offlineSavers = [OfflineSaverProtocol]()
+    #endif
 
     // internal for Tower+Events.swift
     var externalInvitationConverter: ExternalInvitationConvertProtocol?
@@ -86,14 +86,17 @@ public class Tower: NSObject {
     @ThreadSafe private var isStopped = false
 
     // SDK
+    private var _sdkObjects: SDKObjectsProtocol?
+    public var sdkObjects: SDKObjectsProtocol {
+        guard let object = _sdkObjects else { fatalError() }
+        return object
+    }
+    private var _fpSDKObjects: FPSDKObjectsProtocol?
+    public var fpSDKObjects: FPSDKObjectsProtocol {
+        guard let object = _fpSDKObjects else { fatalError() }
+        return object
+    }
     private var sdkNodeOperationPerformer: SDKNodeOperationPerformer?
-    private var sdkFileUploader: SDKFileUploaderProtocol?
-    private var sdkFileDownloader: SDKFileDownloaderProtocol?
-    private var sdkThumbnailsDownloaderForFiles: SDKThumbnailsDownloaderProtocol?
-    private var sdkThumbnailsDownloaderForPhotos: SDKThumbnailsDownloaderProtocol?
-    private var sdkPhotoDownloader: SDKFileDownloaderProtocol?
-    private var sdkPhotoUploader: SDKFileUploaderProtocol?
-    public private(set) var sdkRevisionUploader: SDKRevisionUploaderProtocol?
     public private(set) var sdkCacheProvider: SDKCacheProvider
     public private(set) var sdkEncryptionKeyProvider: SDKEncryptionKeyProvider?
 
@@ -120,7 +123,6 @@ public class Tower: NSObject {
     }
     private let cleanUpStartController: CleanUpStartController
 
-    // swiftlint:disable:next function_body_length
     public init(storage: StorageManager,
                 syncStorage: SyncStorageManager? = nil,
                 eventStorage: EventStorageManager,
@@ -135,17 +137,16 @@ public class Tower: NSObject {
                 eventProcessingMode: DriveEventsLoopMode,
                 eventLoopInterval: Double,
                 networkSpy: DriveAPIService? = nil,
-                uploadVerifierFactory: UploadVerifierFactory,
                 localSettings: LocalSettings,
                 populatedStateController: PopulatedStateControllerProtocol,
                 connectionStateResource: ConnectionStateResource
     ) {
         Log.trace("eventLoopInterval: \(eventLoopInterval)")
-
+        
         self.storage = storage
         self.syncStorage = syncStorage
         self.uiSlot = UISlot(storage: storage)
-
+        
         self.localSettings = localSettings
         self.generalSettings = GeneralSettings(
             mainKeyProvider: mainKeyProvider,
@@ -157,10 +158,10 @@ public class Tower: NSObject {
         self.sessionCommunicator = sessionCommunicator
         clientConfiguration = clientConfig
         self.featureFlags = FeatureFlagsRepositoryFactory().makeRepository(
-           configuration: clientConfig,
-           networking: network,
-           store: localSettings
-       )
+            configuration: clientConfig,
+            networking: network,
+            store: localSettings
+        )
         self.api = APIServiceFactory().makeService(configuration: clientConfig, featureFlags: featureFlags)
 
         self.networking = network
@@ -169,7 +170,14 @@ public class Tower: NSObject {
 
         let rateLimitGate = RateLimitGate()
         self.rateLimitGate = rateLimitGate
-        let client = Client(credentialProvider: self.sessionVault, service: api, networking: networkSpy ?? network, rateLimitGate: rateLimitGate)
+        self.upgradeRequirementsParser = UpgradeRequirementsParser()
+        let client = Client(
+            credentialProvider: self.sessionVault,
+            service: api,
+            networking: networkSpy ?? network,
+            rateLimitGate: rateLimitGate,
+            upgradeRequirementsParser: upgradeRequirementsParser
+        )
         client.errorMonitor = ErrorMonitor(Log.deserializationErrors)
         self.client = client
         self.connectionStateResource = connectionStateResource
@@ -198,14 +206,6 @@ public class Tower: NSObject {
             store: EntitlementsStore(localSettings: localSettings)
         )
 
-        self.thumbnailLoader = ThumbnailLoaderFactory().makeFileThumbnailLoader(
-            tower: nil,
-            storage: storage,
-            cloudSlot: cloudSlot,
-            client: client,
-            performanceMetricsController: performanceMetricsController
-        )
-
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).last!
         self.fileSystemSlot = FileSystemSlot(baseURL: documents, storage: self.storage, syncStorage: self.syncStorage)
 
@@ -226,36 +226,11 @@ public class Tower: NSObject {
         self.coreEventManager = eventsFactory.makeCoreEventsSystem(appGroup: appGroup, sessionVault: sessionVault, generalSettings: generalSettings, paymentsSecureStorage: paymentsStorage, network: network, timingController: eventsTimingController, contactAdapter: contactAdapter, entitlementsManager: entitlementsManager)
         eventStorageManager = eventStorage
 
-        self.uploadVerifierFactory = uploadVerifierFactory
-
         // Files
         self.fileImporter = CoreDataFileImporter(moc: storage.backgroundContext, signersKitFactory: sessionVault, uploadClientUIDProvider: sessionVault)
         self.revisionImporter = CoreDataRevisionImporter(signersKitFactory: sessionVault, uploadClientUIDProvider: sessionVault)
 
         uploadedBytesCounterResource = ThreadSafeBytesCounterResource()
-        #if os(macOS)
-        parallelEncryption = true
-        self.fileUploader = FileUploader(
-            fileUploadFactory: DiscreteFileUploadOperationsProviderFactory(storage: storage, cloudSlot: cloudSlot, sessionVault: sessionVault, verifierFactory: uploadVerifierFactory, apiService: api, client: client, parallelEncryption: parallelEncryption, uploadedBytesCounterResource: uploadedBytesCounterResource).make(),
-            filecleaner: cloudSlot,
-            moc: storage.backgroundContext
-        )
-        #else
-        parallelEncryption = false
-        if Constants.runningInExtension {
-            self.fileUploader = FileUploader(
-                fileUploadFactory: StreamFileUploadOperationsProviderFactory(storage: storage, cloudSlot: cloudSlot, sessionVault: sessionVault, verifierFactory: uploadVerifierFactory, apiService: api, client: client, parallelEncryption: parallelEncryption, uploadedBytesCounterResource: uploadedBytesCounterResource).make(),
-                filecleaner: cloudSlot,
-                moc: storage.backgroundContext
-            )
-        } else {
-            self.fileUploader = MyFilesFileUploader(
-                fileUploadFactory: iOSFileUploadOperationsProviderFactory(storage: storage, cloudSlot: cloudSlot, sessionVault: sessionVault, verifierFactory: uploadVerifierFactory, apiService: api, client: client, parallelEncryption: parallelEncryption, uploadedBytesCounterResource: uploadedBytesCounterResource).make(),
-                filecleaner: cloudSlot,
-                moc: storage.backgroundContext
-            )
-        }
-        #endif
 
         cleanUpStartController = CleanUpController()
 
@@ -264,7 +239,7 @@ public class Tower: NSObject {
         sdkCacheProvider = SDKCacheProvider(groupContainerDirectory: appGroup.directoryUrl)
 
         self.sdkEncryptionKeyProvider = SDKEncryptionKeyProvider()
-
+        
         super.init()
         
         if Constants.buildType.isQaOrBelow {
@@ -371,6 +346,7 @@ public class Tower: NSObject {
     }
 
     #if os(iOS)
+    // Handles sign out logic for File Provider, the app itself uses DriveSignOutManager
     @MainActor
     public func signOut(cacheCleanupStrategy: CacheCleanupStrategy) async {
         if let userId = sessionVault.userInfo?.ID {
@@ -383,27 +359,22 @@ public class Tower: NSObject {
         sessionVault.signOut()
         sessionCommunicator.clearStateOnSignOut()
     }
-
-    public func set(sdkFileUploader: SDKFileUploaderProtocol?) {
-        self.sdkFileUploader = sdkFileUploader
-    }
-
-    public func set(sdkFileDownloader: SDKFileDownloaderProtocol) {
-        self.sdkFileDownloader = sdkFileDownloader
-    }
-
-    public func set(sdkNodeOperationPerformer: SDKNodeOperationPerformer) {
-        self.sdkNodeOperationPerformer = sdkNodeOperationPerformer
-    }
-
-    public func set(treeTrashHandler: NodeTreeTrashHandlerProtocol) {
+    
+    public func set(treeTrashHandler: NodeTreeTrashHandlerProtocol?) {
         if let slot = cloudSlot as? VolumeDBCloudSlot {
             slot.set(nodeTreeTrashHandler: treeTrashHandler)
         }
     }
-
-    public func set(sdkThumbnailsDownloaderForFiles: SDKThumbnailsDownloaderProtocol) {
-        self.sdkThumbnailsDownloaderForFiles = sdkThumbnailsDownloaderForFiles
+    
+    public func set(sdkObjects: SDKObjectsProtocol) {
+        self._sdkObjects = sdkObjects
+    }
+    
+    public func set(fpSDKObjects: FPSDKObjectsProtocol) {
+        self._fpSDKObjects = fpSDKObjects
+    }
+    
+    public func createThumbnailLoader() {
         thumbnailLoader = ThumbnailLoaderFactory().makeFileThumbnailLoader(
             tower: self,
             storage: storage,
@@ -413,66 +384,22 @@ public class Tower: NSObject {
         )
     }
 
-    public func set(sdkThumbnailsDownloaderForPhotos: SDKThumbnailsDownloaderProtocol) {
-        self.sdkThumbnailsDownloaderForPhotos = sdkThumbnailsDownloaderForPhotos
-    }
-
-    public func set(sdkRevisionUploader: SDKRevisionUploaderProtocol) {
-        self.sdkRevisionUploader = sdkRevisionUploader
-    }
-
-    public func set(sdkPhotoDownloader: SDKFileDownloaderProtocol) {
-        self.sdkPhotoDownloader = sdkPhotoDownloader
-    }
-
-    public func set(sdkPhotoUploader: SDKFileUploaderProtocol) {
-        self.sdkPhotoUploader = sdkPhotoUploader
+    public func subscribe(isLockedPublisher: AnyPublisher<Bool, Never>) {
+        isLockedPublisher
+            .removeDuplicates()
+            .sink { [weak self] isLocked in
+                if isLocked {
+                    self?.stop()
+                } else {
+                    self?.resume()
+                }
+            }
+            .store(in: &cancellables)
     }
     #endif // os(iOS)
 
-    public func getSdkThumbnailsDownloaderForFiles() -> SDKThumbnailsDownloaderProtocol? {
-        guard featureFlags.isEnabled(flag: .driveiOSSDKDownloadMain) else { return nil }
-        return sdkThumbnailsDownloaderForFiles
-    }
-
-    public func getSdkThumbnailsDownloaderForPhotos() -> SDKThumbnailsDownloaderProtocol? {
-        guard featureFlags.isEnabled(flag: .driveiOSSDKDownloadPhoto) else { return nil }
-        return sdkThumbnailsDownloaderForPhotos
-    }
-
-    public func getSdkFileDownloader() -> SDKFileDownloaderProtocol? {
-        guard featureFlags.isEnabled(flag: .driveiOSSDKDownloadMain) else { return nil }
-        return sdkFileDownloader
-    }
-
-    public func getSdkFileUploader() -> SDKFileUploaderProtocol? {
-        guard featureFlags.isEnabled(flag: .driveiOSSDKUploadMain) else { return nil }
-        return sdkFileUploader
-    }
-
-    public func getSdkNodeOperationPerformer() -> SDKNodeOperationPerformer? {
-        guard featureFlags.isEnabled(flag: .driveiOSSDKNodeOperations) else { return nil }
-        return sdkNodeOperationPerformer
-    }
-
-    public func getSdkPhotoDownloader() -> SDKFileDownloaderProtocol? {
-        guard featureFlags.isEnabled(flag: .driveiOSSDKDownloadPhoto) else { return nil }
-        return sdkPhotoDownloader
-    }
-
-    public func getSdkPhotoUploader() -> SDKFileUploaderProtocol? {
-        // Feature flag is not checked here to avoid disrupting the backup flow
-        // PhotoFeederPreprocessor handles feature flag logic
-        return sdkPhotoUploader
-    }
-
     @MainActor
     public func destroyCache(strategy cacheCleanupStrategy: CacheCleanupStrategy) async {
-        photoUploader?.didSignOut = true
-        photoUploader?.cancelAllOperations()
-        fileUploader.didSignOut = true
-        fileUploader.cancelAllOperations()
-        await sdkFileUploader?.cancelAll()
         performanceMetricsController?.reset()
 
         if cacheCleanupStrategy.shouldCleanEvents {
@@ -485,12 +412,20 @@ public class Tower: NSObject {
         cleanUpStartController.start()
 
         downloader.cancelAll()
-        sdkFileDownloader?.cancelAll()
         sdkCacheProvider.cleanUp()
         sdkEncryptionKeyProvider?.removeEncryptionKey()
+#if os(iOS)
+        // `sdkObjects` might be nil in some race conditions during invalidated BE session (couldn't figure out exact repro)
+        await _sdkObjects?.fileUploader.cancelAll()
+        _sdkObjects?.fileDownloader.cancelAll()
+        await _sdkObjects?.photoUploader.cancelAll()
+        _sdkObjects?.photoDownloader.cancelAll()
         offlineSavers.forEach { $0.cleanUp() }
+        // To break retain cycle, Downloader -> VolumeDBCloudSlot -> trashHandler -> Downloader
+        set(treeTrashHandler: nil)
+#endif
 
-        thumbnailLoader.cancelAll()
+        thumbnailLoader?.cancelAll()
         fileSystemSlot.clear()
         localSettings.cleanUp(cleanUserSpecificSettings: cacheCleanupStrategy.shouldCleanUserSpecificSettings)
         generalSettings.cleanUp()
@@ -555,7 +490,7 @@ public class Tower: NSObject {
     // things we need to do on every start
     public func start(options: StartOptions) {
         Log.trace()
-        
+
         // Clean old events from Events Storage
         // Cleans all events no matter the volumeId
         try? eventStorageManager.periodicalCleanup()
@@ -564,7 +499,9 @@ public class Tower: NSObject {
         // iOS client fetch core FF in initialService
         featureFlags.start { _ in } // start with event system, error is ignored, we will use cache or defaults
         #endif
+        #if os(iOS)
         offlineSavers.forEach { $0.start() }
+        #endif
 
         // Events
         let includeAllVolumes = options.contains(.initializeAllVolumes)
@@ -587,7 +524,9 @@ public class Tower: NSObject {
         isStopped = true
         featureFlags.stop()  // pause with event system
         pauseEventsSystem()
+        #if os(iOS)
         offlineSavers.forEach { $0.cleanUp() }
+        #endif
     }
 
     public func resume() {
@@ -596,7 +535,9 @@ public class Tower: NSObject {
            try await featureFlags.startAsync()
         }
         coreEventManager.start()
+        #if os(iOS)
         offlineSavers.forEach { $0.start() }
+        #endif
         isStopped = false
     }
 
@@ -700,6 +641,7 @@ extension Tower {
 
 // MARK: - Notification
 extension Tower {
+    #if os(iOS)
     public func subscribeToCleanUpNotifications() {
         NotificationCenter.default.publisher(for: .nukeCache)
             .receive(on: DispatchQueue.main)
@@ -720,6 +662,7 @@ extension Tower {
             }
             .store(in: &cancellables)
     }
+    #endif
 
     /// Clears local cache without clearing the user session
     @objc private func reloadCache(notification: Notification) {

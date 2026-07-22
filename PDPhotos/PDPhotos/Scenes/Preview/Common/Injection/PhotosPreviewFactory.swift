@@ -46,6 +46,7 @@ struct PhotosPreviewFactory {
         let actionController = PhotosPreviewActionView(viewModel: actionViewModel).embeddedInHostingController()
         let viewController = PhotosPreviewViewController(
             viewModel: viewModel,
+            actionViewModel: actionViewModel,
             factory: coordinator,
             actionViewController: actionController
         )

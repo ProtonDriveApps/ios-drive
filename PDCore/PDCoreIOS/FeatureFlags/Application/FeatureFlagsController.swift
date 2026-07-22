@@ -34,10 +34,6 @@ public protocol FeatureFlagsControllerProtocol {
     var hasProtonSheetCreation: Bool { get }
     var hasDebugMode: Bool { get }
     var hasPaymentsV2: Bool { get }
-    var hasSDKUploadMain: Bool { get }
-    var hasSDKUploadPhoto: Bool { get }
-    var hasSDKDownloadMain: Bool { get }
-    var hasSDKDownloadPhoto: Bool { get }
     var hasSDKNodeOperations: Bool { get }
     var hasGradualRolloutChannel: Bool { get }
     /// Makes current value publisher for the specific FF
@@ -114,22 +110,6 @@ public final class FeatureFlagsController: FeatureFlagsControllerProtocol {
 
     public var hasPaymentsV2: Bool {
         return featureFlagsStore.isFeatureEnabled(.driveiOSPaymentsV2)
-    }
-
-    public var hasSDKUploadMain: Bool {
-        return featureFlagsStore.isFeatureEnabled(.driveiOSSDKUploadMain)
-    }
-
-    public var hasSDKUploadPhoto: Bool {
-        return featureFlagsStore.isFeatureEnabled(.driveiOSSDKUploadPhoto)
-    }
-
-    public var hasSDKDownloadMain: Bool {
-        return featureFlagsStore.isFeatureEnabled(.driveiOSSDKDownloadMain)
-    }
-
-    public var hasSDKDownloadPhoto: Bool {
-        return featureFlagsStore.isFeatureEnabled(.driveiOSSDKDownloadPhoto)
     }
 
     public var hasSDKCryptoEncryptBlocksWithPgpAead: Bool {

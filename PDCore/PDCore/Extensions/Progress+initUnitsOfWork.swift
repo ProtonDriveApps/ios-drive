@@ -62,19 +62,3 @@ public extension Progress {
     }
 
 }
-
-extension OperationQueue {
-
-    func addProgressOperations(_ ops: [OperationWithProgress]) {
-        ops.forEach(self.addUnitaryProgressOperation)
-    }
-
-    func addProgressOperation(_ op: OperationWithProgress, pendingWork: UnitOfWork = 1) {
-        progress.addChild(op.progress, pending: pendingWork)
-        addOperation(op)
-    }
-
-    private func addUnitaryProgressOperation(_ op: OperationWithProgress) {
-        addProgressOperation(op)
-    }
-}

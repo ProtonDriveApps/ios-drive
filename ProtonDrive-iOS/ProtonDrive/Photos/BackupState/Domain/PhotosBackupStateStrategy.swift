@@ -30,7 +30,6 @@ struct PhotosBackupStatesInput: Equatable {
     let isStorageConstrained: Bool
     let isFeatureFlagConstrained: Bool
     let isApplicationStateConstrained: Bool
-    let isConstrainedByMigration: Bool
 }
 
 protocol PhotosBackupStateStrategy {
@@ -39,11 +38,6 @@ protocol PhotosBackupStateStrategy {
 
 final class PrioritizedPhotosBackupStateStrategy: PhotosBackupStateStrategy {
     func map(input: PhotosBackupStatesInput) -> PhotosBackupState {
-        guard !input.isConstrainedByMigration else {
-            Log.debug("backup is constrained by migration", domain: .photosProcessing)
-            return .empty
-        }
-
         guard input.isBackupEnabled else {
             return .disabled
         }

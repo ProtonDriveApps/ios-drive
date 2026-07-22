@@ -50,18 +50,10 @@ public struct UserDefaultsConfiguration {
               sessionReadyKeyPath: \.childSessionReady,
               sessionExpiredKeyPath: \.childSessionExpired)
     }
-    
-    public static func forDDK(userDefaults: UserDefaults) -> UserDefaultsConfiguration {
-        .init(userDefaults: userDefaults,
-              sessionReadyPropertyKey: .ddkSessionReadyKey,
-              sessionExpiredPropertyKey: .ddkSessionExpiredKey,
-              sessionReadyKeyPath: \.ddkSessionReady,
-              sessionExpiredKeyPath: \.ddkSessionExpired)
-    }
 }
 
 public typealias SessionRelatedCommunicatorFactory = (
-    SessionStore, Authenticator, @escaping (Credential, ChildSessionCredentialKind) -> Void
+    SessionStore, Authenticator, @escaping (Credential) -> Void
 ) -> SessionRelatedCommunicatorBetweenMainAppAndExtensions
 
 public final class SessionRelatedCommunicatorForMainApp: SessionRelatedCommunicatorBetweenMainAppAndExtensions {
@@ -76,7 +68,6 @@ public final class SessionRelatedCommunicatorForMainApp: SessionRelatedCommunica
     
     private let authenticator: AuthenticatorInterface
     private let sessionStorage: SessionStore
-    private let childSessionKind: ChildSessionCredentialKind
     private let userDefaultsConfiguration: UserDefaultsConfiguration
     private let userDefaultsObservationCenter: UserDefaultsObservationCenter
     public private(set) var isWaitingforNewChildSessionAvailability: Atomic<Bool> = .init(false)
@@ -92,14 +83,12 @@ public final class SessionRelatedCommunicatorForMainApp: SessionRelatedCommunica
                 customUserDefaultsObservationCenter: UserDefaultsObservationCenter? = nil,
                 periodicCheckIntervalInMilliseconds: Int = 5000,
                 sessionStorage: SessionStore,
-                childSessionKind: ChildSessionCredentialKind,
                 authenticator: AuthenticatorInterface) {
         self.userDefaultsConfiguration = userDefaultsConfiguration
         self.periodicCheckIntervalInMilliseconds = periodicCheckIntervalInMilliseconds
         self.userDefaultsObservationCenter = customUserDefaultsObservationCenter ?? UserDefaultsObservationCenter(userDefaults: userDefaultsConfiguration.userDefaults)
         self.authenticator = authenticator
         self.sessionStorage = sessionStorage
-        self.childSessionKind = childSessionKind
     }
     
     public func startObservingSessionChanges() {
@@ -169,7 +158,7 @@ public final class SessionRelatedCommunicatorForMainApp: SessionRelatedCommunica
             guard !onlyIfSessionIsExpired || isChildSessionExpired() else { return }
             let valueWasChangedFromFalseToTrue = isWaitingforNewChildSessionAvailability.changeValue(to: true)
             guard valueWasChangedFromFalseToTrue else {
-                Log.info("Not fetching new child session of kind \(childSessionKind) because fetching already in progress", domain: .sessionManagement)
+                Log.info("Not fetching new child session because fetching already in progress", domain: .sessionManagement)
                 return
             }
             _ = try await fetchNewChildSession(parentSessionCredential: parentSessionCredentials)
@@ -181,7 +170,7 @@ public final class SessionRelatedCommunicatorForMainApp: SessionRelatedCommunica
     }
     
     public func onChildSessionReady() {
-        Log.info("Child session of kind \(childSessionKind) fetched and stored in the locker", domain: .sessionManagement)
+        Log.info("Child session fetched and stored in the locker", domain: .sessionManagement)
         userDefaults.set(false, forKey: userDefaultsConfiguration.sessionExpiredPropertyKey.rawValue)
         userDefaults.set(true, forKey: userDefaultsConfiguration.sessionReadyPropertyKey.rawValue)
     }
@@ -189,10 +178,10 @@ public final class SessionRelatedCommunicatorForMainApp: SessionRelatedCommunica
     public func fetchNewChildSession(parentSessionCredential: Credential) async throws {
         let valueWasChangedFromFalseToTrue = isFetchingChildSession.changeValue(to: true)
         guard valueWasChangedFromFalseToTrue else {
-            Log.info("Not fetching new child session of kind \(childSessionKind) because fetching already in progress", domain: .sessionManagement)
+            Log.info("Not fetching new child session because fetching already in progress", domain: .sessionManagement)
             return
         }
-        Log.info("Started fetching new child session of kind \(childSessionKind)", domain: .sessionManagement)
+        Log.info("Started fetching new child session", domain: .sessionManagement)
         defer { isFetchingChildSession.mutate { $0 = false } }
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             authenticator.performForkingAndObtainChildSession(
@@ -204,19 +193,19 @@ public final class SessionRelatedCommunicatorForMainApp: SessionRelatedCommunica
                 }
                 switch result {
                 case .success(let newCredentials):
-                    Log.info("Successfully fetched new child session of kind \(childSessionKind)", domain: .sessionManagement)
-                    self.sessionStorage.storeNewChildSessionCredential(CoreCredential(newCredentials), kind: childSessionKind)
+                    Log.info("Successfully fetched new child session", domain: .sessionManagement)
+                    self.sessionStorage.storeNewChildSessionCredential(CoreCredential(newCredentials))
                     continuation.resume()
                 case .failure(let error):
                     if Constants.buildType.isQaOrBelow {
                         Log.error(
-                            "Failed to fetch new child session of kind \(childSessionKind) ",
+                            "Failed to fetch new child session",
                             error: error,
                             domain: .sessionManagement
                         )
                     } else {
                         Log.error(
-                            "Failed to fetch new child session of kind \(childSessionKind) because of error",
+                            "Failed to fetch new child session because of error",
                             error: nil,
                             domain: .sessionManagement
                         )
@@ -243,9 +232,8 @@ public final class SessionRelatedCommunicatorForExtension: SessionRelatedCommuni
     private let sessionStorage: SessionStore
     private let userDefaultsConfiguration: UserDefaultsConfiguration
     private let userDefaultsObservationCenter: UserDefaultsObservationCenter
-    private let childSessionKind: ChildSessionCredentialKind
     private var userDefaults: UserDefaults { userDefaultsConfiguration.userDefaults }
-    private let onChildSessionObtained: (Credential, ChildSessionCredentialKind) async -> Void
+    private let onChildSessionObtained: (Credential) async -> Void
     public private(set) var isWaitingforNewChildSessionAvailability: Atomic<Bool> = .init(false)
     public private(set) var isConsumingChildSession: Atomic<Bool> = .init(false)
     public private(set) var isObservingForSessionReadiness: Atomic<Bool> = .init(false)
@@ -260,14 +248,12 @@ public final class SessionRelatedCommunicatorForExtension: SessionRelatedCommuni
                 periodicCheckIntervalInMilliseconds: Int = 5000,
                 assertionProvider: AssertionProvider = SystemAssertionProvider.instance,
                 sessionStorage: SessionStore,
-                childSessionKind: ChildSessionCredentialKind,
-                onChildSessionObtained: @escaping (Credential, ChildSessionCredentialKind) async -> Void) {
+                onChildSessionObtained: @escaping (Credential) async -> Void) {
         self.userDefaultsConfiguration = userDefaultsConfiguration
         self.periodicCheckIntervalInMilliseconds = periodicCheckIntervalInMilliseconds
         self.assertionProvider = assertionProvider
         self.userDefaultsObservationCenter = customUserDefaultsObservationCenter ?? UserDefaultsObservationCenter(userDefaults: userDefaultsConfiguration.userDefaults)
         self.sessionStorage = sessionStorage
-        self.childSessionKind = childSessionKind
         self.onChildSessionObtained = onChildSessionObtained
         startObservingSessionChanges()
     }
@@ -339,26 +325,21 @@ public final class SessionRelatedCommunicatorForExtension: SessionRelatedCommuni
         else { return }
         let valueWasChangedFromFalseToTrue = isConsumingChildSession.changeValue(to: true)
         guard valueWasChangedFromFalseToTrue else { return }
-        sessionStorage.consumeChildSessionCredentials(kind: childSessionKind)
+        sessionStorage.consumeChildSessionCredentials()
         defer { isConsumingChildSession.mutate { $0 = false } }
         defer { userDefaults.set(false, forKey: userDefaultsConfiguration.sessionReadyPropertyKey.rawValue) }
         defer { isWaitingforNewChildSessionAvailability.mutate { $0 = false } }
-        let credential: CoreCredential?
-        switch childSessionKind {
-        case .fileProviderExtension: credential = sessionStorage.sessionCredential
-        case .ddk: credential = sessionStorage.ddkCredential
-        }
-        guard let credential else { return }
+        guard let credential = sessionStorage.sessionCredential else { return }
         let childSessionCredentials = Credential(credential)
         guard !childSessionCredentials.isForUnauthenticatedSession else { return }
-        await onChildSessionObtained(childSessionCredentials, childSessionKind)
-        Log.info("New child session of kind \(childSessionKind) consumed", domain: .sessionManagement)
+        await onChildSessionObtained(childSessionCredentials)
+        Log.info("New child session consumed", domain: .sessionManagement)
     }
     
     public func askMainAppToProvideNewChildSession() async {
         let valueWasChangedFromFalseToTrue = isWaitingforNewChildSessionAvailability.changeValue(to: true)
         guard valueWasChangedFromFalseToTrue else { return }
-        Log.info("Child session of kind \(childSessionKind) expired written to user defaults", domain: .sessionManagement)
+        Log.info("Child session expired written to user defaults", domain: .sessionManagement)
         userDefaults.set(true, forKey: userDefaultsConfiguration.sessionExpiredPropertyKey.rawValue)
     }
     

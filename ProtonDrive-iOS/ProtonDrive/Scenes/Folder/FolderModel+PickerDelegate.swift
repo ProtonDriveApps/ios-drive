@@ -22,13 +22,16 @@ import PDLocalization
 
 enum PickerError: Error, LocalizedError {
     case importFailures(errors: [Error])
-    
+    case unsupportedFileType(fileExtension: String)
+
     var errorDescription: String? {
         switch self {
         case let .importFailures(errors):
             let file = Localization.file_plural_type_with_num(num: errors.count).lowercased()
             let title = errors.first?.localizedDescription ?? ""
             return Localization.file_pickup_error(files: file, error: title)
+        case .unsupportedFileType(let fileExtension):
+            return Localization.file_pickup_unsupported(fileExtension: fileExtension)
         }
     }
 }
@@ -55,10 +58,7 @@ extension FolderModel: PickerDelegate {
     }
 
     private func upload(content: URLContent) throws {
-        guard let sdkUploader = tower.getSdkFileUploader() else {
-            try uploadFile(content, to: currentFolder)
-            return
-        }
+        let sdkUploader = tower.sdkObjects.fileUploader
         let newFile = try tower.fileImporter.importFile(from: content.url, to: currentFolder, with: nil)
         guard content.size == content.url.fileSize else {
             assert(false, "Failed to create File")

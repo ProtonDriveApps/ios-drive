@@ -48,18 +48,14 @@ extension LogContext {
 /// Writes logs as JSONL.
 public class JSONLogger: FileLogger {
 
-    private let fileOperationsMode: String
-
     private let startTime: Date
 
-    public init(
+    public override init(
         process: FileLog,
-        fileOperationsMode: String,
         subdirectory: String? = nil,
         oneFilePerRun: Bool,
         compressedLogsDisabled: @escaping () -> Bool
     ) {
-        self.fileOperationsMode = fileOperationsMode
         self.startTime = Date.now
         super.init(
             process: process,
@@ -150,7 +146,6 @@ public class JSONLogger: FileLogger {
                 "func": AnyEncodable(function),
                 "thr": AnyEncodable(Thread.current.number.description),
                 "v": AnyEncodable(Constants.clientVersion ?? "n/a"),
-                "mode": AnyEncodable(fileOperationsMode),
                 "payload": AnyEncodable(jsonPayload),
                 "name": AnyEncodable(jsonPayload.eventName),
                 "runID": AnyEncodable(startTime.timeIntervalSince1970),

@@ -23,20 +23,6 @@
          </BuildActionEntry>
          <BuildActionEntry
             buildForTesting = "YES"
-            buildForRunning = "NO"
-            buildForProfiling = "NO"
-            buildForArchiving = "NO"
-            buildForAnalyzing = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "31CDDF5C2A9E0D6C00FB8285"
-               BuildableName = "PDUploadVerifierTests.xctest"
-               BlueprintName = "PDUploadVerifierTests"
-               ReferencedContainer = "container:../PDUploadVerifier/PDUploadVerifier.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
             buildForRunning = "YES"
             buildForProfiling = "YES"
             buildForArchiving = "YES"

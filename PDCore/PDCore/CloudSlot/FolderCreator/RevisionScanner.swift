@@ -63,7 +63,6 @@ public class RevisionScanner {
                 }
             file.addToRevisions(revision)
 #else
-            // Legacy for Mac, can be removed after 2025 Feb, once mac migrated to DDK
             storage.removeOutdatedCache(of: revision)
 
             let newBlocks: [DownloadBlock] = storage.unique(with: Set(revisionMeta.blocks.map { $0.URL.absoluteString }), uniqueBy: #keyPath(DownloadBlock.downloadUrl), in: context)

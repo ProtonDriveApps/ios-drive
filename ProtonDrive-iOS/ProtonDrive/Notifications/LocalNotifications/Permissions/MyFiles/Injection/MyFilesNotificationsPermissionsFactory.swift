@@ -20,11 +20,12 @@ import PDCoreIOS
 import UIKit
 
 struct MyFilesNotificationsPermissionsFactory {
+    @MainActor
     func makeController(tower: Tower, flowController: NotificationsPermissionsFlowController) -> NotificationsPermissionsController {
         MyFilesNotificationsPermissionsController(
             flowController: flowController,
             resource: UNUserNotificationsResource(),
-            uploadInteractor: MyFilesUploadOperationInteractor(storage: tower.storage, interactor: tower.fileUploader),
+            uploadInteractor: SDKFilesUploadOperationInteractor(uploader: tower.sdkObjects.fileUploader),
             localSettings: tower.localSettings
         )
     }

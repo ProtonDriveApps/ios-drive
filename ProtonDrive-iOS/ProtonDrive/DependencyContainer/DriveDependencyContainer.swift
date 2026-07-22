@@ -15,9 +15,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Combine
 import UIKit
 import PDClient
 import PDCore
+import PDCoreIOS
 import ProtonCoreKeymaker
 import ProtonCoreAuthentication
 import ProtonCoreHumanVerification
@@ -33,6 +35,9 @@ public class DriveDependencyContainer {
     var authenticatedContainer: AuthenticatedDependencyContainer?
     let hvHelper: HumanCheckHelper
     private(set) var autoLocker: Autolocker?
+    let lockedStateController: LockedStateController
+    let storageManager: StorageManager
+    let signOutManager: DriveSignOutManager
 
     public init() {
         let autolocker = Autolocker(lockTimeProvider: DriveKeychain.shared)
@@ -52,13 +57,22 @@ public class DriveDependencyContainer {
                     SessionRelatedCommunicatorForMainApp(
                         userDefaultsConfiguration: .forFileProviderExtension(userDefaults: Constants.appGroup.userDefaults),
                         sessionStorage: sessionStore,
-                        childSessionKind: .fileProviderExtension,
                         authenticator: authenticator
                     )
                 }
             )
         }
         initialServices = makeInitialServices()
+
+        storageManager = StorageManager(suite: Constants.appGroup)
+        lockedStateController = LockedStateControllerFactory().make(keymaker: keymaker, storageManager: storageManager)
+        signOutManager = DriveSignOutManager(
+            authenticator: initialServices.authenticator,
+            localSettings: initialServices.localSettings,
+            sessionCommunicator: initialServices.sessionRelatedCommunicator,
+            sessionVault: initialServices.sessionVault,
+            storageManager: storageManager
+        )
 
         hvHelper = HumanCheckHelper(
             apiService: initialServices.networkService,

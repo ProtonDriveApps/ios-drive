@@ -31,19 +31,32 @@ public final class NodeMover: NodeMoverProtocol {
     private let signersKitFactory: SignersKitFactoryProtocol
     private let cloudNodeMover: CloudNodeMover
     private let parentIDFetcher: NodeParentIDFetcher
+    private let metadataRefresher: NodeMetadataRefreshing?
 
     public init(
         cloudNodeMover: @escaping CloudNodeMover,
         signersKitFactory: SignersKitFactoryProtocol,
-        parentIDFetcher: NodeParentIDFetcher
+        parentIDFetcher: NodeParentIDFetcher,
+        metadataRefresher: NodeMetadataRefreshing? = nil
     ) {
         self.signersKitFactory = signersKitFactory
         self.cloudNodeMover = cloudNodeMover
         self.parentIDFetcher = parentIDFetcher
+        self.metadataRefresher = metadataRefresher
     }
 
     public func move(_ node: Node, to newParent: Folder, name: String, moc: NSManagedObjectContext) async throws {
         let validatedNewName = try name.validateNodeName(validator: NameValidations.iosName)
+        try await performWithOutOfSyncRetry(
+            node: node,
+            moc: moc,
+            metadataRefresher: metadataRefresher,
+            attempt: { try await self.attemptMove(node, to: newParent, name: validatedNewName, moc: moc) },
+            stillNeeded: { try await self.moveStillNeeded(node, to: newParent, name: validatedNewName, moc: moc) }
+        )
+    }
+
+    private func attemptMove(_ node: Node, to newParent: Folder, name validatedNewName: String, moc: NSManagedObjectContext) async throws {
         let cryptoInfo = try await readCryptoInfo(from: node, and: newParent, moc: moc)
 
         let parameters = try prepareRequestParameter(
@@ -56,7 +69,7 @@ public final class NodeMover: NodeMoverProtocol {
 
         let nodeManagedObjectID = node.objectID
         let parentManagerObjectID = newParent.objectID
-        
+
         try await moc.perform {
             let node = moc.object(with: nodeManagedObjectID) as! Node
             let newParent = moc.object(with: parentManagerObjectID) as! Folder
@@ -78,6 +91,19 @@ public final class NodeMover: NodeMoverProtocol {
             node.parentFolder = newParent
 
             try moc.saveOrRollback()
+        }
+    }
+
+    private func moveStillNeeded(_ node: Node, to newParent: Folder, name validatedNewName: String, moc: NSManagedObjectContext) async throws -> Bool {
+        let nodeManagedObjectID = node.objectID
+        let parentManagedObjectID = newParent.objectID
+        return try await moc.perform {
+            guard
+                let node = moc.object(with: nodeManagedObjectID) as? Node,
+                let newParent = moc.object(with: parentManagedObjectID) as? Folder
+            else { return false }
+            let target = try Encryptor.hmac(filename: validatedNewName, parentHashKey: newParent.decryptNodeHashKey())
+            return node.parentFolder?.id != newParent.id || node.nodeHash != target
         }
     }
 

@@ -71,7 +71,6 @@ public extension PDPhotosContainer {
         let authorizationController: PhotoLibraryAuthorizationController
         let backupProgressController: PhotosBackupProgressController
         let processingController: PhotosProcessingController
-        let uploader: PhotoUploader
         let quotaStateController: QuotaStateController
         let lockBannerRepository: ScreenLockingBannerRepository
         let failedPhotosResource: DeletedPhotosIdentifierStoreResource
@@ -105,7 +104,6 @@ public extension PDPhotosContainer {
             authorizationController: PhotoLibraryAuthorizationController,
             backupProgressController: PhotosBackupProgressController,
             processingController: PhotosProcessingController,
-            uploader: PhotoUploader,
             quotaStateController: QuotaStateController,
             lockBannerRepository: ScreenLockingBannerRepository,
             failedPhotosResource: DeletedPhotosIdentifierStoreResource,
@@ -138,7 +136,6 @@ public extension PDPhotosContainer {
             self.authorizationController = authorizationController
             self.backupProgressController = backupProgressController
             self.processingController = processingController
-            self.uploader = uploader
             self.quotaStateController = quotaStateController
             self.lockBannerRepository = lockBannerRepository
             self.failedPhotosResource = failedPhotosResource

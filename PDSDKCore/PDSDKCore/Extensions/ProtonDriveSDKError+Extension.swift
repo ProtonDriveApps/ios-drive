@@ -17,11 +17,36 @@
 
 import Foundation
 import PDClient
+import PDCore
 import ProtonDriveSDK
 
 public extension ProtonDriveSDKError {
     var isConflictError: Bool {
         self.innerError?.primaryCode == APIErrorCodes.alreadyExists.rawValue
+    }
+
+    var isTooManyChildrenError: Bool {
+        guard primaryCode != ResponseCode.tooManyChildren.rawValue else { return true }
+        guard let innerError else { return false }
+        return innerError.isTooManyChildrenError
+    }
+
+    var isNestingTooDeepError: Bool {
+        guard primaryCode != ResponseCode.nestingTooDeep.rawValue else { return true }
+        guard let innerError else { return false }
+        return innerError.isNestingTooDeepError
+    }
+
+    var isInsufficientQuotaError: Bool {
+        guard primaryCode != ResponseCode.insufficientQuota.rawValue else { return true }
+        guard let innerError else { return false }
+        return innerError.isInsufficientQuotaError
+    }
+
+    var isInsufficientSpaceError: Bool {
+        guard primaryCode != ResponseCode.insufficientSpace.rawValue else { return true }
+        guard let innerError else { return false }
+        return innerError.isInsufficientSpaceError
     }
 
     /// Matches the C# SDK's classification: only connectivity-related transport

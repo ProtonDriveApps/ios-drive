@@ -23,8 +23,8 @@ public struct NodeTreeTrashHandler: NodeTreeTrashHandlerProtocol {
     private let cleaner: TrashedNodesCleaner
     private let performer: NodeTreeTrashPerformer
 
-    public init(downloaders: [DownloaderProtocol]) {
-        self.cleaner = TrashedNodesCleaner(downloaders: downloaders)
+    public init(downloader: DownloaderProtocol) {
+        self.cleaner = TrashedNodesCleaner(downloader: downloader)
         self.performer = NodeTreeTrashPerformer()
     }
 

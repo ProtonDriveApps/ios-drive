@@ -66,7 +66,7 @@ extension Tower {
     }
     
     @available(*, deprecated, message: "Wrap the functionality in a standalone object, this should not be responsibility of Tower")
-    public func rename(node: NodeIdentifier, cleartextName newName: String, moc: NSManagedObjectContext, handler: @escaping (Result<Node, Error>) -> Void) {
+    public func rename(node: NodeIdentifier, cleartextName newName: String, mimeType providedMimeType: String? = nil, moc: NSManagedObjectContext, handler: @escaping (Result<Node, Error>) -> Void) {
         Task {
             do {
                 guard let node = storage.fetchNode(id: node, moc: moc) else {
@@ -85,6 +85,8 @@ extension Tower {
                     // 1. The user removed it when renaming; or
                     // 2. It's a Proton Document, which doesn't have an extension on other platforms
                     newMime = nil
+                } else if let providedMimeType {
+                    newMime = providedMimeType
                 } else {
                     newMime = URL(fileURLWithPath: newName).mimeType()
                 }
@@ -142,7 +144,7 @@ extension Tower {
                 guard newParent.identifier != currentParentID else {
                     return handler(.success(node))
                 }
-                
+
                 let name = try await decryptedName(node, moc, newName)
                 try await cloudSlot.move(node: node, to: newParent, name: name, moc: moc)
                 handler(.success(node))

@@ -27,20 +27,11 @@ enum RemotePhotoLoadStatus: Equatable {
     case withoutBackedUpPhoto
     case failure
     case disconnected
-    case disabledDueToMigration(error: String)
 
     var hasBackedUpPhoto: Bool {
         switch self {
         case .hasBackedUpPhoto: return true
         default: return false
-        }
-    }
-
-    var isDisabled: Bool {
-        if case .disabledDueToMigration = self {
-            return true
-        } else {
-            return false
         }
     }
 }
@@ -144,9 +135,7 @@ final class RemotePhotosPagingLoadController: PhotosPagingLoadController {
     }
 
     private func setStatus(with error: Error) {
-        if let responseError = error as? ResponseError, responseError.isPhotoVolumeMigrationError {
-            status = .disabledDueToMigration(error: responseError.userFacingMessage ?? "")
-        } else if error.isNetworkIssueError {
+        if error.isNetworkIssueError {
             status = .disconnected
         } else {
             status = .failure
@@ -162,12 +151,6 @@ final class RemotePhotosPagingLoadController: PhotosPagingLoadController {
     }
 
     func loadNext() {
-        guard !status.isDisabled else {
-            Log.info("PhotosPagingLoadController.loadNext, skipping load since the status is disabled", domain: .photosProcessing)
-            // We guard against bombing BE with redundant requests.
-            // Nothing can be listed anyway, the endpoint would return error again.
-            return
-        }
         guard isBootstrapped else {
             bootstrapController.bootstrap()
             return

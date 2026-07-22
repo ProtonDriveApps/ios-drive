@@ -13,7 +13,7 @@
 		004DE23B830FAC2DA12B1D10 /* Computer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF129FD940993B778E7F6489 /* Computer.swift */; };
 		00514FD7ED7C68EB1DE60BC0 /* ComputerCellViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB61CCC9D3201BD3F7DB894C /* ComputerCellViewModel.swift */; };
 		005680057F8D61639B7EC727 /* StorageBonusPromoStatusRepositoryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB97955608AF09996736F999 /* StorageBonusPromoStatusRepositoryProtocol.swift */; };
-		00CFC4E515F82E512719142F /* ProtonCoreLoginUI in Frameworks */ = {isa = PBXBuildFile; productRef = 68C93578B54EF4A5B4BACEE1 /* ProtonCoreLoginUI */; };
+		00CFC4E515F82E512719142F /* ProtonCoreNetworking in Frameworks */ = {isa = PBXBuildFile; productRef = 57644D6B482B1DBDE1FA51F4 /* ProtonCoreNetworking */; };
 		00D463DA9B3CCF067004A85B /* UNLocalNotificationUserNotificator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47E0477E49D0081101232E35 /* UNLocalNotificationUserNotificator.swift */; };
 		00EF2391D9BA50E927940604 /* FinderView+NavigationBarButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40562C49331F0551D59FC092 /* FinderView+NavigationBarButtons.swift */; };
 		012FC32010AEEF6FF49B16D4 /* PhotoShareCreationFinishTelemetryResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59C857A3C0DA0E628EC14E24 /* PhotoShareCreationFinishTelemetryResource.swift */; };
@@ -62,7 +62,7 @@
 		09483ED742292BEE35BB3DDB /* AppActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20D413B70318522E6811D43 /* AppActivityView.swift */; };
 		0962AEFE3A7B1DBB4FC08C6B /* PhotoLibraryCompoundResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = E05E40C37DACD3538850FBC1 /* PhotoLibraryCompoundResource.swift */; };
 		0988926206B0801BC6F7B5C2 /* ComputerCellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC0261C4434D8B33FA6EE283 /* ComputerCellView.swift */; };
-		099B0B5D35B514715922AF58 /* PMSideMenu in Frameworks */ = {isa = PBXBuildFile; productRef = C72DBD7A70B2BA9742E80F27 /* PMSideMenu */; };
+		099B0B5D35B514715922AF58 /* ProtonCoreAccountDeletion in Frameworks */ = {isa = PBXBuildFile; productRef = 72E9F76EA5EDCD6E77876CE2 /* ProtonCoreAccountDeletion */; };
 		0A20DB6A2C3BCC9E2CE9EBD0 /* UIApplication+topViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A8153A7B986D9B739DD8EB /* UIApplication+topViewController.swift */; };
 		0A4AFCE12A0D76A8502246E2 /* TabBarItems+presentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF8F4F6B57073B18A2C5A1C /* TabBarItems+presentation.swift */; };
 		0A6641483379E2DAFBCA4665 /* PhotoBackupNetworkController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9FEBAC4D6790EBBF42DEA61 /* PhotoBackupNetworkController.swift */; };
@@ -87,7 +87,7 @@
 		0F0C3D7C2740BF1D48A77486 /* NewProtonFileFacade.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9210935D5042F9ED9E2B9FE1 /* NewProtonFileFacade.swift */; };
 		0F135853630A9ABD24A94C9D /* LockConstraintController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4929D8466A1DB489D004AC3 /* LockConstraintController.swift */; };
 		0F57ECA7E176F40A70762146 /* TrashAlertEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 729738D530E1C38AA1CA1837 /* TrashAlertEnvironment.swift */; };
-		0F6374E974956E1012761A90 /* ProtonCoreDataModel in Frameworks */ = {isa = PBXBuildFile; productRef = 3B4D40ABA6C1C6B074972E73 /* ProtonCoreDataModel */; };
+		0F6374E974956E1012761A90 /* ProtonCoreKeymaker in Frameworks */ = {isa = PBXBuildFile; productRef = 42331593B03E796DC826338D /* ProtonCoreKeymaker */; };
 		1024E5307DD2312B59D29463 /* LogoutRequesting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0FBA8228B96C6E2D4116FE /* LogoutRequesting.swift */; };
 		10C863C4930612D99E08E767 /* UploadSectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A59C29F327D274D0D210C48A /* UploadSectionViewModel.swift */; };
 		10D179D440BB9D71AE066A8E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3CB66ED372D9485151016CFD /* PrivacyInfo.xcprivacy */; };
@@ -106,7 +106,7 @@
 		1236D106EF2D8280D529870B /* PhotosDiffStorageResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C4E70D5CC304839F7CE1DA2 /* PhotosDiffStorageResource.swift */; };
 		12420775A54ABBBDDC80A5C2 /* LogoutAlertViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E97984D8EF09C059A1DAA847 /* LogoutAlertViewModel.swift */; };
 		12469A5F462CE431F90F4632 /* SortingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51E308BC0C9CBC1EE0C9D9E9 /* SortingViewModel.swift */; };
-		124940D6365248EEE4AF151F /* ProtonCoreServices in Frameworks */ = {isa = PBXBuildFile; productRef = 3EEF77C140BF387302FBFB41 /* ProtonCoreServices */; };
+		124940D6365248EEE4AF151F /* ProtonCoreUIFoundations in Frameworks */ = {isa = PBXBuildFile; productRef = 01E210FD66F9325F857ACECA /* ProtonCoreUIFoundations */; };
 		124BA8301DD3055A6303C0A2 /* QuotaUpdatesFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B7F7D6D4EA8B9B9CF36B08 /* QuotaUpdatesFactory.swift */; };
 		1276101BCBE446DBF6A8AF83 /* OneDollarUpsellViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E769C8D244EC293670466A38 /* OneDollarUpsellViewModel.swift */; };
 		12E99CE8622E58D65F7D4A23 /* CreateFolderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9CF8DFA05ECB75B6DD6736D /* CreateFolderViewModel.swift */; };
@@ -130,7 +130,7 @@
 		159E58383F16B29F2C193735 /* ScheduleBackgroundTaskController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24CFE0E669BF482D717953CB /* ScheduleBackgroundTaskController.swift */; };
 		15D79A50F1E5A5F92EDD8CAC /* FileModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39E99BCC0BFBED965CA90559 /* FileModel.swift */; };
 		160C5265F5FAC12A78A4E790 /* ComputerDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D808112536D8F95DDEB584B /* ComputerDetailViewModel.swift */; };
-		168C3577737898B4DDE2444B /* PDSDKCoreiOS in Frameworks */ = {isa = PBXBuildFile; productRef = CB490E0A17C2B81C34B3765E /* PDSDKCoreiOS */; };
+		168C3577737898B4DDE2444B /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 234E7E636C4FDE6E6463EE1D /* ZIPFoundation */; };
 		1697036623736BA53CB582A9 /* RatingBoosterCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4699A510F4FADCF232F238B /* RatingBoosterCoordinator.swift */; };
 		16D3A69596B886CE7315C2F7 /* PhotosTaskSchedulerEnabledPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA220E5934308174DBF7A9BF /* PhotosTaskSchedulerEnabledPolicy.swift */; };
 		1795F0284D894707005BACD7 /* ProtonFileWebPlatformHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66E798853ECF30BE6D131EDE /* ProtonFileWebPlatformHandler.swift */; };
@@ -163,7 +163,7 @@
 		1CF65BEF46EFCC98536EB3E8 /* PhotoUploadMeasurementsStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B12AB4B0A7F813CBC57490A8 /* PhotoUploadMeasurementsStorage.swift */; };
 		1D0295EA617662FA1896671C /* PhotosBackupBackgroundStartTelemetryDataFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97E784DB53327205F8CB5983 /* PhotosBackupBackgroundStartTelemetryDataFactory.swift */; };
 		1D32077140A47284DA5F1BD2 /* MainVolumeIdDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89C946227B9D9FB3EE9DC148 /* MainVolumeIdDataSource.swift */; };
-		1D41E77DBC9BBAC90956B973 /* ProtonCoreKeymaker in Frameworks */ = {isa = PBXBuildFile; productRef = 42331593B03E796DC826338D /* ProtonCoreKeymaker */; };
+		1D41E77DBC9BBAC90956B973 /* ProtonCoreKeyManager in Frameworks */ = {isa = PBXBuildFile; productRef = 718BF0FE9DE919D56F6323BC /* ProtonCoreKeyManager */; };
 		1D42BBEF835DCBE0110EED2A /* FilesAndPhotosUploadsRestartingQuotaUpdatesInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50E4B9D04A72563AE3C73384 /* FilesAndPhotosUploadsRestartingQuotaUpdatesInteractor.swift */; };
 		1D5ACC7B99C72D9AED8C2EDB /* BackgroundPhotoUploadContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 319EFD379807FD2B8FD01532 /* BackgroundPhotoUploadContainer.swift */; };
 		1D7D883614C1820C57D176F6 /* BackgroundModesRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 867B8AEDA97A6A140B1C3D85 /* BackgroundModesRegistry.swift */; };
@@ -176,7 +176,7 @@
 		1F35005752F65F8E93F16C6F /* PhotosBackupUpdateTelemetryFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63D2462B22A7495AD309D904 /* PhotosBackupUpdateTelemetryFactory.swift */; };
 		1F5527CCCD93325840A087FA /* SceneInitStateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B677065F5F91DEE98FD5E4 /* SceneInitStateController.swift */; };
 		1F64848F9C569F1D8C9E030E /* CircuitBreakerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8FA06E97820D4DFC4DA8D4 /* CircuitBreakerController.swift */; };
-		1F64A4A7CEE8824E2FE65231 /* ProtonCorePaymentsUIV2 in Frameworks */ = {isa = PBXBuildFile; productRef = 0FA06FFCC45AE2E8ACBFB62B /* ProtonCorePaymentsUIV2 */; };
+		1F64A4A7CEE8824E2FE65231 /* ProtonCorePaymentsV2 in Frameworks */ = {isa = PBXBuildFile; productRef = 98B97D6A8A4D63CC1FAC2BBF /* ProtonCorePaymentsV2 */; };
 		1F8E89857DDB1EF3A3A4955F /* LockProtectionEnabledPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 625BE84E0B5F1BE1E0517B98 /* LockProtectionEnabledPolicy.swift */; };
 		1FD7EC7E6B0969FD1CB1A483 /* LocalNotificationsContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 823BB369EF029B6E461F87F9 /* LocalNotificationsContainer.swift */; };
 		1FED576995735BBC2D6379E5 /* DefaultHomeTabFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = C04FBDB371F200F9FBAB9B08 /* DefaultHomeTabFactory.swift */; };
@@ -186,7 +186,6 @@
 		203FE83713E29BE8312F3FCF /* RootSharedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5508ABCDA62E8BC5CEB06CAD /* RootSharedView.swift */; };
 		20AC6B270E387610970BC808 /* PhotosTelemetrySettingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C549124F6F22B52ABA1E714C /* PhotosTelemetrySettingController.swift */; };
 		20AD1C4E2030509F5C93CA5C /* ComputerCellViewState.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEF6402D045C55B3DDB9A702 /* ComputerCellViewState.swift */; };
-		20C64B9C2C68EE8DC46221CD /* PhotosUploadOperationInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3802DE760504787D72987049 /* PhotosUploadOperationInteractor.swift */; };
 		2100BA7FD6D17ECBC89BDDC6 /* PhotosTelemetryStorageController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30EDDD12C1F74979BD9E3A44 /* PhotosTelemetryStorageController.swift */; };
 		210139816259743CD48E8FA6 /* ProtonCoreCryptoPatchedGoImplementation in Frameworks */ = {isa = PBXBuildFile; productRef = 4D21AE4557B8BD3BC0F71AA2 /* ProtonCoreCryptoPatchedGoImplementation */; };
 		210B5CB1D03D4FAC3EFD263F /* OneDollarUpsellFlowFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E96743EEEF59EB59E3B00FF /* OneDollarUpsellFlowFactory.swift */; };
@@ -199,7 +198,7 @@
 		21B1BABC35F0DE1CC103D61C /* ConcretePhotoUploadMeasurementRepositoryFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A66E9632DA4EF169C5D040DF /* ConcretePhotoUploadMeasurementRepositoryFactory.swift */; };
 		21E0C6627E44B3C7C5ECB52A /* SkeletonButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF9ACF96B4DD578ADC1F725 /* SkeletonButton.swift */; };
 		21F73130B25DBC86B633A1E0 /* FileProviderExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4ADE9D6654A83EA5A0AC31A /* FileProviderExtension.swift */; };
-		2215A72031168E3989D40BEA /* ProtonCoreDataModel in Frameworks */ = {isa = PBXBuildFile; productRef = 3DEBC10F4F121AC3C669C093 /* ProtonCoreDataModel */; };
+		2215A72031168E3989D40BEA /* ProtonCoreKeymaker in Frameworks */ = {isa = PBXBuildFile; productRef = E17F28A50FE5547C977532B5 /* ProtonCoreKeymaker */; };
 		2221A133CF7830F7C4615AD3 /* ConstrainedTaskSchedulerDecorator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E910CB48E9428B4E92E2032 /* ConstrainedTaskSchedulerDecorator.swift */; };
 		224142B7DE18C2127EA6682D /* LocalNotificationsResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316DA9F15880C89CD49B51CC /* LocalNotificationsResource.swift */; };
 		22CD0F6E87AC966ED49105C9 /* LaunchViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC9B5091E64BD04EE9F95433 /* LaunchViewController.swift */; };
@@ -234,7 +233,7 @@
 		28765C7CF5C2763AFBDE5FBB /* DiagnosticsTreeDifferencesStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A09C289AB35D29FF7624B571 /* DiagnosticsTreeDifferencesStrategy.swift */; };
 		2890D70109B8F6BA631BE942 /* OneDollarUpsellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E61EE7F1FAB04AA76F5125AD /* OneDollarUpsellView.swift */; };
 		2891FFC8F8D32C52185ECEE8 /* SharedLinkViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E95F9A5868E359B193FE304 /* SharedLinkViewModel.swift */; };
-		289E0B71CF8EF4AF646E80AC /* ProtonCoreUIFoundations in Frameworks */ = {isa = PBXBuildFile; productRef = 625E72ACB9CF4998720EE2FC /* ProtonCoreUIFoundations */; };
+		289E0B71CF8EF4AF646E80AC /* ProtonCoreUtilities in Frameworks */ = {isa = PBXBuildFile; productRef = 76E08E7A9A20A1E0205E42BA /* ProtonCoreUtilities */; };
 		289E9B5F6BF690B9240B9424 /* SignInToAnotherDevice+DrillDown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93EBBBB41126930ADB37861A /* SignInToAnotherDevice+DrillDown.swift */; };
 		28B8AE23B50477B5A0E2A831 /* BackgroundModesRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 867B8AEDA97A6A140B1C3D85 /* BackgroundModesRegistry.swift */; };
 		2906E4609760582BD0A8FFC7 /* DuplicateUploadHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4360797718F76194DEE54DF /* DuplicateUploadHandler.swift */; };
@@ -257,7 +256,7 @@
 		2C7BB3C8B120F4CD0445C840 /* FormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C424A33FD10EA8C5DB1E309 /* FormView.swift */; };
 		2CB0A84A792AC4C50C4ACBF1 /* InMemoryPhotoLibraryIdentifiersQueueRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19E43269BBE029420D21A224 /* InMemoryPhotoLibraryIdentifiersQueueRepository.swift */; };
 		2CFEBC07F7F5B917AE6AF29E /* BugReportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B71BB44DB578960A4625D37D /* BugReportService.swift */; };
-		2D1F5A3810AEEE40350169E5 /* ProtonCoreVCard in Frameworks */ = {isa = PBXBuildFile; productRef = 2ECBB4C3082D8295FC4F7525 /* ProtonCoreVCard */; };
+		2D1F5A3810AEEE40350169E5 /* PDPhotos in Frameworks */ = {isa = PBXBuildFile; productRef = AB0E65A157A0932DC2338B4E /* PDPhotos */; };
 		2D2A12C8893EB4019F74DDEE /* DriveBootstrapStarter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F900A0DA2E88E81BE6AD45C /* DriveBootstrapStarter.swift */; };
 		2D3130FA794DACF261EBC3C0 /* NoSpaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D6DB06963AD78038E2739C5 /* NoSpaceView.swift */; };
 		2D7BFD0D0327E24769788457 /* NodeListSecondLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF8B7715F2F77D828B56959F /* NodeListSecondLine.swift */; };
@@ -282,15 +281,15 @@
 		318509828D7B679BD72DE445 /* BackgroundOpenAppReminderSchedulerFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08DEE11E181ACA4EE7D683F4 /* BackgroundOpenAppReminderSchedulerFactory.swift */; };
 		31CF6DCE2F247F51758CA20E /* BookmarksRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD40A0F5A00B3F2E1E85D28 /* BookmarksRepository.swift */; };
 		31D6DC81523E2B652E2C7DC9 /* ForegroundTransitionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D4830CA6E8665B3FA8768BF /* ForegroundTransitionController.swift */; };
-		31F89663E7D321DCD14D24D5 /* PDSDKCore in Frameworks */ = {isa = PBXBuildFile; productRef = CBBC6D6DAF29F43DCAFB2A04 /* PDSDKCore */; };
+		31F89663E7D321DCD14D24D5 /* PDSDKCoreiOS in Frameworks */ = {isa = PBXBuildFile; productRef = BC542C7DB1ABA2F6CAA25402 /* PDSDKCoreiOS */; };
 		322387C69C3A48732990428C /* PhotosLoadProgressController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF23CA34E8041B3C9B2D3BC8 /* PhotosLoadProgressController.swift */; };
 		32361DFDBA3D40254DD9CAC5 /* BackgroundUploadedPhotoLocalNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C3C370DB7C0640D95724EA /* BackgroundUploadedPhotoLocalNotifications.swift */; };
 		3272B0C6A3F7F7C7A4C7A966 /* readme.md in Resources */ = {isa = PBXBuildFile; fileRef = 1220D26731EE553BB45D7CA0 /* readme.md */; };
 		329F67B01F6D7BE8019F199C /* UploadManagementMenuViewModel+UploadManagementMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63380B70C9CC1D0CE557906D /* UploadManagementMenuViewModel+UploadManagementMenu.swift */; };
-		333379BD0E03E8BAC21C5F7C /* PDSDKCoreiOS in Frameworks */ = {isa = PBXBuildFile; productRef = F77F3D7E49CBDC612087DE47 /* PDSDKCoreiOS */; };
+		333379BD0E03E8BAC21C5F7C /* ProtonCoreCryptoPatchedGoImplementation in Frameworks */ = {isa = PBXBuildFile; productRef = B0E1877933672E2A58470754 /* ProtonCoreCryptoPatchedGoImplementation */; };
 		33738AA4E8B30900DB9B017D /* PickersContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E888D5B69A1F0328A879C9CB /* PickersContainer.swift */; };
 		33A1A0DC0031E15820680F7C /* TreeNodeExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB00E864576AF036AB34AE41 /* TreeNodeExtension.swift */; };
-		33AC70F5E5BB58E47EF56501 /* PMSideMenu in Frameworks */ = {isa = PBXBuildFile; productRef = FFD957F3BBB965F7070D5025 /* PMSideMenu */; };
+		33AC70F5E5BB58E47EF56501 /* ProtonCoreAccountDeletion in Frameworks */ = {isa = PBXBuildFile; productRef = B00CDE752369BDDD035F417E /* ProtonCoreAccountDeletion */; };
 		33AC98C06EDF32195D9033B5 /* CameraPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F65E2385060130701CCFFEC0 /* CameraPicker.swift */; };
 		33C3CD9AD712DFF7D40122D4 /* ComputerCellViewModel+SwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55E768CCC9805433BD6D6679 /* ComputerCellViewModel+SwiftUI.swift */; };
 		340A2CAD6D97493104B96177 /* RootOfflineAvailableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CFFBAED474C35086D1ED08E /* RootOfflineAvailableView.swift */; };
@@ -299,7 +298,7 @@
 		34C701C5AD46B1BFF9F79C53 /* OHHTTPStubsSwift in Frameworks */ = {isa = PBXBuildFile; productRef = E7020B63F984CF28BC061F97 /* OHHTTPStubsSwift */; };
 		34EF88AAA6AA9BC9301C1E64 /* ShareLinkCreatorCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE647655E0761B98D70F3F88 /* ShareLinkCreatorCoordinator.swift */; };
 		35297C66E1774C64735EDF0C /* UploadingPhotosBootstrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE6256DD3F4463A4ADECC04F /* UploadingPhotosBootstrapper.swift */; };
-		352A4170A0140ECA404F65BB /* ProtonCoreServices in Frameworks */ = {isa = PBXBuildFile; productRef = D6C04F6627B2DE534C3F616A /* ProtonCoreServices */; };
+		352A4170A0140ECA404F65BB /* ProtonCoreUIFoundations in Frameworks */ = {isa = PBXBuildFile; productRef = 625E72ACB9CF4998720EE2FC /* ProtonCoreUIFoundations */; };
 		3567A37556FE2DC649C1DC13 /* AccountRecovery+DrillDown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80915AB5F254CA8E672472DF /* AccountRecovery+DrillDown.swift */; };
 		3581FC0F057DB03078E1B95B /* DeleteBookmarkDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CD9419C8C95992007E00E42 /* DeleteBookmarkDataSource.swift */; };
 		35F170F7F65D12879967A744 /* CoreDataOldestPhotoIdRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFA93EB0714C2A2E4A466ACB /* CoreDataOldestPhotoIdRepository.swift */; };
@@ -315,7 +314,7 @@
 		3817D613355BF9391AD9F671 /* ComputationalAvailability.md in Resources */ = {isa = PBXBuildFile; fileRef = 56848EF7BA97E3280556C78A /* ComputationalAvailability.md */; };
 		38214E128D40FFF70EB70599 /* PhotosPickerFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C6F22CA5958E9DF0761E17B /* PhotosPickerFactory.swift */; };
 		383281ADCD9C594A7CE0B874 /* ComputationalAvailability.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE9CAE1F4AACE8CBDC979B21 /* ComputationalAvailability.swift */; };
-		38465ACFE7EBBA8CF6F9F929 /* ProtonCorePaymentsUIV2 in Frameworks */ = {isa = PBXBuildFile; productRef = C578B36FF47E77F9387C376F /* ProtonCorePaymentsUIV2 */; };
+		38465ACFE7EBBA8CF6F9F929 /* ProtonCorePaymentsV2 in Frameworks */ = {isa = PBXBuildFile; productRef = 8FBC0A70FD9CF05A2B0CE308 /* ProtonCorePaymentsV2 */; };
 		3875FE9CEE02D03AF657A68B /* StorageBonusChecklistViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95A55B42D5128905BAF6D9A9 /* StorageBonusChecklistViewModel.swift */; };
 		38BE8B9706664BBFDCED3B56 /* DatabasePhotoUploadsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A107CCF40EBE5759A1BD3BE /* DatabasePhotoUploadsRepository.swift */; };
 		38DB202FE3D681B52407569C /* FetchingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EB99C76B57436A43706BB3F /* FetchingViewModel.swift */; };
@@ -360,7 +359,7 @@
 		3F4799DD182A4E21CAE39C87 /* LogExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C372DA0542E1BBCB64845FFA /* LogExporter.swift */; };
 		3F52631906099EF126AB3D99 /* MyFilesNotificationsPermissionsFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2784F8CD7FA42599229E4EBF /* MyFilesNotificationsPermissionsFactory.swift */; };
 		3F5BC2066987A07177995AB5 /* MemoryHeartbeatLogResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF940C70ACF89F9D771493B9 /* MemoryHeartbeatLogResource.swift */; };
-		3F6860A44BF9AB611C3A8660 /* ProtonCorePasswordChange in Frameworks */ = {isa = PBXBuildFile; productRef = 206AB41D3D1D8CA0F307B0BE /* ProtonCorePasswordChange */; };
+		3F6860A44BF9AB611C3A8660 /* ProtonCorePayments in Frameworks */ = {isa = PBXBuildFile; productRef = A5B9A453BB2450E763F1FBFD /* ProtonCorePayments */; };
 		3F6CBBD98345A4C5AFECA56A /* QuotaUpdatesContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AD1D3795738756ACB0B3832 /* QuotaUpdatesContainer.swift */; };
 		3F727431036E207E72C5152A /* ApplicationUserSettingsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F778AC2BC9558CD626E1C10 /* ApplicationUserSettingsController.swift */; };
 		3F91995CBA635E34C9C9BCE6 /* ThermalConstraintController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B9319A7C97EB60D87FC007 /* ThermalConstraintController.swift */; };
@@ -371,7 +370,7 @@
 		41324DA8D7E80566A8464147 /* IncomingFilesCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CA733F9BD3BB6F815D2ADC9 /* IncomingFilesCoordinator.swift */; };
 		417334A11E39B7EBAAB6D58F /* EditSectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA3F7468C4D812E3FBFB7BE7 /* EditSectionViewModel.swift */; };
 		41EF88C18A14455F8AFC2343 /* DriveLogoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B0FB746988978DC5DBA7A82 /* DriveLogoutManager.swift */; };
-		4262D3C0D06FA55A4900588B /* ProtonCorePaymentsV2 in Frameworks */ = {isa = PBXBuildFile; productRef = 8FBC0A70FD9CF05A2B0CE308 /* ProtonCorePaymentsV2 */; };
+		4262D3C0D06FA55A4900588B /* ProtonCorePushNotifications in Frameworks */ = {isa = PBXBuildFile; productRef = 9A078D11C12822A4058D664C /* ProtonCorePushNotifications */; };
 		42745C38ADA67B0EF76FEA71 /* FileSystemCleanPhotoLeftoverCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889F1B767E4CD09964A50EA /* FileSystemCleanPhotoLeftoverCommand.swift */; };
 		4285585C37D33EDCB022ACD4 /* OperationInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6417EC8D85561465125F9E5 /* OperationInteractor.swift */; };
 		42B625DE7B67A682875CECE3 /* NewFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84E8E973B4C851E8D462489F /* NewFeature.swift */; };
@@ -386,7 +385,7 @@
 		4489652A8F5CAC504CE5EC16 /* StorageBonusChecklistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9987F532669051C2572DFB76 /* StorageBonusChecklistView.swift */; };
 		44E85A131032DA0DCB93DABB /* PhotoLibraryCompoundResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = E05E40C37DACD3538850FBC1 /* PhotoLibraryCompoundResource.swift */; };
 		44EDB5F8A107E70D8BE0D165 /* WorkStatusPublishingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B5ACD204943F32EBC02D2E /* WorkStatusPublishingController.swift */; };
-		450612E4204BA94DC2CED535 /* ProtonCoreAccountRecovery in Frameworks */ = {isa = PBXBuildFile; productRef = 0C59B44CA30BECF8F9D5C6A9 /* ProtonCoreAccountRecovery */; };
+		450612E4204BA94DC2CED535 /* ProtonCoreCryptoPatchedGoImplementation in Frameworks */ = {isa = PBXBuildFile; productRef = D2F6EC9214FC1660F1772EBD /* ProtonCoreCryptoPatchedGoImplementation */; };
 		450B2B395AA361F6B4912B67 /* OpenPhotosNotificatingBackgroundWorkController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2860DE669BB87C62CAABF664 /* OpenPhotosNotificatingBackgroundWorkController.swift */; };
 		45236481C61582919DB94EA0 /* CheckGalleryError.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6D23DB4893A78D94B8B468E /* CheckGalleryError.swift */; };
 		454370BFE4984B213392166A /* ChangeToStringConvertor.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED3C1E404A701CF9B900AF48 /* ChangeToStringConvertor.swift */; };
@@ -402,7 +401,7 @@
 		46E1F64901EB0BC8C9ADB678 /* PhotoLibraryIdentifiersController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08EAE03DCDDF1D1C7D8C39F0 /* PhotoLibraryIdentifiersController.swift */; };
 		46FE868F23E26498D8E2CE78 /* StoragePromoBonusStatusRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 154D0BECBB9A0F385ECF67CD /* StoragePromoBonusStatusRepository.swift */; };
 		473D5AC1F4FDA05A1B0F05EE /* PDContacts in Frameworks */ = {isa = PBXBuildFile; productRef = 56768211E2EC7B5186334698 /* PDContacts */; };
-		47B6DE911649543C52BA0A93 /* ProtonCoreVCard in Frameworks */ = {isa = PBXBuildFile; productRef = CBD0B1E76DC9E1DD7D1BFC99 /* ProtonCoreVCard */; };
+		47B6DE911649543C52BA0A93 /* PDPhotos in Frameworks */ = {isa = PBXBuildFile; productRef = 04D7B9E60624C15C4DDBB375 /* PDPhotos */; };
 		4821D10C34DCC5C40D458FC6 /* BackgroundOperations.md in Resources */ = {isa = PBXBuildFile; fileRef = A5B0876402E6B143AC531420 /* BackgroundOperations.md */; };
 		485D692D02405F77039EE315 /* FilePathMigrationBootstrapStarter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3990D4BC38FFD08F87B5F63 /* FilePathMigrationBootstrapStarter.swift */; };
 		489365B0FC44B15FDB5244BE /* BookmarkDeleteUseCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB1E6389254DC69065E7327 /* BookmarkDeleteUseCase.swift */; };
@@ -425,7 +424,7 @@
 		4AFD2807E80A7D3A55F5E44A /* TextEditorWithPlaceholder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD3B7AA466C6FE75B9929F6A /* TextEditorWithPlaceholder.swift */; };
 		4B454EB68F365D02E8016A62 /* MenuModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABC6D070B2DB15D77564E2F0 /* MenuModel.swift */; };
 		4B8A64BB2EEC86A95987AB34 /* SynchronizingInMemorySharedWithMeStarter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D5CAF44A6D60D8497E9896A /* SynchronizingInMemorySharedWithMeStarter.swift */; };
-		4B91215204BE6B867D044F9A /* PDSDKCoreiOS in Frameworks */ = {isa = PBXBuildFile; productRef = BC542C7DB1ABA2F6CAA25402 /* PDSDKCoreiOS */; };
+		4B91215204BE6B867D044F9A /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = A702D4985F011C174A891A19 /* ZIPFoundation */; };
 		4C10F1D8B6418AE368A7B728 /* DC+Populated.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2D6A14F48B7408C09ACEBC /* DC+Populated.swift */; };
 		4C43BA5DA2383E0F983E6E2C /* PopulateCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41CB62A33C832D3E4114C3D4 /* PopulateCoordinator.swift */; };
 		4C480D1B362DF8215344EF0C /* ProtonCoreUITestingToolkit in Frameworks */ = {isa = PBXBuildFile; productRef = 8E894F58F93E1FE172026104 /* ProtonCoreUITestingToolkit */; };
@@ -445,10 +444,10 @@
 		4E02A54363DDDFDDF415D81F /* ComputerRootFolderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E175975355163B4C8AE05E3C /* ComputerRootFolderViewModel.swift */; };
 		4E0C956BDC9E82658801F589 /* NoSpaceView+Endpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3F5D2E12F5EEB3AB5A79055 /* NoSpaceView+Endpoint.swift */; };
 		4E11506D6F8B75F3F2AA4EA3 /* LaunchConfigurator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B2DECC5BA1AE4702C1725D8 /* LaunchConfigurator.swift */; };
-		4E1DD256C6F16A91B6C6389A /* ProtonCoreCryptoPatchedGoImplementation in Frameworks */ = {isa = PBXBuildFile; productRef = D2F6EC9214FC1660F1772EBD /* ProtonCoreCryptoPatchedGoImplementation */; };
+		4E1DD256C6F16A91B6C6389A /* ProtonCoreDataModel in Frameworks */ = {isa = PBXBuildFile; productRef = 3B4D40ABA6C1C6B074972E73 /* ProtonCoreDataModel */; };
 		4E7BF5F4818A0C7ED96E34E0 /* ProtonFileWebViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 164D0A8719B901631AD69C4B /* ProtonFileWebViewModel.swift */; };
 		4E8805F5367727CC5FE93535 /* EditLinkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63458122772D5BD7B5691EF /* EditLinkView.swift */; };
-		4E8D12574B19FA95DC2F875F /* PDUploadVerifier in Frameworks */ = {isa = PBXBuildFile; productRef = D5C2D5A12473310F54FB3C40 /* PDUploadVerifier */; };
+		4E8D12574B19FA95DC2F875F /* PMSettings in Frameworks */ = {isa = PBXBuildFile; productRef = A7B65EBB7A0FFDE503F137F9 /* PMSettings */; };
 		4ED69C96C92A0ED65F8B6228 /* QuotaUpdatesFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B7F7D6D4EA8B9B9CF36B08 /* QuotaUpdatesFactory.swift */; };
 		4EE4EC25315EBEB802AFB38D /* PhotosBackupUpdateTelemetryFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63D2462B22A7495AD309D904 /* PhotosBackupUpdateTelemetryFactory.swift */; };
 		4EE7BFF2707C0678E2C636C8 /* DC+Start.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2864F85BC4A612496409770A /* DC+Start.swift */; };
@@ -456,7 +455,6 @@
 		4F04B83CC2015A24BB4E74A2 /* ComputersObserverInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02158A8BEAC89957786C0F16 /* ComputersObserverInteractor.swift */; };
 		4F0BD59870C1BAF309E046F7 /* CleanLogsRequesting.swift in Sources */ = {isa = PBXBuildFile; fileRef = D774AEC91EDAA9024958E747 /* CleanLogsRequesting.swift */; };
 		4F26EBB66AC4ADE72F2C5C5C /* ForegroundTransitionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D4830CA6E8665B3FA8768BF /* ForegroundTransitionController.swift */; };
-		4F2A77C06CC630F8AEA5CF88 /* Atlantis in Frameworks */ = {isa = PBXBuildFile; productRef = E8E992EB477BD0856556AE2D /* Atlantis */; };
 		4F44F3B1CA3522762CA0C9D4 /* HourValueFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6ED9630A84AF6717B92813C /* HourValueFormatter.swift */; };
 		4F4B9AA49583F3D41D06C95B /* PhotosListLoadResultInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFCF93B14DD083FC27D5E249 /* PhotosListLoadResultInteractor.swift */; };
 		4F4CD03CDE2F6A94DEE7CCB8 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6823AD47204B5101AB4088A9 /* ShareViewController.swift */; };
@@ -467,7 +465,7 @@
 		5017891013EFA4BF6AC2F5C7 /* ProtonFilePreviewContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02D5885B6F757A7FE402A959 /* ProtonFilePreviewContainer.swift */; };
 		503CC202584DDFAF25F088F1 /* ThermalStateResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDA613795879FCEE21442757 /* ThermalStateResource.swift */; };
 		507CCFB2E2C5A19FCB4EC9BE /* MyFilesNotificationsPermissionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2EF0C6B1FE736E62A6FFDAE /* MyFilesNotificationsPermissionsController.swift */; };
-		5095FCD603D1D358753F215A /* PDSDKCore in Frameworks */ = {isa = PBXBuildFile; productRef = BFCB29DBC085DEA4A01C69D1 /* PDSDKCore */; };
+		5095FCD603D1D358753F215A /* PDSDKCoreiOS in Frameworks */ = {isa = PBXBuildFile; productRef = CB490E0A17C2B81C34B3765E /* PDSDKCoreiOS */; };
 		50C4E3045FC941807914ADAD /* String+Empty.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EFFAF42AD3EB5242AF05028 /* String+Empty.swift */; };
 		50D85AD7774F60F22D84F0ED /* LocalRootSharesBootstrapStarter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F8DA19EC141AD104CD97055 /* LocalRootSharesBootstrapStarter.swift */; };
 		5102BEF6E21CEE5FF2D9B848 /* FinderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26BD1F1B3474A45022C6E213 /* FinderView.swift */; };
@@ -475,9 +473,9 @@
 		513C14BD41041175CCAF9DDD /* SharedByMeLinksScannerInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 191C8EF58FA0AAC2966176B1 /* SharedByMeLinksScannerInteractor.swift */; };
 		514CB73D8C8C9B1274EFC070 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F9EE7B03A8873F7EB4FDE27 /* Constants.swift */; };
 		515F6B27C4BBFF0C7DB1BE54 /* NoSpaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D6DB06963AD78038E2739C5 /* NoSpaceView.swift */; };
-		516BC4057FA9EBC78A18E1A2 /* ProtonCorePasswordChange in Frameworks */ = {isa = PBXBuildFile; productRef = BDBA6C5C5D824174A3D41E38 /* ProtonCorePasswordChange */; };
+		516BC4057FA9EBC78A18E1A2 /* ProtonCorePayments in Frameworks */ = {isa = PBXBuildFile; productRef = CEB7F28AEEFC6632CA3E5323 /* ProtonCorePayments */; };
 		5177B0A106025E011814E0EF /* ContactEventBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B4461678947BC46E8887E7 /* ContactEventBridge.swift */; };
-		518D636952C00762D6DB5CC1 /* ProtonCoreUtilities in Frameworks */ = {isa = PBXBuildFile; productRef = 76E08E7A9A20A1E0205E42BA /* ProtonCoreUtilities */; };
+		518D636952C00762D6DB5CC1 /* ProtonCoreVCard in Frameworks */ = {isa = PBXBuildFile; productRef = CBD0B1E76DC9E1DD7D1BFC99 /* ProtonCoreVCard */; };
 		5191FD41E8F64262C3B2B08D /* ProtectCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC45EEE7B6713513924BBC34 /* ProtectCoordinator.swift */; };
 		51A9229B633474D0E0BFB65D /* OldestPhotoIdRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1AD08B2F7C11FB4F5F49FE2 /* OldestPhotoIdRepository.swift */; };
 		51ABDF2F1041885FAAC643CF /* FileManagerBootstrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBAA8536F1AD9CE27E42CCF5 /* FileManagerBootstrapper.swift */; };
@@ -518,8 +516,7 @@
 		5660F3F9BE987ADD051C00CA /* PhotoAssetErrorPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FE16FCF8BD70F77E6DB46CA /* PhotoAssetErrorPolicy.swift */; };
 		567D63916FD4FCF7E0A90F06 /* PhotoLibraryPlainCompoundResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F503BEB854EF860E481EC7 /* PhotoLibraryPlainCompoundResource.swift */; };
 		56A2346F19A612EE266A69EB /* AuthenticateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FAFDB23B549F116C856A5D6 /* AuthenticateViewController.swift */; };
-		56B5191A15AE74C3E5785D72 /* MigrationToPhotoVolumeConstraintController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58B47C5A7E8DC01347D3E1E7 /* MigrationToPhotoVolumeConstraintController.swift */; };
-		56BD795CCBB8B8F468470E85 /* ProtonCoreCryptoPatchedGoImplementation in Frameworks */ = {isa = PBXBuildFile; productRef = 4BAEADBE05BB134AE9B87A2A /* ProtonCoreCryptoPatchedGoImplementation */; };
+		56BD795CCBB8B8F468470E85 /* ProtonCoreDataModel in Frameworks */ = {isa = PBXBuildFile; productRef = 3DEBC10F4F121AC3C669C093 /* ProtonCoreDataModel */; };
 		56BFFA8562AE57D69D2F1C1C /* EditNodeModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 022C574166A35284D84C47F6 /* EditNodeModel.swift */; };
 		56E90C0BA0060DA8B29A0F91 /* ImportedShareModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 627851454E0FC8CA8AC619A1 /* ImportedShareModels.swift */; };
 		56EC87922C9AC430664CA0D5 /* PhotoUploadDoneTelemetryDataFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 776A168682C7082EB92BEFA5 /* PhotoUploadDoneTelemetryDataFactory.swift */; };
@@ -534,13 +531,14 @@
 		597CE8233C977150007D5C5C /* VolumeTypeBootstrapStarter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27F9760E3A11AE5146BCDB2 /* VolumeTypeBootstrapStarter.swift */; };
 		59BC57DF0806292852A283B6 /* StorageBonusStepStatusInteractorProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B3B0542C6EB824348ACEE95 /* StorageBonusStepStatusInteractorProtocol.swift */; };
 		5A1169D55D177025B881E3C6 /* BookmarksLocalDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24CEFA3DF126D023ED037ADA /* BookmarksLocalDataSource.swift */; };
-		5A30237C3529C8D80F46A881 /* ProtonCorePushNotifications in Frameworks */ = {isa = PBXBuildFile; productRef = 9A078D11C12822A4058D664C /* ProtonCorePushNotifications */; };
+		5A30237C3529C8D80F46A881 /* ProtonCoreServices in Frameworks */ = {isa = PBXBuildFile; productRef = 3EEF77C140BF387302FBFB41 /* ProtonCoreServices */; };
 		5A393C720A02F729BB7DF827 /* MultipleSelectionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E3F026A14D088FF6BE95126 /* MultipleSelectionModel.swift */; };
 		5A3D117DC063F0EC1E4B7161 /* LockedStateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4BC4B0BF35D0E25BB6C70A4 /* LockedStateController.swift */; };
 		5A9D838CDA31F82AD5C8D750 /* FailingAlert.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953FCE3E2B26B2C37596151E /* FailingAlert.swift */; };
 		5AF35A864292933337A48652 /* EditLinkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63458122772D5BD7B5691EF /* EditLinkView.swift */; };
 		5B181F70E37E654A394074CD /* SDKBootstrapStarter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AED3A97D9DFD1D26479EEEF6 /* SDKBootstrapStarter.swift */; };
 		5B393FFC4AE21A79B9224AD4 /* FinderMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EA880DA74AAA7BCB042668B /* FinderMenu.swift */; };
+		5BAA636382CEFB967630B772 /* ProtectViewControllerFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8059FEB1177ABE3A31B842CF /* ProtectViewControllerFactory.swift */; };
 		5BD23CF047D064F73CED6B33 /* MyFilesNotificationsPermissionsContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20B692DF0F41847C478DB96D /* MyFilesNotificationsPermissionsContainer.swift */; };
 		5BDEF4373636C42CEAE283D1 /* NodeRowActionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FAEF9631C748C8762AAE7B7 /* NodeRowActionViewModel.swift */; };
 		5BE303EB079DDFFE36796421 /* StorageDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC258F1112FBFB050DCABDDA /* StorageDiagnosticsView.swift */; };
@@ -568,7 +566,6 @@
 		604DB6E8776FF93FD56C4518 /* StoragePromoBonusStatusRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 154D0BECBB9A0F385ECF67CD /* StoragePromoBonusStatusRepository.swift */; };
 		607F62345FEA78839EB10D61 /* SharedVolumesEventsFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59714AF455D783324376B8EC /* SharedVolumesEventsFactory.swift */; };
 		60934BD560ED69CA7E4A2015 /* PDCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0AA7E8E5A8DC825D9D43B06D /* PDCore */; };
-		609CDAF2A68B7690A07F5410 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = A702D4985F011C174A891A19 /* ZIPFoundation */; };
 		60AB418AD00AE014A1C9C290 /* ConcretePhotoUploadMeasurementRepositoryFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A66E9632DA4EF169C5D040DF /* ConcretePhotoUploadMeasurementRepositoryFactory.swift */; };
 		60B6F0BBCBA968386DBD1453 /* Binding+isPresent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 098ED8F461854130E0CDEC9B /* Binding+isPresent.swift */; };
 		6114500B782A43E4A46DA1F7 /* SubscriptionPriceRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01E3387583ACC3787BCE5FBA /* SubscriptionPriceRepository.swift */; };
@@ -583,7 +580,7 @@
 		621848A08CCF472675FF6FA2 /* OperationInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6417EC8D85561465125F9E5 /* OperationInteractor.swift */; };
 		6262D8773BE900911E43CFF6 /* SequentialSharedByMeLinksRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBAFFE2177C79D469BD513BA /* SequentialSharedByMeLinksRepository.swift */; };
 		6299F49E3FE420C9AB7B9D4E /* PhotosFullLoadInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7DC407806151335ACF75882 /* PhotosFullLoadInteractor.swift */; };
-		62B13E5B856C94600CCE2E45 /* ProtonCoreNetworking in Frameworks */ = {isa = PBXBuildFile; productRef = 57644D6B482B1DBDE1FA51F4 /* ProtonCoreNetworking */; };
+		62B13E5B856C94600CCE2E45 /* ProtonCorePasswordChange in Frameworks */ = {isa = PBXBuildFile; productRef = 206AB41D3D1D8CA0F307B0BE /* ProtonCorePasswordChange */; };
 		62E6695F14A4414F67F0698C /* PDCommonUITestUtils in Frameworks */ = {isa = PBXBuildFile; productRef = 0D46AFBCF3261A7B95E9099A /* PDCommonUITestUtils */; };
 		62ED7835EED1B2CEB18CD125 /* DriveCheckListBootstrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F6778964BFC714E3A128F02 /* DriveCheckListBootstrapper.swift */; };
 		6308D0EC5B682F2E4F0EDD56 /* DriveLoginAndSignupAuthenticator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AD43F42FD3BE1A80DD63AD5 /* DriveLoginAndSignupAuthenticator.swift */; };
@@ -600,7 +597,7 @@
 		65D61A35898D31E94E0660FD /* HasMultipleSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 591110EFBBA35C943A4BD14A /* HasMultipleSelection.swift */; };
 		65D77E5EA97671E4FAEAED3C /* PhotoLibraryFetchResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6224CE0C97C1671B2E6B4588 /* PhotoLibraryFetchResource.swift */; };
 		65F841457D2B2B1376E2A692 /* NodeStatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C349C57DEDCBA2948923AF7 /* NodeStatePolicy.swift */; };
-		6618A03189DCC4606E763881 /* PDPhotos in Frameworks */ = {isa = PBXBuildFile; productRef = 04D7B9E60624C15C4DDBB375 /* PDPhotos */; };
+		6618A03189DCC4606E763881 /* PDSDKCore in Frameworks */ = {isa = PBXBuildFile; productRef = CBBC6D6DAF29F43DCAFB2A04 /* PDSDKCore */; };
 		6650ECAAAE6C849691C9AA3B /* PhotosLibraryTreeRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72AD8DBBD77D4626D01747E9 /* PhotosLibraryTreeRepository.swift */; };
 		667121635E07968F1098AFDF /* UploadWorkerStateComposite.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA739570DF37122405633E7C /* UploadWorkerStateComposite.swift */; };
 		669958C7B97C516C0CD64A68 /* CleanedPhotoLibraryFetchResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A807892010F4EF6DCC1461C /* CleanedPhotoLibraryFetchResource.swift */; };
@@ -682,7 +679,7 @@
 		749261EBD72B28A72D2F4026 /* PopulateViewModelProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 156EACF942BC7AD848A8623E /* PopulateViewModelProtocol.swift */; };
 		74B555AFEDC93D1DEA9A3B94 /* ComputersScannerInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E80CF61100F075AEBF82EE7 /* ComputersScannerInteractor.swift */; };
 		74E189E2C3ED4B1849C2DE5B /* PhotosDiagnosticsMetadataRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8445661D6A233BCA2B49D59 /* PhotosDiagnosticsMetadataRepository.swift */; };
-		752FAF9B2F9EDB8EA3A4BB60 /* ProtonCoreAccountDeletion in Frameworks */ = {isa = PBXBuildFile; productRef = 72E9F76EA5EDCD6E77876CE2 /* ProtonCoreAccountDeletion */; };
+		752FAF9B2F9EDB8EA3A4BB60 /* ProtonCoreAccountRecovery in Frameworks */ = {isa = PBXBuildFile; productRef = 0C59B44CA30BECF8F9D5C6A9 /* ProtonCoreAccountRecovery */; };
 		757583A3DAD43D4B6DAA5BED /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 16B4D3481537A7B68F0C9221 /* Preview Assets.xcassets */; };
 		758F61333614B54FB3A1916B /* ShareLinkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4000E0C12F0E0298DEDDE20 /* ShareLinkView.swift */; };
 		75A158F27DE39122E2FD44DB /* ProcessingBackgroundTaskResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C861FBAC8A103DCE3903B66 /* ProcessingBackgroundTaskResource.swift */; };
@@ -722,21 +719,22 @@
 		7A9097749EF242D0A2092174 /* ComputerRootFolderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E175975355163B4C8AE05E3C /* ComputerRootFolderViewModel.swift */; };
 		7ACDE102694DA1E3163444F5 /* ProtonDriveShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4EFE7E3F6BC23C7F75F9150E /* ProtonDriveShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		7B91BBBEA957F7817CBC6193 /* NotificationsPermissionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BEFC7108DDE180F0A1CB7BF /* NotificationsPermissionsController.swift */; };
+		7B9528834744EC5E9F6DDAFE /* LatestLogsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AB2DDF968F3E17C8C12889B /* LatestLogsView.swift */; };
 		7BCBDDD7585C62B182DC59B7 /* CameraPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F65E2385060130701CCFFEC0 /* CameraPicker.swift */; };
 		7C29E3D39A4083376507CCE8 /* ShareLinkCreatorViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B73C3E4887CD61EA2E93043 /* ShareLinkCreatorViewController.swift */; };
 		7C4ACB8D8B6371526E34443B /* OnboardingPageViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405DFEB9685AABFB34A8EDE2 /* OnboardingPageViewModel.swift */; };
-		7C70FE668EE24A14130DC626 /* ProtonCoreKeyManager in Frameworks */ = {isa = PBXBuildFile; productRef = 999D082BBF0F5EE2EBF69B50 /* ProtonCoreKeyManager */; };
+		7C70FE668EE24A14130DC626 /* ProtonCoreLoginUI in Frameworks */ = {isa = PBXBuildFile; productRef = 5095660F3BA50BC4B1BC04CF /* ProtonCoreLoginUI */; };
 		7C72118199676AFEA17771C8 /* BGTask+BackgroundTaskResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51CE1CBEEA5DFAC547E6FF93 /* BGTask+BackgroundTaskResource.swift */; };
 		7CA123F30E34F9C1678D0286 /* ProtectCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC45EEE7B6713513924BBC34 /* ProtectCoordinator.swift */; };
 		7CB0B10C41D6A0FED5C7EC72 /* AditionalSettingsStarter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1981EF054C9747B9A6B1426 /* AditionalSettingsStarter.swift */; };
-		7D0A51E3FFCFAF01B2E5A766 /* ProtonCorePaymentsV2 in Frameworks */ = {isa = PBXBuildFile; productRef = 98B97D6A8A4D63CC1FAC2BBF /* ProtonCorePaymentsV2 */; };
+		7D0A51E3FFCFAF01B2E5A766 /* ProtonCorePushNotifications in Frameworks */ = {isa = PBXBuildFile; productRef = 200AC05E5596691588480942 /* ProtonCorePushNotifications */; };
 		7D150C141E50384EFE2930CC /* SelectionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C693B89F56E864FAE20C32 /* SelectionButton.swift */; };
 		7D6549B199ABE0DF3DA080DC /* FileExportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5604CF3D7C30A57CAB00620E /* FileExportViewModel.swift */; };
 		7DEA33AF9D1D016D5CE6B44D /* EditNodeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF46854DB1A7D09A9E1257F /* EditNodeViewController.swift */; };
 		7DF7A372A79925CB7F76120A /* String+DeletingPrefix+DeletingSuffix.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D7D7103F156DCB3EC20DE77 /* String+DeletingPrefix+DeletingSuffix.swift */; };
 		7E202A491BA2DC484102D2A2 /* NotificationsPermissionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAEA66C6E1297FC557575506 /* NotificationsPermissionsView.swift */; };
 		7E38E869EEDBB355675BB24B /* CachingListedDeviceDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94FBFAAAB6AA06A848251DB0 /* CachingListedDeviceDataSource.swift */; };
-		7E4D5D5CB2186F91C19CD7F5 /* ProtonCoreUIFoundations in Frameworks */ = {isa = PBXBuildFile; productRef = 01E210FD66F9325F857ACECA /* ProtonCoreUIFoundations */; };
+		7E4D5D5CB2186F91C19CD7F5 /* ProtonCoreUtilities in Frameworks */ = {isa = PBXBuildFile; productRef = ADD9001ABC38EB57825443D4 /* ProtonCoreUtilities */; };
 		7E780559A8EBFD3E15F6C99A /* LoginExternalAccountNotSupportedSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DB39472826670353FD4ABA4 /* LoginExternalAccountNotSupportedSetup.swift */; };
 		7EBE84B7AC2283186004F649 /* ProtonDriveFileProviderUI.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0714EF97A190917DDD01ACEA /* ProtonDriveFileProviderUI.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		7EE77CA230652B2D4A539B74 /* SettingsAssembler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A992F79431DC84A7C338F7 /* SettingsAssembler.swift */; };
@@ -755,6 +753,7 @@
 		80C7C6AA9DF8DD3C3FE18C9A /* PhotoLibraryLoadProgressRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAFA9BB8D46AA234F7EA1D86 /* PhotoLibraryLoadProgressRepository.swift */; };
 		80CE9029F41673EFBC7C9A48 /* PhotosProcessingQueueResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69621C2D3781654BE46EDF65 /* PhotosProcessingQueueResource.swift */; };
 		80E7767E93DE682A083D732E /* PhotoUploadMeasurementRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73DB0BE10B73C9E5ED0EBB15 /* PhotoUploadMeasurementRepository.swift */; };
+		81141291927BE6624D1533A2 /* DriveSignOutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C22FA3244BC1B34CA7FFEF /* DriveSignOutManager.swift */; };
 		8115516CF920C091902D606C /* BackgroundUploadMeasurementsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD5C11075F386AD0D0D83EA4 /* BackgroundUploadMeasurementsRepository.swift */; };
 		812193D74CA2CABD3F35E66D /* PhotoLibraryIdentifiersRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78DC2C7E1C1D01E27389A91C /* PhotoLibraryIdentifiersRepository.swift */; };
 		8123382B43506DA9948FF04E /* BGTaskScheduler+TaskSchedulerResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B2DE9434B6F352C8DA17DE /* BGTaskScheduler+TaskSchedulerResource.swift */; };
@@ -762,17 +761,18 @@
 		81585BABD002007665FC541C /* PhotosDatabaseTreeRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDDFF577DD20D42B2E45064A /* PhotosDatabaseTreeRepository.swift */; };
 		81861CDB801527F6086C3B6B /* QuotaStateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFD05F33D92154BA57F72C9E /* QuotaStateController.swift */; };
 		81A92B9DDE3CB34D9018EE51 /* NodeNameEditorProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = F07424E68BB7C1EA0679DD76 /* NodeNameEditorProtocol.swift */; };
+		81D54B99AD85FB889A749019 /* DriveSignOutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C22FA3244BC1B34CA7FFEF /* DriveSignOutManager.swift */; };
 		81D557AB7B9213583E5B37E8 /* PhotoShareIdDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12D6B1ABA7C55D80D8FE464D /* PhotoShareIdDataSource.swift */; };
 		81F1209F25EAE11C21CBF815 /* PDCommonUITestUtils in Frameworks */ = {isa = PBXBuildFile; productRef = 0B14F1769FCB62A618C71E32 /* PDCommonUITestUtils */; };
 		81F2DE1B0F493CF908E3DB55 /* PhotosProcessingOperationsFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28356182E8F54FC5FD3D377B /* PhotosProcessingOperationsFactory.swift */; };
 		8227F64852DC684000321AF2 /* OneDollarUpsellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E61EE7F1FAB04AA76F5125AD /* OneDollarUpsellView.swift */; };
-		827B392E5E9D3FA895988624 /* ProtonCorePushNotifications in Frameworks */ = {isa = PBXBuildFile; productRef = 200AC05E5596691588480942 /* ProtonCorePushNotifications */; };
+		827B392E5E9D3FA895988624 /* ProtonCoreServices in Frameworks */ = {isa = PBXBuildFile; productRef = D6C04F6627B2DE534C3F616A /* ProtonCoreServices */; };
 		8288A59763C3A4C9D6789298 /* BackgroundUploadMeasurementsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD5C11075F386AD0D0D83EA4 /* BackgroundUploadMeasurementsRepository.swift */; };
 		82C6A32D08BAB649D31D82BB /* StorageBookmarkPasswordDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77471A3D2C59EE7B7D6BD83B /* StorageBookmarkPasswordDataSource.swift */; };
 		83719C8C8BA8F2265171AC9C /* EditNodeCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73FF8FC88A45DA761AA0BDF7 /* EditNodeCoordinator.swift */; };
 		837DBF408D5E88C642585399 /* AditionalSettingsStarter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1981EF054C9747B9A6B1426 /* AditionalSettingsStarter.swift */; };
 		83E4A52F9CC4CBC1CEBC9CD3 /* ShareLinkCreatorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA80368470248F64273D615B /* ShareLinkCreatorViewModel.swift */; };
-		84203A11F89CDD4BCE37BB3A /* PMSettings in Frameworks */ = {isa = PBXBuildFile; productRef = A7B65EBB7A0FFDE503F137F9 /* PMSettings */; };
+		84203A11F89CDD4BCE37BB3A /* PMSideMenu in Frameworks */ = {isa = PBXBuildFile; productRef = C72DBD7A70B2BA9742E80F27 /* PMSideMenu */; };
 		8428DB1F35F7BE679E74B8F5 /* ProtonFileCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E10152D9DF90EE5FE90D8D /* ProtonFileCoordinator.swift */; };
 		8429A6746DA0E8AFCB0192CE /* ProtonCoreQuarkCommands in Frameworks */ = {isa = PBXBuildFile; productRef = 6A44FA164326586FE76E329F /* ProtonCoreQuarkCommands */; };
 		842C0C4EE115F60034D6C012 /* ProgressTrackersController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3B5D645101B7FA373AC7A8A /* ProgressTrackersController.swift */; };
@@ -780,7 +780,7 @@
 		84391A028219D7884731CFDA /* BGTask+BackgroundTaskResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51CE1CBEEA5DFAC547E6FF93 /* BGTask+BackgroundTaskResource.swift */; };
 		8467EEC5B397E23B0660A11B /* PhotoUploadMeasurementRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73DB0BE10B73C9E5ED0EBB15 /* PhotoUploadMeasurementRepository.swift */; };
 		84BA67DA7348A929FD06793B /* BookmarksLocalDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24CEFA3DF126D023ED037ADA /* BookmarksLocalDataSource.swift */; };
-		8523FC64B5C34B93BA703A10 /* ProtonCoreKeymaker in Frameworks */ = {isa = PBXBuildFile; productRef = E17F28A50FE5547C977532B5 /* ProtonCoreKeymaker */; };
+		8523FC64B5C34B93BA703A10 /* ProtonCoreKeyManager in Frameworks */ = {isa = PBXBuildFile; productRef = 999D082BBF0F5EE2EBF69B50 /* ProtonCoreKeyManager */; };
 		8547B5AF0AC1FBCD4327B689 /* QuotaUpdatesContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AD1D3795738756ACB0B3832 /* QuotaUpdatesContainer.swift */; };
 		856111CDEE8F185CC301A2A8 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3CB66ED372D9485151016CFD /* PrivacyInfo.xcprivacy */; };
 		8586E0260D0973DC28EED4D1 /* PhotoLibraryPortraitCompoundResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9BC6F7C39099CE9AB1812CE /* PhotoLibraryPortraitCompoundResource.swift */; };
@@ -831,12 +831,11 @@
 		8DDA2CA7046932114A4E7DC2 /* NotificationsPermissionsFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56959DAD99801CB90C000184 /* NotificationsPermissionsFactory.swift */; };
 		8DDCF0E887E1846BEA2F130D /* PhotoContentHashInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEC1E0DBCD08B063FE5BC738 /* PhotoContentHashInteractor.swift */; };
 		8E159CCE939FB97C89775ED7 /* PhotosBackupStateStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8817F6714C09191B7B6D83A /* PhotosBackupStateStrategy.swift */; };
-		8E78EC0C42B6C7066A1A8F67 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 234E7E636C4FDE6E6463EE1D /* ZIPFoundation */; };
+		8E78EC0C42B6C7066A1A8F67 /* Atlantis in Frameworks */ = {isa = PBXBuildFile; productRef = E8E992EB477BD0856556AE2D /* Atlantis */; };
 		8EAD4A7BBC2289532989AC16 /* DateFormatterResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50A99C5080E1A68E79549556 /* DateFormatterResource.swift */; };
 		8F1014F9CC805A7A1903ACA8 /* PhotosProcessingBatchAvailableController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5936AD8A3FC6922FA3D1D0BC /* PhotosProcessingBatchAvailableController.swift */; };
 		8F3D801DAA809630EE1AA206 /* PhotoShareCreationFinishTelemetryResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59C857A3C0DA0E628EC14E24 /* PhotoShareCreationFinishTelemetryResource.swift */; };
 		8F4EB451734438AA9E7261AA /* DateFormatterResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50A99C5080E1A68E79549556 /* DateFormatterResource.swift */; };
-		8F8A63120BC2A109B31355A0 /* MyFilesUploadOperationInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40576BB0EC4A4E52FF4903B /* MyFilesUploadOperationInteractor.swift */; };
 		8FC41BC5D8C5F2038559B214 /* DC+Populate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54678EDDD5D2226DA2DEE532 /* DC+Populate.swift */; };
 		8FE89D53338AE28F1C87D8D0 /* PhotosBackupStateStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8817F6714C09191B7B6D83A /* PhotosBackupStateStrategy.swift */; };
 		900C1490CAA2394A8E6325F7 /* CheckGalleryError.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6D23DB4893A78D94B8B468E /* CheckGalleryError.swift */; };
@@ -865,11 +864,11 @@
 		948C83D8C645D29161290606 /* BackgroundTaskResultStateRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6228140A0E64B5067A2E3917 /* BackgroundTaskResultStateRepository.swift */; };
 		94AC280B28DB3C2EE7276DFE /* DeviceRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CE825B40A1E1F75AC2DCD66 /* DeviceRepository.swift */; };
 		9516C7135F91390CCAE2DED0 /* PhotosDiffStorageResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C4E70D5CC304839F7CE1DA2 /* PhotosDiffStorageResource.swift */; };
-		9569EFC8BD4BFE1A7B7C44E3 /* DC+Lock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20279DC7E75B3A84C1E6F8C3 /* DC+Lock.swift */; };
 		95807B1CA0F3FC02767DF64B /* NodeValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E97CA4662864ACA2F63ABCAC /* NodeValidator.swift */; };
 		95BC539A2838FD08019287A8 /* Keymaker+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D4ECE6D9C1353CC62382615 /* Keymaker+Extension.swift */; };
 		9682080419556726E2A1362B /* PhotosDiagnosticsFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE7D438DC5875626A731F948 /* PhotosDiagnosticsFactory.swift */; };
 		968ADFE779AAE29003521C38 /* PendingSharedItemsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE0EBA8DA947325CA1822AE5 /* PendingSharedItemsView.swift */; };
+		96ACD3C6322E08CF889DEC16 /* LockedStateControllerFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3F53EACF4C96A7F73C9B982 /* LockedStateControllerFactory.swift */; };
 		96DCC176F519C9DACA8CF905 /* OHHTTPStubsSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 5874CC430E6F628B4A65791F /* OHHTTPStubsSwift */; };
 		96E454DC8499D3D43836B81D /* PhotosFilterByIdResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 480CF53058DA539531E4C58D /* PhotosFilterByIdResource.swift */; };
 		9761202CBEC6D74C049517CF /* StorageBonusPromoContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B1630244676148B882E53CB /* StorageBonusPromoContainer.swift */; };
@@ -885,7 +884,7 @@
 		998AB81F599585EE8E6E169E /* StorageBonusChecklistViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95A55B42D5128905BAF6D9A9 /* StorageBonusChecklistViewModel.swift */; };
 		998DFA544712E1E250A47EF9 /* DefaultHomeTabSettingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDE6F0B74A69592CF38B0904 /* DefaultHomeTabSettingViewModel.swift */; };
 		99C2758DC5894D38D03E073E /* MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C7B52A364557E5D58E38B13C /* MainInterface.storyboard */; };
-		99D6E609A6C08C98F2F25FDF /* PMSettings in Frameworks */ = {isa = PBXBuildFile; productRef = A65F72E126272D414EBA3C35 /* PMSettings */; };
+		99D6E609A6C08C98F2F25FDF /* PMSideMenu in Frameworks */ = {isa = PBXBuildFile; productRef = FFD957F3BBB965F7070D5025 /* PMSideMenu */; };
 		99E5B6B211505DFB1A4E6872 /* FinderView+NavigationBarButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40562C49331F0551D59FC092 /* FinderView+NavigationBarButtons.swift */; };
 		9A1341DD1653A7C969EAC499 /* PhotosBackupProgressController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5436B2415F7E4D80B2682150 /* PhotosBackupProgressController.swift */; };
 		9A83DA54CF2BDA2C6B03225E /* RemoteSharesBootstrapStarter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17ED020BC85E5138F8CFA9A /* RemoteSharesBootstrapStarter.swift */; };
@@ -895,6 +894,7 @@
 		9B4C453A9AFDC2AD1E0803E9 /* PhotosListLoadResultInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFCF93B14DD083FC27D5E249 /* PhotosListLoadResultInteractor.swift */; };
 		9BD711F428BB3C76EE290700 /* BackgroundOperations.md in Resources */ = {isa = PBXBuildFile; fileRef = A5B0876402E6B143AC531420 /* BackgroundOperations.md */; };
 		9BEA1CBA797DFD676FF68942 /* DisableLegacyRatingRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = A613E43A93CB2F56B2ECD2BA /* DisableLegacyRatingRepository.swift */; };
+		9C2AB54836D478AE3EFC9C9D /* ProtectViewControllerFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8059FEB1177ABE3A31B842CF /* ProtectViewControllerFactory.swift */; };
 		9C4392A67B751593B7E0D355 /* RootMoveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CB875B82A662F6E081C47EB /* RootMoveView.swift */; };
 		9D008228CB50B3699C858489 /* NewFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84E8E973B4C851E8D462489F /* NewFeature.swift */; };
 		9D0DC24C2C1CF784DE7A8E67 /* TechnicalErrorPlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2780F10C1A95DE6563985619 /* TechnicalErrorPlaceholderView.swift */; };
@@ -952,7 +952,7 @@
 		A85F1364AE64E36670317019 /* PhotosAvailableSpaceResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85BD4306036459D30BBAB2AE /* PhotosAvailableSpaceResource.swift */; };
 		A8CA2C01922A227F8FBE5389 /* BackgroundProcessingTaskScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 738D55A343565AA79FCF9FD1 /* BackgroundProcessingTaskScheduler.swift */; };
 		A8CD3945B4F4502BF29892B8 /* LaunchConfigurator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B2DECC5BA1AE4702C1725D8 /* LaunchConfigurator.swift */; };
-		A8DC2D9359CB802BAD38D78A /* ProtonCorePayments in Frameworks */ = {isa = PBXBuildFile; productRef = CEB7F28AEEFC6632CA3E5323 /* ProtonCorePayments */; };
+		A8DC2D9359CB802BAD38D78A /* ProtonCorePaymentsUIV2 in Frameworks */ = {isa = PBXBuildFile; productRef = 0FA06FFCC45AE2E8ACBFB62B /* ProtonCorePaymentsUIV2 */; };
 		A8E80257D0DE212D6C68FB50 /* PhotosDiagnosticsInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E0C0A3093614AB6E3931384 /* PhotosDiagnosticsInteractor.swift */; };
 		A8F49FC27B4BFAAABC9CA4D3 /* IncomingFilesReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35689FBA321B5DD0CCA0BA42 /* IncomingFilesReviewView.swift */; };
 		A93F03E7A6C8AE191FB7FDA3 /* SynchronizingInMemorySharedWithMeStarter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D5CAF44A6D60D8497E9896A /* SynchronizingInMemorySharedWithMeStarter.swift */; };
@@ -965,12 +965,12 @@
 		AB3F200A8AAF74E45F67C933 /* ApplicationUserSettingsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F778AC2BC9558CD626E1C10 /* ApplicationUserSettingsController.swift */; };
 		AB8C6F0DC35A007FE9A55AD0 /* Log+exporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD11219F3D3C668857B242FA /* Log+exporter.swift */; };
 		ABC9FD8F2BA8C66E459396D3 /* SharedByMeModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0246CA0AF6E41CF504A98E /* SharedByMeModel.swift */; };
-		ABE4C75E02A367FB3F4F11B2 /* ProtonCoreAccountDeletion in Frameworks */ = {isa = PBXBuildFile; productRef = B00CDE752369BDDD035F417E /* ProtonCoreAccountDeletion */; };
+		ABE4C75E02A367FB3F4F11B2 /* ProtonCoreAccountRecovery in Frameworks */ = {isa = PBXBuildFile; productRef = 8ABDBF7FA463C9235278E68F /* ProtonCoreAccountRecovery */; };
 		ABEC875F5490FEADBFB35039 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 8F1E8A4B12F87F1B16C9509F /* Localizable.xcstrings */; };
 		AC0C58BEB120998073B02EC2 /* PhotoLibraryPlainCompoundResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F503BEB854EF860E481EC7 /* PhotoLibraryPlainCompoundResource.swift */; };
 		ACCC047C561DE74224FFD1D3 /* RemoteSharesBootstrapStarter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17ED020BC85E5138F8CFA9A /* RemoteSharesBootstrapStarter.swift */; };
 		ACCDF7FBB81A761BA29EFCF4 /* PulseOnceModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8592E714F2883E3BC6B37288 /* PulseOnceModifier.swift */; };
-		ACD7E809B39C68E4BDCAC565 /* ProtonCoreUtilities in Frameworks */ = {isa = PBXBuildFile; productRef = ADD9001ABC38EB57825443D4 /* ProtonCoreUtilities */; };
+		ACD7E809B39C68E4BDCAC565 /* ProtonCoreVCard in Frameworks */ = {isa = PBXBuildFile; productRef = 2ECBB4C3082D8295FC4F7525 /* ProtonCoreVCard */; };
 		ACEE6F158A285DA22511368C /* PhotosProcessingFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410262C5C00D8D841A75E7E4 /* PhotosProcessingFactory.swift */; };
 		AD1339A7517A709852428EDA /* BackgroundPhotoUploadWorkObserverFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F19F98CE01D85B3100180D62 /* BackgroundPhotoUploadWorkObserverFactory.swift */; };
 		AD13921956752D9EE5D9370A /* FinderGridCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3043A2F18618580809FD43FF /* FinderGridCell.swift */; };
@@ -985,7 +985,7 @@
 		AE0B623F297AE79B83A65003 /* protonSheetIcon.png in Resources */ = {isa = PBXBuildFile; fileRef = 256A1E230BBD3F7AA42B9793 /* protonSheetIcon.png */; };
 		AEA501CB34D9A59250E3944A /* NotificationsPermissionsHostingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADEF34F483B70017A87BB87 /* NotificationsPermissionsHostingViewController.swift */; };
 		AECCEF9B4B0EAE49749AE7BC /* PhotoLibraryLoadProgressRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAFA9BB8D46AA234F7EA1D86 /* PhotoLibraryLoadProgressRepository.swift */; };
-		AF18A8962120E0C598BC6657 /* PDUploadVerifier in Frameworks */ = {isa = PBXBuildFile; productRef = 8001699C0AA8B00467CE4A08 /* PDUploadVerifier */; };
+		AF18A8962120E0C598BC6657 /* PMSettings in Frameworks */ = {isa = PBXBuildFile; productRef = A65F72E126272D414EBA3C35 /* PMSettings */; };
 		AF5C6B7DFE56C2F462DE1030 /* EditableNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB48544A8DD631609133B4C7 /* EditableNode.swift */; };
 		AFD29D69BD6759E17152AC06 /* PhotosTelemetryConnectionFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29051470D1DC0BC86D9C2320 /* PhotosTelemetryConnectionFactory.swift */; };
 		AFE9FD2B291BACF968E434B1 /* PhotosTelemetryStorageFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87F68947ACD94ED654FC8FE0 /* PhotosTelemetryStorageFactory.swift */; };
@@ -1013,9 +1013,9 @@
 		B44E553C5EBBA41EDB09DA39 /* SharedByMeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F411E5FD2C54EF54303E12 /* SharedByMeViewModel.swift */; };
 		B4874275C9498DB57B04CFF6 /* EnvironmentValues.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688367FFBA62A3DF7C1E4DF1 /* EnvironmentValues.swift */; };
 		B4C02C124A0F67EE84278596 /* PhotosBackupProgressController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5436B2415F7E4D80B2682150 /* PhotosBackupProgressController.swift */; };
-		B4D8C177DA93BB9CC970BCD8 /* PDSDKCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4B4B7C85C74D51026203E45B /* PDSDKCore */; };
+		B4D8C177DA93BB9CC970BCD8 /* PDSDKCoreiOS in Frameworks */ = {isa = PBXBuildFile; productRef = F77F3D7E49CBDC612087DE47 /* PDSDKCoreiOS */; };
 		B4E63FE2A3AC578A58FAC5E4 /* NodeStatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C349C57DEDCBA2948923AF7 /* NodeStatePolicy.swift */; };
-		B4F61275C725D6DF2537A801 /* ProtonCoreNetworking in Frameworks */ = {isa = PBXBuildFile; productRef = 1105ADFE3B2E2DE2523AFCCF /* ProtonCoreNetworking */; };
+		B4F61275C725D6DF2537A801 /* ProtonCorePasswordChange in Frameworks */ = {isa = PBXBuildFile; productRef = BDBA6C5C5D824174A3D41E38 /* ProtonCorePasswordChange */; };
 		B502BF73C963D3C6916789F6 /* FloatingButtonWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA46FEFE53C1A008409E3B3C /* FloatingButtonWindow.swift */; };
 		B51500508FF0EE602E7B8D77 /* ScrollToTopViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D12EF6096DB33628B204EF5 /* ScrollToTopViewModel.swift */; };
 		B535DD555518BB015E552A35 /* UITestsPopulatedViewModelDecorator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3D4C7F17737B8D72298203F /* UITestsPopulatedViewModelDecorator.swift */; };
@@ -1043,7 +1043,7 @@
 		B7EEDC0B1CA050B935AB5C27 /* LocalNotificationsResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316DA9F15880C89CD49B51CC /* LocalNotificationsResource.swift */; };
 		B7EF74E67214D377487B7A19 /* OpenAppReminderContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7B765D2B304FB2B6D28FF60 /* OpenAppReminderContainer.swift */; };
 		B7FCD95A7BA398AD6261B872 /* FolderCreator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7262201C401567E348CD57A1 /* FolderCreator.swift */; };
-		B82246BD4EF2F5E398734773 /* ProtonCoreKeyManager in Frameworks */ = {isa = PBXBuildFile; productRef = 718BF0FE9DE919D56F6323BC /* ProtonCoreKeyManager */; };
+		B82246BD4EF2F5E398734773 /* ProtonCoreLoginUI in Frameworks */ = {isa = PBXBuildFile; productRef = 68C93578B54EF4A5B4BACEE1 /* ProtonCoreLoginUI */; };
 		B82B172A40CE57D7BE536785 /* FileManagerBootstrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBAA8536F1AD9CE27E42CCF5 /* FileManagerBootstrapper.swift */; };
 		B87C124A6B508DCCA9BEE22F /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F9EE7B03A8873F7EB4FDE27 /* Constants.swift */; };
 		B8809F8C3EA4ABCD37F096C1 /* PhotosBackupUpdateTelemetryController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6935355BB7D989200A7B938 /* PhotosBackupUpdateTelemetryController.swift */; };
@@ -1053,6 +1053,7 @@
 		B8DEAD707A0743399B045C02 /* LatestLogsAssembler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F6FEFB841692B9590606F7B /* LatestLogsAssembler.swift */; };
 		B8F5F023D421F871AFC5AB0A /* PhotosMetadataLoadResultInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F55C602CB1B0A7FDE0A56B39 /* PhotosMetadataLoadResultInteractor.swift */; };
 		B9399BACE178070102938BCD /* ProtonFileActionsMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABE6C3A9B1229121B9EEC426 /* ProtonFileActionsMenu.swift */; };
+		B9514E98EB4CC5026E45D9FC /* LatestLogsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AB2DDF968F3E17C8C12889B /* LatestLogsView.swift */; };
 		B9540C201DC254A370CB9A5B /* LocalPhotoLinkIdRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = C79F7D94885FD271ABA0633F /* LocalPhotoLinkIdRepository.swift */; };
 		B96C7A30A13B3617001BD28A /* SelectionAnimationModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482AE41F16A04DD2A6B2B90C /* SelectionAnimationModifier.swift */; };
 		B973CEE0CA2343A69F2D0DD2 /* BackgroundTaskScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91BE1736038EA25262BD38E5 /* BackgroundTaskScheduler.swift */; };
@@ -1062,6 +1063,7 @@
 		BA131C7C826446A6567EE7A8 /* ChildSessionInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82C472958BFD28529D445F55 /* ChildSessionInteractor.swift */; };
 		BA3D0A6527254FCA18D0F2A0 /* TaskSchedulerPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBE9B11625D449D86886A68D /* TaskSchedulerPolicy.swift */; };
 		BA8424461234AF2A08286DA3 /* TrashViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27B9F5C6EF24E61FE70A5F6A /* TrashViewModel.swift */; };
+		BA8453E701945D53F328A283 /* LockedStateControllerFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3F53EACF4C96A7F73C9B982 /* LockedStateControllerFactory.swift */; };
 		BA91E6E444CF6A780D9A98A1 /* PaymentsBootstrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8637BFFBE7790A852D665CB5 /* PaymentsBootstrapper.swift */; };
 		BA95D386B0E5E072DA77E108 /* BookmarksRemoteDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = D71BDB1D122B82F2406DC4ED /* BookmarksRemoteDataSource.swift */; };
 		BAAFD8C48991329B11591989 /* LockedStateBannerVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 737F916FF535C0B1D801B3DC /* LockedStateBannerVisibility.swift */; };
@@ -1116,7 +1118,6 @@
 		C2FB7581631BF11BCAB509B2 /* MyFilesNotificationsPermissionsContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20B692DF0F41847C478DB96D /* MyFilesNotificationsPermissionsContainer.swift */; };
 		C2FD7B78E325251C9FD8B4EC /* NoSpaceView+Endpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3F5D2E12F5EEB3AB5A79055 /* NoSpaceView+Endpoint.swift */; };
 		C3A6BDF375F44EC4E5B7AEAF /* UploadManagementEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FED9A1C5162DBEFF126CC7 /* UploadManagementEnvironment.swift */; };
-		C3E45D22B6937035AA967F35 /* MyFilesUploadOperationInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40576BB0EC4A4E52FF4903B /* MyFilesUploadOperationInteractor.swift */; };
 		C4330A0C371341A15DC4079E /* PhotosBackupBackgroundStartTelemetryDataFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97E784DB53327205F8CB5983 /* PhotosBackupBackgroundStartTelemetryDataFactory.swift */; };
 		C464DDFEF0D08CC73B8E0C6A /* ComputerCellViewState.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEF6402D045C55B3DDB9A702 /* ComputerCellViewState.swift */; };
 		C4DCA29A13DF3F39FFF0AC50 /* ComputationalAvailabilityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9889E67EE22D944639D7773 /* ComputationalAvailabilityController.swift */; };
@@ -1173,8 +1174,7 @@
 		D0B0D244C734E38D90092E10 /* TrashAlertViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F999C832A1EC20BE2528D5EE /* TrashAlertViewModel.swift */; };
 		D0BC69F2A0BE72DA332BD163 /* IncomingFilesDestinationPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F83B84202C35C11A8CF5DDBF /* IncomingFilesDestinationPickerView.swift */; };
 		D0BF6D7E8650EAF8A215320F /* OpenAppReminderTaskSchedulerPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5CA38A146F6161A320016D8 /* OpenAppReminderTaskSchedulerPolicy.swift */; };
-		D1715227E0C9A7C787AC05E4 /* ProtonCoreAccountRecovery in Frameworks */ = {isa = PBXBuildFile; productRef = 8ABDBF7FA463C9235278E68F /* ProtonCoreAccountRecovery */; };
-		D194DACE585EB9763269ECEE /* MigrationToPhotoVolumeConstraintController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58B47C5A7E8DC01347D3E1E7 /* MigrationToPhotoVolumeConstraintController.swift */; };
+		D1715227E0C9A7C787AC05E4 /* ProtonCoreCryptoPatchedGoImplementation in Frameworks */ = {isa = PBXBuildFile; productRef = 4BAEADBE05BB134AE9B87A2A /* ProtonCoreCryptoPatchedGoImplementation */; };
 		D1E2D730FB2BA2E84681AB75 /* VisibilityItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6427DF045B2EA19F6A92562D /* VisibilityItem.swift */; };
 		D26A5F0056F1F7B95A508F4E /* PhotoUploadFinishTelemetryResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEE9BB7B62BBB276C19AB5F5 /* PhotoUploadFinishTelemetryResource.swift */; };
 		D28626EC6B27D25CD65D746B /* PhotoLibraryBurstCompoundResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A03FF4186B2F11E0A45FFEC /* PhotoLibraryBurstCompoundResource.swift */; };
@@ -1212,7 +1212,7 @@
 		D94A85064D88EA7856A3B6F4 /* Layout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15520026FA88BAD88552DBD7 /* Layout.swift */; };
 		D958B3E65F0DE248C1A49919 /* PhotoLibraryLoadRetryTriggerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6F9D1F7AE89CDEA1EAA7740 /* PhotoLibraryLoadRetryTriggerController.swift */; };
 		D96F53181350ED805A6FE505 /* ExtensionBackgroundTaskResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 390E617C0848B0F06EED5669 /* ExtensionBackgroundTaskResource.swift */; };
-		D9735CC965F3F11B16C5A123 /* PDPhotos in Frameworks */ = {isa = PBXBuildFile; productRef = AB0E65A157A0932DC2338B4E /* PDPhotos */; };
+		D9735CC965F3F11B16C5A123 /* PDSDKCore in Frameworks */ = {isa = PBXBuildFile; productRef = BFCB29DBC085DEA4A01C69D1 /* PDSDKCore */; };
 		D9C9429D508E33F4736BFDF8 /* MainQueueAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B71E57EFA55C1726124BEAC0 /* MainQueueAdapter.swift */; };
 		DA4FCFADE3C5B697C6BF93F9 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3CB66ED372D9485151016CFD /* PrivacyInfo.xcprivacy */; };
 		DA8887D9DE41F494BE25B494 /* AuthenticatedDependenciesFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B184D37E57446554CFEE3783 /* AuthenticatedDependenciesFactory.swift */; };
@@ -1243,7 +1243,7 @@
 		DFF1574F6F6C13D217449E3A /* ExtensionBackgroundOperationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60E8DEC6E128C19071EF801E /* ExtensionBackgroundOperationController.swift */; };
 		E00C6FD4D36BF583651CA0BF /* LayoutChanging.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77933F822A8A59858AE36442 /* LayoutChanging.swift */; };
 		E01CE2DE930460DF2A10B27A /* fusion in Frameworks */ = {isa = PBXBuildFile; productRef = 472DB295E61EEAC1D160C709 /* fusion */; };
-		E031C204362603497EBB9A67 /* PDUploadVerifier in Frameworks */ = {isa = PBXBuildFile; productRef = 5C450B4E37AD125E7D4EDB82 /* PDUploadVerifier */; };
+		E031C204362603497EBB9A67 /* PDSDKCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4B4B7C85C74D51026203E45B /* PDSDKCore */; };
 		E093D5044C7B20CDC5EB5070 /* DocumentNameViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A2802166EF3CB11FA9E5294 /* DocumentNameViewModel.swift */; };
 		E0B7F2ED3CCD3B729AEEBC1E /* MainQueueAdapter+PendingInvitationsStatusMonitorInteractorProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB4E5E4F7956ACEC104533B3 /* MainQueueAdapter+PendingInvitationsStatusMonitorInteractorProtocol.swift */; };
 		E0D88D182D83B76A46ED4285 /* readme.md in Resources */ = {isa = PBXBuildFile; fileRef = 1220D26731EE553BB45D7CA0 /* readme.md */; };
@@ -1265,7 +1265,6 @@
 		E3925215D6E63405B217DD9C /* DebugModeSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65929EEBF46E8A41C1067AB3 /* DebugModeSettingsView.swift */; };
 		E3A94DB6B304BD320F4F9F2A /* ShowStorageBonusPromoInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC626374305BD0AC2BD3A61A /* ShowStorageBonusPromoInteractor.swift */; };
 		E3DBC8AF22F600994CFD4996 /* PhotoUploadDoneTelemetryFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 990DDE4FFB6323BDDB11A1B5 /* PhotoUploadDoneTelemetryFactory.swift */; };
-		E400041543874B43FADF750E /* ProtonCoreCryptoPatchedGoImplementation in Frameworks */ = {isa = PBXBuildFile; productRef = B0E1877933672E2A58470754 /* ProtonCoreCryptoPatchedGoImplementation */; };
 		E41F15CEA7E864A0FBC2A7FA /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F9EE7B03A8873F7EB4FDE27 /* Constants.swift */; };
 		E4593D980787B69FD2B94149 /* BookmarksRepositoryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0562E7ACDC96DD1671820E9 /* BookmarksRepositoryProtocol.swift */; };
 		E45C8C4DC6F501FB79834438 /* PhotoBackupNetworkController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9FEBAC4D6790EBBF42DEA61 /* PhotoBackupNetworkController.swift */; };
@@ -1312,11 +1311,10 @@
 		E990841665DF492660B67E8D /* DuplicatePhotoListingBootstrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC51A3E2F09FD3C5906394C6 /* DuplicatePhotoListingBootstrapper.swift */; };
 		E9A06A54DF29FB45F7D3B5E4 /* ExtensionBackgroundTaskResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 390E617C0848B0F06EED5669 /* ExtensionBackgroundTaskResource.swift */; };
 		E9B157F5107DE16F53AA33FB /* SharedViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 972FFB36C3C549BCC238826A /* SharedViewModel.swift */; };
-		EA4C788FDAFEE8ED857FC530 /* DC+Lock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20279DC7E75B3A84C1E6F8C3 /* DC+Lock.swift */; };
 		EA608CF14638169CEEA0CF8B /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56B4B7E3C7DB9FEA6A9F660B /* LoadingView.swift */; };
 		EAA99ACD09F3D49E7F843F53 /* FeatureFlagConstraintController.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDFC2EADBB106D61DB256702 /* FeatureFlagConstraintController.swift */; };
 		EABAC558396D799F7DFB3448 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 3904C524635420B568492760 /* ZIPFoundation */; };
-		EAF307C50B8698C2D0F2A1E6 /* ProtonCoreLoginUI in Frameworks */ = {isa = PBXBuildFile; productRef = 5095660F3BA50BC4B1BC04CF /* ProtonCoreLoginUI */; };
+		EAF307C50B8698C2D0F2A1E6 /* ProtonCoreNetworking in Frameworks */ = {isa = PBXBuildFile; productRef = 1105ADFE3B2E2DE2523AFCCF /* ProtonCoreNetworking */; };
 		EAFD894280849FDE6D5B5EA6 /* BackgroundUploadedPhotoLocalNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C3C370DB7C0640D95724EA /* BackgroundUploadedPhotoLocalNotifications.swift */; };
 		EB0F5B78E7431C436A1D0790 /* NodeRowActionViewModel+MoreSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5238A9577BD12DE198E67A1F /* NodeRowActionViewModel+MoreSection.swift */; };
 		EB3BE794EC599C678AE1C238 /* StorageBonusStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA2CFD140F37D1B2CC64C85 /* StorageBonusStep.swift */; };
@@ -1372,7 +1370,6 @@
 		F34F4741581215D835B41B95 /* NodeRowActionViewModel+TrashSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 923C315CE6E538D6137F0F9E /* NodeRowActionViewModel+TrashSection.swift */; };
 		F36637C6F7F16CF49E5C8C41 /* BookmarkContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21F1827DCA1B22EEFCE12074 /* BookmarkContainer.swift */; };
 		F3B1BDD6FB5A3E721478424F /* FormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C424A33FD10EA8C5DB1E309 /* FormView.swift */; };
-		F4032B684A7DD8C25904A03C /* PhotosUploadOperationInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3802DE760504787D72987049 /* PhotosUploadOperationInteractor.swift */; };
 		F43D596F876A4BDF24F3ADAF /* LatestLogsAssembler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F6FEFB841692B9590606F7B /* LatestLogsAssembler.swift */; };
 		F44E9D595A8172861224412C /* ApplicationStateOperationsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF86C85D43425B2C78528E1E /* ApplicationStateOperationsController.swift */; };
 		F4B09A3D9D578C9632E49DCE /* TaskProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE5D3AFD9F74D65B94274182 /* TaskProcessor.swift */; };
@@ -1395,7 +1392,7 @@
 		F77BE3FBA8D1D67027BE6625 /* DeviceMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1891016307D7BF27D7B8283 /* DeviceMetadata.swift */; };
 		F78AD2386810C94762D580F5 /* UploadFileLocalNotificationNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = D74610440222B2535DBA5865 /* UploadFileLocalNotificationNotifier.swift */; };
 		F7CB323F827F321C2964158F /* TrashActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB4ACF1938480B2157591011 /* TrashActions.swift */; };
-		F7DBA7D9AD9A3FED39F0629D /* ProtonCorePayments in Frameworks */ = {isa = PBXBuildFile; productRef = A5B9A453BB2450E763F1FBFD /* ProtonCorePayments */; };
+		F7DBA7D9AD9A3FED39F0629D /* ProtonCorePaymentsUIV2 in Frameworks */ = {isa = PBXBuildFile; productRef = C578B36FF47E77F9387C376F /* ProtonCorePaymentsUIV2 */; };
 		F84DBDAFD71313425CEEBF21 /* NavigatingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F5CDFCDE55FE00884392CDC /* NavigatingView.swift */; };
 		F86F77E93431D8818454022E /* PhotosBackupFailuresController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1483E500AB99A2531CE9F6A8 /* PhotosBackupFailuresController.swift */; };
 		F8768917FFF660358158640B /* ShareLinkModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCB7E9C6B813FF01428B6A3 /* ShareLinkModel.swift */; };
@@ -1520,6 +1517,7 @@
 		02D5885B6F757A7FE402A959 /* ProtonFilePreviewContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtonFilePreviewContainer.swift; sourceTree = "<group>"; };
 		032B3E6A1BB2C4F125D39467 /* Deeplink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Deeplink.swift; sourceTree = "<group>"; };
 		03A50059380ABD20EC60F15A /* NSRange+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSRange+Extension.swift"; sourceTree = "<group>"; };
+		03C22FA3244BC1B34CA7FFEF /* DriveSignOutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriveSignOutManager.swift; sourceTree = "<group>"; };
 		044C0F45587F4AF6CECA6BED /* WorkInProgressTaskScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkInProgressTaskScheduler.swift; sourceTree = "<group>"; };
 		0515C60B34958AFC2F224554 /* ForegroundTransitionContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundTransitionContainer.swift; sourceTree = "<group>"; };
 		067215A8BB7D9C79CC8455C8 /* FinderViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderViewModel.swift; sourceTree = "<group>"; };
@@ -1590,7 +1588,6 @@
 		1EE10E3670C10BB26C8AA1F1 /* FinderListCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderListCell.swift; sourceTree = "<group>"; };
 		1EE99B5D0E10D5CCBF326691 /* PhotosMetadataLoadInteractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosMetadataLoadInteractor.swift; sourceTree = "<group>"; };
 		1FE16FCF8BD70F77E6DB46CA /* PhotoAssetErrorPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoAssetErrorPolicy.swift; sourceTree = "<group>"; };
-		20279DC7E75B3A84C1E6F8C3 /* DC+Lock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DC+Lock.swift"; sourceTree = "<group>"; };
 		20B692DF0F41847C478DB96D /* MyFilesNotificationsPermissionsContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyFilesNotificationsPermissionsContainer.swift; sourceTree = "<group>"; };
 		212524B2C86E30E244CC2EFD /* ComputersViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComputersViewModel.swift; sourceTree = "<group>"; };
 		2178369FD2DF73B7B1EB0A6C /* ProtonFilePreviewFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtonFilePreviewFactory.swift; sourceTree = "<group>"; };
@@ -1642,7 +1639,6 @@
 		35A9480FFFC89B4594DB1A22 /* Config-Release-Store.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Config-Release-Store.xcconfig"; sourceTree = "<group>"; };
 		3613ABDFC95231EAEF86CB18 /* OnboardingFlowFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlowFactory.swift; sourceTree = "<group>"; };
 		3764A0AC8C08EC32EDD9668E /* PhotosAvailableSpaceInteractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosAvailableSpaceInteractor.swift; sourceTree = "<group>"; };
-		3802DE760504787D72987049 /* PhotosUploadOperationInteractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosUploadOperationInteractor.swift; sourceTree = "<group>"; };
 		385B1C1CF7368672C5801C55 /* LatestLogsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LatestLogsViewModel.swift; sourceTree = "<group>"; };
 		38F503BEB854EF860E481EC7 /* PhotoLibraryPlainCompoundResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryPlainCompoundResource.swift; sourceTree = "<group>"; };
 		39040D06F0DFB9ADD026D564 /* PhotosTelemetryUpsellController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosTelemetryUpsellController.swift; sourceTree = "<group>"; };
@@ -1748,7 +1744,6 @@
 		58455B12A363E04CA611D15F /* RemoteInvitationsDataSourceProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteInvitationsDataSourceProtocol.swift; sourceTree = "<group>"; };
 		58505512F49CF562A01C4889 /* ComputersListingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComputersListingViewController.swift; sourceTree = "<group>"; };
 		58744CA94FA9585B39C558A3 /* BookmarkOpeningCoordinatorProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarkOpeningCoordinatorProtocol.swift; sourceTree = "<group>"; };
-		58B47C5A7E8DC01347D3E1E7 /* MigrationToPhotoVolumeConstraintController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationToPhotoVolumeConstraintController.swift; sourceTree = "<group>"; };
 		591110EFBBA35C943A4BD14A /* HasMultipleSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HasMultipleSelection.swift; sourceTree = "<group>"; };
 		5936AD8A3FC6922FA3D1D0BC /* PhotosProcessingBatchAvailableController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosProcessingBatchAvailableController.swift; sourceTree = "<group>"; };
 		59714AF455D783324376B8EC /* SharedVolumesEventsFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedVolumesEventsFactory.swift; sourceTree = "<group>"; };
@@ -1862,6 +1857,7 @@
 		7EB0FC4F1A853442016FF3BC /* ProtonDriveFileProviderUI-Config-Release-Store.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "ProtonDriveFileProviderUI-Config-Release-Store.xcconfig"; sourceTree = "<group>"; };
 		7F4CDAE11B8D11F6BDBAF31E /* NodeCellPlaceholderConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeCellPlaceholderConfiguration.swift; sourceTree = "<group>"; };
 		7FF6704E388864E0F9C3E0C6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		8059FEB1177ABE3A31B842CF /* ProtectViewControllerFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtectViewControllerFactory.swift; sourceTree = "<group>"; };
 		80915AB5F254CA8E672472DF /* AccountRecovery+DrillDown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AccountRecovery+DrillDown.swift"; sourceTree = "<group>"; };
 		80D38BCC87FA4BEF5FC2FD72 /* ScannedDeviceDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannedDeviceDataSource.swift; sourceTree = "<group>"; };
 		80F998B2256A86E73054590A /* ShareLinkViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareLinkViewModel.swift; sourceTree = "<group>"; };
@@ -1890,7 +1886,7 @@
 		888E597F90D4A91B2573FCBB /* PhotoNameCorrectionPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoNameCorrectionPolicy.swift; sourceTree = "<group>"; };
 		891DE16E3FBD8BD61587DB0C /* ComputersLoadStateRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComputersLoadStateRepository.swift; sourceTree = "<group>"; };
 		89C946227B9D9FB3EE9DC148 /* MainVolumeIdDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainVolumeIdDataSource.swift; sourceTree = "<group>"; };
-		8A58931BD034CAD732D0EFC4 /* PDUploadVerifier */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PDUploadVerifier; path = ../PDUploadVerifier; sourceTree = SOURCE_ROOT; };
+		8AB2DDF968F3E17C8C12889B /* LatestLogsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LatestLogsView.swift; sourceTree = "<group>"; };
 		8BD84CBB87836E4E6EC5DDE5 /* PhotoBackupConstraintsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoBackupConstraintsController.swift; sourceTree = "<group>"; };
 		8C749DC4C2553494D4CF8459 /* PhotosFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosFactory.swift; sourceTree = "<group>"; };
 		8D6AA2FFC3BB98265407FA29 /* PhotosAssetsErrorMappingPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosAssetsErrorMappingPolicy.swift; sourceTree = "<group>"; };
@@ -1962,6 +1958,7 @@
 		A345CEAC3EB97498A06075A5 /* el */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = el; path = el.lproj/MainInterface.strings; sourceTree = "<group>"; };
 		A3990D4BC38FFD08F87B5F63 /* FilePathMigrationBootstrapStarter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePathMigrationBootstrapStarter.swift; sourceTree = "<group>"; };
 		A3D4C7F17737B8D72298203F /* UITestsPopulatedViewModelDecorator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestsPopulatedViewModelDecorator.swift; sourceTree = "<group>"; };
+		A3F53EACF4C96A7F73C9B982 /* LockedStateControllerFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockedStateControllerFactory.swift; sourceTree = "<group>"; };
 		A461E0A49A75AE01A08C0DC7 /* AppShortcutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShortcutManager.swift; sourceTree = "<group>"; };
 		A52D878695DC54955F843823 /* ProtonFileOpeningController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtonFileOpeningController.swift; sourceTree = "<group>"; };
 		A576C7E62180DCD8732341C2 /* BackgroundModes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundModes.swift; sourceTree = "<group>"; };
@@ -2192,7 +2189,6 @@
 		F30796BB0842C9BA0CA2C6D4 /* ProtonDriveShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ProtonDriveShare.entitlements; sourceTree = "<group>"; };
 		F369E4E9246DEE5A9E72F579 /* GridOrList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridOrList.swift; sourceTree = "<group>"; };
 		F3B5D645101B7FA373AC7A8A /* ProgressTrackersController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressTrackersController.swift; sourceTree = "<group>"; };
-		F40576BB0EC4A4E52FF4903B /* MyFilesUploadOperationInteractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyFilesUploadOperationInteractor.swift; sourceTree = "<group>"; };
 		F4141F35D230882D341E7EEA /* NewFeaturePromoteViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewFeaturePromoteViewModel.swift; sourceTree = "<group>"; };
 		F4699A510F4FADCF232F238B /* RatingBoosterCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingBoosterCoordinator.swift; sourceTree = "<group>"; };
 		F4C57148D011CFB9FA275453 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -2248,31 +2244,30 @@
 				B32589B361D15340A299B262 /* PDLocalization in Frameworks */,
 				A8228907C96B0281A36BAB9C /* PDContacts in Frameworks */,
 				46B873CD4E928E5ABD941DE5 /* PDUIComponents in Frameworks */,
-				4E8D12574B19FA95DC2F875F /* PDUploadVerifier in Frameworks */,
-				84203A11F89CDD4BCE37BB3A /* PMSettings in Frameworks */,
-				099B0B5D35B514715922AF58 /* PMSideMenu in Frameworks */,
-				752FAF9B2F9EDB8EA3A4BB60 /* ProtonCoreAccountDeletion in Frameworks */,
-				450612E4204BA94DC2CED535 /* ProtonCoreAccountRecovery in Frameworks */,
-				4E1DD256C6F16A91B6C6389A /* ProtonCoreCryptoPatchedGoImplementation in Frameworks */,
-				0F6374E974956E1012761A90 /* ProtonCoreDataModel in Frameworks */,
-				1D41E77DBC9BBAC90956B973 /* ProtonCoreKeymaker in Frameworks */,
-				B82246BD4EF2F5E398734773 /* ProtonCoreKeyManager in Frameworks */,
-				00CFC4E515F82E512719142F /* ProtonCoreLoginUI in Frameworks */,
-				62B13E5B856C94600CCE2E45 /* ProtonCoreNetworking in Frameworks */,
-				3F6860A44BF9AB611C3A8660 /* ProtonCorePasswordChange in Frameworks */,
-				F7DBA7D9AD9A3FED39F0629D /* ProtonCorePayments in Frameworks */,
-				38465ACFE7EBBA8CF6F9F929 /* ProtonCorePaymentsUIV2 in Frameworks */,
-				4262D3C0D06FA55A4900588B /* ProtonCorePaymentsV2 in Frameworks */,
-				5A30237C3529C8D80F46A881 /* ProtonCorePushNotifications in Frameworks */,
-				124940D6365248EEE4AF151F /* ProtonCoreServices in Frameworks */,
-				7E4D5D5CB2186F91C19CD7F5 /* ProtonCoreUIFoundations in Frameworks */,
-				ACD7E809B39C68E4BDCAC565 /* ProtonCoreUtilities in Frameworks */,
-				2D1F5A3810AEEE40350169E5 /* ProtonCoreVCard in Frameworks */,
-				D9735CC965F3F11B16C5A123 /* PDPhotos in Frameworks */,
-				5095FCD603D1D358753F215A /* PDSDKCore in Frameworks */,
-				168C3577737898B4DDE2444B /* PDSDKCoreiOS in Frameworks */,
-				8E78EC0C42B6C7066A1A8F67 /* ZIPFoundation in Frameworks */,
-				4F2A77C06CC630F8AEA5CF88 /* Atlantis in Frameworks */,
+				4E8D12574B19FA95DC2F875F /* PMSettings in Frameworks */,
+				84203A11F89CDD4BCE37BB3A /* PMSideMenu in Frameworks */,
+				099B0B5D35B514715922AF58 /* ProtonCoreAccountDeletion in Frameworks */,
+				752FAF9B2F9EDB8EA3A4BB60 /* ProtonCoreAccountRecovery in Frameworks */,
+				450612E4204BA94DC2CED535 /* ProtonCoreCryptoPatchedGoImplementation in Frameworks */,
+				4E1DD256C6F16A91B6C6389A /* ProtonCoreDataModel in Frameworks */,
+				0F6374E974956E1012761A90 /* ProtonCoreKeymaker in Frameworks */,
+				1D41E77DBC9BBAC90956B973 /* ProtonCoreKeyManager in Frameworks */,
+				B82246BD4EF2F5E398734773 /* ProtonCoreLoginUI in Frameworks */,
+				00CFC4E515F82E512719142F /* ProtonCoreNetworking in Frameworks */,
+				62B13E5B856C94600CCE2E45 /* ProtonCorePasswordChange in Frameworks */,
+				3F6860A44BF9AB611C3A8660 /* ProtonCorePayments in Frameworks */,
+				F7DBA7D9AD9A3FED39F0629D /* ProtonCorePaymentsUIV2 in Frameworks */,
+				38465ACFE7EBBA8CF6F9F929 /* ProtonCorePaymentsV2 in Frameworks */,
+				4262D3C0D06FA55A4900588B /* ProtonCorePushNotifications in Frameworks */,
+				5A30237C3529C8D80F46A881 /* ProtonCoreServices in Frameworks */,
+				124940D6365248EEE4AF151F /* ProtonCoreUIFoundations in Frameworks */,
+				7E4D5D5CB2186F91C19CD7F5 /* ProtonCoreUtilities in Frameworks */,
+				ACD7E809B39C68E4BDCAC565 /* ProtonCoreVCard in Frameworks */,
+				2D1F5A3810AEEE40350169E5 /* PDPhotos in Frameworks */,
+				D9735CC965F3F11B16C5A123 /* PDSDKCore in Frameworks */,
+				5095FCD603D1D358753F215A /* PDSDKCoreiOS in Frameworks */,
+				168C3577737898B4DDE2444B /* ZIPFoundation in Frameworks */,
+				8E78EC0C42B6C7066A1A8F67 /* Atlantis in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2294,30 +2289,29 @@
 				E761E43100BB8101F3542976 /* PDLocalization in Frameworks */,
 				473D5AC1F4FDA05A1B0F05EE /* PDContacts in Frameworks */,
 				535FFD6C349AB9B9AEE3FBF2 /* PDUIComponents in Frameworks */,
-				AF18A8962120E0C598BC6657 /* PDUploadVerifier in Frameworks */,
-				99D6E609A6C08C98F2F25FDF /* PMSettings in Frameworks */,
-				33AC70F5E5BB58E47EF56501 /* PMSideMenu in Frameworks */,
-				ABE4C75E02A367FB3F4F11B2 /* ProtonCoreAccountDeletion in Frameworks */,
-				D1715227E0C9A7C787AC05E4 /* ProtonCoreAccountRecovery in Frameworks */,
-				56BD795CCBB8B8F468470E85 /* ProtonCoreCryptoPatchedGoImplementation in Frameworks */,
-				2215A72031168E3989D40BEA /* ProtonCoreDataModel in Frameworks */,
-				8523FC64B5C34B93BA703A10 /* ProtonCoreKeymaker in Frameworks */,
-				7C70FE668EE24A14130DC626 /* ProtonCoreKeyManager in Frameworks */,
-				EAF307C50B8698C2D0F2A1E6 /* ProtonCoreLoginUI in Frameworks */,
-				B4F61275C725D6DF2537A801 /* ProtonCoreNetworking in Frameworks */,
-				516BC4057FA9EBC78A18E1A2 /* ProtonCorePasswordChange in Frameworks */,
-				A8DC2D9359CB802BAD38D78A /* ProtonCorePayments in Frameworks */,
-				1F64A4A7CEE8824E2FE65231 /* ProtonCorePaymentsUIV2 in Frameworks */,
-				7D0A51E3FFCFAF01B2E5A766 /* ProtonCorePaymentsV2 in Frameworks */,
-				827B392E5E9D3FA895988624 /* ProtonCorePushNotifications in Frameworks */,
-				352A4170A0140ECA404F65BB /* ProtonCoreServices in Frameworks */,
-				289E0B71CF8EF4AF646E80AC /* ProtonCoreUIFoundations in Frameworks */,
-				518D636952C00762D6DB5CC1 /* ProtonCoreUtilities in Frameworks */,
-				47B6DE911649543C52BA0A93 /* ProtonCoreVCard in Frameworks */,
-				6618A03189DCC4606E763881 /* PDPhotos in Frameworks */,
-				31F89663E7D321DCD14D24D5 /* PDSDKCore in Frameworks */,
-				4B91215204BE6B867D044F9A /* PDSDKCoreiOS in Frameworks */,
-				609CDAF2A68B7690A07F5410 /* ZIPFoundation in Frameworks */,
+				AF18A8962120E0C598BC6657 /* PMSettings in Frameworks */,
+				99D6E609A6C08C98F2F25FDF /* PMSideMenu in Frameworks */,
+				33AC70F5E5BB58E47EF56501 /* ProtonCoreAccountDeletion in Frameworks */,
+				ABE4C75E02A367FB3F4F11B2 /* ProtonCoreAccountRecovery in Frameworks */,
+				D1715227E0C9A7C787AC05E4 /* ProtonCoreCryptoPatchedGoImplementation in Frameworks */,
+				56BD795CCBB8B8F468470E85 /* ProtonCoreDataModel in Frameworks */,
+				2215A72031168E3989D40BEA /* ProtonCoreKeymaker in Frameworks */,
+				8523FC64B5C34B93BA703A10 /* ProtonCoreKeyManager in Frameworks */,
+				7C70FE668EE24A14130DC626 /* ProtonCoreLoginUI in Frameworks */,
+				EAF307C50B8698C2D0F2A1E6 /* ProtonCoreNetworking in Frameworks */,
+				B4F61275C725D6DF2537A801 /* ProtonCorePasswordChange in Frameworks */,
+				516BC4057FA9EBC78A18E1A2 /* ProtonCorePayments in Frameworks */,
+				A8DC2D9359CB802BAD38D78A /* ProtonCorePaymentsUIV2 in Frameworks */,
+				1F64A4A7CEE8824E2FE65231 /* ProtonCorePaymentsV2 in Frameworks */,
+				7D0A51E3FFCFAF01B2E5A766 /* ProtonCorePushNotifications in Frameworks */,
+				827B392E5E9D3FA895988624 /* ProtonCoreServices in Frameworks */,
+				352A4170A0140ECA404F65BB /* ProtonCoreUIFoundations in Frameworks */,
+				289E0B71CF8EF4AF646E80AC /* ProtonCoreUtilities in Frameworks */,
+				518D636952C00762D6DB5CC1 /* ProtonCoreVCard in Frameworks */,
+				47B6DE911649543C52BA0A93 /* PDPhotos in Frameworks */,
+				6618A03189DCC4606E763881 /* PDSDKCore in Frameworks */,
+				31F89663E7D321DCD14D24D5 /* PDSDKCoreiOS in Frameworks */,
+				4B91215204BE6B867D044F9A /* ZIPFoundation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2339,10 +2333,9 @@
 			files = (
 				19CF5FF4197B3C6E7ABA7AC1 /* ZIPFoundation in Frameworks */,
 				696E96A2A8E5377405AB60A6 /* PDFileProvider in Frameworks */,
-				E031C204362603497EBB9A67 /* PDUploadVerifier in Frameworks */,
-				B4D8C177DA93BB9CC970BCD8 /* PDSDKCore in Frameworks */,
-				333379BD0E03E8BAC21C5F7C /* PDSDKCoreiOS in Frameworks */,
-				E400041543874B43FADF750E /* ProtonCoreCryptoPatchedGoImplementation in Frameworks */,
+				E031C204362603497EBB9A67 /* PDSDKCore in Frameworks */,
+				B4D8C177DA93BB9CC970BCD8 /* PDSDKCoreiOS in Frameworks */,
+				333379BD0E03E8BAC21C5F7C /* ProtonCoreCryptoPatchedGoImplementation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4035,6 +4028,15 @@
 			path = Domain;
 			sourceTree = "<group>";
 		};
+		48D06872B19A238370510D02 /* Injection */ = {
+			isa = PBXGroup;
+			children = (
+				A3F53EACF4C96A7F73C9B982 /* LockedStateControllerFactory.swift */,
+				8059FEB1177ABE3A31B842CF /* ProtectViewControllerFactory.swift */,
+			);
+			path = Injection;
+			sourceTree = "<group>";
+		};
 		4A22185E33C0920E5FB0E32A /* WorkStatusPublishingController */ = {
 			isa = PBXGroup;
 			children = (
@@ -4477,14 +4479,6 @@
 			path = Domain;
 			sourceTree = "<group>";
 		};
-		5D039069D90D6600E5F1DEF8 /* Application */ = {
-			isa = PBXGroup;
-			children = (
-				58B47C5A7E8DC01347D3E1E7 /* MigrationToPhotoVolumeConstraintController.swift */,
-			);
-			path = Application;
-			sourceTree = "<group>";
-		};
 		5D22BC2E971FDE8C01BB5364 /* Resource */ = {
 			isa = PBXGroup;
 			children = (
@@ -4607,13 +4601,6 @@
 			path = Presentation;
 			sourceTree = "<group>";
 		};
-		60D579E24F6CA32A2829FDD3 /* Application */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Application;
-			sourceTree = "<group>";
-		};
 		60EF247E7FE8CE42E7AEDB5B /* Actions */ = {
 			isa = PBXGroup;
 			children = (
@@ -4652,14 +4639,6 @@
 				1937EF3237D53E11C9F20045 /* CopyDeleteBookmarks */,
 			);
 			path = Bookmarks;
-			sourceTree = "<group>";
-		};
-		624E2360647DF63F627C52AF /* MigrationToPhotoVolume */ = {
-			isa = PBXGroup;
-			children = (
-				5D039069D90D6600E5F1DEF8 /* Application */,
-			);
-			path = MigrationToPhotoVolume;
 			sourceTree = "<group>";
 		};
 		6317585CFC85D1A99BD7812A /* Trash */ = {
@@ -4735,7 +4714,6 @@
 				E4129F2221B142A5D25358D4 /* ApplicationState */,
 				6B0F49695D767142E305C4F9 /* AvailableSpace */,
 				616ED86086A77F47B46BA1CC /* Common */,
-				92D6E228E545A15B5C470EC7 /* MigrationToPhotoVolume */,
 				889965D2DB542CB30E044CD1 /* Network */,
 				3BB3AA22DB0A054722F51599 /* Quota */,
 				E4EA1B65BE450DD62DA56D82 /* Storage */,
@@ -4887,6 +4865,7 @@
 			children = (
 				0F6FEFB841692B9590606F7B /* LatestLogsAssembler.swift */,
 				3CEA24A2C170AD0CD5E536C9 /* LatestLogsSettingsRowViewModel.swift */,
+				8AB2DDF968F3E17C8C12889B /* LatestLogsView.swift */,
 				A2F2CF91357475C6C1566085 /* LatestLogsViewController.swift */,
 				385B1C1CF7368672C5801C55 /* LatestLogsViewModel.swift */,
 			);
@@ -5406,12 +5385,12 @@
 				B9B4461678947BC46E8887E7 /* ContactEventBridge.swift */,
 				F8631A0044EDF978EFE9F4B4 /* DC+Authenticate.swift */,
 				9346E2AF19CCC8A2B6FB77ED /* DC+Launch.swift */,
-				20279DC7E75B3A84C1E6F8C3 /* DC+Lock.swift */,
 				54678EDDD5D2226DA2DEE532 /* DC+Populate.swift */,
 				BB2D6A14F48B7408C09ACEBC /* DC+Populated.swift */,
 				DF7B6179C40AA98C4F58AF06 /* DC+Protect.swift */,
 				2864F85BC4A612496409770A /* DC+Start.swift */,
 				DB49558EC9E3765A1CC5AAE6 /* DriveDependencyContainer.swift */,
+				03C22FA3244BC1B34CA7FFEF /* DriveSignOutManager.swift */,
 				F4D764AC193917350BA92E35 /* Factory */,
 				37A701EC7F19211418C1811C /* Tabs */,
 			);
@@ -5534,7 +5513,6 @@
 				12099BC784FAB7C096E78A1B /* Common */,
 				76534E9DA3D79583B3A8F25C /* FeatureFlag */,
 				DD6105663D4ECA0696052FEB /* Lock */,
-				624E2360647DF63F627C52AF /* MigrationToPhotoVolume */,
 				7293FF0FECB7FFC4A0FBDA25 /* Network */,
 				2E979E63AE8E4F27CA469DBB /* Quota */,
 				2B51E36959279202691A1FF5 /* Storage */,
@@ -5766,14 +5744,6 @@
 			children = (
 			);
 			path = Application;
-			sourceTree = "<group>";
-		};
-		92D6E228E545A15B5C470EC7 /* MigrationToPhotoVolume */ = {
-			isa = PBXGroup;
-			children = (
-				60D579E24F6CA32A2829FDD3 /* Application */,
-			);
-			path = MigrationToPhotoVolume;
 			sourceTree = "<group>";
 		};
 		938ACB7F083533AC80F050D2 /* Keys */ = {
@@ -6553,6 +6523,7 @@
 			children = (
 				964FEA863B6F72178CFC4947 /* Application */,
 				0B92A45C68776E93DCF23933 /* Coordinator */,
+				48D06872B19A238370510D02 /* Injection */,
 				7891EA8AF3652254F0250742 /* Resource */,
 				43F77F650D2E8697573E01E7 /* View */,
 				84A78E426C968901B2601FB4 /* ViewModel */,
@@ -7353,9 +7324,7 @@
 			isa = PBXGroup;
 			children = (
 				E2675EAF595481C424509B52 /* AggregatedOperationInteractor.swift */,
-				F40576BB0EC4A4E52FF4903B /* MyFilesUploadOperationInteractor.swift */,
 				A6417EC8D85561465125F9E5 /* OperationInteractor.swift */,
-				3802DE760504787D72987049 /* PhotosUploadOperationInteractor.swift */,
 				8657C93EFD5C59197370154A /* SDKFilesDownloadOperationInteractor.swift */,
 				83FA9EBE30EB954645F86177 /* SDKFilesUploadOperationInteractor.swift */,
 			);
@@ -7575,7 +7544,6 @@
 				ACD8E47147D476073E1CCBA0 /* PDPhotos */,
 				78F6DB48AC69FA7F8910E251 /* PDSDKCore */,
 				93C0FF93CCFFA8ED50C411A9 /* PDUIComponents */,
-				8A58931BD034CAD732D0EFC4 /* PDUploadVerifier */,
 				C0BF65A1D8A6871F162D067F /* PMEventsManager */,
 				2E1051BE65987DDD2B493D24 /* PMSettings */,
 				84CF8D40E87BB3AC1FEE63C4 /* PMSideMenu */,
@@ -8380,7 +8348,6 @@
 				BD37C56896C7818721B3F0B9 /* PDLocalization */,
 				5B7412B9A0D748719AFA17C6 /* PDContacts */,
 				A309157AC80082F51DF1EC0C /* PDUIComponents */,
-				D5C2D5A12473310F54FB3C40 /* PDUploadVerifier */,
 				A7B65EBB7A0FFDE503F137F9 /* PMSettings */,
 				C72DBD7A70B2BA9742E80F27 /* PMSideMenu */,
 				72E9F76EA5EDCD6E77876CE2 /* ProtonCoreAccountDeletion */,
@@ -8427,7 +8394,6 @@
 			packageProductDependencies = (
 				A7FCC521BD009DDE9036D897 /* ZIPFoundation */,
 				9457D3856C5F234125CACAD6 /* PDFileProvider */,
-				5C450B4E37AD125E7D4EDB82 /* PDUploadVerifier */,
 				4B4B7C85C74D51026203E45B /* PDSDKCore */,
 				F77F3D7E49CBDC612087DE47 /* PDSDKCoreiOS */,
 				B0E1877933672E2A58470754 /* ProtonCoreCryptoPatchedGoImplementation */,
@@ -8505,7 +8471,6 @@
 				08531247F6F21EC7039795A5 /* PDLocalization */,
 				56768211E2EC7B5186334698 /* PDContacts */,
 				9B95FEB39DE70F9C1FDCAC74 /* PDUIComponents */,
-				8001699C0AA8B00467CE4A08 /* PDUploadVerifier */,
 				A65F72E126272D414EBA3C35 /* PMSettings */,
 				FFD957F3BBB965F7070D5025 /* PMSideMenu */,
 				B00CDE752369BDDD035F417E /* ProtonCoreAccountDeletion */,
@@ -8626,7 +8591,6 @@
 				3E1549946825390A636EDFA2 /* XCLocalSwiftPackageReference "PDPhotos" */,
 				6AD0BACE38023A79D7891D5C /* XCLocalSwiftPackageReference "PDSDKCore" */,
 				1F0178E6E5F18CC18FB99731 /* XCLocalSwiftPackageReference "PDUIComponents" */,
-				8F5B9777F58000A37923BF49 /* XCLocalSwiftPackageReference "PDUploadVerifier" */,
 				207930A4F57D3A7DFAE7FF91 /* XCLocalSwiftPackageReference "PMEventsManager" */,
 				2ADD6F7C4D3426450ACB481C /* XCLocalSwiftPackageReference "PMSettings" */,
 				BD05138795657E5C64927D5F /* XCLocalSwiftPackageReference "PMSideMenu" */,
@@ -8938,7 +8902,6 @@
 				D06300B2E2C8D41C63FA95EB /* CreatingMainShareStarter.swift in Sources */,
 				6A58779BE67A244F203FC13D /* DC+Authenticate.swift in Sources */,
 				25D9BE23B9ECEBC746C22931 /* DC+Launch.swift in Sources */,
-				EA4C788FDAFEE8ED857FC530 /* DC+Lock.swift in Sources */,
 				8FC41BC5D8C5F2038559B214 /* DC+Populate.swift in Sources */,
 				86C40933940411C3479BDE96 /* DC+Populated.swift in Sources */,
 				115855D105B5C48F4C832517 /* DC+Protect.swift in Sources */,
@@ -8973,6 +8936,7 @@
 				EC75B48D957AD0F9D5FA37B6 /* DriveDependencyContainer.swift in Sources */,
 				6308D0EC5B682F2E4F0EDD56 /* DriveLoginAndSignupAuthenticator.swift in Sources */,
 				41EF88C18A14455F8AFC2343 /* DriveLogoutManager.swift in Sources */,
+				81D54B99AD85FB889A749019 /* DriveSignOutManager.swift in Sources */,
 				E990841665DF492660B67E8D /* DuplicatePhotoListingBootstrapper.swift in Sources */,
 				B62330EE256199808609B355 /* DuplicateUploadHandler.swift in Sources */,
 				DB6CA4252656A6822879C117 /* DuplicationActionView.swift in Sources */,
@@ -9056,6 +9020,7 @@
 				CEB01C44EF3122DA0CFA1B38 /* KeychainLaunchConfigurator.swift in Sources */,
 				F43D596F876A4BDF24F3ADAF /* LatestLogsAssembler.swift in Sources */,
 				6F7EAE29E835A0781605B46C /* LatestLogsSettingsRowViewModel.swift in Sources */,
+				7B9528834744EC5E9F6DDAFE /* LatestLogsView.swift in Sources */,
 				3D256B3454B16448E8EFE2A7 /* LatestLogsViewController.swift in Sources */,
 				FE0302703FF66B9D22806E26 /* LatestLogsViewModel.swift in Sources */,
 				4E11506D6F8B75F3F2AA4EA3 /* LaunchConfigurator.swift in Sources */,
@@ -9082,6 +9047,7 @@
 				03709E12508A11028AA0DB50 /* LockRequesting.swift in Sources */,
 				BAAFD8C48991329B11591989 /* LockedStateBannerVisibility.swift in Sources */,
 				5A3D117DC063F0EC1E4B7161 /* LockedStateController.swift in Sources */,
+				BA8453E701945D53F328A283 /* LockedStateControllerFactory.swift in Sources */,
 				EF873A3FE46C5186F457D0EE /* LockedStateTopBannerView.swift in Sources */,
 				F2383E88B600A12A3B7C16B2 /* LockedStateTopBannerViewModel.swift in Sources */,
 				11633BC63A3111F54EBB8B41 /* Log+exporter.swift in Sources */,
@@ -9100,7 +9066,6 @@
 				4B454EB68F365D02E8016A62 /* MenuModel.swift in Sources */,
 				650CA6FAE5384F22E6E08A67 /* MenuView.swift in Sources */,
 				404D6946809DFA867331A73B /* MenuViewModel.swift in Sources */,
-				D194DACE585EB9763269ECEE /* MigrationToPhotoVolumeConstraintController.swift in Sources */,
 				4D5077F4088770D98AA53E81 /* MonitoringBootstrapController.swift in Sources */,
 				7083785FE5B113F4F5474AD9 /* MoreSectionViewModel.swift in Sources */,
 				3A4406624721C518FE902726 /* MoveViewModel.swift in Sources */,
@@ -9109,7 +9074,6 @@
 				5BD23CF047D064F73CED6B33 /* MyFilesNotificationsPermissionsContainer.swift in Sources */,
 				9E1F162E7091600A5E6F1314 /* MyFilesNotificationsPermissionsController.swift in Sources */,
 				2BCC8DA3C4D2636C7CB613D3 /* MyFilesNotificationsPermissionsFactory.swift in Sources */,
-				C3E45D22B6937035AA967F35 /* MyFilesUploadOperationInteractor.swift in Sources */,
 				1CAA851B28AC62CD82C8B873 /* NSDate+helpers.swift in Sources */,
 				922D514B7F6DF7CA0ABD7EF3 /* NSRange+Extension.swift in Sources */,
 				6B33277A97CA39FABB308124 /* NameEditingNode.swift in Sources */,
@@ -9315,7 +9279,6 @@
 				ECC98DF7D38229BDCE5BF4D5 /* PhotosTelemetryStorageFactory.swift in Sources */,
 				3A3650E64F27A0AA37F0E028 /* PhotosTelemetryUpsellController.swift in Sources */,
 				E882780B80E9BADFEC70AAEE /* PhotosTelemetryUserInfoFactory.swift in Sources */,
-				F4032B684A7DD8C25904A03C /* PhotosUploadOperationInteractor.swift in Sources */,
 				F1BCDD584F9100850A8862E9 /* PhotosUploadsProgressController.swift in Sources */,
 				BDDF365D981B112B718A08C2 /* PhotosVolumeIdDataSource.swift in Sources */,
 				5D676DFB6E2732253FA395ED /* PickerInteractor.swift in Sources */,
@@ -9330,6 +9293,7 @@
 				4E0063C54B231A2C7D8D2E65 /* ProgressesStatusToast.swift in Sources */,
 				5191FD41E8F64262C3B2B08D /* ProtectCoordinator.swift in Sources */,
 				A52BC1DE749A8A167BE88058 /* ProtectViewController.swift in Sources */,
+				5BAA636382CEFB967630B772 /* ProtectViewControllerFactory.swift in Sources */,
 				26E0D709A9E319DD78814D88 /* ProtectViewModel.swift in Sources */,
 				9F8BE9BC7AB20E8CC39B6A89 /* ProtonCoreDriveFeatureFlag.swift in Sources */,
 				B9399BACE178070102938BCD /* ProtonFileActionsMenu.swift in Sources */,
@@ -9592,7 +9556,6 @@
 				1CD4E1575141CCFE82CD6A72 /* CreatingMainShareStarter.swift in Sources */,
 				B26482145139A3FB2902B023 /* DC+Authenticate.swift in Sources */,
 				AD17B2C1321979E0367006C4 /* DC+Launch.swift in Sources */,
-				9569EFC8BD4BFE1A7B7C44E3 /* DC+Lock.swift in Sources */,
 				A6ECA6CFA6C7C85E8227312D /* DC+Populate.swift in Sources */,
 				4C10F1D8B6418AE368A7B728 /* DC+Populated.swift in Sources */,
 				E675D81EB8EF644CC051432F /* DC+Protect.swift in Sources */,
@@ -9627,6 +9590,7 @@
 				C69E4BE66B153C9549E1A0A6 /* DriveDependencyContainer.swift in Sources */,
 				52F95C01D081A22675AAF1B9 /* DriveLoginAndSignupAuthenticator.swift in Sources */,
 				D05188F6B80CE94683120F6B /* DriveLogoutManager.swift in Sources */,
+				81141291927BE6624D1533A2 /* DriveSignOutManager.swift in Sources */,
 				E30B6971633AC2287493AE32 /* DuplicatePhotoListingBootstrapper.swift in Sources */,
 				2906E4609760582BD0A8FFC7 /* DuplicateUploadHandler.swift in Sources */,
 				7241339A94EEF62BEF19F821 /* DuplicationActionView.swift in Sources */,
@@ -9710,6 +9674,7 @@
 				73ED9A395A2FAE423D8E1104 /* KeychainLaunchConfigurator.swift in Sources */,
 				B8DEAD707A0743399B045C02 /* LatestLogsAssembler.swift in Sources */,
 				A9897D81BBA5855099F2A26C /* LatestLogsSettingsRowViewModel.swift in Sources */,
+				B9514E98EB4CC5026E45D9FC /* LatestLogsView.swift in Sources */,
 				038A2FCA315D4E5B2C6E8E5D /* LatestLogsViewController.swift in Sources */,
 				F4D3474BE2063D504D4FA85E /* LatestLogsViewModel.swift in Sources */,
 				A8CD3945B4F4502BF29892B8 /* LaunchConfigurator.swift in Sources */,
@@ -9736,6 +9701,7 @@
 				EC9FF7ABA63ECC7CFF196472 /* LockRequesting.swift in Sources */,
 				A679A177E5FDDBE70895774F /* LockedStateBannerVisibility.swift in Sources */,
 				A71701D30F083BAA4CF42ACC /* LockedStateController.swift in Sources */,
+				96ACD3C6322E08CF889DEC16 /* LockedStateControllerFactory.swift in Sources */,
 				64610AD777C8C33167499A0E /* LockedStateTopBannerView.swift in Sources */,
 				B7D5AC6284EF60C414B4B492 /* LockedStateTopBannerViewModel.swift in Sources */,
 				F90661CECB254360EC3838FA /* Log+exporter.swift in Sources */,
@@ -9754,7 +9720,6 @@
 				2F69845F9B3FB65916A91820 /* MenuModel.swift in Sources */,
 				1E741E06CAF0AEFF29E0900F /* MenuView.swift in Sources */,
 				73DB49694B82616F3C22F457 /* MenuViewModel.swift in Sources */,
-				56B5191A15AE74C3E5785D72 /* MigrationToPhotoVolumeConstraintController.swift in Sources */,
 				C2F3F05C2155AF3575D1FCDB /* MonitoringBootstrapController.swift in Sources */,
 				4A16A2CF9C8C1684244A8960 /* MoreSectionViewModel.swift in Sources */,
 				4A6D3550B1F560BB0CB01CAB /* MoveViewModel.swift in Sources */,
@@ -9763,7 +9728,6 @@
 				C2FB7581631BF11BCAB509B2 /* MyFilesNotificationsPermissionsContainer.swift in Sources */,
 				507CCFB2E2C5A19FCB4EC9BE /* MyFilesNotificationsPermissionsController.swift in Sources */,
 				3F52631906099EF126AB3D99 /* MyFilesNotificationsPermissionsFactory.swift in Sources */,
-				8F8A63120BC2A109B31355A0 /* MyFilesUploadOperationInteractor.swift in Sources */,
 				1BAADD9C0209A8EC61218D3B /* NSDate+helpers.swift in Sources */,
 				395DC22C6B34F877BA37FA47 /* NSRange+Extension.swift in Sources */,
 				8A00701A93BFB1F7366F51C3 /* NameEditingNode.swift in Sources */,
@@ -9969,7 +9933,6 @@
 				AFE9FD2B291BACF968E434B1 /* PhotosTelemetryStorageFactory.swift in Sources */,
 				EC316A8C086322E5DC435B02 /* PhotosTelemetryUpsellController.swift in Sources */,
 				6013A691561AEC0CD4518E1A /* PhotosTelemetryUserInfoFactory.swift in Sources */,
-				20C64B9C2C68EE8DC46221CD /* PhotosUploadOperationInteractor.swift in Sources */,
 				0777D99DC5755095BF24778C /* PhotosUploadsProgressController.swift in Sources */,
 				C0C52F0BAD42BAAD8F78574B /* PhotosVolumeIdDataSource.swift in Sources */,
 				CE250C00F3F3E64B1CCE0285 /* PickerInteractor.swift in Sources */,
@@ -9984,6 +9947,7 @@
 				9B10FB116D43FC04D8E3473C /* ProgressesStatusToast.swift in Sources */,
 				7CA123F30E34F9C1678D0286 /* ProtectCoordinator.swift in Sources */,
 				3C4982E5C3224E70A38D5EB3 /* ProtectViewController.swift in Sources */,
+				9C2AB54836D478AE3EFC9C9D /* ProtectViewControllerFactory.swift in Sources */,
 				E2ADFDA77E24E1390C2E1DA3 /* ProtectViewModel.swift in Sources */,
 				C27CDED5AA5E0245D64FA33F /* ProtonCoreDriveFeatureFlag.swift in Sources */,
 				C91823B438FDCE72EC476D30 /* ProtonFileActionsMenu.swift in Sources */,
@@ -10315,7 +10279,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.61.0;
+				MARKETING_VERSION = 3.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "ch.protonmail.drive.fileprovider-ui";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
@@ -10386,7 +10350,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.61.0;
+				MARKETING_VERSION = 3.0.0;
 				OTHER_CODE_SIGN_FLAGS = "--deep";
 				"OTHER_LDFLAGS[sdk=iphoneos*]" = "-llibbootstrapperdll.ios-arm64.o";
 				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = "-llibbootstrapperdll.iossimulator-arm64.o";
@@ -10440,7 +10404,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.61.0;
+				MARKETING_VERSION = 3.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.share;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
@@ -10513,7 +10477,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.61.0;
+				MARKETING_VERSION = 3.0.0;
 				OTHER_CODE_SIGN_FLAGS = "--deep";
 				"OTHER_LDFLAGS[sdk=iphoneos*]" = "-llibbootstrapperdll.ios-arm64.o";
 				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = "-llibbootstrapperdll.iossimulator-arm64.o";
@@ -10589,7 +10553,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.61.0;
+				MARKETING_VERSION = 3.0.0;
 				"OTHER_LDFLAGS[sdk=iphoneos*]" = "-llibbootstrapperdll.ios-arm64.o";
 				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = "-llibbootstrapperdll.iossimulator-arm64.o";
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.fileprovider;
@@ -10683,10 +10647,6 @@
 		813806484A73C01B5D8AF7B8 /* XCLocalSwiftPackageReference "PDFileProvider" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../PDFileProvider;
-		};
-		8F5B9777F58000A37923BF49 /* XCLocalSwiftPackageReference "PDUploadVerifier" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../PDUploadVerifier;
 		};
 		BD05138795657E5C64927D5F /* XCLocalSwiftPackageReference "PMSideMenu" */ = {
 			isa = XCLocalSwiftPackageReference;
@@ -10943,10 +10903,6 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = PDContacts;
 		};
-		5C450B4E37AD125E7D4EDB82 /* PDUploadVerifier */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = PDUploadVerifier;
-		};
 		625E72ACB9CF4998720EE2FC /* ProtonCoreUIFoundations */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 112386491C8C1EFCCF47F575 /* XCRemoteSwiftPackageReference "protoncore_ios" */;
@@ -10990,10 +10946,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 90389B0F1C4EE06C3EA000C3 /* XCRemoteSwiftPackageReference "OHHTTPStubs" */;
 			productName = OHHTTPStubs;
-		};
-		8001699C0AA8B00467CE4A08 /* PDUploadVerifier */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = PDUploadVerifier;
 		};
 		86CBD2D73F3E73ECA61ABC85 /* ProtonCoreLoginUI */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -11143,10 +11095,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 112386491C8C1EFCCF47F575 /* XCRemoteSwiftPackageReference "protoncore_ios" */;
 			productName = ProtonCoreCryptoPatchedGoImplementation;
-		};
-		D5C2D5A12473310F54FB3C40 /* PDUploadVerifier */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = PDUploadVerifier;
 		};
 		D6C04F6627B2DE534C3F616A /* ProtonCoreServices */ = {
 			isa = XCSwiftPackageProductDependency;

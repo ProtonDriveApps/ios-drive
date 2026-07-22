@@ -26,7 +26,7 @@ final class LoadThumbnailOperationsFactory: ThumbnailOperationsFactory {
     private let thumbnailRepository: NodeThumbnailRepository
     private let typeStrategy: ThumbnailTypeStrategy
     private let performanceMetricsController: PerformanceMetricsControllerProtocol?
-    private let getSDKDownloader: () -> SDKThumbnailsDownloaderProtocol?
+    private let sdkThumbnailDownloader: SDKThumbnailsDownloaderProtocol
 
     init(
         store: StorageManager,
@@ -35,7 +35,7 @@ final class LoadThumbnailOperationsFactory: ThumbnailOperationsFactory {
         thumbnailRepository: NodeThumbnailRepository,
         typeStrategy: ThumbnailTypeStrategy,
         performanceMetricsController: PerformanceMetricsControllerProtocol?,
-        getSDKDownloader: @escaping () -> SDKThumbnailsDownloaderProtocol?
+        sdkThumbnailDownloader: SDKThumbnailsDownloaderProtocol
     ) {
         self.store = store
         self.cloud = cloud
@@ -43,12 +43,11 @@ final class LoadThumbnailOperationsFactory: ThumbnailOperationsFactory {
         self.thumbnailRepository = thumbnailRepository
         self.typeStrategy = typeStrategy
         self.performanceMetricsController = performanceMetricsController
-        self.getSDKDownloader = getSDKDownloader
+        self.sdkThumbnailDownloader = sdkThumbnailDownloader
     }
 
     func makeThumbnailModel(forFileWithID id: Identifier) throws -> ThumbnailIdentifiableOperation {
         let thumbnail = try makeThumbnail(fileID: id)
-        let sdkThumbnailDownloader = getSDKDownloader()
 
         switch thumbnail {
         case let .full(fullThumbnail):
@@ -60,50 +59,22 @@ final class LoadThumbnailOperationsFactory: ThumbnailOperationsFactory {
 
         case let .inProgress(inProgressThumbnail):
             performanceMetricsController?.fetchThumbnail(id: .init(id: id.id, volumeID: id.volumeID), dataSource: .remote)
-            if let sdkThumbnailDownloader {
-                return makeSDKThumbnailOperation(id: id, downloader: sdkThumbnailDownloader)
-            } else {
-                let downloader = URLSessionThumbnailDownloader(session: session)
-                let decryptor = makeThumbnailDecryptor(identifier: inProgressThumbnail.revisionId.nodeIdentifier)
-                let urlFetchInteractor = ThumbnailsListFactory().makeRemoteURLFetchInteractor(client: client, cloudSlot: cloud)
-                let operation = DownloadThumbnailOperation(model: inProgressThumbnail, downloader: downloader, decryptor: decryptor, urlFetchInteractor: urlFetchInteractor)
-                return operation
-            }
+            return makeSDKThumbnailOperation(id: id, downloader: sdkThumbnailDownloader)
 
         case let .revisionId(incompleteThumbnail):
             performanceMetricsController?.fetchThumbnail(id: .init(id: id.id, volumeID: id.volumeID), dataSource: .remote)
-            if let sdkThumbnailDownloader {
-                return makeSDKThumbnailOperation(id: id, downloader: sdkThumbnailDownloader)
-            } else {
-                let downloader = URLSessionThumbnailDownloader(session: session)
-                let decryptor = makeThumbnailDecryptor(identifier: incompleteThumbnail.revisionId.nodeIdentifier)
-                let urlFetchInteractor = ThumbnailsListFactory().makeRemoteURLFetchInteractor(client: client, cloudSlot: cloud)
-                let operation = IncompleteThumbnailDownloaderOperation(model: incompleteThumbnail, cloud: cloud, downloader: downloader, decryptor: decryptor, typeStrategy: typeStrategy, urlFetchInteractor: urlFetchInteractor)
-                return operation
-            }
+            return makeSDKThumbnailOperation(id: id, downloader: sdkThumbnailDownloader)
 
         case let .thumbnailId(thumbnailWithId):
             performanceMetricsController?.fetchThumbnail(id: .init(id: id.id, volumeID: id.volumeID), dataSource: .remote)
-            if let sdkThumbnailDownloader {
-                return makeSDKThumbnailOperation(id: id, downloader: sdkThumbnailDownloader)
-            } else {
-                let downloader = URLSessionThumbnailDownloader(session: session)
-                let decryptionResource = makeThumbnailDecryptor(thumbnail: thumbnailWithId)
-                let urlFetchInteractor = ThumbnailsListFactory().makeRemoteURLFetchInteractor(client: client, cloudSlot: cloud)
-                return ThumbnailIdentifierDownloadOperation(thumbnailWithId: thumbnailWithId, downloader: downloader, decryptor: decryptionResource, urlFetchInteractor: urlFetchInteractor)
-            }
+            return makeSDKThumbnailOperation(id: id, downloader: sdkThumbnailDownloader)
         case .thumbnailIdForSDK(let identifier):
-            if let sdkThumbnailDownloader {
-                return makeSDKThumbnailOperation(id: identifier, downloader: sdkThumbnailDownloader)
-            } else {
-                throw ThumbnailLoaderError.noAvailableSDKDownloader
-            }
+            return makeSDKThumbnailOperation(id: identifier, downloader: sdkThumbnailDownloader)
         }
     }
 
     func makeThumbnailModelAsync(forFileWithID id: Identifier) async throws -> ThumbnailIdentifiableOperation {
         let thumbnail = try await makeThumbnailAsync(fileID: id)
-        let sdkThumbnailDownloader = getSDKDownloader()
 
         switch thumbnail {
         case let .full(fullThumbnail):
@@ -115,44 +86,17 @@ final class LoadThumbnailOperationsFactory: ThumbnailOperationsFactory {
 
         case let .inProgress(inProgressThumbnail):
             performanceMetricsController?.fetchThumbnail(id: .init(id: id.id, volumeID: id.volumeID), dataSource: .remote)
-            if let sdkThumbnailDownloader {
-                return makeSDKThumbnailOperation(id: id, downloader: sdkThumbnailDownloader)
-            } else {
-                let downloader = URLSessionThumbnailDownloader(session: session)
-                let decryptor = makeThumbnailDecryptor(identifier: inProgressThumbnail.revisionId.nodeIdentifier)
-                let urlFetchInteractor = ThumbnailsListFactory().makeRemoteURLFetchInteractor(client: client, cloudSlot: cloud)
-                let operation = DownloadThumbnailOperation(model: inProgressThumbnail, downloader: downloader, decryptor: decryptor, urlFetchInteractor: urlFetchInteractor)
-                return operation
-            }
+            return makeSDKThumbnailOperation(id: id, downloader: sdkThumbnailDownloader)
 
         case let .revisionId(incompleteThumbnail):
             performanceMetricsController?.fetchThumbnail(id: .init(id: id.id, volumeID: id.volumeID), dataSource: .remote)
-            if let sdkThumbnailDownloader {
-                return makeSDKThumbnailOperation(id: id, downloader: sdkThumbnailDownloader)
-            } else {
-                let downloader = URLSessionThumbnailDownloader(session: session)
-                let decryptor = makeThumbnailDecryptor(identifier: incompleteThumbnail.revisionId.nodeIdentifier)
-                let urlFetchInteractor = ThumbnailsListFactory().makeRemoteURLFetchInteractor(client: client, cloudSlot: cloud)
-                let operation = IncompleteThumbnailDownloaderOperation(model: incompleteThumbnail, cloud: cloud, downloader: downloader, decryptor: decryptor, typeStrategy: typeStrategy, urlFetchInteractor: urlFetchInteractor)
-                return operation
-            }
+            return makeSDKThumbnailOperation(id: id, downloader: sdkThumbnailDownloader)
 
         case let .thumbnailId(thumbnailWithId):
             performanceMetricsController?.fetchThumbnail(id: .init(id: id.id, volumeID: id.volumeID), dataSource: .remote)
-            if let sdkThumbnailDownloader {
-                return makeSDKThumbnailOperation(id: id, downloader: sdkThumbnailDownloader)
-            } else {
-                let downloader = URLSessionThumbnailDownloader(session: session)
-                let decryptionResource = makeThumbnailDecryptor(thumbnail: thumbnailWithId)
-                let urlFetchInteractor = ThumbnailsListFactory().makeRemoteURLFetchInteractor(client: client, cloudSlot: cloud)
-                return ThumbnailIdentifierDownloadOperation(thumbnailWithId: thumbnailWithId, downloader: downloader, decryptor: decryptionResource, urlFetchInteractor: urlFetchInteractor)
-            }
+            return makeSDKThumbnailOperation(id: id, downloader: sdkThumbnailDownloader)
         case .thumbnailIdForSDK(let identifier):
-            if let sdkThumbnailDownloader {
-                return makeSDKThumbnailOperation(id: identifier, downloader: sdkThumbnailDownloader)
-            } else {
-                throw ThumbnailLoaderError.noAvailableSDKDownloader
-            }
+            return makeSDKThumbnailOperation(id: identifier, downloader: sdkThumbnailDownloader)
         }
     }
 
@@ -186,7 +130,7 @@ final class LoadThumbnailOperationsFactory: ThumbnailOperationsFactory {
                 makeModel(thumbnail)
             }
         } catch let error as ThumbnailLoaderError {
-            guard error == .noValidRevision, getSDKDownloader() != nil else { throw error }
+            guard error == .noValidRevision else { throw error }
             return .thumbnailIdForSDK(fileID)
         } catch {
             throw error
@@ -201,7 +145,7 @@ final class LoadThumbnailOperationsFactory: ThumbnailOperationsFactory {
 
             return await moc.perform { self.makeModel(thumbnail) }
         } catch let error as ThumbnailLoaderError {
-            guard error == .noValidRevision, getSDKDownloader() != nil else { throw error }
+            guard error == .noValidRevision else { throw error }
             return .thumbnailIdForSDK(fileID)
         } catch {
             throw error

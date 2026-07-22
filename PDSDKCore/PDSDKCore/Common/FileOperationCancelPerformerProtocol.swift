@@ -18,6 +18,8 @@
 import Foundation
 
 public protocol FileOperationCancelPerformerProtocol { // Attempt to hide differences of files vs photos behind an interface
+    #if os(iOS)
     func cancelDownload(cancellationToken: UUID) async throws
-    func cancelUpload(cancellationToken: UUID) async throws
+    func cancelUpload(cancellationToken: UUID, isPausedOperation: Bool) async throws
+    #endif
 }

@@ -18,17 +18,20 @@
 import Foundation
 
 public struct RenameNodeParameters: Codable {
-    public init(name: String, hash: String?, MIMEType: String?, signatureAddress: String) {
+    public init(name: String, hash: String?, MIMEType: String?, signatureAddress: String, originalHash: String? = nil) {
         self.Name = name
         self.Hash = hash
         self.MIMEType = MIMEType
         self.SignatureAddress = signatureAddress
+        self.OriginalHash = originalHash
     }
-    
+
     var Name: String
     var Hash: String?
     var MIMEType: String?
     var SignatureAddress: String
+    // Optimistic-concurrency guard. Nil optionals are omitted by synthesized Codable, so callers that pass nothing keep their wire format.
+    var OriginalHash: String?
 }
 
 public struct RenameNodeEndpoint: Endpoint {

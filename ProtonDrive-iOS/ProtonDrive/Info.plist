@@ -70,6 +70,8 @@
 	<string>$(DEFAULT_API_HOST)</string>
 	<key>DEFAULT_PHOTOS_REMINDER_DELAY</key>
 	<true/>
+	<key>DRIVE_SDK_VERSION</key>
+	<string>0.15.1</string>
 	<key>DYNAMIC_DOMAIN</key>
 	<string>$(DYNAMIC_DOMAIN)</string>
 	<key>IS_UI_TEST</key>

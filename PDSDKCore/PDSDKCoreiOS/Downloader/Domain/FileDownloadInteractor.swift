@@ -84,6 +84,7 @@ final class FileDownloadInteractor: FileDownloadInteractorProtocol {
             )
             // We will move from temporary url to normal cache url (where revision expects it)
             try cacheResource.finalizeDownload(for: downloadInput)
+            _ = try? DecryptedFileManager.ensureHardLink(identifier: identifier, filename: downloadInput.name)
             Log.debug("Finish to download file \(downloadInput.id)", domain: .sdk)
         } catch {
             cacheResource.cleanUp(for: downloadInput)

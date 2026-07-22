@@ -24,21 +24,33 @@ public final class NodeRenamer: NodeRenamerProtocol {
 
     private let signersKitFactory: SignersKitFactoryProtocol
     private let cloudNodeRenamer: CloudNodeRenamer
+    private let metadataRefresher: NodeMetadataRefreshing?
 
     public init(
         cloudNodeRenamer: @escaping CloudNodeRenamer,
-        signersKitFactory: SignersKitFactoryProtocol
+        signersKitFactory: SignersKitFactoryProtocol,
+        metadataRefresher: NodeMetadataRefreshing? = nil
     ) {
         self.signersKitFactory = signersKitFactory
         self.cloudNodeRenamer = cloudNodeRenamer
+        self.metadataRefresher = metadataRefresher
     }
 
     public func rename(_ node: Node, to newName: String, mimeType: String?, moc: NSManagedObjectContext) async throws {
         let validatedNewName = try newName.validateNodeName(validator: NameValidations.iosName)
+        try await performWithOutOfSyncRetry(
+            node: node,
+            moc: moc,
+            metadataRefresher: metadataRefresher,
+            attempt: { try await self.attemptRename(node, to: validatedNewName, mimeType: mimeType, moc: moc) },
+            stillNeeded: { try await self.renameStillNeeded(node, to: validatedNewName, moc: moc) }
+        )
+    }
 
+    private func attemptRename(_ node: Node, to validatedNewName: String, mimeType: String?, moc: NSManagedObjectContext) async throws {
         let nodeManagedObjectID = node.objectID
         
-        let (nodeID, shareID, oldNodeName, parentKey, parentPassphrase, parentHashKey, signersKit) = try await moc.perform {
+        let (nodeID, shareID, oldNodeName, currentNodeHash, parentKey, parentPassphrase, parentHashKey, signersKit) = try await moc.perform {
             let node = moc.object(with: nodeManagedObjectID) as! Node
             let nodeID = node.id
             let shareID = try node.getContextShare().id
@@ -55,7 +67,7 @@ public final class NodeRenamer: NodeRenamerProtocol {
             let parentPassphrase = try parent.decryptPassphrase()
             let parentHashKey = try parent.decryptNodeHashKey()
 
-            return (nodeID, shareID, oldNodeName, parentKey, parentPassphrase, parentHashKey, signersKit)
+            return (nodeID, shareID, oldNodeName, node.nodeHash, parentKey, parentPassphrase, parentHashKey, signersKit)
         }
 
         let newEncryptedName = try node.renameNode(
@@ -71,7 +83,8 @@ public final class NodeRenamer: NodeRenamerProtocol {
             name: newEncryptedName,
             hash: newNameHash,
             MIMEType: mimeType,
-            signatureAddress: signersKit.address.email
+            signatureAddress: signersKit.address.email,
+            originalHash: currentNodeHash
         )
         
         let nameSignatureEmail = signersKit.address.email
@@ -92,6 +105,18 @@ public final class NodeRenamer: NodeRenamerProtocol {
             }
 
             try moc.saveOrRollback()
+        }
+    }
+
+    private func renameStillNeeded(_ node: Node, to validatedNewName: String, moc: NSManagedObjectContext) async throws -> Bool {
+        let nodeManagedObjectID = node.objectID
+        return try await moc.perform {
+            guard let node = moc.object(with: nodeManagedObjectID) as? Node else { return false }
+            guard let parent = node.parentNode else {
+                throw node.invalidState("The renaming Node should have a parent.")
+            }
+            let target = try Encryptor.hmac(filename: validatedNewName, parentHashKey: parent.decryptNodeHashKey())
+            return node.nodeHash != target
         }
     }
 }

@@ -27,9 +27,8 @@ enum LatestLogsAssembler {
         return PMDrillDownConfiguration(viewModel: viewModel) {
             let url = PDFileManager.logsWorkingDirectory.appendingPathComponent("ch.proton.drive.ios.app.log", isDirectory: false)
             let vm = LatestLogsViewModel(url: url)
-            let vc = LatestLogsViewController()
+            let vc = LatestLogsViewController(viewModel: vm)
             vc.title = Localization.setting_latest_logs
-            vc.viewModel = vm
             return vc
         }
     }

@@ -59,14 +59,18 @@ final class PhotoLibraryPlainCompoundResource: PhotoLibraryCompoundResource {
     private func getAssets(identifier: PhotoIdentifier, asset: PHAsset, resources: [PHAssetResource]) async throws -> [PhotoAssetCompound] {
         let allResources = PHAssetResource.assetResources(for: asset)
         let originalFilename = try nameResource.getFilename(from: allResources)
+        var primaryAsset: PhotoAsset?
         return try await resources.asyncMap {
-            try await loadAsset(
+            let asset = try await loadAsset(
                 identifier: identifier,
                 asset: asset,
                 resource: $0,
                 originalFilename: originalFilename,
-                filename: try $0.getNormalizedFilename()
+                filename: try $0.getNormalizedFilename(),
+                primaryAsset: primaryAsset
             )
+            primaryAsset = asset.primary
+            return asset
         }
     }
 
@@ -84,16 +88,29 @@ final class PhotoLibraryPlainCompoundResource: PhotoLibraryCompoundResource {
         }
     }
 
-    private func loadAsset(identifier: PhotoIdentifier, asset: PHAsset, resource: PHAssetResource, originalFilename: String, filename: String) async throws -> PhotoAssetCompound {
+    private func loadAsset(identifier: PhotoIdentifier, asset: PHAsset, resource: PHAssetResource, originalFilename: String, filename: String, primaryAsset: PhotoAsset?) async throws -> PhotoAssetCompound {
         let isOriginal = resource.isOriginalImage() || resource.isOriginalVideo()
         let data = PhotoAssetData(identifier: identifier, asset: asset, resource: resource, originalFilename: originalFilename, fileExtension: filename.fileExtension, isOriginal: isOriginal)
-        let asset = try await loadAsset(with: data, isVideo: resource.isVideo())
-        return PhotoAssetCompound(primary: asset, secondary: [])
+        do {
+            let asset = try await loadAsset(with: data, isVideo: resource.isVideo(), appendedAssetData: nil)
+            return PhotoAssetCompound(primary: asset, secondary: [])
+        } catch {
+            // Some video files can fail when reading `readAvAsset`. We're suspecting corrupted live photo assets.
+            // In such case, let's retry with preset metadata. In any case those metadata (location & camera should not differ anyway)
+            if let primaryAsset {
+                Log.error("Failed to load video asset data. Fallbacking to using primary asset's exif.", domain: .photosProcessing, context: LogContext([error.localizedDescription, "asset.mediaSubtypes: \(asset.mediaSubtypes.rawValue)"]))
+                let appendedMetadata = AppendedAssetData(cameraInfo: primaryAsset.metadata.camera, location: primaryAsset.metadata.location)
+                let asset = try await loadAsset(with: data, isVideo: resource.isVideo(), appendedAssetData: appendedMetadata)
+                return PhotoAssetCompound(primary: asset, secondary: [])
+            }
+            throw error
+        }
     }
 
-    private func loadAsset(with data: PhotoAssetData, isVideo: Bool) async throws -> PhotoAsset {
+    /// `appendedAssetData` contains main item's metadata, and is used when reading av asset fails with weird issue.
+    private func loadAsset(with data: PhotoAssetData, isVideo: Bool, appendedAssetData: AppendedAssetData?) async throws -> PhotoAsset {
         if isVideo {
-            return try await assetResource.executeVideo(with: data, appendedAssetData: nil)
+            return try await assetResource.executeVideo(with: data, appendedAssetData: appendedAssetData)
         } else {
             return try await assetResource.executePhoto(with: data)
         }

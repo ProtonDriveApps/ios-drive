@@ -38,67 +38,41 @@ struct AuthenticatedDependenciesFactory {
         )
     }
 
-    func makeLockedStateController() -> LockedStateControllerProtocol {
-        let removedMainKeyPublisher = NotificationCenter.default.publisher(for: Keymaker.Const.removedMainKeyFromMemory)
-            .merge(with: NotificationCenter.default.publisher(for: Keymaker.Const.requestMainKey))
-            .filter { _ in keymaker.isProtected() == true }
-            .map { _ in Void() }
-            .receive(on: DispatchQueue.main)
-            .eraseToAnyPublisher()
-
-        let obtainedMainKeyPublisher = NotificationCenter.default.publisher(for: Keymaker.Const.obtainedMainKey)
-            .map { _ in Void() }
-            .receive(on: DispatchQueue.main)
-            .eraseToAnyPublisher()
-        return LockedStateController(
-            eventsTriggerController: tower,
-            refreshableStorageResource: CoreDataRefreshableStorageResource(storageManager: tower.storage),
-            isLocked: keymaker.isLocked,
-            removedMainKeyPublisher: removedMainKeyPublisher,
-            obtainedMainKeyPublisher: obtainedMainKeyPublisher
-        )
-    }
-
     @MainActor
-    func makeSDKUploader(performer: FileOperationPerformer?) -> SDKFileUploaderProtocol? {
-        guard let performer else { return nil }
-        return uploaderFactory.makeFileUploader(
+    func makeSDKUploader(performer: FileOperationPerformer) -> SDKFileUploaderProtocol {
+        uploaderFactory.makeFileUploader(
             bytesCounterResource: ThreadSafeBytesCounterResource(),
             operationPerformer: performer
         )
     }
 
     @MainActor
-    func makeSDKThumbnailsDownloader(performer: FileOperationPerformer?) -> SDKThumbnailsDownloaderProtocol? {
-        guard let performer else { return nil }
-        return SDKThumbnailsDownloaderFactory().makeFilesThumbnailDownloader(
+    func makeSDKThumbnailsDownloader(performer: FileOperationPerformer) -> SDKThumbnailsDownloaderProtocol {
+        SDKThumbnailsDownloaderFactory().makeFilesThumbnailDownloader(
             operationPerformer: performer,
             managedObjectContext: tower.storage.backgroundContext
         )
     }
 
     @MainActor
-    func makeSDKPhotosThumbnailsDownloader(tower: Tower, performer: PhotosOperationPerformer?) -> SDKThumbnailsDownloaderProtocol? {
-        guard let performer else { return nil }
-        return SDKThumbnailsDownloaderFactory().makePhotosThumbnailDownloader(
+    func makeSDKPhotosThumbnailsDownloader(performer: PhotosOperationPerformer) -> SDKThumbnailsDownloaderProtocol {
+        SDKThumbnailsDownloaderFactory().makePhotosThumbnailDownloader(
             operationPerformer: performer,
             managedObjectContext: tower.storage.backgroundContext
         )
     }
 
     @MainActor
-    func makeSDKDownloader(performer: FileOperationPerformer?) -> SDKFileDownloaderProtocol? {
-        guard let performer else { return nil }
-        return SDKDownloaderFactory().makeFileDownloader(
+    func makeSDKDownloader(performer: FileOperationPerformer) -> SDKFileDownloaderProtocol {
+        SDKDownloaderFactory().makeFileDownloader(
             operationPerformer: performer,
             managedObjectContext: tower.storage.backgroundContext
         )
     }
 
     @MainActor
-    func makeSDKPhotoDownloader(performer: PhotosOperationPerformer?) -> SDKFileDownloaderProtocol? {
-        guard let performer else { return nil }
-        return SDKDownloaderFactory().makePhotoDownloader(
+    func makeSDKPhotoDownloader(performer: PhotosOperationPerformer) -> SDKFileDownloaderProtocol {
+        SDKDownloaderFactory().makePhotoDownloader(
             operationPerformer: performer,
             managedObjectContext: tower.storage.backgroundContext
         )
@@ -106,13 +80,12 @@ struct AuthenticatedDependenciesFactory {
 
     @MainActor
     func makeSDKPhotoUploader(
-        performer: PhotosOperationPerformer?,
+        performer: PhotosOperationPerformer,
         photoUploadedNotifier: PhotoUploadedNotifier,
         skippableCache: PhotosSkippableCache,
         failedPhotosResource: DeletedPhotosIdentifierStoreResource
-    ) -> SDKFileUploaderProtocol? {
-        guard let performer else { return nil }
-        return uploaderFactory.makePhotoUploader(
+    ) -> SDKFileUploaderProtocol {
+        uploaderFactory.makePhotoUploader(
             bytesCounterResource: ThreadSafeBytesCounterResource(),
             operationPerformer: performer,
             photoUploadedNotifier: photoUploadedNotifier,
@@ -122,77 +95,24 @@ struct AuthenticatedDependenciesFactory {
         )
     }
 
-    typealias SDKDownloaders = (file: SDKFileDownloaderProtocol?, photo: SDKFileDownloaderProtocol?)
-    // swiftlint:disable:next function_parameter_count
+    typealias SDKDownloaders = (file: SDKFileDownloaderProtocol, photo: SDKFileDownloaderProtocol)
     func makeOfflineSavers(
-        populatedController: PopulatedStateControllerProtocol,
         connectionStateResource: ConnectionStateResource,
-        sdkDownloaders: SDKDownloaders,
-        hasSDKDownloadMain: Bool,
-        hasSDKDownloadPhoto: Bool
+        sdkDownloaders: SDKDownloaders
     ) -> [OfflineSaverProtocol] {
-        var offlineSavers: [OfflineSaverProtocol] = []
-        var initialMainDownloader = false
-        var initialPhotoDownloader = false
-        if let fileDownloader = sdkDownloaders.file, hasSDKDownloadMain {
-            let saver = makeSDKOfflineSaver(
-                tower: tower,
-                sdkDownloader: fileDownloader,
-                connectionStateResource: connectionStateResource,
-                configuration: .onlyMyFiles
-            )
-            offlineSavers.append(saver)
-            initialMainDownloader = true
-        }
-
-        if let photoDownloader = sdkDownloaders.photo, hasSDKDownloadPhoto {
-            let saver = makeSDKOfflineSaver(
-                tower: tower,
-                sdkDownloader: photoDownloader,
-                connectionStateResource: connectionStateResource,
-                configuration: .onlyPhotos
-            )
-            offlineSavers.append(saver)
-            initialPhotoDownloader = true
-        }
-
-        var legacyConfiguration: OfflineSaverConfiguration?
-        switch (initialMainDownloader, initialPhotoDownloader) {
-        case (true, true):
-            legacyConfiguration = nil
-        case (true, false):
-            legacyConfiguration = .onlyMyFiles
-        case (false, true):
-            legacyConfiguration = .onlyMyFiles
-        case (false, false):
-            legacyConfiguration = .bothMyFilesAndPhotos
-        }
-
-        if let legacyConfiguration {
-            let saver = makeLegacyOfflineSaver(
-                tower: tower,
-                populatedController: populatedController,
-                connectionStateResource: connectionStateResource,
-                configuration: legacyConfiguration
-            )
-            offlineSavers.append(saver)
-        }
-        return offlineSavers
-    }
-
-    private func makeLegacyOfflineSaver(
-        tower: Tower,
-        populatedController: PopulatedStateControllerProtocol,
-        connectionStateResource: ConnectionStateResource,
-        configuration: OfflineSaverConfiguration
-    ) -> OfflineSaverProtocol {
-        return LegacyOfflineSaver(
-            configuration: configuration,
-            storage: tower.storage,
-            downloader: tower.downloader,
-            populatedStateController: populatedController,
-            connectionStateResource: connectionStateResource
+        let fileSaver = makeSDKOfflineSaver(
+            tower: tower,
+            sdkDownloader: sdkDownloaders.file,
+            connectionStateResource: connectionStateResource,
+            configuration: .onlyMyFiles
         )
+        let photoSaver = makeSDKOfflineSaver(
+            tower: tower,
+            sdkDownloader: sdkDownloaders.photo,
+            connectionStateResource: connectionStateResource,
+            configuration: .onlyPhotos
+        )
+        return [fileSaver, photoSaver]
     }
 
     private func makeSDKOfflineSaver(
@@ -212,35 +132,19 @@ struct AuthenticatedDependenciesFactory {
     }
 
     @MainActor
-    func makeBackgroudModesController(container: AuthenticatedDependencyContainer) -> ApplicationStateOperationsController {
-        let myFilesUploadOperationInteractor = MyFilesUploadOperationInteractor(
-            storage: container.tower.storage,
-            interactor: container.tower.fileUploader
-        )
+    func makeBackgroundModesController(container: AuthenticatedDependencyContainer) -> ApplicationStateOperationsController {
         var operationInteractors: [OperationInteractor] = [
-            myFilesUploadOperationInteractor,
             container.pickersContainer.photoPickerInteractor
         ]
 
-        let photosUploadOperationInteractor = PhotosUploadOperationInteractor(
-            uploadingFiles: container.photosContainer.uploadingPhotosRepository.getPhotos,
-            interactor: container.photosContainer.uploader
-        )
-        operationInteractors.append(photosUploadOperationInteractor)
-
-        if let sdkFilesDownloader = container.tower.getSdkFileDownloader() {
-            let sdkOperationsInteractor = SDKFilesDownloadOperationInteractor(downloader: sdkFilesDownloader)
-            operationInteractors.append(sdkOperationsInteractor)
-        }
-        if let sdkPhotosDownloader = container.tower.getSdkPhotoDownloader() {
-            let sdkOperationsInteractor = SDKFilesDownloadOperationInteractor(downloader: sdkPhotosDownloader)
-            operationInteractors.append(sdkOperationsInteractor)
-        }
-        if let sdkUploader = container.tower.getSdkFileUploader() {
-            let sdkOperationsInteractor = SDKFilesUploadOperationInteractor(uploader: sdkUploader)
-            operationInteractors.append(sdkOperationsInteractor)
-        }
-        // TODO(SDK): add photos uploader when ready
+        let fileDownloadInteractor = SDKFilesDownloadOperationInteractor(downloader: tower.sdkObjects.fileDownloader)
+        operationInteractors.append(fileDownloadInteractor)
+        let photoDownloadInteractor = SDKFilesDownloadOperationInteractor(downloader: tower.sdkObjects.photoDownloader)
+        operationInteractors.append(photoDownloadInteractor)
+        let fileUploadInteractor = SDKFilesUploadOperationInteractor(uploader: tower.sdkObjects.fileUploader)
+        operationInteractors.append(fileUploadInteractor)
+        let photoUploadInteractor = SDKFilesUploadOperationInteractor(uploader: tower.sdkObjects.photoUploader)
+        operationInteractors.append(photoUploadInteractor)
 
         let operationsInteractor = AggregatedOperationInteractor(interactors: operationInteractors)
         #if SUPPORTS_BACKGROUND_UPLOADS

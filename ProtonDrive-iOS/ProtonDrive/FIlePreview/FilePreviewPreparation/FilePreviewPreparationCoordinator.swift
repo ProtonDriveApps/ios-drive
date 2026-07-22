@@ -54,7 +54,7 @@ final class FilePreviewPreparationCoordinator {
             messageHandler.handleError(PlainMessageError(error.localizedDescription))
         }
     }
-    
+
     @MainActor
     private func presentAlert() {
         let alert = UIAlertController(title: Localization.general_decrypting, message: nil, preferredStyle: .alert)
@@ -65,6 +65,7 @@ final class FilePreviewPreparationCoordinator {
         presentingController = alert
         root?.present(alert, animated: false)
     }
+
 
     @MainActor
     private func openPreview(repository: FilePreviewRepository) {

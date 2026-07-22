@@ -23,7 +23,7 @@ public struct ThumbnailLoaderFactory {
     
     // Legacy thumbnail downloader by default
     func makeFileThumbnailLoader(
-        tower: Tower?,
+        tower: Tower,
         storage: StorageManager,
         cloudSlot: CloudSlotProtocol,
         client: PDClient.Client,
@@ -38,8 +38,7 @@ public struct ThumbnailLoaderFactory {
             repository: repository,
             typeStrategy: typeStrategy,
             performanceMetricsController: performanceMetricsController,
-            getSDKDownloader: { [weak tower] in return tower?.getSdkThumbnailsDownloaderForFiles() },
-            useSDK: { [weak tower] in return tower?.getSdkThumbnailsDownloaderForFiles() != nil }
+            sdkDownloader: tower.sdkObjects.fileThumbnailDownloader
         )
     }
 
@@ -53,8 +52,7 @@ public struct ThumbnailLoaderFactory {
             repository: repository,
             typeStrategy: typeStrategy,
             performanceMetricsController: tower.performanceMetricsController,
-            getSDKDownloader: { [weak tower] in return tower?.getSdkThumbnailsDownloaderForPhotos() },
-            useSDK: { [weak tower] in return tower?.getSdkThumbnailsDownloaderForPhotos() != nil }
+            sdkDownloader: tower.sdkObjects.photoThumbnailDownloader,
         )
     }
 
@@ -68,8 +66,7 @@ public struct ThumbnailLoaderFactory {
             repository: repository,
             typeStrategy: typeStrategy,
             performanceMetricsController: tower.performanceMetricsController,
-            getSDKDownloader: { [weak tower] in return tower?.getSdkThumbnailsDownloaderForPhotos() },
-            useSDK: { [weak tower] in return tower?.getSdkThumbnailsDownloaderForPhotos() != nil }
+            sdkDownloader: tower.sdkObjects.photoThumbnailDownloader,
         )
     }
 
@@ -80,8 +77,7 @@ public struct ThumbnailLoaderFactory {
         repository: NodeThumbnailRepository,
         typeStrategy: ThumbnailTypeStrategy,
         performanceMetricsController: PerformanceMetricsControllerProtocol?,
-        getSDKDownloader: @escaping () -> SDKThumbnailsDownloaderProtocol?,
-        useSDK: @escaping () -> Bool
+        sdkDownloader: SDKThumbnailsDownloaderProtocol
     ) -> DispatchedAsyncThumbnailLoader {
         let thumbnailsOperatiosFactory = LoadThumbnailOperationsFactory(
             store: storage,
@@ -90,9 +86,9 @@ public struct ThumbnailLoaderFactory {
             thumbnailRepository: repository,
             typeStrategy: typeStrategy,
             performanceMetricsController: performanceMetricsController,
-            getSDKDownloader: getSDKDownloader
+            sdkThumbnailDownloader: sdkDownloader
         )
-        let asyncLoader = AsyncThumbnailLoader(operationsFactory: thumbnailsOperatiosFactory, useSDK: useSDK)
+        let asyncLoader = AsyncThumbnailLoader(operationsFactory: thumbnailsOperatiosFactory)
         return DispatchedAsyncThumbnailLoader(thumbnailLoader: asyncLoader)
     }
 }

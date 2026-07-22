@@ -26,7 +26,6 @@ final class AsyncThumbnailLoader: CancellableThumbnailLoader {
     private let operationsFactory: ThumbnailOperationsFactory
     private let failedIdSubject = PassthroughSubject<Identifier, Never>()
     private let succeededIdSubject = PassthroughSubject<Identifier, Never>()
-    private let useSDK: () -> Bool
 
     let schedulingQueue = OperationQueue()
 
@@ -38,9 +37,8 @@ final class AsyncThumbnailLoader: CancellableThumbnailLoader {
         failedIdSubject.eraseToAnyPublisher()
     }
 
-    init(operationsFactory: ThumbnailOperationsFactory, useSDK: @escaping () -> Bool) {
+    init(operationsFactory: ThumbnailOperationsFactory) {
         self.operationsFactory = operationsFactory
-        self.useSDK = useSDK
         schedulingQueue.maxConcurrentOperationCount = 10
     }
 }
@@ -59,10 +57,6 @@ extension AsyncThumbnailLoader {
         case .possible:
             // Continues below
             break
-        }
-
-        guard canScheduleOperation(id) else {
-            return
         }
 
         do {
@@ -94,10 +88,6 @@ extension AsyncThumbnailLoader {
         case .possible:
             // Continues below
             break
-        }
-
-        guard canScheduleOperation(id) else {
-            return
         }
 
         do {
@@ -132,14 +122,6 @@ extension AsyncThumbnailLoader {
         case deniedDueToPreviousError
         case deniedDueToEmptyThumbnails
         case possible
-    }
-
-    private func canScheduleOperation(_ id: Identifier) -> Bool {
-        // ThumbnailsBatchDownloader takes over the responsibility
-        if useSDK() { return true }
-        return regulatingQueue.sync {
-            isNotScheduled(id)
-        }
     }
 
     private func getLoadPossibility(_ id: Identifier) -> LoadingPosibility {

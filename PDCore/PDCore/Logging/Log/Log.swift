@@ -85,7 +85,6 @@ public struct LogDomain: Equatable, Hashable {
     public static let protonDocs = LogDomain(name: "protonDocs")
     public static let testRunner = LogDomain(name: "testRunner")
     public static let contact = LogDomain(name: "contact")
-    public static let ddk = LogDomain(name: "ddk")
     public static let sdk = LogDomain(name: "sdk")
     public static let restricted = LogDomain(name: "restricted")
     public static let computers = LogDomain(name: "computers")
@@ -160,6 +159,7 @@ public struct LogDomain: Equatable, Hashable {
                 .fileProvider,
                 .enumerating,
                 .networking,
+                .offlineAvailable,
                 .protonDocs,
                 .sessionManagement,
                 .storage,
@@ -448,11 +448,13 @@ extension Log {
         function: String = #function,
         line: Int = #line
     ) {
+        let level = event.logLevel
         log(
             event.logLevel,
-            message: "",
+            message: event.eventName,
             domain: event.domain,
             context: LogContext(jsonPayload: event),
+            sendToSentryIfPossible: level == .error,
             file: file,
             function: function,
             line: line

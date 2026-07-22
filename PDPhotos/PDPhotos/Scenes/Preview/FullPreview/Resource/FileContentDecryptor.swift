@@ -31,19 +31,19 @@ final class RemoteFileContentDecryptor<T: File>: FileContentDecryptor {
     typealias FileType = T
 
     private let validator: FileURLValidationResource
-    
+
     init(validator: FileURLValidationResource) {
         self.validator = validator
     }
-    
+
     func loadAndValidateDecryptedURL(from file: FileType) async throws -> (NodeIdentifier, URL) {
-        let url = try decryptedURL(from: file)
+        let url = try await decryptedURL(from: file)
         // Verify decrypted file is usable
         try await validator.validate(file: file, url: url)
         let id = file.volumeBasedIdentifier
         return (id, url)
     }
-    
+
     func loadAndValidateDecryptedURL(from files: [FileType]) async throws -> [NodeIdentifier: URL] {
         try await withThrowingTaskGroup(of: (NodeIdentifier, URL).self) { [weak self] group in
             guard let self else { return [:] }
@@ -57,20 +57,19 @@ final class RemoteFileContentDecryptor<T: File>: FileContentDecryptor {
             return results
         }
     }
-    
-    private func decryptedURL(from file: FileType) throws -> URL {
-        guard let moc = file.moc else { throw File.noMOC() }
-        
-        let (realURL, hardLinkURL) = try moc.performAndWait {
-            guard let revision = file.activeRevision else {
-                throw file.invalidState("Uploaded file should have an active revision")
-            }
-            let realURL = try revision.decryptFile()
-            let hardLinkURL = realURL.deletingLastPathComponent().appending(path: file.decryptedName)
-            return (realURL, hardLinkURL)
+
+    private func decryptedURL(from file: FileType) async throws -> URL {
+        if DecryptedFileManager.validatedDecryptedFilePath(identifier: file.identifier) != nil {
+            return try DecryptedFileManager.ensureHardLink(
+                identifier: file.genericIdentifier,
+                filename: file.decryptedName
+            )
+        } else {
+            try await DecryptedFileManager.decryptLegacyBlocksIfNeeded(file: file)
+            return try DecryptedFileManager.ensureHardLink(
+                identifier: file.genericIdentifier,
+                filename: file.decryptedName
+            )
         }
-        try? FileManager.default.removeItem(at: hardLinkURL)
-        try FileManager.default.linkItem(at: realURL, to: hardLinkURL)
-        return hardLinkURL
     }
 }

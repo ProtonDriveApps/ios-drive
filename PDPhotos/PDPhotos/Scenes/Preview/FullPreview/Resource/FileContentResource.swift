@@ -63,8 +63,7 @@ final class DecryptedPhotoContentResource: FileContentResource {
 
     init(
         managedObjectContext: NSManagedObjectContext,
-        downloader: Downloader,
-        sdkDownloader: SDKFileDownloaderProtocol?,
+        sdkDownloader: SDKFileDownloaderProtocol,
         fetchResource: PhotoFetchResourceProtocol,
         photoUploadedNotifier: PhotoUploadedNotifier,
         performanceMetricsController: PerformanceMetricsControllerProtocol?,
@@ -77,7 +76,6 @@ final class DecryptedPhotoContentResource: FileContentResource {
         self.photoDecryptor = photoDecryptor
         self.photoDownloader = RemoteFileContentDownloader<Photo>(
             managedObjectContext: managedObjectContext,
-            downloader: downloader,
             performanceMetricsController: performanceMetricsController,
             sdkDownloader: sdkDownloader
         )

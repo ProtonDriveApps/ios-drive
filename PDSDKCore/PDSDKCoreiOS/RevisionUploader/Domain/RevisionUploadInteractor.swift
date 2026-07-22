@@ -82,6 +82,7 @@ final class RevisionUploadInteractor: RevisionUploadInteractorProtocol {
     }
 
     func cancel(cancellationToken: UUID) async throws {
-        try await operationPerformer.cancelUpload(cancellationToken: cancellationToken)
+        // Revision doesn't support pause action yet
+        try await operationPerformer.cancelUpload(cancellationToken: cancellationToken, isPausedOperation: false)
     }
 }

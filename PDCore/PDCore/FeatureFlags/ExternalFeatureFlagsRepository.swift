@@ -147,8 +147,6 @@ class ExternalFeatureFlagsRepository: FeatureFlagsRepository {
         case .pushNotificationIsEnabled: return .pushNotificationIsEnabled
         case .oneDollarPlanUpsellEnabled: return .oneDollarPlanUpsellEnabled
         case .driveDisablePhotosForB2B: return .driveDisablePhotosForB2B
-        case .driveDDKIntelEnabled: return .driveDDKIntelEnabled
-        case .driveDDKDisabled: return .driveDDKDisabled
         case .driveMacSyncRecoveryDisabled: return .driveMacSyncRecoveryDisabled
         case .driveMacPromoBannerDisabled: return .driveMacPromoBannerDisabled
         case .driveMacGradualRolloutChannelEnabled: return .driveMacGradualRolloutChannelEnabled
@@ -179,14 +177,9 @@ class ExternalFeatureFlagsRepository: FeatureFlagsRepository {
         // Payments
         case .driveiOSPaymentsV2: return .driveiOSPaymentsV2
         // SDK
-        case .driveiOSSDKUploadMain: return .driveiOSSDKUploadMain
-        case .driveiOSSDKUploadPhoto: return .driveiOSSDKUploadPhoto
-        case .driveiOSSDKDownloadMain: return .driveiOSSDKDownloadMain
-        case .driveiOSSDKDownloadPhoto: return .driveiOSSDKDownloadPhoto
         case .driveCryptoEncryptBlocksWithPgpAead: return .driveCryptoEncryptBlocksWithPgpAead
-        case .driveMacSDKUploadMainDisabled: return .driveMacSDKUploadMainDisabled
-        case .driveMacSDKDownloadMainDisabled: return .driveMacSDKDownloadMainDisabled
         case .driveMacFileProviderBatchingDisabled: return .driveMacFileProviderBatchingDisabled
+        case .driveMacDecryptPassphraseIterativeDisabled: return .driveMacDecryptPassphraseIterativeDisabled
         case .driveiOSSDKNodeOperations: return .driveiOSSDKNodeOperations
         case .driveDownloadVerificationDisabled: return .driveDownloadVerificationDisabled
         case .driveUploadVerificationDisabled: return .driveUploadVerificationDisabled

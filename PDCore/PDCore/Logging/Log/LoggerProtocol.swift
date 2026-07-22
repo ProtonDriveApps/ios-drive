@@ -128,6 +128,13 @@ public struct LogContext: CustomDebugStringConvertible {
             context[key] = newValue
         }
     }
+    
+    public var jsonDictionary: [String: String] {
+        context.mapValues {
+            guard let json = try? $0.toJSON() else { return "" }
+            return json
+        }
+    }
 
     public var debugDescription: String {
         guard !context.isEmpty else {

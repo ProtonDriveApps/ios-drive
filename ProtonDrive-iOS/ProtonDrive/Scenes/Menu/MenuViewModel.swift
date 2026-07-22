@@ -23,13 +23,6 @@ import PDUIComponents
 import PDLocalization
 
 enum SDKMenuFlag: CaseIterable {
-    case isUsingSDKMainVolumeUpload
-    case isUsingSDKMainVolumeThumbnails
-    case isUsingSDKMainVolumeDownload
-    case isUsingSDKPhotoVolumeUpload
-    case isUsingSDKPhotoVolumeDownload
-    case isUsingSDKPhotoVolumeThumbnails
-    /// rename, trash...etc
     case isUsingSDKNodeOperations
 }
 

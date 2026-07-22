@@ -19,20 +19,20 @@ import CoreData
 
 extension SyncStorageManager {
 
-    public func cleanUpOnLaunch() {
+    public func cleanUpOnLaunch() async {
         Log.trace()
 
-        cleanUpExpiredItems()
-        cleanUpInProgressItems()
+        await cleanUpExpiredItems()
+        await cleanUpInProgressItems()
     }
 
-    public func cleanUpOnPause() {
+    public func cleanUpOnPause() async {
         Log.trace()
 
-        cleanUpInProgressItems()
+        await cleanUpInProgressItems()
     }
 
-    public func cleanUpInProgressItems() {
+    public func cleanUpInProgressItems() async {
         Log.trace()
 
         // Also clean paused items — they represent interrupted operations that won't resume
@@ -42,24 +42,24 @@ extension SyncStorageManager {
             SyncItemState.inProgress.rawValue,
             SyncItemState.paused.rawValue
         )
-        delete(with: statePredicate, in: presentationContext)
+        await delete(with: statePredicate, in: presentationContext)
     }
 
-    public func cleanUpExpiredItems() {
+    public func cleanUpExpiredItems() async {
         Log.trace()
 
         // Items with an error also qualify as expired, because whatever error caused them
         // no longer matters at restart.
         let cutoffDate = Date.Past.twentyFourHours()
         let predicate = NSPredicate(format: "modificationTime < %@", cutoffDate as NSDate)
-        delete(with: predicate, in: presentationContext)
+        await delete(with: predicate, in: presentationContext)
     }
 
-    public func cleanUpErrors() {
+    public func cleanUpErrors() async {
         Log.trace()
 
         let errorPredicate = NSPredicate(format: "stateRaw == %d", SyncItemState.errored.rawValue)
-        delete(with: errorPredicate, in: presentationContext)
+        await delete(with: errorPredicate, in: presentationContext)
     }
 
     public func cleanUp() async {

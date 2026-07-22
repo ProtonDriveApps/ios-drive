@@ -70,14 +70,3 @@ public extension URL {
         return lastTwoComponents.joined(separator: "/")
     }
 }
-
-#if os(iOS)
-public extension URL {
-    func hardLink(filename: String) throws -> URL {
-        let hardLink = deletingLastPathComponent().appending(path: filename)
-        try? FileManager.default.removeItem(at: hardLink)
-        try FileManager.default.linkItem(at: self, to: hardLink)
-        return hardLink
-    }
-}
-#endif

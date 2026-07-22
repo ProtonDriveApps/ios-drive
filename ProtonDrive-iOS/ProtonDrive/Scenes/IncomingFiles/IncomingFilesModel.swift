@@ -45,11 +45,6 @@ final class IncomingFilesModel: FinderModel, NodesListing, NodesFetching, NodesS
     public let pageSize = PDCore.Constants.pageSizeForChildrenFetchAndEnumeration
     public var lastFetchedPage = 0
 
-    // MARK: others
-    public var isUsingSDKForThumbnails: Bool {
-        tower.getSdkThumbnailsDownloaderForFiles() != nil
-    }
-
     init(tower: Tower, node: Folder, nodeID: NodeIdentifier) {
         self.tower = tower
         self.node = node

@@ -31,13 +31,11 @@ final class ForegroundTransitionFactory {
         let populatedInteractors: [CommandInteractor] = [
             InterruptedUploadsInteractor(
                 storage: tower.storage,
-                fileUploader: tower.fileUploader,
                 tower: tower
             ),
             InterruptedImportsInteractor(resource: pickerResource),
         ]
 
-        let applicationStateResource = iOSApplicationRunningStateResource()
         /// Resumes multiple operations after app goes to foreground
         /// 1. makes sure we have up to date child session
         /// 2. when DB is unlocked, it auto resumes interrupted file uploads & imports

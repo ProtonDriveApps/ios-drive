@@ -34,9 +34,9 @@ extension Tower {
         }
     }
 
-    public func rename(node: NodeIdentifier, cleartextName newName: String, moc: NSManagedObjectContext) async throws -> Node {
+    public func rename(node: NodeIdentifier, cleartextName newName: String, mimeType: String? = nil, moc: NSManagedObjectContext) async throws -> Node {
         return try await withCheckedThrowingContinuation { continuation in
-            rename(node: node, cleartextName: newName, moc: moc) { result in
+            rename(node: node, cleartextName: newName, mimeType: mimeType, moc: moc) { result in
                 switch result {
                 case .success(let node):
                     continuation.resume(returning: node)

@@ -48,9 +48,6 @@ public final class MoveModel: FinderModel, NodesListing, NodesFetching, NodesSor
     private var moveCancellable: AnyCancellable?
     public var nodeIdsToMove: [NodeIdentifier]
     public var nodeToMoveParentId: NodeIdentifier
-    public var isUsingSDKForThumbnails: Bool {
-        tower.getSdkThumbnailsDownloaderForFiles() != nil
-    }
 
     public init(tower: Tower, node: Folder, nodeID: NodeIdentifier, nodesToMoveID: [NodeIdentifier], nodeToMoveParentID: NodeIdentifier) {
         self.tower = tower

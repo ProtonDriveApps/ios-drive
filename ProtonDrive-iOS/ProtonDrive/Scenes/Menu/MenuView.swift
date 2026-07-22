@@ -220,18 +220,6 @@ struct MenuView: View {
 
     private func makeString(from flag: SDKMenuFlag) -> String {
         switch flag {
-        case .isUsingSDKMainVolumeUpload:
-            "Main volume upload"
-        case .isUsingSDKMainVolumeThumbnails:
-            "Main volume thumbnails"
-        case .isUsingSDKMainVolumeDownload:
-            "Main volume download"
-        case .isUsingSDKPhotoVolumeUpload:
-            "Photo volume upload"
-        case .isUsingSDKPhotoVolumeDownload:
-            "Photo volume download (stream & album)"
-        case .isUsingSDKPhotoVolumeThumbnails:
-            "Photo volume thumbnails (stream & album)"
         case .isUsingSDKNodeOperations:
             "Node operations"
         }

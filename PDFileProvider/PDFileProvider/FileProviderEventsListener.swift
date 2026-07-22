@@ -53,7 +53,7 @@ public class FileProviderEventsListener: EventsListener {
             if let error {
                 Log.event(.signalEnumerator(.failed(.init(
                     id: NSFileProviderItemIdentifier.workingSet.logIdentifier,
-                    error: error.localizedDescription
+                    error: error
                 ))))
             } else {
                 Log.event(.signalEnumerator(.succeeded(.init(containerType: .workingSet, reason: .eventsApplied))))

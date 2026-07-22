@@ -58,7 +58,7 @@ public final class ItemProviderForiOS {
 
     public func cancelDownload(identifier: NodeIdentifier, tower: Tower) {
         tower.downloader?.cancel(operationsOf: [identifier])
-        tower.getSdkFileDownloader()?.cancel(operationsOf: [identifier.any()])
+        tower.sdkObjects.fileDownloader.cancel(operationsOf: [identifier.any()])
     }
 
     private func getClearTextURL(
@@ -114,11 +114,8 @@ public final class ItemProviderForiOS {
         moc: NSManagedObjectContext,
         completionHandler: @escaping (URL?, NSFileProviderItem?, Error?) -> Void
     ) {
-        if let sdkDownloader = tower.getSdkFileDownloader() {
-            downloadViaSDK(file, sdkDownloader: sdkDownloader, moc: moc, completionHandler: completionHandler)
-        } else {
-            downloadViaLegacy(file, downloader: downloader, moc: moc, completionHandler: completionHandler)
-        }
+        let sdkDownloader = tower.fpSDKObjects.fileDownloader
+        downloadViaSDK(file, sdkDownloader: sdkDownloader, moc: moc, completionHandler: completionHandler)
     }
 
     private func downloadViaSDK(
@@ -128,9 +125,12 @@ public final class ItemProviderForiOS {
         completionHandler: @escaping (URL?, NSFileProviderItem?, Error?) -> Void
     ) {
         Log.info("Start download for \(~file) via SDK", domain: .fileProvider)
+        let objectID = file.objectID
 
         Task {
             do {
+                // Can't use `file` from parameter, it becomes fault object
+                let file: CoreDataFile = try moc.typedObject(with: objectID)
                 try await sdkDownloader.download(file: file.identifier.any())
                 let item = try NodeItem(node: file)
                 guard let revision = file.activeRevision else {
@@ -151,50 +151,6 @@ public final class ItemProviderForiOS {
                 completionHandler(nil, nil, error)
             }
         }
-    }
-
-    private func downloadViaLegacy(
-        _ file: File,
-        downloader: Downloader,
-        moc: NSManagedObjectContext,
-        completionHandler: @escaping (URL?, NSFileProviderItem?, Error?) -> Void) {
-            Log.info("Schedule download operation for \(~file) via legacy", domain: .fileProvider)
-            let operation = downloader.scheduleDownloadFileProvider(
-                cypherdataFor: file,
-                useRefreshableDownloadOperation: true
-            ) { [unowned self] result in
-                switch result {
-                case let .success(fileInOtherMoc):
-                    let file = fileInOtherMoc.in(moc: moc)
-
-                    guard let revision = cachedRevision(for: file, on: moc) else {
-                        Log.error(error: Errors.revisionNotFound, domain: .fileProvider)
-                        completionHandler(nil, nil, Errors.revisionNotFound)
-                        return
-                    }
-
-                    Task { [weak self] in
-                        do {
-                            guard let url = try await self?.decryptor.decrypt(revision, on: moc) else { return }
-
-                            Log.info("Prepared cleartext content of \(~file) at temp location", domain: .fileProvider)
-                            let item = try NodeItem(node: file)
-
-                            moc.performAndWait {
-                                moc.reset()
-                            }
-                            completionHandler(url, item, nil)
-                        } catch {
-                            Log.error(error: error, domain: .fileProvider)
-                            completionHandler(nil, nil, error)
-                        }
-                    }
-
-                case let .failure(error):
-                    Log.error(error: error, domain: .fileProvider)
-                    completionHandler(nil, nil, error)
-                }
-            }
     }
 
     private func cachedRevision(for file: File, on moc: NSManagedObjectContext) -> PDCore.Revision? {

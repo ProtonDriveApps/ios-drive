@@ -22,24 +22,17 @@ public protocol DownloadsListing: AnyObject {
     var tower: Tower! { get }
 }
 
+#if os(iOS)
+
 public typealias ProgressTrackers = [String: ProgressTracker]
 
 extension DownloadsListing {
     @MainActor
     public func childrenDownloading() -> AnyPublisher<ProgressTrackers, Error> {
-        let legacyPublisher = tower.downloader!.downloadProcessesAndErrors()
-        if let sdkDownloader = tower.getSdkFileDownloader() {
-            let sdkPublisher = makeSDKProgresses(sdkDownloader: sdkDownloader)
-            return legacyPublisher
-                .combineLatest(sdkPublisher)
-                .map { legacyProgresses, sdkProgresses in
-                    return legacyProgresses.merging(sdkProgresses, uniquingKeysWith: { $1 })
-                }
-                .mapError { $0 }
-                .eraseToAnyPublisher()
-        } else {
-            return legacyPublisher
-        }
+        let sdkPublisher = makeSDKProgresses(sdkDownloader: tower.sdkObjects.fileDownloader)
+        return sdkPublisher
+            .mapError { $0 }
+            .eraseToAnyPublisher()
     }
 
     @MainActor
@@ -64,18 +57,17 @@ extension DownloadsListing {
         return combinedPublisher.eraseToAnyPublisher()
     }
 
-    public func download(node: Node, useRefreshableDownloadOperation: Bool = false) {
-        let file = node as! File // TODO: later will need to download folders as trees
-        tower.downloader?.scheduleDownloadWithBackgroundSupport(
-            cypherdataFor: file,
-            useRefreshableDownloadOperation: useRefreshableDownloadOperation
-        ) { result in
-            switch result {
-            case .success(let file):
-                _ = try? file.activeRevision?.decryptFile()
-            case .failure:
-                break
+    public func download(node: Node) {
+        let id = node.genericIdentifier
+        Task.detached { [weak self] in
+            guard let self else { return }
+            do {
+                try await tower.sdkObjects.fileDownloader.download(file: id)
+            } catch {
+                Log.error("Download file \(id.debugDesc) failed", error: error, domain: .downloader)
             }
         }
     }
 }
+
+#endif

@@ -25,11 +25,8 @@ public final class NewRevisionUploadPerformerForiOS: NewRevisionUploadPerformer 
 
     // swiftlint:disable:next function_parameter_count
     public func uploadNewRevision(item: NSFileProviderItem, file: File, tower: Tower, copy: URL, fileSize: Int, pendingFields: NSFileProviderItemFields, progress: Progress?, moc: NSManagedObjectContext) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool) {
-        if tower.localSettings.driveiOSSDKUploadMain, let sdkRevisionUploader = tower.sdkRevisionUploader {
-            return try await uploadViaSDK(file: file, tower: tower, sdkRevisionUploader: sdkRevisionUploader, copy: copy, fileSize: fileSize, pendingFields: pendingFields, moc: moc)
-        } else {
-            return try await uploadViaLegacy(file: file, tower: tower, copy: copy, fileSize: fileSize, pendingFields: pendingFields)
-        }
+        let sdkRevisionUploader = tower.fpSDKObjects.revisionUploader
+        return try await uploadViaSDK(file: file, tower: tower, sdkRevisionUploader: sdkRevisionUploader, copy: copy, fileSize: fileSize, pendingFields: pendingFields, moc: moc)
     }
 
     public func uploadViaSDK(file: File, tower: Tower, sdkRevisionUploader: SDKRevisionUploaderProtocol, copy: URL, fileSize: Int, pendingFields: NSFileProviderItemFields, moc: NSManagedObjectContext) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool) {
@@ -38,21 +35,5 @@ public final class NewRevisionUploadPerformerForiOS: NewRevisionUploadPerformer 
         let file: CoreDataFile = try File.fetchOrThrow(identifier: uploadedIdentifier, in: moc)
         tower.forcePolling(volumeIDs: [file.identifier.volumeID])
         return (try NodeItem(node: file), pendingFields, false)
-    }
-
-    public func uploadViaLegacy(file: File, tower: Tower, copy: URL, fileSize: Int, pendingFields: NSFileProviderItemFields) async throws -> (NSFileProviderItem?, NSFileProviderItemFields, Bool) {
-        if let uploadID = file.uploadIDIfUploadingNewRevision() {
-            tower.fileUploader.cancelOperation(id: uploadID)
-            file.prepareForNewUpload()
-        }
-
-        let fileWithNewRevision = try tower.revisionImporter.importNewRevision(from: copy, into: file)
-        guard fileSize == copy.fileSize else {
-            throw URLConsistencyError.urlSizeMismatch
-        }
-
-        // TODO: add progress reporting here, maybe by using SuspendableFileUploader instead of tower.fileUploader?
-        let fileWithUploadedRevision = try await tower.fileUploader.upload(fileWithNewRevision)
-        return (try NodeItem(node: fileWithUploadedRevision), pendingFields, false)
     }
 }

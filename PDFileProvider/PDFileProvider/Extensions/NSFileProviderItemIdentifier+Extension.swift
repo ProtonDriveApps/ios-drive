@@ -36,7 +36,6 @@ public extension NSFileProviderItemIdentifier {
     }
     
     /// URL contains some metadata of the file in order to simplify lookups:
-    /// mac: `.../ShareID/NodeID/filename`
     /// iOS: `.../VolumeID/NodeID/filename`
     func makeUrl(item: NSFileProviderItem) -> URL? {
         guard let nodeIdentifier = NodeIdentifier(self) else {
@@ -46,6 +45,11 @@ public extension NSFileProviderItemIdentifier {
             return nil
         }
         let filename = makeFilename(item: item)
+        // Keep UserID/VolumeID/NodeID/filename — not PDFileManager.encodedPath. The OS maps URLs
+        // back to items via item(for identifier:), which reads volumeID and nodeID from those path
+        // components (see persistentIdentifierForItem). Encoded paths are one-way (SHA-256), so
+        // preview/open breaks if we use them here. On-disk storage uses encoded paths separately
+        // (decryptedDataURLForFileInFP).
         url.appendPathComponent(PDFileManager.getUserID(), isDirectory: true)
         url.appendPathComponent(nodeIdentifier.volumeID, isDirectory: true)
         url.appendPathComponent(nodeIdentifier.nodeID, isDirectory: true)

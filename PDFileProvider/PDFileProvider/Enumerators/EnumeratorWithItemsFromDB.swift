@@ -42,7 +42,7 @@ extension EnumeratorWithItemsFromDB {
         var children = childrenGroups[page]
 
         guard let moc = allChildren.first?.managedObjectContext else {
-            Log.event(.enumerateItems(.failed(.init(containerType: containerType, error: "No MOC for allChildren"))))
+            Log.event(.enumerateItems(.failed(.init(containerType: containerType, errorMessage: "No MOC for allChildren"))))
             observers.forEach { $0.finishEnumerating(upTo: nil) }
             return
         }

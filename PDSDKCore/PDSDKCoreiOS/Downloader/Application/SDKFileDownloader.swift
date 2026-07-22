@@ -28,6 +28,7 @@ import ProtonDriveSDK
     
     private let interactor: FileDownloadInteractorProtocol
     private let tokenStore: CancellationTokenStore
+    private let inFlightStore: InFlightDownloadStore
     private let progressesSubject = CurrentValueSubject<[AnyVolumeIdentifier: Progress], Never>([:])
     private let failuresSubject = PassthroughSubject<(AnyVolumeIdentifier, Error), Never>()
     private let domain: Domain
@@ -57,11 +58,13 @@ import ProtonDriveSDK
         interactor: FileDownloadInteractorProtocol,
         bytesCounterResource: BytesCounterResource,
         tokenStore: CancellationTokenStore,
+        inFlightStore: InFlightDownloadStore,
         domain: Domain
     ) {
         self.interactor = interactor
         self.bytesCounterResource = bytesCounterResource
         self.tokenStore = tokenStore
+        self.inFlightStore = inFlightStore
         self.domain = domain
     }
 
@@ -70,47 +73,46 @@ import ProtonDriveSDK
     }
 
     nonisolated func download(file identifier: AnyVolumeIdentifier, options: SDKFileDownloadOptions) async throws {
-        guard await tokenStore.token(for: identifier) == nil else {
-            Log.debug("Ignore request to download \(identifier) because it's downloading", domain: .sdk)
-            return
-        }
-
-        let cancellationToken = UUID()
-        await tokenStore.setToken(cancellationToken, for: identifier)
-        do {
-            try await interactor.download(
-                file: identifier,
-                cancellationToken: cancellationToken,
-                options: options,
-                progress: { [weak self] fileProgress in
-                    Task {
-                        Log.debug("Updated download progress: \(fileProgress.fractionCompleted)", domain: .sdk)
-                        await self?.updateProgress(
-                            identifier: identifier,
-                            total: fileProgress.bytesTotal,
-                            completed: fileProgress.bytesCompleted
-                        )
+        // Duplicate downloads can occur
+        // For example, when opening an album and previewing its cover
+        try await inFlightStore.perform(for: identifier) { [self] in
+            let cancellationToken = UUID()
+            await self.tokenStore.setToken(cancellationToken, for: identifier)
+            do {
+                try await self.interactor.download(
+                    file: identifier,
+                    cancellationToken: cancellationToken,
+                    options: options,
+                    progress: { [weak self] fileProgress in
+                        Task {
+                            Log.debug("Updated download progress: \(fileProgress.fractionCompleted)", domain: .sdk)
+                            await self?.updateProgress(
+                                identifier: identifier,
+                                total: fileProgress.bytesTotal,
+                                completed: fileProgress.bytesCompleted
+                            )
+                        }
+                    },
+                    checkCancellation: { [weak self] in
+                        if await self?.tokenStore.token(for: identifier) == nil {
+                            Log.info("Download was cancelled before SDK was invoked. Throwing cancel", domain: .sdk)
+                            throw CancellationError()
+                        }
                     }
-                },
-                checkCancellation: { [weak self] in
-                    if await self?.tokenStore.token(for: identifier) == nil {
-                        Log.info("Download was cancelled before SDK was invoked. Throwing cancel", domain: .sdk)
-                        throw CancellationError()
-                    }
+                )
+                await self.updateProgressToCompleted(for: identifier)
+                await self.removeProgress(for: identifier)
+            } catch {
+                await self.removeProgress(for: identifier)
+                if let sdkError = error as? ProtonDriveSDKError, sdkError.isCancellationError {
+                    throw SDKDownloadErrors.cancelled
+                } else if error is CancellationError {
+                    throw SDKDownloadErrors.cancelled
                 }
-            )
-            await updateProgressToCompleted(for: identifier)
-            await removeProgress(for: identifier)
-        } catch {
-            await removeProgress(for: identifier)
-            if let sdkError = error as? ProtonDriveSDKError, sdkError.isCancellationError {
-                throw SDKDownloadErrors.cancelled
-            } else if error is CancellationError {
-                throw SDKDownloadErrors.cancelled
+                await self.failuresSubject.send((identifier, error))
+                Log.error("Failed to download (\(self.domain)). \(error.localizedDescription)", error: error, domain: .sdk)
+                throw error
             }
-            failuresSubject.send((identifier, error))
-            Log.error("Failed to download (\(domain)). \(error.localizedDescription)", error: error, domain: .sdk)
-            throw error
         }
     }
 
@@ -175,3 +177,4 @@ extension SDKFileDownloader: DownloaderProtocol {
         }
     }
 }
+

@@ -73,13 +73,7 @@ extension AuthenticatedDependencyContainer {
     private func getSDKMenuFlags() -> SDKMenuFlags {
         #if HAS_BETA_FEATURES
         let sdkFlags: [SDKMenuFlag] = [
-            tower.getSdkFileUploader().isNotNil ? SDKMenuFlag.isUsingSDKMainVolumeUpload : nil,
-            tower.getSdkPhotoUploader().isNotNil ? SDKMenuFlag.isUsingSDKPhotoVolumeUpload : nil,
-            tower.getSdkFileDownloader().isNotNil ? SDKMenuFlag.isUsingSDKMainVolumeDownload : nil,
-            tower.getSdkPhotoDownloader().isNotNil ? SDKMenuFlag.isUsingSDKPhotoVolumeDownload : nil,
-            tower.getSdkThumbnailsDownloaderForFiles().isNotNil ? SDKMenuFlag.isUsingSDKMainVolumeThumbnails : nil,
-            tower.getSdkThumbnailsDownloaderForPhotos().isNotNil ? SDKMenuFlag.isUsingSDKPhotoVolumeThumbnails : nil,
-            tower.getSdkNodeOperationPerformer().isNotNil ? SDKMenuFlag.isUsingSDKNodeOperations : nil
+            tower.sdkObjects.nodeOperationPerformer.isNotNil ? SDKMenuFlag.isUsingSDKNodeOperations : nil
         ].compactMap { $0 }
         return Set(sdkFlags)
         #else
@@ -252,7 +246,7 @@ extension AuthenticatedDependencyContainer {
             storage: tower.storage,
             managedObjectContext: tower.storage.backgroundContext,
             nodeRenamer: nodeRenamer,
-            nodeOperationPerformer: tower.getSdkNodeOperationPerformer()
+            nodeOperationPerformer: tower.sdkObjects.nodeOperationPerformer
         )
         let viewModel = EditNodeNameViewModel(node: editedNode, nameEditor: nameEditor, validator: NameValidations.userSelectedName)
         let formattingViewModel = FormattingFileViewModel(

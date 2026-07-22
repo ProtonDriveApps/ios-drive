@@ -31,21 +31,9 @@ final class DeleteAccountViewModel: ObservableObject, LogoutRequesting {
 
     private var cancellables = Set<AnyCancellable>()
     private let apiService: APIService
-    private let signoutManager: SignOutManager
 
-    init(apiService: APIService, signoutManager: SignOutManager) {
+    init(apiService: APIService) {
         self.apiService = apiService
-        self.signoutManager = signoutManager
-
-        DriveNotification.signOut.publisher
-            .sink { _ in
-                Task {
-                    NotificationCenter.default.post(.isLoggingOut)
-                    await signoutManager.signOut()
-                    NotificationCenter.default.post(.checkAuthentication)
-                }
-            }
-            .store(in: &cancellables)
     }
 
     func initiateAccountDeletion(over viewController: UIViewController) {

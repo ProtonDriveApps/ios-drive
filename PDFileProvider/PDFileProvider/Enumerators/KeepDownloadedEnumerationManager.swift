@@ -46,7 +46,7 @@ public class KeepDownloadedEnumerationManager {
                 Log.event(.signalEnumerator(.succeeded(.init(containerType: .workingSet, reason: .keepDownloadedStateChanged))))
             } catch {
                 Log.event(.signalEnumerator(.failed(.init(id: NSFileProviderItemIdentifier.workingSet.logIdentifier,
-                                                           error: error.localizedDescription))))
+                                                          error: error))))
                 Log.error("Failed to signal enumerator", error: error, domain: .offlineAvailable)
             }
         }
@@ -147,7 +147,7 @@ public class KeepDownloadedEnumerationManager {
                 Log.event(.signalEnumerator(.succeeded(.init(containerType: .workingSet, reason: .keepDownloadedStateUpdatedBasedOnParent))))
             } catch {
                 Log.event(.signalEnumerator(.failed(.init(id: NSFileProviderItemIdentifier.workingSet.logIdentifier,
-                                                          error: error.localizedDescription))))
+                                                          error: error))))
                 Log.error("Failed to signal enumerator", error: error, domain: .offlineAvailable)
             }
         }
@@ -189,7 +189,7 @@ public class KeepDownloadedEnumerationManager {
                 Log.event(.signalEnumerator(.succeeded(.init(containerType: .workingSet, reason: .keepDownloadedStateProcessItems))))
             } catch {
                 Log.event(.signalEnumerator(.failed(.init(id: NSFileProviderItemIdentifier.workingSet.logIdentifier,
-                                                           error: error.localizedDescription))))
+                                                          error: error))))
                 Log.error("Failed to signal enumerator", error: error, domain: .offlineAvailable)
             }
         }
@@ -200,6 +200,7 @@ public class KeepDownloadedEnumerationManager {
     ) {
         let identifiers = Self.removeDownloadedQueue.popNextPage()
         guard !identifiers.isEmpty else { return }
+        Log.info("Processing remove-download batch: \(identifiers.count) item(s)", domain: .offlineAvailable)
 
         let enumeratedNodes = enumerateDownloadedItems(identifiers, observers: observers, moc: moc)
         
@@ -213,7 +214,7 @@ public class KeepDownloadedEnumerationManager {
                 Log.event(.signalEnumerator(.succeeded(.init(containerType: .workingSet, reason: .removeDownloadedStateChanged))))
             } catch {
                 Log.event(.signalEnumerator(.failed(.init(id: NSFileProviderItemIdentifier.workingSet.logIdentifier,
-                                                           error: error.localizedDescription))))
+                                                          error: error))))
                 Log.error("Failed to signal enumerator", error: error, domain: .offlineAvailable)
             }
         }
@@ -232,10 +233,16 @@ public class KeepDownloadedEnumerationManager {
         parentGroups.keys.forEach { parentIdentifier in
             // Continue with other operations asynchronously
             fileProviderManager.waitForChanges(below: parentIdentifier) { [self] error in
+                if let error {
+                    Log.warning(
+                        "waitForChanges below \(parentIdentifier.rawValue) failed before eviction: \(error.localizedDescription)",
+                        domain: .offlineAvailable
+                    )
+                }
                 Task {
                     guard let evictionIdentifiers = parentGroups[parentIdentifier], !evictionIdentifiers.isEmpty else { return }
 
-                    Log.trace("Will evict items")
+                    Log.info("Will evict \(evictionIdentifiers.count) item(s) below \(parentIdentifier.rawValue)", domain: .offlineAvailable)
                     await evict(evictionIdentifiers)
                 }
             }
@@ -243,12 +250,18 @@ public class KeepDownloadedEnumerationManager {
     }
 
     private func evict(_ identifiers: [NSFileProviderItemIdentifier]) async {
-        await identifiers.forEach {
+        await identifiers.forEach { identifier in
             do {
                 // Still attempt to evict even if waiting for changes fails
-                try await fileProviderManager.evictItem(identifier: $0)
+                try await fileProviderManager.evictItem(identifier: identifier)
+                Log.info("Evicted item \(identifier.rawValue)", domain: .offlineAvailable)
             } catch {
-                Log.error("Eviction failed", error: error, domain: .offlineAvailable)
+                let nsError = error as NSError
+                Log.error(
+                    "Eviction failed for \(identifier.rawValue) [\(nsError.domain) \(nsError.code)]",
+                    error: error,
+                    domain: .offlineAvailable
+                )
             }
         }
     }
@@ -259,9 +272,19 @@ public class KeepDownloadedEnumerationManager {
         moc: NSManagedObjectContext
     ) -> [Node] {
         let nodeIdentifiers = identifiers.compactMap { NodeIdentifier($0) }
+        if nodeIdentifiers.count != identifiers.count {
+            Log.warning("\(identifiers.count - nodeIdentifiers.count) identifier(s) dropped as malformed", domain: .offlineAvailable)
+        }
+
         let nodes = fileSystemSlot.getNodes(nodeIdentifiers, moc: moc)
+        if nodes.count != nodeIdentifiers.count {
+            Log.warning("\(nodeIdentifiers.count - nodes.count) node(s) not found in storage", domain: .offlineAvailable)
+        }
 
         let nodeItems = nodes.compactMap { try? NodeItem(node: $0) }
+        if nodeItems.count != nodes.count {
+            Log.warning("\(nodes.count - nodeItems.count) NodeItem(s) failed to build", domain: .offlineAvailable)
+        }
         guard !nodeItems.isEmpty else { return [] }
 
         // Must be run on the same thread as `finishEnumeratingItems`

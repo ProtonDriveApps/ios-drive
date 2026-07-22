@@ -92,11 +92,20 @@ public enum FileOperationEvent: JSONLoggable {
 
     public struct FailureContext: FileOperationEventContext {
         public let id: String
-        public let error: String
-
-        public init(id: String, error: String) {
+        public let errorMessage: String
+        public let errorContext: String?
+        
+        public init(id: String, errorMessage: String) {
             self.id = id
-            self.error = error
+            self.errorMessage = errorMessage
+            self.errorContext = nil
+        }
+
+        public init(id: String, error: Error?) {
+            self.id = id
+            self.errorMessage = error?.localizedDescription ?? "-"
+            let errorContext = error?.logDescription ?? "-"
+            self.errorContext = errorMessage != errorContext ? errorContext : nil
         }
     }
 
@@ -396,11 +405,20 @@ public enum FileOperationEvent: JSONLoggable {
 
     public struct EnumerationFailureContext: FileOperationEventContext {
         public let containerType: ContainerType
-        public let error: String
+        public let errorMessage: String
+        public let errorContext: String?
 
-        public init(containerType: ContainerType, error: String) {
+        public init(containerType: ContainerType, errorMessage: String) {
             self.containerType = containerType
-            self.error = error
+            self.errorMessage = errorMessage
+            self.errorContext = nil
+        }
+        
+        public init(containerType: ContainerType, error: Error?) {
+            self.containerType = containerType
+            self.errorMessage = error?.localizedDescription ?? "-"
+            let errorContext = error?.logDescription ?? "-"
+            self.errorContext = errorMessage != errorContext ? errorContext : nil
         }
     }
 
@@ -643,21 +661,41 @@ public enum FileOperationEvent: JSONLoggable {
     case domainConnectionChanged(State<DomainConnectionChangeStartedContext, DomainConnectionChangeEndedContext, FailureContext>)
 
     public var eventName: String {
+        let prefix = switch self {
+        case .fetchItem: "fetchItem"
+        case .fetchContents: "fetchContents"
+        case .createItem: "createItem"
+        case .modifyItem: "modifyItem"
+        case .deleteItem: "deleteItem"
+        case .enumerator: "enumerator"
+        case .enumerateItems: "enumerateItems"
+        case .enumerateChanges: "enumerateChanges"
+        case .eventLoopProcess: "eventLoopProcess"
+        case .eventProcess: "eventProcess"
+        case .signalEnumerator: "signalEnumerator"
+        case .extensionInit: "extensionInit"
+        case .extensionInvalidate: "extensionInvalidate"
+        case .domainConnectionChanged: "domainConnectionChanged"
+        }
         switch self {
-        case .fetchItem: return "fetchItem"
-        case .fetchContents: return "fetchContents"
-        case .createItem: return "createItem"
-        case .modifyItem: return "modifyItem"
-        case .deleteItem: return "deleteItem"
-        case .enumerator: return "enumerator"
-        case .enumerateItems: return "enumerateItems"
-        case .enumerateChanges: return "enumerateChanges"
-        case .eventLoopProcess: return "eventLoopProcess"
-        case .eventProcess: return "eventProcess"
-        case .signalEnumerator: return "signalEnumerator"
-        case .extensionInit: return "extensionInit"
-        case .extensionInvalidate: return "extensionInvalidate"
-        case .domainConnectionChanged: return "domainConnectionChanged"
+        case .fetchItem(.failed(let failedState)),
+             .fetchContents(.failed(let failedState)),
+             .createItem(.failed(let failedState)),
+             .modifyItem(.failed(let failedState)),
+             .deleteItem(.failed(let failedState)),
+             .eventLoopProcess(.failed(let failedState)),
+             .eventProcess(.failed(let failedState)),
+             .signalEnumerator(.failed(let failedState)),
+             .extensionInit(.failed(let failedState)),
+             .extensionInvalidate(.failed(let failedState)),
+             .domainConnectionChanged(.failed(let failedState)):
+            return "\(prefix) failed — \(failedState.errorMessage)"
+        case .enumerator(.failed(let failedState)),
+             .enumerateItems(.failed(let failedState)),
+             .enumerateChanges(.failed(let failedState)):
+            return "\(prefix) failed — \(failedState.errorMessage)"
+        default:
+            return prefix
         }
     }
 

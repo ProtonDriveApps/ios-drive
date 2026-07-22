@@ -50,33 +50,13 @@ final class LocalOfflineAvailableResource: OfflineAvailableResource {
 
     @MainActor
     private func subscribeToUpdates() {
-        let sdkPublisher = sdkDownloader?.progresses
+        sdkDownloader?.progresses
             .map { Set($0.keys) }
             .eraseToAnyPublisher()
-        let legacyPublisher = downloader.downloadsPublisher()
-            .map { Set($0) }
-            .removeDuplicates()
-            .receive(on: DispatchQueue.main)
-            .eraseToAnyPublisher()
-
-        makeIdsPublisher(legacyPublisher: legacyPublisher, sdkPublisher: sdkPublisher)
             .sink { [weak self] ids in
                 self?.subject.send(ids)
             }
             .store(in: &cancellables)
-    }
-
-    private typealias IdsPublisher = AnyPublisher<Set<AnyVolumeIdentifier>, Never>
-    private func makeIdsPublisher(legacyPublisher: IdsPublisher, sdkPublisher: IdsPublisher?) -> IdsPublisher {
-        if let sdkPublisher {
-            return sdkPublisher.combineLatest(legacyPublisher)
-                .map { sdkIds, legacyIds in
-                    sdkIds.union(legacyIds)
-                }
-                .eraseToAnyPublisher()
-        } else {
-            return legacyPublisher
-        }
     }
 
     func toggle(ids: PhotoIdsSet) {

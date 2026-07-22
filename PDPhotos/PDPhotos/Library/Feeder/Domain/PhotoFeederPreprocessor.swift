@@ -63,8 +63,10 @@ public final class PhotoFeederPreprocessor: PhotoFeederPreprocessorProtocol {
             }
             .sink { [weak self] feedingPhotos in
                 guard let self else { return }
-                let processingPhotos = dependencies.uploader.getExecutableOperationsCount()
-                Log.info("📸☁️✅ Photo upload scheduled willAdd: \(feedingPhotos.count) Total: \(feedingPhotos.count + processingPhotos)", domain: .uploader)
+                Task.detached { @MainActor in
+                    let count = self.activeUploadsCount()
+                    Log.info("📸☁️✅ Photo upload scheduled willAdd: \(feedingPhotos.count) Total: \(feedingPhotos.count + count)", domain: .uploader)
+                }
                 self.upload(photos: feedingPhotos)
             }
             .store(in: &cancellables)
@@ -423,11 +425,8 @@ extension PhotoFeederPreprocessor {
 extension PhotoFeederPreprocessor {
     @MainActor
     private func activeUploadsCount() -> Int {
-        // The SDK feature flag may be disabled at any time.
-        // Check both upload counters to avoid interrupting an ongoing SDK upload.
-
-        let sdkUploadingNumber = dependencies.sdkPhotoUploader()?.activeUploadsCount() ?? 0
-        return sdkUploadingNumber + dependencies.uploader.getExecutableOperationsCount()
+        let sdkUploadingNumber = dependencies.sdkPhotoUploader().activeUploadsCount()
+        return sdkUploadingNumber
     }
 
     private func isUnderLimited() async -> Bool {
@@ -440,51 +439,24 @@ extension PhotoFeederPreprocessor {
     }
     
     private func fetchPendingPhotos() -> [CoreDataPhoto] {
-        if dependencies.featureFlagsController.hasSDKUploadPhoto, let sdkUploader = dependencies.sdkPhotoUploader() {
-            return dependencies.uploadingPhotosRepository.getPendingPhotosForSDK()
-        } else {
-            return dependencies.uploadingPhotosRepository.getPhotos()
-        }
+        dependencies.uploadingPhotosRepository.getPendingPhotosForSDK()
     }
 
     private func upload(photos: [(NSManagedObjectID, AnyVolumeIdentifier)]) {
-        // If the SDK feature flag is disabled, fall back to the legacy uploader to keep photo backups running
-        if dependencies.featureFlagsController.hasSDKUploadPhoto, let sdkUploader = dependencies.sdkPhotoUploader() {
-            let identifiers = photos.map { $0.1 }
-            Log.info("Schedule to upload \(photos.count) photos via SDK", domain: .sdk)
-            Task {
-                await withTaskGroup { group in
-                    for identifier in identifiers {
-                        group.addTask { try? await sdkUploader.upload(identifier: identifier) }
-                    }
+        let identifiers = photos.map { $0.1 }
+        Log.info("Schedule to upload \(photos.count) photos via SDK", domain: .sdk)
+        let sdkUploader = dependencies.sdkPhotoUploader
+        Task {
+            await withTaskGroup { group in
+                for identifier in identifiers {
+                    group.addTask { try? await sdkUploader().upload(identifier: identifier) }
                 }
-            }
-        } else {
-            Log.info("Schedule to upload \(photos.count) photos via legacy", domain: .uploader)
-            // Intentional use newBackgroundContext, so context will be released later to free memory
-            let context = dependencies.storageManager.newBackgroundContext()
-            context.perform { [weak self, context] in
-                let objectIDs = photos.map { $0.0 }
-                let photos: [CoreDataPhoto] = objectIDs.compactMap { id in
-                    do {
-                        return try context.typedObject(with: id)
-                    } catch {
-                        Log.error("Fetch CoreDataPhoto from NSManagedObjectID failed", error: error, domain: .photosProcessing)
-                        return nil
-                    }
-                }
-                self?.dependencies.uploader.upload(files: photos)
             }
         }
     }
 
     private func resume() async {
-        // If the SDK feature flag is disabled, fall back to the legacy uploader to keep photo backups running
-        if dependencies.featureFlagsController.hasSDKUploadPhoto, let sdkUploader = dependencies.sdkPhotoUploader() {
-            await sdkUploader.resumePausedUploads()
-        } else {
-            // Legacy doens't support resume
-        }
+        await dependencies.sdkPhotoUploader().resumePausedUploads()
     }
 }
 
@@ -492,7 +464,6 @@ extension PhotoFeederPreprocessor {
     public struct Dependencies {
         public let allowedBatchSize: Int
         public let failedIdentifiersResource: DeletedPhotosIdentifierStoreResource
-        public let featureFlagsController: FeatureFlagsControllerProtocol
         public let feedPublisher: AnyPublisher<Void, Never>
         public let folderSizeResource: FolderSizeResource
         public let optionsFactory: PHFetchOptionsFactory
@@ -500,27 +471,23 @@ extension PhotoFeederPreprocessor {
         public let resourceOptions: PHAssetResourceRequestOptions
         public let retryTriggerController: PhotoLibraryLoadRetryTriggerController
         public let storageManager: StorageManager
-        public let sdkPhotoUploader: () -> SDKFileUploaderProtocol?
-        public let uploader: PhotoUploader
+        public let sdkPhotoUploader: () -> SDKFileUploaderProtocol
         public let uploadingPhotosRepository: UploadingPrimaryPhotosRepository
 
         public init(
             allowedBatchSize: Int,
             failedIdentifiersResource: DeletedPhotosIdentifierStoreResource,
-            featureFlagsController: FeatureFlagsControllerProtocol,
             feedPublisher: AnyPublisher<Void, Never>,
             folderSizeResource: FolderSizeResource,
             optionsFactory: PHFetchOptionsFactory,
             photoIdentifierInquirer: PhotoIdentifierInquirer,
             retryTriggerController: PhotoLibraryLoadRetryTriggerController,
             storageManager: StorageManager,
-            uploader: PhotoUploader,
-            sdkPhotoUploader: @autoclosure @escaping () -> SDKFileUploaderProtocol?,
+            sdkPhotoUploader: @autoclosure @escaping () -> SDKFileUploaderProtocol,
             uploadingPhotosRepository: UploadingPrimaryPhotosRepository
         ) {
             self.allowedBatchSize = allowedBatchSize
             self.failedIdentifiersResource = failedIdentifiersResource
-            self.featureFlagsController = featureFlagsController
             self.feedPublisher = feedPublisher
             self.folderSizeResource = folderSizeResource
             self.optionsFactory = optionsFactory
@@ -529,7 +496,6 @@ extension PhotoFeederPreprocessor {
             resourceOptions.isNetworkAccessAllowed = true
             self.retryTriggerController = retryTriggerController
             self.storageManager = storageManager
-            self.uploader = uploader
             self.sdkPhotoUploader = sdkPhotoUploader
             self.uploadingPhotosRepository = uploadingPhotosRepository
         }

@@ -32,32 +32,18 @@ public actor SynchronizedThumbnailProvider: SynchronizedThumbnailProviderProtoco
     }
 
     public func defaultThumbnailData(fileUrl: URL, overrideMediaType: String? = nil) -> Data? {
-        thumbnailProvider.defaultThumbnailData(
+        thumbnailProvider.getThumbnailData(
             fileUrl: fileUrl,
             overrideMediaType: overrideMediaType,
-            ofSize: ThumbnailSize.default.value
+            ofSize: .default
         )
     }
 
     public func photoThumbnailData(fileUrl: URL, overrideMediaType: String?) -> Data? {
-        thumbnailProvider.defaultThumbnailData(
+        thumbnailProvider.getThumbnailData(
             fileUrl: fileUrl,
             overrideMediaType: overrideMediaType,
-            ofSize: ThumbnailSize.photo.value
+            ofSize: .photo
         )
-    }
-}
-
-private enum ThumbnailSize {
-    case `default`
-    case photo
-
-    var value: CGSize {
-        switch self {
-        case .default:
-            return Constants.defaultThumbnailMaxSize
-        case .photo:
-            return Constants.photoThumbnailMaxSize
-        }
     }
 }

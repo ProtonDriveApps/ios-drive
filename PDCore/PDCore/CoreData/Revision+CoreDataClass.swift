@@ -38,11 +38,6 @@ public class Revision: NSManagedObject {
         super.init(entity: entity, insertInto: context)
         self._state.configure(with: self)
     }
-
-    override public func prepareForDeletion() {
-        super.prepareForDeletion()
-        clearUnencryptedContents()
-    }
 }
 
 public extension Revision {

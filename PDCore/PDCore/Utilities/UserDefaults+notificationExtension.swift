@@ -22,8 +22,6 @@ public extension UserDefaults {
         case metadataDBUpdateKey = "metadataDBUpdate"
         case childSessionReadyKey = "childSessionReady"
         case childSessionExpiredKey = "childSessionExpired"
-        case ddkSessionReadyKey = "ddkSessionReady"
-        case ddkSessionExpiredKey = "ddkSessionExpired"
         case cryptoServerTime = "cryptoServerTime"
     }
 
@@ -38,14 +36,6 @@ public extension UserDefaults {
     
     @objc dynamic var childSessionExpired: Bool {
         return bool(forKey: NotificationPropertyKeys.childSessionExpiredKey.rawValue)
-    }
-
-    @objc dynamic var ddkSessionReady: Bool {
-        return bool(forKey: NotificationPropertyKeys.ddkSessionReadyKey.rawValue)
-    }
-    
-    @objc dynamic var ddkSessionExpired: Bool {
-        return bool(forKey: NotificationPropertyKeys.ddkSessionExpiredKey.rawValue)
     }
     
     @objc dynamic var cryptoServerTime: TimeInterval {

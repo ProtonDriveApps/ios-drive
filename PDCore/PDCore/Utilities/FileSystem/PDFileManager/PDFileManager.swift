@@ -112,32 +112,17 @@ extension PDFileManager {
             }
         }
     }
-    
-    // To dump database for testing
-    static func copyMetadata(stage: String) {
-        let sqlite = appGroupUrl.appendingPathComponent("Metadata.sqlite")
-        let sqlite_shm = appGroupUrl.appendingPathComponent("Metadata.sqlite-shm")
-        let sqlite_wal = appGroupUrl.appendingPathComponent("Metadata.sqlite-wal")
-        
-        let destination = FileManager.default.temporaryDirectory.appendingPathComponent("DB").appendingPathComponent(stage)
-        self.createIfNeeded(destination)
-        let sqlite_copy = destination.appendingPathComponent("\(stage).sqlite")
-        let sqlite_shm_copy = destination.appendingPathComponent("\(stage).sqlite-shm")
-        let sqlite_wal_copy = destination.appendingPathComponent("\(stage).sqlite-wal")
-        
-        try? FileManager.default.copyItem(at: sqlite, to: sqlite_copy)
-        try? FileManager.default.copyItem(at: sqlite_shm, to: sqlite_shm_copy)
-        try? FileManager.default.copyItem(at: sqlite_wal, to: sqlite_wal_copy)
-        
-        let mainKey = try? SessionVault.current.mainKeyProvider.mainKeyOrError
-        dump("Recorder 🔴: key 🔑 - \(Data(mainKey!).base64EncodedString()) ")
-        dump("Recorder 🔴: stage 📁 - \(destination.absoluteURL)")
-    }
 }
 
 // MARK: - Logs
 extension PDFileManager {
     public static func getLogsDirectory() throws -> URL {
+        #if DEBUG
+        if let path = ProcessInfo.processInfo.environment["UITEST_LOG_DIR"] {
+            let logsDir = URL(fileURLWithPath: path, isDirectory: true)
+            return logsDir
+        }
+        #endif
         guard let appGroupDirectory = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Constants.appGroup) else {
             throw PDFileManagerError.noLogDirectory
         }

@@ -24,7 +24,6 @@ public protocol PhotoUploadedNotifier {
     
     var uploadedNotifier: AnyPublisher<PhotoID, Never> { get }
     
-    func uploadCompleted(fileDraft: FileDraft)
     func uploadCompleted(photo: CoreDataPhoto?)
 }
 
@@ -38,13 +37,6 @@ public final class ConcretePhotoUploadedNotifier: PhotoUploadedNotifier {
 
     public init(moc: NSManagedObjectContext) {
         self.moc = moc
-    }
-
-    public func uploadCompleted(fileDraft: FileDraft) {
-        moc.perform { [weak self] in
-            guard let self, let photo = fileDraft.file as? Photo else { return }
-            self.sendNotifyIfNeeded(photo: photo)
-        }
     }
 
     public func uploadCompleted(photo: CoreDataPhoto?) {

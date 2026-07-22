@@ -51,7 +51,7 @@ final class AuthenticatedDependencyContainer {
     let contactEventBridge: ContactUpdateDelegate
     let ratingBoosterFlowController: RatingBoosterFlowControllerProtocol
     let applicationUserSettingsController: ApplicationUserSettingsController
-    private let photosSkippableCacheStorage: PhotosSkippableStorage
+    let photosSkippableCacheStorage: PhotosSkippableStorage
     let scrollToTopSubject = PassthroughSubject<TabBarItem, Never>()
     private weak var autoLocker: Autolocker?
     let lockedStateController: LockedStateControllerProtocol
@@ -72,7 +72,11 @@ final class AuthenticatedDependencyContainer {
         autoLocker: Autolocker?,
         featureFlagsController: FeatureFlagsControllerProtocol,
         bootstrapStateController: BootstrapStateControllerProtocol = BootstrapStateController(),
-        sceneInitStateController: SceneInitStateControllerProtocol = SceneInitStateController()
+        sceneInitStateController: SceneInitStateControllerProtocol = SceneInitStateController(),
+        photoUploadedNotifier: PhotoUploadedNotifier,
+        failedPhotosResource: DeletedPhotosIdentifierStoreResource,
+        photosSkippableCacheStorage: PhotosSkippableStorage,
+        lockedStateController: LockedStateControllerProtocol
     ) {
         self.tower = tower
         self.keymaker = keymaker
@@ -97,14 +101,13 @@ final class AuthenticatedDependencyContainer {
             signersFactory: tower.sessionVault
         )
         tower.set(externalInvitationConverter: converter)
-        let factory = AuthenticatedDependenciesFactory(keymaker: keymaker, tower: tower)
-        lockedStateController = factory.makeLockedStateController()
+        self.lockedStateController = lockedStateController
 
         pickersContainer = PickersContainer()
 
         extensionTaskStateController = ConcreteBackgroundTaskStateController()
 
-        photosSkippableCacheStorage = UserDefaultsPhotosSkippableStorage()
+        self.photosSkippableCacheStorage = photosSkippableCacheStorage
         self.featureFlagsController = featureFlagsController
         let notificationFlowController = NotificationsPermissionsFactory().makeFlowController()
         ratingBoosterFlowController = RatingBoosterFlowController(
@@ -129,7 +132,10 @@ final class AuthenticatedDependencyContainer {
             scrollToTopPublisher: scrollToTopSubject.eraseToAnyPublisher(),
             lockedStateController: lockedStateController,
             performanceMetricsController: tower.performanceMetricsController ?? PerformanceMetricsController(),
-            authenticator: authenticator
+            authenticator: authenticator,
+            bootstrapStateController: bootstrapStateController,
+            photoUploadedNotifier: photoUploadedNotifier,
+            failedPhotosResource: failedPhotosResource
         )
         photosContainer = PhotosContainer(dependencies: dependencies)
 
@@ -143,7 +149,7 @@ final class AuthenticatedDependencyContainer {
                 populatedStateController: populatedStateController,
                 lockedStateController: lockedStateController
             ),
-            QuotaUpdatesContainer(tower: tower, photoUploader: photosContainer.uploader),
+            QuotaUpdatesContainer(tower: tower, photoUploader: tower.sdkObjects.photoUploader),
             PaymentsCleanUpContainer(tower: tower),
         ]
 
@@ -168,7 +174,7 @@ final class AuthenticatedDependencyContainer {
         // Background modes controller needs to be initialized after every other dependency is created (SDK),
         // so it needs to be called after `population`
         applicationStateController = AuthenticatedDependenciesFactory(keymaker: keymaker, tower: tower)
-            .makeBackgroudModesController(container: self)
+            .makeBackgroundModesController(container: self)
     }
 
     @MainActor
@@ -186,15 +192,13 @@ final class AuthenticatedDependencyContainer {
 
         childContainers += [
             DownloadSpeedContainer(
-                legacyDownloader: tower.downloader,
-                sdkDownloader: tower.getSdkFileDownloader(),
+                sdkFileDownloader: tower.sdkObjects.fileDownloader,
+                sdkPhotoDownloader: tower.sdkObjects.photoDownloader,
                 processEligibilityController: downloaderProcessEligibilityController
             ),
             UploadSpeedContainer(
-                legacyUploadingQueue: iOSTrackableUploadingQueue(myFilesUploader: tower.fileUploader, photoUploader: photosContainer.uploader),
-                legacyBytesCounterResource: tower.uploadedBytesCounterResource,
-                sdkUploader: tower.getSdkFileUploader(),
-                sdkPhotoUploader: tower.getSdkPhotoUploader(),
+                sdkUploader: tower.sdkObjects.fileUploader,
+                sdkPhotoUploader: tower.sdkObjects.photoUploader,
                 processEligibilityController: uploaderProcessEligibilityController
             )
         ]
@@ -298,18 +302,6 @@ final class AuthenticatedDependencyContainer {
         )
         let fileManagerBootstrapper = FileManagerBootstrapper(localSettings: tower.localSettings)
         let duplicatePhotoListingBootstrapper = DuplicatePhotoListingBootstrapper(context: tower.storage.photosBackgroundContext)
-        let sdkBootstrapper = SDKBootstrapStarter(
-            dependencies: .init(
-                tower: tower,
-                featureFlagsController: featureFlagsController,
-                populatedController: populatedStateController,
-                connectionStateResource: tower.connectionStateResource,
-                keymaker: keymaker,
-                photoUploadedNotifier: photosContainer.photoUploadedNotifier,
-                skippableCache: skippableCache,
-                failedPhotosResource: photosContainer.failedPhotosResource
-            )
-        )
         let sdkRelatedInfrastructureBootstrapper = SDKRelatedInfrastructureBootstrapper(container: self)
 
         return DriveBootstrapStarter(
@@ -325,7 +317,6 @@ final class AuthenticatedDependencyContainer {
             paymentsBootstrapper: paymentsBootstrapper,
             fileManagerBootstrapper: fileManagerBootstrapper,
             duplicatePhotoListingBootstrapper: duplicatePhotoListingBootstrapper,
-            sdkBootstrapStarter: sdkBootstrapper,
             bootstrapStateController: bootstrapStateController,
             sdkRelatedInfrastructureBootstrapper: sdkRelatedInfrastructureBootstrapper,
             filePathMigrationBootstrapStarter: FilePathMigrationBootstrapStarter()
@@ -404,35 +395,6 @@ protocol EventsSystemStarter {
 extension Tower: EventsSystemStarter {
     func startEventsSystem() {
         start(options: [.runEventsProcessor, .initializeAllVolumes])
-    }
-}
-
-protocol SignOutManager {
-    func signOut() async
-}
-
-extension Tower: SignOutManager {
-    func signOut() async {
-        await AppShortcutManager().removeShortcutForLoggedOutUser()
-        await signOut(cacheCleanupStrategy: .cleanEverything)
-
-        // notify cross-process observers
-        DarwinNotificationCenter.shared.postNotification(.DidLogout)
-    }
-}
-
-protocol LockManager {
-    func onLock()
-    func onUnlocked()
-}
-
-extension Tower: LockManager {
-    func onLock() {
-        stop()
-    }
-
-    func onUnlocked() {
-        resume()
     }
 }
 

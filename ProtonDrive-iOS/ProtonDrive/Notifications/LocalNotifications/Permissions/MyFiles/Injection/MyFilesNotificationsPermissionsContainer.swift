@@ -25,6 +25,7 @@ final class MyFilesNotificationsPermissionsContainer {
     private let controller: NotificationsPermissionsController
     private var coordinator: NotificationsPermissionsCoordinator?
 
+    @MainActor
     init(tower: Tower, flowController: NotificationsPermissionsFlowController) {
         controller = specificFactory.makeController(tower: tower, flowController: flowController)
         startPermissionsCoordinator(flowController: flowController)

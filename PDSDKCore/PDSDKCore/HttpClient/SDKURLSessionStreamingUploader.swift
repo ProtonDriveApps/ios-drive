@@ -149,6 +149,9 @@ final class StreamingDelegate: NSObject, URLSessionDataDelegate {
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
         Log.debug("[URLSession.didCompleteWithError] url: \(task.originalRequest?.url?.absoluteString ?? "???"), error: \(error?.localizedDescription ?? "none"))", domain: .networking)
+        // We pass the input to URLSession in needNewBodyStreamForTask. It opens it.
+        // URLSession's docs don't promise to close it, so we do it here.
+        streamForUpload.input.close()
         completionBlock(responseData, task.response, error)
     }
 

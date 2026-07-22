@@ -18,18 +18,22 @@
 import Foundation
 import Combine
 
+// TODO: this is iOS specific
 extension Tower: ThumbnailLoader {
     public func loadThumbnail(with id: ThumbnailLoader.Identifier) {
         // There is no way to fetch bookmark thumbnail 
         if id.volumeID == "bookmark" { return }
-        thumbnailLoader.loadThumbnail(with: id)
+        assert(thumbnailLoader != nil)
+        thumbnailLoader?.loadThumbnail(with: id)
     }
 
     public func cancelThumbnailLoading(_ id: ThumbnailLoader.Identifier) {
-        thumbnailLoader.cancelThumbnailLoading(id)
+        assert(thumbnailLoader != nil)
+        thumbnailLoader?.cancelThumbnailLoading(id)
     }
 
     public var succeededId: AnyPublisher<Identifier, Never> {
-        thumbnailLoader.succeededId
+        assert(thumbnailLoader != nil)
+        return thumbnailLoader?.succeededId ?? Just(AnyVolumeIdentifier(id: "", volumeID: "")).eraseToAnyPublisher()
     }
 }

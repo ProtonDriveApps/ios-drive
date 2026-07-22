@@ -71,7 +71,7 @@ final class DriveEventsLoopProcessor: DriveEventsLoopProcessorType {
             }
             Log.event(.eventLoopProcess(.succeeded(.init(loopType: .drive, count: affectedNodes.count, volumeID: volumeID))))
         } catch {
-            Log.event(.eventLoopProcess(.failed(.init(id: volumeID, error: error.localizedDescription))))
+            Log.event(.eventLoopProcess(.failed(.init(id: volumeID, error: error))))
             throw error
         }
         return affectedNodes

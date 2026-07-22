@@ -27,8 +27,6 @@ public enum FeatureAvailabilityFlag: CaseIterable {
     case driveiOSDebugMode
     case oneDollarPlanUpsellEnabled
     case driveDisablePhotosForB2B
-    case driveDDKIntelEnabled
-    case driveDDKDisabled
     case driveMacSyncRecoveryDisabled
     case driveMacPromoBannerDisabled
     case driveMacGradualRolloutChannelEnabled
@@ -64,15 +62,10 @@ public enum FeatureAvailabilityFlag: CaseIterable {
     case driveiOSPaymentsV2
 
     // SDK
-    case driveiOSSDKUploadMain
-    case driveiOSSDKUploadPhoto
-    case driveiOSSDKDownloadMain
-    case driveiOSSDKDownloadPhoto
     case driveiOSSDKNodeOperations
     case driveCryptoEncryptBlocksWithPgpAead
-    case driveMacSDKUploadMainDisabled
-    case driveMacSDKDownloadMainDisabled
     case driveMacFileProviderBatchingDisabled
+    case driveMacDecryptPassphraseIterativeDisabled
     case driveDownloadVerificationDisabled
     case driveUploadVerificationDisabled
 }

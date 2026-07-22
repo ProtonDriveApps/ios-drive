@@ -151,35 +151,24 @@ extension IncomingFilesReviewViewModel {
     }
 
     private func upload(files: [CoreDataFile], to currentFolder: CoreDataFolder) {
-        if let sdkUploader = tower.getSdkFileUploader() {
-            Log.debug("Upload \(files.count) via SDK", domain: .shareExtension)
-            // When the user shares photo backup diagnostics to PD
-            // we refresh `My Files` and upload files at the same time
-            // which can cause a Core Data sorting error
-            // To prevent this issue, ensure the upload runs on the MainActor
-            Task { @MainActor in
-                do {
-                    try await withThrowingTaskGroup { group in
-                        for file in files {
-                            group.addTask {
-                                _ = try await sdkUploader.upload(identifier: file.identifier.any())
-                            }
+        let sdkUploader = tower.sdkObjects.fileUploader
+        Log.debug("Upload \(files.count) via SDK", domain: .shareExtension)
+        // When the user shares photo backup diagnostics to PD
+        // we refresh `My Files` and upload files at the same time
+        // which can cause a Core Data sorting error
+        // To prevent this issue, ensure the upload runs on the MainActor
+        Task { @MainActor in
+            do {
+                try await withThrowingTaskGroup { group in
+                    for file in files {
+                        group.addTask {
+                            _ = try await sdkUploader.upload(identifier: file.identifier.any())
                         }
-                        try await group.waitForAll()
                     }
-                } catch {
-                    Log.error("Upload share file failed", error: error, domain: .shareExtension)
+                    try await group.waitForAll()
                 }
-            }
-        } else {
-            Log.debug("Upload \(files.count) via legacy uploader", domain: .shareExtension)
-            let volumeID = currentFolder.identifier.volumeID
-            Task { @MainActor [weak self] in
-                for file in files {
-                    self?.tower.fileUploader.upload(file, completion: { [weak self] _ in
-                        self?.tower.forcePolling(volumeIDs: [volumeID])
-                    })
-                }
+            } catch {
+                Log.error("Upload share file failed", error: error, domain: .shareExtension)
             }
         }
     }

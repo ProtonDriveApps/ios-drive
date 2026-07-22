@@ -246,7 +246,7 @@ final class GallerySceneContainer {
             fetchingController: fetchingController,
             thumbnailsContainer: dependencies.streamThumbnailsContainer,
             settingsController: dependencies.parentDependencies.settingsController,
-            errorControllers: [dependencies.parentDependencies.processingController, dependencies.parentDependencies.uploader],
+            errorControllers: [dependencies.parentDependencies.processingController],
             selectionController: selectionController,
             rootFolderRepository: dependencies.parentDependencies.rootFolderRepository,
             photosManagedObjectContext: dependencies.parentDependencies.photosManagedObjectContext,
@@ -325,7 +325,7 @@ final class GallerySceneContainer {
             tower: dependencies.tower,
             coordinator: coordinator,
             notificationsPermissionsFlowController: notificationsPermissionsFlowController,
-            photoUploadedNotifier: dependencies.parentDependencies.uploader.photoUploadedNotifier,
+            photoUploadedNotifier: dependencies.parentDependencies.photoUploadedNotifier,
             photoUpsellResultNotifier: dependencies.parentDependencies.photoUpsellResultNotifier
         )
     }

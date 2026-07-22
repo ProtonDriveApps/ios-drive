@@ -34,7 +34,6 @@ class DriveBootstrapStarter: AppBootstrapper {
     private let autoLocker: Autolocker?
     private let fileManagerBootstrapper: AppBootstrapper
     private let duplicatePhotoListingBootstrapper: AppBootstrapper
-    private let sdkBootstrapStarter: AppBootstrapper
     private let bootstrapStateController: BootstrapStateControllerProtocol
     private let sdkRelatedInfrastructureBootstrapper: AppBootstrapper
     private let filePathMigrationBootstrapStarter: AppBootstrapper
@@ -52,7 +51,6 @@ class DriveBootstrapStarter: AppBootstrapper {
         paymentsBootstrapper: AppBootstrapper,
         fileManagerBootstrapper: AppBootstrapper,
         duplicatePhotoListingBootstrapper: AppBootstrapper,
-        sdkBootstrapStarter: AppBootstrapper,
         bootstrapStateController: BootstrapStateControllerProtocol,
         sdkRelatedInfrastructureBootstrapper: AppBootstrapper,
         filePathMigrationBootstrapStarter: AppBootstrapper
@@ -69,7 +67,6 @@ class DriveBootstrapStarter: AppBootstrapper {
         self.paymentsBootstrapper = paymentsBootstrapper
         self.fileManagerBootstrapper = fileManagerBootstrapper
         self.duplicatePhotoListingBootstrapper = duplicatePhotoListingBootstrapper
-        self.sdkBootstrapStarter = sdkBootstrapStarter
         self.bootstrapStateController = bootstrapStateController
         self.sdkRelatedInfrastructureBootstrapper = sdkRelatedInfrastructureBootstrapper
         self.filePathMigrationBootstrapStarter = filePathMigrationBootstrapStarter
@@ -86,7 +83,6 @@ class DriveBootstrapStarter: AppBootstrapper {
                 // ‼️ Disclaimer: order of some of these matter, only those that don't matter should be inside task group. Update with caution!
                 try await fileManagerBootstrapper.bootstrap()
                 try await checkAddresses()
-                try await sdkBootstrapStarter.bootstrap()
                 try await withThrowingTaskGroup { group in
                     group.addTask { try await self.checkRootShares() }
                     group.addTask { try await self.bootstrapAdditionalSettings() }

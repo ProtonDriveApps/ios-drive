@@ -27,7 +27,12 @@ final class MyFilesNotificationsPermissionsController: NotificationsPermissionsC
     private var uploadCancellable: AnyCancellable?
     private var permissionsCancellable: AnyCancellable?
 
-    init(flowController: NotificationsPermissionsFlowController, resource: LocalNotificationsResource, uploadInteractor: OperationInteractor, localSettings: LocalSettings) {
+    init(
+        flowController: NotificationsPermissionsFlowController,
+        resource: LocalNotificationsResource,
+        uploadInteractor: OperationInteractor,
+        localSettings: LocalSettings
+    ) {
         self.flowController = flowController
         self.resource = resource
         self.uploadInteractor = uploadInteractor

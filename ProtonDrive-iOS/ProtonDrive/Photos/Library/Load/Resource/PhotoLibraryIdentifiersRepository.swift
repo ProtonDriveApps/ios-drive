@@ -46,6 +46,7 @@ final class ConcretePhotoLibraryIdentifiersRepository: PhotoLibraryIdentifiersRe
         }
         let allIdentifiers = mappingResource.map(assets: assets)
         identifierStore.store(allIdentifiers: allIdentifiers)
+        Log.info("\(skippableCache.cacheCount()) unique skippable identifiers in total before checking", domain: .photosProcessing)
         let identifiersNeedToBeUploaded = await localDuplicateCheck(allIdentifiers: allIdentifiers, assets: assets)
         Log.info("Get \(allIdentifiers.count) identifiers from photo library, \(identifiersNeedToBeUploaded.count) need to be uploaded", domain: .photosProcessing)
         return identifiersNeedToBeUploaded

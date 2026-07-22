@@ -137,7 +137,7 @@ extension EnumeratorWithChanges {
                 }
             }
             Log.event(.enumerateChanges(.failed(.init(
-                containerType: container, error: "Forcing items reenumeration"
+                containerType: container, errorMessage: "Forcing items reenumeration"
             ))))
             shouldReenumerateItems = false
             return
@@ -153,14 +153,14 @@ extension EnumeratorWithChanges {
             guard syncAnchor.rawValue.isEmpty || syncAnchor[\.referenceDate] == eventsManager.eventSystemReferenceDate else {
                 observers.forEach { $0.finishEnumeratingWithError(NSFileProviderError(.syncAnchorExpired)) }
                 Log.event(.enumerateChanges(.failed(.init(
-                    containerType: container, error: "Sync anchor reference date mismatch: \(error.localizedDescription)"
+                    containerType: container, errorMessage: "Sync anchor reference date mismatch: \(error.localizedDescription)"
                 ))))
                 return
             }
 
             observers.forEach { $0.finishEnumeratingChanges(upTo: syncAnchor, moreComing: false) }
             Log.event(.enumerateChanges(.failed(.init(
-                containerType: container, error: error.localizedDescription
+                containerType: container, error: error
             ))))
             return
         }
@@ -176,7 +176,7 @@ extension EnumeratorWithChanges {
         guard !reEnumerationIsNeeded(syncAnchor, newSyncAnchor) else {
             observers.forEach { $0.finishEnumeratingWithError(NSFileProviderError(.syncAnchorExpired)) }
             Log.event(.enumerateChanges(.failed(.init(
-                containerType: container, error: "Sync anchor needs reenumeration"
+                containerType: container, errorMessage: "Sync anchor needs reenumeration"
             ))))
             return
         }

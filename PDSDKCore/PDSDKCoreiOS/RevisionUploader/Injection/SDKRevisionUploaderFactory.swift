@@ -30,7 +30,7 @@ public final class SDKRevisionUploaderFactory {
             interactor: RevisionUploadInteractor(
                 operationPerformer: operationPerformer,
                 managedObjectContext: managedObjectContext,
-                thumbnailProvider: ThumbnailProviderFactory.SynchedImageVideoThumbnailProvider
+                thumbnailProvider: ThumbnailProviderFactory.synchronizedImageVideoThumbnailProvider
             ),
             tokenStore: CancellationTokenStore()
         )

@@ -102,7 +102,7 @@ public final class WorkingSetEnumerator: NSObject, NSFileProviderEnumerator, Enu
             observer.finishEnumeratingWithError(Errors.mapLegacyErrorToFileProviderError(Errors.failedToCreateModel))
             Log.event(.enumerateItems(.failed(.init(
                 containerType: .workingSet,
-                error: "Failed to enumerate items due to model failing to be created"
+                errorMessage: "Failed to enumerate items due to model failing to be created"
             ))))
             // if we cannot create a model, there's no point in accessing the model for enumeration later
             return

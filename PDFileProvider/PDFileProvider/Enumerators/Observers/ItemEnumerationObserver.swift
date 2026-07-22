@@ -164,7 +164,7 @@ public class ItemEnumerationObserver: BaseEnumerationObserver, NSFileProviderEnu
     private func deleteAfterCompletion() async {
         Log.trace()
         await syncStorage.backgroundContextPool.withContext { context in
-            syncStorage.delete(id: ItemEnumerationObserver.enumerationSyncItemIdentifier, in: context)
+            await syncStorage.delete(id: ItemEnumerationObserver.enumerationSyncItemIdentifier, in: context)
         }
     }
 

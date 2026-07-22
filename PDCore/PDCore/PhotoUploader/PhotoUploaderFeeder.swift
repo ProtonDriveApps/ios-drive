@@ -25,26 +25,24 @@ public final class PhotoUploaderFeeder {
     private let processor: PhotoFeederPreprocessorProtocol
     private let feedSubject: PassthroughSubject<Void, Never>
 
-    private let uploader: PhotoUploader
-    private let sdkPhotoUploaderBlock: () -> SDKFileUploaderProtocol?
+    private let sdkPhotoUploaderBlock: () -> SDKFileUploaderProtocol
     private let shouldFeedPublisher: AnyPublisher<Bool, Never>
     private var uploadPendingPhotosSubscription: AnyCancellable?
     @ThreadSafe private var isFeederAvailable = true
-
-    private var sdkPhotoUploader: SDKFileUploaderProtocol? {
+    
+    private var sdkPhotoUploader: SDKFileUploaderProtocol {
         sdkPhotoUploaderBlock()
     }
 
     public init(
-        uploader: PhotoUploader,
-        sdkPhotoUploaderBlock: @escaping () -> SDKFileUploaderProtocol?,
+        sdkPhotoUploaderBlock: @autoclosure @escaping () -> SDKFileUploaderProtocol,
         notificationCenter: NotificationCenter,
         isBackupAvailable: AnyPublisher<Bool, Never>,
         shouldFeedPublisher: AnyPublisher<Bool, Never>,
         processor: PhotoFeederPreprocessorProtocol,
-        feedSubject: PassthroughSubject<Void, Never>
+        feedSubject: PassthroughSubject<Void, Never>,
+        bootstrappedPublisher: AnyPublisher<Bool, Never>
     ) {
-        self.uploader = uploader
         self.sdkPhotoUploaderBlock = sdkPhotoUploaderBlock
         self.notificationCenter = notificationCenter
         self.shouldFeedPublisher = shouldFeedPublisher
@@ -52,7 +50,9 @@ public final class PhotoUploaderFeeder {
         self.feedSubject = feedSubject
 
         /// Is backup available (is enabled and has no constraints - `LocalPhotosBackupUploadAvailableController`)
-        isBackupAvailable
+        bootstrappedPublisher
+            .first(where: { $0 })
+            .flatMap { _ in isBackupAvailable }
             .removeDuplicates()
             .receive(on: queue)
             .sink { [weak self] isAvailable in
@@ -67,29 +67,28 @@ public final class PhotoUploaderFeeder {
                     self.processor.suspend()
                     self.uploadPendingPhotosSubscription?.cancel()
                     self.uploadPendingPhotosSubscription = nil
-                    self.uploader.onUploadsDisabled()
                     Task { @MainActor in
-                        await self.sdkPhotoUploader?.pauseAll()
+                        await self.sdkPhotoUploader.pauseAll()
                     }
                 }
             }.store(in: &cancellables)
 
         // Is the app running in the foreground, unlocked... etc
         // ConcreteComputationalAvailabilityController
-        shouldFeedPublisher
-            .sink {  [weak self] shouldFeed in
+        bootstrappedPublisher
+            .first(where: { $0 })
+            .flatMap { _ in shouldFeedPublisher }
+            .sink { [weak self] shouldFeed in
                 guard let self else { return }
                 if shouldFeed {
                     Log.info("📸🥣✅ resume all operations", domain: .uploader)
-                    self.uploader.queue.isSuspended = false
                     Task {
                         await self.resumePausedSDKUploads()
                     }
                 } else {
                     Log.info("📸🥣❌ pause all operations", domain: .uploader)
-                    self.uploader.queue.isSuspended = true
                     Task { @MainActor in
-                        await self.sdkPhotoUploader?.pauseAll()
+                        await self.sdkPhotoUploader.pauseAll()
                     }
                 }
             }.store(in: &cancellables)
@@ -97,9 +96,6 @@ public final class PhotoUploaderFeeder {
 
     @MainActor
     private func resumePausedSDKUploads() async {
-        guard let sdkPhotoUploader else {
-            return
-        }
         // Resume pending operations
         await sdkPhotoUploader.resumePausedUploads()
         // Invoke feeder to add more to queue if necessary

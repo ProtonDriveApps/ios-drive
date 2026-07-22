@@ -27,10 +27,10 @@ final class ProtectViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = ColorProvider.BackgroundSecondary
         viewModel.viewDidLoad()
-        
-        #if DEBUG
+
+#if DEBUG
         logOutInTestsIfNeeded()
-        #endif
+#endif
     }
 }
 

@@ -54,6 +54,7 @@ class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
     private(set) var onDisappear: () -> Void = { }
     private(set) var onAppear: () -> Void = { }
     private(set) var model: FinderModel? // Previously we had it weak but iOS 14 was mysteriously nullifying it after some Move manipulations - see DRVIOS-581
+    private(set) var currentTab: TabBarItem?
     private(set) weak var previousFolderCoordinator: FinderCoordinator?
     private(set) weak var nextFolderCoordinator: FinderCoordinator?
     private lazy var createDocView = makeCreateDocumentView(fileType: .doc)
@@ -209,6 +210,7 @@ extension FinderCoordinator {
         let model = MoveModel(tower: tower, node: node, nodeID: nodeID, nodesToMoveID: nodesToMoveID, nodeToMoveParentID: nodeToMoveParent)
         self.model = model
         let viewModel = MoveViewModel(model: model, node: node, featureFlagsController: featureFlagsController)
+        self.currentTab = viewModel.currentTab
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
     }
@@ -221,6 +223,7 @@ extension FinderCoordinator {
             featureFlagsController: featureFlagsController,
             progressTrackersController: ProgressTrackersController()
         )
+        self.currentTab = viewModel.currentTab
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
     }
@@ -243,6 +246,7 @@ extension FinderCoordinator {
             scrollToTopPublisher: scrollToTopPublisher,
             progressTrackersController: ProgressTrackersController()
         )
+        self.currentTab = viewModel.currentTab
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
     }
@@ -255,6 +259,7 @@ extension FinderCoordinator {
             featureFlagsController: featureFlagsController,
             progressTrackersController: ProgressTrackersController()
         )
+        self.currentTab = viewModel.currentTab
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
     }
@@ -287,6 +292,7 @@ extension FinderCoordinator {
             scrollToTopPublisher: scrollToTopPublisher ?? PassthroughSubject<TabBarItem, Never>().eraseToAnyPublisher(),
             progressTrackersController: ProgressTrackersController()
         )
+        self.currentTab = viewModel.currentTab
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(
             vm: viewModel,
@@ -317,6 +323,7 @@ extension FinderCoordinator {
             scrollToTopPublisher: scrollToTopPublisher,
             progressTrackersController: ProgressTrackersController()
         )
+        self.currentTab = viewModel.currentTab
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
     }
@@ -325,6 +332,7 @@ extension FinderCoordinator {
         let model = FolderModel(tower: tower, node: node, nodeID: nodeID)
         self.model = model
         let viewModel = ComputerRootFolderViewModel(localSettings: tower.localSettings, model: model, node: node, nodeStatePolicy: FileNodeStatePolicy(), featureFlagsController: featureFlagsController, isSharedWithMe: isSharedWithMe, volumeIdsController: tower.sharedVolumeIdsController, scrollToTopPublisher: scrollToTopPublisher, progressTrackersController: ProgressTrackersController())
+        self.currentTab = viewModel.currentTab
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
     }
@@ -338,6 +346,7 @@ extension FinderCoordinator {
             onSaveHere: incomingFilesSelectionHandler,
             featureFlagsController: featureFlagsController
         )
+        self.currentTab = viewModel.currentTab
         hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
     }
@@ -485,10 +494,11 @@ extension FinderCoordinator {
         guard let rootViewController else { return }
         // Create the repository and coordinator
         let repository = CoreDataFilePreviewRepository(context: tower.storage.backgroundContext, file: file)
+        let shouldReportPerformance = currentTab?.toMetricTag != nil
         let coordinator = FilePreviewPreparationCoordinator(
             messageHandler: UserMessageHandler(),
             repository: repository,
-            performanceMetricsController: tower.performanceMetricsController,
+            performanceMetricsController: shouldReportPerformance ? tower.performanceMetricsController : nil,
             root: rootViewController
         )
         self.previewPrepareCoordinator = coordinator

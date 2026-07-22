@@ -31,6 +31,13 @@ public enum RequestBatcherError: Error, Equatable {
 /// over from a size-cap pop or cancel cannot drain a replacement bucket.
 /// `Task.cancel()` is insufficient here — cancellation is cooperative and
 /// racy with the post-sleep actor re-entry.
+///
+/// Requests sharing an `id` within the same bucket are coalesced before flush:
+/// only the first item for a given `id` is forwarded to the closure, and the
+/// shared result resolves every pending continuation with that `id`. Dedup is
+/// by `id` only — callers must treat items sharing an `id` as equivalent.
+/// Later items are silently dropped; their continuations still receive the
+/// result computed from the first item.
 public actor RequestBatcher<Key: Hashable & Sendable, Item: Sendable, Output: Sendable> {
 
     public typealias FlushClosure = @Sendable ([Item], Key) async throws -> [String: Result<Output, Error>]
@@ -76,7 +83,7 @@ public actor RequestBatcher<Key: Hashable & Sendable, Item: Sendable, Output: Se
                 buckets.removeValue(forKey: key)
                 let popped = bucket
                 Task { [weak self] in
-                    await self?.runFlush(bucket: popped, key: key)
+                    await self?.flushAll(bucket: popped, key: key)
                 }
                 return
             }
@@ -99,6 +106,11 @@ public actor RequestBatcher<Key: Hashable & Sendable, Item: Sendable, Output: Se
         buckets[key]?.requests.count ?? 0
     }
 
+    /// Removes a single pending request matching `id` from the given bucket and
+    /// resumes its continuation with `CancellationError`. Only the first match
+    /// is removed: if duplicates of the same `id` exist in the bucket, the
+    /// surviving duplicates remain and will resolve from the eventual flush
+    /// result. Call repeatedly to drain all duplicates.
     public func cancel(id: String, key: Key) {
         guard var bucket = buckets[key],
               let index = bucket.requests.firstIndex(where: { $0.id == id }) else {
@@ -118,13 +130,18 @@ public actor RequestBatcher<Key: Hashable & Sendable, Item: Sendable, Output: Se
             return
         }
         buckets.removeValue(forKey: key)
-        await runFlush(bucket: bucket, key: key)
+        await flushAll(bucket: bucket, key: key)
     }
 
-    private func runFlush(bucket: Bucket, key: Key) async {
-        let items = bucket.requests.map(\.item)
+    private func flushAll(bucket: Bucket, key: Key) async {
+        var seenIDs = Set<String>()
+        var distinctItems: [Item] = []
+        distinctItems.reserveCapacity(bucket.requests.count)
+        for request in bucket.requests where seenIDs.insert(request.id).inserted {
+            distinctItems.append(request.item)
+        }
         do {
-            let results = try await flush(items, key)
+            let results = try await flush(distinctItems, key)
             for request in bucket.requests {
                 if let result = results[request.id] {
                     request.continuation.resume(with: result)

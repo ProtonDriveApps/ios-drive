@@ -15,10 +15,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+#if os(iOS)
+
 import Foundation
 import PDClient
 
-/// Legacy operation for mac, can be removed after 2025 Feb, once macOS migrated to DDK
 /// Accepts: File with short metadata
 /// Works:
 /// 1. makes API call to get full File metadata
@@ -259,3 +260,5 @@ class LegacyDownloadFileOperation: SynchronousOperation, DownloadOperation {
         }
     }
 }
+
+#endif

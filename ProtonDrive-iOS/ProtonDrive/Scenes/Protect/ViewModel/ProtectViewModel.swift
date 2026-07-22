@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Proton AG
+// Copyright (c) 2026 Proton AG
 //
 // This file is part of Proton Drive.
 //
@@ -22,21 +22,16 @@ import PDCoreIOS
 
 final class ProtectViewModel: LogoutRequesting {
     private let controller: LockedStateControllerProtocol
-    private let lockManager: LockManager
     private let coordinator: ProtectCoordinatorProtocol
     private var cancellables = Set<AnyCancellable>()
     private var lockCancellable: AnyCancellable?
 
     init(
         controller: LockedStateControllerProtocol,
-        lockManager: LockManager,
-        signoutManager: SignOutManager,
         coordinator: ProtectCoordinatorProtocol
     ) {
         self.controller = controller
-        self.lockManager = lockManager
         self.coordinator = coordinator
-        subscribeToSignOut(signoutManager: signoutManager)
     }
 
     func viewDidLoad() {
@@ -53,25 +48,11 @@ final class ProtectViewModel: LogoutRequesting {
     }
 
     private func handleLockChange(_ isLocked: Bool) {
+        Log.debug("Lock state is changed: \(isLocked)", domain: .application)
         if isLocked {
-            lockManager.onLock()
             coordinator.onLocked()
         } else {
-            lockManager.onUnlocked()
             coordinator.onUnlocked()
         }
-    }
-
-    private func subscribeToSignOut(signoutManager: SignOutManager) {
-        DriveNotification.signOut.publisher
-            .sink { _ in
-                Task {
-                    Log.info("DriveNotification.signOut", domain: .application)
-                    NotificationCenter.default.post(.isLoggingOut)
-                    await signoutManager.signOut()
-                    NotificationCenter.default.post(.checkAuthentication)
-                }
-            }
-            .store(in: &cancellables)
     }
 }

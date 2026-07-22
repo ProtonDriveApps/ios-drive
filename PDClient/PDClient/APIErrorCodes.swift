@@ -16,6 +16,8 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 public enum APIErrorCodes: Int, Equatable {
+    // For move/rename: item out of sync / OriginalHash mismatch. CommitPolicy reuses 2000 with a commit-only meaning on an unrelated path.
+    case itemOutOfSync = 2000
     case invalidValue = 2001 // INVALID_VALUE
     case alreadyExists = 2500 // ALREADY_EXISTS
     case itemOrItsParentDeletedErrorCode = 2501 // NOT_EXISTS

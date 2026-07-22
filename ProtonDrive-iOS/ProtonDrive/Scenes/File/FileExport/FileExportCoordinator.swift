@@ -54,7 +54,7 @@ final class FileExportCoordinator {
                 try await viewModel.download()
                 await alert?.dismiss(animated: false)
             }
-            let path = try viewModel.filePath()
+            let path = try await viewModel.filePath()
             await handleDownloadSuccess(file: file, filePath: path, isDownloadDestination: isDownloadDestination)
         } catch let error as FileExportError {
             if case .cancelled = error { return }

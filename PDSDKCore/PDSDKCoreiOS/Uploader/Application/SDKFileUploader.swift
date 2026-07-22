@@ -92,6 +92,7 @@ import ProtonDriveSDK
         identifier: AnyVolumeIdentifier,
         duplicateAction: DuplicateUploadAction?
     ) async throws -> AnyVolumeIdentifier {
+        
         Log.debug("Schedule to upload \(identifier)", domain: .sdk)
         let properties = try await cacheResource.get(properties: [\.uploadID, \.size], from: identifier)
         guard
@@ -137,9 +138,8 @@ import ProtonDriveSDK
                 try await handlePaused(identifier: identifier, uploadID: uploadID)
                 throw SDKUploadErrors.cancelled
             case let .error(error):
-                if let sdkError = error as? ProtonDriveSDKError,
-                   sdkError.type == "Proton.Drive.Sdk.NodeWithSameNameExistsException" {
-                    try await handleDuplicationError(identifier: identifier, uploadID: uploadID)
+                if let sdkError = error as? ProtonDriveSDKError {
+                    try await handle(sdkError: sdkError, identifier: identifier, uploadID: uploadID)
                 } else {
                     try await handleGenericError(identifier: identifier, error: error, uploadID: uploadID)
                 }
@@ -179,17 +179,6 @@ import ProtonDriveSDK
         removeProgress(for: uploadID)
         try await handleUploadFailure(identifier: identifier)
     }
-
-    private func handleGenericError(identifier: AnyVolumeIdentifier, error: Error, uploadID: UUID) async throws {
-        removePausedUploadID(uploadID)
-        await tokenStore.remove(for: identifier)
-        removeProgress(for: uploadID)
-        try await handleUploadFailure(identifier: identifier)
-        failuresSubject.send((identifier, error))
-        if protectionResource.isLocked() {
-            throw SDKUploadErrors.cancelled
-        }
-    }
     
     private func removePausedUploadID(_ uploadID: UUID) {
         var pausedUploadIDsValue = pausedUploadIDs.value
@@ -201,13 +190,6 @@ import ProtonDriveSDK
         var pausedUploadIDsValue = pausedUploadIDs.value
         pausedUploadIDsValue.insert(uploadID)
         pausedUploadIDs.send(pausedUploadIDsValue)
-    }
-
-    private func handleDuplicationError(identifier: AnyVolumeIdentifier, uploadID: UUID) async throws {
-        let properties = try await cacheResource.get(properties: [\.decryptedName], from: identifier)
-        guard let name = properties.first as? String else { return }
-        try await handleCancelled(identifier: identifier, uploadID: uploadID)
-        duplicatedSubject.send((identifier, name))
     }
 
     func deleteUploadingFile(identifier: AnyVolumeIdentifier) async throws {
@@ -278,6 +260,47 @@ import ProtonDriveSDK
 
     func activeUploadsCount() -> Int {
         progressesSubject.value.count
+    }
+}
+
+// MARK: - Errors
+extension SDKFileUploader {
+    private func handleDuplicationError(identifier: AnyVolumeIdentifier, uploadID: UUID) async throws {
+        let properties = try await cacheResource.get(properties: [\.decryptedName], from: identifier)
+        guard let name = properties.first as? String else { return }
+        try await handleCancelled(identifier: identifier, uploadID: uploadID)
+        duplicatedSubject.send((identifier, name))
+    }
+    
+    private func handleGenericError(identifier: AnyVolumeIdentifier, error: Error, uploadID: UUID) async throws {
+        removePausedUploadID(uploadID)
+        await tokenStore.remove(for: identifier)
+        removeProgress(for: uploadID)
+        try await handleUploadFailure(identifier: identifier)
+        failuresSubject.send((identifier, error))
+        if protectionResource.isLocked() {
+            throw SDKUploadErrors.cancelled
+        }
+    }
+    
+    private func handle(sdkError: ProtonDriveSDKError, identifier: AnyVolumeIdentifier, uploadID: UUID) async throws {
+        if sdkError.primaryCode == ResponseCode.alreadyExists.rawValue {
+            try await handleDuplicationError(identifier: identifier, uploadID: uploadID)
+            throw SDKUploadErrors.nameAlreadyExists
+        } else if sdkError.primaryCode == ResponseCode.insufficientSpace.rawValue,
+                  sdkError.secondaryCode == 422 {
+            try await handleGenericError(
+                identifier: identifier,
+                error: SDKUploadErrors.noSpaceOnCloud,
+                uploadID: uploadID
+            )
+        } else {
+            try await handleGenericError(
+                identifier: identifier,
+                error: sdkError,
+                uploadID: uploadID
+            )
+        }
     }
 }
 

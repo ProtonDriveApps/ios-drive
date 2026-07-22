@@ -15,37 +15,38 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+#if os(iOS)
+
 import Foundation
 
 @MainActor
-public final class DownloadSpeedContainer { // TODO(SDK): add Photos SDK downloader
-    private let legacyController: DownloadSpeedController
-    private let sdkController: DownloadSpeedController?
+public final class DownloadSpeedContainer {
+    private let sdkFileController: DownloadSpeedController
+    private let sdkPhotoController: DownloadSpeedController
 
     public init(
-        legacyDownloader: TrackableDownloader,
-        sdkDownloader: TrackableDownloader?,
+        sdkFileDownloader: TrackableDownloader,
+        sdkPhotoDownloader: TrackableDownloader,
         processEligibilityController: ProcessEligibilityController
     ) {
-        legacyController = DownloadSpeedController(
-            downloader: legacyDownloader,
+        sdkFileController = DownloadSpeedController(
+            downloader: sdkFileDownloader,
             processEligibilityController: processEligibilityController,
-            bytesCounterResource: legacyDownloader.bytesCounterResource,
+            bytesCounterResource: sdkFileDownloader.bytesCounterResource,
             timerResource: iOSPausableTimerResource(duration: DownloadSpeedConstants.tickInterval),
             metricResource: ObservabilityDownloadSpeedMetricResource(),
-            pipeline: .legacy
+            pipeline: .default
         )
-        if let sdkDownloader {
-            sdkController = DownloadSpeedController(
-                downloader: sdkDownloader,
-                processEligibilityController: processEligibilityController,
-                bytesCounterResource: sdkDownloader.bytesCounterResource,
-                timerResource: iOSPausableTimerResource(duration: DownloadSpeedConstants.tickInterval),
-                metricResource: ObservabilityDownloadSpeedMetricResource(),
-                pipeline: .default
-            )
-        } else {
-            sdkController = nil
-        }
+
+        sdkPhotoController = DownloadSpeedController(
+            downloader: sdkPhotoDownloader,
+            processEligibilityController: processEligibilityController,
+            bytesCounterResource: sdkPhotoDownloader.bytesCounterResource,
+            timerResource: iOSPausableTimerResource(duration: DownloadSpeedConstants.tickInterval),
+            metricResource: ObservabilityDownloadSpeedMetricResource(),
+            pipeline: .default
+        )
     }
 }
+
+#endif

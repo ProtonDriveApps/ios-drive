@@ -26,7 +26,6 @@ import ProtonCoreKeymaker
 import ProtonCoreServices
 import ProtonCoreCryptoGoInterface
 import ProtonCoreCryptoPatchedGoImplementation
-import PDUploadVerifier
 import PDSDKCore
 import PDSDKCoreiOS
 
@@ -48,11 +47,13 @@ class FileProviderExtension: NSFileProviderExtension {
         PDFileManager.configure(with: Constants.appGroup)
         // Inject build type to enable build differentiation. (Build macros don't work in SPM)
         PDCore.Constants.buildType = Constants.buildType
+        PDCore.Constants.buildFeatures = Constants.buildFeatures
 
         self.keymaker = DriveKeymaker(autolocker: nil, keychain: DriveKeychain.shared)
         self.itemProvider = ItemProviderForiOS()
         self.itemActionsOutlet = ItemActionsOutlet(
             fileProviderManager: NSFileProviderManager.default,
+            fileCreationProvider: { DefaultCreateFilePerformer() },
             newRevisionUploadPerformProvider: {
                 NewRevisionUploadPerformerForiOS()
             }
@@ -88,21 +89,18 @@ class FileProviderExtension: NSFileProviderExtension {
                     SessionRelatedCommunicatorForExtension(
                         userDefaultsConfiguration: .forFileProviderExtension(userDefaults: Constants.appGroup.userDefaults),
                         sessionStorage: sessionStore,
-                        childSessionKind: .fileProviderExtension,
                         onChildSessionObtained: onSessionReceived
                     )
                 }
             )
 
             let listener = FileProviderEventsListener(manager: NSFileProviderManager.default)
-            let uploadVerifierFactory = ConcreteUploadVerifierFactory()
             self.postLoginServices = PostLoginServices(
                 initialServices: initialServices!,
                 appGroup: Constants.appGroup,
                 eventObservers: [listener],
                 eventProcessingMode: .full,
                 eventLoopInterval: 90,
-                uploadVerifierFactory: uploadVerifierFactory,
                 activityObserver: { [weak self] activity in
                     self?.currentActivityChanged(activity)
                 }
@@ -112,17 +110,12 @@ class FileProviderExtension: NSFileProviderExtension {
                 return
             }
 
-            let discoverer = RecursiveValidNameDiscoverer(hashChecker: tower.cloudSlot)
-            itemActionsOutlet.set(validNameDiscoverer: discoverer)
-
-            let semaphore = DispatchSemaphore(value: 0)
-            Task {
-                try await self.bootstrapSDK(tower: tower)
-                semaphore.signal()
+            do {
+                try SyncAwait.run { try await self.bootstrapSDK(tower: tower) }
+            } catch {
+                fatalError("Unable to bootstrap SDK: \(error)")
             }
-            semaphore.wait()
-            let downloaders: [DownloaderProtocol?] = [tower.downloader, tower.getSdkFileDownloader()]
-            let treeTrashHandler = NodeTreeTrashHandler(downloaders: downloaders.compactMap { $0 })
+            let treeTrashHandler = NodeTreeTrashHandler(downloader: tower.fpSDKObjects.fileDownloader)
             let treeOperator = NodeTreeOperator(dependencies: .init(trashHandler: treeTrashHandler))
             tower.set(nodeTreeOperator: treeOperator)
             tower.set(treeTrashHandler: treeTrashHandler)
@@ -140,32 +133,35 @@ class FileProviderExtension: NSFileProviderExtension {
                 protectionResource: keymaker,
                 thumbnailProvider: ThumbnailProviderFactory.defaultSynchronizedThumbnailProvider
             )
+
             let uploader = uploaderFactory
                 .makeFileUploader(
                     bytesCounterResource: ThreadSafeBytesCounterResource(),
                     operationPerformer: performer
                 )
-            tower.set(sdkFileUploader: uploader)
-            
+
             let downloader = SDKDownloaderFactory().makeFileDownloader(
                 operationPerformer: performer,
                 managedObjectContext: tower.storage.backgroundContext
             )
-            tower.set(sdkFileDownloader: downloader)
+            
+            let revisionUploader = SDKRevisionUploaderFactory().makeUploader(
+                operationPerformer: performer,
+                managedObjectContext: tower.storage.backgroundContext
+            )
+            
+            let sdkObject = FPSDKObjects(
+                fileUploader: uploader,
+                fileDownloader: downloader,
+                revisionUploader: revisionUploader
+            )
+            tower.set(fpSDKObjects: sdkObject)
         }
-        let revisionUploader = SDKRevisionUploaderFactory().makeUploader(
-            operationPerformer: performer,
-            managedObjectContext: tower.storage.backgroundContext
-        )
-        tower.set(sdkRevisionUploader: revisionUploader)
     }
 
     private func initializeSDKOperationPerformer(
         tower: Tower
     ) async throws -> FileOperationPerformer? {
-        guard tower.localSettings.driveiOSSDKDownloadMain || tower.localSettings.driveiOSSDKUploadMain else {
-            return nil
-        }
         return try await SDKOperationPerformerFactory().makeFilePerformer(tower: tower)
     }
 
@@ -415,7 +411,7 @@ extension FileProviderExtension {
 
                     do {
                         try? FileManager.default.removeItem(at: url) // opportunistic
-                        // Check `CoreDataFilePreviewRepository.loadFile()` for more details 
+                        // Check `DecryptedFileManager.ensureHardLink()` for more details
                         try FileManager.default.linkItem(at: copyUrl!, to: url)
                         completionHandler(nil)
                     } catch let error {

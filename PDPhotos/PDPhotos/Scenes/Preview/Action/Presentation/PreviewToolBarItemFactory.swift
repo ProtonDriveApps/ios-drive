@@ -29,27 +29,16 @@ struct PreviewToolBarItemFactory {
     }
 
     func makeItems(for source: PhotosPreviewSource, isFavorited: Bool, hasSaveSharedPhoto: Bool) -> PhotosActions {
-        var actions = [PhotosAction]()
+        let pool: [PhotosAction]
         switch source {
         case .photoStream:
-            actions = makeItemsForPhotoStream(isFavorited: isFavorited)
+            pool = makeItemsForPhotoStream(isFavorited: isFavorited)
         case .album(let role):
-            actions = makeItemsForAlbum(
-                role: role,
-                isFavorited: isFavorited,
-                hasSaveSharedPhoto: hasSaveSharedPhoto
-            )
+            pool = makeItemsForAlbum(role: role, isFavorited: isFavorited, hasSaveSharedPhoto: hasSaveSharedPhoto)
         case .undetermined:
-            return .init(primary: [], more: [])
+            return .init(primary: [], more: nil)
         }
-        let sortedActions = actions.sorted { $0.rawValue < $1.rawValue }
-        if sortedActions.count > 4 {
-            let primaryActions = Array(sortedActions.prefix(3)) + [.more]
-            let moreActions = Array(sortedActions.dropFirst(3))
-            return PhotosActions(primary: primaryActions, more: moreActions)
-        } else {
-            return PhotosActions(primary: sortedActions, more: nil)
-        }
+        return splitSorted(pool)
     }
 }
 
@@ -79,7 +68,7 @@ extension PreviewToolBarItemFactory {
         }
 
         if role.canAdministrate || role == .editor {
-            actions.append(.trash)
+            actions.append(.removeFromAlbum)
         }
 
         if hasSaveSharedPhoto {
@@ -88,6 +77,27 @@ extension PreviewToolBarItemFactory {
 
         actions.append(contentsOf: [.shareNative, .availableOffline, .info])
         return actions
+    }
+
+    private func splitSorted(_ pool: [PhotosAction]) -> PhotosActions {
+        let sorted = pool.sorted { $0.rawValue < $1.rawValue }
+        guard sorted.count > 4 else {
+            return PhotosActions(primary: sorted, more: nil)
+        }
+
+        let destructive = sorted.first { $0 == .trash || $0 == .removeFromAlbum }
+        let nonDestructive = sorted.filter { $0 != .trash && $0 != .removeFromAlbum }
+
+        let primary: [PhotosAction]
+        if let destructive {
+            primary = Array(nonDestructive.prefix(3)) + [destructive]
+        } else {
+            primary = Array(sorted.prefix(4))
+        }
+
+        let primarySet = Set(primary)
+        let more = sorted.filter { !primarySet.contains($0) }
+        return PhotosActions(primary: primary, more: more.isEmpty ? nil : more)
     }
 
     private func makeShareItem() -> PhotosAction {

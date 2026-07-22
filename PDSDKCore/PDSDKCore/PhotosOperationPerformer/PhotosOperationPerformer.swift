@@ -135,7 +135,7 @@ extension PhotosOperationPerformer {
 
         continuation.onTermination = { @Sendable _ in
             task.cancel()
-            metadataUpdater.endOperation()
+            metadataUpdater.endOperation(context: .init())
         }
         return stream
     }
@@ -150,7 +150,7 @@ extension PhotosOperationPerformer {
         shouldThrowOnManifestVerificationIssues: Bool,
         moc: NSManagedObjectContext
     ) async throws -> VerificationIssue? {
-        try await metadataUpdater.withOperation {
+        try await metadataUpdater.withOperation { _ in
             do {
                 let potentialManifestVerificationIssue = try await self.client.download(
                     photoUid: photoUid,
@@ -280,9 +280,12 @@ extension PhotosOperationPerformer {
         thumbnailLocalCache: ThumbnailsUploadLocalCacheProtocol? = nil,
         onRetriableErrorReceived: @Sendable @escaping (any Error) -> Void
     ) async throws -> Node {
-        try await metadataUpdater.withOperation {
+        try await metadataUpdater.withOperation { endOperationContext in
             Log.debug("Starting upload: \(attributes.uploadID)", domain: .sdk)
             let result: UploadedFileIdentifiers
+            if try await operation.isPaused() {
+                endOperationContext.releasesPausedOperations = true
+            }
             do {
                 result = try await client.startUpload(
                     operation: operation,
@@ -297,6 +300,12 @@ extension PhotosOperationPerformer {
                     "Masked filename": attributes.name.maskFilename()
                 ]
                 logAdditionalDataInSDKError(error, context: context, file: #file, function: "startUpload", line: #line)
+                // TODO: DRVIOS-4269, SDK uses `UploadOperationResult` that has pause state
+                // Change SDK API to use UploadOperationResult` to prevent call `operation.isPaused()` twice
+                let isPaused = try await operation.isPaused()
+                if isPaused {
+                    endOperationContext.retainsPausedOperations = true
+                }
                 throw error
             }
             
@@ -334,7 +343,10 @@ extension PhotosOperationPerformer {
         }
     }
 
-    public func cancelUpload(cancellationToken: UUID) async throws {
+    public func cancelUpload(cancellationToken: UUID, isPausedOperation: Bool) async throws {
+        if isPausedOperation {
+            metadataUpdater.cancelPausedOperation()
+        }
         try await client.cancelUpload(with: cancellationToken)
     }
 

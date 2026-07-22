@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Proton AG
+// Copyright (c) 2026 Proton AG
 //
 // This file is part of Proton Drive.
 //
@@ -20,6 +20,8 @@ import Combine
 import PDCore
 import ProtonCoreHumanVerification
 import SwiftUI
+import PMSettings
+import ProtonCoreKeymaker
 
 protocol ProtectCoordinatorProtocol {
     func onLocked()
@@ -27,53 +29,75 @@ protocol ProtectCoordinatorProtocol {
 }
 
 final class ProtectCoordinator: ProtectCoordinatorProtocol {
-    private(set) unowned var viewController: ProtectViewController
-
-    private var unlockedViewController: UIViewController?
-
-    private var lockedViewControllerFactory: () -> UIViewController
-    private var unlockedViewControllerFactory: () -> UIViewController
-
     private let humanVerificationHelper: HumanCheckHelper
+    private let keymaker: Keymaker
     private var auxiliaryWindow: UIWindow?
+    private var unlockedViewController: UIViewController?
+    private var unlockedViewControllerFactory: () async -> UIViewController
+    private var unlockTask: Task<Void, Never>?
+    private(set) weak var viewController: ProtectViewController?
 
     init(
         viewController: ProtectViewController,
         humanVerificationHelper: HumanCheckHelper,
-        lockedViewControllerFactory: @escaping () -> UIViewController,
-        unlockedViewControllerFactory: @escaping () -> UIViewController
+        keymaker: Keymaker,
+        unlockedViewControllerFactory: @escaping () async -> UIViewController
     ) {
         self.viewController = viewController
         self.humanVerificationHelper = humanVerificationHelper
-        self.lockedViewControllerFactory = lockedViewControllerFactory
+        self.keymaker = keymaker
         self.unlockedViewControllerFactory = unlockedViewControllerFactory
     }
 
     private var defaultWindow: UIWindow? {
-        viewController.view.window
+        viewController?.view.window
     }
 
     func onLocked() {
         // The windowScene may be in `.background` or `.foregroundInactive` mode already.
         // We mainly need to avoid using `.unattached` one.
         guard let windowScene = UIApplication.shared.getAnyAttachedWindowScene() else {
-            Log.error("Failed to get any attached window scene", domain: .ui)
+            Log.error("Failed to get any attached window scene", error: nil, domain: .ui)
             return
         }
-        let lockViewController = lockedViewControllerFactory()
+        let lockViewController = makeLockViewController()
         auxiliaryWindow = UIWindow(rootViewController: lockViewController, windowScene: windowScene)
     }
 
     func onUnlocked() {
-        if unlockedViewController == nil {
-            let child = unlockedViewControllerFactory()
-            unlockedViewController = child
-            viewController.add(child)
-        } else {
-            defaultWindow?.makeKeyAndVisible()
+        guard unlockTask == nil else {
+            Log.debug("Ignore unlocked request since previous task is running", domain: .application)
+            return
         }
+        unlockTask = Task { @MainActor in
+            guard let viewController else {
+                Log.error("Trying to unlock while protect viewController is nil", error: nil, domain: .ui)
+                return
+            }
+            if unlockedViewController == nil {
+                let child = await unlockedViewControllerFactory()
+                unlockedViewController = child
+                viewController.add(child)
+            } else {
+                defaultWindow?.makeKeyAndVisible()
+            }
 
-        auxiliaryWindow = nil
+            auxiliaryWindow = nil
+            unlockTask = nil
+        }
+    }
+
+    private func makeLockViewController() -> UIViewController {
+        let logoutViewModel = LogoutAlertViewModel()
+        let failedAttemptsCounter = SecureFailedAttemptsCounter(maximumNumberOfAttempts: Constants.maxNumberOfFailedUnlockAttempts)
+        return PMUnlockViewControllerComposer
+            .assemble(
+                header: .drive(subtitle: nil),
+                unlocker: self.keymaker,
+                logoutManager: DriveLogoutManager(),
+                failedAttemptsCounter: failedAttemptsCounter,
+                logoutAlertSubtitle: logoutViewModel.message
+            )
     }
 }
 

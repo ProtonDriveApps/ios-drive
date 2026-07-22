@@ -25,11 +25,11 @@ final class VideoThumbnailProvider: ThumbnailProvider {
         self.next = next
     }
 
-    func getThumbnail(from url: URL, overrideMediaType: String?, ofSize size: CGSize) -> Image? {
+    func getImage(from url: URL, overrideMediaType: String?, ofSize size: CGSize) -> Image? {
         let mimeType = overrideMediaType.flatMap { MimeType(value: $0) } ?? MimeType(fromFileExtension: url.pathExtension)
 
         guard mimeType?.isVideo == true else {
-            return next?.getThumbnail(from: url, overrideMediaType: overrideMediaType, ofSize: size)
+            return next?.getImage(from: url, overrideMediaType: overrideMediaType, ofSize: size)
         }
 
         let asset: AVURLAsset

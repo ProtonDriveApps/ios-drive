@@ -58,7 +58,6 @@ final class UploadingPhotosBootstrapper: AppBootstrapper {
     }
     
     private func resetUploadingPhotoState(moc: NSManagedObjectContext) {
-        if tower.getSdkPhotoUploader() == nil { return }
         let recoverablePhotos = storage.fetchPhotosForInterruptedStateRecovery(moc: moc)
         if recoverablePhotos.isEmpty {
             Log.debug("No recoverable uploading photos found in cache. ✅", domain: .storage)

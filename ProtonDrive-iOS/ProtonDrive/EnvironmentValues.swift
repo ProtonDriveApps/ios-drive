@@ -98,7 +98,6 @@ private struct InitialServicesKey: EnvironmentKey {
             SessionRelatedCommunicatorForMainApp(
                 userDefaultsConfiguration: .forFileProviderExtension(userDefaults: Constants.appGroup.userDefaults),
                 sessionStorage: sessionStore,
-                childSessionKind: .fileProviderExtension,
                 authenticator: authenticator
             )
         }

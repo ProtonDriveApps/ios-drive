@@ -44,7 +44,6 @@ struct ThumbnailsControllerFactory {
     ) -> ThumbnailController {
         let managedObjectContext = getManagedObjectContext(tower: tower)
         let asynchronousRepository = DatabaseAsynchronousThumbnailRepository(managedObjectContext: managedObjectContext, storageManager: tower.storage, type: type)
-        let canUseSDK = tower.getSdkThumbnailsDownloaderForPhotos() != nil
         return LocalThumbnailController(
             thumbnailsController: thumbnailsController,
             urlsController: urlsController,
@@ -52,7 +51,6 @@ struct ThumbnailsControllerFactory {
             synchronousRepository: synchronousRepository,
             asynchronousRepository: asynchronousRepository,
             performanceMetricsController: performanceMetricsController,
-            canUseSDK: canUseSDK,
             id: id
         )
     }

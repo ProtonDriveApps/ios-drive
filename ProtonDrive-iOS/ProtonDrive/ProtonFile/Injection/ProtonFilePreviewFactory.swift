@@ -97,7 +97,7 @@ struct ProtonFilePreviewFactory {
             storage: tower.storage,
             managedObjectContext: tower.storage.backgroundContext,
             nodeRenamer: nodeRenamer,
-            nodeOperationPerformer: tower.getSdkNodeOperationPerformer()
+            nodeOperationPerformer: tower.sdkObjects.nodeOperationPerformer
         )
         let viewModel = EditNodeNameViewModel(node: editedNode, nameEditor: nameEditor, validator: NameValidations.userSelectedName)
         let formattingViewModel = FormattingFileViewModel(

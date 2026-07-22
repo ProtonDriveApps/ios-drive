@@ -25,7 +25,7 @@ final class CoreDataFilePreviewRepository: FilePreviewRepository {
     private let file: File
 
     @ThreadSafe private var cleartextUrl: URL?
-    private var isCancelled = false
+    private let cancellation = LegacyDecryptionCancellation()
 
     init(context: NSManagedObjectContext, file: File) {
         self.context = context
@@ -40,18 +40,13 @@ final class CoreDataFilePreviewRepository: FilePreviewRepository {
             return URL.blank
         }
     }
-    
+
     func requiresDecryption() async throws -> Bool {
-        let objectID = file.objectID
-        let decryptedPath = try await context.perform { [context] in
-            let file: CoreDataFile = try context.typedObject(with: objectID)
-            guard let revision = file.activeRevision else {
-                throw file.invalidState("No active revision in file")
-            }
-            return revision.validatedDecryptedFilePath()
-        }
-        if let decryptedPath {
-            cleartextUrl = try decryptedPath.hardLink(filename: file.decryptedName)
+        if DecryptedFileManager.validatedDecryptedFilePath(identifier: file.identifier) != nil {
+            cleartextUrl = try DecryptedFileManager.ensureHardLink(
+                identifier: file.genericIdentifier,
+                filename: file.decryptedName
+            )
             return false
         } else {
             return true
@@ -59,36 +54,24 @@ final class CoreDataFilePreviewRepository: FilePreviewRepository {
     }
 
     func loadFile() async throws {
-        Log.info("Will start decrypting the file", domain: .fileManager)
-        let objectID = file.objectID
-        return try await context.perform { [context] in
-            do {
-                let file: CoreDataFile = try context.typedObject(with: objectID)
-                guard self.cleartextUrl == nil, let revision = file.activeRevision else {
-                    throw file.invalidState("No active revision in file")
-                }
-
-                // The decrypted file is stored at `{UserID}/{VolumeID}/{NodeID}/clear`
-                // Create a hard link that points to this location
-                // so the preview view and share sheet can display the correct file name
-                //
-                // In Finder, you will see two files: `clear` and `{name}.{ext}`
-                // The folder size will appear doubled because Finder simply sums the size of each entry
-                // However, both files reference the same inode, so no data is actually duplicated
-                // You can run `ls -li path_to_folder` to confirm that they point to the same inode
-                // And `du -h path_to_folder` to see actual disk usage
-                let realLink = try revision.decryptFile(isCancelled: &self.isCancelled)
-                let hardLink = try realLink.hardLink(filename: file.decryptedName)
-                self.cleartextUrl = hardLink
-                if self.isCancelled {
-                    self.cleartextUrl = nil
-                    throw CancellationError()
-                }
-            } catch {
-                self.cleartextUrl = nil
-                throw error
-            }
+        cancellation.isCancelled = false
+        do {
+            try await DecryptedFileManager.decryptLegacyBlocksIfNeeded(
+                file: file,
+                cancellation: cancellation
+            )
+        } catch Revision.Errors.cancelled {
+            cleartextUrl = nil
+            throw CancellationError()
         }
+        if cancellation.isCancelled {
+            cleartextUrl = nil
+            throw CancellationError()
+        }
+        cleartextUrl = try DecryptedFileManager.ensureHardLink(
+            identifier: file.genericIdentifier,
+            filename: file.decryptedName
+        )
     }
 
     func getFileMetadata() async -> (AnyVolumeIdentifier, MimeType) {
@@ -107,6 +90,6 @@ final class CoreDataFilePreviewRepository: FilePreviewRepository {
 
 extension CoreDataFilePreviewRepository {
     func cancel() {
-        self.isCancelled = true
+        cancellation.isCancelled = true
     }
 }

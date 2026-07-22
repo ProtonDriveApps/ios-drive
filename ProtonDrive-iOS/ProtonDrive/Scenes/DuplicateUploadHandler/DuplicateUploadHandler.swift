@@ -44,7 +44,7 @@ final class DuplicateUploadHandler {
     }
 
     private func observeDuplication() {
-        guard let uploader = dependencies.tower.getSdkFileUploader() else { return }
+        let uploader = dependencies.tower.sdkObjects.fileUploader
         Task { @MainActor in
             uploader.duplicated
                 .sink { [weak self] duplication in
@@ -99,21 +99,15 @@ extension DuplicateUploadHandler {
     }
 
     private func cancel(identifiers: [AnyVolumeIdentifier]) {
-        guard
-            !identifiers.isEmpty,
-            let uploader = dependencies.tower.getSdkFileUploader()
-        else { return }
+        if identifiers.isEmpty { return }
+        let uploader = dependencies.tower.sdkObjects.fileUploader
         Task.detached {
             await identifiers.parallelForEach { try? await uploader.deleteUploadingFile(identifier: $0) }
         }
     }
 
     private func didSelectAction(for identifier: AnyVolumeIdentifier, action: DuplicateUploadAction) {
-        guard let uploader = dependencies.tower.getSdkFileUploader() else {
-            Log.warning("Can't find file uploader", domain: .uploader)
-            assertionFailure()
-            return
-        }
+        let uploader = dependencies.tower.sdkObjects.fileUploader
         Task.detached {
             switch action {
             case .replace:
