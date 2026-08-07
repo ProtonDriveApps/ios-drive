@@ -37,6 +37,8 @@ extension SharingConfigViewFactory {
         let sessionVault: SessionVault
         let shareMetaController: ShareMetadataProvider
         let storage: StorageManager
+        let localSettings: LocalSettings
+        let node: Node
     }
 }
 
@@ -58,21 +60,28 @@ struct SharingConfigViewFactory {
                 contactsController: dependencies.contactsController,
                 messageHandler: dependencies.messageHandler,
                 shareMetadataProvider: dependencies.shareMetaController,
-                featureFlagsController: dependencies.featureFlagsController
+                featureFlagsController: dependencies.featureFlagsController,
+                sharingPolicy: NodeSharingPolicy(
+                    node: dependencies.node,
+                    featureFlagsController: dependencies.featureFlagsController
+                )
             ),
             sharingType: sharingType
         )
         
-        let inviteeListView = makeInviteeListView(
+        let inviteeViewModel = makeInviteeViewModel(
             coordinator: coordinator,
             initializedPublisher: viewModel.initializedPublisher,
             sharingConfigUpdater: viewModel,
-            invitationResultController: invitationResultController
+            invitationResultController: invitationResultController,
+            sharingType: sharingType
         )
+        let inviteeListView = InviteeListView(viewModel: inviteeViewModel)
         let publicShareLinkView = makePublicLinkView(coordinator: coordinator, sharingConfigUpdater: viewModel)
 
         let hosting = SharingConfigView(
             viewModel: viewModel,
+            inviteeViewModel: inviteeViewModel,
             inviteeListView: inviteeListView,
             publicShareLinkView: publicShareLinkView
         ).embeddedInHostingController()
@@ -83,19 +92,21 @@ struct SharingConfigViewFactory {
         return nav
     }
     
-    private func makeInviteeListView(
+    private func makeInviteeViewModel(
         coordinator: SharingMemberCoordinatorProtocol,
         initializedPublisher: AnyPublisher<Bool, Never>,
         sharingConfigUpdater: SharingConfigUpdater,
-        invitationResultController: InvitationResultControllerProtocol?
-    ) -> InviteeListView {
+        invitationResultController: InvitationResultControllerProtocol?,
+        sharingType: SharingConfigType
+    ) -> InviteeViewModel {
         let actionInteractor = InviteeActionInteractor(
             client: dependencies.client,
             linkAssemblePolicy: InvitationLinkAssemblePolicy(baseHost: dependencies.baseHost),
             shareDeleter: RemoteCachingShareDeleter(client: dependencies.client, storage: dependencies.storage)
         )
         let interactor = RemoteInviteeListLoadInteractor(client: dependencies.client)
-        let viewModel = InviteeViewModel(
+        let editorsCanShareUpdater = ShareEditorsCanShareInteractor(client: dependencies.client)
+        return InviteeViewModel(
             dependencies: .init(
                 contactsController: dependencies.contactsController,
                 coordinator: coordinator,
@@ -106,11 +117,14 @@ struct SharingConfigViewFactory {
                 invitationResultController: invitationResultController,
                 messageHandler: dependencies.messageHandler,
                 shareMetadataController: dependencies.shareMetaController,
-                sharingConfigUpdater: sharingConfigUpdater
+                sharingConfigUpdater: sharingConfigUpdater,
+                nodeSharingPolicy: NodeSharingPolicy(node: dependencies.node, featureFlagsController: dependencies.featureFlagsController),
+                sharingIdentityResource: NodeSharingIdentityResource(node: dependencies.node, sessionVault: dependencies.sessionVault),
+                shareEditorsCanShareInteractor: editorsCanShareUpdater,
+                sharingType: sharingType,
+                adminSharingTooltipStore: LocalSettingsAdminSharingTooltipStore(localSettings: dependencies.localSettings)
             )
         )
-        let view = InviteeListView(viewModel: viewModel)
-        return view
     }
     
     private func makePublicLinkView(
@@ -162,8 +176,11 @@ struct SharingConfigViewFactory {
                 invitationUserHandler: makeInvitationInteractor(),
                 invitationSuccessHandler: invitationSuccessHandler,
                 messageHandler: dependencies.messageHandler,
-                shareMetadataProvider: dependencies.shareMetaController
-            ), 
+                node: dependencies.node,
+                sessionVault: dependencies.sessionVault,
+                shareMetadataProvider: dependencies.shareMetaController,
+                nodeSharingPolicy: NodeSharingPolicy(node: dependencies.node, featureFlagsController: dependencies.featureFlagsController)
+            ),
             invitedMails: invitedMails
         )
         let hosting = InvitationView(viewModel: viewModel).embeddedInHostingController()
@@ -190,8 +207,7 @@ struct SharingConfigViewFactory {
             contactsManager: dependencies.contactsManager,
             sessionDecryptor: SessionKeyDecryptor(),
             externalUserInviteHandler: externalUserHandler,
-            internalUserInviteHandler: internalUserHandler,
-            sessionVault: dependencies.sessionVault
+            internalUserInviteHandler: internalUserHandler
         )
     }
     
@@ -232,9 +248,15 @@ struct SharingConfigViewFactory {
     func makeConfigActionSheet(
         for invitee: InviteeInfo,
         inviteeName: String?,
+        inviterPermissions: AccessPermission,
         handler: InviteeConfigSheetViewModel
     ) -> PMActionSheet {
-        let viewModel = InviteeConfigActionSheetViewModel(invitee: invitee, inviteeName: inviteeName, handler: handler)
+        let viewModel = InviteeConfigActionSheetViewModel(
+            invitee: invitee,
+            inviteeName: inviteeName,
+            inviterPermissions: inviterPermissions,
+            handler: handler
+        )
         let factory = InviteeConfigActionSheetFactory(viewModel: viewModel)
         return factory.makeConfigActionSheet()
     }
@@ -269,17 +291,23 @@ struct SharingConfigViewFactory {
         host.title = Localization.share_action_link_settings
         return host
     }
-    
-    func makeMoreActionSheet(coordinator: SharingMemberCoordinatorProtocol) -> UIHostingController<some View> {
+
+    func makeMoreActionSheet(
+        coordinator: SharingMemberCoordinatorProtocol,
+        inviteeViewModel: InviteeViewModel
+    ) -> UIHostingController<some View> {
         let viewModel = ShareMoreActionSheetViewModel(
             dependencies: .init(
                 coordinator: coordinator,
-                messageHandler: dependencies.messageHandler, 
+                messageHandler: dependencies.messageHandler,
                 sharedLinkRepository: makeSharedLinkRepository(),
                 shareMetadataProvider: dependencies.shareMetaController
             )
         )
-        let host = ShareMoreActionSheet(viewModel: viewModel).embeddedInHostingController()
+        let host = ShareMoreActionSheet(
+            viewModel: viewModel,
+            inviteeViewModel: inviteeViewModel
+        ).embeddedInHostingController()
         host.modalPresentationStyle = .overCurrentContext
         host.view.backgroundColor = .clear
         return host

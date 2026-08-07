@@ -42,6 +42,7 @@ extension LocalSettings: ExternalFeatureFlagsStore {
         case .driveSharingExternalInvitations: driveSharingExternalInvitations = value
         case .driveSharingDisabled: driveSharingDisabled = value
         case .driveSharingExternalInvitationsDisabled: driveSharingExternalInvitationsDisabled = value
+        case .driveSharingAdminPermissions: driveSharingAdminPermissions = value
         case .drivePublicShareEditMode: drivePublicShareEditMode = value
         case .drivePublicShareEditModeDisabled: drivePublicShareEditModeDisabled = value
         case .driveShareURLBookmarking: driveShareURLBookmarking = value
@@ -92,6 +93,7 @@ extension LocalSettings: ExternalFeatureFlagsStore {
         case .driveSharingExternalInvitations: return driveSharingExternalInvitations
         case .driveSharingDisabled: return driveSharingDisabled
         case .driveSharingExternalInvitationsDisabled: return driveSharingExternalInvitationsDisabled
+        case .driveSharingAdminPermissions: return driveSharingAdminPermissions
         case .drivePublicShareEditMode: return drivePublicShareEditMode
         case .drivePublicShareEditModeDisabled: return drivePublicShareEditModeDisabled
         case .driveShareURLBookmarking: return driveShareURLBookmarking

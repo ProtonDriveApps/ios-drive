@@ -109,9 +109,10 @@ final class AlbumDetailInfoViewModel: ObservableObject {
         let date = dependencies.dateFormatter.string(from: album.lastActivityTime)
         info = "\(date) • \(Localization.item_plural_type_with_num(num: album.photoCount))"
         albumRole = album.role
-        isSharingAvailable = albumRole.canShare && dependencies.featureFlagsController.hasSharing
+        // Album sharing is owner-only: admin sharing is not supported by the backend for photos/albums.
+        isSharingAvailable = albumRole == .owner && dependencies.featureFlagsController.hasSharing
 
-        if albumRole.canShare, let shareID = album.shareID, !hasCheckedInvitation {
+        if albumRole == .owner, let shareID = album.shareID, !hasCheckedInvitation {
             hasCheckedInvitation = true
             dependencies.inviteeListLoadController.execute(shareID: shareID)
         }

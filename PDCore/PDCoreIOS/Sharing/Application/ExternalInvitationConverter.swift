@@ -56,13 +56,13 @@ public final class ExternalInvitationConverter: ExternalInvitationConvertProtoco
         }
         let sessionKey = try getSessionKey(from: signersKit, passphrase: share.passphrase)
         _ = try await inviteHandler.execute(
-            parameters: .init(
+            parameters: InternalUserInviteInteractor.Parameters(
                 emailDetails: nil,
                 internalEmail: invitation.inviteeEmail,
                 inviteePublicKey: publicKey,
                 permission: invitation.permissions,
                 sessionKey: sessionKey,
-                shareCreator: invitation.inviterEmail,
+                inviterEmail: invitation.inviterEmail,
                 shareID: parameters.shareID,
                 signersKit: signersKit,
                 externalInvitationID: parameters.externalInvitationID

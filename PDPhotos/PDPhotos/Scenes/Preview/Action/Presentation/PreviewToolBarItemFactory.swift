@@ -63,7 +63,8 @@ extension PreviewToolBarItemFactory {
             actions.append(.setAsAlbumCover)
         }
 
-        if role.canShare {
+        // Album sharing is owner-only: admin sharing is not supported by the backend for photos/albums.
+        if role == .owner {
             actions.append(makeShareItem())
         }
 

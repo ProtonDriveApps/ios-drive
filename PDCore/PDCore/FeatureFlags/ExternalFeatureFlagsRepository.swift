@@ -156,6 +156,7 @@ class ExternalFeatureFlagsRepository: FeatureFlagsRepository {
         case .driveSharingExternalInvitations: return .driveSharingExternalInvitations
         case .driveSharingDisabled: return .driveSharingDisabled
         case .driveSharingExternalInvitationsDisabled: return .driveSharingExternalInvitationsDisabled
+        case .driveSharingAdminPermissions: return .driveSharingAdminPermissions
         case .drivePublicShareEditMode: return .drivePublicShareEditMode
         case .drivePublicShareEditModeDisabled: return .drivePublicShareEditModeDisabled
         case .driveShareURLBookmarking: return .driveShareURLBookmarking

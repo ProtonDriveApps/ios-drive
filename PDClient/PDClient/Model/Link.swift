@@ -64,6 +64,7 @@ public struct Link: Codable, Equatable {
     public var documentProperties: DocumentProperties?
     public var photoProperties: PhotoProperties?
     public var albumProperties: AlbumProperties?
+    public var ownedBy: OwnedBy?
 
     public init(linkID: LinkID, parentLinkID: LinkID?, volumeID: String, type: LinkType, name: String,
                 nameSignatureEmail: String?, hash: String, state: NodeState, expirationTime: TimeInterval? = nil,
@@ -73,7 +74,7 @@ public struct Link: Codable, Equatable {
                 trashed: TimeInterval?, sharingDetails: SharingDetails?, nbUrls: Int = 0, activeUrls: Int = 0,
                 urlsExpired: Int = 0, XAttr: String?, fileProperties: FileProperties?, folderProperties: FolderProperties?,
                 documentProperties: DocumentProperties? = nil, photoProperties: PhotoProperties? = nil,
-                albumProperties: AlbumProperties? = nil) {
+                albumProperties: AlbumProperties? = nil, ownedBy: OwnedBy? = nil) {
         self.linkID = linkID
         self.parentLinkID = parentLinkID
         #if os(iOS)
@@ -106,6 +107,7 @@ public struct Link: Codable, Equatable {
         self.documentProperties = documentProperties
         self.photoProperties = photoProperties
         self.albumProperties = albumProperties
+        self.ownedBy = ownedBy
     }
 
     // Convenience initializer to allow migration to volume based APIs
@@ -142,6 +144,17 @@ public struct Link: Codable, Equatable {
         self.documentProperties = link.documentProperties
         self.photoProperties = link.photoProperties
         self.albumProperties = link.albumProperties
+        self.ownedBy = link.ownedBy
+    }
+}
+
+public struct OwnedBy: Codable, Equatable {
+    public var email: String?
+    public var organization: String?
+
+    public init(email: String?, organization: String?) {
+        self.email = email
+        self.organization = organization
     }
 }
 

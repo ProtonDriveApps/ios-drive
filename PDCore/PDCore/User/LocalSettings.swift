@@ -55,6 +55,7 @@ public class LocalSettings: NSObject {
 
     @SettingsStorage("debugModeEnabledValue") public var debugModeEnabledValue: Bool?
     @SettingsStorage("keepScreenAwakeBannerHasDismissed") public var keepScreenAwakeBannerHasDismissed: Bool?
+    @SettingsStorage("didShowEditorPermissionsTooltip") public var didShowEditorPermissionsTooltip: Bool?
     @SettingsStorage("DriveMacSyncRecoveryDisabled") public var driveMacSyncRecoveryDisabledValue: Bool?
     @SettingsStorage("DriveMacPromoBannerDisabled") public var driveMacPromoBannerDisabledValue: Bool?
     @SettingsStorage("DriveMacGradualRolloutChannelEnabled") public var driveMacGradualRolloutChannelEnabledValue: Bool?
@@ -72,6 +73,7 @@ public class LocalSettings: NSObject {
     @SettingsStorage("DriveSharingExternalInvitations") public var driveSharingExternalInvitationsValue: Bool?
     @SettingsStorage("DriveSharingDisabled") public var driveSharingDisabledValue: Bool?
     @SettingsStorage("DriveSharingExternalInvitationsDisabled") public var driveSharingExternalInvitationsDisabledValue: Bool?
+    @SettingsStorage("DriveSharingAdminPermissions") public var driveSharingAdminPermissionsValue: Bool?
     @SettingsStorage("DrivePublicShareEditMode") public var drivePublicShareEditModeValue: Bool?
     @SettingsStorage("DrivePublicShareEditModeDisabled") public var drivePublicShareEditModeDisabledValue: Bool?
     @SettingsStorage("DriveShareURLBookmarking") public var driveShareURLBookmarkingValue: Bool?
@@ -160,6 +162,7 @@ public class LocalSettings: NSObject {
         self._defaultHomeTabTagValue.configure(with: suite)
         self._oneDollarPlanUpsellEnabledValue.configure(with: suite)
         self._keepScreenAwakeBannerHasDismissed.configure(with: suite)
+        self._didShowEditorPermissionsTooltip.configure(with: suite)
         self._driveMacSyncRecoveryDisabledValue.configure(with: suite)
         self._driveMacPromoBannerDisabledValue.configure(with: suite)
         self._driveMacGradualRolloutChannelEnabledValue.configure(with: suite)
@@ -178,6 +181,7 @@ public class LocalSettings: NSObject {
         self._driveSharingExternalInvitationsValue.configure(with: suite)
         self._driveSharingDisabledValue.configure(with: suite)
         self._driveSharingExternalInvitationsDisabledValue.configure(with: suite)
+        self._driveSharingAdminPermissionsValue.configure(with: suite)
         self._drivePublicShareEditModeValue.configure(with: suite)
         self._driveShareURLBookmarkingValue.configure(with: suite)
         self._driveShareURLBookmarksDisabledValue.configure(with: suite)
@@ -254,6 +258,7 @@ public class LocalSettings: NSObject {
         driveSharingExternalInvitations = driveSharingExternalInvitationsValue ?? false
         driveSharingDisabled = driveSharingDisabledValue ?? false
         driveSharingExternalInvitationsDisabled = driveSharingExternalInvitationsDisabledValue ?? false
+        driveSharingAdminPermissions = driveSharingAdminPermissionsValue ?? false
         drivePublicShareEditMode = drivePublicShareEditModeValue ?? false
         driveShareURLBookmarking = driveShareURLBookmarkingValue ?? false
         driveShareURLBookmarksDisabled = driveShareURLBookmarksDisabledValue ?? false
@@ -315,6 +320,7 @@ public class LocalSettings: NSObject {
         self.driveMacAbnormalExitRelaunchDisabledValue = nil
         self.pushNotificationIsEnabledValue = nil
         self.keepScreenAwakeBannerHasDismissed = nil
+        self.didShowEditorPermissionsTooltip = nil
         self.didShowPhotosNotification = nil
         self.isB2BUserValue = nil
         self.showPhotoUpsellInNextLaunch = nil
@@ -323,6 +329,7 @@ public class LocalSettings: NSObject {
         self.driveSharingExternalInvitationsValue = nil
         self.driveSharingDisabledValue = nil
         self.driveSharingExternalInvitationsDisabledValue = nil
+        self.driveSharingAdminPermissionsValue = nil
         self.drivePublicShareEditModeValue = nil
         self.driveShareURLBookmarkingValue = nil
         self.driveShareURLBookmarksDisabledValue = nil
@@ -523,6 +530,10 @@ public class LocalSettings: NSObject {
 
     @objc public dynamic var driveSharingExternalInvitationsDisabled: Bool = false {
         willSet { driveSharingExternalInvitationsDisabledValue = newValue }
+    }
+
+    @objc public dynamic var driveSharingAdminPermissions: Bool = false {
+        willSet { driveSharingAdminPermissionsValue = newValue }
     }
 
     @objc public dynamic var drivePublicShareEditMode: Bool = false {

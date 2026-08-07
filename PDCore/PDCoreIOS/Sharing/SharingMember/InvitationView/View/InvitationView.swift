@@ -229,7 +229,7 @@ extension InvitationView {
     
     private func presentPermissionEditSheet() {
         guard let nav = hostingProvider.viewController?.navigationController else { return }
-        let isEditor = viewModel.permission.contains([.read, .write])
+        let isEditor = viewModel.permission.isEditor
         
         var sheet: PMActionSheet!
         let viewerItem = PMActionSheetItem(
@@ -349,7 +349,7 @@ extension InvitationView {
     private func inviteButton() -> some View {
         Group {
             if viewModel.isInviting {
-                AnyView(ProtonSpinner(size: .medium))
+                AnyView(ProtonSpinner(size: .custom(24)))
             } else {
                 Button(action: {
                     UIApplication.shared.endEditing()

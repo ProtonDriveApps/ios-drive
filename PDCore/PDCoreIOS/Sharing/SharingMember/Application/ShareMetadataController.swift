@@ -21,15 +21,24 @@ import Foundation
 import PDClient
 import PDCore
 
+struct DirectShareMetadata {
+    let share: PDClient.Share
+    let rootNodeKey: DecryptionKey
+    let contextShareAddressID: String
+}
+
 protocol ShareMetadataProvider {
     var isPublicLinkEnabled: Bool { get }
     var itemName: String { get }
     var nodeIdentifier: NodeIdentifier { get }
     var shareID: String? { get }
+    var editorsCanShare: Bool { get }
+    var updatePublisher: AnyPublisher<Void, Never> { get }
 
     func getShareLink() throws -> SharedLink?
-    func getDirectShare() async throws -> PDClient.Share
-    func fetchShareMetaData() async throws -> PDClient.Share
+    func getDirectShare() async throws -> DirectShareMetadata
+    func fetchShareMetaData() async throws -> DirectShareMetadata
+    func setEditorsCanShare(_ enabled: Bool)
 }
 
 final class ShareMetadataController: ShareMetadataProvider {
@@ -41,7 +50,15 @@ final class ShareMetadataController: ShareMetadataProvider {
     private(set) var isPublicLinkEnabled: Bool = false
     private(set) var itemName: String = ""
     private(set) var shareID: String?
-
+    private(set) var editorsCanShare = false
+    private let updateSubject = PassthroughSubject<Void, Never>()
+    
+    var updatePublisher: AnyPublisher<Void, Never> {
+        updateSubject
+            .receive(on: DispatchQueue.main)
+            .eraseToAnyPublisher()
+    }
+    
     init(
         dependencies: Dependencies,
         nodeIdentifier: NodeIdentifier
@@ -70,14 +87,15 @@ final class ShareMetadataController: ShareMetadataProvider {
         }
     }
 
-    func getDirectShare() async throws -> PDClient.Share {
+    func getDirectShare() async throws -> DirectShareMetadata {
         guard let node else { throw ShareMetadataErrors.nodeIsMissing }
         do {
-            let directShare: PDClient.Share? = try await dependencies.managedObjectContext.perform {
-                if let share = node.directShares.first {
-                    return try self.mapping(coreDataShare: share, linkID: node.id)
+            let directShare: DirectShareMetadata? = try await dependencies.managedObjectContext.perform {
+                guard let standardShare = node.getStandardShare() else {
+                    return nil
                 }
-                return nil
+                let linkID = standardShare.linkID ?? standardShare.root?.id ?? node.findRootNode().id
+                return try self.mapping(coreDataShare: standardShare, linkID: linkID)
             }
             guard let directShare else { throw ShareMetadataErrors.directShareIsMissing }
             return directShare
@@ -91,7 +109,17 @@ final class ShareMetadataController: ShareMetadataProvider {
         }
     }
 
-    private func createShare() async throws -> PDClient.Share {
+    func setEditorsCanShare(_ enabled: Bool) {
+        editorsCanShare = enabled
+        dependencies.managedObjectContext.performAndWait {
+            guard let shareID, let share = Share.fetch(id: shareID, in: dependencies.managedObjectContext) else { return }
+            share.editorsCanShare = enabled
+            try? dependencies.managedObjectContext.saveOrRollback()
+        }
+        updateSubject.send()
+    }
+
+    private func createShare() async throws -> DirectShareMetadata {
         guard let node else { throw ShareMetadataErrors.nodeIsMissing }
         _ = try await dependencies.shareCreator.createShare(for: node)
         return try await fetchShareMetaData()
@@ -128,57 +156,67 @@ extension ShareMetadataController {
         dependencies.managedObjectContext.performAndWait {
             self.isPublicLinkEnabled = node.isShared
             self.itemName = (try? node.decryptName()) ?? ""
-            self.shareID = node.directShares.first?.id
+            // Resolve the managed standard share the same way as `getDirectShare`, so member
+            // listing/management (which relies on `shareID`) works for an admin operating on a node
+            // reached through an ancestor share — not only for the owner of the item itself.
+            self.shareID = node.getStandardShare()?.id
+            self.editorsCanShare = node.getStandardShare()?.editorsCanShare ?? false
         }
+        updateSubject.send()
     }
 
-    private func mapping(coreDataShare: CoreDataShare, linkID: String) throws -> PDClient.Share {
+    private func mapping(coreDataShare: CoreDataShare, linkID: String) throws -> DirectShareMetadata {
         guard
             let flags = coreDataShare.flags,
             let creator = coreDataShare.creator,
-            let addressID = coreDataShare.addressID,
-            let key = coreDataShare.key,
+            let shareKey = coreDataShare.key,
             let passphrase = coreDataShare.passphrase,
             let passphraseSignature = coreDataShare.passphraseSignature,
             let type = PDClient.Share.´Type´(rawValue: Int(coreDataShare.type.rawValue))
-        else { throw ShareMetadataErrors.needToFetchShareMetadata }
-        return .init(
+        else {
+            throw ShareMetadataErrors.needToFetchShareMetadata
+        }
+
+        // The address to sign invitations with is the current user's own address on the node's
+        // context share, not an address derived from `coreDataShare`: a share created by an admin via
+        // node-key access lists no membership for them, so `coreDataShare.getAddressID()` would fail.
+        guard let contextShareAddressID = node?.contextShareSignerAddressID(ownedBy: dependencies.sessionVault.addressIDs) else {
+            throw ShareMetadataErrors.missingContextShareAddress
+        }
+        let share = PDClient.Share(
             flags: flags,
             shareID: coreDataShare.id,
             volumeID: coreDataShare.volumeID,
             linkID: linkID,
             creator: creator,
-            addressID: addressID,
-            key: key,
+            addressID: coreDataShare.addressID,
+            key: shareKey,
             passphrase: passphrase,
             passphraseSignature: passphraseSignature,
             type: type
         )
-    }
-
-    private func mapping(metadata: ShareMetadata) -> PDClient.Share {
-        return .init(
-            flags: [],
-            shareID: metadata.shareID,
-            volumeID: metadata.volumeID,
-            linkID: metadata.linkID,
-            creator: metadata.creator,
-            addressID: metadata.addressID,
-            key: metadata.key,
-            passphrase: metadata.passphrase,
-            passphraseSignature: metadata.passphraseSignature,
-            type: PDClient.Share.´Type´(rawValue: metadata.type) ?? .undefined
+        guard let rootNodeKey = coreDataShare.root?.nodeKey, let passphrase = try? coreDataShare.root?.decryptPassphrase() else {
+            throw ShareMetadataErrors.missingRootNodeKey
+        }
+        let nodeKey = DecryptionKey(privateKey: rootNodeKey, passphrase: passphrase)
+        return DirectShareMetadata(
+            share: share,
+            rootNodeKey: nodeKey,
+            contextShareAddressID: contextShareAddressID
         )
     }
 
-    func fetchShareMetaData() async throws -> PDClient.Share {
+    func fetchShareMetaData() async throws -> DirectShareMetadata {
         guard let shareID else { throw ShareMetadataErrors.shareIDIsMissing }
         let fetchedShare = try await dependencies.remoteShareDataSource.getMetadata(forShare: shareID)
-        try await dependencies.managedObjectContext.perform {
-            self.dependencies.storage.updateShare(fetchedShare, in: self.dependencies.managedObjectContext)
+        let metadata = try await dependencies.managedObjectContext.perform {
+            let share = self.dependencies.storage.updateShare(fetchedShare, in: self.dependencies.managedObjectContext)
             try self.dependencies.managedObjectContext.saveOrRollback()
+            self.editorsCanShare = share.editorsCanShare
+            return try self.mapping(coreDataShare: share, linkID: fetchedShare.linkID)
         }
-        return mapping(metadata: fetchedShare)
+        updateSubject.send()
+        return metadata
     }
 }
 
@@ -189,6 +227,8 @@ extension ShareMetadataController {
         case needToFetchShareMetadata
         case createShareFailed
         case directShareIsMissing
+        case missingRootNodeKey
+        case missingContextShareAddress
     }
 
     struct Dependencies {
@@ -196,5 +236,6 @@ extension ShareMetadataController {
         let remoteShareDataSource: RemoteShareMetadataDataSource
         let shareCreator: ShareCreatorProtocol
         let storage: StorageManager
+        let sessionVault: SessionVault
     }
 }

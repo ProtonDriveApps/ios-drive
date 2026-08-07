@@ -34,6 +34,7 @@ public enum ExternalFeatureFlag: String, CaseIterable, Codable {
     case driveSharingExternalInvitations = "DriveSharingExternalInvitations"
     case driveSharingDisabled = "DriveSharingDisabled"
     case driveSharingExternalInvitationsDisabled = "DriveSharingExternalInvitationsDisabled"
+    case driveSharingAdminPermissions = "DriveSharingAdminPermissions"
     case drivePublicShareEditMode = "DrivePublicShareEditMode"
     case drivePublicShareEditModeDisabled = "DrivePublicShareEditModeDisabled"
     case driveShareURLBookmarking = "DriveShareURLBookmarking"

@@ -96733,6 +96733,18 @@
         }
       }
     },
+    "sharing_member_access_section_title" : {
+      "comment" : "Section header for editor access settings",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Access"
+          }
+        }
+      }
+    },
     "sharing_member_access_updated" : {
       "comment" : "Banner text shown after updating the invitee's access permissions.",
       "extractionState" : "manual",
@@ -96915,6 +96927,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "存取權已更新和共享"
+          }
+        }
+      }
+    },
+    "sharing_member_allow_editors_to_manage_sharing" : {
+      "comment" : "Toggle label to allow editors to manage sharing",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow editors to change permissions and share"
           }
         }
       }
@@ -97105,6 +97129,42 @@
         }
       }
     },
+    "sharing_member_change_own_access_confirmation" : {
+      "comment" : "Confirmation button to change your own access to viewer",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change my access"
+          }
+        }
+      }
+    },
+    "sharing_member_change_own_access_message" : {
+      "comment" : "#@name: String@# Confirmation message shown before you change your own access down to viewer",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You won't be able to share \"%@\" after changing your access to viewer. The owner or an editor with sharing access can restore your edit access. You can’t undo this change yourself."
+          }
+        }
+      }
+    },
+    "sharing_member_change_own_access_title" : {
+      "comment" : "Confirmation dialog title shown before you change your own access down to viewer",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change access to viewer?"
+          }
+        }
+      }
+    },
     "sharing_member_copy_invite_link" : {
       "comment" : "Action title",
       "extractionState" : "manual",
@@ -97287,6 +97347,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "複製邀請連結"
+          }
+        }
+      }
+    },
+    "sharing_member_current_user_suffix" : {
+      "comment" : "#@name: String@# Suffix marking the current user in the members list, e.g. 'Alice (you)'",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (you)"
           }
         }
       }
@@ -97761,6 +97833,54 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "sharing_member_editor_permissions_tooltip_message" : {
+      "comment" : "Body of the tooltip explaining that editors can now manage sharing",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editors can now manage sharing and invite others. You can turn it off anytime in Share settings."
+          }
+        }
+      }
+    },
+    "sharing_member_editor_permissions_tooltip_title" : {
+      "comment" : "Title of the tooltip shown when editors can manage sharing on a newly created share",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New editor permissions"
+          }
+        }
+      }
+    },
+    "sharing_member_editors_can_share_disabled" : {
+      "comment" : "Banner text shown after disabling the setting that lets editors manage sharing",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setting updated. Editors can't change permissions or share."
+          }
+        }
+      }
+    },
+    "sharing_member_editors_can_share_enabled" : {
+      "comment" : "Banner text shown after enabling the setting that lets editors manage sharing",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setting updated. Editors can change permissions and share."
           }
         }
       }
@@ -101489,181 +101609,181 @@
       "localizations" : {
         "be" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Падзяліцца з"
           }
         },
         "ca" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Compartit amb"
           }
         },
         "cs" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Sdíleno s"
           }
         },
         "da" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Delt med"
           }
         },
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Geteilt mit"
           }
         },
         "el" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Κοινή χρήση με"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Shared with"
+            "value" : "Who has access"
           }
         },
         "es" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Compartido con"
           }
         },
         "es-419" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Compartido con"
           }
         },
         "fi" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Jaettu"
           }
         },
         "fr" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Partagé avec"
           }
         },
         "hu" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Megosztás vele:"
           }
         },
         "id" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Dibagikan dengan"
           }
         },
         "it" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Condiviso con"
           }
         },
         "ja" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "で共有されました"
           }
         },
         "ka" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "გაზიარებულია ვისთან"
           }
         },
         "ko" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "공유할 대상:"
           }
         },
         "nb" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Delt med"
           }
         },
         "nl" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Gedeeld met"
           }
         },
         "pl" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Udostępniono"
           }
         },
         "pt" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Partilhado com"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Compartilhado com"
           }
         },
         "ro" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Partajat cu"
           }
         },
         "ru" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Поделиться с"
           }
         },
         "sk" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Zdieľané s"
           }
         },
         "sv" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Delad med"
           }
         },
         "tr" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Şununla paylaşılmış"
           }
         },
         "uk" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Спільно з:"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "已分享给"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "與分享"
           }
         }
@@ -103529,6 +103649,18 @@
         }
       }
     },
+    "sharing_member_role_admin" : {
+      "comment" : "The role of the sharing member is an admin",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Admin"
+          }
+        }
+      }
+    },
     "sharing_member_role_editor" : {
       "comment" : "The role of the sharing member is an editor",
       "extractionState" : "manual",
@@ -103711,6 +103843,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "編輯者"
+          }
+        }
+      }
+    },
+    "sharing_member_role_owner" : {
+      "comment" : "Status label shown next to the item owner in the members list",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Owner"
           }
         }
       }

@@ -50,8 +50,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/ProtonMail/protoncore_ios.git",
       "state" : {
-        "revision" : "fba5d74457c885c79692e0d5b08038a213456815",
-        "version" : "34.2.2"
+        "revision" : "b8cfa0ede1843eadea4769844eca0544010de9ac",
+        "version" : "37.0.1"
       }
     },
     {
@@ -66,10 +66,10 @@
     {
       "identity" : "sdk-swift",
       "kind" : "remoteSourceControl",
-      "location" : "git@gitlab.protontech.ch:drive/sdk-swift.git",
+      "location" : "https://github.com/ProtonDriveApps/sdk-swift.git",
       "state" : {
-        "branch" : "0.7.0-alpha.10",
-        "revision" : "566363ec3c4c835fbd5b65af2c877e974d0af018"
+        "branch" : "0.15.1",
+        "revision" : "fc151d115955f9d09f6e4eddb6552b07372a9731"
       }
     },
     {
@@ -86,8 +86,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/getsentry/sentry-cocoa.git",
       "state" : {
-        "revision" : "ca92efeb24b10052cd2a79e5205f42c5a16770ec",
-        "version" : "8.53.2"
+        "revision" : "05d3ce8332097ff0b2347231ac66476fd7d2f4d8",
+        "version" : "9.8.0"
       }
     },
     {

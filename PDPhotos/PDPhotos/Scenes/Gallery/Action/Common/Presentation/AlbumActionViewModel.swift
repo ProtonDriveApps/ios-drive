@@ -110,7 +110,8 @@ final class AlbumActionViewModel: BasePhotosActionViewModel, PhotosActionViewMod
             .info
         ]
 
-        if albumRole.canShare {
+        // Album sharing is owner-only: admin sharing is not supported by the backend for photos/albums.
+        if albumRole == .owner {
             if featureFlagsController.hasSharing {
                 actions.insert(.newShare)
             } else {

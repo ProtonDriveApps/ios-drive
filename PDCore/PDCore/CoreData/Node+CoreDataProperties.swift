@@ -42,6 +42,8 @@ extension Node {
     @NSManaged public var volumeID: String
     @NSManaged public var signatureEmail: String? // Encrypted by `DriveStringCryptoTransformer`
     @NSManaged public var nameSignatureEmail: String? // Encrypted by `DriveStringCryptoTransformer`
+    @NSManaged public var ownerEmail: String? // Volume owner
+    @NSManaged public var ownerOrganization: String? // Volume owner's organization; fallback when ownerEmail is nil (org volumes)
     @NSManaged public var size: Int
     @NSManaged public var directShares: Set<Share>
     @available(*, deprecated, message: "Don't use directly, use `parentNode: Node?` or `parentFolder: Folder?`")
@@ -80,6 +82,44 @@ extension Node {
         let share = try getContextShare(file: file, function: function, line: line)
         let addressID = try share.getAddressID()
         return addressID
+    }
+
+    /// The standard share rooted at this node — the share whose members are managed when sharing
+    /// *this* item. Member sharing always operates on a `.standard` share; root shares (`.main` /
+    /// `.photos` / `.device`) are access entities, never member-sharing entities.
+    ///
+    /// Returns `nil` when the item has no standard share of its own yet. The caller then creates one
+    /// (see `ShareCreator`), which is how a nested item gets its own share even inside an already
+    /// shared folder — for owners and admins alike (RFC 0010).
+    public func getStandardShare() -> Share? {
+        directShares.first { $0.type == .standard }
+    }
+
+    /// The address the current user should sign share operations with for this node's context.
+    ///
+    /// Resolved from the current user's own membership on the context share, so an admin acting on a
+    /// share they access through an ancestor signs as themselves — the share being operated on may
+    /// not list them as a member (they access it via the node-key packet, RFC 0010), so the address
+    /// must come from the ancestor context share, not from that share.
+    ///
+    /// Falls back to the context share's own `addressID` only for owned root shares (`.main` /
+    /// `.photos` / `.device`), where it is the current user's address. Returns `nil` when the user
+    /// controls no address on the context (e.g. a standard share they are not a member of).
+    ///
+    /// - Parameter ownedAddressIDs: the address IDs the current user controls (`sessionVault.addressIDs`).
+    public func contextShareSignerAddressID(ownedBy ownedAddressIDs: Set<String>) -> String? {
+        guard let contextShare = try? getContextShare() else {
+            return nil
+        }
+        if let ownAddressID = contextShare.members.first(where: { ownedAddressIDs.contains($0.addressID) })?.addressID {
+            return ownAddressID
+        }
+        switch contextShare.type {
+        case .main, .photos, .device:
+            return contextShare.addressID
+        case .standard, .undefined:
+            return nil
+        }
     }
 
     public func setShareID(_ shareID: String) {
@@ -215,9 +255,15 @@ public enum Role {
     public var canAdministrate: Bool {
         return [Role.admin, .owner].contains(self)
     }
+}
 
-    public var canShare: Bool {
-        return self == .owner // admin role is excluded until admin sharing is implemented
+extension Node {
+    private func directShareMemberPermissions() -> Permissions? {
+        if let permissionsFlag = directShares.first?.members.first?.permissions,
+           let permissions = Permissions(rawValue: permissionsFlag) {
+            return permissions
+        }
+        return nil
     }
 }
 
@@ -225,21 +271,18 @@ extension Node {
     public func getNodePermissions() -> Permissions {
         if let parentNode {
             let parentPermissions = parentNode.getNodePermissions()
-            let currentPermissions: Permissions
-            if let permissionsFlag = directShares.first?.members.first?.permissions,
-               let permissions = Permissions(rawValue: permissionsFlag) {
-                currentPermissions = permissions
-            } else {
-                currentPermissions = parentPermissions
-            }
+            let currentPermissions = localPermissions() ?? parentPermissions
             return max(parentPermissions, currentPermissions)
         } else {
-            if let permissionsFlag = directShares.first?.members.first?.permissions,
-               let permissions = Permissions(rawValue: permissionsFlag) {
-                return permissions
-            }
-            return .administrate
+            return localPermissions() ?? .administrate
         }
+    }
+
+    private func localPermissions() -> Permissions? {
+        if let memberPermissions = directShareMemberPermissions() {
+            return memberPermissions
+        }
+        return Permissions(rawValue: Int16(permissionsMaskRaw))
     }
 
     public func getNodeRole() -> Role {

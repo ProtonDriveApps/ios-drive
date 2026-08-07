@@ -49,7 +49,7 @@ public class ShareCreator: ShareCreatorProtocol {
     public func createShare(for root: Node) async throws -> Share {
         let shareName = "New share"
 
-        let (volumeID, rootLinkID, rootKey, mainShareCreator, volume, signersKit) = try await moc.perform {
+        let (volumeID, rootLinkID, rootKey, creatorEmail, volume, signersKit) = try await moc.perform {
             let root = root.in(moc: self.moc)
 #if os(macOS)
             guard let mainShare = self.storage.mainShareOfVolume(by: self.sessionVault.addressIDs, moc: self.moc) else {
@@ -69,20 +69,21 @@ public class ShareCreator: ShareCreatorProtocol {
             return (volume.id, root.id, root.nodeKey, mainShareCreator, volume, signersKit)
 
 #else
-            // I can only create shares for my own volume
+            // Creating a standard share requires the current user to own or administer the item's
+            // context: owners reach a root share (main/photos/device); admins reach a standard share
+            // they are a member of and access through the node-key packet (RFC 0010). Editors and
+            // viewers cannot create shares.
+            guard root.getNodeRole().canAdministrate else {
+                throw Share.InvalidState(message: "Only the owner or an admin can create a share for this item.")
+            }
             let volume = try Volume.fetchOrThrow(id: root.volumeID, in: self.moc)
-            let share = try root.getContextShare()
-            let availableTypes: [Share.ShareType] = [.main, .photos, .device]
-            guard availableTypes.contains(share.type) else {
-                throw Share.InvalidState(message: "Sharing is only available from main, photo and device share types.")
+            // Sign as the current user: their own membership address on the context share, so an admin
+            // creating a nested share signs as themselves (not the owner).
+            guard let signerAddressID = root.contextShareSignerAddressID(ownedBy: self.sessionVault.addressIDs) else {
+                throw Share.InvalidState(message: "No controllable address found on the context share.")
             }
-            guard let shareCreator = share.creator else {
-                throw Share.InvalidState(message: "No creator found in main share.")
-            }
-
-            let addressID = try share.getAddressID()
-            let signersKit = try self.signersKitFactory.make(forAddressID: addressID)
-            return (volume.id, root.id, root.nodeKey, shareCreator, volume, signersKit)
+            let signersKit = try self.signersKitFactory.make(forAddressID: signerAddressID)
+            return (volume.id, root.id, root.nodeKey, signersKit.address.email, volume, signersKit)
 #endif
         }
 
@@ -120,7 +121,7 @@ public class ShareCreator: ShareCreatorProtocol {
             let root = root.in(moc: self.moc)
             let share: Share = self.storage.new(with: shareID, by: #keyPath(Share.id), in: self.moc)
             share.addressID = signersKit.address.addressID
-            share.creator = mainShareCreator
+            share.creator = creatorEmail
             share.key = shareKeys.key
             share.passphrase = newSharePassphrase
             share.passphraseSignature = shareKeys.signature

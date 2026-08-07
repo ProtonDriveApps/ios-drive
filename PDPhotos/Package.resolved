@@ -50,8 +50,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/ProtonMail/protoncore_ios.git",
       "state" : {
-        "revision" : "0fdf4c672d898ab8b9048c3b1c36c44a047dd694",
-        "version" : "33.2.0"
+        "revision" : "b8cfa0ede1843eadea4769844eca0544010de9ac",
+        "version" : "37.0.1"
       }
     },
     {
@@ -61,6 +61,15 @@
       "state" : {
         "revision" : "21d1dc412cfecbe6e34f1f4c4eb88d3f912654a6",
         "version" : "5.2.4"
+      }
+    },
+    {
+      "identity" : "sdk-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ProtonDriveApps/sdk-swift.git",
+      "state" : {
+        "branch" : "0.15.1",
+        "revision" : "fc151d115955f9d09f6e4eddb6552b07372a9731"
       }
     },
     {
@@ -77,8 +86,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/getsentry/sentry-cocoa.git",
       "state" : {
-        "revision" : "ca92efeb24b10052cd2a79e5205f42c5a16770ec",
-        "version" : "8.53.2"
+        "revision" : "05d3ce8332097ff0b2347231ac66476fd7d2f4d8",
+        "version" : "9.8.0"
       }
     },
     {
@@ -88,6 +97,15 @@
       "state" : {
         "revision" : "82645ec760917961cfa08c9c0c7104a57a0fa4b1",
         "version" : "1.3.3"
+      }
+    },
+    {
+      "identity" : "swift-protobuf",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-protobuf.git",
+      "state" : {
+        "revision" : "55d7a1cc5666b85c13464aea1c4b4a90feccb4c8",
+        "version" : "1.38.1"
       }
     },
     {
@@ -140,8 +158,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Unleash/unleash-proxy-client-swift.git",
       "state" : {
-        "revision" : "c747f7927adb0cee67b9e39e32b6a17376e1f923",
-        "version" : "2.2.0"
+        "revision" : "050a68f41bcbc831d809f3022c97038f4b16c032",
+        "version" : "2.4.0"
       }
     },
     {
@@ -167,8 +185,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/weichsel/ZIPFoundation.git",
       "state" : {
-        "revision" : "02b6abe5f6eef7e3cbd5f247c5cc24e246efcfe0",
-        "version" : "0.9.19"
+        "revision" : "22787ffb59de99e5dc1fbfe80b19c97a904ad48d",
+        "version" : "0.9.20"
       }
     }
   ],

@@ -10279,7 +10279,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 3.0.0;
+				MARKETING_VERSION = 3.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "ch.protonmail.drive.fileprovider-ui";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
@@ -10350,7 +10350,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.0.0;
+				MARKETING_VERSION = 3.0.1;
 				OTHER_CODE_SIGN_FLAGS = "--deep";
 				"OTHER_LDFLAGS[sdk=iphoneos*]" = "-llibbootstrapperdll.ios-arm64.o";
 				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = "-llibbootstrapperdll.iossimulator-arm64.o";
@@ -10404,7 +10404,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 3.0.0;
+				MARKETING_VERSION = 3.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.share;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
@@ -10477,7 +10477,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.0.0;
+				MARKETING_VERSION = 3.0.1;
 				OTHER_CODE_SIGN_FLAGS = "--deep";
 				"OTHER_LDFLAGS[sdk=iphoneos*]" = "-llibbootstrapperdll.ios-arm64.o";
 				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = "-llibbootstrapperdll.iossimulator-arm64.o";
@@ -10553,7 +10553,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 3.0.0;
+				MARKETING_VERSION = 3.0.1;
 				"OTHER_LDFLAGS[sdk=iphoneos*]" = "-llibbootstrapperdll.ios-arm64.o";
 				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = "-llibbootstrapperdll.iossimulator-arm64.o";
 				PRODUCT_BUNDLE_IDENTIFIER = ch.protonmail.drive.fileprovider;

@@ -23,16 +23,19 @@ import ProtonCoreUIFoundations
 struct SharingConfigView: View {
     @EnvironmentObject var hostingProvider: ViewControllerProvider
     @ObservedObject private var viewModel: SharingConfigViewModel
+    @ObservedObject private var inviteeViewModel: InviteeViewModel
     @State var isShared = false
     private let inviteeListView: InviteeListView
     private let publicShareLinkView: PublicShareLinkView
     
     init(
         viewModel: SharingConfigViewModel,
+        inviteeViewModel: InviteeViewModel,
         inviteeListView: InviteeListView,
         publicShareLinkView: PublicShareLinkView
     ) {
         self.viewModel = viewModel
+        self.inviteeViewModel = inviteeViewModel
         self.inviteeListView = inviteeListView
         self.publicShareLinkView = publicShareLinkView
     }
@@ -58,15 +61,17 @@ struct SharingConfigView: View {
             ToolbarItem(placement: .topBarLeading) {
                 dismissButton
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                moreButton
+            if inviteeViewModel.canOpenMoreActions {
+                ToolbarItem(placement: .topBarTrailing) {
+                    settingsButton
+                }
             }
         }
         .onAppear(perform: {
             viewModel.viewAppear()
         })
     }
-    
+
     private var dismissButton: some View {
         Button {
             hostingProvider.viewController?.navigationController?.dismiss(animated: true)
@@ -76,15 +81,17 @@ struct SharingConfigView: View {
         }
         .accessibilityIdentifier("SharingConfigView.closeButton")
     }
-    
-    private var moreButton: some View {
+
+    /// Single entry point to the "more" sheet (stop sharing + owner-only editor-access setting).
+    /// Disabled until a share exists.
+    private var settingsButton: some View {
         Button {
-            viewModel.presentMoreActionSheet()
+            viewModel.presentMoreActionSheet(inviteeViewModel: inviteeViewModel)
         } label: {
-            Image(uiImage: IconProvider.threeDotsHorizontal)
+            Image(uiImage: IconProvider.cogWheel)
                 .tint(ColorProvider.IconNorm)
         }
         .disabled(!viewModel.isShared)
-        .accessibilityIdentifier("SharingConfigView.moreButton")
+        .accessibilityIdentifier("SharingConfigView.settingsButton")
     }
 }

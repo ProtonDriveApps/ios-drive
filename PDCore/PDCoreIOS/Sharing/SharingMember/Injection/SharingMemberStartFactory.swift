@@ -44,7 +44,8 @@ public struct SharingMemberStartFactory: SharingMemberStartFactoryProtocol {
             sessionVault: dependencies.tower.sessionVault,
             shareCreator: shareCreator,
             storage: dependencies.tower.storage,
-            invitationResultController: dependencies.invitationResultController
+            invitationResultController: dependencies.invitationResultController,
+            localSettings: dependencies.tower.localSettings
         )
         return SharingMemberCoordinator(dependencies: dependencies)
     }

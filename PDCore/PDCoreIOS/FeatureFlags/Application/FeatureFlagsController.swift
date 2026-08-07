@@ -24,6 +24,7 @@ public protocol FeatureFlagsControllerProtocol {
     // Actual feature flags combinations, taking into account build type, killswitches and rollout flags
     var hasSharing: Bool { get }
     var hasSharingExternalInvitations: Bool { get }
+    var hasSharingAdminPermissions: Bool { get }
     var hasPublicShareEditMode: Bool { get }
     var hasRatingIOSDrive: Bool { get }
     var hasRatingBooster: Bool { get }
@@ -72,6 +73,10 @@ public final class FeatureFlagsController: FeatureFlagsControllerProtocol {
 
     public var hasSharingExternalInvitations: Bool {
         return hasSharing && featureFlagsStore.isFeatureEnabled(.driveSharingExternalInvitations) && !featureFlagsStore.isFeatureEnabled(.driveSharingExternalInvitationsDisabled)
+    }
+
+    public var hasSharingAdminPermissions: Bool {
+        return hasSharing && featureFlagsStore.isFeatureEnabled(.driveSharingAdminPermissions)
     }
     
     public var hasPublicShareEditMode: Bool {

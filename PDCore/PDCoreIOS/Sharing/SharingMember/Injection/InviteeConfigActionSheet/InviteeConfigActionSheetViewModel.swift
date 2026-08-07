@@ -24,14 +24,21 @@ struct InviteeConfigActionSheetViewModel {
     private let invitee: InviteeInfo
     private let inviteeName: String?
     private let isPending: Bool
+    private let inviterPermissions: AccessPermission
     private weak var handler: InviteeConfigSheetViewModel?
     
-    init(invitee: InviteeInfo, inviteeName: String?, handler: InviteeConfigSheetViewModel) {
+    init(
+        invitee: InviteeInfo,
+        inviteeName: String?,
+        inviterPermissions: AccessPermission,
+        handler: InviteeConfigSheetViewModel
+    ) {
         self.invitee = invitee
         self.inviteeName = inviteeName
         self.handler = handler
+        self.inviterPermissions = inviterPermissions
         
-        self.isEditor = invitee.permissions.contains([.read, .write])
+        self.isEditor = invitee.permissions.isEditor
         self.isPending = invitee.externalInvitationState == .pending
     }
     
@@ -55,18 +62,18 @@ struct InviteeConfigActionSheetViewModel {
     
     var viewerActionTitle: String {
         let title = Localization.sharing_member_role_viewer
-        guard isPending, !isEditor  else { return title }
+        guard isPending, !isEditor else { return title }
         return "\(title) (\(Localization.sharing_member_pending))"
     }
     
     var editorActionTitle: String {
         let title = Localization.sharing_member_role_editor
-        guard isPending, isEditor  else { return title }
+        guard isPending, isEditor else { return title }
         return "\(title) (\(Localization.sharing_member_pending))"
     }
     
     func update(permission: AccessPermission) {
-        handler?.update(permission: permission, for: invitee)
+        handler?.update(permission: permission.capped(to: inviterPermissions), for: invitee)
     }
     
     func copyInvitationLink() {

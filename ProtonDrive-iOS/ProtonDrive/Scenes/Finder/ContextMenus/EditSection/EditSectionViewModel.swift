@@ -58,8 +58,14 @@ final class EditSectionViewModel: ObservableObject {
             return [.copyBookmark]
         }
 
-        if featureFlagsController.hasSharing && node.getNodeRole().canShare {
-            shareSection.append(configShareMember)
+        if featureFlagsController.hasSharing {
+            let sharingPolicy = NodeSharingPolicy(
+                node: node,
+                featureFlagsController: featureFlagsController
+            )
+            if sharingPolicy.canManageSharing() {
+                shareSection.append(configShareMember)
+            }
         }
 
         return shareSection
@@ -80,7 +86,7 @@ final class EditSectionViewModel: ObservableObject {
             case .editor:
                 return [download, rename, move].compactMap { $0 }
             case .admin, .owner:
-                if featureFlagsController.hasSharing || !role.canShare {
+                if featureFlagsController.hasSharing || !role.canAdministrate {
                     return [download, rename, move].compactMap { $0 }
                 } else {
                     return [download, shareLink, rename, move].compactMap { $0 }

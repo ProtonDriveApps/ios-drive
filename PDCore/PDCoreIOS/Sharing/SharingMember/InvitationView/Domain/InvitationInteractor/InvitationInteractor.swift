@@ -28,33 +28,31 @@ final class InvitationInteractor: InvitationUserHandler {
     private let contactsManager: ContactsManagerProtocol
     private let externalUserInviteHandler: ExternalUserInviteHandler
     private let internalUserInviteHandler: InternalUserInviteHandler
-    private let sessionVault: SessionVault
     private let sessionDecryptor: SessionKeyDecryptionResource
     
     init(
         contactsManager: ContactsManagerProtocol,
         sessionDecryptor: SessionKeyDecryptionResource,
         externalUserInviteHandler: ExternalUserInviteHandler,
-        internalUserInviteHandler: InternalUserInviteHandler,
-        sessionVault: SessionVault
+        internalUserInviteHandler: InternalUserInviteHandler
     ) {
         self.contactsManager = contactsManager
         self.sessionDecryptor = sessionDecryptor
         self.externalUserInviteHandler = externalUserInviteHandler
         self.internalUserInviteHandler = internalUserInviteHandler
-        self.sessionVault = sessionVault
     }
     
     func execute(parameters: Parameters) async throws -> [InviteeInfo] {
         let mails = parameters.candidates.flatMap { $0.selectedMails }
-        
-        let signersKit = try sessionVault.make(forSigner: .address(parameters.share.creator))
-        let sessionKey = try getSessionKey(from: signersKit, passphrase: parameters.share.passphrase)
+        let signersKit = parameters.signersKit
+        let sessionKey = try getSessionKey(
+            from: signersKit,
+            passphrase: parameters.share.passphrase,
+            nodeKey: parameters.nodeKey
+        )
         let emailDetail = generateEmailDetail(from: parameters)
+        let permission = parameters.permission.capped(to: parameters.inviterPermissions)
         
-        // Follow the web process.
-        // When inviting multiple users, if an error occurs for any user, return the errors.
-        // Do not clear the candidate list, even if some users have already been invited.
         let invitations = try await withThrowingTaskGroup(
             of: InviteeInfo?.self,
             returning: [InviteeInfo].self
@@ -66,10 +64,11 @@ final class InvitationInteractor: InvitationUserHandler {
                         parameters: .init(
                             email: email,
                             emailDetails: emailDetail,
-                            permission: parameters.permission,
+                            permission: permission,
                             sessionKey: sessionKey,
                             share: parameters.share,
-                            signersKit: signersKit
+                            signersKit: signersKit,
+                            inviterEmail: parameters.inviterEmail
                         ),
                         hasSharingExternalInvitations: parameters.hasSharingExternalInvitations
                     )
@@ -87,11 +86,9 @@ final class InvitationInteractor: InvitationUserHandler {
         return invitations
     }
     
-    private func getSessionKey(from signersKit: SignersKit, passphrase: String) throws -> SessionKey {
-        let decryptionKeys = signersKit.address.activeKeys.compactMap(KeyPair.init).map(\.decryptionKey)
-        if decryptionKeys.isEmpty {
-            throw SessionVault.Errors.addressHasNoActiveKeys
-        }
+    private func getSessionKey(from signersKit: SignersKit, passphrase: String, nodeKey: DecryptionKey) throws -> SessionKey {
+        let addressDecryptionKeys = signersKit.address.activeKeys.compactMap(KeyPair.init).map(\.decryptionKey)
+        let decryptionKeys = [nodeKey] + addressDecryptionKeys
         let sessionKey = try sessionDecryptor.shareSessionKey(
             sharePassphrase: passphrase,
             shareCreatorDecryptionKeys: decryptionKeys
@@ -108,7 +105,11 @@ extension InvitationInteractor {
         let isIncludingMessage: Bool
         let itemName: String
         let permission: AccessPermission
+        let inviterPermissions: AccessPermission
+        let inviterEmail: String
+        let signersKit: SignersKit
         let share: PDClient.Share
+        let nodeKey: DecryptionKey
     }
     
     private struct InvitationParameters {
@@ -118,6 +119,7 @@ extension InvitationInteractor {
         let sessionKey: SessionKey
         let share: PDClient.Share
         let signersKit: SignersKit
+        let inviterEmail: String
     }
     
     private func generateEmailDetail(from parameters: Parameters) -> ShareInviteEmailDetails? {
@@ -136,11 +138,6 @@ extension InvitationInteractor {
         hasSharingExternalInvitations: Bool
     ) async throws -> InviteeInfo? {
         let keyRes = try? await contactsManager.fetchActivePublicKeys(email: parameters.email, internalOnly: true)
-        // `Unverified` key:
-        // These are legacy keys that were never migrated
-        // For account signed up a really long time ago on web, or >2y ago on mobile, and has not used web for >3y
-        //
-        // If there are no other good key for the address, we should fallback to the unverified one
         let publicKey = keyRes?.address.keys.first?.publicKey ?? keyRes?.unverified?.keys.first?.publicKey
         
         guard let publicKey else {
@@ -174,7 +171,7 @@ extension InvitationInteractor {
                 inviteePublicKey: inviteePublicKey,
                 permission: parameters.permission,
                 sessionKey: parameters.sessionKey,
-                shareCreator: parameters.share.creator,
+                inviterEmail: parameters.inviterEmail,
                 shareID: parameters.share.shareID,
                 signersKit: parameters.signersKit,
                 externalInvitationID: nil

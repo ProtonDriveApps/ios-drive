@@ -30,6 +30,7 @@ public class Share: NSManagedObject, GloballyUnique {
     @NSManaged public var state: ShareState
     @NSManaged public var creator: String? // Encrypted by `DriveStringCryptoTransformer`
     @NSManaged public var locked: Bool
+    @NSManaged public var editorsCanShare: Bool
     @NSManaged public var createTime: Date?
     @NSManaged public var modifyTime: Date?
     @NSManaged public var linkID: String?
@@ -59,7 +60,7 @@ public class Share: NSManagedObject, GloballyUnique {
         type == .standard
     }
 
-    func getAddressID() throws -> String {
+    public func getAddressID() throws -> String {
         if let member = members.first {
             return member.addressID
         } else {
@@ -193,6 +194,7 @@ public extension Share {
         self.state = ShareState(rawValue: Int16(share.state)) ?? .active
         self.creator = share.creator
         self.locked = share.locked ?? false
+        self.editorsCanShare = share.editorsCanShare ?? false
         self.createTime = share.createTime.map { Date(timeIntervalSince1970: TimeInterval($0)) }
         self.modifyTime = share.modifyTime.map { Date(timeIntervalSince1970: TimeInterval($0)) }
         self.linkID = share.linkID
@@ -319,6 +321,14 @@ extension StorageManager {
         }
 
         updateSharingDetails(link, to: node, moc: moc)
+        // Only write when the response carries ownership, so a partial/omitting response can't null out
+        // a known-good owner.
+        if let ownerEmail = link.ownedBy?.email {
+            node.ownerEmail = ownerEmail
+        }
+        if let ownerOrganization = link.ownedBy?.organization {
+            node.ownerOrganization = ownerOrganization
+        }
 
         if let parentLinkID = link.parentLinkID {
             if let photo = node as? Photo {

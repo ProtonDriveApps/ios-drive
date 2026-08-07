@@ -52,7 +52,8 @@ final class SharingConfigViewModel: ObservableObject, SharingConfigUpdater {
     var hasPublicLinkView: Bool {
         switch sharingType {
         case .common:
-            return true
+            // The public share link is an owner-only capability; admins manage members but not the link.
+            return dependencies.sharingPolicy.isOwner
         case .album:
             return false
         }
@@ -78,8 +79,8 @@ final class SharingConfigViewModel: ObservableObject, SharingConfigUpdater {
         }
     }
     
-    func presentMoreActionSheet() {
-        dependencies.coordinator.presentMoreActionSheet()
+    func presentMoreActionSheet(inviteeViewModel: InviteeViewModel) {
+        dependencies.coordinator.presentMoreActionSheet(inviteeViewModel: inviteeViewModel)
     }
     
     func update(hasInvitee: Bool) {
@@ -100,6 +101,7 @@ extension SharingConfigViewModel {
         let messageHandler: UserMessageHandlerProtocol
         let shareMetadataProvider: ShareMetadataProvider
         let featureFlagsController: FeatureFlagsControllerProtocol
+        let sharingPolicy: NodeSharingPolicy
     }
 }
 

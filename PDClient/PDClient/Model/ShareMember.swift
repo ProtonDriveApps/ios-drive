@@ -30,7 +30,24 @@ public struct AccessPermission: OptionSet, Codable {
     public var isEditor: Bool {
         self.contains([.read, .write])
     }
-    
+
+    public var isAdmin: Bool {
+        contains([.read, .write, .admin])
+    }
+
+    public var isViewer: Bool {
+        contains(.read) && !contains(.write)
+    }
+
+    /// Restricts a permission set to what the inviter is allowed to grant.
+    public func capped(to inviterPermissions: AccessPermission) -> AccessPermission {
+        var result = AccessPermission(rawValue: 0)
+        if inviterPermissions.contains(.read), contains(.read) { result.insert(.read) }
+        if inviterPermissions.contains(.write), contains(.write) { result.insert(.write) }
+        if inviterPermissions.contains(.admin), contains(.admin) { result.insert(.admin) }
+        return result
+    }
+
     public func toRequestPermission() -> ShareURLMeta.Permissions {
         isEditor ? [.read, .write] : [.read]
     }

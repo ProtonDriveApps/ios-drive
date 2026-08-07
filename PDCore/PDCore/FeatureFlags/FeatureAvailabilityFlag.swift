@@ -37,6 +37,7 @@ public enum FeatureAvailabilityFlag: CaseIterable {
     case driveSharingExternalInvitations
     case driveSharingDisabled
     case driveSharingExternalInvitationsDisabled
+    case driveSharingAdminPermissions
     case drivePublicShareEditMode
     case drivePublicShareEditModeDisabled
     case driveShareURLBookmarking

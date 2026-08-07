@@ -30,11 +30,11 @@ struct InviteeListView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            if !viewModel.isFetchingList {
+            if !viewModel.isFetchingList, viewModel.hasSharingEditing {
                 inviteButton
                     .padding(.top, 16)
             }
-            if !viewModel.inviteeList.isEmpty {
+            if viewModel.owner != nil || !viewModel.inviteeList.isEmpty {
                 sectionHeader
             }
             if viewModel.isFetchingList {
@@ -45,8 +45,19 @@ struct InviteeListView: View {
             }
         }
         .padding(.horizontal, 16)
+        .dialogConfirmationSheet(model: $viewModel.confirmationDialog)
     }
     
+    private func makeAdminSharingTooltip(_ tooltip: InviteeViewModel.AdminSharingTooltip) -> some View {
+        SpotlightBannerView(
+            icon: IconProvider.usersFilled,
+            title: tooltip.title,
+            message: tooltip.message,
+            accessibilityIdentifier: "InviteeListView.adminSharingTooltip",
+            onClose: { viewModel.dismissAdminSharingTooltip() }
+        )
+    }
+
     private var sectionHeader: some View {
         Text(viewModel.sectionHeader)
             .modifier(TextModifier())
@@ -57,10 +68,50 @@ struct InviteeListView: View {
     
     private var inviteeList: some View {
         VStack(spacing: 0) {
+            if let owner = viewModel.owner {
+                ownerCell(owner: owner)
+            }
+            viewModel.adminSharingTooltip.map {
+                makeAdminSharingTooltip($0)
+                    .padding(.top, 16)
+            }
             ForEach(viewModel.inviteeList, id: \.swiftUIID) { invitation in
                 inviteeCell(invitation: invitation)
             }
         }
+    }
+
+    @ViewBuilder
+    private func ownerCell(owner: LinkOwner) -> some View {
+        let info = viewModel.info(of: owner)
+        HStack(alignment: .top, spacing: 12) {
+            AvatarView(
+                config: .init(
+                    avatarSize: .init(width: 40, height: 40),
+                    content: .left(info.name ?? info.mail),
+                    cornerRadius: .extraHuge,
+                    backgroundColor: ColorProvider.BackgroundSecondary
+                )
+            )
+            VStack(spacing: 0) {
+                if let name = info.name {
+                    Text(name)
+                        .modifier(TextModifier(fontSize: 17, textColor: ColorProvider.TextNorm))
+                    Text(info.mail)
+                        .modifier(TextModifier(fontSize: 13, textColor: ColorProvider.TextWeak))
+                        .accessibilityIdentifier("ownerCell.email.\(info.mail)")
+                } else {
+                    Text(info.mail)
+                        .modifier(TextModifier(fontSize: 17, textColor: ColorProvider.TextNorm))
+                        .accessibilityIdentifier("ownerCell.email.\(info.mail)")
+                }
+                Text(info.status)
+                    .modifier(TextModifier(fontSize: 13, textColor: ColorProvider.TextWeak))
+                    .accessibilityIdentifier("ownerCell.role")
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .padding(.vertical, 16)
     }
     
     @ViewBuilder

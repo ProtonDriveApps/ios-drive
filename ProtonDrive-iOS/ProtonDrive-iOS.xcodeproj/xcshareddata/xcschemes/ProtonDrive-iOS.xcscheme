@@ -4,8 +4,7 @@
    version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
-      buildImplicitDependencies = "YES"
-      runPostActionsOnFailure = "NO">
+      buildImplicitDependencies = "YES">
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"
@@ -69,15 +68,23 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      language = "en"
       shouldUseLaunchSchemeArgsEnv = "YES"
+      language = "en"
       region = "US"
-      codeCoverageEnabled = "YES"
-      onlyGenerateCoverageForSpecifiedTargets = "NO">
+      codeCoverageEnabled = "YES">
+      <MacroExpansion>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "263A1CB28B7E6F013C22E331"
+            BuildableName = "ProtonDrive.app"
+            BlueprintName = "ProtonDrive"
+            ReferencedContainer = "container:ProtonDrive-iOS.xcodeproj">
+         </BuildableReference>
+      </MacroExpansion>
       <TestPlans>
          <TestPlanReference
-            default = "YES"
-            reference = "container:../TestPlans/ProtonDrive-iOS-Unit.xctestplan">
+            reference = "container:../TestPlans/ProtonDrive-iOS-Unit.xctestplan"
+            default = "YES">
          </TestPlanReference>
          <TestPlanReference
             reference = "container:../TestPlans/ProtonDrive-iOS-Integration.xctestplan">
@@ -155,19 +162,6 @@
             reference = "container:../TestPlans/ProtonDrive-iOS-UI-LowDeviceStorage.xctestplan">
          </TestPlanReference>
       </TestPlans>
-      <MacroExpansion>
-         <BuildableReference
-            BuildableIdentifier = "primary"
-            BlueprintIdentifier = "263A1CB28B7E6F013C22E331"
-            BuildableName = "ProtonDrive.app"
-            BlueprintName = "ProtonDrive"
-            ReferencedContainer = "container:ProtonDrive-iOS.xcodeproj">
-         </BuildableReference>
-      </MacroExpansion>
-      <Testables>
-      </Testables>
-      <CommandLineArguments>
-      </CommandLineArguments>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
@@ -215,8 +209,6 @@
             ReferencedContainer = "container:ProtonDrive-iOS.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <CommandLineArguments>
-      </CommandLineArguments>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">

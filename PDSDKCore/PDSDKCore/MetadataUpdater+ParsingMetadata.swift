@@ -40,7 +40,18 @@ extension MetadataUpdater {
             return nil
         }
     }
-    
+
+    /// Parses the link's `OwnedBy` (ownership of the volume containing the link). Absent on responses
+    /// that don't carry it; `Email`/`Organization` are individually nullable.
+    private func parseOwnedBy(from linkDTO: JSONDictionary, context: String) throws -> OwnedBy? {
+        guard let ownedByDTO: JSONDictionary = try obtainOptional("OwnedBy", from: linkDTO, context: "\(context).OwnedBy") else {
+            return nil
+        }
+        let email: String? = try obtainOptional("Email", from: ownedByDTO, context: "\(context).OwnedBy.Email")
+        let organization: String? = try obtainOptional("Organization", from: ownedByDTO, context: "\(context).OwnedBy.Organization")
+        return OwnedBy(email: email, organization: organization)
+    }
+
     // MARK: Photo
     
     func parsePhotoRevisionShort(
@@ -152,11 +163,12 @@ extension MetadataUpdater {
             XAttr: try obtainOptional("XAttr", from: activeRevision, context: "\(dataContext).ActiveRevision.XAttr"),
             fileProperties: fileProperties,
             folderProperties: nil,
-            photoProperties: photoProperties
+            photoProperties: photoProperties,
+            ownedBy: try parseOwnedBy(from: linkDTO, context: linkContext)
         )
         return link
     }
-    
+
     // MARK: - File
     
     private func parseFileRevisionShort(
@@ -269,7 +281,8 @@ extension MetadataUpdater {
             XAttr: try obtainOptional("XAttr", from: activeRevision, context: "\(dataContext).ActiveRevision.XAttr"),
             fileProperties: fileProperties,
             folderProperties: nil,
-            photoProperties: photoProperties
+            photoProperties: photoProperties,
+            ownedBy: try parseOwnedBy(from: linkDTO, context: linkContext)
         )
         return link
     }

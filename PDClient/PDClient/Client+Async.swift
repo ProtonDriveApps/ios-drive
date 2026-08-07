@@ -397,6 +397,7 @@ public protocol ShareMemberAPIClient {
         memberID: String,
         permissions: AccessPermission
     ) async throws
+    func updateShareEditorsCanShare(shareID: Share.ShareID, editorsCanShare: Bool) async throws
 }
 
 extension Client: ShareMemberAPIClient {
@@ -416,6 +417,17 @@ extension Client: ShareMemberAPIClient {
             shareID: shareID,
             memberID: memberID,
             parameters: .init(permissions: permissions),
+            service: service,
+            credential: credential
+        )
+        _ = try await request(endpoint)
+    }
+
+    public func updateShareEditorsCanShare(shareID: Share.ShareID, editorsCanShare: Bool) async throws {
+        let credential = try credential()
+        let endpoint = try UpdateShareEditorsCanShareEndpoint(
+            shareID: shareID,
+            parameters: .init(value: editorsCanShare),
             service: service,
             credential: credential
         )

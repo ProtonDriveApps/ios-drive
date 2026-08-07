@@ -1925,21 +1925,61 @@ public class Localization {
     /// "Access removed"
     public static var sharing_member_access_removed: String { localized(key: "sharing_member_access_removed", table: "iOS-Localizable") }
 
+    /// "Section header for editor access settings"
+    /// "Access"
+    public static var sharing_member_access_section_title: String { localized(key: "sharing_member_access_section_title", table: "iOS-Localizable") }
+
     /// "Banner text shown after updating the invitee\'s access permissions."
     /// "Access updated and shared"
     public static var sharing_member_access_updated: String { localized(key: "sharing_member_access_updated", table: "iOS-Localizable") }
+
+    /// "Toggle label to allow editors to manage sharing"
+    /// "Allow editors to change permissions and share"
+    public static var sharing_member_allow_editors_to_manage_sharing: String { localized(key: "sharing_member_allow_editors_to_manage_sharing", table: "iOS-Localizable") }
 
     /// "Title of public link component to indicate that anyone with the link can edit or view."
     /// "Anyone with the link"
     public static var sharing_member_anyone_with_link: String { localized(key: "sharing_member_anyone_with_link", table: "iOS-Localizable") }
 
+    /// "Confirmation button to change your own access to viewer"
+    /// "Change my access"
+    public static var sharing_member_change_own_access_confirmation: String { localized(key: "sharing_member_change_own_access_confirmation", table: "iOS-Localizable") }
+
+    /// "Confirmation message shown before you change your own access down to viewer"
+    /// "You won\'t be able to share \"%@\" after changing your access to viewer. The owner or an editor with sharing access can restore your edit access. You can’t undo this change yourself."
+    public static func sharing_member_change_own_access_message(name: String) -> String { String(format: localized(key: "sharing_member_change_own_access_message", table: "iOS-Localizable"), name) }
+
+    /// "Confirmation dialog title shown before you change your own access down to viewer"
+    /// "Change access to viewer?"
+    public static var sharing_member_change_own_access_title: String { localized(key: "sharing_member_change_own_access_title", table: "iOS-Localizable") }
+
     /// "Action title"
     /// "Copy invite link"
     public static var sharing_member_copy_invite_link: String { localized(key: "sharing_member_copy_invite_link", table: "iOS-Localizable") }
 
+    /// "Suffix marking the current user in the members list, e.g. \'Alice (you)\'"
+    /// "%@ (you)"
+    public static func sharing_member_current_user_suffix(name: String) -> String { String(format: localized(key: "sharing_member_current_user_suffix", table: "iOS-Localizable"), name) }
+
     /// "Banner text when added editor success"
     /// "%d editor added"
     public static func sharing_member_editor_added(num: Int) -> String { String(format: localized(key: "sharing_member_editor_added", table: "iOS-Localizable"), num) }
+
+    /// "Body of the tooltip explaining that editors can now manage sharing"
+    /// "Editors can now manage sharing and invite others. You can turn it off anytime in Share settings."
+    public static var sharing_member_editor_permissions_tooltip_message: String { localized(key: "sharing_member_editor_permissions_tooltip_message", table: "iOS-Localizable") }
+
+    /// "Title of the tooltip shown when editors can manage sharing on a newly created share"
+    /// "New editor permissions"
+    public static var sharing_member_editor_permissions_tooltip_title: String { localized(key: "sharing_member_editor_permissions_tooltip_title", table: "iOS-Localizable") }
+
+    /// "Banner text shown after disabling the setting that lets editors manage sharing"
+    /// "Setting updated. Editors can\'t change permissions or share."
+    public static var sharing_member_editors_can_share_disabled: String { localized(key: "sharing_member_editors_can_share_disabled", table: "iOS-Localizable") }
+
+    /// "Banner text shown after enabling the setting that lets editors manage sharing"
+    /// "Setting updated. Editors can change permissions and share."
+    public static var sharing_member_editors_can_share_enabled: String { localized(key: "sharing_member_editors_can_share_enabled", table: "iOS-Localizable") }
 
     /// "Error message"
     /// "The invitee has already been invited."
@@ -2020,7 +2060,7 @@ public class Localization {
     public static var sharing_member_invite_send: String { localized(key: "sharing_member_invite_send", table: "iOS-Localizable") }
 
     /// "Section header of invitee list"
-    /// "Shared with"
+    /// "Who has access"
     public static var sharing_member_invitee_section_header: String { localized(key: "sharing_member_invitee_section_header", table: "iOS-Localizable") }
 
     /// "Banner text shown after creating public share link"
@@ -2063,9 +2103,17 @@ public class Localization {
     /// "Resend invite"
     public static var sharing_member_resend_invite: String { localized(key: "sharing_member_resend_invite", table: "iOS-Localizable") }
 
+    /// "The role of the sharing member is an admin"
+    /// "Admin"
+    public static var sharing_member_role_admin: String { localized(key: "sharing_member_role_admin", table: "iOS-Localizable") }
+
     /// "The role of the sharing member is an editor"
     /// "Editor"
     public static var sharing_member_role_editor: String { localized(key: "sharing_member_role_editor", table: "iOS-Localizable") }
+
+    /// "Status label shown next to the item owner in the members list"
+    /// "Owner"
+    public static var sharing_member_role_owner: String { localized(key: "sharing_member_role_owner", table: "iOS-Localizable") }
 
     /// "The role of the sharing member is a viewer."
     /// "Viewer"

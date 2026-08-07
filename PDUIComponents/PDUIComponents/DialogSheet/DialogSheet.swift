@@ -108,10 +108,14 @@ private struct DialogContainerModifier<Item: Identifiable>: ViewModifier {
 public struct DialogSheetModel: Identifiable {
     public let id = UUID()
 
+    /// Optional bold title shown above the message. When nil the dialog has no title (legacy behaviour).
+    let header: String?
+    /// The dialog's body/message text.
     let title: String
     let buttons: [DialogButton]
 
-    public init(title: String, buttons: [DialogButton]) {
+    public init(title: String, buttons: [DialogButton], header: String? = nil) {
+        self.header = header
         self.title = title
         self.buttons = buttons
     }
@@ -204,7 +208,11 @@ private struct DialogSheetContainerModifier: ViewModifier {
     @ViewBuilder
     private func confirmationDialogLayout(content: Content) -> some View {
         content
-            .confirmationDialog("", isPresented: isVisible) {
+            .confirmationDialog(
+                item?.header ?? "",
+                isPresented: isVisible,
+                titleVisibility: item?.header == nil ? .automatic : .visible
+            ) {
                 if let item {
                     ForEach(item.buttons) { button in
                         Button(
@@ -224,7 +232,7 @@ private struct DialogSheetContainerModifier: ViewModifier {
     @ViewBuilder
     private func alertLayout(content: Content) -> some View {
         content
-            .alert("", isPresented: isVisible) {
+            .alert(item?.header ?? "", isPresented: isVisible) {
                 if let item {
                     ForEach(item.buttons) { button in
                         Button(

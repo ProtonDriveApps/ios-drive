@@ -44,6 +44,7 @@ final class InvitationViewModel: ObservableObject, InvitationSheetHandler {
     @Published var queryText = ""
     @Published var selectedCandidateID: String?
     let maximumMessageCount = 500
+    let inviterPermissions: AccessPermission
     private var allCandidateValid = false
     private var cancellables = Set<AnyCancellable>()
     private let dependencies: Dependencies
@@ -53,6 +54,7 @@ final class InvitationViewModel: ObservableObject, InvitationSheetHandler {
         assert(dependencies.invitationSuccessHandler != nil)
         self.dependencies = dependencies
         self.invitedMails = invitedMails
+        self.inviterPermissions = dependencies.nodeSharingPolicy.getInviterPermissions()
         
         subscribeForUpdate()
     }
@@ -96,14 +98,14 @@ final class InvitationViewModel: ObservableObject, InvitationSheetHandler {
     // MARK: - Permission
     let permissionRowSectionTitle = Localization.sharing_member_permission_section_title
     var permissionTitle: String {
-        if permission.contains([.write, .read]) {
+        if permission.isEditor {
             return Localization.sharing_member_permission_can_edit
         } else {
             return Localization.sharing_member_permission_can_view
         }
     }
     var permissionAccessibilityIdentifier: String {
-        return permission.isEditor ? "Editor" : "Viewer"
+        permission.isEditor ? "Editor" : "Viewer"
     }
     
     // MARK: - Invite message
@@ -143,16 +145,23 @@ final class InvitationViewModel: ObservableObject, InvitationSheetHandler {
         let hasSharingExternalInvitations = dependencies.featureFlagsController.hasSharingExternalInvitations
         Task {
             do {
-                let share = try await dependencies.shareMetadataProvider.getDirectShare()
+                let directShareMetadata = try await dependencies.shareMetadataProvider.getDirectShare()
+                let signersKit = try dependencies.sessionVault.make(
+                    forAddressID: directShareMetadata.contextShareAddressID
+                )
                 let result = try await dependencies.invitationUserHandler.execute(
-                    parameters: .init(
+                    parameters: InvitationInteractor.Parameters(
                         candidates: candidates,
                         hasSharingExternalInvitations: hasSharingExternalInvitations,
                         invitationMessage: inviteMessage,
                         isIncludingMessage: includingMessage,
                         itemName: dependencies.shareMetadataProvider.itemName,
                         permission: permission,
-                        share: share
+                        inviterPermissions: inviterPermissions,
+                        inviterEmail: signersKit.address.email,
+                        signersKit: signersKit,
+                        share: directShareMetadata.share,
+                        nodeKey: directShareMetadata.rootNodeKey
                     )
                 )
                 await MainActor.run {
@@ -289,6 +298,9 @@ extension InvitationViewModel {
         let invitationUserHandler: InvitationUserHandler
         let invitationSuccessHandler: InvitationSuccessHandler?
         let messageHandler: UserMessageHandlerProtocol
+        let node: Node
+        let sessionVault: SignersKitFactoryProtocol
         let shareMetadataProvider: ShareMetadataProvider
+        let nodeSharingPolicy: NodeSharingPolicy
     }
 }

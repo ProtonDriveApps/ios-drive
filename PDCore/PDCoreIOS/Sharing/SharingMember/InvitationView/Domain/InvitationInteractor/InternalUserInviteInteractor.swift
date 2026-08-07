@@ -56,7 +56,7 @@ public final class InternalUserInviteInteractor: InternalUserInviteHandler {
                     emailDetails: parameters.emailDetails,
                     invitation: .init(
                         inviteeEmail: parameters.internalEmail,
-                        inviterEmail: parameters.shareCreator,
+                        inviterEmail: parameters.inviterEmail,
                         keyPacket: keyPacket.encodeBase64(),
                         keyPacketSignature: signature.encodeBase64(),
                         permissions: parameters.permission,
@@ -81,7 +81,7 @@ extension InternalUserInviteInteractor {
         let inviteePublicKey: String
         let permission: AccessPermission
         let sessionKey: SessionKey
-        let shareCreator: String
+        let inviterEmail: String
         let shareID: String
         let signersKit: SignersKit
         let externalInvitationID: String?

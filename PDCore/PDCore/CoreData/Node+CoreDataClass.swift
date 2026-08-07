@@ -92,7 +92,7 @@ public class Node: NSManagedObject, VolumeUnique {
 
     // MARK: Root node
 
-    final func findRootNode() -> Node {
+    public final func findRootNode() -> Node {
         var currentNode: Node = self
         var visited = Set<String>()
 

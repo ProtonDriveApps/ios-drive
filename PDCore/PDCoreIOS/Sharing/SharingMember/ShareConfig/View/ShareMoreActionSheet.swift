@@ -24,9 +24,11 @@ struct ShareMoreActionSheet: View {
     @State private var isVisible = false
     @State private var opacity: Double = 0
     @ObservedObject private var viewModel: ShareMoreActionSheetViewModel
-    
-    init(viewModel: ShareMoreActionSheetViewModel) {
+    @ObservedObject private var inviteeViewModel: InviteeViewModel
+
+    init(viewModel: ShareMoreActionSheetViewModel, inviteeViewModel: InviteeViewModel) {
         self.viewModel = viewModel
+        self.inviteeViewModel = inviteeViewModel
     }
 
     var body: some View {
@@ -34,6 +36,7 @@ struct ShareMoreActionSheet: View {
             Color(ColorProvider.BlenderNorm)
                 .ignoresSafeArea(.all)
                 .opacity(opacity)
+                .accessibilityIdentifier("ShareMoreActionSheet.Background")
                 .onTapGesture {
                     dismiss()
                 }
@@ -57,43 +60,78 @@ struct ShareMoreActionSheet: View {
     }
     
     private var sheet: some View {
-        Button(
-            action: {
-                viewModel.stopSharing()
-            },
-            label: {
-                HStack(spacing: 12) {
-                    crossIcon
-                    textView
-                        .padding(.vertical, 12)
-                    if viewModel.isDeleting {
-                        ProtonSpinner(size: .medium)
-                    }
-                }
+        VStack(alignment: .leading, spacing: 0) {
+            if inviteeViewModel.editorAccessSetting.isVisible {
+                accessSection
             }
-        )
-        .accessibilityIdentifier("ShareMoreActionSheet.Button.StopSharing")
-    }
-    
-    private var crossIcon: some View {
-        AvatarView(
-            config: .init(
-                avatarSize: .init(width: 24, height: 24),
-                content: .right(IconProvider.cross),
-                backgroundColor: .clear,
-                foregroundColor: ColorProvider.NotificationError,
-                iconSize: .init(width: 24, height: 24)
-            )
-        )
-    }
-    
-    private var textView: some View {
-        VStack {
-            Text(viewModel.actionTitle)
-                .modifier(TextModifier(fontSize: 17, textColor: ColorProvider.NotificationError))
-            Text(viewModel.actionSubtitle)
-                .modifier(TextModifier(fontSize: 13, textColor: ColorProvider.TextWeak))
+            if inviteeViewModel.editorAccessSetting.isVisible, inviteeViewModel.canStopSharing {
+                Divider()
+                    .padding(.vertical, 8)
+            }
+            // Stopping sharing deletes the share for everyone — owner-only.
+            if inviteeViewModel.canStopSharing {
+                stopSharingSection
+            }
         }
+        .padding(.vertical, 16)
+    }
+
+    private var accessSection: some View {
+        settingRow(
+            title: inviteeViewModel.editorAccessSetting.sectionTitle,
+            description: inviteeViewModel.editorAccessSetting.toggleTitle
+        ) {
+            Toggle(
+                "",
+                isOn: .init(
+                    get: { inviteeViewModel.allowEditorsToManageSharing },
+                    set: { inviteeViewModel.setAllowEditorsToManageSharing($0) }
+                )
+            )
+            .labelsHidden()
+            .tint(ColorProvider.BrandNorm)
+            .disabled(inviteeViewModel.isUpdatingEditorAccess)
+            .accessibilityIdentifier("ShareMoreActionSheet.allowEditorsToManageSharingToggle")
+        }
+    }
+
+    private var stopSharingSection: some View {
+        settingRow(
+            title: viewModel.actionTitle,
+            description: viewModel.actionSubtitle
+        ) {
+            if viewModel.isDeleting {
+                ProtonSpinner(size: .medium)
+            } else {
+                Button {
+                    viewModel.stopSharing()
+                } label: {
+                    Text(viewModel.actionTitle)
+                        .modifier(TextModifier(fontSize: 17, textColor: ColorProvider.NotificationError, maxWidth: nil))
+                }
+                .accessibilityIdentifier("ShareMoreActionSheet.Button.StopSharing")
+            }
+        }
+    }
+
+    /// A section row matching the web layout: bold title + grey description on the left, control on the right.
+    @ViewBuilder
+    private func settingRow<Control: View>(
+        title: String,
+        description: String,
+        @ViewBuilder control: () -> Control
+    ) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .modifier(TextModifier(fontSize: 17, fontWeight: .semibold, textColor: ColorProvider.TextNorm))
+                Text(description)
+                    .modifier(TextModifier(fontSize: 13, textColor: ColorProvider.TextWeak))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            control()
+        }
+        .padding(.vertical, 12)
     }
     
     private func dismiss() {
