@@ -100,7 +100,11 @@ final class ShareMetadataController: ShareMetadataProvider {
             guard let directShare else { throw ShareMetadataErrors.directShareIsMissing }
             return directShare
         } catch ShareMetadataErrors.needToFetchShareMetadata {
-            return try await fetchShareMetaData()
+            do {
+                return try await fetchShareMetaData()
+            } catch ShareMetadataErrors.shareRemovedRemotely {
+                return try await createShare()
+            }
         } catch ShareMetadataErrors.directShareIsMissing {
             let directShare = try await createShare()
             return directShare
@@ -122,7 +126,7 @@ final class ShareMetadataController: ShareMetadataProvider {
     private func createShare() async throws -> DirectShareMetadata {
         guard let node else { throw ShareMetadataErrors.nodeIsMissing }
         _ = try await dependencies.shareCreator.createShare(for: node)
-        return try await fetchShareMetaData()
+        return try await fetchShareMetaData(cleanUpLocalStateWhenNecessary: false)
     }
 }
 
@@ -207,16 +211,50 @@ extension ShareMetadataController {
     }
 
     func fetchShareMetaData() async throws -> DirectShareMetadata {
+        try await fetchShareMetaData(cleanUpLocalStateWhenNecessary: true)
+    }
+
+    /// Bootstraps the node's standard share from the backend.
+    ///
+    /// - Parameter cleanUpLocalStateWhenNecessary: when the backend reports the share no longer exists
+    ///   (2501 — e.g. the item was unshared on another client while a stale copy lingered locally),
+    ///   purge the dead local share and throw `.shareRemovedRemotely` so the caller can start sharing
+    ///   from scratch. Disabled while bootstrapping a share we just created, to avoid a purge/recreate
+    ///   loop.
+    private func fetchShareMetaData(cleanUpLocalStateWhenNecessary: Bool) async throws -> DirectShareMetadata {
         guard let shareID else { throw ShareMetadataErrors.shareIDIsMissing }
-        let fetchedShare = try await dependencies.remoteShareDataSource.getMetadata(forShare: shareID)
-        let metadata = try await dependencies.managedObjectContext.perform {
-            let share = self.dependencies.storage.updateShare(fetchedShare, in: self.dependencies.managedObjectContext)
-            try self.dependencies.managedObjectContext.saveOrRollback()
-            self.editorsCanShare = share.editorsCanShare
-            return try self.mapping(coreDataShare: share, linkID: fetchedShare.linkID)
+        do {
+            let fetchedShare = try await dependencies.remoteShareDataSource.getMetadata(forShare: shareID)
+            let metadata = try await dependencies.managedObjectContext.perform {
+                let share = self.dependencies.storage.updateShare(fetchedShare, in: self.dependencies.managedObjectContext)
+                try self.dependencies.managedObjectContext.saveOrRollback()
+                self.editorsCanShare = share.editorsCanShare
+                return try self.mapping(coreDataShare: share, linkID: fetchedShare.linkID)
+            }
+            updateSubject.send()
+            return metadata
+        } catch let error where cleanUpLocalStateWhenNecessary
+            && error.bestShotAtReasonableErrorCode == APIErrorCodes.itemOrItsParentDeletedErrorCode.rawValue {
+            try await removeStandardShare()
+            throw ShareMetadataErrors.shareRemovedRemotely
+        }
+    }
+
+    /// Removes the node's stale standard share (and its share URLs / memberships) from the local DB
+    /// after the backend confirmed it no longer exists, so the node is no longer treated as shared.
+    private func removeStandardShare() async throws {
+        guard let node else { throw ShareMetadataErrors.nodeIsMissing }
+        try await dependencies.managedObjectContext.perform {
+            let moc = self.dependencies.managedObjectContext
+            guard let staleShare = node.getStandardShare() else { return }
+            staleShare.shareUrls.forEach(moc.delete)
+            staleShare.members.forEach(moc.delete)
+            node.removeFromDirectShares(staleShare)
+            moc.delete(staleShare)
+            node.isShared = false
+            try moc.saveOrRollback()
         }
         updateSubject.send()
-        return metadata
     }
 }
 
@@ -229,6 +267,7 @@ extension ShareMetadataController {
         case directShareIsMissing
         case missingRootNodeKey
         case missingContextShareAddress
+        case shareRemovedRemotely
     }
 
     struct Dependencies {

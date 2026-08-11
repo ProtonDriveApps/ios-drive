@@ -1018,6 +1018,8 @@ extension CloudSlot {
                 (nodeObj as? FolderObj)?.fulfillFolder(with: link)
                 (nodeObj as? Photo)?.fulfillPhoto(with: link)
 
+                nodeObj?.setValue(link.sharingDetails?.shareUrl != nil, forKey: #keyPath(Node.isShared))
+
                 directShares.forEach { share in
                     share.setValue(nodeObj, forKey: #keyPath(ShareObj.root))
                     nodeObj?.directShares.insert(share)

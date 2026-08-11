@@ -235,17 +235,17 @@ extension StorageManager {
     }
 
     @discardableResult
-    public func updateLinks(_ links: [PDClient.Link], isRootNodeOptional: Bool = false, in moc: NSManagedObjectContext) -> [Node] {
+    public func updateLinks(_ links: [PDClient.Link], isRootNodeOptional: Bool = false, updatesSharingState: Bool = true, in moc: NSManagedObjectContext) -> [Node] {
         var nodes: [Node] = []
         for link in links {
-            nodes.append(updateLink(link, isRootNodeOptional: isRootNodeOptional, using: moc))
+            nodes.append(updateLink(link, isRootNodeOptional: isRootNodeOptional, updatesSharingState: updatesSharingState, using: moc))
 
         }
         return nodes
     }
 
     @discardableResult
-    public func updateLink(_ link: PDClient.Link, isRootNodeOptional: Bool = false, using moc: NSManagedObjectContext) -> Node {
+    public func updateLink(_ link: PDClient.Link, isRootNodeOptional: Bool = false, updatesSharingState: Bool = true, using moc: NSManagedObjectContext) -> Node {
         let node: Node
         switch link.type {
         case .file:
@@ -320,7 +320,13 @@ extension StorageManager {
             node = album
         }
 
-        updateSharingDetails(link, to: node, moc: moc)
+        // Sharing state is authoritative only from events, explicit share operations and fresh
+        // fetches (bootstrap, folder listing, pull-to-refresh). Opportunistic/replayed metadata
+        // (e.g. the SDK's cached link details on thumbnail download) passes `false` so it can't
+        // clobber sharing with stale data — see MetadataUpdater.
+        if updatesSharingState {
+            updateSharingDetails(link, to: node, moc: moc)
+        }
         // Only write when the response carries ownership, so a partial/omitting response can't null out
         // a known-good owner.
         if let ownerEmail = link.ownedBy?.email {
@@ -420,17 +426,23 @@ extension StorageManager {
 
 // MARK: - update sharingDetails
 extension StorageManager {
+    /// Applies the sharing state carried by `link` to `node`.
+    ///
+    /// This is authoritative and destructive: an absent `sharingDetails`/`shareUrl` deletes the local
+    /// share/shareURLs. It must therefore only run for callers that pass fresh, authoritative metadata —
+    /// events, explicit share operations and fresh fetches (bootstrap, folder listing, pull-to-refresh).
+    /// Opportunistic/replayed metadata skips it via `updateLink(updatesSharingState:)`, so a stale
+    /// response can no longer wipe a freshly-created share/link (the "Missing shareURL due to data race"
+    /// bug) — which is why no per-artifact `createTime`/`modifyTime` staleness guard is needed here.
     private func updateSharingDetails(
         _ link: PDClient.Link,
         to node: CoreDataNode,
         moc: NSManagedObjectContext
     ) {
-        let linkModifyTime = link.modifyTime
         guard let sharingDetails = link.sharingDetails else {
-            for directShare in Array(node.directShares) {
-                removeOutdatedShareURL(in: directShare, linkModifyTime: linkModifyTime, node: node, moc: moc)
-            }
-            node.isShared = node.directShares.contains { !$0.shareUrls.isEmpty }
+            node.directShares.forEach(moc.delete)
+            node.directShares.removeAll()
+            node.isShared = false
             return
         }
 
@@ -448,30 +460,8 @@ extension StorageManager {
             updateShareURL(shareURLMeta, in: moc)
             node.isShared = true
         } else {
-            removeOutdatedShareURL(in: share, linkModifyTime: linkModifyTime, node: node, moc: moc)
-            node.isShared = !share.shareUrls.isEmpty
-        }
-    }
-
-    private func removeOutdatedShareURL(
-        in share: CoreDataShare,
-        linkModifyTime: TimeInterval,
-        node: CoreDataNode,
-        moc: NSManagedObjectContext
-    ) {
-        guard !share.shareUrls.isEmpty else { return }
-
-        for url in Array(share.shareUrls) {
-            if url.createTime.timeIntervalSince1970 <= linkModifyTime {
-                moc.delete(url) // outdated shareURL
-                share.removeFromShareUrls(url)
-            }
-            // shareURL createTime is newer than stale link.modifyTime
-            // skip deletion to prevent race.
-        }
-        if share.shareUrls.isEmpty {
-            moc.delete(share)
-            node.removeFromDirectShares(share)
+            share.shareUrls.forEach(moc.delete)
+            node.isShared = false
         }
     }
 }

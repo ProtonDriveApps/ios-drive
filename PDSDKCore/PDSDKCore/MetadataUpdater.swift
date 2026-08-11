@@ -637,7 +637,7 @@ public final class MetadataUpdater: MetadataUpdaterProtocol, @unchecked Sendable
         }
 
         try await moc.perform {
-            _ = self.storage.updateLinks(links, isRootNodeOptional: true, in: moc)
+            _ = self.storage.updateLinks(links, isRootNodeOptional: true, updatesSharingState: false, in: moc)
             try moc.saveIfNeeded()
         }
     }
@@ -669,7 +669,7 @@ public final class MetadataUpdater: MetadataUpdaterProtocol, @unchecked Sendable
         }
 
         try await moc.perform {
-            _ = self.storage.updateLinks(links, isRootNodeOptional: true, in: moc)
+            _ = self.storage.updateLinks(links, isRootNodeOptional: true, updatesSharingState: false, in: moc)
             try moc.saveIfNeeded()
         }
     }
