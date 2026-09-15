@@ -105,6 +105,59 @@ public class SettingsStorage<T> {
 }
 
 @propertyWrapper
+public class NonOptionalSettingsStorage<T> {
+    private let label: String
+    private let defaultValue: T
+    private var suite: SettingsStorageSuite = .standard
+    
+    public init(_ label: String, defaultValue: T) {
+        self.label = label
+        self.defaultValue = defaultValue
+    }
+    
+    public func configure(with suite: SettingsStorageSuite) {
+        self.suite = suite
+    }
+    
+    public var wrappedValue: T {
+        get {
+            suite.userDefaults.object(forKey: label) as? T ?? defaultValue
+        }
+        set {
+            suite.userDefaults.set(newValue, forKey: label)
+        }
+    }
+}
+
+@propertyWrapper
+public class RawRepresentableSettingsStorage<T: RawRepresentable> {
+    private let label: String
+    private let defaultValue: T
+    private var suite: SettingsStorageSuite = .standard
+    
+    public init(_ label: String, defaultValue: T) {
+        self.label = label
+        self.defaultValue = defaultValue
+    }
+    
+    public func configure(with suite: SettingsStorageSuite) {
+        self.suite = suite
+    }
+    
+    public var wrappedValue: T {
+        get {
+            guard let rawValue = suite.userDefaults.object(forKey: label) as? T.RawValue,
+                  let value = T(rawValue: rawValue)
+            else { return defaultValue }
+            return value
+        }
+        set {
+            suite.userDefaults.set(newValue.rawValue, forKey: label)
+        }
+    }
+}
+
+@propertyWrapper
 public class SettingsCodableProperty<T: Codable> {
     private let key: String
     private let defaultValue: T

@@ -66,9 +66,17 @@ public final class PhotosOperationPerformer: PhotosOperationPerformerProtocol, A
     }
 
     /// Experimental
-    public func enumerateTimeline(in folderUid: SDKNodeUid) async throws -> [PhotoTimelineItem] {
+    public func enumerateTimeline(
+        in folderUid: SDKNodeUid,
+        cancellationToken: UUID,
+        onPhotoEnumerated: @escaping @Sendable (Result<PhotoTimelineItem, Error>) -> Void
+    ) async throws {
         // TODO(SDK): write to db?
-        try await client.enumerateTimeline(in: folderUid)
+        try await client.enumerateTimeline(
+            in: folderUid,
+            cancellationToken: cancellationToken,
+            onPhotoEnumerated: onPhotoEnumerated
+        )
     }
 }
 
@@ -120,7 +128,9 @@ extension PhotosOperationPerformer {
             do {
                 for try await thumbnail in buffer.0 {
                     if let thumbnail {
-                        try await self.metadataUpdater.finishPhotoThumbnailDownload(fileUid: thumbnail.fileUid, moc: moc)
+                        // Disabled due to repeated regressions in parsing/applying the changes to our encrypted DB.
+                        // Should be unnecessary once decrypted DB is implemented.
+                        // try await self.metadataUpdater.finishPhotoThumbnailDownload(fileUid: thumbnail.fileUid, moc: moc)
                     } else {
                         Log.warning("Get nil ThumbnailDataWithId", domain: .sdk)
                     }
@@ -376,6 +386,53 @@ extension PhotosOperationPerformer {
                 }
             }
         }
+    }
+}
+
+extension PhotosOperationPerformer {
+    public func trash(
+        nodes: [SDKNodeUid],
+        cancellationToken: UUID,
+        moc: NSManagedObjectContext
+    ) -> AsyncThrowingStream<NodeOperationStreamEvent, Error> {
+        nodeOperationStream(operation: .trash, nodes: nodes, cancellationToken: cancellationToken, moc: moc)
+    }
+
+    public func restore(
+        nodes: [SDKNodeUid],
+        cancellationToken: UUID,
+        moc: NSManagedObjectContext
+    ) -> AsyncThrowingStream<NodeOperationStreamEvent, Error> {
+        nodeOperationStream(operation: .restore, nodes: nodes, cancellationToken: cancellationToken, moc: moc)
+    }
+
+    public func delete(
+        nodes: [SDKNodeUid],
+        cancellationToken: UUID,
+        moc: NSManagedObjectContext
+    ) -> AsyncThrowingStream<NodeOperationStreamEvent, Error> {
+        nodeOperationStream(operation: .delete, nodes: nodes, cancellationToken: cancellationToken, moc: moc)
+    }
+
+    public func nodeOperationStream(
+        operation: NodeBatchOperation,
+        nodes: [SDKNodeUid],
+        cancellationToken: UUID,
+        moc: NSManagedObjectContext
+    ) -> AsyncThrowingStream<NodeOperationStreamEvent, Error> {
+        NodeOperationStreamBuilder.makeNodeOperationStream(
+            metadataUpdater: metadataUpdater,
+            client: client,
+            operation: operation,
+            nodes: nodes,
+            cancellationToken: cancellationToken,
+            moc: moc
+        )
+    }
+
+    public func emptyTrash(cancellationToken: UUID, moc: NSManagedObjectContext) async throws {
+        try await client.emptyTrash(cancellationToken: cancellationToken)
+        try await metadataUpdater.finishEmptyTrash(for: [.ownPhotoVolume])
     }
 }
 

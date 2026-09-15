@@ -52,7 +52,7 @@ public struct SubscriptionBarItem: View {
                     .fixedSize()
             }
         })
-        .buttonStyle(GradientButtonStyle(colors: colors, horizontalPadding: 6, verticalPadding: 4))
+        .buttonStyle(GradientButtonStyle(colors: colors, horizontalPadding: 6, verticalPadding: 4, expandsHorizontally: false))
         .accessibilityIdentifier(identifier)
     }
 }

@@ -28,6 +28,7 @@ protocol ThumbnailsDownloadInteractor {
     ) async throws -> AnyVolumeIdentifier?
 
     func cancel(file identifier: AnyVolumeIdentifier, type: ThumbnailType) async
+    func cancelAll() async
 }
 
 final class FilesThumbnailsDownloadInteractor: ThumbnailsDownloadInteractor {
@@ -50,6 +51,9 @@ final class FilesThumbnailsDownloadInteractor: ThumbnailsDownloadInteractor {
                     cancellationToken: token,
                     moc: moc
                 )
+            },
+            tokenCanceller: { [weak operationPerformer] token in
+                try? await operationPerformer?.cancelDownload(cancellationToken: token)
             }
         )
     }
@@ -63,6 +67,10 @@ final class FilesThumbnailsDownloadInteractor: ThumbnailsDownloadInteractor {
 
     func cancel(file identifier: AnyVolumeIdentifier, type: ThumbnailType) async {
         await downloader.cancel(file: identifier, type: type)
+    }
+
+    func cancelAll() async {
+        await downloader.cancelAll()
     }
 }
 

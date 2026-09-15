@@ -325,7 +325,7 @@ extension NodeMover {
         let oldParentKey: String
         let oldParentPassphrase: String
         let newParentKey: String
-        let newParentHashKey: String
+        let newParentHashKey: Data
         let newParentNodeID: String
         let signersKit: SignersKit
         let contentDigest: FileContentDigest?

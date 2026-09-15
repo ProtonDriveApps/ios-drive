@@ -30,13 +30,17 @@ final class RemoteSharesBootstrapStarter: AppBootstrapper {
     private let bootstrapRoot: (_ nodeID: String, _ shareID: String) async throws -> Root
     private let featureFlagsController: FeatureFlagsControllerProtocol
     private let connectionStateResource: ConnectionStateResource
+    private let volumeLockShareStrategy: VolumeLockShareStrategy
+    private weak var volumeLockController: VolumeLockController?
 
     init(
         listShares: @escaping () async throws -> [ListSharesEndpoint.Response.Share],
         bootstrapRoot: @escaping (_ nodeID: String, _ shareID: String) async throws -> Root,
         featureFlagsController: FeatureFlagsControllerProtocol,
         storage: StorageManager,
-        connectionStateResource: ConnectionStateResource
+        connectionStateResource: ConnectionStateResource,
+        volumeLockController: VolumeLockController? = nil,
+        volumeLockShareStrategy: VolumeLockShareStrategy = DefaultVolumeLockShareStrategy()
     ) {
         self.storage = storage
         self.context = storage.backgroundContext
@@ -44,20 +48,26 @@ final class RemoteSharesBootstrapStarter: AppBootstrapper {
         self.featureFlagsController = featureFlagsController
         self.bootstrapRoot = bootstrapRoot
         self.connectionStateResource = connectionStateResource
+        self.volumeLockController = volumeLockController
+        self.volumeLockShareStrategy = volumeLockShareStrategy
     }
 
     func bootstrap() async throws {
         let remoteRootShares = try await fetchRemoteRootShares()
-        let (mainShare, otherRootShares) = try validate(remoteRootShares)
+        let (mainShare, otherRootShares, lockedShares) = try validate(remoteRootShares)
         var messages = [
             "Main volume: \(mainShare.volumeID), share: \(mainShare.shareID)",
         ]
         for share in otherRootShares {
             messages.append("Other volume: \(share.volumeID), share: \(share.shareID), type: \(share.volumeType)")
         }
+        for share in lockedShares {
+            messages.append("Locked volume: \(share.volumeID), share: \(share.shareID), type: \(share.volumeType)")
+        }
         Log.info(messages.joined(separator: "\n"), domain: .applicationBootstrap)
 
         try await bootstrap(mainShare, otherRootShares)
+        await volumeLockController?.applyShareBootstrapResult(lockedShares: lockedShares)
     }
 
     private func fetchRemoteRootShares() async throws -> [Share] {
@@ -66,22 +76,27 @@ final class RemoteSharesBootstrapStarter: AppBootstrapper {
             throw NetworkStateError.deviceIsOffline
         }
         return try await listShares()
-            .filter { $0.state == .active }
+            .filter { $0.state == .active || $0.state == .locked }
             .filter { $0.type != .standard }
     }
 
-    private func validate(_ shares: [Share]) throws -> (mainShare: Share, otherRootShares: [Share]) {
-        let mainShares = shares.filter({ $0.type == .main })
-        let otherRootShares = shares.filter({ $0.type != .main })
+    private func validate(_ shares: [Share]) throws -> (mainShare: Share, otherRootShares: [Share], lockedShares: [Share]) {
+        let mainShares = shares.filter({ $0.type == .main && $0.locked == false })
+        let otherRootShares = shares.filter({ $0.type != .main && $0.locked == false })
+        let lockedShares = volumeLockShareStrategy.lockedShares(in: shares)
 
+        if mainShares.isEmpty { throw DriveError("There is no active and unlocked main share") }
         guard mainShares.count == 1 else {
             throw DriveError("There are multiple main shares in the remote")
         }
         let mainShare = mainShares[0]
-        return (mainShare, otherRootShares)
+        return (mainShare, otherRootShares, lockedShares)
     }
 
-    private func bootstrap(_ mainShare: Share, _ otherRootShares: [Share]) async throws {
+    private func bootstrap(
+        _ mainShare: Share,
+        _ otherRootShares: [Share]
+    ) async throws {
         var roots: [Root] = []
 
         try await withThrowingTaskGroup(of: Root.self) { group in

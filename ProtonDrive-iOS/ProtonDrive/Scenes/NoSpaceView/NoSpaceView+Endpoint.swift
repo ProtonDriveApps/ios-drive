@@ -41,3 +41,27 @@ extension NoSpaceView {
         }
     }
 }
+
+extension NNoSpaceView {
+    enum Storage {
+        case local, cloud
+
+        var title: String {
+            switch self {
+            case .local:
+                return Localization.no_space_title_device_is_packed
+            case .cloud:
+                return Localization.no_space_title_limit_of_plan
+            }
+        }
+
+        var subtitle: String {
+            switch self {
+            case .local:
+                return Localization.no_space_subtitle_device_full
+            case .cloud:
+                return Localization.no_space_subtitle_cloud_full
+            }
+        }
+    }
+}

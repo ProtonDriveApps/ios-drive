@@ -35,11 +35,13 @@ public struct NodeSharingPolicy {
 
     public init(node: Node, featureFlagsController: FeatureFlagsControllerProtocol) {
         guard let managedObjectContext = try? node.getManagedObjectContext() else {
-            assertionFailure("Failed to pass valid node")
+            // There can be a race condition and the node can be already deleted. In that case, return minimal role/permissions.
+            // In next UI redraw this gets autocorrected
             self = NodeSharingPolicy(
                 role: .viewer,
                 permissions: .view,
-                featureFlagsController: featureFlagsController
+                featureFlagsController: featureFlagsController,
+                shareAllowsEditorManagement: false
             )
             return
         }

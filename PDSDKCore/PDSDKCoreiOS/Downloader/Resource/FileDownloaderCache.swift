@@ -23,6 +23,7 @@ protocol FileDownloaderCacheProtocol {
     func getDownloadInput(for identifier: AnyVolumeIdentifier, options: SDKFileDownloadOptions) async throws -> FileDownloadInput
     func finalizeDownload(for input: FileDownloadInput) throws
     func cleanUp(for input: FileDownloadInput)
+    func delete(identifier: AnyVolumeIdentifier) async
 }
 
 struct FileDownloadInput {
@@ -57,7 +58,7 @@ final class FileDownloaderCache: FileDownloaderCacheProtocol, Sendable {
         let name = file.decryptedName
         let revisionIdentifier = revision.identifier
         let identifier = file.identifierWithinManagedObjectContext
-        let revisionUid = SDKRevisionUid(volumeID: revisionIdentifier.volumeID, nodeID: revisionIdentifier.fileID, revisionID: revisionIdentifier.revisionID)
+        let revisionUid = SDKRevisionUid(volumeID: identifier.volumeID, nodeID: identifier.nodeID, revisionID: revisionIdentifier.revisionID)
         let destinationUrl = getDestinationUrl(identifier: identifier, options: options)
         // Intentionally not using name for temporary file since SDK deescapes it and then we can't access it easily.
         // Uniqueness is guarded by using `identifier` as folder name
@@ -92,5 +93,21 @@ final class FileDownloaderCache: FileDownloaderCacheProtocol, Sendable {
 
     func cleanUp(for input: FileDownloadInput) {
         try? FileManager.default.removeItem(at: input.temporaryUrl)
+    }
+
+    func delete(identifier: AnyVolumeIdentifier) async {
+        let managedObjectContext = self.managedObjectContext
+        await managedObjectContext.perform {
+            guard
+                let file: File = try? File.fetchOrThrow(
+                    identifier: identifier,
+                    allowSubclasses: true,
+                    in: managedObjectContext
+                )
+            else { return }
+
+            managedObjectContext.delete(file)
+            try? managedObjectContext.saveIfNeeded()
+        }
     }
 }

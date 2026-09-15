@@ -20,19 +20,17 @@ import PDCore
 
 protocol EnumeratorWithItemsFromDB {
     associatedtype Model: NodesListing
-    var model: Model! { get }
-    func reinitializeModelIfNeeded() throws
 }
 
 /// "Item" enumerations are when listing the contents of a directory.
 extension EnumeratorWithItemsFromDB {
-    
-    func fetchPageFromDB(_ containerType: FileOperationEvent.ContainerType, _ page: Int, pageSize: Int, observers: [NSFileProviderEnumerationObserver]) {
+
+    func fetchPageFromDB(_ containerType: FileOperationEvent.ContainerType, _ page: Int, pageSize: Int, observers: [NSFileProviderEnumerationObserver], model: Model) {
         Log.trace()
 
-        let allChildren = self.model.childrenObserver.fetchedObjects
+        let allChildren = model.childrenObserver.fetchedObjects
         Log.info("Fetched \(allChildren.count) nodes from DB", domain: .enumerating)
-        
+
         let childrenGroups = allChildren.splitInGroups(of: pageSize)
         guard childrenGroups.count > page else {
             Log.event(.enumerateItems(.succeeded(.init(containerType: containerType, itemEnumerationMode: .db, enumeratedItemIDs: [], hasMorePages: false))))
@@ -65,14 +63,14 @@ extension EnumeratorWithItemsFromDB {
             do {
                 return try NodeItem(node: $0)
             } catch {
-                self.model.reportDecryptionError(for: $0, underlyingError: error)
+                model.reportDecryptionError(for: $0, underlyingError: error)
                 return nil
             }
         }
         observers.forEach { $0.didEnumerate(items) }
-        
+
         let hasMorePages = (items.count + draftsCount) == pageSize
-        
+
         Log.event(.enumerateItems(.succeeded(.init(containerType: containerType, itemEnumerationMode: .db, enumeratedItemIDs: items.map(\.itemIdentifier.logIdentifier), hasMorePages: hasMorePages))))
 
         guard hasMorePages else {

@@ -55,7 +55,7 @@ public class FileLogger: FileLoggerProtocol {
     private let fileManager = FileManager.default
 
     private let queue: DispatchQueue = DispatchQueue.init(label: "FileLogger", qos: .background)
-    
+
     private let compressedLogsDisabled: () -> Bool
 
     private var fileURL: URL {
@@ -229,7 +229,7 @@ public class FileLogger: FileLoggerProtocol {
         let oldFiles = try filesInLogDirectory()
             .filter { $0.pathComponents.last?.hasMatches(for: "\(filenameWithoutExtension).\\d{15}.log") ?? false }
         let sortedFiles = oldFiles.sorted(by: fileManager.fileCreationDateSort)
-        
+
         try sortedFiles.forEach { url in
             try fileManager.removeItem(at: url)
         }

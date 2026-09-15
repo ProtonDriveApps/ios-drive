@@ -21,13 +21,12 @@ import Combine
 
 final class ThumbnailImageViewModel: ObservableObject {
     private(set) var thumbnail: Thumbnail?
-    private let loader: ThumbnailLoader?
+    private let loader: SDKThumbnailsDownloaderProtocol?
     private let id: NodeIdentifier?
     private let isThumbnailAvailable: Bool
     private var startedDownload = false
-    private var loadCancellable: AnyCancellable?
 
-    init(node: Node, loader: ThumbnailLoader? = nil) {
+    init(node: Node, loader: SDKThumbnailsDownloaderProtocol? = nil) {
         self.loader = loader
         let identifier = node.identifier
         self.id = identifier
@@ -39,15 +38,7 @@ final class ThumbnailImageViewModel: ObservableObject {
 
         let revision = file.activeRevision ?? file.activeRevisionDraft
         thumbnail = revision?.thumbnails.first(where: { $0.type == .default })
-        isThumbnailAvailable = true
-
-        loadCancellable = self.loader?.succeededId
-            .filter { successIdentifier in
-                identifier.any() == successIdentifier.any()
-            }
-            .sink { [weak self] _ in
-                self?.objectWillChange.send()
-            }
+        isThumbnailAvailable = thumbnail != nil
     }
 
     init() {
@@ -60,7 +51,7 @@ final class ThumbnailImageViewModel: ObservableObject {
         guard let id else {
             return
         }
-        let v2Path = PDFileManager.thumbnailURL(for: id, type: .default)
+        let v2Path = PDFileManager.getThumbnailURL(for: id, type: .default)
         let url = PDFileManager.clearThumbnailV1URL(for: id, type: .default, shouldCreate: false)
         let hasStoredThumbnail = FileManager.default.fileExists(atPath: url.path) || v2Path != nil
         guard
@@ -68,17 +59,28 @@ final class ThumbnailImageViewModel: ObservableObject {
             !hasStoredThumbnail,
             UUID(uuidString: id.id) == nil, // Temp uploading id, not legit
             thumbnail?.clearThumbnail == nil,
+            id.volumeID != "bookmark",
             !startedDownload
         else { return }
 
-        self.loader?.loadThumbnail(with: id)
+        Task {
+            do {
+                _ = try await self.loader?.downloadThumbnail(for: id.any(), type: .default)
+                await MainActor.run {
+                    self.startedDownload = false
+                    self.objectWillChange.send()
+                }
+            } catch {
+                Log.error("Download thumbnail failed", error: error, domain: .thumbnails)
+            }
+        }
         startedDownload = true
     }
 
     var clear: Data? {
         guard let id, isThumbnailAvailable else { return nil }
 
-        if let url = PDFileManager.thumbnailURL(for: id, type: .default),
+        if let url = PDFileManager.getThumbnailURL(for: id, type: .default),
            FileManager.default.fileExists(atPath: url.path) {
             return try? Data(contentsOf: url)
         }

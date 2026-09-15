@@ -20,37 +20,22 @@ import Combine
 import PDCore
 
 public class FolderEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWithItemsFromAPI, EnumeratorWithItemsFromDB {
+    typealias Model = FolderModel
+
     private weak var tower: Tower!
     internal let keepDownloadedManager: KeepDownloadedEnumerationManager
     private let pageSize: Int
     private let nodeID: NodeIdentifier
     let displayChangeEnumerationDetails: Bool
-
-    var shouldReenumerateItems: Bool {
-        didSet {
-            Log.trace("shouldReenumerateItems = \(shouldReenumerateItems)")
-        }
-    }
-
     var displayEnumeratedItems: Bool
 
     internal let enumerationObserver: EnumerationObserverProtocol?
 
-    private var _model: FolderModel! // backing property
-    internal private(set) var model: FolderModel! {
-        get {
-            // swiftlint:disable force_try
-            try! reinitializeModelIfNeeded()
-            // swiftlint:enable force_try
-            return _model
-        }
-        set {
-            _model = newValue
-        }
-    }
-    
+    internal private(set) var model: FolderModel?
+
     internal var fetchFromAPICancellable: AnyCancellable?
-    
+    var resyncEnumerationTask: Task<Void, Never>?
+
     public init(tower: Tower,
                 keepDownloadedManager: KeepDownloadedEnumerationManager,
                 // We need to align the DB page size with the BE page size to allow switching from API fetch
@@ -61,8 +46,7 @@ public class FolderEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWit
                 nodeID: NodeIdentifier,
                 enumerationObserver: EnumerationObserverProtocol? = nil,
                 displayChangeEnumerationDetails: Bool = false,
-                displayEnumeratedItems: Bool = false,
-                shouldReenumerateItems: Bool = false
+                displayEnumeratedItems: Bool = false
     ) {
         Log.trace()
         self.tower = tower
@@ -72,23 +56,25 @@ public class FolderEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWit
         self.enumerationObserver = enumerationObserver
         self.displayChangeEnumerationDetails = displayChangeEnumerationDetails
         self.displayEnumeratedItems = displayEnumeratedItems
-        self.shouldReenumerateItems = shouldReenumerateItems
     }
-    
+
     public func invalidate() {
         Log.trace()
-        self.fetchFromAPICancellable?.cancel()
-        self.model = nil
+        resyncEnumerationTask?.cancel()
+        fetchFromAPICancellable?.cancel()
+        model = nil
     }
-    
-    func reinitializeModelIfNeeded() throws {
+
+    func reinitializeModelIfNeeded() throws -> FolderModel {
         Log.trace()
-        guard _model == nil else { return }
-        self.model = try FolderModel(tower: tower, nodeID: nodeID)
+        if let model { return model }
+        let model = try FolderModel(tower: tower, nodeID: nodeID)
+        self.model = model
+        return model
     }
-    
+
     // MARK: Enumeration
-    
+
     public func enumerateItems(for observer: NSFileProviderEnumerationObserver, startingAt page: NSFileProviderPage) {
         Log.event(.enumerateItems(.started(.init(containerType: .folder(nodeID.nodeID), pageNumber: page.int))))
 
@@ -98,15 +84,16 @@ public class FolderEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWit
 
         enumerationObserver?.items.didStartEnumeratingItems(name: "Page \(pageNumber.description)")
 
+        let model: FolderModel
         do {
-            try self.reinitializeModelIfNeeded()
+            model = try self.reinitializeModelIfNeeded()
         } catch {
             observers.forEach { $0.finishEnumeratingWithError(Errors.mapLegacyErrorToFileProviderError(Errors.failedToCreateModel)) }
             Log.event(.enumerateItems(.failed(.init(containerType: .folder(nodeID.nodeID), errorMessage: "Failed to enumerate items due to model failing to be created"))))
             return
         }
-        
-        self.model.loadFromCache()
+
+        model.loadFromCache()
         guard let moc = model.node.moc else {
             observers.forEach { $0.finishEnumeratingWithError(Errors.mapLegacyErrorToFileProviderError(Errors.failedToCreateModel)) }
             Log.event(.enumerateItems(.failed(.init(containerType: .folder(nodeID.nodeID), errorMessage: "Failed to enumerate items due to model.node.moc being nil"))))
@@ -114,30 +101,32 @@ public class FolderEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWit
         }
 
         let intPage = page.int
-        if moc.performAndWait({ !self.model.node.isChildrenListFullyFetched }) {
-            self.fetchPageFromAPI(.folder(nodeID.nodeID), intPage, observers: observers, moc: moc)
+        if moc.performAndWait({ !model.node.isChildrenListFullyFetched }) {
+            self.fetchPageFromAPI(.folder(nodeID.nodeID), intPage, observers: observers, model: model, moc: moc)
         } else {
-            self.fetchPageFromDB(.folder(nodeID.nodeID), intPage, pageSize: pageSize, observers: observers)
+            self.fetchPageFromDB(.folder(nodeID.nodeID), intPage, pageSize: pageSize, observers: observers, model: model)
         }
     }
 
     // MARK: Changes
-    
+
     public func currentSyncAnchor(completionHandler: @escaping (NSFileProviderSyncAnchor?) -> Void) {
-        Log.trace()
-        self.currentSyncAnchor(completionHandler)
+        Log.trace("Folder enumeration \(nodeID.rawValue)", domain: .enumerating)
+        self.currentSyncAnchor(shareID: nodeID.shareID, completionHandler)
     }
-    
+
     public func enumerateChanges(for observer: NSFileProviderChangeObserver, from syncAnchor: NSFileProviderSyncAnchor) {
-        Log.trace()
+        Log.trace("Folder enumeration \(nodeID.rawValue)", domain: .enumerating)
         let observers = [observer, enumerationObserver?.changes as? NSFileProviderChangeObserver].compactMap { $0 }
-        self.enumerateChanges(self is RootEnumerator ? .rootContainer : .folder(nodeID.rawValue), observers, syncAnchor)
+        self.enumerateChanges(nodeID.shareID, self is RootEnumerator ? .rootContainer : .folder(nodeID.rawValue), observers, syncAnchor, "FolderEnumerator for \(nodeID.rawValue)")
     }
 }
 
 extension FolderEnumerator: EnumeratorWithChanges {
-    internal var shareID: String { self.nodeID.shareID }
-    internal var eventsManager: EventsSystemManager { self.tower }
-    internal var fileSystemSlot: FileSystemSlot { self.tower.fileSystemSlot! }
-    internal var cloudSlot: CloudSlotProtocol { self.tower.cloudSlot! }
+    var eventsManager: EventsSystemManager { self.tower }
+    var fileSystemSlot: FileSystemSlot { self.tower.fileSystemSlot! }
+    var cloudSlot: CloudSlotProtocol { self.tower.cloudSlot! }
+    // Intentionally nil: full resync is coordinated through the working set enumerator only
+    // (see FileProviderExtension.reenumerateIfNecessary signalling .workingSet).
+    var resyncEnumerationService: ResyncEnumerationService? { nil }
 }

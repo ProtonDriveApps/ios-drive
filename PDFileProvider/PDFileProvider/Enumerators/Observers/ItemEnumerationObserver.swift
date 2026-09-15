@@ -163,17 +163,19 @@ public class ItemEnumerationObserver: BaseEnumerationObserver, NSFileProviderEnu
     /// Called `intervalBeforeDeletion` seconds after `didFinish`.
     private func deleteAfterCompletion() async {
         Log.trace()
-        await syncStorage.backgroundContextPool.withContext { context in
-            await syncStorage.delete(id: ItemEnumerationObserver.enumerationSyncItemIdentifier, in: context)
+        syncStorage.enqueueWrite(for: ItemEnumerationObserver.enumerationSyncItemIdentifier) { [syncStorage] in
+            await syncStorage.backgroundContextPool.withContext { context in
+                await syncStorage.delete(id: ItemEnumerationObserver.enumerationSyncItemIdentifier, in: context)
+            }
         }
     }
 
     private func updateSyncItem(progress: Int? = nil, error: Error? = nil) {
-        Task {
+        syncStorage.enqueueWrite(for: ItemEnumerationObserver.enumerationSyncItemIdentifier) { [enumerationState, syncStorage] in
             let progressState: SyncItemState = progress == 100 ? .finished : .inProgress
             let computedState: SyncItemState = error == nil ? progressState : .errored
             let computedProgress: Int = error == nil ? (progress ?? 0) : 0
-            let itemsEnumeratedSoFar = await self.enumerationState.itemsEnumeratedSoFar
+            let itemsEnumeratedSoFar = await enumerationState.itemsEnumeratedSoFar
 #if os(macOS)
             let filename = Localization.menu_status_sync_enumerating(itemsEnumerated: itemsEnumeratedSoFar)
 #else

@@ -137,43 +137,61 @@ extension PDFileManager {
         type: ThumbnailType,
         storageType: FileStorageType
     ) -> URL {
-        let name = type == .default ? "thumbnail" : "thumbnail_photo"
-        let url = fileFolder(for: identifier, storageType: storageType, shouldCreate: true)
-        return url.appendingPathComponent(name)
+        fileFolder(for: identifier, storageType: storageType, shouldCreate: true)
+            .appendingPathComponent(thumbnailName(for: type))
     }
-    
-    /// Returns the URL for a node's thumbnail in temporary or permanent storage.
+
+    /// Returns the existing thumbnail URL for a node, preferring temporary storage over permanent.
     ///
-    /// If `preferStorageType` is set, returns the URL in that storage only if the file exists.
-    /// If not set, prefers the temporary thumbnail when it exists; otherwise falls back to permanent.
     /// The thumbnail file name is "thumbnail" for `.default` and "thumbnail_photo" otherwise.
     ///
     /// - Parameters:
     ///   - identifier: The node identifier.
     ///   - type: The thumbnail type.
-    ///   - preferStorageType: Optional preferred storage to check first.
     /// - Returns: The existing thumbnail URL, or `nil` if none is found.
-    public static func thumbnailURL(
+    public static func getThumbnailURL(
+        for identifier: NodeIdentifier,
+        type: ThumbnailType
+    ) -> URL? {
+        getPossibleThumbnailURLs(for: identifier, type: type)
+            .first { FileManager.default.fileExists(atPath: $0.path) }
+    }
+
+    /// Returns the thumbnail URL in the given storage, or `nil` if no file exists there.
+    public static func getExistingThumbnailURL(
         for identifier: NodeIdentifier,
         type: ThumbnailType,
-        preferStorageType: FileStorageType? = nil
+        storageType: FileStorageType
     ) -> URL? {
-        let name = type == .default ? "thumbnail" : "thumbnail_photo"
-        if let preferStorageType {
-            let url = fileFolder(for: identifier, storageType: preferStorageType, shouldCreate: false)
-                .appendingPathComponent(name)
-            return FileManager.default.fileExists(atPath: url.path) ? url : nil
-        }
-        
-        let tempPath = fileFolder(for: identifier, storageType: .temporary, shouldCreate: false)
-            .appendingPathComponent(name)
-        if FileManager.default.fileExists(atPath: tempPath.path) { return tempPath }
-        
-        let permanentPath = fileFolder(for: identifier, storageType: .permanent, shouldCreate: false)
-            .appendingPathComponent(name)
-        return FileManager.default.fileExists(atPath: permanentPath.path) ? permanentPath : nil
+        let url = thumbnailURL(encodedPath: encodedPath(from: identifier), type: type, storageType: storageType)
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
-    
+
+    /// Locations a thumbnail may live in, in lookup-preference order (temporary first).
+    public static func getPossibleThumbnailURLs(
+        for identifier: NodeIdentifier,
+        type: ThumbnailType
+    ) -> [URL] {
+        // Computing the encoded path once, since it's costly (checksum computation).
+        let encodedPath = encodedPath(from: identifier)
+        return [.temporary, .permanent].map {
+            thumbnailURL(encodedPath: encodedPath, type: type, storageType: $0)
+        }
+    }
+
+    private static func thumbnailName(for type: ThumbnailType) -> String {
+        type == .default ? "thumbnail" : "thumbnail_photo"
+    }
+
+    private static func thumbnailURL(
+        encodedPath: String,
+        type: ThumbnailType,
+        storageType: FileStorageType
+    ) -> URL {
+        fileFolder(encodedPath: encodedPath, storageType: storageType, shouldCreate: false)
+            .appendingPathComponent(thumbnailName(for: type))
+    }
+
     public static func fileURL(
         for identifier: NodeIdentifier,
         prefix: String?,
@@ -191,7 +209,16 @@ extension PDFileManager {
         shouldCreate: Bool
     ) -> URL {
         let path = encodedPath(from: identifier, pathPrefix: prefix)
-        let url = storageType.directory.appendingPathComponent(path, isDirectory: true)
+        return fileFolder(encodedPath: path, storageType: storageType, shouldCreate: shouldCreate)
+    }
+
+    /// Builds the folder URL from an already-encoded path (the prefix, if any, is baked into `encodedPath`).
+    private static func fileFolder(
+        encodedPath: String,
+        storageType: FileStorageType,
+        shouldCreate: Bool
+    ) -> URL {
+        let url = storageType.directory.appendingPathComponent(encodedPath, isDirectory: true)
         if shouldCreate {
             createIfNeeded(url)
         }

@@ -70,7 +70,7 @@ struct CreateAlbumInteractor: CreateAlbumInteractorProtocol {
         name: String,
         signersKit: SignersKit,
         parentNodeKey: String,
-        parentDecryptedHashKey: String
+        parentDecryptedHashKey: Data
     ) throws -> (String, String) {
         let clearName = try clearName(from: name)
         let encryptedName = try dependencies.encryptor.encryptAndSign(

@@ -17,6 +17,7 @@
 
 import Foundation
 import Combine
+import CoreData
 import PDClient
 
 public protocol DownloaderProtocol: AnyObject {
@@ -33,8 +34,34 @@ public protocol TrackableDownloader {
 #endif
 }
 
+/// Options for `Downloader.scanTrees`. Defaults match prior behavior: include deleted items, collect
+/// scanned nodes, no resume optimizations, 150-item pages.
+public struct ScanConfiguration {
+    public var shouldIncludeDeletedItems: Bool
+    public var collectScannedNodes: Bool
+    public var skipFullyFetchedFolders: Bool
+    public var resumePartialFoldersFromLastPage: Bool
+    public var pageSize: Int
+
+    public init(shouldIncludeDeletedItems: Bool = true,
+                collectScannedNodes: Bool = true,
+                skipFullyFetchedFolders: Bool = false,
+                resumePartialFoldersFromLastPage: Bool = false,
+                pageSize: Int = 150) {
+        self.shouldIncludeDeletedItems = shouldIncludeDeletedItems
+        self.collectScannedNodes = collectScannedNodes
+        self.skipFullyFetchedFolders = skipFullyFetchedFolders
+        self.resumePartialFoldersFromLastPage = resumePartialFoldersFromLastPage
+        self.pageSize = pageSize
+    }
+
+    public static let `default` = ScanConfiguration()
+}
+
 public class Downloader: NSObject {
     public typealias Enumeration = (Node) -> Void
+    /// Reports a batch of nodes (a folder's sibling files, or a single folder) with the context to read them in.
+    public typealias NodesEnumeration = (NSManagedObjectContext, [Node]) -> Void
     private static let downloadFail: NSNotification.Name = .init("ch.protondrive.PDCore.downloadFail")
     
     public enum DownloadLocation {
@@ -56,6 +83,7 @@ public class Downloader: NSObject {
     var storage: StorageManager
     private let endpointFactory: EndpointFactory
     public let bytesCounterResource: BytesCounterResource
+    private let scanRetryConfiguration: HttpClientResilience.Configuration
 
     lazy var queue: OperationQueue = {
         let queue = OperationQueue(maxConcurrentOperation: Constants.maxConcurrentInflightFileDownloads,
@@ -67,12 +95,14 @@ public class Downloader: NSObject {
         cloudSlot: CloudSlotProtocol,
         storage: StorageManager,
         endpointFactory: EndpointFactory,
-        bytesCounterResource: BytesCounterResource
+        bytesCounterResource: BytesCounterResource,
+        scanRetryConfiguration: HttpClientResilience.Configuration = .forDriveAPICalls
     ) {
         self.cloudSlot = cloudSlot
         self.storage = storage
         self.endpointFactory = endpointFactory
         self.bytesCounterResource = bytesCounterResource
+        self.scanRetryConfiguration = scanRetryConfiguration
     }
 
     public func cancelAll() {
@@ -113,38 +143,38 @@ public class Downloader: NSObject {
     
     @discardableResult
     public func scanTrees(treesRootFolders folders: [Folder],
-                          enumeration: @escaping Enumeration,
+                          enumeration: @escaping NodesEnumeration,
                           cancelToken: CancelToken? = nil,
-                          shouldIncludeDeletedItems: Bool = true,
+                          configuration: ScanConfiguration = .default,
                           completion: @escaping (Result<[Node], Error>) -> Void) throws -> OperationWithProgress {
         let scanTree = try ScanTreesOperation(
             folders: folders,
             cloudSlot: self.cloudSlot,
             storage: storage,
-            enumeration: enumeration,
+            nodesEnumeration: enumeration,
             endpointFactory: endpointFactory,
-            shouldIncludeDeletedItems: shouldIncludeDeletedItems,
+            configuration: configuration,
+            retryConfiguration: scanRetryConfiguration,
             bytesCounterResource: bytesCounterResource,
             completion: completion
         )
         cancelToken?.onCancel = { [weak scanTree] in
-            scanTree?.cancel()
-            completion(.failure(CocoaError(.userCancelled)))
+            scanTree?.completeAsCancelled()
         }
         self.queue.addOperation(scanTree)
         return scanTree
     }
 
     public func scanTrees(treesRootFolders folders: [Folder],
-                          enumeration: @escaping Enumeration,
+                          enumeration: @escaping NodesEnumeration,
                           cancelToken: CancelToken? = nil,
-                          shouldIncludeDeletedItems: Bool = true) async throws -> [Node] {
+                          configuration: ScanConfiguration = .default) async throws -> [Node] {
         try await withCheckedThrowingContinuation { continuation in
             do {
                 try scanTrees(treesRootFolders: folders,
                               enumeration: enumeration,
                               cancelToken: cancelToken,
-                              shouldIncludeDeletedItems: shouldIncludeDeletedItems) { result in
+                              configuration: configuration) { result in
                     switch result {
                     case .success(let nodes):
                         continuation.resume(returning: nodes)

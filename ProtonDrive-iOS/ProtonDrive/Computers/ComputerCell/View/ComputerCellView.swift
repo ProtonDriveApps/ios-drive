@@ -39,6 +39,7 @@ struct ComputerCellView: View {
                     Text(getDisplayName())
                         .font(.body)
                         .foregroundColor(ColorProvider.TextNorm)
+                        .accessibilityIdentifier("ComputerCellView.Button.\(getDisplayName())")
 
                     Spacer()
                 }
@@ -57,24 +58,21 @@ struct ComputerCellView: View {
                 )
 
                 ContextMenuView(
-                    label: {
-                        IconProvider.threeDotsHorizontal
-                            .renderingMode(.template)  
-                    },
-                    content: {
-                        ForEach(viewModel.getContextMenuItems().items) { group in
-                            ForEach(group.items) { item in
-                                ContextMenuItemActionView(item: item)
-                            }
-                            Divider()
+                    icon: IconProvider.threeDotsHorizontal,
+                    viewModifier: EmptyModifier()
+                ) {
+                    ForEach(viewModel.getContextMenuItems().items) { group in
+                        ForEach(group.items) { item in
+                            ContextMenuItemActionView(item: item)
                         }
+                        Divider()
                     }
-                )
+                }
+                .accessibility(identifier: "ComputerCellView.three-dots-horizontal.\(getDisplayName())")
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
         }
-        .accessibilityIdentifier("ComputerCellView.Button.\(getDisplayName())")
         .redacted(reason: isLoading() ? .placeholder : [])
     }
 

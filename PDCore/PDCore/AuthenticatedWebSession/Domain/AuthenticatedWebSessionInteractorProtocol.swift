@@ -20,11 +20,17 @@ import Foundation
 public struct AuthenticatedWebSessionData: Equatable {
     public let selector: String
     public let key: String
+
+    public init(selector: String, key: String) {
+        self.selector = selector
+        self.key = key
+    }
 }
 
 public enum ForkSessionType: String {
     case protonFile = "web-docs"
-    case blackFriday = "WebAccountLite"
+    case webAccountLite = "WebAccountLite"
+    case webDrive = "WebDrive"
 }
 
 public protocol AuthenticatedWebSessionInteractorProtocol {

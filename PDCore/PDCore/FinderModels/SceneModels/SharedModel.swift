@@ -68,13 +68,3 @@ public final class SharedModel: FinderModel, FinderErrorModel, NodesListing, Dow
         }
     }
 }
-
-extension SharedModel: ThumbnailLoader {
-    public func loadThumbnail(with id: Identifier) {
-        return tower.loadThumbnail(with: id)
-    }
-
-    public func cancelThumbnailLoading(_ id: Identifier) {
-        tower.cancelThumbnailLoading(id)
-    }
-}

@@ -90,7 +90,7 @@ class MoveViewModel: ObservableObject, FinderViewModel, HasRefreshControl, Fetch
 
     func childViewModel(for node: Node) -> NodeCellConfiguration {
         let shouldDisable = node is File || self.model.nodeIdsToMove.contains(node.identifier)
-        return NodeCellSimpleConfiguration(from: node, disabled: shouldDisable, loader: model, featureFlagsController: featureFlagsController)
+        return NodeCellSimpleConfiguration(from: node, disabled: shouldDisable, loader: model.tower.sdkObjects.thumbnailDownloader, featureFlagsController: featureFlagsController)
     }
 
     func applyAction(completion: @escaping () -> Void) {

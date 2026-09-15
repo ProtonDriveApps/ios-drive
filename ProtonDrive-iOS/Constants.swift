@@ -23,16 +23,6 @@ import ProtonCoreEnvironment
 
 enum Constants {
     
-    // MARK: - Environments
-    enum SettingsBundleKeys: String {
-        case host = "DEFAULT_API_HOST"
-        
-        case appStorePageURL = "APPSTORE_PAGE_LINK"
-        case appVersionIdentifier = "APP_VERSION_IDENTIFIER"
-        case photosReminderDelay = "DEFAULT_PHOTOS_REMINDER_DELAY"
-        case uploadedPhotoNotification = "UPLOADED_PHOTO_NOTIFICATION"
-    }
-    
     static let appGroup: SettingsStorageSuite = .group(named: "group.ch.protonmail.protondrive")
     static let clientApiConfig = loadConfiguration()
 
@@ -99,7 +89,7 @@ extension Constants {
     /// Release-Store      |    ios-drive@1.3.2+4379             |    ios-drive-fileprovider@1.3.2+4379
     ///
     static let clientVersion: String = {
-        guard let info = Bundle.main.infoDictionary else {
+        if Bundle.main.infoDictionary == nil {
             return "ios-drive@0.0.0"
         }
 
@@ -109,7 +99,7 @@ extension Constants {
         }
         
         // MAJOR.MINOR.PATCH, all digits
-        let version = (info["CFBundleShortVersionString"] as! String)
+        let version: String = BundleInfo.value(for: .shortVersion)!
         appVersion += "@" + version
 
         // dev, alpha, beta, etc
@@ -119,7 +109,7 @@ extension Constants {
         }
 
         // Debug or NUMBER.CONFIG, all digits
-        let build = info["CFBundleVersion"] as! String
+        let build: String = BundleInfo.value(for: .bundleVersion)!
         if build.lowercased() != "debug" {
             let buildWithoutSuffix = build.components(separatedBy: ".").first ?? ""
             appVersion += "+\(buildWithoutSuffix)"
@@ -128,7 +118,7 @@ extension Constants {
         return appVersion
     }()
     
-    private static func loadSettingValue(for key: SettingsBundleKeys) -> String {
+    private static func loadSettingValue(for key: InfoPlistKeys) -> String {
         #if HAS_QA_FEATURES
         // values should be placed in shared UserDefaults so appex will be able to read them
         let sharedUserDefaults = UserDefaults(suiteName: "group.ch.protonmail.protondrive")
@@ -136,8 +126,8 @@ extension Constants {
             return modifiedValue
         } 
         #endif
-        
-        if let defaultValue = Bundle.main.infoDictionary?[key.rawValue] as? String {
+
+        if let defaultValue: String = BundleInfo.value(for: key) {
             return defaultValue
         } else {
             assert(false, "No value was defined for \(key.rawValue)")
@@ -145,7 +135,7 @@ extension Constants {
         }
     }
 
-    private static func loadSettingsValue<T>(for key: SettingsBundleKeys) -> T {
+    private static func loadSettingsValue<T>(for key: InfoPlistKeys) -> T {
         #if HAS_QA_FEATURES
         // values should be placed in shared UserDefaults so appex will be able to read them
         let sharedUserDefaults = UserDefaults(suiteName: "group.ch.protonmail.protondrive")
@@ -153,8 +143,8 @@ extension Constants {
             return modifiedValue
         }
         #endif
-        
-        if let defaultValue = Bundle.main.infoDictionary?[key.rawValue] as? T {
+
+        if let defaultValue: T = BundleInfo.value(for: key) {
             return defaultValue
         } else {
             fatalError("No value was defined for \(key.rawValue)")
@@ -208,7 +198,7 @@ extension Constants {
             return true
         }
 
-        if let environmentVar = Bundle.main.infoDictionary?["IS_UI_TEST"] as? String,
+        if let environmentVar: String = BundleInfo.value(for: .isUITest),
            let flag = Bool(environmentVar) {
             // Bool(_ description: String) only accepts "true" or "false", case sensitive
             return flag
@@ -226,7 +216,7 @@ extension Constants {
     }()
 
     private static var dynamicDomain: String? {
-        if let domain = Bundle.main.infoDictionary?["DYNAMIC_DOMAIN"] as? String, !domain.isEmpty {
+        if let domain: String = BundleInfo.value(for: .dynamicDomain), !domain.isEmpty {
             persistDynamicDomainIfNeeded(domain)
             return domain
         } else {
@@ -256,7 +246,7 @@ extension Constants {
         }
         
         let sharedUserDefaults = UserDefaults(suiteName: "group.ch.protonmail.protondrive")
-        sharedUserDefaults?.set(domain, forKey: SettingsBundleKeys.host.rawValue)
+        sharedUserDefaults?.set(domain, forKey: InfoPlistKeys.host.rawValue)
     }
 
     private static func getBuildType() -> BuildType {
@@ -280,12 +270,6 @@ extension Constants {
         let hasPayments = false
         #endif
 
-        #if SUPPORTS_UNLIMITED_PICKER_SELECTION
-        let hasUnlimitedPicker = true
-        #else
-        let hasUnlimitedPicker = false
-        #endif
-
         #if HAS_SIGNUP
         let hasSignUp = true
         #else
@@ -300,7 +284,6 @@ extension Constants {
 
         return BuildFeatures(
             hasPayments: hasPayments,
-            hasUnlimitedPicker: hasUnlimitedPicker,
             hasSignUp: hasSignUp,
             hasFileProvider: hasFileProvider
         )

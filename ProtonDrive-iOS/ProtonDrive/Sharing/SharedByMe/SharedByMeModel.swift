@@ -20,7 +20,7 @@ import Combine
 import CoreData
 import PDCore
 
-public final class SharedByMeModel: FinderModel, FinderErrorModel, NodesListing, DownloadsListing, NodesSorting, ThumbnailLoader {
+public final class SharedByMeModel: FinderModel, FinderErrorModel, NodesListing, DownloadsListing, NodesSorting {
     // MARK: FinderModel
     public var folder: Folder?
     public func loadFromCache() {
@@ -61,15 +61,5 @@ public final class SharedByMeModel: FinderModel, FinderErrorModel, NodesListing,
 
     public func fetchSharedByMe() async throws {
         try await interactor.scan()
-    }
-
-    // MARK: - ThumbnailLoader
-
-    public func loadThumbnail(with id: Identifier) {
-        return tower.loadThumbnail(with: id)
-    }
-
-    public func cancelThumbnailLoading(_ id: Identifier) {
-        tower.cancelThumbnailLoading(id)
     }
 }

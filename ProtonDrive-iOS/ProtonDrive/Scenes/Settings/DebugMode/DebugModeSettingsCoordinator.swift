@@ -17,6 +17,7 @@
 
 import Foundation
 import PDCore
+import PDCoreIOS
 import PDLocalization
 import PDPhotos
 import SwiftUI
@@ -28,14 +29,24 @@ final class DebugModeSettingsCoordinator {
     private var localSettings: LocalSettings { tower.localSettings }
     private var storageManager: StorageManager { tower.storage }
     private let tower: Tower
+    private let featureFlagsController: FeatureFlagsControllerProtocol
 
-    init(backupSettingsController: PhotoBackupSettingsController, tower: Tower) {
+    init(
+        backupSettingsController: PhotoBackupSettingsController,
+        tower: Tower,
+        featureFlagsController: FeatureFlagsControllerProtocol
+    ) {
         self.backupSettingsController = backupSettingsController
         self.tower = tower
+        self.featureFlagsController = featureFlagsController
     }
 
     func start() -> UIViewController {
-        let vm = DebugModeSettingsViewModel(localSettings: localSettings, coordinator: self)
+        let vm = DebugModeSettingsViewModel(
+            localSettings: localSettings,
+            coordinator: self,
+            featureFlagsController: featureFlagsController
+        )
         let vc = UIHostingController(rootView: DebugModeSettingsView(viewModel: vm))
         vc.title = Localization.setting_debug_mode
         rootVC = vc

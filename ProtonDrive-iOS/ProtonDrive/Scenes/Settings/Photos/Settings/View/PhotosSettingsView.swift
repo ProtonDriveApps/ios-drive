@@ -35,7 +35,6 @@ struct PhotosSettingsView<ViewModel: PhotosSettingsViewModelProtocol, QASettings
             content
                 .flatNavigationBar(
                     viewModel.backupTitle,
-                    isRoot: false,
                     leading: EmptyView(),
                     trailing: EmptyView()
                 )

@@ -81,12 +81,23 @@ struct PhotosGridView<
 
     @ViewBuilder
     private var contentWithOptionalNavigation: some View {
-        contentIncludingScroller
-            .toolbar {
-                if let navigation = viewModel.navigation {
-                    toolbarContent(navigation: navigation)
+        if #available(iOS 26.0, *) {
+            contentIncludingScroller
+                .toolbar {
+                    navigationFactory.makeGlassToolbar(
+                        navigation: viewModel.navigation,
+                        block: viewModel.handle(navigation:)
+                    )
                 }
-            }
+        } else {
+            contentIncludingScroller
+                .toolbar {
+                    navigationFactory.makeLegacyToolbar(
+                        navigation: viewModel.navigation,
+                        block: viewModel.handle(navigation:)
+                    )
+                }
+        }
     }
 
     private var contentIncludingScroller: some View {
@@ -250,17 +261,6 @@ struct PhotosGridView<
         }
     }
 
-    @ToolbarContentBuilder
-    private func toolbarContent(navigation: PhotosRootNavigation) -> some ToolbarContent {
-        if let navigationTitle = navigation.title {
-            navigationFactory.makeToolbar(
-                title: navigationTitle,
-                leading: navigation.leading,
-                trailing: navigation.trailing,
-                block: viewModel.handle(navigation:)
-            )
-        }
-    }
 }
 
 // MARK: - Layout

@@ -1,34 +1,34 @@
+// Copyright (c) 2022 Proton AG
 //
-//  NavigationBarStyles.swift
-//  ProtonCore-Settings - Created on 12.11.2020.
+// This file is part of Proton Drive.
 //
-//  Copyright (c) 2022 Proton Technologies AG
+// Proton Drive is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
 //
-//  This file is part of Proton Technologies AG and ProtonCore.
+// Proton Drive is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
 //
-//  ProtonCore is free software: you can redistribute it and/or modify
-//  it under the terms of the GNU General Public License as published by
-//  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
-//
-//  ProtonCore is distributed in the hope that it will be useful,
-//  but WITHOUT ANY WARRANTY; without even the implied warranty of
-//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//  GNU General Public License for more details.
-//
-//  You should have received a copy of the GNU General Public License
-//  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
+// You should have received a copy of the GNU General Public License
+// along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import PDUIComponents
 import UIKit
 import ProtonCoreUIFoundations
 
 public struct NavigationBarStyles {
     public static let `default` = Style<UINavigationBar> { _ in }
 
-    public static let sheet = Style<UINavigationBar> {
-        $0.isTranslucent = true
-        $0.shadowImage = UIImage()
-        $0.barTintColor = ColorProvider.BackgroundNorm
+    public static let sheet = Style<UINavigationBar> { bar in
+        let appearance = UINavigationBarAppearance.drive
+
+        bar.standardAppearance = appearance
+        bar.compactAppearance = appearance
+        bar.scrollEdgeAppearance = appearance
+        bar.isTranslucent = false
     }
 }
 

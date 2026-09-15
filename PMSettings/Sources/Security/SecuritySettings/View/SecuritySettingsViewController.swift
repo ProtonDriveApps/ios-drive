@@ -1,23 +1,19 @@
+// Copyright (c) 2022 Proton AG
 //
-//  SecuritySettingsViewController.swift
-//  ProtonCore-Settings - Created on 04.10.2020.
+// This file is part of Proton Drive.
 //
-//  Copyright (c) 2022 Proton Technologies AG
+// Proton Drive is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
 //
-//  This file is part of Proton Technologies AG and ProtonCore.
+// Proton Drive is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
 //
-//  ProtonCore is free software: you can redistribute it and/or modify
-//  it under the terms of the GNU General Public License as published by
-//  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
-//
-//  ProtonCore is distributed in the hope that it will be useful,
-//  but WITHOUT ANY WARRANTY; without even the implied warranty of
-//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//  GNU General Public License for more details.
-//
-//  You should have received a copy of the GNU General Public License
-//  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
+// You should have received a copy of the GNU General Public License
+// along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import UIKit
 import ProtonCoreUIFoundations
@@ -38,7 +34,6 @@ public class SecuritySettingsViewController: UITableViewController {
         tableView.separatorStyle = .none
         tableView.backgroundColor = ColorProvider.BackgroundNorm
         tableView.contentInsetAdjustmentBehavior = contentInsetAdjustmentBehavior
-        navigationController?.navigationBar.isTranslucent = false
         tableView.rowHeight = UITableView.automaticDimension
         registerTableViewCells()
     }
@@ -57,7 +52,7 @@ public class SecuritySettingsViewController: UITableViewController {
         return viewModel.sections.count
     }
 
-    public override func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+    override public func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
         return viewModel.sections[section].title == nil ? .zero : UITableView.automaticDimension
     }
 

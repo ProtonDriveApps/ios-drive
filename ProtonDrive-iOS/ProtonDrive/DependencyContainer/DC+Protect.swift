@@ -46,12 +46,18 @@ extension DriveDependencyContainer {
         lockedStateController: LockedStateControllerProtocol
     ) async -> AuthenticatedDependencyContainer {
         let populatedController = PopulatedStateController()
-        let tower = await initializeTowerInBackgroundQueue(populatedController: populatedController)
+        let volumeLockFactory = VolumeLockFactory()
+        let volumeLockController = volumeLockFactory.makeController(localSettings: localSettings)
+        let tower = await initializeTowerInBackgroundQueue(
+            populatedController: populatedController,
+            eventObservers: [volumeLockFactory.makeEventsListener(controller: volumeLockController)]
+        )
+        volumeLockFactory.configure(controller: volumeLockController, tower: tower)
         signOutManager.appIsUnlocked(tower: tower)
         let featureFlagsController = FeatureFlagsController(
             buildType: Constants.buildType,
-            featureFlagsStore: localSettings,
-            updateRepository: tower.featureFlags
+            featureFlagProvider: tower.featureFlags,
+            experimentalFeatureFlagProvider: localSettings
         )
         let photoUploadedNotifier = ConcretePhotoUploadedNotifier(moc: tower.storage.photosSecondaryBackgroundContext)
         let failedPhotosResource = InMemoryDeletedPhotosIdentifierStoreResource()
@@ -76,7 +82,8 @@ extension DriveDependencyContainer {
             photoUploadedNotifier: photoUploadedNotifier,
             failedPhotosResource: failedPhotosResource,
             photosSkippableCacheStorage: photosSkippableCacheStorage,
-            lockedStateController: lockedStateController
+            lockedStateController: lockedStateController,
+            volumeLockController: volumeLockController
         )
 
         self.authenticatedContainer = authenticatedContainer
@@ -105,7 +112,10 @@ extension DriveDependencyContainer {
         try? await sdkBootstrapper.bootstrap()
     }
 
-    func initializeTowerInBackgroundQueue(populatedController: PopulatedStateControllerProtocol) async -> Tower {
+    func initializeTowerInBackgroundQueue(
+        populatedController: PopulatedStateControllerProtocol,
+        eventObservers: [EventsListener] = []
+    ) async -> Tower {
         Log.info("Initializing Tower", domain: .application)
         let tower = Tower(
             storage: storageManager,
@@ -117,7 +127,7 @@ extension DriveDependencyContainer {
             authenticator: authenticator,
             clientConfig: Constants.clientApiConfig,
             network: networkService,
-            eventObservers: [],
+            eventObservers: eventObservers,
             eventProcessingMode: .full,
             eventLoopInterval: 90,
             localSettings: localSettings,

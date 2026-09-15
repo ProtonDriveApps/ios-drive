@@ -17,12 +17,12 @@
 
 import Foundation
 
-struct Version: Comparable, CustomStringConvertible {
-    let major: Int
-    let minor: Int
-    let patch: Int
-    
-    init?(_ string: String) {
+public struct Version: Comparable, CustomStringConvertible {
+    public let major: Int
+    public let minor: Int
+    public let patch: Int
+
+    public init?(_ string: String) {
         let parts = string.split(separator: ".")
         
         guard
@@ -40,9 +40,9 @@ struct Version: Comparable, CustomStringConvertible {
         self.patch = patch
     }
     
-    var description: String { "\(major).\(minor).\(patch)"}
-    
-    static func < (lhs: Version, rhs: Version) -> Bool {
+    public var description: String { "\(major).\(minor).\(patch)"}
+
+    public static func < (lhs: Version, rhs: Version) -> Bool {
         if lhs.major != rhs.major {
             return lhs.major < rhs.major
         }

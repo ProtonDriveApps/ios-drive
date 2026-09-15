@@ -32,11 +32,13 @@ struct PhotoPicker: UIViewControllerRepresentable {
     @EnvironmentObject var root: RootViewModel
     private weak var delegate: PickerDelegate?
     private let resource: PhotoPickerLoadResource
+    private let hasUnlimitedPickerSelection: Bool
     private var cancellables = Set<AnyCancellable>()
 
-    init(resource: PhotoPickerLoadResource, delegate: PickerDelegate) {
+    init(resource: PhotoPickerLoadResource, delegate: PickerDelegate, featureFlagsController: FeatureFlagsControllerProtocol) {
         self.delegate = delegate
         self.resource = resource
+        self.hasUnlimitedPickerSelection = featureFlagsController.hasUnlimitedPickerSelection
     }
 
     func makeCoordinator() -> Coordinator {
@@ -46,11 +48,7 @@ struct PhotoPicker: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> PHPickerViewController {
         var configuration = PHPickerConfiguration()
         configuration.preferredAssetRepresentationMode = .current
-        #if SUPPORTS_UNLIMITED_PICKER_SELECTION
-            configuration.selectionLimit = 250
-        #else
-            configuration.selectionLimit = 10
-        #endif
+        configuration.selectionLimit = hasUnlimitedPickerSelection ? 250 : 10
 
         let controller = PHPickerViewController(configuration: configuration)
         controller.delegate = context.coordinator

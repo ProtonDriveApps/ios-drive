@@ -15,11 +15,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-import UIKit
-import SwiftUI
 import PDCore
-import ProtonCoreUIFoundations
+import PDCoreIOS
+import PDSDKCore
 import PDUIComponents
+import ProtonCoreUIFoundations
+import SwiftUI
+import UIKit
 
 final class EditNodeCoordinator: SwiftUICoordinator {
     typealias Context = (tower: Tower, intention: Intention)
@@ -53,6 +55,48 @@ final class EditNodeCoordinator: SwiftUICoordinator {
                 FormattingFolderViewModel(initialName: node.fullName,
                                           attributes: [.foregroundColor: UIColor(ColorProvider.TextNorm)])
             return EditNodeUIKitView(vm: vm, nfvm: nfvm)
+        }
+    }
+}
+
+final class EEditNodeCoordinator: SwiftUICoordinator {
+    typealias Context = (tower: Tower, intention: Intention)
+    
+    enum Intention {
+        case create(parent: CoreDataFolder)
+        case rename(node: NodeDTO)
+    }
+    
+    func go(to destination: Never) -> Never { }
+    
+    func start(_ context: Context) -> UIViewController {
+        let model = EditNodeModel(tower: context.tower)
+        let validator = NameValidations.userSelectedName
+        let nameAttributes = EditNodeViewController.nameAttributes
+        let extAttributes = EditNodeViewController.nameAttributes
+        
+        switch context.intention {
+        case let .create(parent):
+            let vm = CreateFolderViewModel(
+                folderCreator: model,
+                validator: validator,
+                parent: parent,
+                eventsSystemManager: context.tower
+            )
+            let nfvm = FormattingFolderViewModel(initialName: nil, attributes: nameAttributes)
+            return EEditNodeUIKitView(vm: vm, nfvm: nfvm).embeddedInHostingController()
+
+        case .rename(let node):
+            let node = NameEditingNode(node: node)
+            let vm = EditNodeNameViewModel(node: node, nameEditor: model, validator: validator)
+            let nfvm: NameFormattingViewModel = node.type == .file ?
+            FormattingFileViewModel(initialName: node.fullName,
+                                    nameAttributes: nameAttributes,
+                                    extensionAttributes: extAttributes)
+            :
+            FormattingFolderViewModel(initialName: node.fullName,
+                                      attributes: [.foregroundColor: UIColor(ColorProvider.TextNorm)])
+            return EEditNodeUIKitView(vm: vm, nfvm: nfvm).embeddedInHostingController()
         }
     }
 }

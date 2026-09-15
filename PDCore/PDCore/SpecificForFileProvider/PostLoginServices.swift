@@ -43,6 +43,7 @@ public class PostLoginServices {
                 eventObservers: [EventsListener] = [],
                 eventProcessingMode: DriveEventsLoopMode,
                 eventLoopInterval: Double,
+                scanEngineV2TestOverride: @escaping () -> Bool? = { nil },
                 activityObserver: @escaping ((NSUserActivity) -> Void))
     {
         self.initialServices = initialServices
@@ -73,8 +74,10 @@ public class PostLoginServices {
                            eventProcessingMode: eventProcessingMode,
                            eventLoopInterval: eventLoopInterval,
                            localSettings: initialServices.localSettings,
+                           featureFlags: initialServices.featureFlags,
                            populatedStateController: populatedStateController,
-                           connectionStateResource: initialServices.connectionStateResource
+                           connectionStateResource: initialServices.connectionStateResource,
+                           scanEngineV2TestOverride: scanEngineV2TestOverride
         )
 
         self.initialServices.networkClient.publisher(for: \.currentActivity)

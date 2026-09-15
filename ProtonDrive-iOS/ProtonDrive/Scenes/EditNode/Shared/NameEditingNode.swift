@@ -16,6 +16,8 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDCoreIOS
+import PDSDKCore
 
 struct NameEditingNode {
     let id: NodeIdentifier
@@ -40,6 +42,14 @@ extension NameEditingNode {
         self.init(id: NodeIdentifier(node.id, node.shareId, node.volumeID),
                   decryptedName: node.decryptedName,
                   type: (node is Folder) ? .folder : .file)
+    }
+    
+    init(node: NodeDTO) {
+        self.init(
+            id: node.nodeIdentifier,
+            decryptedName: node.name,
+            type: node.isFile ? .file : .folder
+        )
     }
 
     init(computer: ComputerIdentifier, name: String) {

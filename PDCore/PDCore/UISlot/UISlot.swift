@@ -79,8 +79,12 @@ public class UISlot {
         self.storage.subscriptionToNodes(share: shareID, sorting: sorting, moc: self.moc)
     }
     
-    public func subscribeToChildren(of parentID: NodeIdentifier, sorting: SortPreference) -> NSFetchedResultsController<Node> {
-        self.storage.subscriptionToChildren(ofNode: parentID, sorting: sorting, moc: self.moc)
+    public func subscribeToChildren(
+        of parentID: NodeIdentifier,
+        sorting: SortPreference,
+        preferredContext: NSManagedObjectContext? = nil
+    ) -> NSFetchedResultsController<Node> {
+        self.storage.subscriptionToChildren(ofNode: parentID, sorting: sorting, moc: preferredContext ?? self.moc)
     }
     
     public func subscribeToNode(_ node: NodeIdentifier) -> Node? {

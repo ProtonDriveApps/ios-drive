@@ -16,11 +16,18 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import PDCore
+import PDCoreIOS
+import PDSDKCore
 
 protocol NodeStatePolicy {
     func isUploadWaiting(for node: Node) -> Bool
     func isUploadPaused(for node: Node) -> Bool
     func isUploadFailed(for node: Node, progressTracker: ProgressTracker?, areProgressesAvailable: Bool) -> Bool
+    
+    func isUploadWaiting(for node: NodeDTO) -> Bool
+    func isUploadPaused(for node: NodeDTO) -> Bool
+    func isNotPaused(for node: NodeDTO) -> Bool
+    func isUploadFailed(for node: NodeDTO, progressTracker: ProgressTracker?) -> Bool
 }
 
 final class FileNodeStatePolicy: NodeStatePolicy {
@@ -43,6 +50,28 @@ final class FileNodeStatePolicy: NodeStatePolicy {
 
         return progressTracker?.progress == nil && areProgressesAvailable
     }
+    
+    func isUploadWaiting(for node: NodeDTO) -> Bool {
+        return node.state == .cloudImpediment
+    }
+
+    func isUploadPaused(for node: NodeDTO) -> Bool {
+        return [Node.State.paused, .interrupted].contains(node.state)
+    }
+    
+    func isNotPaused(for node: NodeDTO) -> Bool {
+        ![Node.State.cloudImpediment, .interrupted, .paused].contains(node.state)
+    }
+    
+    func isUploadFailed(for node: NodeDTO, progressTracker: ProgressTracker?) -> Bool {
+        if isUploadPaused(for: node) || isUploadWaiting(for: node) { return false }
+
+        guard node.state == .uploading || node.uploadID != nil else {
+            return false
+        }
+
+        return progressTracker?.progress == nil
+    }
 }
 
 final class DisabledNodeStatePolicy: NodeStatePolicy {
@@ -56,5 +85,12 @@ final class DisabledNodeStatePolicy: NodeStatePolicy {
 
     func isUploadFailed(for node: Node, progressTracker: ProgressTracker?, areProgressesAvailable: Bool) -> Bool {
         return false
+    }
+    
+    func isUploadWaiting(for node: NodeDTO) -> Bool { false }
+    func isUploadPaused(for node: NodeDTO) -> Bool { false }
+    func isNotPaused(for node: NodeDTO) -> Bool { false }
+    func isUploadFailed(for node: NodeDTO, progressTracker: ProgressTracker?) -> Bool {
+        false
     }
 }

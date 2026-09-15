@@ -77,6 +77,62 @@ struct NoSpaceView: View {
     }
 }
 
+struct NNoSpaceView: View {
+    @Environment(\.dismiss) var dismiss
+    @Environment(\.acknowledgedNotEnoughStorage) var acknowledgedNotEnoughStorage
+    var storage: Storage
+
+    var body: some View {
+        VStack(alignment: .center) {
+
+            Spacer()
+                .frame(height: 72)
+
+            Text(self.storage.title)
+                .font(.title)
+                .bold()
+                .foregroundColor(ColorProvider.TextNorm)
+                .accessibilityIdentifier("NoSpaceView.storage.title")
+
+            Text(self.storage.subtitle)
+                .font(.subheadline)
+                .foregroundColor(ColorProvider.TextWeak)
+                .padding(.top, 8)
+                .accessibilityIdentifier("NoSpaceView.storage.subtitle")
+
+            if self.storage == .local {
+                BlueRectButton(title: Localization.no_space_open_storage_setting,
+                               action: self.openSettings)
+                .fixedSize()
+                .padding(.top, 30)
+            }
+
+            if self.storage == .cloud {
+                NoSpaceAdviceView()
+            }
+
+            Spacer()
+        }
+        .lineLimit(nil)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal)
+        .closable { dismiss() }
+        .onDisappear {
+            self.acknowledgedNotEnoughStorage.wrappedValue = true
+        }
+    }
+
+    func openSettings() {
+        guard let settingsUrl = URL(string: UIApplication.openSettingsURLString),
+              UIApplication.shared.canOpenURL(settingsUrl) else
+        {
+            return
+        }
+        UIApplication.shared.open(settingsUrl) { _ in }
+    }
+}
+
 struct NoSpaceLocallyView_Previews: PreviewProvider {
     static var previews: some View {
         Group {

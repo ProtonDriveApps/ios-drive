@@ -146,7 +146,7 @@ extension Node.State {
 }
 
 extension Node {
-    func setToBeDeletedRecursivelly() {
+    public func setToBeDeletedRecursivelly() {
         guard !isToBeDeleted else { return }
         if isFolder {
             (self as! Folder).children.forEach { $0.setToBeDeletedRecursivelly() }

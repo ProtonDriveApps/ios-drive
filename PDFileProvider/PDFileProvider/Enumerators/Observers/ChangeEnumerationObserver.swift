@@ -23,6 +23,17 @@ public class ChangeEnumerationObserver: BaseEnumerationObserver, NSFileProviderC
     public static let enumerationSyncItemIdentifier = "enumerateChanges"
     private let enumerationSyncItemName = Localization.detecting_remote_changes
 
+    /// Writes a terminal `.errored` state if finish is never issued (hung enumeration or torn-down
+    /// extension), so the summary never stays `.inProgress`. Must exceed the slowest enumeration.
+    private let watchdogTimeout: TimeInterval
+    private let watchdogLock = NSLock()
+    private var watchdog: Task<Void, Never>?
+
+    public init(syncStorage: SyncStorageManager, watchdogTimeout: TimeInterval = 1800) {
+        self.watchdogTimeout = watchdogTimeout
+        super.init(syncStorage: syncStorage)
+    }
+
     public func didStartEnumeratingChanges(name: String) {
         Log.trace("name: \(name)")
 
@@ -36,12 +47,14 @@ public class ChangeEnumerationObserver: BaseEnumerationObserver, NSFileProviderC
             operation: .enumerateChanges,
             state: .inProgress,
             progress: 0)
-        
-        Task {
+
+        syncStorage.enqueueWrite(for: Self.enumerationSyncItemIdentifier) { [syncStorage] in
             await syncStorage.backgroundContextPool.withContext { context in
                 syncStorage.upsert(item, in: context)
             }
         }
+
+        armWatchdog()
     }
 
     public func didUpdate(_ updatedItems: [any NSFileProviderItemProtocol]) {
@@ -66,6 +79,8 @@ public class ChangeEnumerationObserver: BaseEnumerationObserver, NSFileProviderC
 
     private func didFinishEnumeratingChanges(name: String, error: Error?) {
         Log.trace("name: \(name), error: \(error?.localizedDescription ?? "n/a")")
+
+        cancelWatchdog()
         
         let item = ReportableSyncItem(
             id: ChangeEnumerationObserver.enumerationSyncItemIdentifier,
@@ -79,14 +94,58 @@ public class ChangeEnumerationObserver: BaseEnumerationObserver, NSFileProviderC
             progress: error == nil ? 100 : 0,
             errorDescription: error?.localizedDescription)
 
-        Task {
+        syncStorage.enqueueWrite(for: Self.enumerationSyncItemIdentifier) { [syncStorage] in
             await syncStorage.backgroundContextPool.withContext { context in
                 syncStorage.upsert(item, in: context)
             }
         }
     }
 
+    private func armWatchdog() {
+        let timeout = watchdogTimeout
+        let task = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            self?.fireWatchdog()
+        }
+        watchdogLock.lock()
+        let previous = watchdog
+        watchdog = task
+        watchdogLock.unlock()
+        previous?.cancel()
+    }
+
+    private func cancelWatchdog() {
+        watchdogLock.lock()
+        let task = watchdog
+        watchdog = nil
+        watchdogLock.unlock()
+        task?.cancel()
+    }
+
+    private func fireWatchdog() {
+        Log.error("Change enumeration watchdog fired without finish callback; forcing terminal .errored state", domain: .enumerating)
+        let item = ReportableSyncItem(
+            id: Self.enumerationSyncItemIdentifier,
+            modificationTime: Date.now,
+            filename: enumerationSyncItemName,
+            location: nil,
+            mimeType: nil,
+            fileSize: nil,
+            operation: .enumerateChanges,
+            state: .errored,
+            progress: 0,
+            errorDescription: "Enumeration timed out")
+
+        syncStorage.enqueueWrite(for: Self.enumerationSyncItemIdentifier) { [syncStorage] in
+            await syncStorage.backgroundContextPool.withContext { context in
+                syncStorage.upsert(item, updateIf: { $0.inProgress }, in: context)
+            }
+        }
+    }
+
     deinit {
+        watchdog?.cancel()
         Log.trace()
     }
 }

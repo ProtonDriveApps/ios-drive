@@ -259,7 +259,7 @@ extension CopyPhotosInteractor {
         )
     }
 
-    private func rehashed(contentDigest: FileContentDigest, albumDecryptedHashKey: String) throws -> String {
+    private func rehashed(contentDigest: FileContentDigest, albumDecryptedHashKey: Data) throws -> String {
         switch contentDigest {
         case .contentDigest(let digest):
             return try dependencies.encryptor.makeHmac(string: digest, hashKey: albumDecryptedHashKey)

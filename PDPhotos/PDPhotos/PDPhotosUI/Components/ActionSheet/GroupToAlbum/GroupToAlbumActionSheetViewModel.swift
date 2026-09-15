@@ -23,25 +23,19 @@ final class GroupToAlbumActionSheetViewModel {
     var isSingleSelection: Bool { selectedPhotoIDs.count == 1 }
     var hasNativeShare: Bool { type != .shareToWithoutNativeShare }
     private let dependencies: Dependencies
-    private let metadataController: MetadataControllerProtocol
     private let selectedPhotoIDs: Set<PhotoListingId>
-    private let thumbnailContainer: ThumbnailsControllersContainerProtocol
     private let type: GroupToAlbumSheetType
     private let maximumSheetHeight: CGFloat = 450
 
     init(
         albumList: [AlbumListing],
         dependencies: Dependencies,
-        metadataController: MetadataControllerProtocol,
         selectedPhotoIDs: Set<PhotoListingId>,
-        thumbnailContainer: ThumbnailsControllersContainerProtocol,
         type: GroupToAlbumSheetType
     ) {
         self.albumList = albumList
         self.dependencies = dependencies
-        self.metadataController = metadataController
         self.selectedPhotoIDs = selectedPhotoIDs
-        self.thumbnailContainer = thumbnailContainer
         self.type = type
     }
 

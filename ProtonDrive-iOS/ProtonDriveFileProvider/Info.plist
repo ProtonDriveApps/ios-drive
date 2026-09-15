@@ -38,18 +38,6 @@
 		<false/>
 		<key>NSAllowsArbitraryLoadsInWebContent</key>
 		<false/>
-		<key>NSExceptionDomains</key>
-		<dict>
-			<key>compute.amazonaws.com</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-				<key>NSExceptionRequiresForwardSecrecy</key>
-				<false/>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-			</dict>
-		</dict>
 	</dict>
 	<key>NSExtension</key>
 	<dict>

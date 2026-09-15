@@ -166,6 +166,7 @@ import ProtonDriveSDK
         }
         removePausedUploadID(uploadID)
         await tokenStore.setToken(uploadID, for: identifier)
+        try await cacheResource.updateState(for: identifier, to: .uploading)
     }
 
     private func handlePaused(identifier: AnyVolumeIdentifier, uploadID: UUID) async throws {
@@ -276,7 +277,7 @@ extension SDKFileUploader {
         removePausedUploadID(uploadID)
         await tokenStore.remove(for: identifier)
         removeProgress(for: uploadID)
-        try await handleUploadFailure(identifier: identifier)
+        await handleUploadFailure(identifier: identifier)
         failuresSubject.send((identifier, error))
         if protectionResource.isLocked() {
             throw SDKUploadErrors.cancelled
@@ -360,10 +361,8 @@ extension SDKFileUploader {
         }
     }
 
-    private func handleUploadFailure(identifier: AnyVolumeIdentifier) async throws {
-        if interactor.type == .file {
-            try await cacheResource.updateState(for: identifier, to: .interrupted)
-        } else if interactor.type == .photo {
+    private func handleUploadFailure(identifier: AnyVolumeIdentifier) async {
+        if interactor.type == .photo {
             await cacheResource.deleteTemp(identifier: identifier)
         }
     }

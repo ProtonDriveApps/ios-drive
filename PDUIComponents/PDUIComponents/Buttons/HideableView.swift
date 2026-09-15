@@ -25,18 +25,20 @@ public struct HideableView<T: View, U: View>: View {
     @State private var isModifierPressed = false
 
     private let modifier: NSEvent.ModifierFlags
+    private let alwaysVisible: Binding<Bool>?
     private let defaultView: () -> T
     private let pressedView: () -> U
 
-    public init(modifier: NSEvent.ModifierFlags, defaultView: @escaping () -> T, pressedView: @escaping () -> U) {
+    public init(modifier: NSEvent.ModifierFlags, alwaysVisible: Binding<Bool>? = nil, defaultView: @escaping () -> T, pressedView: @escaping () -> U) {
         self.modifier = modifier
+        self.alwaysVisible = alwaysVisible
         self.defaultView = defaultView
         self.pressedView = pressedView
     }
 
     public var body: some View {
         VStack {
-            if isModifierPressed {
+            if isModifierPressed || (alwaysVisible?.wrappedValue ?? false) {
                 pressedView()
             } else {
                 defaultView()

@@ -95,6 +95,27 @@ extension Tower: EventsSystemManager {
     }
 
     #if os(macOS)
+    /// Fetches the current head of the main volume's event stream. Called at the start of a full resync,
+    /// before the metadata snapshot, so the post-resync replay starts from a point that precedes the snapshot.
+    public func captureMainVolumeEventCursorForFullResync() async throws -> (id: EventID, date: Date) {
+        Log.trace()
+        let mainVolumeId = try self.storage.getVolumeIDs(in: storage.backgroundContext).main
+        let eventID = try await cloudSlot.fetchInitialEvent(ofVolumeID: mainVolumeId)
+        return (eventID, Date())
+    }
+
+    public func intializeEventsDuringFullResync(referenceID: EventID, referenceDate: Date) throws {
+        Log.trace()
+        let mainVolumeId = try self.storage.getVolumeIDs(in: storage.backgroundContext).main
+        initializeSingleVolumeEventLoop(volumeId: mainVolumeId)
+        // Apply the cursor captured before the snapshot rather than fetching the current latest event now,
+        // which would skip events that occurred during the snapshot.
+        mainVolumeEventsConveyor?.referenceID = referenceID
+        mainVolumeEventsConveyor?.referenceDate = referenceDate
+        mainVolumeEventsConveyor?.latestFetchedEventID = referenceID
+        mainVolumeEventsConveyor?.latestEventFetchTime = referenceDate
+    }
+
     private func initializeSingleVolumeEventLoop(volumeId: String) {
         Log.trace()
         let factory = EventsFactory()

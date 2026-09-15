@@ -40,7 +40,7 @@ packages:
     maxVersion: 99.0.0
   ProtonCore:
     url: https://github.com/ProtonMail/protoncore_ios.git
-    exactVersion: 37.0.1
+    exactVersion: 37.3.0
   Sentry:
     url: https://github.com/getsentry/sentry-cocoa.git
     minVersion: 0.0.0
@@ -56,15 +56,12 @@ packages:
     minVersion: 0.0.0
     maxVersion: 99.0.0
   Lottie:
-    url: https://github.com/airbnb/lottie-ios
-    minVersion: 4.3.3
+    url: https://github.com/airbnb/lottie-spm
+    minVersion: 4.6.0
     maxVersion: 5.0.0
   ZIPFoundation:
     url: https://github.com/weichsel/ZIPFoundation.git
     from: 0.9.0
-  Atlantis:
-    url: https://github.com/ProxymanApp/atlantis.git
-    exactVersion: 1.34.0
   PDCommonDependencies:
     path: ../PDCommonDependencies
   PDClient:

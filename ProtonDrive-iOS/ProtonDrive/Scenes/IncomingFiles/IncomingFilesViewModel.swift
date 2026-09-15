@@ -103,7 +103,7 @@ final class IncomingFilesViewModel:
 
     func childViewModel(for node: Node) -> NodeCellConfiguration {
         let shouldDisable = node is File
-        return NodeCellSimpleConfiguration(from: node, disabled: shouldDisable, loader: model, featureFlagsController: featureFlagsController)
+        return NodeCellSimpleConfiguration(from: node, disabled: shouldDisable, loader: model.tower.sdkObjects.thumbnailDownloader, featureFlagsController: featureFlagsController)
     }
 
     func applyAction(completion: @escaping ApplyActionCompletion) {

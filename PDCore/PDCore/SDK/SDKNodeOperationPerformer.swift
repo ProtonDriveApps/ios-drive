@@ -20,6 +20,14 @@ import CoreData
 
 public protocol SDKNodeOperationPerformer {
     func rename(nodeUid: AnyVolumeIdentifier, newName: String) async throws -> Node
-    func trash(nodes: [AnyVolumeIdentifier]) async throws -> ([AnyVolumeIdentifier], Error?)
     func createFolder(parentFolderID: AnyVolumeIdentifier, name: String) async throws -> CoreDataFolder
+
+    // MARK: - Trash
+    func trash(nodes: [AnyVolumeIdentifier]) -> AsyncThrowingStream<SDKNodeOperationStreamEvent, Error>
+    func delete(nodes: [AnyVolumeIdentifier]) -> AsyncThrowingStream<SDKNodeOperationStreamEvent, Error>
+    func restore(nodes: [AnyVolumeIdentifier]) -> AsyncThrowingStream<SDKNodeOperationStreamEvent, Error>
+    func emptyTrash() async throws
+
+    // MARK: - Device
+    func renameDevice(identifier: DeviceIdentifier, newName: String) async throws
 }

@@ -139,10 +139,17 @@ class DriveEventsLoop: EventsLoop {
         
         // 1. record events into conveyor
         conveyor.record(events)
-        
+
         // 2. remember we've fetched this pack
         latestLoopEventId = latest
-        
+
+        // 3. A metadata change on the share root can mean the volume was locked. This is only a side-channel
+        // hint: normal signaling/processing continues, and the app validates that the share is still accessible.
+        if events.contains(where: { $0.eventType == .updateMetadata && $0.link.parentLinkID == nil }) {
+            Log.info("Root metadata changed for volume \(volumeID); checking lock state", domain: .events)
+            observers.forEach { $0.rootMetadataMayHaveChanged(volumeID: volumeID) }
+        }
+
         observers.forEach {
             $0.processorReceivedEvents()
         }
@@ -171,19 +178,27 @@ class DriveEventsLoop: EventsLoop {
 
     func onError(_ error: Error) {
         guard !error.isNetworkIssueError else { return }
-        if let responseError = error as? ResponseError, responseError.responseCode == 2011 {
-            // 2011: You do not have any share memberships in this volume.
-            #if os(iOS)
-            DispatchQueue.main.async { [weak self] in
-                guard let self else {
-                    return
+        
+        if let responseError = error as? ResponseError {
+            if responseError.responseCode == 2011 {
+                // 2011: You do not have any share memberships in this volume.
+                #if os(iOS)
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else {
+                        return
+                    }
+                    self.eventsSystemManager?.removeSharedVolumesEventLoops(volumeIds: [self.volumeID])
                 }
-                self.eventsSystemManager?.removeSharedVolumesEventLoops(volumeIds: [self.volumeID])
+                #endif
+                return
+            } else if responseError.responseCode == 2000, responseError.errorMessage == "Volume is locked." {
+                // TODO [@alecrim, DM-1046]: Remove this once the events API exposes this without string matching.
+                Log.warning("Volume reported as locked by the events endpoint", domain: .events, sendToSentryIfPossible: true)
+                observers.forEach { $0.rootMetadataMayHaveChanged(volumeID: volumeID) }
+                return
             }
-            #endif
-            return
         }
-
+        
         // Needs to strip userInfo since it can contain core data objects (can cause crashes to log such errors)
         let error = DriveError(withDomainAndCode: error, message: error.localizedDescription)
         Log.error("DriveEventsLoop error", error: error, domain: .events)

@@ -275,7 +275,9 @@ extension FileProviderExtension {
             switch containerItemIdentifier {
             case .workingSet:
                 Log.info("Provide enumerator for WORKING SET", domain: .enumerating)
-                return WorkingSetEnumerator(tower: tower, keepDownloadedManager: keepDownloadedManager)
+                return WorkingSetEnumerator(tower: tower,
+                                            keepDownloadedManager: keepDownloadedManager,
+                                            resyncEnumerationService: ResyncEnumerationService(settingsStorage: Constants.appGroup))
 
             case .rootContainer:
                 guard let rootID = tower.rootFolderIdentifier(moc: moc) else {

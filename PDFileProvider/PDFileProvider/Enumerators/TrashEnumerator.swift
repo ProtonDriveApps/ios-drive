@@ -23,16 +23,11 @@ public final class TrashEnumerator: NSObject, NSFileProviderEnumerator {
     private weak var tower: Tower!
     internal let keepDownloadedManager: KeepDownloadedEnumerationManager
     private var cancellables: [AnyCancellable] = []
+    var resyncEnumerationTask: Task<Void, Never>?
 
     let enumerationObserver: EnumerationObserverProtocol?
 
     let displayChangeEnumerationDetails: Bool
-
-    var shouldReenumerateItems: Bool = false {
-        didSet {
-            Log.trace("shouldReenumerateItems = \(shouldReenumerateItems)")
-        }
-    }
 
     public init(tower: Tower,
                 keepDownloadedManager: KeepDownloadedEnumerationManager,
@@ -44,28 +39,35 @@ public final class TrashEnumerator: NSObject, NSFileProviderEnumerator {
         self.enumerationObserver = enumerationObserver
         self.displayChangeEnumerationDetails = displayChangeEnumerationDetails
     }
-    
+
     public func invalidate() {
         Log.trace()
+        resyncEnumerationTask?.cancel()
         self.cancellables.forEach { $0.cancel() }
     }
-    
+
     // MARK: Enumeration
-    
+
     public func enumerateItems(for observer: NSFileProviderEnumerationObserver, startingAt page: NSFileProviderPage) {
         Log.trace()
         Log.event(.enumerateItems(.started(.init(containerType: .trashContainer, pageNumber: page.int))))
         observer.finishEnumerating(upTo: nil)
         Log.event(.enumerateItems(.succeeded(.init(containerType: .trashContainer, itemEnumerationMode: .db, enumeratedItemIDs: [], hasMorePages: false))))
     }
-    
+
     // MARK: Changes
-    
+
     public func currentSyncAnchor(completionHandler: @escaping (NSFileProviderSyncAnchor?) -> Void) {
-        Log.trace()
-        self.currentSyncAnchor(completionHandler)
+        Log.trace("Trash enumeration", domain: .enumerating)
+        let moc = tower.storage.synchronousContextPool.acquire()
+        defer { tower.storage.synchronousContextPool.relinquish(moc) }
+        guard let shareID = tower.rootFolderIdentifier(moc: moc)?.shareID else {
+            completionHandler(nil)
+            return
+        }
+        self.currentSyncAnchor(shareID: shareID, completionHandler)
     }
-    
+
     public func enumerateChanges(for observer: NSFileProviderChangeObserver, from syncAnchor: NSFileProviderSyncAnchor) {
         Log.trace()
         Log.event(.enumerateChanges(.started(.init(containerType: .trashContainer, syncAnchor: syncAnchor.rawValue.base64EncodedString()))))
@@ -79,4 +81,5 @@ extension TrashEnumerator: EnumeratorWithChanges {
     internal var eventsManager: EventsSystemManager { self.tower }
     internal var fileSystemSlot: FileSystemSlot { self.tower.fileSystemSlot! }
     internal var cloudSlot: CloudSlotProtocol { self.tower.cloudSlot! }
+    internal var resyncEnumerationService: ResyncEnumerationService? { nil }
 }

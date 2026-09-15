@@ -20,31 +20,69 @@ import ProtonCoreUIFoundations
 import PDUIComponents
 import PDCore
 
-final class PhotosRootNavigationButtonFactory {
-    @ToolbarContentBuilder
-    func makeToolbar(
-        title: String,
-        leading: PhotosRootNavigation.Item?,
-        trailing: [PhotosRootNavigation.Item],
-        block: @escaping (PhotosRootNavigation.Item
-    ) -> Void) -> some ToolbarContent {
-        makeToolbarTitle(title: title)
-        leading.map {
-            makeToolbarItem(items: [$0], placement: .topBarLeading, block: block)
+extension PhotosRootNavigation.Item {
+    var hidesToolbarSharedBackground: Bool {
+        if case .subscribe = self {
+            return true
         }
-        makeToolbarItem(items: trailing, placement: .topBarTrailing, block: block)
+        return false
+    }
+}
+
+final class PhotosRootNavigationButtonFactory {
+    @available(iOS 26.0, *)
+    @ToolbarContentBuilder
+    func makeGlassToolbar(
+        navigation: PhotosRootNavigation?,
+        block: @escaping (PhotosRootNavigation.Item) -> Void
+    ) -> some ToolbarContent {
+        if let navigation, let title = navigation.title {
+            makeToolbarTitle(title: title)
+            navigation.leading.map {
+                makeGlassToolbarItems(items: [$0], placement: .topBarLeading, block: block)
+            }
+            makeGlassToolbarItems(items: navigation.trailing, placement: .topBarTrailing, block: block)
+        }
     }
 
     @ToolbarContentBuilder
-    func makeToolbarItem(
+    func makeLegacyToolbar(
+        navigation: PhotosRootNavigation?,
+        block: @escaping (PhotosRootNavigation.Item) -> Void
+    ) -> some ToolbarContent {
+        if let navigation, let title = navigation.title {
+            makeToolbarTitle(title: title)
+            navigation.leading.map {
+                makeLegacyToolbarItems(items: [$0], placement: .topBarLeading, block: block)
+            }
+            makeLegacyToolbarItems(items: navigation.trailing, placement: .topBarTrailing, block: block)
+        }
+    }
+
+    @available(iOS 26.0, *)
+    @ToolbarContentBuilder
+    func makeGlassToolbarItems(
         items: [PhotosRootNavigation.Item],
         placement: ToolbarItemPlacement,
         block: @escaping (PhotosRootNavigation.Item) -> Void
     ) -> some ToolbarContent {
-        ToolbarItemGroup(placement: placement) {
-            ForEach(items) { item in
-                self.makeButton(item: item, block: block).any()
-            }
+        spacedToolbarItems(
+            items,
+            placement: placement,
+            hidesSharedBackground: \.hidesToolbarSharedBackground
+        ) { item in
+            self.makeButton(item: item, block: block).any()
+        }
+    }
+
+    @ToolbarContentBuilder
+    func makeLegacyToolbarItems(
+        items: [PhotosRootNavigation.Item],
+        placement: ToolbarItemPlacement,
+        block: @escaping (PhotosRootNavigation.Item) -> Void
+    ) -> some ToolbarContent {
+        plainToolbarItems(items, placement: placement) { item in
+            self.makeButton(item: item, block: block).any()
         }
     }
 
@@ -87,12 +125,16 @@ final class PhotosRootNavigationButtonFactory {
                 block(item)
             }
             .accessibility(identifier: "PhotosRootView.NavigationBarButton.Cancel")
+            .fixedSize()
+            .padding(.horizontal, 8)
         case let .deselectAll(title, isEnabled):
             TextNavigationBarButton(title: title, weight: .bold) {
                 block(item)
             }
             .disabled(!isEnabled)
             .accessibility(identifier: "PhotosRootView.NavigationBarButton.DeselectAll")
+            .fixedSize()
+            .padding(.horizontal, 8)
         case .subscribe:
             SubscriptionBarItem(identifier: "PhotosRootView.NavigationBarButton.Subscription") {
                 block(item)

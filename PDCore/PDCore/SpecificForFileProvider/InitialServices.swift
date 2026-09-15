@@ -44,6 +44,17 @@ public class InitialServices {
     public private(set) var authenticator: Authenticator
     public private(set) var featureFlagsRepository: FeatureFlagsRepositoryProtocol
     public private(set) var sessionRelatedCommunicator: SessionRelatedCommunicatorBetweenMainAppAndExtensions
+
+    /// The single PDCore feature flags repository. Owned here because it must be available before login
+    /// (it reads flag values persisted by a previous session from LocalSettings, so capability checks
+    /// like domain reconnection work before the tower exists). The tower receives this same instance, so
+    /// pre-login and post-login share one repository. Created lazily.
+    public private(set) lazy var featureFlags: DriveFeatureFlagsProvider = DriveFeatureFlagsProviderFactory()
+        .makeProvider(
+            configuration: clientConfig,
+            networking: networkService,
+            cache: localSettings
+        )
     public private(set) var pushNotificationService: PushNotificationServiceProtocol?
     public private(set) var connectionStateResource: ConnectionStateResource
 

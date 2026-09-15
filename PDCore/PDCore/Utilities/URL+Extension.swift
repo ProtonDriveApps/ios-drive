@@ -62,6 +62,7 @@ private extension MimeType {
 
         "eot": .eot,
         "epub": .epub,
+        "gpg": .gpg,
         "gz": .gz,
         "html": .html,
         "ics": .ics,

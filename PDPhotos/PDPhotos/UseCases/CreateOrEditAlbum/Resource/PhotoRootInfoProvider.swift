@@ -19,7 +19,7 @@ import CoreData
 import PDCore
 
 protocol PhotoRootInfoProviderProtocol {
-    func getPhotosRootAndKey() async throws -> (Folder, String, String)
+    func getPhotosRootAndKey() async throws -> (Folder, String, Data)
 }
 
 struct PhotoRootInfoProvider: PhotoRootInfoProviderProtocol {
@@ -29,7 +29,7 @@ struct PhotoRootInfoProvider: PhotoRootInfoProviderProtocol {
         self.dependencies = dependencies
     }
 
-    func getPhotosRootAndKey() async throws -> (Folder, String, String) {
+    func getPhotosRootAndKey() async throws -> (Folder, String, Data) {
         let context = dependencies.managedObjectContext
         return try await context.perform {
             let root = try dependencies.storageManager.getPhotoStreamRootFolder(in: context) ?! "Photos root is missing"

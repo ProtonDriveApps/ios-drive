@@ -93,9 +93,9 @@ public extension APIService {
         /// In the form of `scheme://$API_PREFIX.$BASE_ORIGIN/$BASE_ROUTE
         public let driveApiBaseComponents: URLComponents
 
-        /// Drive API base URL, used for SDK initialization
-        public var driveApiBase: String {
-            driveApiBaseComponents.string!
+        /// Drive API host URL, used for SDK initialization
+        public var driveApiHost: String {
+            "\(driveApiBaseComponents.scheme!)://\(driveApiBaseComponents.host!)/"
         }
 
         /// Base host https://datatracker.ietf.org/doc/html/rfc1738#section-5

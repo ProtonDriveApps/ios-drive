@@ -17,6 +17,7 @@
 
 import Foundation
 import PDCore
+import PDCoreIOS
 import Combine
 
 final class DebugModeSettingsViewModel: ObservableObject {
@@ -27,13 +28,29 @@ final class DebugModeSettingsViewModel: ObservableObject {
         }
     }
 
+    let sdkLibraryVersion: String?
+
     private let localSettings: LocalSettings
     private let coordinator: DebugModeSettingsCoordinator
+    private let featureFlagsController: FeatureFlagsControllerProtocol
+    private let notificationCenter: NotificationCenter
+    private(set) var experimentalFeatures: [ExperimentalFeatures: Bool] = [:]
 
-    init(localSettings: LocalSettings, coordinator: DebugModeSettingsCoordinator) {
+    init(
+        localSettings: LocalSettings,
+        coordinator: DebugModeSettingsCoordinator,
+        notificationCenter: NotificationCenter = .default,
+        featureFlagsController: FeatureFlagsControllerProtocol
+    ) {
         self.localSettings = localSettings
         self.isDebugModeEnabled = localSettings.debugModeEnabled
+        self.featureFlagsController = featureFlagsController
         self.coordinator = coordinator
+        self.notificationCenter = notificationCenter
+        self.sdkLibraryVersion = BundleInfo.value(for: .sdkVersion)
+        if !featureFlagsController.hasRefactoredFinderViewByDefault {
+            experimentalFeatures[.finderImprovement] = localSettings.iOSRefactoredFinder
+        }
     }
 
     func didTapDiagnostics() {
@@ -42,5 +59,20 @@ final class DebugModeSettingsViewModel: ObservableObject {
 
     func didTapPhotoDiagnostics() {
         coordinator.presentPhotoBackupDiagnostics()
+    }
+
+    func toggleExperimentalFeature(_ feature: ExperimentalFeatures, newValue: Bool) {
+        if experimentalFeatures[feature] == newValue { return }
+        switch feature {
+        case .finderImprovement:
+            localSettings.iOSRefactoredFinder = newValue
+            notificationCenter.post(name: .restartApplication)
+        }
+    }
+}
+
+extension DebugModeSettingsViewModel {
+    enum ExperimentalFeatures: String {
+        case finderImprovement = "Finder improvement"
     }
 }

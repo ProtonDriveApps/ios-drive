@@ -44,10 +44,7 @@ struct PhotosRootView<
     }
 
     var body: some View {
-        content
-            .toolbar {
-                toolbarContent
-            }
+        contentWithToolbar
             .navigationBarTitleDisplayMode(.inline)
             .onAppear(perform: viewModel.start)
             .onReceive(root.closeCurrentSheet) { _ in
@@ -55,30 +52,66 @@ struct PhotosRootView<
             }
     }
 
+    // The availability branch lives here, in a `@ViewBuilder`, and never inside the
+    // `@ToolbarContentBuilder` properties below — see `PhotosRootNavigationButtonFactory`.
+    @ViewBuilder
+    private var contentWithToolbar: some View {
+        if #available(iOS 26.0, *) {
+            content.toolbar { glassToolbarContent }
+        } else {
+            content.toolbar { legacyToolbarContent }
+        }
+    }
+
+    @available(iOS 26.0, *)
     @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
+    private var glassToolbarContent: some ToolbarContent {
         let block = viewModel.handle(navigation:)
         if let navigation = viewModel.navigation {
-            if let navigationTitle = navigation.title {
-                navigationFactory.makeToolbar(
-                    title: navigationTitle,
-                    leading: navigation.leading,
-                    trailing: navigation.trailing,
-                    block: block
-                )
+            if navigation.title != nil {
+                navigationFactory.makeGlassToolbar(navigation: navigation, block: block)
             } else {
                 navigation.leading.map { item in
-                    navigationFactory.makeToolbarItem(items: [item], placement: .topBarLeading, block: block)
+                    navigationFactory.makeGlassToolbarItems(items: [item], placement: .topBarLeading, block: block)
                 }
                 NavigationTitleView()
-                    .title(isEnabled: viewModel.areAlbumsEnabled, placement: .topBarLeading, selected: Binding(get: {
-                        viewModel.galleryType
-                    }, set: {
-                        viewModel.handle(galleryType: $0)
-                    }))
-                navigationFactory.makeToolbarItem(items: navigation.trailing, placement: .topBarTrailing, block: block)
+                    .title(isEnabled: viewModel.areAlbumsEnabled, placement: .title, selected: galleryTypeBinding)
+                navigationFactory.makeGlassToolbarItems(
+                    items: navigation.trailing,
+                    placement: .topBarTrailing,
+                    block: block
+                )
             }
         }
+    }
+
+    @ToolbarContentBuilder
+    private var legacyToolbarContent: some ToolbarContent {
+        let block = viewModel.handle(navigation:)
+        if let navigation = viewModel.navigation {
+            if navigation.title != nil {
+                navigationFactory.makeLegacyToolbar(navigation: navigation, block: block)
+            } else {
+                navigation.leading.map { item in
+                    navigationFactory.makeLegacyToolbarItems(items: [item], placement: .topBarLeading, block: block)
+                }
+                // `.title` placement is iOS 26+; `.principal` is the pre-26 equivalent.
+                NavigationTitleView()
+                    .title(isEnabled: viewModel.areAlbumsEnabled, placement: .principal, selected: galleryTypeBinding)
+                navigationFactory.makeLegacyToolbarItems(
+                    items: navigation.trailing,
+                    placement: .topBarTrailing,
+                    block: block
+                )
+            }
+        }
+    }
+
+    private var galleryTypeBinding: Binding<GalleryType> {
+        Binding(
+            get: { viewModel.galleryType },
+            set: { viewModel.handle(galleryType: $0) }
+        )
     }
 
     @ViewBuilder

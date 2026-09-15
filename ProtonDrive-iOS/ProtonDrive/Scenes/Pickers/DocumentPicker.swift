@@ -27,9 +27,11 @@ struct DocumentPicker: UIViewControllerRepresentable {
 
     @EnvironmentObject var root: RootViewModel
     private weak var delegate: PickerDelegate?
+    private let hasUnlimitedPickerSelection: Bool
 
-    init(delegate: PickerDelegate) {
+    init(delegate: PickerDelegate, featureFlagsController: FeatureFlagsControllerProtocol) {
         self.delegate = delegate
+        self.hasUnlimitedPickerSelection = featureFlagsController.hasUnlimitedPickerSelection
     }
 
     func makeCoordinator() -> Coordinator {
@@ -40,11 +42,7 @@ struct DocumentPicker: UIViewControllerRepresentable {
         let supportedTypes: [UTType] = [.image, .item, .content]
         let documentPickerController = UIDocumentPickerViewController(forOpeningContentTypes: supportedTypes, asCopy: true)
         documentPickerController.delegate = context.coordinator
-        #if SUPPORTS_UNLIMITED_PICKER_SELECTION
-            documentPickerController.allowsMultipleSelection = true
-        #else
-            documentPickerController.allowsMultipleSelection = false
-        #endif
+        documentPickerController.allowsMultipleSelection = hasUnlimitedPickerSelection
         return documentPickerController
     }
 

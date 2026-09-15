@@ -19,4 +19,5 @@ import Foundation
 
 public protocol ExternalFeatureFlagsResource: FeatureFlagsResource {
     func isEnabled(flag: ExternalFeatureFlag) -> Bool
+    func getVariantPayload(for flag: ExternalFeatureFlag) -> String?
 }

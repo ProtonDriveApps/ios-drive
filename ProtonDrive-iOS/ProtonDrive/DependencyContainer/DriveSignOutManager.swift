@@ -35,7 +35,7 @@ final class DriveSignOutManager: SignOutManager {
     private let sessionVault: SessionVault
     private let storageManager: StorageManager
 
-    private var featureFlags: PDCore.FeatureFlagsRepository? { tower?.featureFlags }
+    private var featureFlags: DriveFeatureFlagsProvider? { tower?.featureFlags }
     private var tower: Tower?
     private var cancellables = Set<AnyCancellable>()
 

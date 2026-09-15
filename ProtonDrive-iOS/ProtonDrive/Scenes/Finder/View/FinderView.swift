@@ -66,14 +66,24 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
                     lockedStateBannerView
                 }
 
+                // `shouldShowBanner` can be computed.
+                // The app restarts when the lock status changes, so the value is correct when `FinderView` is rendered.
+                if vm.isRoot && vm.currentTab == .files && coordinator.volumeLockController.shouldShowBanner {
+                    VolumeLockBannerView(
+                        controller: coordinator.volumeLockController,
+                        tower: coordinator.tower,
+                        authenticator: coordinator.authenticator
+                    )
+                }
+
+                upgradeHintBanner
                 finderView
             }
             .flatNavigationBar(
                 vm.nodeName,
-                isRoot: vm.isRoot,
-                delegate: vm,
                 leading: leadingBarButtons(vm.leadingNavBarItems),
-                trailing: trailingBarButtons(vm.trailingNavBarItems)
+                trailingItems: vm.trailingNavBarItems,
+                trailingItem: navigationBarButton
             )
         }
         .navigationBarBackButtonHidden(multipleSelectionIsSelecting)
@@ -81,6 +91,9 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
         .onAppear {
             // vm.isVisible is set by FinderCoordinator because this method is called unreliably for Grid
             root.stateRestorationActivity = coordinator.buildStateRestorationActivity()
+            if vm.isRoot {
+                coordinator.volumeLockController.resetBannerVisibilityForMyFilesAppear()
+            }
         }
         .errorToast(location: .bottomWithOffset(12), errors: errorsWithToast)
         .presentView(item: $presentedSheet, style: .sheet) {
@@ -179,7 +192,7 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
 
     @ViewBuilder var lockedStateBannerView: some View {
         if vm.lockedStateBannerVisibility != .hidden {
-            let lockedStateVM = LockedStateTopBannerViewModel(lockedStateBannerVisibiliy: vm.lockedStateBannerVisibility)
+            let lockedStateVM = LockedStateTopBannerViewModel(lockedStateBannerVisibility: vm.lockedStateBannerVisibility)
             LockedStateTopBannerView(viewModel: lockedStateVM)
         }
     }
@@ -192,6 +205,14 @@ struct FinderView<ViewModel: ObservableFinderViewModel>: View {
                 padding: .vertical,
                 closeBlock: vm.closeUploadDisclaimer
             )
+        }
+    }
+
+    @ViewBuilder
+    private var upgradeHintBanner: some View {
+        let level = vm.upgradeRequirementLevel
+        if let handling = vm.upgradeRequirementHandling {
+            UpgradeRequirementBannerView(level: level, handling: handling)
         }
     }
 

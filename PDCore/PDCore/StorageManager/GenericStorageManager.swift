@@ -344,8 +344,8 @@ extension GenericStorageManager: RecoverableStorage {
         try Self.createRecoveryDB(named: recoveryDatabaseName, nextTo: backup, using: persistentContainer)
     }
 
-    public func reconnectExistingDBAndDiscardRecoveryIfNeeded(existing: PersistentStoreInfo, recovery: PersistentStoreInfo?) throws {
-        try Self.reconnectExistingDBAndDiscardRecoveryIfNeeded(existing: existing, recovery: recovery, using: persistentContainer, contexts: contexts)
+    public func reconnectExistingDBAndDiscardRecoveryIfNeeded(existing: PersistentStoreInfo, recovery: PersistentStoreInfo?, discardRecovery: Bool = true) throws {
+        try Self.reconnectExistingDBAndDiscardRecoveryIfNeeded(existing: existing, recovery: recovery, discardRecovery: discardRecovery, using: persistentContainer, contexts: contexts)
     }
 
     public func replaceExistingDBWithRecovery(existing: PersistentStoreInfo, recovery: PersistentStoreInfo) throws {

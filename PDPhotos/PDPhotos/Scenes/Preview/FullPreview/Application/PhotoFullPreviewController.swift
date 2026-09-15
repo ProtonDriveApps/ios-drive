@@ -59,14 +59,14 @@ final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
     private let id: PhotoId
     private let buildType: BuildType
     private let detailController: PhotoPreviewDetailController
-    private let fullThumbnailController: ThumbnailController
-    private let smallThumbnailController: ThumbnailController
+    private let photoThumbnailDownloader: SDKThumbnailsDownloaderProtocol
     private let contentController: FileContentController
     private let messageHandler: UserMessageHandlerProtocol
     private let publisher = ObservableObjectPublisher()
     private var fullPreview: PhotoFullPreview?
     private var cancellables = Set<AnyCancellable>()
     private var errorSubject = PassthroughSubject<PhotoFullPreviewError, Never>()
+    private var fallbackTask: Task<Void, Never>?
 
     var updatePublisher: AnyPublisher<Void, Never> {
         publisher.eraseToAnyPublisher()
@@ -80,25 +80,20 @@ final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
         id: PhotoId,
         buildType: BuildType,
         detailController: PhotoPreviewDetailController,
-        fullThumbnailController: ThumbnailController,
-        smallThumbnailController: ThumbnailController,
+        photoThumbnailDownloader: SDKThumbnailsDownloaderProtocol,
         contentController: FileContentController,
         messageHandler: UserMessageHandlerProtocol
     ) {
         self.id = id
         self.buildType = buildType
         self.detailController = detailController
-        self.fullThumbnailController = fullThumbnailController
-        self.smallThumbnailController = smallThumbnailController
+        self.photoThumbnailDownloader = photoThumbnailDownloader
         self.contentController = contentController
         self.messageHandler = messageHandler
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
-        fullThumbnailController.bootstrap()
-        smallThumbnailController.bootstrap()
-        
         let detailPublisher = detailController.photo.setFailureType(to: Error.self)
         Publishers.CombineLatest(detailPublisher, contentController.content)
             .sink(receiveCompletion: { [weak self] completion in
@@ -111,32 +106,56 @@ final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
             .store(in: &cancellables)
     }
 
-    private func subscribeToThumbnails() {
-        Publishers.Merge(smallThumbnailController.updatePublisher, fullThumbnailController.updatePublisher)
-            .sink { [weak self] in
-                self?.handleThumbnailUpdate()
-            }
-            .store(in: &cancellables)
-
-        Publishers.CombineLatest(smallThumbnailController.isFailed, fullThumbnailController.isFailed)
-            .map { $0.0 && $0.1 }
-            .filter { $0 }
-            .sink { [weak self] _ in
-                self?.errorSubject.send(PhotoFullPreviewError.noPreviewAvailable)
-            }
-            .store(in: &cancellables)
-    }
-
     private func handleFullPreviewError(_ error: Error) {
         // Pass generic error if no specific is given
         let contentError = FileContentError(error: error)
         errorSubject.send(PhotoFullPreviewError.fullPreviewNotAvailable(contentError))
 
         // Fallback to thumbnails loading
-        subscribeToThumbnails()
-        fullThumbnailController.load()
-        smallThumbnailController.load()
-        handleThumbnailUpdate()
+        loadThumbnailFallback()
+    }
+
+    private func loadThumbnailFallback() {
+        // Try cached bytes first to avoid an unnecessary download round-trip.
+        if let data = cachedThumbnailData() {
+            update(with: .thumbnail(data))
+            return
+        }
+        guard fallbackTask == nil else { return }
+        fallbackTask = Task { [weak self] in
+            guard let self else { return }
+            await self.downloadThumbnailFallback()
+            await MainActor.run {
+                self.fallbackTask = nil
+                self.applyThumbnailFallbackResult()
+            }
+        }
+    }
+
+    private func downloadThumbnailFallback() async {
+        // Big preview thumbnail first, then fall back to the small one.
+        for type in [ThumbnailType.photos, .default] {
+            do {
+                _ = try await photoThumbnailDownloader.downloadThumbnail(for: id.any(), type: type)
+                if DecryptedFileManager.thumbnailData(id: id) != nil {
+                    return
+                }
+            } catch {
+                Log.error("Failed to download fallback thumbnail", error: error, domain: .thumbnails, context: LogContext("type: \(type)"))
+            }
+        }
+    }
+
+    private func applyThumbnailFallbackResult() {
+        if let data = cachedThumbnailData() {
+            update(with: .thumbnail(data))
+        } else {
+            errorSubject.send(.noPreviewAvailable)
+        }
+    }
+
+    private func cachedThumbnailData() -> Data? {
+        DecryptedFileManager.thumbnailData(id: id, type: .photos) ?? DecryptedFileManager.thumbnailData(id: id, type: .default)
     }
 
     private func handle(info: PhotoInfo, url: URL) {
@@ -160,17 +179,6 @@ final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
         }
     }
 
-    private func handleThumbnailUpdate() {
-        switch fullPreview {
-        case .none, .thumbnail:
-            if let data = fullThumbnailController.getImage() ?? smallThumbnailController.getImage() {
-                update(with: .thumbnail(data))
-            }
-        case .video, .image, .livePhoto, .gif, .burstPhoto:
-            break
-        }
-    }
-
     private func update(with fullPreview: PhotoFullPreview) {
         if self.fullPreview != fullPreview {
             self.fullPreview = fullPreview
@@ -187,6 +195,8 @@ final class LocalPhotoFullPreviewController: PhotoFullPreviewController {
     }
 
     func clear() {
+        fallbackTask?.cancel()
+        fallbackTask = nil
         contentController.clear()
     }
 }

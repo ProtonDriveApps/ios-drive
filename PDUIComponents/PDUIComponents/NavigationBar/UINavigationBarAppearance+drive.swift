@@ -26,7 +26,7 @@ extension UINavigationBarAppearance {
     private static var backgroundColor: UIColor { ColorProvider.BackgroundNorm }
     private static var backIcon: UIImage { IconProvider.arrowLeft.withTintColor(textColor, renderingMode: .alwaysOriginal) }
 
-    static var drive: UINavigationBarAppearance {
+    public static var drive: UINavigationBarAppearance {
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = backgroundColor
@@ -41,8 +41,10 @@ extension UINavigationBarAppearance {
             .font: UIFont.preferredFont(for: .body, weight: .semibold)
         ]
 
-        appearance.buttonAppearance = .default
-        appearance.doneButtonAppearance = .default
+        if #unavailable(iOS 26) {
+            appearance.buttonAppearance = .default
+            appearance.doneButtonAppearance = .default
+        }
 
         return appearance
     }

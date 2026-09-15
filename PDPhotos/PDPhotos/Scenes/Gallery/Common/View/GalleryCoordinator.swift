@@ -186,10 +186,10 @@ final class GalleryCoordinator: PhotosPermissionsCoordinator, PhotoItemCoordinat
     }
 
     func openSubscriptions() {
-        let viewController = container.makeSubscriptionsViewController()
-        let navigationViewController = ModalNavigationViewController(rootViewController: viewController)
-        navigationViewController.modalPresentationStyle = .fullScreen
-        rootViewController?.present(navigationViewController, animated: true)
+        Task { @MainActor in
+            container.makeUpsellCoordinator()
+                .present(from: rootViewController)
+        }
     }
     
     func openRetryScreen() {

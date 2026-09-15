@@ -40,6 +40,7 @@ public enum SDKUploadErrors: Error, LocalizedError {
     case uploaderIsDisabled
     case cancelled
     case noSpaceOnCloud
+    case noSpaceOnLocal
     case nameAlreadyExists
 
     public var errorDescription: String? {

@@ -18,6 +18,7 @@
 import SwiftUI
 import PDCore
 import Combine
+import PDLocalization
 import PDUIComponents
 import ProtonCoreUIFoundations
 
@@ -58,6 +59,15 @@ struct LockedStateTopBannerView: View {
             if let title = data.title {
                 Text(makeString(text: title, color: ColorProvider.TextNorm))
             }
+            Spacer(minLength: 0)
+            if viewModel.showsDismissButton {
+                Button(action: viewModel.dismiss) {
+                    Image(systemName: "xmark")
+                        .foregroundStyle(ColorProvider.TextNorm)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Localization.general_close)
+            }
         }
     }
 
@@ -75,8 +85,11 @@ struct LockedStateTopBannerView: View {
     }
 
     private func makeButtons(with data: LockedStateTopBannerViewData) -> some View {
-        HStack {
+        HStack(spacing: 8) {
             Spacer()
+            if let secondaryTitle = data.secondaryActionButton {
+                makeSecondaryActionButton(with: secondaryTitle)
+            }
             if let buttonTitle = data.actionButton {
                 makeActionButton(with: buttonTitle)
             }
@@ -85,6 +98,11 @@ struct LockedStateTopBannerView: View {
 
     private func makeActionButton(with buttonTitle: String) -> some View {
         BlueRectButton(title: buttonTitle, height: 36, cornerRadius: .huge, action: viewModel.openUrl)
+            .fixedSize()
+    }
+
+    private func makeSecondaryActionButton(with buttonTitle: String) -> some View {
+        BlueRectButton(title: buttonTitle, height: 36, cornerRadius: .huge, action: viewModel.performSecondaryAction)
             .fixedSize()
     }
 }

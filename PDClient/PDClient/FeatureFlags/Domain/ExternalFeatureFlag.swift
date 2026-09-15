@@ -24,7 +24,7 @@ public enum ExternalFeatureFlag: String, CaseIterable, Codable {
     case driveiOSDebugMode = "DriveiOSDebugMode"
     case oneDollarPlanUpsellEnabled = "DriveOneDollarPlanUpsell"
     case driveDisablePhotosForB2B = "DriveDisablePhotosForB2B"
-    case driveMacSyncRecoveryDisabled = "DriveMacSyncRecoveryDisabled"
+    case driveMacFullResyncAlwaysVisibleDisabled = "DriveMacFullResyncAlwaysVisibleDisabled"
     case driveMacPromoBannerDisabled = "DriveMacPromoBannerDisabled"
     case driveMacGradualRolloutChannelEnabled = "DriveMacGradualRolloutChannelEnabled"
     case driveMacAbnormalExitRelaunchDisabled = "DriveMacAbnormalExitRelaunchDisabled"
@@ -59,6 +59,7 @@ public enum ExternalFeatureFlag: String, CaseIterable, Codable {
 
     // Payments
     case driveiOSPaymentsV2 = "DriveiOSPaymentsV2"
+    case driveMobileUpsellPlan = "DriveMobileUpsellPlan"
 
     // SDK
     case driveCryptoEncryptBlocksWithPgpAead = "DriveCryptoEncryptBlocksWithPgpAead"
@@ -67,4 +68,22 @@ public enum ExternalFeatureFlag: String, CaseIterable, Codable {
     case driveiOSSDKNodeOperations = "DriveiOSSDKNodeOperations"
     case driveDownloadVerificationDisabled = "DriveDownloadVerificationDisabled"
     case driveUploadVerificationDisabled = "DriveUploadVerificationDisabled"
+    case driveiOSSDKCreateFolder = "DriveiOSSDKCreateFolder"
+    case driveiOSSDKTrashNode = "DriveiOSSDKTrashNode"
+    case driveiOSSDKTrashOperations = "DriveiOSSDKTrashOperations" // delete, restore, empty trash
+    case driveiOSSDKDevicesOperations = "DriveiOSSDKDevicesOperations" // rename, delete device
+
+    // Full resync
+    case driveSyncMetadataScanV2Enabled = "DriveSyncMetadataScanV2Enabled"
+
+    case driveClientTestsEnabled = "DriveClientTestsEnabled"
+    case driveiOSUnlimitedPickerSelection = "DriveiOSUnlimitedPickerSelection"
+    case driveiOSDownloadMultiple = "DriveiOSDownloadMultiple"
+    case driveiOSPhotosGridZoom = "DriveiOSPhotosGridZoom"
+}
+
+public extension ExternalFeatureFlag {
+    var hasPayload: Bool {
+        self == .driveMobileUpsellPlan
+    }
 }

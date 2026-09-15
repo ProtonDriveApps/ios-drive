@@ -18,14 +18,15 @@
 import Combine
 import Foundation
 import ProtonCoreNetworking
-import ProtonCoreServices
+@preconcurrency import ProtonCoreServices
 
-public protocol ContactsManagerProtocol {
+public protocol ContactsManagerProtocol: AnyObject, Sendable {
     var contactUpdatedNotifier: AnyPublisher<Void, Never> { get }
 
     func fetchIntegralContacts() async throws -> ([Contact], [ContactGroup])
     func fetchUserContacts() async throws -> [Contact]
     func fetchUserContactGroups() async throws -> [ContactGroup]
+    func loadCachedActivePublicKeys(email: String) -> PublicKeyResponse?
     func fetchActivePublicKeys(email: String, internalOnly: Bool) async throws -> PublicKeyResponse
     func create(contact: Contact, with emails: [ContactEmail])
     func delete(contactID: String)
@@ -45,14 +46,14 @@ public final class ContactsManager: ContactsManagerProtocol {
     
     private let jsonDecoder: JSONDecoder = JSONDecoder()
     private let service: APIService
-    private var log: ((String) -> Void)?
-    private var error: ((String) -> Void)?
+    private let log: (@Sendable (String) -> Void)?
+    private let error: (@Sendable (String) -> Void)?
     private let contactCacheState = Atomic(ContactCacheState())
-    private var keyCache: Atomic<[KeyQuery: PublicKeyResponse]> = .init([:])
+    private let keyCache: Atomic<[KeyQuery: PublicKeyResponse]> = .init([:])
     private let contactUpdateSubject = PassthroughSubject<Void, Never>()
     public var contactUpdatedNotifier: AnyPublisher<Void, Never> { contactUpdateSubject.eraseToAnyPublisher() }
     
-    public init(service: APIService, log: ((String) -> Void)?, error: ((String) -> Void)?) {
+    public init(service: APIService, log: (@Sendable (String) -> Void)?, error: (@Sendable (String) -> Void)?) {
         self.service = service
         self.log = log
         self.error = error
@@ -115,6 +116,12 @@ public final class ContactsManager: ContactsManagerProtocol {
         }
         log?("Successfully retrieved \(mappedGroups.count) contact groups")
         return mappedGroups
+    }
+    
+    public func loadCachedActivePublicKeys(email: String) -> PublicKeyResponse? {
+        evictOutdatedKeys()
+        let query = KeyQuery(email: email, internalOnly: true)
+        return keyCache.transform({ $0[query] })
     }
     
     /// - Parameters:
@@ -322,6 +329,15 @@ extension ContactsManager {
 
 // MARK: - Log
 extension ContactsManager {
+    private func evictOutdatedKeys() {
+        keyCache.mutate { cache in
+            // Cache key for 5 mins
+            let allowedOldestDate = Date().addingTimeInterval(-300)
+            let outdatedKeys = cache.keys.filter { allowedOldestDate > $0.date }
+            outdatedKeys.forEach { cache.removeValue(forKey: $0) }
+        }
+    }
+    
     private func log(request: Request) {
         let logStr = "REQUEST: 🌐🌐🌐🌐 \(request.method.rawValue) - \(request.self)"
         log?(logStr)

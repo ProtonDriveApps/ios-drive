@@ -73,11 +73,14 @@ final class PhotosCoordinator: PhotosRootCoordinator {
 
     func openSubscription() {
         guard let galleryContainer = container.sceneContainer.gallerySceneContainer else { return }
+        guard let rootViewController else {
+            return
+        }
 
-        let viewController = galleryContainer.makeSubscriptionsViewController()
-        let navigationViewController = ModalNavigationViewController(rootViewController: viewController)
-        navigationViewController.modalPresentationStyle = .fullScreen
-        rootViewController?.present(navigationViewController, animated: true)
+        Task { @MainActor in
+            let upsellCoordinator = galleryContainer.makeUpsellCoordinator()
+            upsellCoordinator.present(from: rootViewController)
+        }
     }
 
     func presentTagMigrationBanner() {

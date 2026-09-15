@@ -18,17 +18,15 @@
 import CoreData
 import PDCore
 
-enum LocalRootSharesBootstrapStarterError: Error {
-    case missingMembers
-}
-
 final class LocalRootSharesBootstrapStarter: AppBootstrapper {
     private let storage: StorageManager
     private let context: NSManagedObjectContext
+    private let connectionStateResource: ConnectionStateResource
 
-    init(storage: StorageManager) {
+    init(storage: StorageManager, connectionStateResource: ConnectionStateResource) {
         self.storage = storage
         self.context = storage.backgroundContext
+        self.connectionStateResource = connectionStateResource
     }
 
     func bootstrap() async throws {
@@ -37,7 +35,7 @@ final class LocalRootSharesBootstrapStarter: AppBootstrapper {
 
             if shares.isEmpty {
                 // If we do not have any share it's the case of a new session after login -> fallback
-                throw DriveError("Empty database, fetch new data")
+                try self.throwError("Empty database, fetch new data")
             } else {
                 // May be non-migrated db or already migrated db, just non-empty
                 try self.validate(shares)
@@ -57,13 +55,15 @@ final class LocalRootSharesBootstrapStarter: AppBootstrapper {
 
         guard photoShares.count == 1 else {
             Log.error("Multiple photo shares found", error: nil, domain: .metadata)
-            throw NukingCacheError("Multiple photo shares found")
+            try throwError("Multiple photo shares found")
+            return
         }
 
         let photoShare = photoShares[0]
         guard let addressID = photoShare.addressID, !addressID.isEmpty else {
             Log.error("Photo share is missing addressID", error: nil, domain: .metadata)
-            throw NukingCacheError("Photo share doesn't have nonempty addressID")
+            try throwError("Photo share doesn't have nonempty addressID")
+            return
         }
         Log.info("Photo volume: \(photoShare.volume?.id ?? "unknown"), share: \(photoShare.id)", domain: .applicationBootstrap)
     }
@@ -75,19 +75,23 @@ final class LocalRootSharesBootstrapStarter: AppBootstrapper {
             .filter { $0.state == .active }
 
         guard shares.count < 2 else {
-            throw NukingCacheError("There are multiple main shares in the local DB")
+            try throwError("There are multiple main shares in the local DB")
+            return
         }
 
         guard let mainShare = shares.first else {
-            throw NukingCacheError("There is no main share in the local DB")
+            try throwError("There is no main share in the local DB")
+            return
         }
 
         guard let root = mainShare.root else {
-            throw NukingCacheError("Main share has no root")
+            try throwError("Main share has no root")
+            return
         }
 
         guard let volume = mainShare.volume, !volume.id.isEmpty else {
-            throw NukingCacheError("Main share has no volume downloaded")
+            try throwError("Main share has no volume downloaded")
+            return
         }
 
         // MARK: Migration checks
@@ -96,8 +100,7 @@ final class LocalRootSharesBootstrapStarter: AppBootstrapper {
         }
 
         if mainShare.members.isEmpty {
-            // Will trigger members download
-            throw LocalRootSharesBootstrapStarterError.missingMembers
+            try throwError("Main share has no members")
         } else {
             Log.info("Drive has local data available.", domain: .application)
             Log.info("Main volume: \(volume.id), share: \(mainShare.id)", domain: .applicationBootstrap)
@@ -107,12 +110,25 @@ final class LocalRootSharesBootstrapStarter: AppBootstrapper {
     private func migrateNodesAndShares(volume: Volume) throws {
         Log.error("Will start Share DB migration ✅.", error: nil, domain: .application)
         let migrator = VolumeBasedDatabaseMigrator(context: context)
-        try migrator.migrateVolumelessRevisions(volumeID: volume.id)
-        try migrator.migrateVolumelessBlocks(volumeID: volume.id)
-        try migrator.migrateVolumelessThumbnails(volumeID: volume.id)
-        try migrator.migrateVolumelessNodes(volumeID: volume.id)
-        try migrator.migrateVolumelessShares(volumeID: volume.id)
-        Log.error("Did end Share DB migration ✅.", error: nil, domain: .application)
+        do {
+            try migrator.migrateVolumelessRevisions(volumeID: volume.id)
+            try migrator.migrateVolumelessBlocks(volumeID: volume.id)
+            try migrator.migrateVolumelessThumbnails(volumeID: volume.id)
+            try migrator.migrateVolumelessNodes(volumeID: volume.id)
+            try migrator.migrateVolumelessShares(volumeID: volume.id)
+            Log.error("Did end Share DB migration ✅.", error: nil, domain: .application)
+        } catch {
+            try throwError(error.localizedDescription)
+        }
+    }
+
+    private func throwError(_ message: String) throws {
+        if connectionStateResource.currentState.isReachable {
+            throw NukingCacheError(message)
+        } else {
+            // When device is offline nuking cache make infinite stuck
+            throw LoggingOutError(message)
+        }
     }
 }
 

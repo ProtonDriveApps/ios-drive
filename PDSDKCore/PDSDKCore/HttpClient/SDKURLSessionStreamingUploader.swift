@@ -37,11 +37,11 @@ final class SDKURLSessionStreamingUploader: @unchecked Sendable {
     func upload(
         streamedRequest: URLRequest,
         streamForUpload: StreamForUpload
-    ) async throws -> Result<HttpClientResponse, NSError> {
+    ) async throws -> Result<HttpClientResponse, Error> {
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { [weak self] continuation in
                 guard let self else {
-                    return continuation.resume(returning: .failure(CocoaError(.userCancelled) as NSError))
+                    return continuation.resume(returning: .failure(CocoaError(.userCancelled)))
                 }
 
                 let boxedContinuation = BoxedThrowingContinuation(continuation)
@@ -56,7 +56,7 @@ final class SDKURLSessionStreamingUploader: @unchecked Sendable {
                     guard let self else {
                         return
                     }
-                    let result = (self.parse(response, data: data, error: error as? NSError))
+                    let result = (self.parse(response, data: data, error: error))
                     self.delegate = nil
                     boxedContinuation.resume(returning: result)
                 }
@@ -65,7 +65,7 @@ final class SDKURLSessionStreamingUploader: @unchecked Sendable {
                         return
                     }
                     self.delegate = nil
-                    boxedContinuation.resume(returning: .failure(error as NSError))
+                    boxedContinuation.resume(returning: .failure(error))
                 }
                 delegate = streamingDelegate
                 task = uploadTask
@@ -91,14 +91,14 @@ final class SDKURLSessionStreamingUploader: @unchecked Sendable {
     private func parse(
         _ urlResponse: URLResponse?,
         data: Data?,
-        error: NSError?
-    ) -> Result<HttpClientResponse, NSError> {
+        error: Error?
+    ) -> Result<HttpClientResponse, Error> {
         if let error {
             return .failure(error)
         }
 
         guard let httpResponse = urlResponse as? HTTPURLResponse else {
-            let error = error ?? (URLSessionInvalidRepresentationError() as NSError)
+            let error = error ?? (URLSessionInvalidRepresentationError())
             return .failure(error)
         }
 
@@ -111,7 +111,8 @@ final class SDKURLSessionStreamingUploader: @unchecked Sendable {
     }
 }
 
-private final class BoxedThrowingContinuation<ResultType> {
+final class BoxedThrowingContinuation<ResultType>: @unchecked Sendable {
+    private let lock = NSLock()
     private var continuation: CheckedContinuation<ResultType, Error>?
 
     init(_ continuation: CheckedContinuation<ResultType, Error>) {
@@ -119,9 +120,10 @@ private final class BoxedThrowingContinuation<ResultType> {
     }
 
     func resume(returning value: sending ResultType) {
+        lock.lock(); defer { lock.unlock() }
         guard let continuation else { return }
-        continuation.resume(returning: value)
         self.continuation = nil
+        continuation.resume(returning: value)
     }
 }
 
@@ -149,9 +151,7 @@ final class StreamingDelegate: NSObject, URLSessionDataDelegate {
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
         Log.debug("[URLSession.didCompleteWithError] url: \(task.originalRequest?.url?.absoluteString ?? "???"), error: \(error?.localizedDescription ?? "none"))", domain: .networking)
-        // We pass the input to URLSession in needNewBodyStreamForTask. It opens it.
-        // URLSession's docs don't promise to close it, so we do it here.
-        streamForUpload.input.close()
+        // URLSession owns the input stream lifecycle (it opens and closes it); do not close it here.
         completionBlock(responseData, task.response, error)
     }
 

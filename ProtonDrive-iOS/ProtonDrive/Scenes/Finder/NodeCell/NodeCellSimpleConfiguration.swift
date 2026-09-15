@@ -56,7 +56,7 @@ class NodeCellSimpleConfiguration: ObservableObject, NodeCellConfiguration {
         from node: Node,
         fileTypeAsset: FileTypeAsset = FileTypeAsset.shared,
         disabled: Bool,
-        loader: ThumbnailLoader,
+        loader: SDKThumbnailsDownloaderProtocol?,
         featureFlagsController: FeatureFlagsControllerProtocol
     ) {
         self.iconName = fileTypeAsset.getAsset(node.mimeType)

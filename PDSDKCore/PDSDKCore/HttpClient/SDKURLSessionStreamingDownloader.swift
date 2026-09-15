@@ -32,7 +32,7 @@ final class SDKURLSessionStreamingDownloader: Sendable {
         self.downloadStreamCreator = downloadStreamCreator
     }
     
-    func download(request: URLRequest) async -> Result<HttpClientStream, NSError> {
+    func download(request: URLRequest) async -> Result<HttpClientStream, Error> {
         await withTaskCancellationHandler {
             do {
                 let (bytes, urlResponse) = try await session.bytes(for: request)
@@ -44,7 +44,7 @@ final class SDKURLSessionStreamingDownloader: Sendable {
                 }
                 
                 let response = HttpClientStream(
-                    stream: downloadStreamCreator(bytes),
+                    source: .stream(downloadStreamCreator(bytes)),
                     headers: httpResponse.headers.dictionary.map { ($0.key, [$0.value]) },
                     statusCode: httpResponse.statusCode
                 )

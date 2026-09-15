@@ -69,25 +69,95 @@ public final class NodeOperationPerformer: SDKNodeOperationPerformer {
             cancellationToken: UUID()
         )
     }
+}
 
-    public func trash(nodes: [AnyVolumeIdentifier]) async throws -> ([AnyVolumeIdentifier], Error?) {
-        Log.debug("Trash \(nodes.count) nodes", domain: .sdk)
-        return try await dependencies.performer.trash(
-            nodes: nodes.map { $0.sdkUid },
+// MARK: - Device
+extension NodeOperationPerformer {
+    public func renameDevice(identifier: DeviceIdentifier, newName: String) async throws {
+        try await dependencies.performer.renameDevice(
+            identifier: identifier,
+            newName: newName,
             cancellationToken: UUID(),
-            moc: context
+            moc: dependencies.context
         )
+    }
+}
+
+extension NodeOperationPerformer {
+    // The SDK groups nodes by volume ID, so file and photo nodes share one performer per operation type.
+    public func trash(nodes: [AnyVolumeIdentifier]) -> AsyncThrowingStream<SDKNodeOperationStreamEvent, Error> {
+        nodeOperationStream(label: "Trash", nodes: nodes) { nodes, token, moc in
+            dependencies.performer.trash(nodes: nodes.map(\.sdkUid), cancellationToken: token, moc: moc)
+        }
+    }
+
+    public func delete(nodes: [AnyVolumeIdentifier]) -> AsyncThrowingStream<SDKNodeOperationStreamEvent, Error> {
+        nodeOperationStream(label: "Delete", nodes: nodes) { nodes, token, moc in
+            dependencies.performer.delete(nodes: nodes.map(\.sdkUid), cancellationToken: token, moc: moc)
+        }
+    }
+
+    public func restore(nodes: [AnyVolumeIdentifier]) -> AsyncThrowingStream<SDKNodeOperationStreamEvent, Error> {
+        nodeOperationStream(label: "Restore", nodes: nodes) { nodes, token, moc in
+            dependencies.performer.restore(nodes: nodes.map(\.sdkUid), cancellationToken: token, moc: moc)
+        }
+    }
+
+    public func emptyTrash() async throws {
+        let context = dependencies.context
+        async let emptyFileTrash = dependencies.performer.emptyTrash(cancellationToken: UUID(), moc: context)
+        async let emptyPhotoTrash = dependencies.photoPerformer.emptyTrash(cancellationToken: UUID(), moc: context)
+        let _ = try await (emptyFileTrash, emptyPhotoTrash)
+    }
+
+    private func nodeOperationStream(
+        label: String,
+        nodes: [AnyVolumeIdentifier],
+        operation: ([AnyVolumeIdentifier], UUID, NSManagedObjectContext) -> AsyncThrowingStream<NodeOperationStreamEvent, Error>
+    ) -> AsyncThrowingStream<SDKNodeOperationStreamEvent, Error> {
+        Log.debug("\(label) \(nodes.count) nodes", domain: .sdk)
+        let inner = operation(nodes, UUID(), context)
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    for try await event in inner {
+                        switch event {
+                        case .nodeResults(let results, let affectedIdentifiers):
+                            continuation.yield(.nodeResults(
+                                results: results.map { ($0.nodeUid.any, error: $0.error) },
+                                affectedIdentifiers: affectedIdentifiers
+                            ))
+                        case .completed(let error):
+                            continuation.yield(.completed(error: error))
+                        }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
     }
 }
 
 extension NodeOperationPerformer {
     public struct Dependencies {
         public let performer: FileOperationPerformer
+        public let photoPerformer: PhotosOperationPerformer
         public let context: NSManagedObjectContext
 
-        public init(performer: FileOperationPerformer, context: NSManagedObjectContext) {
+        public init(
+            performer: FileOperationPerformer,
+            photoPerformer: PhotosOperationPerformer,
+            context: NSManagedObjectContext
+        ) {
             self.performer = performer
+            self.photoPerformer = photoPerformer
             self.context = context
         }
     }
 }
+

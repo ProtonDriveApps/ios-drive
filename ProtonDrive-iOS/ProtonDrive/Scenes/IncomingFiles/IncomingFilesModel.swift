@@ -71,16 +71,6 @@ final class IncomingFilesModel: FinderModel, NodesListing, NodesFetching, NodesS
     }
 }
 
-extension IncomingFilesModel: ThumbnailLoader {
-    public func loadThumbnail(with id: Identifier) {
-        return tower.loadThumbnail(with: id)
-    }
-
-    public func cancelThumbnailLoading(_ id: Identifier) {
-        tower.cancelThumbnailLoading(id)
-    }
-}
-
 extension IncomingFilesModel: LayoutChanging {
     public var layout: LayoutPreference {
         tower.layout

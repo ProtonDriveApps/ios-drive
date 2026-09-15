@@ -23,30 +23,37 @@ final class RootSharesBootstrapStarter: AppBootstrapper {
     private let localStore: AppBootstrapper
     private let remote: AppBootstrapper
     private let creating: AppBootstrapper
+    private let connectionStateResource: ConnectionStateResource
 
-    init(localStore: AppBootstrapper, remote: AppBootstrapper, creating: AppBootstrapper) {
+    init(
+        localStore: AppBootstrapper,
+        remote: AppBootstrapper,
+        creating: AppBootstrapper,
+        connectionStateResource: ConnectionStateResource
+    ) {
         self.localStore = localStore
+        self.connectionStateResource = connectionStateResource
         self.remote = remote
         self.creating = creating
     }
 
     func bootstrap() async throws {
         try await measure(message: "Bootstrap RootShares", domain: .applicationBootstrap) {
-            do {
+            guard connectionStateResource.currentState.isReachable else {
+                Log.debug("Skip fetching the remote shares because the device is offline", domain: .applicationBootstrap)
                 try await localStore.bootstrap()
+                return
+            }
+            do {
+                try await remote.bootstrap()
             } catch let error as NukingCacheError {
                 throw error
+            } catch let error as CredentialProviderError {
+                throw error
             } catch {
-                do {
-                    try await remote.bootstrap()
-                } catch let error as NukingCacheError {
-                    throw error
-                } catch let error as CredentialProviderError {
-                    throw error
-                } catch {
-                    try await creating.bootstrap()
-                }
+                try await creating.bootstrap()
             }
+            try await localStore.bootstrap()
         }
     }
 }

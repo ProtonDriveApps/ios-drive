@@ -24,6 +24,9 @@ import PDLocalization
 
 enum SDKMenuFlag: CaseIterable {
     case isUsingSDKNodeOperations
+    case isUsingSDKCreateFolder
+    case isUsingSDKTrashNode
+    case isUsingSDKDeviceOperation
 }
 
 typealias SDKMenuFlags = Set<SDKMenuFlag>
@@ -95,10 +98,9 @@ class MenuViewModel: ObservableObject, LogoutRequesting {
     }
 
     lazy var appVersion: String = {
-        let dictionary = Bundle.main.infoDictionary!
-        let name = dictionary["CFBundleDisplayName"] as? String
-        let version = dictionary["CFBundleShortVersionString"] as? String
-        let build = dictionary["CFBundleVersion"] as? String
+        let name: String? = BundleInfo.value(for: .displayName)
+        let version: String? = BundleInfo.value(for: .shortVersion)
+        let build: String? = BundleInfo.value(for: .bundleVersion)
         return "\(name ?? "") v\(version ?? "") (\(build ?? ""))"
     }()
 

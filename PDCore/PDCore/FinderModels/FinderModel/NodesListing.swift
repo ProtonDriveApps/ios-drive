@@ -70,7 +70,7 @@ extension NodesListing {
             progress: 100,
             errorDescription: nil
         )
-        Task {
+        syncStorage.enqueueWrite(for: reportableSyncItem.id) {
             await syncStorage.backgroundContextPool.withContext { context in
                 syncStorage.upsert(reportableSyncItem, in: context)
             }
@@ -93,7 +93,7 @@ extension NodesListing {
             progress: 0,
             errorDescription: "Access to file attribute (e.g., file name) not available. Please retry or contact support."
         )
-        Task {
+        syncStorage.enqueueWrite(for: reportableSyncItem.id) {
             await syncStorage.backgroundContextPool.withContext { context in
                 syncStorage.upsert(reportableSyncItem, in: context)
             }

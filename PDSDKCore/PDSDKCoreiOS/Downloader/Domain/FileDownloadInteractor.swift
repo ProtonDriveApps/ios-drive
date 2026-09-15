@@ -87,6 +87,7 @@ final class FileDownloadInteractor: FileDownloadInteractorProtocol {
             _ = try? DecryptedFileManager.ensureHardLink(identifier: identifier, filename: downloadInput.name)
             Log.debug("Finish to download file \(downloadInput.id)", domain: .sdk)
         } catch {
+            await deleteUnavailableFileIfNeeded(error: error, identifier: identifier)
             cacheResource.cleanUp(for: downloadInput)
             throw error
         }
@@ -105,5 +106,14 @@ final class FileDownloadInteractor: FileDownloadInteractorProtocol {
     private func logDownloadStart(input: FileDownloadInput) {
         Log.debug("Download file \(input.id), mime: \(input.mimeType), expected size: \(input.clearSize)", domain: .sdk)
     }
-    
+
+    private func deleteUnavailableFileIfNeeded(error: Error, identifier: AnyVolumeIdentifier) async {
+        let noExisting = 2501
+        guard
+            let sdkError = error as? ProtonDriveSDKError,
+            sdkError.primaryCode == noExisting
+        else { return }
+        await cacheResource.delete(identifier: identifier)
+    }
+
 }

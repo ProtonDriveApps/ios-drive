@@ -18,8 +18,9 @@
 import Foundation
 
 struct PhotosRetryListRowItem: Identifiable, Equatable {
-    var id: String
-    var name: String
-    var image: Data
-    var failureReason: String?
+    let id: String
+    let name: String
+    let image: Data
+    let failureReason: String?
+    let creationDate: Date?
 }

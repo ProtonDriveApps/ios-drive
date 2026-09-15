@@ -15,12 +15,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Foundation
+
 public struct ExternalFeatureFlagOverride {
     public let flag: ExternalFeatureFlag
     public let value: Bool
+    public let payload: String?
 
-    public init(flag: ExternalFeatureFlag, value: Bool) {
+    public init(flag: ExternalFeatureFlag, value: Bool, payload: String? = nil) {
         self.flag = flag
         self.value = value
+        self.payload = payload
     }
 }

@@ -80,7 +80,10 @@ struct ProtonFilePreviewFactory {
         return ProtonFileActionsMenu(viewModel: viewModel)
     }
 
-    func makeRenameViewController(identifier: ProtonFileIdentifier, tower: Tower) -> UIViewController? {
+    func makeRenameViewController(
+        identifier: ProtonFileIdentifier,
+        tower: Tower
+    ) -> UIViewController? {
         let nodeIdentifier = NodeIdentifier(identifier.linkId, identifier.shareId, identifier.volumeId)
 
         // FIXME: Current solution expects passing of `Node` object. Refactor in the future.
@@ -96,8 +99,7 @@ struct ProtonFilePreviewFactory {
         let nameEditor = NodeNameEditor(
             storage: tower.storage,
             managedObjectContext: tower.storage.backgroundContext,
-            nodeRenamer: nodeRenamer,
-            nodeOperationPerformer: tower.sdkObjects.nodeOperationPerformer
+            nodeRenamer: nodeRenamer
         )
         let viewModel = EditNodeNameViewModel(node: editedNode, nameEditor: nameEditor, validator: NameValidations.userSelectedName)
         let formattingViewModel = FormattingFileViewModel(

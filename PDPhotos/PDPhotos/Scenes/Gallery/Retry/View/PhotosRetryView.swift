@@ -17,6 +17,7 @@
 
 import Foundation
 import SwiftUI
+import PDCore
 import PDUIComponents
 import ProtonCoreUIFoundations
 
@@ -78,8 +79,9 @@ struct PhotosRetryView: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
+    @ViewBuilder
     private func rowFor(item: PhotosRetryListRowItem) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
             Image(uiImage: UIImage(data: item.image) ?? UIImage(systemName: viewModel.fallbackSystemImage)!)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
@@ -90,11 +92,18 @@ struct PhotosRetryView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.name)
                     .font(.system(size: 17))
+                    .truncationMode(.middle)
                     .lineLimit(1)
                     .foregroundStyle(ColorProvider.TextNorm)
-                    .padding(.top, (item.failureReason?.isEmpty ?? true) ? 12 : 0) // Vertical center when reason is empty
                     .accessibilityIdentifier("PhotosRetryListRowItem.itemName.\(item.name)")
-                
+
+                if let date = item.creationDate {
+                    Text(DateFormatter.displayMediumDateShortTime.string(from: date))
+                        .font(.system(size: 13))
+                        .foregroundStyle(ColorProvider.TextNorm)
+                        .accessibilityIdentifier("PhotosRetryListRowItem.creationDate.\(date.description)")
+                }
+
                 if let reason = item.failureReason, !reason.isEmpty {
                     Text(reason)
                         .font(.system(size: 13))
@@ -111,10 +120,18 @@ struct PhotosRetryView: View {
                 viewModel.pushRetryButton()
             }
             .accessibilityIdentifier("PhotosRetryView.retry.button")
-            LightButton(title: viewModel.skipButtonTitle, color: .BrandNorm, font: .body.weight(.light)) {
+            
+            Divider()
+                .foregroundStyle(ColorProvider.SeparatorNorm)
+                        
+            LightButton(
+                title: viewModel.skipButton,
+                color: .BrandNorm,
+                font: .body.weight(.semibold)
+            ) {
                 viewModel.pushSkipButton()
             }
-            .frame(height: 48)
+            .frame(maxWidth: .infinity, minHeight: 44)
             .accessibilityIdentifier("PhotosRetryView.skip.button")
         }
     }

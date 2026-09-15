@@ -106,6 +106,7 @@ public struct ShareListing: Codable {
         case active = 1
         case deleted = 2
         case restored = 3
+        case locked = 6
     }
 
     public enum VolumeType: Int, Codable {

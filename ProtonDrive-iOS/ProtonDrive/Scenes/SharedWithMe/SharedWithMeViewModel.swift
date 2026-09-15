@@ -37,11 +37,13 @@ class SharedWithMeViewModel: ObservableObject, FinderViewModel, DownloadingViewM
     let model: SharedWithMeModel
     private let pendingInvitationsContainer: PendingInvitationsStatusContainer
     private let bookmarksContainer: BookmarkContainer
+    private let upgradeRequirementBannerController: UpgradeRequirementBannerControllerProtocol
     let pendingInvitationsViewModel: PendingInvitationsStatusViewModel
     var childrenCancellable: AnyCancellable?
     var lockedStateCancellable: AnyCancellable?
     var lockedStateBannerVisibility: LockedStateAlertVisibility = .hidden
     let scrollToTopPublisher: AnyPublisher<TabBarItem, Never>?
+    var upgradeRequirementHandling: UpgradeRequirementHandling? { upgradeRequirementBannerController }
     @Published var transientChildren: [NodeWrapper] = []
     @Published var permanentChildren: [NodeWrapper] = []  {
         didSet {
@@ -53,6 +55,7 @@ class SharedWithMeViewModel: ObservableObject, FinderViewModel, DownloadingViewM
     let isRoot = true
     let genericErrors = ErrorRegulator()
     @Published var isUpdating: Bool = false
+    @Published var upgradeRequirementLevel: UpgradeRequirementLevel = .none
 
     let isSharedWithMe: Bool = true
     let isSharedWithMeRoot: Bool = true
@@ -65,7 +68,7 @@ class SharedWithMeViewModel: ObservableObject, FinderViewModel, DownloadingViewM
     }
 
     var trailingNavBarItems: [NavigationBarButton] {
-        self.listState.isSelecting ? [.cancel] : [.apply(title: "", disabled: true)]
+        self.listState.isSelecting ? [.cancel] : []
     }
 
     var leadingNavBarItems: [NavigationBarButton] {
@@ -130,6 +133,10 @@ class SharedWithMeViewModel: ObservableObject, FinderViewModel, DownloadingViewM
         self.pendingInvitationsViewModel = pendingInvitationsContainer.makePendingInvitationsStatusViewModel()
         self.bookmarksContainer = bookmarksContainer
         self.progressTrackersController = progressTrackersController
+        self.upgradeRequirementBannerController = UpgradeRequirementBannerController(
+            appStorePageURL: Constants.appStorePageURL,
+            localSettings: model.tower.localSettings
+        )
 
         self.scrollToTopPublisher = scrollToTopPublisher
         self.subscribeToSort()
@@ -171,6 +178,13 @@ class SharedWithMeViewModel: ObservableObject, FinderViewModel, DownloadingViewM
         model.errorSubject
             .sink { [weak self] error in
                 self?.genericErrors.send(error)
+            }
+            .store(in: &cancellables)
+
+        upgradeRequirementBannerController
+            .subscribeToUpgradeRequirement(currentTab: currentTab)
+            .sink { [weak self] level in
+                self?.upgradeRequirementLevel = level
             }
             .store(in: &cancellables)
     }

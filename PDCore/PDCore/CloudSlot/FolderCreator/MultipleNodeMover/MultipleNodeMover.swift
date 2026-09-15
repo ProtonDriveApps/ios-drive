@@ -27,7 +27,7 @@ public protocol MultipleNodeMoverProtocol {
 /// NOTE: this class doesn't handle duplicated check
 public final class MultipleNodeMover: MultipleNodeMoverProtocol {
     /// Typealias for one of the methods of PDClient's Client.
-    public typealias CloudMultipleNodeMover = (Client.VolumeID, MoveMultipleEndpoint.Parameters) async throws -> Void
+    public typealias CloudMultipleNodeMover = (Client.VolumeID, MoveMultipleEndpoint.Parameters) async throws -> MoveMultipleResponse
 
     private let moc: NSManagedObjectContext
     private let cloudMultipleNodeMover: CloudMultipleNodeMover
@@ -55,18 +55,21 @@ public final class MultipleNodeMover: MultipleNodeMoverProtocol {
         let newParentInfo = try await infoReader.readNodeWithHashKey(identifier: parentIdentifier)
         let infosData = await linksFactory.prepareNodeLinks(for: nodes, newParentInfo: newParentInfo)
         guard let signatureEmail = infosData.infos.first?.signatureEmail else { return }
-        let (successLinks, requestError) = await execute(
+        let (responses, apiErrors) = await execute(
             linkInfos: infosData.infos,
             signatureEmail: signatureEmail,
             newParentInfo: newParentInfo
         )
+        let successLinks = responses.filter { $0.response.code == 1000 }.map { $0.linkID }
         let successInfos = infosData.infos.filter { successLinks.contains($0.link.LinkID) }
-        let movedNodeIDs = Array(Set(successInfos.map(\.link.LinkID)))
-        let newParentID = newParent.id
         try await updateLocalDB(newParent: newParent, nodes: nodes, infos: successInfos)
-        
-        if let requestError {
-            throw requestError
+
+        let failedMoveErrors = responses.compactMap { $0.response.error }
+        if let moveError = failedMoveErrors.first {
+            throw PlainMessageError(moveError)
+        }
+        if let apiError = apiErrors.first {
+            throw apiError
         }
         if let infosError = infosData.error {
             throw infosError
@@ -80,10 +83,10 @@ extension MultipleNodeMover {
         batchInfos: [[MultipleMovingNode.LinkInfo]],
         signatureEmail: String,
         newParentInfo: NodeParentCryptoMaterial
-    ) async -> ([String], [Error]) {
+    ) async -> ([MoveMultipleResponse.MoveResponse], [Error]) {
         await withTaskGroup(
-            of: ([String], Error?).self,
-            returning: ([String], [any Error]).self
+            of: ([MoveMultipleResponse.MoveResponse], [Error]).self,
+            returning: ([MoveMultipleResponse.MoveResponse], [any Error]).self
         ) { [weak self] group in
             guard let self else { return ([], []) }
             for info in batchInfos {
@@ -96,15 +99,13 @@ extension MultipleNodeMover {
                     return (successLinks, requestError)
                 }
             }
-            var successIDs: [String] = []
+            var responses: [MoveMultipleResponse.MoveResponse] = []
             var requestErrors: [Error] = []
             for await result in group {
-                successIDs.append(contentsOf: result.0)
-                if let error = result.1 {
-                    requestErrors.append(error)
-                }
+                responses.append(contentsOf: result.0)
+                requestErrors.append(contentsOf: result.1)
             }
-            return (successIDs, requestErrors)
+            return (responses, requestErrors)
         }
     }
 
@@ -112,15 +113,15 @@ extension MultipleNodeMover {
         linkInfos: [MultipleMovingNode.LinkInfo],
         signatureEmail: String,
         newParentInfo: NodeParentCryptoMaterial
-    ) async -> ([String], Error?){
+    ) async -> ([MoveMultipleResponse.MoveResponse], [Error]){
         let links = linkInfos.map(\.link)
         let batches = links.splitInGroups(of: batchSize)
 
         let results = await withTaskGroup(
-            of: Result<[String], Error>.self,
-            returning: [Result<[String], Error>].self
+            of: Result<[MoveMultipleResponse.MoveResponse], Error>.self,
+            returning: ([MoveMultipleResponse.MoveResponse], [Error]).self
         ) { [weak self] group in
-            guard let self else { return [] }
+            guard let self else { return ([], []) }
             for batch in batches {
                 group.addTask {
                     do {
@@ -130,31 +131,25 @@ extension MultipleNodeMover {
                             signatureEmail: signatureEmail
                         )
 
-                        try await self.cloudMultipleNodeMover(newParentInfo.volumeID, parameters)
-                        return .success(batch.map(\.LinkID))
+                        let response = try await self.cloudMultipleNodeMover(newParentInfo.volumeID, parameters)
+                        return .success(response.responses)
                     } catch {
                         return .failure(error)
                     }
                 }
             }
-            var results: [Result<[String], Error>] = []
+            var responses: [MoveMultipleResponse.MoveResponse] = []
+            var apiErrors: [Error] = []
             for await result in group {
-                results.append(result)
+                do {
+                    responses.append(contentsOf: try result.get())
+                } catch {
+                    apiErrors.append(error)
+                }
             }
-            return results
+            return (responses, apiErrors)
         }
-
-        var successLinks: [String] = []
-        var requestError: Error?
-        for result in results {
-            switch result {
-            case .success(let ids):
-                successLinks.append(contentsOf: ids)
-            case .failure(let error):
-                requestError = error
-            }
-        }
-        return (successLinks, requestError)
+        return results
     }
 
     private func prepareRequestParameter(
@@ -162,11 +157,12 @@ extension MultipleNodeMover {
         newParentID: String,
         signatureEmail: String
     ) -> MoveMultipleEndpoint.Parameters {
+        let isAnonymous = links.first?.NodePassphraseSignature != nil
         return .init(
             parentLinkID: newParentID,
             links: links,
             nameSignatureEmail: signatureEmail,
-            signatureEmail: signatureEmail,
+            signatureEmail: isAnonymous ? signatureEmail : nil,
             newShareID: nil
         )
     }

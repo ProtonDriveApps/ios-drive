@@ -43,7 +43,7 @@ extension MetadataUpdater {
 
     /// Parses the link's `OwnedBy` (ownership of the volume containing the link). Absent on responses
     /// that don't carry it; `Email`/`Organization` are individually nullable.
-    private func parseOwnedBy(from linkDTO: JSONDictionary, context: String) throws -> OwnedBy? {
+    private func parseOwnedBy(from linkDTO: JSONDictionary, context: String) throws -> PDClient.OwnedBy? {
         guard let ownedByDTO: JSONDictionary = try obtainOptional("OwnedBy", from: linkDTO, context: "\(context).OwnedBy") else {
             return nil
         }

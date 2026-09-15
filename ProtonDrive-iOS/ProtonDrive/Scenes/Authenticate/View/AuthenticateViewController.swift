@@ -41,9 +41,9 @@ final class AuthenticateViewController: UIViewController {
         view.backgroundColor = ColorProvider.BackgroundNorm
 
         // Override FF values for dynamic plans and easy device migration, just before sign in / sign up
-        let featureFlagsRepository = ProtonCoreFeatureFlags.FeatureFlagsRepository.shared
-        featureFlagsRepository.setFlagOverride(CoreFeatureFlagType.dynamicPlan, true)
-        featureFlagsRepository.resetFlagOverride(CoreFeatureFlagType.easyDeviceMigrationDisabled)
+        let featureFlagSync = ProtonCoreFeatureFlags.FeatureFlagsRepository.shared
+        featureFlagSync.setFlagOverride(CoreFeatureFlagType.dynamicPlan, true)
+        featureFlagSync.resetFlagOverride(CoreFeatureFlagType.easyDeviceMigrationDisabled)
 
         authenticator.authenticate(
             over: self,

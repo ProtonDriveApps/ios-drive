@@ -46,7 +46,7 @@ public protocol EncryptionResource {
         nodeKey: ArmoredKey,
         nodePassphrase: Passphrase
     ) throws -> RevisionContentKeys
-    func makeHmac(string: String, hashKey: String) throws -> String
+    func makeHmac(string: String, hashKey: Data) throws -> String
     func sign(
         data: Data,
         addressKey: String,

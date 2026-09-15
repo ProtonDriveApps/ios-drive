@@ -26,13 +26,6 @@ extension FinderView {
         ForEach(items, content: navigationBarButton)
     }
 
-    @ViewBuilder
-    func trailingBarButtons(_ items: [NavigationBarButton]) -> some View {
-        HStack {
-            ForEach(items, content: navigationBarButton)
-        }
-    }
-
     func editSectionMenuItems(environment: EditSectionEnvironment) -> [ContextMenuItemGroup] {
         guard let node = vm.node else {
             return []
@@ -50,7 +43,7 @@ extension FinderView {
     }
 
     @ViewBuilder
-    private func navigationBarButton(_ item: NavigationBarButton) -> some View {
+    func navigationBarButton(_ item: NavigationBarButton) -> some View {
         switch item {
         case .virtualBack:
             BackButton { NotificationCenter.default.post(.virtualBack) }.any()
@@ -114,6 +107,8 @@ extension FinderView {
             }
             .accessibility(identifier: "FinderView.NavigationBarButton.TextButton.RightActionButton.\(formattedTitle)")
             .disabled(vm.isUpdating || disabledInCurrentContext)
+            .fixedSize()
+            .padding(.horizontal, 8)
 
         case .close:
             SimpleCloseButtonView {
@@ -125,6 +120,7 @@ extension FinderView {
                 (vm as? (any HasMultipleSelection))?.cancelSelection()
             }
             .fixedSize()
+            .padding(.horizontal, 8)
         case .subscribe:
             SubscriptionBarItem {
                 presentModal.wrappedValue = .servicePlans
@@ -139,6 +135,5 @@ struct ContextMenuNavigationModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding(.vertical)
-            .padding(.trailing, -4)
     }
 }

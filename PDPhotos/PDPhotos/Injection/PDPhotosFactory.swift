@@ -41,20 +41,6 @@ struct PDPhotosFactory {
         return repository
     }
 
-    func makeThumbnailsContainer(
-        tower: Tower,
-        metadataController: MetadataControllerProtocol,
-        performanceMetricsController: PerformanceMetricsControllerProtocol,
-        featureFlagsController: FeatureFlagsControllerProtocol
-    ) -> ThumbnailsControllersContainer {
-        ThumbnailsControllersContainer(dependencies: ThumbnailsControllersContainer.Dependencies(
-            tower: tower,
-            metadataController: metadataController,
-            performanceMetricsController: performanceMetricsController,
-            featureFlagsController: featureFlagsController
-        ))
-    }
-
     func makeLocalAlbumListController(
         context: NSManagedObjectContext,
         storageManger: StorageManager,

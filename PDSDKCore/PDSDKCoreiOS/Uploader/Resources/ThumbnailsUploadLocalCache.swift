@@ -39,11 +39,11 @@ public final class ThumbnailsUploadLocalCache: ThumbnailsUploadLocalCacheProtoco
         let tempIdentifier = NodeIdentifier(tempID, "", volumeID)
         let nodeIdentifier = NodeIdentifier(nodeID, "", volumeID)
         
-        if let tempURL = PDFileManager.thumbnailURL(for: tempIdentifier, type: .default) {
+        if let tempURL = PDFileManager.getThumbnailURL(for: tempIdentifier, type: .default) {
             let url = PDFileManager.createThumbnailURL(for: nodeIdentifier, type: .default, storageType: .temporary)
             try? FileManager.default.moveItem(at: tempURL, to: url)
         }
-        if let tempPreviewURL = PDFileManager.thumbnailURL(for: tempIdentifier, type: .photos) {
+        if let tempPreviewURL = PDFileManager.getThumbnailURL(for: tempIdentifier, type: .photos) {
             let photoURL = PDFileManager.createThumbnailURL(for: nodeIdentifier, type: .photos, storageType: .temporary)
             try? FileManager.default.moveItem(at: tempPreviewURL, to: photoURL)
         }

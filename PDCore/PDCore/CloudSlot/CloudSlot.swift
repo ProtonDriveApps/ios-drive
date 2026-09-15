@@ -167,8 +167,7 @@ public protocol CloudSlotProtocol: AnyObject,
     ThumbnailCloudClient,
     CloudAsyncVolumeCreatorProtocol,
     CloudUpdaterProtocol,
-    CloudTrasherProtocol,
-    ThumbnailsUpdateRepository
+    CloudTrasherProtocol
 {
 }
 
@@ -179,6 +178,7 @@ public protocol CloudShareScannerProtocol {
 public protocol CloudRootScannerProtocol {
     func scanRoots(isPhotosEnabled: Bool, moc: NSManagedObjectContext, onFoundMainShare: @escaping (Result<Share, Error>) -> Void, onMainShareNotFound: @escaping () -> Void)
     func scanRootsAsync(isPhotosEnabled: Bool, moc: NSManagedObjectContext) async throws -> Share?
+    func scanVolumes(in moc: NSManagedObjectContext) async throws -> [VolumeMeta]
 }
 
 public protocol CloudShareAndRootFolderScannerProtocol {
@@ -293,19 +293,24 @@ extension CloudSlot {
         }
     }
 
+    public func scanVolumes(in moc: NSManagedObjectContext) async throws -> [VolumeMeta] {
+        // getShares() first — the BE updates volume state as a hidden side effect (see scanRootsAsync).
+        _ = try await client.getShares()
+        let volumes = try await client.getVolumes()
+        try moc.performAndWait {
+            update(volumes, in: moc)
+            try moc.saveOrRollback()
+        }
+        return volumes
+    }
+
     public func scanRootsAsync(isPhotosEnabled: Bool = false,
                                moc: NSManagedObjectContext) async throws -> Share? {
-        // we cannot rely on volume state being properly updated before we call for shares first.
-        // call for shares updates the volume state as a hidden side effect. this is a BE quirk.
-        _ = try await client.getShares()
-
-        let volumes = try await client.getVolumes()
+        let volumes = try await scanVolumes(in: moc)
 
         guard let volume = volumes.first(where: { $0.state == .active }) else {
             return nil
         }
-
-        update(volumes, in: moc)
 
         let mainShare = try await scanRootShare(volume.share.shareID, moc: moc)
         if isPhotosEnabled {
@@ -1055,20 +1060,6 @@ extension CloudSlot {
         }
     }
 
-    private func updateThumbnails(with urls: [ThumbnailURL], in moc: NSManagedObjectContext) {
-        let ids = Set(urls.map(\.id))
-        let thumbnails: [Thumbnail] = self.storage.existing(with: ids, in: moc)
-        for thumbnail in thumbnails {
-            guard let info = urls.first(where: { $0.id == thumbnail.id }) else {
-                continue
-            }
-            guard thumbnail.downloadURL != info.url.absoluteString else {
-                continue
-            }
-            thumbnail.downloadURL = info.url.absoluteString
-        }
-    }
-
     @discardableResult
     private func update(_ children: [LinkMeta],
                         under folderID: LinkMeta.LinkID,
@@ -1171,13 +1162,6 @@ extension CloudSlot {
         try managedObjectContext.performAndWait {
             update(links, of: shareId, in: managedObjectContext)
             try managedObjectContext.saveOrRollback()
-        }
-    }
-
-    public func update(thumbnails: [ThumbnailURL], moc: NSManagedObjectContext) throws {
-        try moc.performAndWait {
-            updateThumbnails(with: thumbnails, in: moc)
-            try moc.saveOrRollback()
         }
     }
 }

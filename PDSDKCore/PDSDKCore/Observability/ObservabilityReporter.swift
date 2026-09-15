@@ -119,16 +119,17 @@ public final class ObservabilityReporter: ObservabilityReporterProtocol {
             if isAborted { return }
             await dependencies.uploadMonitor.reportError(volumeType: volumeType, type: error.stringValue)
 
-            // Exclusive network error
-            if error == .networkError { return }
+            // Exclude network_error and validation_error from success rate and erroring users metrics
+            if error == .networkError || error == .validationError { return }
             await dependencies.uploadMonitor.reportSuccess(
                 volumeType: volumeType,
                 status: DriveObservabilityStatus.failure.rawValue
             )
             await dependencies.uploadMonitor.reportErroringUser(volumeType: volumeType, userPlan: userPlan)
 
-            if error == .unknown, let message = payload.originalError {
-                Log.error(message, domain: .sdk)
+            if error == .unknown {
+                let message = payload.originalError ?? error.stringValue
+                Log.error(message, domain: .sdk, context: LogContext("upload_unknown_error", forKey: "tag"))
             }
         } else {
             await dependencies.uploadMonitor.reportSuccess(
@@ -148,16 +149,17 @@ public final class ObservabilityReporter: ObservabilityReporterProtocol {
             if isAborted { return }
             await dependencies.downloadMonitor.reportError(volumeType: volumeType, type: error.stringValue)
 
-            // Exclusive network error
-            if error == .networkError { return }
+            // Exclude network_error and validation_error from success rate and erroring users metrics
+            if error == .networkError || error == .validationError { return }
             await dependencies.downloadMonitor.reportSuccess(
                 volumeType: volumeType,
                 status: DriveObservabilityStatus.failure.rawValue
             )
             await dependencies.downloadMonitor.reportErroringUser(volumeType: volumeType, userPlan: userPlan)
 
-            if error == .unknown, let message = payload.originalError {
-                Log.error(message, domain: .sdk)
+            if error == .unknown {
+                let message = payload.originalError ?? error.stringValue
+                Log.error(message, domain: .sdk, context: LogContext("download_unknown_error", forKey: "tag"))
             }
         } else {
             await dependencies.downloadMonitor.reportSuccess(
@@ -246,6 +248,8 @@ extension UploadError {
             return "4xx"
         case .unknown:
             return "unknown"
+        case .validationError:
+            return "validation_error"
         }
     }
 }
@@ -267,6 +271,8 @@ extension DownloadError {
             return "4xx"
         case .unknown:
             return "unknown"
+        case .validationError:
+            return "validation_error"
         }
     }
 }

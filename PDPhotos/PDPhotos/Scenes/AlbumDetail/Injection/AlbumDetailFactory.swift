@@ -141,7 +141,7 @@ struct AlbumDetailFactory {
                 metadataController: parameters.container.dependencies.metadataController,
                 photosGridViewModel: photoGridViewModel,
                 selectionController: selectionController,
-                thumbnailControllerContainer: parameters.container.dependencies.albumsThumbnailsContainer,
+                thumbnailDownloader: parameters.container.dependencies.tower.sdkObjects.thumbnailDownloader,
                 copyToStreamController: copyToStreamController
             ),
             configuration: parameters.configuration,

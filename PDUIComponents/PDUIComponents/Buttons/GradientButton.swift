@@ -38,11 +38,13 @@ public struct GradientButtonStyle: ButtonStyle {
     private var colors: [Color]
     private var horizontalPadding: CGFloat
     private var verticalPadding: CGFloat
+    private var expandsHorizontally: Bool
 
     public init(
         colors: [Color]? = nil,
         horizontalPadding: CGFloat = 16,
-        verticalPadding: CGFloat = 8
+        verticalPadding: CGFloat = 8,
+        expandsHorizontally: Bool = true
     ) {
         let defaultColors: [Color] = [
             Color(red: 110.0 / 255.0, green: 75.0 / 255.0, blue: 1),
@@ -52,6 +54,7 @@ public struct GradientButtonStyle: ButtonStyle {
         self.colors = colors ?? defaultColors
         self.horizontalPadding = horizontalPadding
         self.verticalPadding = verticalPadding
+        self.expandsHorizontally = expandsHorizontally
     }
 
     public func makeBody(configuration: Self.Configuration) -> some View {
@@ -60,7 +63,7 @@ public struct GradientButtonStyle: ButtonStyle {
                 .font(.body)
                 .foregroundColor(Color.SidebarTextNorm)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: expandsHorizontally ? .infinity : nil)
         .padding(.horizontal, horizontalPadding)
         .padding(.vertical, verticalPadding)
         .overlay(stroke)

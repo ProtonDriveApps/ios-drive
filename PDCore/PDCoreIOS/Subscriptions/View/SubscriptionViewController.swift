@@ -66,7 +66,7 @@ final class SubscriptionViewController: UIViewController, StoreKitManagerDelegat
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        setLeadingTitleView(title: Localization.menu_text_subscription)
+        navigationItem.title = Localization.menu_text_subscription
 
         view.backgroundColor = ColorProvider.BackgroundNorm
 

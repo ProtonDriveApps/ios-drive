@@ -15,9 +15,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
-extension Array {
+extension Array {    
     public func splitInGroups(of size: Int) -> [[Element]] {
-        guard size != .zero else {
+        guard size != .zero, !isEmpty else {
             return []
         }
         return stride(from: 0, to: count, by: size).map {

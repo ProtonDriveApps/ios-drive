@@ -68,13 +68,3 @@ public final class ActivityModel: FinderModel, NodesListing, UploadsListing, Dow
         }
     }
 }
-
-extension ActivityModel: ThumbnailLoader {
-    public func loadThumbnail(with id: Identifier) {
-        return tower.loadThumbnail(with: id)
-    }
-
-    public func cancelThumbnailLoading(_ id: Identifier) {
-        tower.cancelThumbnailLoading(id)
-    }
-}

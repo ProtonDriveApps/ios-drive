@@ -27,14 +27,14 @@ public protocol TabbarSettingUpdaterProtocol {
 
 public final class TabbarSettingUpdater: TabbarSettingUpdaterProtocol {
     private let client: PDClient.Client
-    private let featureFlags: any FeatureFlagsRepository
+    private let featureFlags: any DriveFeatureFlagsProvider
     private let localSettings: LocalSettings
     private let networking: PMAPIService
     private let storageManager: StorageManager
 
     public init(
         client: PDClient.Client,
-        featureFlags: any FeatureFlagsRepository,
+        featureFlags: any DriveFeatureFlagsProvider,
         localSettings: LocalSettings,
         networking: PMAPIService,
         storageManager: StorageManager

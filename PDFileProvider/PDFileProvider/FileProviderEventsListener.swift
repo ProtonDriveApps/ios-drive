@@ -24,8 +24,6 @@ public class FileProviderEventsListener: EventsListener {
     public init(manager: NSFileProviderManager?) {
         self.manager = manager
     }
-
-    public func processorReceivedEvents() { }
     
     public func processorAppliedEvents(affecting nodes: [NodeIdentifier]) {
         Log.info("Received events for \(nodes.count) nodes and parents", domain: .fileProvider)
@@ -61,4 +59,7 @@ public class FileProviderEventsListener: EventsListener {
             completion(error)
         }
     }
+
+    public func processorReceivedEvents() { }
+    public func rootMetadataMayHaveChanged(volumeID: String) { }
 }

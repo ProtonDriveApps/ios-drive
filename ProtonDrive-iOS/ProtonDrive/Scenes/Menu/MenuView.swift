@@ -176,7 +176,8 @@ struct MenuView: View {
             .font(.subheadline)
             .foregroundColor(ColorProvider.SidebarTextWeak)
             .frame(maxWidth: .infinity, alignment: .center)
-            .padding(.top, 32)
+            .frame(height: 60)
+            .padding(.top, 20)
             .accessibilityIdentifier("MenuView.appVersion")
             .onMultiTap(requiredTaps: 5, within: 3) {
                 vm.toggleDebugMode()
@@ -222,6 +223,12 @@ struct MenuView: View {
         switch flag {
         case .isUsingSDKNodeOperations:
             "Node operations"
+        case .isUsingSDKCreateFolder:
+            "Create folder"
+        case .isUsingSDKTrashNode:
+            "Trash files and photos"
+        case .isUsingSDKDeviceOperation:
+            "Rename/ delete computer"
         }
     }
 }

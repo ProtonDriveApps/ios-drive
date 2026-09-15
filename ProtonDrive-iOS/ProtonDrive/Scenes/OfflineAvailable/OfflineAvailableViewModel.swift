@@ -54,7 +54,7 @@ final class OfflineAvailableViewModel: ObservableObject, FinderViewModel, Downlo
     }
     
     var trailingNavBarItems: [NavigationBarButton] {
-        self.listState.isSelecting ? [.cancel] : [.apply(title: "", disabled: true)]
+        self.listState.isSelecting ? [.cancel] : []
     }
     
     var leadingNavBarItems: [NavigationBarButton] {

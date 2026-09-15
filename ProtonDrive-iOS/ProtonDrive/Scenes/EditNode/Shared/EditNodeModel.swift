@@ -28,7 +28,8 @@ final class EditNodeModel {
 
 extension EditNodeModel: FolderCreator {
     func createFolder(with name: String, parent: Folder, completion: @escaping (FolderCreator.Result) -> Void) {
-        if let performer = tower.sdkObjects.nodeOperationPerformer {
+        if let performer = tower.sdkObjects.nodeOperationPerformer,
+           tower.featureFlags.isEnabled(flag: .driveiOSSDKCreateFolder) {
             Task.detached {
                 let parentID = parent.identifier.any()
                 do {
@@ -46,17 +47,6 @@ extension EditNodeModel: FolderCreator {
 
 extension EditNodeModel: NodeNameEditorProtocol {
     func rename(to name: String, node: NodeIdentifier, completion: @escaping (NodeNameEditorProtocol.Result) -> Void) {
-        if let performer = tower.sdkObjects.nodeOperationPerformer {
-            Task {
-                do {
-                    let node = try await performer.rename(nodeUid: node.any(), newName: name)
-                    completion(.success(node))
-                } catch {
-                    completion(.failure(error))
-                }
-            }
-        } else {
-            tower.rename(node: node, cleartextName: name, moc: tower.storage.backgroundContext, handler: completion)
-        }
+        tower.rename(node: node, cleartextName: name, moc: tower.storage.backgroundContext, handler: completion)
     }
 }

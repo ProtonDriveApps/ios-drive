@@ -37,6 +37,8 @@ class DriveBootstrapStarter: AppBootstrapper {
     private let bootstrapStateController: BootstrapStateControllerProtocol
     private let sdkRelatedInfrastructureBootstrapper: AppBootstrapper
     private let filePathMigrationBootstrapStarter: AppBootstrapper
+    private let connectionStateResource: ConnectionStateResource
+    private weak var volumeLockController: VolumeLockController?
 
     init(
         addressBootstrapper: AppBootstrapper,
@@ -53,7 +55,9 @@ class DriveBootstrapStarter: AppBootstrapper {
         duplicatePhotoListingBootstrapper: AppBootstrapper,
         bootstrapStateController: BootstrapStateControllerProtocol,
         sdkRelatedInfrastructureBootstrapper: AppBootstrapper,
-        filePathMigrationBootstrapStarter: AppBootstrapper
+        filePathMigrationBootstrapStarter: AppBootstrapper,
+        volumeLockController: VolumeLockController? = nil,
+        connectionStateResource: ConnectionStateResource
     ) {
         self.addressBootstrapper = addressBootstrapper
         self.sharesBootstrapper = sharesBootstrapper
@@ -70,6 +74,8 @@ class DriveBootstrapStarter: AppBootstrapper {
         self.bootstrapStateController = bootstrapStateController
         self.sdkRelatedInfrastructureBootstrapper = sdkRelatedInfrastructureBootstrapper
         self.filePathMigrationBootstrapStarter = filePathMigrationBootstrapStarter
+        self.volumeLockController = volumeLockController
+        self.connectionStateResource = connectionStateResource
     }
 
     func bootstrap() async throws {
@@ -102,7 +108,9 @@ class DriveBootstrapStarter: AppBootstrapper {
                 }
                 bootstrapStateController.setBootstrapped()
             }
+            await volumeLockController?.finishPopulate()
         } catch {
+            await volumeLockController?.finishPopulate()
             if let autoLocker, autoLocker.shouldAutolockNow() {
                 Log.debug("Ignore bootstrap error as autolocking is enabled", domain: .applicationBootstrap)
             } else {
@@ -133,6 +141,10 @@ class DriveBootstrapStarter: AppBootstrapper {
 
     private func bootstrapAdditionalSettings()  async throws {
         try await measure(message: "Check additional settings", domain: .applicationBootstrap) {
+            guard connectionStateResource.currentState.isReachable else {
+                Log.debug("Skip fetching the additional settings because the device is offline", domain: .applicationBootstrap)
+                return
+            }
             try await settingsBootstrapper.bootstrap()
         }
     }

@@ -74,8 +74,8 @@ extension SDKOperationPerformerFactory {
     }
 
     private func makeConfiguration(tower: Tower) -> ProtonDriveClientConfiguration {
-        ProtonDriveClientConfiguration(
-            baseURL: tower.clientConfiguration.driveApiBase,
+        return ProtonDriveClientConfiguration(
+            baseURL: tower.clientConfiguration.driveApiHost,
             clientUID: tower.sessionVault.getUploadClientUID(),
             downloadOperationalResilience: BasicOperationalResilience.default,
             uploadOperationalResilience: BasicOperationalResilience.default

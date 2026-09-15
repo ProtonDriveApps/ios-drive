@@ -20,6 +20,7 @@ import UIKit
 import UserNotifications
 import PDClient
 import PDCore
+import PDLocalization
 import PDUIComponents
 import ProtonCoreServices
 import ProtonCoreCryptoGoInterface
@@ -27,9 +28,6 @@ import ProtonCoreCryptoPatchedGoImplementation
 import ProtonCoreFeatureFlags
 import ProtonCorePushNotifications
 import PDPhotos
-#if DEBUG
-import Atlantis
-#endif
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate, hasPushNotificationService {
@@ -48,7 +46,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate, hasPushNotificationServic
         // the feature flags are not available at this point. The Log.setup call will be repeated in the SceneDelegate because of that
         let defaultHost = Constants.clientApiConfig.environment.doh.defaultHost
         self.logConfigurator = LogsConfigurator(logSystem: .iOSApp, localSettings: LocalSettings.shared, defaultHost: defaultHost)
+        Task.detached {
+            let manager = AppUpgradeManager(localSettings: LocalSettings.shared)
+            let versionStr: String = BundleInfo.value(for: .shortVersion) ?? ""
+            guard let version = Version(versionStr) else { return }
+            manager.performUpgradeIfNeeded(appVersion: version)
+        }
         Log.info("application willFinishLaunchingWithOptions", domain: .application)
+        Log.info("Language diagnostics: \(Localization.languageDiagnosticsDescription())", domain: .application)
         return true
     }
 
@@ -79,14 +84,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, hasPushNotificationServic
         featureFlagsRepository.resetFlagOverride(CoreFeatureFlagType.easyDeviceMigrationDisabled)
 
         Log.debug("PDFileManager appGroupTemporaryDirectory: \(PDFileManager.appGroupTemporaryDirectory.path())", domain: .storage)
-
-        if !Constants.isUITest && !Constants.isUnitTest {
-            // If you have many Macbooks on the same WiFi Network, you can specify your Macbook's name
-            // Find your Macbook's name by opening Proxyman App -> Certificate Menu -> Install Certificate for iOS -> With Atlantis
-            // Click on "How to start Atlantis"
-            // let hostName = "ansons-macbook-pro-2.local."
-            Atlantis.start(hostName: nil)
-        }
         #endif
         BackgroundModesRegistry.register()
 

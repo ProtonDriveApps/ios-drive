@@ -22,11 +22,13 @@ import ProtonCoreUIFoundations
 import Combine
 import PDUIComponents
 import PDLocalization
+import PDCoreIOS
 
 class ComputersViewController: UIViewController {
     private var initialLoader: UIViewController?
     private var collectionView: UICollectionView!
     private let refreshControl = UIRefreshControl()
+    private let verticalStack = UIStackView()
     private let viewModel: ComputersViewModel
     private let cellFactory: ComputersCellControllerFactory
     private var subscriptions = Set<AnyCancellable>()
@@ -46,7 +48,8 @@ class ComputersViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = ColorProvider.BackgroundNorm
-        setLeadingTitleView(title: Localization.computers_screen_title)
+        navigationItem.title = Localization.computers_screen_title
+        setupStackView()
         setupCollectionView()
         setupRefreshControl()
         setupEmptyStateView()
@@ -76,6 +79,14 @@ class ComputersViewController: UIViewController {
         navigationController?.navigationBar.isHidden = true
     }
 
+    private func setupStackView() {
+        verticalStack.axis = .vertical
+
+        view.addSubview(verticalStack)
+        verticalStack.translatesAutoresizingMaskIntoConstraints = false
+        verticalStack.fillSuperview()
+    }
+
     private func setupCollectionView() {
         let layout = UICollectionViewFlowLayout()
         layout.itemSize = CGSize(width: view.bounds.width, height: 60)
@@ -89,7 +100,7 @@ class ComputersViewController: UIViewController {
         collectionView.alwaysBounceVertical = true
 
         collectionView.backgroundColor = ColorProvider.BackgroundNorm
-        view.addSubview(collectionView)
+        verticalStack.addArrangedSubview(collectionView)
     }
 
     private func setupRefreshControl() {
@@ -107,6 +118,15 @@ class ComputersViewController: UIViewController {
             self?.initialLoader?.remove()
             self?.initialLoader = nil
         }.store(in: &subscriptions)
+
+        viewModel.$upgradeRequirementLevel.sink { [weak self] level in
+            if level == .none {
+                self?.removeUpgradeRequirementBanner()
+            } else {
+                self?.setupUpgradeRequirementBanner(level: level)
+            }
+        }
+        .store(in: &subscriptions)
     }
 
     private func triggerInitialRefresh() {
@@ -140,6 +160,30 @@ class ComputersViewController: UIViewController {
 
     private func updateEmptyState(isEmpty: Bool) {
         collectionView.backgroundView?.isHidden = !isEmpty
+    }
+
+    private func setupUpgradeRequirementBanner(level: UpgradeRequirementLevel) {
+        removeUpgradeRequirementBanner()
+        let banner = UpgradeRequirementBannerView(level: level, handling: viewModel.upgradeRequirementBannerController)
+        let vc = banner.embeddedInHostingController()
+        addChild(vc)
+        verticalStack.insertArrangedSubview(vc.view, at: 0)
+        vc.didMove(toParent: self)
+    }
+
+    private func removeUpgradeRequirementBanner() {
+        let bannerViews = verticalStack.arrangedSubviews.filter { $0 !== collectionView }
+        for bannerView in bannerViews {
+            verticalStack.removeArrangedSubview(bannerView)
+
+            if let bannerController = children.first(where: { $0.view === bannerView }) {
+                bannerController.willMove(toParent: nil)
+                bannerController.view.removeFromSuperview()
+                bannerController.removeFromParent()
+            } else {
+                bannerView.removeFromSuperview()
+            }
+        }
     }
 }
 

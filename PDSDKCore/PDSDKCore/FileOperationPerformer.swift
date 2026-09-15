@@ -459,7 +459,9 @@ public final class FileOperationPerformer: FileOperationCancelPerformerProtocol,
             do {
                 for try await thumbnail in buffer.0 {
                     if let thumbnail {
-                        try await self.metadataUpdater.finishFileThumbnailDownload(fileUid: thumbnail.fileUid, moc: moc)
+                        // Disabled due to repeated regressions in parsing/applying the changes to our encrypted DB.
+                        // Should be unnecessary once decrypted DB is implemented.
+                        // try await self.metadataUpdater.finishFileThumbnailDownload(fileUid: thumbnail.fileUid, moc: moc)
                     } else {
                         Log.warning("Get nil ThumbnailDataWithId", domain: .sdk)
                     }
@@ -488,6 +490,10 @@ public final class FileOperationPerformer: FileOperationCancelPerformerProtocol,
             metadataUpdater.cancelPausedOperation()
         }
         try await client.cancelUpload(cancellationToken: cancellationToken)
+    }
+
+    public func cancelTrash(cancellationToken: UUID) async throws {
+        try await client.cancelTrash(cancellationToken: cancellationToken)
     }
 }
 
@@ -564,32 +570,67 @@ extension FileOperationPerformer {
     }
 }
 
-#if os(macOS)
 extension FileOperationPerformer {
     public func trash(
         nodes: [SDKNodeUid],
+        cancellationToken: UUID,
+        moc: NSManagedObjectContext
+    ) -> AsyncThrowingStream<NodeOperationStreamEvent, Error> {
+        nodeOperationStream(operation: .trash, nodes: nodes, cancellationToken: cancellationToken, moc: moc)
+    }
+
+    public func restore(
+        nodes: [SDKNodeUid],
+        cancellationToken: UUID,
+        moc: NSManagedObjectContext
+    ) -> AsyncThrowingStream<NodeOperationStreamEvent, Error> {
+        nodeOperationStream(operation: .restore, nodes: nodes, cancellationToken: cancellationToken, moc: moc)
+    }
+
+    public func delete(
+        nodes: [SDKNodeUid],
+        cancellationToken: UUID,
+        moc: NSManagedObjectContext
+    ) -> AsyncThrowingStream<NodeOperationStreamEvent, Error> {
+        nodeOperationStream(operation: .delete, nodes: nodes, cancellationToken: cancellationToken, moc: moc)
+    }
+
+    public func nodeOperationStream(
+        operation: NodeBatchOperation,
+        nodes: [SDKNodeUid],
+        cancellationToken: UUID,
+        moc: NSManagedObjectContext
+    ) -> AsyncThrowingStream<NodeOperationStreamEvent, Error> {
+        NodeOperationStreamBuilder.makeNodeOperationStream(
+            metadataUpdater: metadataUpdater,
+            client: client,
+            operation: operation,
+            nodes: nodes,
+            cancellationToken: cancellationToken,
+            moc: moc
+        )
+    }
+
+    public func emptyTrash(cancellationToken: UUID, moc: NSManagedObjectContext) async throws {
+        try await client.emptyTrash(cancellationToken: cancellationToken)
+        try await metadataUpdater.finishEmptyTrash(for: [.ownVolume])
+    }
+}
+
+extension FileOperationPerformer {
+    public func renameDevice(
+        identifier: PDCore.DeviceIdentifier,
+        newName: String,
         cancellationToken: UUID,
         moc: NSManagedObjectContext
     ) async throws {
-        if nodes.isEmpty { return }
-        _ = try await client.trash(nodes: nodes, cancellationToken: cancellationToken)
-        try await metadataUpdater.finishTrashMacNodes(nodes: nodes, moc: moc)
+        try await metadataUpdater.withOperation { _ in
+            let _ = try await client.renameDevice(deviceUid: identifier.sdk, newName: newName, cancellationToken: cancellationToken)
+            // TODO: client returns `Device`, with new database we don't need metadataUpdater
+            try await metadataUpdater.finishRenameDevice(identifier: identifier, moc: moc)
+        }
     }
 }
-#else
-extension FileOperationPerformer {
-    public func trash(
-        nodes: [SDKNodeUid],
-        cancellationToken: UUID,
-        moc: NSManagedObjectContext
-    ) async throws -> ([AnyVolumeIdentifier], Error?) {
-        if nodes.isEmpty { return ([], nil) }
-        let results = try await client.trash(nodes: nodes, cancellationToken: cancellationToken)
-        let result = try await metadataUpdater.finishTrashIOSNodes(nodes: nodes, results: results, moc: moc)
-        return result
-    }
-}
-#endif
 
 // Helpers
 

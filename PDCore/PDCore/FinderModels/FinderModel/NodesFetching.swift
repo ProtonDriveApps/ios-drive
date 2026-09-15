@@ -23,6 +23,8 @@ import Foundation
 public enum NodesFetchingErrors: Error {
     case noCloudInjected
     case objectIsReleased
+    /// Previous task execution is incomplete
+    case busy
 }
 
 public protocol NodesFetching: AnyObject {

@@ -196,8 +196,8 @@ public class StorageManager: NSObject, ManagedStorage, RecoverableStorage, Refre
     public func createRecoveryDB(nextTo backup: PersistentStoreInfo) throws -> PersistentStoreInfo {
         try Self.createRecoveryDB(named: Self.recoveryDatabaseName, nextTo: backup, using: persistentContainer)
     }
-    public func reconnectExistingDBAndDiscardRecoveryIfNeeded(existing: PersistentStoreInfo, recovery: PersistentStoreInfo?) throws {
-        try Self.reconnectExistingDBAndDiscardRecoveryIfNeeded(existing: existing, recovery: recovery, using: persistentContainer, contexts: contexts)
+    public func reconnectExistingDBAndDiscardRecoveryIfNeeded(existing: PersistentStoreInfo, recovery: PersistentStoreInfo?, discardRecovery: Bool = true) throws {
+        try Self.reconnectExistingDBAndDiscardRecoveryIfNeeded(existing: existing, recovery: recovery, discardRecovery: discardRecovery, using: persistentContainer, contexts: contexts)
     }
     public func replaceExistingDBWithRecovery(existing: PersistentStoreInfo, recovery: PersistentStoreInfo) throws {
         try Self.replaceExistingDBWithRecovery(
@@ -266,8 +266,12 @@ public class StorageManager: NSObject, ManagedStorage, RecoverableStorage, Refre
     public func reloadStoreIfReplacedByMainApp() {
         guard Constants.runningInExtension else { return }
         Self.storeReloadLock.lock()
+        // Serializes concurrent reloadStoreIfReplacedByMainApp calls so only one consumes the flag and
+        // performs the swap; others then observe the consumed flag and return. NOTE: this does NOT protect
+        // DB operations already in flight on pooled contexts (they don't take this lock) — a fetch in progress
+        // can still race the store reset below. Draining/quiescing those is out of scope here.
+        defer { Self.storeReloadLock.unlock() }
         let shouldReload = RecoveryCoordination.consumeStoreReplaced()
-        Self.storeReloadLock.unlock()
         guard shouldReload else { return }
         Log.info("Detected DB replacement by main app, reloading persistent store", domain: .storage)
         guard let store = persistentContainer.persistentStoreCoordinator.persistentStores.first,
@@ -376,7 +380,7 @@ public class StorageManager: NSObject, ManagedStorage, RecoverableStorage, Refre
         return context
     }
 
-    func privateChildContext(of parent: NSManagedObjectContext) -> NSManagedObjectContext {
+    public func privateChildContext(of parent: NSManagedObjectContext) -> NSManagedObjectContext {
         let child = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
         child.parent = parent
         child.automaticallyMergesChangesFromParent = true

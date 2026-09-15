@@ -76,7 +76,7 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
          fileTypeAsset: FileTypeAsset = .shared,
          selectionModel: CellSelectionModel? = nil,
          progressesAvailable: Bool = false,
-         thumbnailLoader: ThumbnailLoader,
+         thumbnailLoader: SDKThumbnailsDownloaderProtocol?,
          nodeStatePolicy: NodeStatePolicy,
          featureFlagsController: FeatureFlagsControllerProtocol,
          isSharedWithMeRoot: Bool,
@@ -302,15 +302,6 @@ class NodeCellWithProgressConfiguration: ObservableObject, NodeCellConfiguration
 
     private var sharingDate: String {
         guard let membership = node.directShares.first?.members.first else { return "" }
-        return DateFormatter.sharedWithMe.string(from: membership.modifyTime)
+        return DateFormatter.displayMediumDate.string(from: membership.modifyTime)
     }
-}
-
-extension DateFormatter {
-    static let sharedWithMe = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, yyyy"
-        return formatter
-
-    }()
 }

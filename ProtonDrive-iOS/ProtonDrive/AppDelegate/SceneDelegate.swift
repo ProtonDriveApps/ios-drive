@@ -76,7 +76,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func sceneWillEnterForeground(_ scene: UIScene) {
         Log.info("sceneWillEnterForeground", domain: .application)
         Log.info("App version: \(Constants.clientVersion), \(DeviceInfo().info)", domain: .application)
-        Log.info("Language bundle \(Localization.bundle.bundleURL.lastPathComponent), bundle preferred language: \(Localization.bundlePreferredLocalization ?? "unknown")", domain: .application)
+        Log.info("Language diagnostics: \(Localization.languageDiagnosticsDescription())", domain: .application)
         NotificationCenter.default.post(.checkAuthentication)
         if (try? container.authenticatedContainer?.keymaker.mainKeyOrError) != nil {
             container.authenticatedContainer?.tower.forcePolling(volumeIDs: [])
@@ -135,7 +135,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             let rootViewController = self.window?.topMostViewController,
             let authenticatedContainer = self.container.authenticatedContainer
         else { return }
-        IncomingFilesCoordinator().present(on: rootViewController, with: authenticatedContainer)
+        if authenticatedContainer.featureFlagsController.hasRefactoredFinderView {
+            IIncomingFilesCoordinator().present(on: rootViewController, with: authenticatedContainer)
+        } else {
+            IncomingFilesCoordinator().present(on: rootViewController, with: authenticatedContainer)
+        }
     }
 
     func stateRestorationActivity(for scene: UIScene) -> NSUserActivity? {

@@ -265,12 +265,11 @@ public final class SDKOfflineSaver: BaseOfflineSaver, OfflineSaverProtocol {
         #if os(iOS)
         for type in ThumbnailType.allCases {
             guard
-                let tempURL = PDFileManager.thumbnailURL(
+                let tempURL = PDFileManager.getExistingThumbnailURL(
                     for: identifier.volumeBasedIdentifier,
                     type: type,
-                    preferStorageType: .temporary
-                ),
-                FileManager.default.fileExists(atPath: tempURL.path)
+                    storageType: .temporary
+                )
             else { continue }
             let permanentURL = PDFileManager.createThumbnailURL(for: identifier.volumeBasedIdentifier, type: type, storageType: .permanent)
             try FileManager.default.moveItem(at: tempURL, to: permanentURL)

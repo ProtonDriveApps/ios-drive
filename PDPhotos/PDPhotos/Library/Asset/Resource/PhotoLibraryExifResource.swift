@@ -165,7 +165,7 @@ public final class PartialPhotoLibraryExifResource: PhotoLibraryExifResource {
 
             let dateMetadata = metadata.first(where: { $0.commonKey?.rawValue == "creationDate" })
             let dateString = try await dateMetadata?.load(.stringValue)
-            creationDate = ISO8601DateFormatter.default.date(dateString)
+            creationDate = ISO8601DateFormatter.date(dateString)
 
             for track in tracks {
                 guard

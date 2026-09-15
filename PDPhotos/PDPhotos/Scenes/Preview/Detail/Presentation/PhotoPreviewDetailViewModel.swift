@@ -42,7 +42,7 @@ struct PhotoPreviewDetailError {
 }
 
 final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
-    private let thumbnailController: ThumbnailController
+    private let photoThumbnailDownloader: SDKThumbnailsDownloaderProtocol
     private let modeController: PhotosPreviewModeController
     private let previewController: PhotosPreviewController
     private let detailController: PhotoPreviewDetailController
@@ -55,13 +55,14 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
     private let videoXAttrBackfiller: VideoXAttrBackfillerProtocol
     private let fileIsDownloadedSubject: PassthroughSubject<PhotoId, Never>
     private var cancellables = Set<AnyCancellable>()
+    private var thumbnailTask: Task<Void, Never>?
     private var areMetadataFetched = false
     private var isInitialLoadFinished = false
     var mode: AnyPublisher<PhotosPreviewMode, Never> { modeController.mode }
     @Published var state: PhotoPreviewDetailState?
 
-    init(thumbnailController: ThumbnailController, modeController: PhotosPreviewModeController, previewController: PhotosPreviewController, detailController: PhotoPreviewDetailController, fullPreviewController: PhotoFullPreviewController, shareController: PhotoPreviewDetailShareController, id: PhotoId, coordinator: PhotoPreviewDetailCoordinator, metadataController: MetadataControllerProtocol, videoXAttrBackfiller: VideoXAttrBackfillerProtocol, performanceMetricsController: PerformanceMetricsControllerProtocol, fileIsDownloadedSubject: PassthroughSubject<PhotoId, Never>) {
-        self.thumbnailController = thumbnailController
+    init(photoThumbnailDownloader: SDKThumbnailsDownloaderProtocol, modeController: PhotosPreviewModeController, previewController: PhotosPreviewController, detailController: PhotoPreviewDetailController, fullPreviewController: PhotoFullPreviewController, shareController: PhotoPreviewDetailShareController, id: PhotoId, coordinator: PhotoPreviewDetailCoordinator, metadataController: MetadataControllerProtocol, videoXAttrBackfiller: VideoXAttrBackfillerProtocol, performanceMetricsController: PerformanceMetricsControllerProtocol, fileIsDownloadedSubject: PassthroughSubject<PhotoId, Never>) {
+        self.photoThumbnailDownloader = photoThumbnailDownloader
         self.modeController = modeController
         self.previewController = previewController
         self.detailController = detailController
@@ -83,7 +84,7 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
     func viewDidLoad() {
         performanceMetricsController.startRecord(id: id, pageType: .photos)
         fetchMetadataIfPossible()
-        thumbnailController.load()
+        loadThumbnailIfNeeded()
         reloadData()
         isInitialLoadFinished = true
     }
@@ -114,13 +115,6 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
     }
 
     private func subscribeToUpdates() {
-        thumbnailController.bootstrap()
-        thumbnailController.updatePublisher
-            .sink { [weak self] _ in
-                self?.reloadData()
-            }
-            .store(in: &cancellables)
-
         fullPreviewController.updatePublisher
             .sink { [weak self] preview in
                 self?.reloadData()
@@ -176,16 +170,39 @@ final class PhotoPreviewDetailViewModel: PhotoPreviewDetailViewModelProtocol {
         if let fullPreview = fullPreviewController.getPreview() {
             fileIsDownloadedSubject.send(id)
             return .preview(fullPreview)
-        } else if let thumbnail = thumbnailController.getImage() {
+        } else if let thumbnail = DecryptedFileManager.thumbnailData(id: id) {
             return .preview(.thumbnail(thumbnail))
         } else {
             return .loading(Localization.general_loading)
         }
     }
-    
+
+    private func loadThumbnailIfNeeded() {
+        if DecryptedFileManager.thumbnailData(id: id) != nil {
+            performanceMetricsController.fetchThumbnail(id: id, dataSource: .local)
+            reloadData()
+            return
+        }
+        guard thumbnailTask == nil else { return }
+        performanceMetricsController.fetchThumbnail(id: id, dataSource: .remote)
+        thumbnailTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                _ = try await photoThumbnailDownloader.downloadThumbnail(for: id.any(), type: .default)
+            } catch {
+                Log.error("Failed to download photo preview thumbnail", error: error, domain: .thumbnails)
+            }
+            await MainActor.run {
+                self.thumbnailTask = nil
+                self.reloadData()
+            }
+        }
+    }
+
     func cleanup() {
         fullPreviewController.clear()
-        thumbnailController.cancel()
+        thumbnailTask?.cancel()
+        thumbnailTask = nil
     }
 
     private func handlePreviewError(_ error: PhotoFullPreviewError) {

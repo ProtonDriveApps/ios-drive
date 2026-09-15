@@ -22,31 +22,32 @@ import PDSDKCore
 public struct SDKThumbnailsDownloaderFactory {
     public init() {}
 
-    public func makeFilesThumbnailDownloader(
-        operationPerformer: FileOperationPerformer,
-        managedObjectContext: NSManagedObjectContext
+    public func makeThumbnailDownloader(
+        contextPool: SyncManagedObjectContextPool,
+        fileOperationPerformer: FileOperationPerformer,
+        photoOperationPerformer: PhotosOperationPerformer,
+        volumeIDRepository: VolumeIDRepository
     ) -> SDKThumbnailsDownloaderProtocol {
-        SDKThumbnailsDownloader(
-            interactor: FilesThumbnailsDownloadInteractor(
-                operationPerformer: operationPerformer,
-                cacheResource: ThumbnailsDownloadLocalCache(managedObjectContext: managedObjectContext),
-                managedObjectContext: managedObjectContext,
-                tokenStore: ThumbnailsDownloadTokensCache()
-            )
+        let managedObjectContext = contextPool.acquire()
+        let fileInteractor = FilesThumbnailsDownloadInteractor(
+            operationPerformer: fileOperationPerformer,
+            cacheResource: ThumbnailsDownloadLocalCache(managedObjectContext: managedObjectContext),
+            managedObjectContext: managedObjectContext,
+            tokenStore: ThumbnailsDownloadTokensCache()
         )
-    }
+        let photoInteractor = PhotoThumbnailsDownloadInteractor(
+            operationPerformer: photoOperationPerformer,
+            cacheResource: ThumbnailsDownloadLocalCache(managedObjectContext: managedObjectContext),
+            managedObjectContext: managedObjectContext,
+            tokenStore: ThumbnailsDownloadTokensCache()
+        )
 
-    public func makePhotosThumbnailDownloader(
-        operationPerformer: PhotosOperationPerformer,
-        managedObjectContext: NSManagedObjectContext
-    ) -> SDKThumbnailsDownloaderProtocol {
-        SDKThumbnailsDownloader(
-            interactor: PhotoThumbnailsDownloadInteractor(
-                operationPerformer: operationPerformer,
-                cacheResource: ThumbnailsDownloadLocalCache(managedObjectContext: managedObjectContext),
-                managedObjectContext: managedObjectContext,
-                tokenStore: ThumbnailsDownloadTokensCache()
-            )
+        return SDKThumbnailsDownloader(
+            context: managedObjectContext,
+            contextPool: contextPool,
+            fileInteractor: fileInteractor,
+            photoInteractor: photoInteractor,
+            volumeIDRepository: volumeIDRepository
         )
     }
 }

@@ -59,6 +59,10 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
         fatalError("Just used by macOS")
     }
 
+    func scanVolumes(in moc: NSManagedObjectContext) async throws -> [VolumeMeta] {
+        fatalError("Just used by macOS")
+    }
+
     func scanShareAndRootFolder(shareID: String, moc: NSManagedObjectContext, handler: @escaping (Result<Share, any Error>) -> Void) {
         fatalError("Just used by macOS")
     }
@@ -280,25 +284,5 @@ class VolumeDBCloudSlot: CloudSlotProtocol {
 
     func removeMember(shareID: String, memberID: String) async throws {
         try await client.removeMember(shareID: shareID, memberID: memberID)
-    }
-
-    func update(thumbnails: [ThumbnailURL],
-                moc: NSManagedObjectContext) throws {
-        let thumbnailsDictionary = Dictionary(uniqueKeysWithValues: thumbnails.map { (AnyVolumeIdentifier(id: $0.id, volumeID: $0.volumeID), $0.url.absoluteString) })
-        let identifiers = Set(thumbnailsDictionary.keys)
-
-        try moc.performAndWait {
-            let thumbnails: [Thumbnail] = Thumbnail.fetch(identifiers: identifiers, in: moc)
-            for thumbnail in thumbnails {
-                guard let url = thumbnailsDictionary[AnyVolumeIdentifier(id: thumbnail.id, volumeID: thumbnail.volumeID)] else {
-                    continue
-                }
-                guard thumbnail.downloadURL != url else {
-                    continue
-                }
-                thumbnail.downloadURL = url
-            }
-            try moc.saveOrRollback()
-        }
     }
 }

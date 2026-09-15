@@ -38,9 +38,9 @@ struct TrashView: View {
             trashView
                 .flatNavigationBar(
                     vm.nodeName,
-                    isRoot: vm.isRoot,
                     leading: leadingBarButtons(vm.leadingNavBarItems),
-                    trailing: trailingBarButtons(vm.trailingNavBarItems)
+                    trailingItems: vm.trailingNavBarItems,
+                    trailingItem: navigationBarButton
                 )
         }
         .background(ColorProvider.BackgroundNorm.edgesIgnoringSafeArea(.all))
@@ -73,7 +73,7 @@ struct TrashView: View {
                             tower: vm.model.tower,
                             selectionModel: svm,
                             nodeRowActionMenuViewModel: nodeRowViewModel,
-                            thumbnailLoader: vm.model,
+                            thumbnailLoader: vm.model.tower.sdkObjects.thumbnailDownloader,
                             featureFlagsController: vm.featureFlagsController
                         )
                         let cvm = addAction(to: nodeVM, menuItem: $menuItem)
@@ -159,11 +159,6 @@ extension TrashView {
     }
 
     @ViewBuilder
-    func trailingBarButtons(_ items: [NavigationBarButton]) -> some View {
-        ForEach(items, content: navigationBarButton)
-    }
-
-    @ViewBuilder
     private func navigationBarButton(_ item: NavigationBarButton) -> some View {
         switch item {
         case .action where !vm.permanentChildren.isEmpty:
@@ -186,6 +181,7 @@ extension TrashView {
             action: { [weak vm] in vm?.selectAll() }
         )
         .disabled(disabled)
+        .fixedSize()
     }
 
     private var menuButton: some View {

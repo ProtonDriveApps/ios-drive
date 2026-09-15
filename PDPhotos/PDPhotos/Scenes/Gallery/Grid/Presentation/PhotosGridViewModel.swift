@@ -67,6 +67,13 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
     private let performanceMetricsController: PerformanceMetricsControllerProtocol?
     private var lastTopItemId: AnyVolumeIdentifier?
 
+    // Drag-select state
+    private var dragBaseSelection: Set<PhotoListingId> = []
+    private var dragAnchorId: AnyVolumeIdentifier?
+    private var dragOrderedItems: [PhotoGridViewItem] = []
+    private var dragIndexById: [AnyVolumeIdentifier: Int] = [:]
+    private var dragMode: DragSelectionMode = .select
+
     @Published var isRefreshing = false
     @Published var sections: [PhotosGridViewSection] = []
     @Published var paginationStatus: PhotosPaginationStatus = .finished
@@ -126,6 +133,10 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
     func didShowLastItem() {
         fetchingController.loadNext()
     }
+    
+    func startSelecting() {
+        selectionController.start(selectedID: [])
+    }
 
     func deselectAll() {
         selectionController.deselectAll()
@@ -149,6 +160,75 @@ final class PhotosGridViewModel: PhotosGridViewModelProtocol {
         guard lastTopItemId != item.id else { return }
         lastTopItemId = item.id
         scrollerController?.setCurrentItem(item)
+    }
+
+    // MARK: - Drag select
+
+    enum DragSelectionMode {
+        case select
+        case deselect
+    }
+
+    var isSelecting: Bool {
+        selectionController.isSelecting()
+    }
+
+    func beginDragSelection(at id: AnyVolumeIdentifier) {
+        if !selectionController.isSelecting() {
+            selectionController.start(selectedID: [])
+        }
+        dragBaseSelection = selectionController.getPhotoListingIDs()
+        // Snapshot the ordered list once so each update is O(range), not O(n).
+        dragOrderedItems = sections.flatMap(\.items)
+        dragIndexById = Dictionary(
+            dragOrderedItems.enumerated().map { ($1.id, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        dragAnchorId = id
+        // Starting on an already-selected photo removes, starting on an unselected one adds
+        dragMode = isAlreadySelected(id) ? .deselect : .select
+        applyDragSelection(to: id)
+    }
+
+    func updateDragSelection(to id: AnyVolumeIdentifier) {
+        applyDragSelection(to: id)
+    }
+
+    func endDragSelection() {
+        dragAnchorId = nil
+        dragBaseSelection = []
+        dragOrderedItems = []
+        dragIndexById = [:]
+        dragMode = .select
+    }
+
+    private func isAlreadySelected(_ id: AnyVolumeIdentifier) -> Bool {
+        guard let index = dragIndexById[id] else { return false }
+        return dragBaseSelection.contains(makeListingId(for: dragOrderedItems[index]))
+    }
+
+    private func applyDragSelection(to id: AnyVolumeIdentifier) {
+        guard
+            let anchor = dragAnchorId,
+            let start = dragIndexById[anchor],
+            let end = dragIndexById[id]
+        else { return }
+        let range = start <= end ? start...end : end...start
+        let rangeIds = dragOrderedItems[range].map(makeListingId(for:))
+        switch dragMode {
+        case .select:
+            selectionController.select(ids: dragBaseSelection.union(rangeIds))
+        case .deselect:
+            // We don't reselect items that are already deselected
+            selectionController.select(ids: dragBaseSelection.subtracting(rangeIds))
+        }
+    }
+
+    private func makeListingId(for item: PhotoGridViewItem) -> PhotoListingId {
+        PhotoListingId(
+            primary: PhotoId(id: item.photoId, volumeID: item.volumeId),
+            secondary: item.secondaryIds.map { PhotoId(id: $0, volumeID: item.volumeId) }
+        )
     }
 
     private func subscribeToUpdates() {

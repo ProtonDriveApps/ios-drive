@@ -30,20 +30,117 @@ import Foundation
 
 public class Localization {
     public static var isUITest = false
-    public static var bundlePreferredLocalization: String? { Bundle.main.preferredLocalizations.first }
+    
     private static let defaultLanguage = "en"
-    public static let bundle: Bundle = {
+    static let appleLanguagesKey = "AppleLanguages" // nosemgrep: hardcoded_secret
+    private static let bundleCacheLock = NSLock()
+    private struct LanguageInputs: Equatable {
+        let appleLanguages: [String]
+        let preferredLocalizations: [String]
+    }
+    private static var cachedBundle: (inputs: LanguageInputs, bundle: Bundle)?
+
+    private static func currentLanguageInputs(userDefaults: UserDefaults = .standard) -> LanguageInputs {
+        LanguageInputs(
+            appleLanguages: userDefaults.array(forKey: appleLanguagesKey) as? [String] ?? [],
+            preferredLocalizations: Bundle.main.preferredLocalizations
+        )
+    }
+
+    static var bundle: Bundle {
+        bundle(userDefaults: .standard)
+    }
+
+    static func bundle(userDefaults: UserDefaults = .standard) -> Bundle {
         if isUITest {
             return enBundle
         }
-        let preferredLanguage = Bundle.main.preferredLocalizations.first ?? defaultLanguage
+        let inputs = currentLanguageInputs(userDefaults: userDefaults)
+
+        bundleCacheLock.lock()
+        if let cachedBundle, cachedBundle.inputs == inputs {
+            let bundle = cachedBundle.bundle
+            bundleCacheLock.unlock()
+            return bundle
+        }
+        bundleCacheLock.unlock()
+
+        let language = resolvedPreferredLanguage(userDefaults: userDefaults)
+        let bundle = loadBundle(for: language)
+
+        bundleCacheLock.lock()
+        defer { bundleCacheLock.unlock() }
+        cachedBundle = (inputs, bundle)
+        return bundle
+    }
+
+    static func resetBundleCacheForTesting() {
+        bundleCacheLock.lock()
+        defer { bundleCacheLock.unlock() }
+        cachedBundle = nil
+    }
+
+    public static func languageDiagnosticsDescription(userDefaults: UserDefaults = .standard) -> String {
+        let appleLanguages = userDefaults.array(forKey: appleLanguagesKey) as? [String] ?? []
+        let resolved = resolvedPreferredLanguage(userDefaults: userDefaults)
+        return "AppleLanguages: \(appleLanguages), Locale.preferredLanguages: \(Locale.preferredLanguages), Bundle.main.preferredLocalizations: \(Bundle.main.preferredLocalizations), resolved: \(resolved), bundle: \(Localization.bundle.bundleURL.lastPathComponent)"
+    }
+
+    static func resolvedPreferredLanguage(userDefaults: UserDefaults = .standard) -> String {
+        if let appleLanguages = userDefaults.array(forKey: appleLanguagesKey) as? [String] {
+            for language in appleLanguages {
+                if let code = resolvedLanguageCode(from: language) {
+                    return code
+                }
+            }
+        }
+        for preferred in Bundle.main.preferredLocalizations {
+            if let code = resolvedLanguageCode(from: preferred) {
+                return code
+            }
+        }
+        return defaultLanguage
+    }
+
+    private static func languageCandidates(from identifier: String) -> [String] {
+        let components = Locale.Components(identifier: identifier)
+        guard let language = components.languageComponents.languageCode?.identifier else { return [identifier] }
+        let script = components.languageComponents.script?.identifier
+        let region = components.languageComponents.region?.identifier
+        var candidates: [String] = []
+        if let script, let region {
+            candidates.append("\(language)-\(script)-\(region)")
+        }
+        if let region {
+            candidates.append("\(language)-\(region)")
+        }
+        if let script {
+            candidates.append("\(language)-\(script)")
+        }
+        candidates.append(language)
+        return candidates
+    }
+
+    private static func isSupportedLanguage(_ languageCode: String) -> Bool {
+        Bundle.module.path(forResource: languageCode, ofType: "lproj") != nil
+    }
+
+    private static func resolvedLanguageCode(from identifier: String) -> String? {
+        let candidates = languageCandidates(from: identifier)
+        for candidate in candidates {
+            if isSupportedLanguage(candidate) { return candidate }
+        }
+        return nil
+    }
+
+    private static func loadBundle(for languageCode: String) -> Bundle {
         let main: Bundle = .module
         guard
-            let path = main.path(forResource: preferredLanguage, ofType: "lproj"),
+            let path = main.path(forResource: languageCode, ofType: "lproj"),
             let bundle = Bundle(path: path)
         else { return enBundle }
         return bundle
-    }()
+    }
     
     private static let enBundle: Bundle = {
         let main: Bundle = .module
@@ -62,6 +159,10 @@ public class Localization {
             return str
         }
     }
+    /// "Message shown to users encouraging them to update the app to the latest version"
+    /// "To keep using Proton Drive, you’ll need to update to the latest version"
+    public static var Update_require_message: String { localized(key: "Update_require_message", table: "iOS-Localizable") }
+
     /// "Show action menu for this file use for accessibility"
     /// "Open action menu for %@"
     public static func accessibility_more_menu_action(fileName: String) -> String { String(format: localized(key: "accessibility_more_menu_action", table: "iOS-Localizable"), fileName) }
@@ -281,6 +382,21 @@ public class Localization {
     /// "Message shown in the folder view when device is disconnected"
     /// "We cannot read contents of this folder"
     public static var disconnection_folder_message: String { localized(key: "disconnection_folder_message", table: "iOS-Localizable") }
+
+    /// "Failed to download file, please try again later"
+    public static var download_failed: String { localized(key: "download_failed", table: "iOS-Localizable") }
+
+    /// "Text to indicate a file is downloaded"
+    /// "Saved a file to Photos"
+    public static var download_media_succeeded: String { localized(key: "download_media_succeeded", table: "iOS-Localizable") }
+
+    /// "Error shown when some files in a multiple selection fail to download"
+    /// "Failed to download %1$d of %2$d files"
+    public static func download_multiple_failed(failed: Int, total: Int) -> String { String(format: localized(key: "download_multiple_failed", table: "iOS-Localizable"), failed, total) }
+
+    /// "Success message after downloading multiple selected files"
+    /// "Saved %d files to Photos"
+    public static func download_multiple_media_succeeded(count: Int) -> String { String(format: localized(key: "download_multiple_media_succeeded", table: "iOS-Localizable"), count) }
 
     /// "Action title to apply selected action to all duplicated items "
     /// "Apply to all duplicates"
@@ -669,6 +785,10 @@ public class Localization {
     /// "Cancel"
     public static var general_cancel: String { localized(key: "general_cancel", table: "iOS-Localizable") }
 
+    /// "Button title"
+    /// "Close"
+    public static var general_close: String { localized(key: "general_close", table: "iOS-Localizable") }
+
     /// "Copy image, text...etc"
     /// "Copy"
     public static var general_copy: String { localized(key: "general_copy", table: "iOS-Localizable") }
@@ -698,10 +818,6 @@ public class Localization {
     /// "Button title"
     /// "Done"
     public static var general_done: String { localized(key: "general_done", table: "iOS-Localizable") }
-
-    /// "Text to indicate a file is downloaded"
-    /// "Downloaded"
-    public static var general_downloaded: String { localized(key: "general_downloaded", table: "iOS-Localizable") }
 
     /// "Downloading"
     public static var general_downloading: String { localized(key: "general_downloading", table: "iOS-Localizable") }
@@ -1312,6 +1428,10 @@ public class Localization {
     /// "Never run out of storage"
     public static var photo_upsell_title: String { localized(key: "photo_upsell_title", table: "iOS-Localizable") }
 
+    /// "Accessibility label of the photo gallery\'s toolbar button that opens the selection and view options menu"
+    /// "Options"
+    public static var photos_grid_options: String { localized(key: "photos_grid_options", table: "iOS-Localizable") }
+
     /// "Warning text displayed in the photo picker."
     /// "Importing the files. Please keep the app open to avoid interruptions."
     public static var photos_picker_warning: String { localized(key: "photos_picker_warning", table: "iOS-Localizable") }
@@ -1321,6 +1441,18 @@ public class Localization {
 
     /// "Something went wrong... please try again later."
     public static var photos_screen_footer_error: String { localized(key: "photos_screen_footer_error", table: "iOS-Localizable") }
+
+    /// "Section title of the photo gallery\'s overflow menu, grouping the actions that change how the grid is displayed"
+    /// "View Options"
+    public static var photos_view_options: String { localized(key: "photos_view_options", table: "iOS-Localizable") }
+
+    /// "Menu action that makes the photo gallery\'s thumbnails larger"
+    /// "Zoom In"
+    public static var photos_zoom_in: String { localized(key: "photos_zoom_in", table: "iOS-Localizable") }
+
+    /// "Menu action that makes the photo gallery\'s thumbnails smaller"
+    /// "Zoom Out"
+    public static var photos_zoom_out: String { localized(key: "photos_zoom_out", table: "iOS-Localizable") }
 
     /// "Text indicating that data is loading."
     /// "Getting things ready..."
@@ -1414,11 +1546,31 @@ public class Localization {
     /// "Use %@"
     public static func protection_use_use_technology(tech: String) -> String { String(format: localized(key: "protection_use_use_technology", table: "iOS-Localizable"), tech) }
 
-    /// "Failed to download file"
-    public static var proton_docs_download_error: String { localized(key: "proton_docs_download_error", table: "iOS-Localizable") }
-
     /// "Failed to open document editor"
     public static var proton_docs_opening_error: String { localized(key: "proton_docs_opening_error", table: "iOS-Localizable") }
+
+    /// "Contact us for help and feedback"
+    public static var rating_booster_contact_us_button: String { localized(key: "rating_booster_contact_us_button", table: "iOS-Localizable") }
+
+    /// "Could be better"
+    public static var rating_booster_could_be_better_button: String { localized(key: "rating_booster_could_be_better_button", table: "iOS-Localizable") }
+
+    /// "Description of the rating booster prompt asking the user if they enjoy the app"
+    /// "If you\'re enjoying Proton Drive, we would greatly appreciate an app review!\nIf you are having an issue our Help Docs and support team are here to help!"
+    public static var rating_booster_enjoying_description: String { localized(key: "rating_booster_enjoying_description", table: "iOS-Localizable") }
+
+    /// "Enjoying Proton Drive?"
+    public static var rating_booster_enjoying_title: String { localized(key: "rating_booster_enjoying_title", table: "iOS-Localizable") }
+
+    /// "Description of the prompt offering help when the user is not fully satisfied"
+    /// "If you are having an issue our Help Docs and support team are here to help!"
+    public static var rating_booster_help_description: String { localized(key: "rating_booster_help_description", table: "iOS-Localizable") }
+
+    /// "Help us enhance your experience"
+    public static var rating_booster_help_title: String { localized(key: "rating_booster_help_title", table: "iOS-Localizable") }
+
+    /// "I like it"
+    public static var rating_booster_like_it_button: String { localized(key: "rating_booster_like_it_button", table: "iOS-Localizable") }
 
     /// "Text shown with loading spinner"
     /// "Last updated: %@"
@@ -1483,6 +1635,14 @@ public class Localization {
     /// "I want to report a problem with:"
     public static var report_bug_topic_field_title: String { localized(key: "report_bug_topic_field_title", table: "iOS-Localizable") }
 
+    /// "The clickable link text inside report_bug_web_help_note"
+    /// "our web"
+    public static var report_bug_web_help_link: String { localized(key: "report_bug_web_help_link", table: "iOS-Localizable") }
+
+    /// "Note offering web support as an alternative to filing a report. %@ is the clickable link text."
+    /// "How can we help you?\nAlternatively, you can reach us on %@"
+    public static func report_bug_web_help_note(link: String) -> String { String(format: localized(key: "report_bug_web_help_note", table: "iOS-Localizable"), link) }
+
     /// "Albums"
     public static var report_topic_albums_title: String { localized(key: "report_topic_albums_title", table: "iOS-Localizable") }
 
@@ -1514,55 +1674,59 @@ public class Localization {
     public static var report_topic_sheets_title: String { localized(key: "report_topic_sheets_title", table: "iOS-Localizable") }
 
     /// "Error message displayed on the photo backup issue page"
-    /// "Unable to connect to iCloud"
+    /// "This photo is in an album, so part of it couldn\'t be backed up. Remove it from the album, then try again."
+    public static var retry_error_explainer_cannot_commit_secondary: String { localized(key: "retry_error_explainer_cannot_commit_secondary", table: "iOS-Localizable") }
+
+    /// "Error message displayed on the photo backup issue page"
+    /// "Can\'t reach iCloud. Check your connection and try again."
     public static var retry_error_explainer_cannot_connect_icloud: String { localized(key: "retry_error_explainer_cannot_connect_icloud", table: "iOS-Localizable") }
 
     /// "Error message displayed on the photo backup issue page"
-    /// "Network connection error"
+    /// "Check your internet connection and try again."
     public static var retry_error_explainer_connection_error: String { localized(key: "retry_error_explainer_connection_error", table: "iOS-Localizable") }
 
     /// "Error message displayed on the photo backup issue page"
-    /// "Device storage full"
+    /// "Your device is out of storage. Free up space and try again."
     public static var retry_error_explainer_device_storage_full: String { localized(key: "retry_error_explainer_device_storage_full", table: "iOS-Localizable") }
 
     /// "Error message displayed on the photo backup issue page"
-    /// "Encryption failed"
+    /// "Something went wrong. Try again."
     public static var retry_error_explainer_encryption_error: String { localized(key: "retry_error_explainer_encryption_error", table: "iOS-Localizable") }
 
     /// "Error message displayed on the photo backup issue page"
-    /// "Failed to load resource"
+    /// "This photo couldn\'t be loaded. Try again."
     public static var retry_error_explainer_failed_to_load_resource: String { localized(key: "retry_error_explainer_failed_to_load_resource", table: "iOS-Localizable") }
 
     /// "Error message displayed on the photo backup issue page"
-    /// "Can\'t access the original file."
+    /// "This photo couldn\'t be opened. Try again."
     public static var retry_error_explainer_invalid_asset: String { localized(key: "retry_error_explainer_invalid_asset", table: "iOS-Localizable") }
 
     /// "Error message displayed on the photo backup issue page"
-    /// "Missing permissions"
+    /// "Allow photo access in Settings to back up this photo."
     public static var retry_error_explainer_missing_permissions: String { localized(key: "retry_error_explainer_missing_permissions", table: "iOS-Localizable") }
 
     /// "Error message displayed on the photo backup issue page"
-    /// "Name validation failed"
+    /// "This photo\'s name isn\'t supported. Rename it and try again."
     public static var retry_error_explainer_name_validation: String { localized(key: "retry_error_explainer_name_validation", table: "iOS-Localizable") }
 
     /// "Error message displayed on the photo backup issue page"
-    /// "Encryption failed"
+    /// "Your Proton Drive storage is full. Free up space or upgrade your plan."
     public static var retry_error_explainer_quote_exceeded: String { localized(key: "retry_error_explainer_quote_exceeded", table: "iOS-Localizable") }
-
-    /// "Message shown when a user attempts to skip a photo that failed to back up."
-    /// "Are you sure you want to skip photos that haven\'t been backed up? They will not be backed up."
-    public static var retry_skip_alert_message: String { localized(key: "retry_skip_alert_message", table: "iOS-Localizable") }
 
     /// "Title shown when a user attempts to skip a photo that failed to back up."
     /// "Skip backup for these photos?"
     public static var retry_skip_alert_title: String { localized(key: "retry_skip_alert_title", table: "iOS-Localizable") }
 
+    /// "Message shown when a user attempts to skip a photo that failed to back up."
+    /// "Are you sure you want to skip photos that haven\'t been backed up? They will not be backed up."
+    public static var retry_skip_permanently_alert_message: String { localized(key: "retry_skip_permanently_alert_message", table: "iOS-Localizable") }
+
     /// "Button title"
-    /// "Retry all"
+    /// "Try Again"
     public static var retry_view_button_retry_all: String { localized(key: "retry_view_button_retry_all", table: "iOS-Localizable") }
 
     /// "Subtitle shown on the backup retry view"
-    /// "%d item failed to backup"
+    /// "%d Photo Couldn\'t Be Backed Up"
     public static func retry_view_items_failed_to_backup(count: Int) -> String { String(format: localized(key: "retry_view_items_failed_to_backup", table: "iOS-Localizable"), count) }
 
     /// "Title shown on the backup retry view"
@@ -2142,6 +2306,10 @@ public class Localization {
     /// "Start using Proton Drive"
     public static var sign_up_succeed_text: String { localized(key: "sign_up_succeed_text", table: "iOS-Localizable") }
 
+    /// "Button to skip backup issues permanently"
+    /// "Don\'t Back Up These Photos"
+    public static var skip_permanently_button: String { localized(key: "skip_permanently_button", table: "iOS-Localizable") }
+
     /// "Label text, sort files by file type"
     /// "File type"
     public static var sort_type_file_type: String { localized(key: "sort_type_file_type", table: "iOS-Localizable") }
@@ -2389,6 +2557,102 @@ public class Localization {
     /// "Upload a photo"
     public static var upload_photo_button: String { localized(key: "upload_photo_button", table: "iOS-Localizable") }
 
+    /// "Award badge shown on the custom upsell modal"
+    /// "Best Privacy & Security"
+    public static var upsell_modal_badge_privacy: String { localized(key: "upsell_modal_badge_privacy", table: "iOS-Localizable") }
+
+    /// "Section header above the subscription cycle options on the custom upsell modal"
+    /// "Choose subscription"
+    public static var upsell_modal_choose_subscription: String { localized(key: "upsell_modal_choose_subscription", table: "iOS-Localizable") }
+
+    /// "Primary call-to-action button on the custom upsell modal"
+    /// "Get %@"
+    public static func upsell_modal_cta(plan: String) -> String { String(format: localized(key: "upsell_modal_cta", table: "iOS-Localizable"), plan) }
+
+    /// "Subscription cycle length in months on the custom upsell modal"
+    /// "%d months"
+    public static func upsell_modal_cycle_months(months: Int) -> String { String(format: localized(key: "upsell_modal_cycle_months", table: "iOS-Localizable"), months) }
+
+    /// "Subscription cycle length of a single month on the custom upsell modal"
+    /// "1 month"
+    public static var upsell_modal_cycle_one_month: String { localized(key: "upsell_modal_cycle_one_month", table: "iOS-Localizable") }
+
+    /// "Discount badge on a subscription cycle option of the custom upsell modal"
+    /// "-%d%%"
+    public static func upsell_modal_discount_badge(percent: Int) -> String { String(format: localized(key: "upsell_modal_discount_badge", table: "iOS-Localizable"), percent) }
+
+    /// "Version history duration in days on the custom upsell modal comparison"
+    /// "%d days"
+    public static func upsell_modal_duration_days(days: Int) -> String { String(format: localized(key: "upsell_modal_duration_days", table: "iOS-Localizable"), days) }
+
+    /// "Version history duration in years on the custom upsell modal comparison"
+    /// "%d years"
+    public static func upsell_modal_duration_years(years: Int) -> String { String(format: localized(key: "upsell_modal_duration_years", table: "iOS-Localizable"), years) }
+
+    /// "Footnote shown under the call-to-action on the custom upsell modal"
+    /// "Auto-renews at the same price and terms unless canceled"
+    public static var upsell_modal_footnote: String { localized(key: "upsell_modal_footnote", table: "iOS-Localizable") }
+
+    /// "Footnote shown under the call-to-action on the custom upsell modal when a discounted (coupon) cycle is selected, stating the regular price it renews at"
+    /// "Renews at %@/month after the promotional period."
+    public static func upsell_modal_footnote_renewal(price: String) -> String { String(format: localized(key: "upsell_modal_footnote_renewal", table: "iOS-Localizable"), price) }
+
+    /// "Message shown after a purchase from the custom upsell modal is accepted but awaiting external approval (e.g. Ask to Buy)"
+    /// "Your purchase is awaiting approval."
+    public static var upsell_modal_pending_message: String { localized(key: "upsell_modal_pending_message", table: "iOS-Localizable") }
+
+    /// "Per-month price of a subscription cycle option on the custom upsell modal"
+    /// "/month"
+    public static var upsell_modal_price_per_month: String { localized(key: "upsell_modal_price_per_month", table: "iOS-Localizable") }
+
+    /// "App store review count shown on the custom upsell modal"
+    /// "%@+ reviews"
+    public static func upsell_modal_reviews(count: String) -> String { String(format: localized(key: "upsell_modal_reviews", table: "iOS-Localizable"), count) }
+
+    /// "Comparison row label for sharing with edit access on the custom upsell modal"
+    /// "Share with edit access"
+    public static var upsell_modal_row_share_edit: String { localized(key: "upsell_modal_row_share_edit", table: "iOS-Localizable") }
+
+    /// "Comparison row label for storage on the custom upsell modal"
+    /// "Storage"
+    public static var upsell_modal_row_storage: String { localized(key: "upsell_modal_row_storage", table: "iOS-Localizable") }
+
+    /// "Comparison row label for version history on the custom upsell modal"
+    /// "Version history"
+    public static var upsell_modal_row_version_history: String { localized(key: "upsell_modal_row_version_history", table: "iOS-Localizable") }
+
+    /// "Subtitle shown under the title on the custom upsell modal"
+    /// "Loved by over 1+ million paid subscribers. Upgrade your productivity today."
+    public static var upsell_modal_subtitle: String { localized(key: "upsell_modal_subtitle", table: "iOS-Localizable") }
+
+    /// "Title of the custom upsell modal when offering a discounted plan"
+    /// "Get %@ for %@"
+    public static func upsell_modal_title_offer(storage: String, price: String) -> String { String(format: localized(key: "upsell_modal_title_offer", table: "iOS-Localizable"), storage, price) }
+
+    /// "Title of the custom upsell modal when offering a plan upgrade"
+    /// "Upgrade to %@"
+    public static func upsell_modal_title_upgrade(plan: String) -> String { String(format: localized(key: "upsell_modal_title_upgrade", table: "iOS-Localizable"), plan) }
+
+    /// "Volume lock banner action to open web recovery details"
+    /// "Details"
+    public static var volume_lock_banner_details: String { localized(key: "volume_lock_banner_details", table: "iOS-Localizable") }
+
+    /// "Volume lock banner message inviting the user to restore access"
+    /// "Restore access to your locked files"
+    public static var volume_lock_banner_restore: String { localized(key: "volume_lock_banner_restore", table: "iOS-Localizable") }
+
+    /// "Volume lock banner action to skip recovery locked volume, the banner won’t be shown again"
+    /// "Skip"
+    public static var volume_lock_banner_skip: String { localized(key: "volume_lock_banner_skip", table: "iOS-Localizable") }
+
+    /// "Volume lock skip confirmation alert message"
+    /// "You won’t see this banner again, but you can still recover your volume from the web at any time"
+    public static var volume_lock_skip_alert_message: String { localized(key: "volume_lock_skip_alert_message", table: "iOS-Localizable") }
+
+    /// "Volume lock skip confirmation alert title"
+    /// "Skip recovery?"
+    public static var volume_lock_skip_alert_title: String { localized(key: "volume_lock_skip_alert_title", table: "iOS-Localizable") }
+
     /// "Create a new album to add photos"
     /// "Add to new album"
     public static var action_add_to_new_album: String { localized(key: "action_add_to_new_album", table: "shared-Localizable") }
@@ -2477,6 +2741,10 @@ public class Localization {
     /// "Title shown in the view when device is disconnected"
     /// "Your device has no connection"
     public static var disconnection_view_title: String { localized(key: "disconnection_view_title", table: "shared-Localizable") }
+
+    /// "Error message displayed when the user attempts to access a permanently deleted file or folder"
+    /// "File or folder not found"
+    public static var error_not_found: String { localized(key: "error_not_found", table: "shared-Localizable") }
 
     /// "Gallery title to display the album gallery"
     /// "Albums"

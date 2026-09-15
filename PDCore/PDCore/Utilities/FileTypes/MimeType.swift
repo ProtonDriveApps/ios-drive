@@ -17,7 +17,7 @@
 
 import UniformTypeIdentifiers
 
-public struct MimeType: Hashable {
+public struct MimeType: Hashable, Sendable {
     public let value: String
 
     public static let empty = MimeType(value: "")
@@ -158,6 +158,7 @@ public extension MimeType {
     static let xul = MimeType(value: "application/vnd.mozilla.xul+xml")
     
     static let sevenZ = MimeType(value: "application/x-7z-compressed")
+    static let gpg = MimeType(value: "application/pgp-encrypted")
     static let mkv = MimeType(value: "video/x-matroska")
 
     static let pages = MimeType(value: "application/vnd.apple.pages")

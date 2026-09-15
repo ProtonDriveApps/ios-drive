@@ -40,25 +40,35 @@ public final class ItemProvider {
         fileSystemSlot: FileSystemSlot,
         cloudSlot: any CloudSlotProtocol,
         pool: AsyncManagedObjectContextPool,
-        featureFlags: FeatureFlagsRepository? = nil,
+        featureFlags: DriveFeatureFlagsProvider? = nil,
+        confirmItemNotFoundWithBackend: Bool,
         completionHandler: @escaping (NSFileProviderItem?, Error?) -> Void
     ) -> Progress {
         let task = Task { [weak self] in
             guard !Task.isCancelled else { return }
-            let itemOrError = await self?.localOrRemoteItem(
-                for: identifier,
-                creatorAddresses: creatorAddresses,
-                fileSystemSlot: fileSystemSlot,
-                cloudSlot: cloudSlot,
-                pool: pool,
-                featureFlags: featureFlags
-            )
-            guard let itemOrError else { return }
+            let getItemClosure: () async -> Result<NSFileProviderItem, Error>? = { [weak self] in
+                if confirmItemNotFoundWithBackend {
+                    return await self?.localOrRemoteItem(for: identifier,
+                                                         creatorAddresses: creatorAddresses,
+                                                         fileSystemSlot: fileSystemSlot,
+                                                         cloudSlot: cloudSlot,
+                                                         pool: pool,
+                                                         featureFlags: featureFlags)
+                } else {
+                    return await pool.withContext { moc in
+                        return self?.localItem(for: identifier,
+                                               creatorAddresses: creatorAddresses,
+                                               fileSystemSlot: fileSystemSlot,
+                                               moc: moc).mapError { $0 }
+                    }
+                }
+            }
+            guard let itemOrError = await getItemClosure() else { return }
             guard !Task.isCancelled else { return }
             switch itemOrError {
             case .success(let item):
                 completionHandler(item, nil)
-            
+
             case .failure(let error):
                 // According to comment in NSFileProviderReplicatedExtension.h, if this method return any other error than:
                 // * NSFileProviderErrorNoSuchItem (will not be retried)
@@ -71,12 +81,12 @@ public final class ItemProvider {
                 case let fpError as NSFileProviderError
                     where fpError.code == .notAuthenticated || fpError.code == .noSuchItem || fpError.code == .serverUnreachable:
                     completionHandler(nil, fpError)
-                
+
                 case let fpError as NSFileProviderError
                     where fpError.code == .syncAnchorExpired || fpError.code == .pageExpired || fpError.code == .excludedFromSync:
                     let noSuchItemError = NSError.fileProviderErrorForNonExistentItem(withIdentifier: identifier)
                     completionHandler(nil, noSuchItemError)
-                    
+
                 default:
                     let serverUnreachableError = NSFileProviderError.create(.serverUnreachable, from: error)
                     completionHandler(nil, serverUnreachableError)
@@ -89,7 +99,7 @@ public final class ItemProvider {
             completionHandler(nil, CocoaError(.userCancelled))
         }
     }
-    
+
     /// Synchronously returns a local item (or error, if item was not found locally).
     /// Creator is relevant only for root folder.
     public func localItem(
@@ -115,7 +125,7 @@ public final class ItemProvider {
         case .workingSet:
             Log.info("Getting item WORKING_SET does not make sense", domain: .fileProvider)
             return .failure(Errors.requestedItemForWorkingSet(identifier: identifier))
-            
+
         case .trashContainer:
             Log.info("Getting item TRASH does not make sense", domain: .fileProvider)
             return .failure(Errors.requestedItemForTrash(identifier: identifier))
@@ -144,7 +154,11 @@ public final class ItemProvider {
             }
             do {
                 let item = try NodeItem(node: node)
-                Log.debug("Got item \(~item)", domain: .fileProvider)
+                #if DEBUG
+                Log.debug("Got item \(item.filename), \(item.itemIdentifier)", domain: .fileProvider)
+                #else
+                Log.debug("Got item \(item.itemIdentifier)", domain: .fileProvider)
+                #endif
                 return .success(item)
             } catch {
                 return .failure(Errors.itemCannotBeCreated)
@@ -160,7 +174,7 @@ public final class ItemProvider {
         fileSystemSlot: FileSystemSlot,
         cloudSlot: any CloudSlotProtocol,
         pool: AsyncManagedObjectContextPool,
-        featureFlags: FeatureFlagsRepository?
+        featureFlags: DriveFeatureFlagsProvider?
     ) async -> Result<NSFileProviderItem, Error> {
         let localItemOrError = await pool.withContext { moc in
             self.localItem(for: identifier, creatorAddresses: creatorAddresses, fileSystemSlot: fileSystemSlot, moc: moc)
@@ -248,12 +262,12 @@ public final class ItemProvider {
 
 #if os(macOS)
 extension ItemProvider {
-    
+
     private func enqueueInBatch(
         nodeId: NodeIdentifier,
         cloudSlot: any CloudSlotProtocol,
         pool: AsyncManagedObjectContextPool,
-        featureFlags: FeatureFlagsRepository?
+        featureFlags: DriveFeatureFlagsProvider?
     ) async throws {
         // Lock-protected so concurrent first-time access can't construct two batchers.
         let metadataBatcher: RequestBatcher<String, String, Void> = metadataBatcherLock.withLock {
@@ -291,7 +305,7 @@ extension ItemProvider {
         shareID: String,
         cloudSlot: CloudSlot?,
         pool: AsyncManagedObjectContextPool?,
-        featureFlags: FeatureFlagsRepository?
+        featureFlags: DriveFeatureFlagsProvider?
     ) async -> [String: Result<Void, Error>] {
         guard let cloudSlot, let pool else {
             Log.error("Metadata batch flush dropped — cloudSlot or pool deallocated", domain: .fileProvider)
@@ -319,7 +333,7 @@ extension ItemProvider {
             return Dictionary(uniqueKeysWithValues: linkIDs.map { ($0, .failure(error)) })
         }
     }
-    
+
     private static func flushMetadataBatchOneAtATime(_ shareID: String, _ linkIDs: [String], _ pool: AsyncManagedObjectContextPool, _ cloudSlot: CloudSlot) async -> [String: Result<Void, any Error>] {
         Log.info(
             "Metadata batch flush degrading to legacy per-item (share=\(shareID), \(linkIDs.count) links)",

@@ -89,16 +89,18 @@ struct AlbumGalleryFactory {
         )
         let galleryCoordinator = GalleryCoordinator(container: container)
         galleryCoordinator.rootViewController = rootViewController
+        let thumbnailCache = SmallThumbnailURLCache()
         let itemViewModelFactory = CachingPhotoItemViewModelFactory(cache: PhotoItemViewModelsCache()) { item in
             galleryFactory.makeItemViewModel(
                 item: item,
-                thumbnailsContainer: item.albumId == nil ? container.dependencies.streamThumbnailsContainer : container.dependencies.albumsThumbnailsContainer,
                 coordinator: galleryCoordinator,
                 selectionController: selectionController,
                 infosController: infosController,
                 featureFlagsController: container.dependencies.parentDependencies.featureFlagsController,
                 fetchingController: fetchingController,
-                metadataController: container.dependencies.metadataController
+                metadataController: container.dependencies.metadataController,
+                thumbnailDownloader: container.dependencies.tower.sdkObjects.thumbnailDownloader,
+                thumbnailCache: thumbnailCache
             )
         }
         return itemViewModelFactory

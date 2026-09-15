@@ -176,9 +176,20 @@ final class PhotoUploadInteractor: BaseUploadInteractor, FileUploadInteractorPro
         }
         Log.error("Failed to upload photo: \(error.localizedDescription)", error: error, domain: .sdk, context: context)
         
-        // TODO(SDK): use correct error
-        failedPhotosResource.increment(cloudIdentifier: cloudIdentifier, error: .accessFileFailed)
+        let userError = getUserError(from: error)
+        failedPhotosResource.increment(cloudIdentifier: cloudIdentifier, error: userError)
         await cacheResource.deleteTemp(identifier: identifier)
+    }
+    
+    private func getUserError(from error: Error) -> PhotosFailureUserError {
+        guard let sdkError = error as? ProtonDriveSDKError else {
+            return .accessFileFailed
+        }
+        if sdkError.primaryCode == 200303 && sdkError.secondaryCode == 422 {
+            return .partiallyInAlbum
+        } else {
+            return .accessFileFailed
+        }
     }
 
     private func handleSuccess(

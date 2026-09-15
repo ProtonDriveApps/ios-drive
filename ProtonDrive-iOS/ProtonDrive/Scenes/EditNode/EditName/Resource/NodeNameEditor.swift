@@ -17,24 +17,22 @@
 
 import CoreData
 import PDCore
+import PDCoreIOS
 
 // Contains same implementation as `Tower`, but that one is deprecated.
 final class NodeNameEditor: NodeNameEditorProtocol {
     private let storage: StorageManager
     private let managedObjectContext: NSManagedObjectContext
     private let nodeRenamer: NodeRenamerProtocol
-    private let nodeOperationPerformer: SDKNodeOperationPerformer?
 
     init(
         storage: StorageManager,
         managedObjectContext: NSManagedObjectContext,
-        nodeRenamer: NodeRenamerProtocol,
-        nodeOperationPerformer: SDKNodeOperationPerformer?
+        nodeRenamer: NodeRenamerProtocol
     ) {
         self.storage = storage
         self.managedObjectContext = managedObjectContext
         self.nodeRenamer = nodeRenamer
-        self.nodeOperationPerformer = nodeOperationPerformer
     }
 
     func rename(to name: String, node: NodeIdentifier, completion: @escaping (NodeNameEditorProtocol.Result) -> Void) {
@@ -49,17 +47,13 @@ final class NodeNameEditor: NodeNameEditorProtocol {
     }
 
     private func renameAsync(name: String, nodeIdentifier: NodeIdentifier) async throws -> Node {
-        if let performer = nodeOperationPerformer {
-            return try await performer.rename(nodeUid: nodeIdentifier.any(), newName: name)
-        } else {
-            guard let node = storage.fetchNode(id: nodeIdentifier, moc: managedObjectContext) else {
-                throw NSError(domain: "Failed to find Node", code: 0, userInfo: nil)
-            }
-
-            let mimeType = makeMimeType(node: node, name: name)
-            try await nodeRenamer.rename(node, to: name, mimeType: mimeType, moc: managedObjectContext)
-            return node
+        guard let node = storage.fetchNode(id: nodeIdentifier, moc: managedObjectContext) else {
+            throw NSError(domain: "Failed to find Node", code: 0, userInfo: nil)
         }
+
+        let mimeType = makeMimeType(node: node, name: name)
+        try await nodeRenamer.rename(node, to: name, mimeType: mimeType, moc: managedObjectContext)
+        return node
     }
 
     private func makeMimeType(node: Node, name: String) -> String? {

@@ -14,7 +14,8 @@ let package = Package(
     ],
     dependencies: [
         .package(name: "PDLocalization", path: "../PDLocalization"),
-        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", exact: "37.0.1"),
+        .package(name: "PDUIComponents", path: "../PDUIComponents"),
+        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", exact: "37.3.0"),
     ],
     targets: [
         .target(
@@ -22,6 +23,7 @@ let package = Package(
             dependencies: [
                 .product(name: "ProtonCoreUIFoundations", package: "protoncore_ios"),
                 .product(name: "PDLocalization", package: "PDLocalization"),
+                .product(name: "PDUIComponents", package: "PDUIComponents"),
             ],
             path: "Sources",
             resources: [

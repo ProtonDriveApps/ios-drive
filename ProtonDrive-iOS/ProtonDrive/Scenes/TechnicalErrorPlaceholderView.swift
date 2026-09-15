@@ -46,6 +46,32 @@ struct TechnicalErrorPlaceholderView: View {
     }
 }
 
+struct TTechnicalErrorPlaceholderView: View {
+    @Environment(\.dismiss) var dismiss
+    var message: String = Localization.technical_error_placeholder
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .center) {
+                Text("⚠️")
+                    .font(.title)
+                    .foregroundColor(ColorProvider.TextNorm)
+                    .padding(.top, 30)
+
+                Text(message)
+                    .font(.subheadline)
+                    .foregroundColor(ColorProvider.TextWeak)
+                    .padding(.top, 8)
+            }
+            .lineLimit(nil)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal)
+        }
+        .closable { dismiss() }
+    }
+}
+
 struct ErrorPlaceholder_Previews: PreviewProvider {
     static var previews: some View {
         TechnicalErrorPlaceholderView()

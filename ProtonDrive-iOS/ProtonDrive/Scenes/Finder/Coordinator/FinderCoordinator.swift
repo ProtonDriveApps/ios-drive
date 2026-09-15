@@ -22,6 +22,7 @@ import UIKit
 import PDCore
 import PDCoreIOS
 import PDUIComponents
+import ProtonCoreAuthentication
 import ProtonCoreUIFoundations
 import PDLocalization
 import PDPhotos
@@ -38,9 +39,9 @@ class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
     }
 
     private let container: AuthenticatedDependencyContainer
-    private var tower: Tower {
-        container.tower
-    }
+    var volumeLockController: VolumeLockController { container.volumeLockController }
+    var tower: Tower { container.tower }
+    var authenticator: Authenticator { container.authenticator }
 
     var featureFlagsController: FeatureFlagsControllerProtocol {
         container.featureFlagsController
@@ -59,8 +60,9 @@ class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
     private(set) weak var nextFolderCoordinator: FinderCoordinator?
     private lazy var createDocView = makeCreateDocumentView(fileType: .doc)
     private lazy var createSheetView = makeCreateDocumentView(fileType: .sheet)
-    private var fileExportCoordinator: FileExportCoordinator?
+    private var fileExportViewModel: FileExportViewModel?
     private var previewPrepareCoordinator: FilePreviewPreparationCoordinator?
+    private var lastNavigationStackCount: Int?
     weak var rootViewController: UIViewController?
 
     // Binding observed by FinderView's NavigationView
@@ -100,9 +102,16 @@ class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
         case .servicePlans:
             self.openSubscriptions()
         case .openIn(let file), .downloadToDevice(let file):
-            fileExportCoordinator = FileExportCoordinator(tower: tower, rootViewController: rootViewController)
+            fileExportViewModel = FileExportFactory().makeViewModel(tower: tower, rootViewController: rootViewController)
+            guard let node = try? NodeDTO(node: file, signatureKeys: []) else { return }
             Task.detached { [weak self] in
-                await self?.fileExportCoordinator?.startExport(file: file, for: destination!)
+                var isDownload: Bool
+                if case .openIn = destination {
+                    isDownload = false
+                } else {
+                    isDownload = true
+                }
+                await self?.fileExportViewModel?.export(files: [node], isDownloadDestination: isDownload)
             }
         default:
             self._presentedModal = destination
@@ -135,6 +144,7 @@ class FinderCoordinator: NSObject, ObservableObject, SwiftUICoordinator {
 // MARK: - start(_:)
 
 extension FinderCoordinator {
+    @MainActor
     func start(_ context: Context) -> some View {
         defer { self.deeplink(from: deeplink, tower: tower) }
         log(context: context)
@@ -142,6 +152,7 @@ extension FinderCoordinator {
     }
 
     @ViewBuilder
+    @MainActor
     private func startView(_ context: Context) -> some View {
         switch context {
         case let .move(nodeID, nodesToMoveID, nodeToMoveParent):
@@ -303,7 +314,7 @@ extension FinderCoordinator {
         )
     }
 
-    private func startFolder(_ nodeID: NodeIdentifier, _ node: Folder) -> some View {
+    @MainActor private func startFolder(_ nodeID: NodeIdentifier, _ node: Folder) -> some View {
         let userInfoController = UserInfoControllerFactory().makeController(sessionVault: tower.sessionVault)
         let model = FolderModel(
             tower: tower,
@@ -323,7 +334,6 @@ extension FinderCoordinator {
             scrollToTopPublisher: scrollToTopPublisher,
             progressTrackersController: ProgressTrackersController()
         )
-        self.currentTab = viewModel.currentTab
         self.hookIntoViewLifecycle(viewModel)
         return FinderView(vm: viewModel, coordinator: self, presentModal: presentModal, drilldownTo: drilldownTo)
     }
@@ -357,6 +367,7 @@ extension FinderCoordinator {
 extension FinderCoordinator {
     // swiftlint:disable cyclomatic_complexity
     @ViewBuilder
+    @MainActor
     func go(to destination: Destination) -> some View {
         switch destination {
         case let .folder(folder) where model is MoveModel:
@@ -399,12 +410,12 @@ extension FinderCoordinator {
             EmptyView()
 
         case .importDocument where model is PickerDelegate:
-            DocumentPicker(delegate: model as! PickerDelegate)
+            DocumentPicker(delegate: model as! PickerDelegate, featureFlagsController: featureFlagsController)
                 .edgesIgnoringSafeArea(.all)
 
         case .importPhoto where model is PickerDelegate:
             photoPickerCoordinator.map { coordinator in
-                coordinator.start(with: model as! PickerDelegate)
+                coordinator.start(with: model as! PickerDelegate, featureFlagsController: featureFlagsController)
                     .edgesIgnoringSafeArea(.bottom)
             }
 
@@ -442,6 +453,7 @@ extension FinderCoordinator {
     }
     // swiftlint:enable cyclomatic_complexity
 
+    @MainActor
     private func goFolderMove(_ folder: Folder, _ model: MoveModel) -> some View {
         let nodesToMoveID = model.nodeIdsToMove
         let nodeToMoveParentID = model.nodeToMoveParentId
@@ -450,12 +462,14 @@ extension FinderCoordinator {
         return coordinator.start(.move(rootNode: folder.identifier, nodesToMove: nodesToMoveID, nodeToMoveParent: nodeToMoveParentID))
     }
 
+    @MainActor
     private func goFolder(_ folder: Folder) -> some View {
         let coordinator = FinderCoordinator(container: container, isSharedWithMe: self.isSharedWithMe, parent: self, deeplink: deeplink, photoPickerCoordinator: photoPickerCoordinator, scrollToTopPublisher: scrollToTopPublisher)
         nextFolderCoordinator = coordinator
         return coordinator.start(.folder(nodeID: folder.identifier))
     }
 
+    @MainActor
     private func goInComingFilesSave(_ folder: Folder) -> some View {
         let coordinator = FinderCoordinator(
             container: container,
@@ -527,10 +541,10 @@ extension FinderCoordinator {
     }
 
     func openSubscriptions() {
-        let viewController = container.makeSubscriptionsViewController()
-        let navigationViewController = ModalNavigationViewController(rootViewController: viewController)
-        navigationViewController.modalPresentationStyle = .fullScreen
-        rootViewController?.present(navigationViewController, animated: true)
+        Task { @MainActor in
+            container.makeUpsellCoordinator()
+                .present(from: rootViewController)
+        }
     }
 }
 
@@ -572,6 +586,11 @@ extension FinderCoordinator: UINavigationControllerDelegate {
         // Built-in onAppear() of SwiftUI does not work correctly for NavigationLinks in ScrollView+LazyVGrid.
         // At least on iOS 14.4 calls it wrongly for root FinderView whenever topmost FinderView changes layout or sorting
         let count = navigationController.viewControllers.count
+        let isRealNavigation = viewController.isMovingToParent
+            || lastNavigationStackCount.map { $0 != count } ?? true
+        lastNavigationStackCount = count
+        // Skip when a modal (e.g. SFSafariViewController, sheet) is dismissed over the nav stack — same depth, not a push.
+        guard isRealNavigation else { return }
 
         let fullChain = self.fullCoordinatorsChain
         fullChain.dropFirst(count).forEach { $0.onDisappear() } // all descendants of current

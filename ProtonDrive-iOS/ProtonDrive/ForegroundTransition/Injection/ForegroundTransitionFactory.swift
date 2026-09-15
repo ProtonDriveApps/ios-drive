@@ -22,10 +22,12 @@ final class ForegroundTransitionFactory {
         tower: Tower,
         pickerResource: PickerResource,
         populatedStateController: PopulatedStateControllerProtocol,
-        lockedStateController: LockedStateControllerProtocol
+        lockedStateController: LockedStateControllerProtocol,
+        volumeLockController: VolumeLockController
     ) -> ForegroundTransitionController {
         let interactors: [CommandInteractor] = [
-            ChildSessionInteractor(sessionCommunicator: tower.sessionCommunicator)
+            ChildSessionInteractor(sessionCommunicator: tower.sessionCommunicator),
+            VolumeLockCheckInteractor(controller: volumeLockController)
         ]
 
         let populatedInteractors: [CommandInteractor] = [

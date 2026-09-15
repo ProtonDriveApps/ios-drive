@@ -30,7 +30,7 @@ public class CoreDataBookmark: File {
     @NSManaged public var shareKey: String
     @NSManaged public var permissions: Int16
 
-    override public func decryptName() throws -> String {
+    override public func decryptName(signatureKeys: [PublicKey] = []) throws -> String {
         if !Constants.runningInExtension {
             // Looks like file providers do no exchange updates across contexts properly
             if let cached = self.clearName {

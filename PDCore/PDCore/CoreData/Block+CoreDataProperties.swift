@@ -41,12 +41,12 @@ extension Block: VolumeUnique {
         return nil
     }
     
-    var temporaryUrl: URL? {
+    public var temporaryUrl: URL? {
         guard let path = self.localPath else { return nil }
         return PDFileManager.cypherBlocksCacheDirectory.appendingPathComponent(path)
     }
     
-    var permanentUrl: URL? {
+    public var permanentUrl: URL? {
         guard let path = self.localPath else { return nil }
         return PDFileManager.permanentDataDirectory.appendingPathComponent(path)
     }

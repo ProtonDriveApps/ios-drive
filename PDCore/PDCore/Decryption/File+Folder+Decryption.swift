@@ -19,7 +19,7 @@ import Foundation
 import ProtonCoreObservability
 
 #if os(macOS)
-public var PDCoreDecryptName: (Node) throws -> String = { try $0.decryptNameWithCryptoGo() }
+public var PDCoreDecryptName: (Node) throws -> String = { try $0.decryptNameWithCryptoGo(signatureKeys: []) }
 public var PDCoreDecryptExtendedAttributes: (Revision) throws -> ExtendedAttributes = { try $0.decryptedExtendedAttributesWithCryptoGo() }
 #endif
 
@@ -51,15 +51,15 @@ public extension Node {
         }
     }
     
-    @objc func decryptName() throws -> String {
+    @objc func decryptName(signatureKeys: [PublicKey] = []) throws -> String {
         #if os(macOS)
         try PDCoreDecryptName(self)
         #else
-        try decryptNameWithCryptoGo()
+        try decryptNameWithCryptoGo(signatureKeys: signatureKeys)
         #endif
     }
 
-    func decryptNameWithCryptoGo() throws -> String {
+    func decryptNameWithCryptoGo(signatureKeys: [PublicKey]) throws -> String {
         do {
             if !Constants.runningInExtension {
                 // Looks like file providers do no exchange updates across contexts properly
@@ -83,7 +83,8 @@ public extension Node {
             let (parentPassphrase, parentKey) = try self.getDirectParentPack()
             let parentNodeKey = DecryptionKey(privateKey: parentKey, passphrase: parentPassphrase)
             let addressKeys = try getAddressPublicKeys(email: signatureEmail, addressID: addressID)
-            let verificationKeys = signatureEmail.isEmpty ? [parentKey] : addressKeys
+            var verificationKeys = signatureEmail.isEmpty ? [parentKey] : addressKeys
+            verificationKeys += signatureKeys
             let decrypted: VerifiedText
             do {
                 decrypted = try Decryptor.decryptAndVerifyNodeName(

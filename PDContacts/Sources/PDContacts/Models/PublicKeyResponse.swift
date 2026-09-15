@@ -105,12 +105,17 @@ public struct Key: Decodable {
     }
 }
 
-struct KeyQuery: Hashable {
+struct KeyQuery: Hashable, Equatable {
     let email: String
     let internalOnly: Bool
+    let date = Date()
     
     func hash(into hasher: inout Hasher) {
         hasher.combine(email)
         hasher.combine(internalOnly)
+    }
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.email == rhs.email && lhs.internalOnly == rhs.internalOnly
     }
 }

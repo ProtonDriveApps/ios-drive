@@ -29,13 +29,13 @@ final class AlbumGridItemViewModel: GridViewItem, ObservableObject {
     let id: AnyVolumeIdentifier
     private let debounceResource: DebounceResource
     private let metadataController: MetadataControllerProtocol
-    private let thumbnailContainer: ThumbnailsControllersContainerProtocol
+    private let thumbnailDownloader: SDKThumbnailsDownloaderProtocol?
+    private let thumbnailCache: ThumbnailURLCache
     private var albumRepository: AlbumRepositoryProtocol
     private var cancellable: AnyCancellable?
     private var coverLinkID: String?
     private var isAppearing = false
-    private var thumbnailCancellable: AnyCancellable?
-    private var thumbnailController: ThumbnailController?
+    private var thumbnailTask: Task<Void, Never>?
     private(set) var image: Data?
 
     public init(
@@ -43,13 +43,15 @@ final class AlbumGridItemViewModel: GridViewItem, ObservableObject {
         albumRepository: AlbumRepositoryProtocol,
         debounceResource: DebounceResource,
         metadataController: MetadataControllerProtocol,
-        thumbnailContainer: ThumbnailsControllersContainerProtocol
+        thumbnailDownloader: SDKThumbnailsDownloaderProtocol?,
+        thumbnailCache: ThumbnailURLCache
     ) {
         self.albumRepository = albumRepository
         self.id = albumID
         self.debounceResource = debounceResource
         self.metadataController = metadataController
-        self.thumbnailContainer = thumbnailContainer
+        self.thumbnailDownloader = thumbnailDownloader
+        self.thumbnailCache = thumbnailCache
 
         subscribeToUpdate()
     }
@@ -89,13 +91,11 @@ final class AlbumGridItemViewModel: GridViewItem, ObservableObject {
         guard coverLinkID != album.coverLinkID else { return }
         coverLinkID = album.coverLinkID
         image = nil
-        if let coverLinkID {
-            let photoID = PhotoId(id: coverLinkID, volumeID: id.volumeID)
-            thumbnailController = thumbnailContainer.makeSmallThumbnailController(id: photoID)
-        } else {
-            let photoID = PhotoId(id: "", volumeID: id.volumeID)
-            thumbnailController = thumbnailContainer.makeSmallThumbnailController(id: photoID)
+        thumbnailTask?.cancel()
+        thumbnailTask = nil
+        guard coverLinkID != nil else {
             objectWillChange.send()
+            return
         }
         if isAppearing {
             reloadImage()
@@ -116,7 +116,8 @@ final class AlbumGridItemViewModel: GridViewItem, ObservableObject {
         isAppearing = false
         image = nil
         debounceResource.cancel()
-        thumbnailController?.cancel()
+        thumbnailTask?.cancel()
+        thumbnailTask = nil
         metadataController.cancel(identifier: id)
     }
 
@@ -129,22 +130,30 @@ final class AlbumGridItemViewModel: GridViewItem, ObservableObject {
     private func loadThumbnailIfNeeded() {
         guard image == nil, let coverLinkID else { return }
         let photoID = PhotoId(id: coverLinkID, volumeID: id.volumeID)
-        let controller = thumbnailController ?? thumbnailContainer.makeSmallThumbnailController(id: photoID)
-        controller.bootstrap()
-        thumbnailCancellable = controller.updatePublisher
-            .sink { [weak self] _ in
-                self?.reloadImage()
+        if let cachedImage = thumbnailCache.getThumbnailData(id: photoID) {
+            image = cachedImage
+            objectWillChange.send()
+            return
+        }
+        guard thumbnailTask == nil else { return }
+        thumbnailTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                _ = try await thumbnailDownloader?.downloadThumbnail(for: photoID.any(), type: .default)
+            } catch {
+                Log.error("Failed to download album cover thumbnail", error: error, domain: .thumbnails)
             }
-        if controller.getImage() == nil {
-            controller.load()
-        } else {
-            thumbnailCancellable = nil
+            await MainActor.run {
+                self.thumbnailTask = nil
+                self.reloadImage()
+            }
         }
     }
 
     private func reloadImage() {
         guard
-            let image = thumbnailController?.getImage(),
+            let coverLinkID,
+            let image = thumbnailCache.getThumbnailData(id: PhotoId(id: coverLinkID, volumeID: id.volumeID)),
             self.image != image
         else { return }
         self.image = image

@@ -57,7 +57,6 @@ public final class FileVerifier: FileVerificationProtocol {
     private let chunkSize: Int
     private let digestBuilderFactory: () -> DigestBuilder
     private let observabilityReporter: ObservabilityReporterProtocol
-    private let dateFormatter = ISO8601DateFormatter.default
     
     public init(digestBuilderFactory: @escaping () -> DigestBuilder = { SHA1DigestBuilder() },
                 chunkSize: Int = defaultChunkSize,
@@ -131,7 +130,7 @@ public final class FileVerifier: FileVerificationProtocol {
             )
             if checksumVerified {
                 Log.error(
-                    "File verification failed. Digest mismatch. Revision UID: \(revisionUid), revision creation time: \(dateFormatter.string(revisionCreationTime) ?? "unknown")",
+                    "File verification failed. Digest mismatch. Revision UID: \(revisionUid), revision creation time: \(ISO8601DateFormatter.string(revisionCreationTime) ?? "unknown")",
                     domain: .syncing
                 )
                 throw FileVerificationError.downloadVerificationFailed(
@@ -139,7 +138,7 @@ public final class FileVerifier: FileVerificationProtocol {
                 )
             } else {
                 Log.info(
-                    "File verification failed. Digest mismatch, checksumVerified is false. Revision UID: \(revisionUid), revision creation time: \(dateFormatter.string(revisionCreationTime) ?? "unknown")",
+                    "File verification failed. Digest mismatch, checksumVerified is false. Revision UID: \(revisionUid), revision creation time: \(ISO8601DateFormatter.string(revisionCreationTime) ?? "unknown")",
                     domain: .syncing,
                     sendToSentryIfPossible: true
                 )

@@ -58,6 +58,12 @@ extension NSManagedObjectModel {
         {
             return model
         }
+        
+        if let bundle = Bundle.module.url(forResource: "Metadata", withExtension: "momd"),
+           let model = NSManagedObjectModel(contentsOf: bundle)
+        {
+            return model
+        }
 
         // Debug builds for real devices link XCTest in, causing problems when developing
         // on an iOS device. This doesn't happen for macOS.

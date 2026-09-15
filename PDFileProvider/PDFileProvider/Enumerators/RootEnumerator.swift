@@ -25,14 +25,12 @@ public final class RootEnumerator: FolderEnumerator {
                 keepDownloadedManager: KeepDownloadedEnumerationManager,
                 rootID: NodeIdentifier,
                 enumerationObserver: EnumerationObserverProtocol? = nil,
-                displayEnumeratedItems: Bool = false,
-                shouldReenumerateItems: Bool = false) {
+                displayEnumeratedItems: Bool = false) {
         Log.trace()
         super.init(tower: tower,
                    keepDownloadedManager: keepDownloadedManager,
                    nodeID: rootID,
                    enumerationObserver: enumerationObserver,
-                   displayEnumeratedItems: displayEnumeratedItems,
-                   shouldReenumerateItems: shouldReenumerateItems)
+                   displayEnumeratedItems: displayEnumeratedItems)
     }
 }

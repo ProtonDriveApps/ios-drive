@@ -19,7 +19,7 @@ import Combine
 import CoreData
 import PDClient
 
-public final class FolderModel: FinderModel, FinderErrorModel, ThumbnailLoader, NodesListing, NodesFetching, UploadsListing, DownloadsListing, NodesSorting {
+public final class FolderModel: FinderModel, FinderErrorModel, NodesListing, NodesFetching, UploadsListing, DownloadsListing, NodesSorting {
     public enum Errors: Error {
         case nodeIdDoesNotBelongToFolder(String)
         case nodeIdNotFound(String)
@@ -148,16 +148,4 @@ public final class FolderModel: FinderModel, FinderErrorModel, ThumbnailLoader, 
         }
     }
 #endif
-
-    public func loadThumbnail(with id: Identifier) {
-        return tower.loadThumbnail(with: id)
-    }
-
-    public func cancelThumbnailLoading(_ id: Identifier) {
-        tower.cancelThumbnailLoading(id)
-    }
-
-    public var succeededId: AnyPublisher<Identifier, Never> {
-        tower.succeededId
-    }
 }

@@ -19,9 +19,9 @@ import PDCore
 
 final class PhotosTaskSchedulerEnabledPolicy: TaskSchedulerPolicy {
     private let lockPolicy: LockProtectionEnabledPolicy
-    private let featureFlagStore: ExternalFeatureFlagsStore
+    private let featureFlagStore: FeatureFlagCache
 
-    init(lockPolicy: LockProtectionEnabledPolicy, featureFlagStore: ExternalFeatureFlagsStore) {
+    init(lockPolicy: LockProtectionEnabledPolicy, featureFlagStore: FeatureFlagCache) {
         self.lockPolicy = lockPolicy
         self.featureFlagStore = featureFlagStore
     }

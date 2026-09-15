@@ -23,6 +23,7 @@ protocol PhotosRetryInteractorProtocol {
     func fetchAssets(ofSize size: CGSize) async -> ([FullPreview], Int)
     func retryUpload()
     func clearDeletedStorage()
+    func markFailedAsSkippable(assets: [FullPreview])
 }
 
 final class PhotosRetryInteractor: PhotosRetryInteractorProtocol {
@@ -30,37 +31,58 @@ final class PhotosRetryInteractor: PhotosRetryInteractorProtocol {
     private let deletedStoreResource: DeletedPhotosIdentifierStoreResource
     private let previewProvider: PhotoLibraryPreviewResourceProtocol
     private let retryTriggerController: PhotoLibraryLoadRetryTriggerController
+    private let skippableCache: PhotosSkippableCache
 
     init(
         deletedStoreResource: DeletedPhotosIdentifierStoreResource,
         previewProvider: PhotoLibraryPreviewResourceProtocol,
-        retryTriggerController: PhotoLibraryLoadRetryTriggerController
+        retryTriggerController: PhotoLibraryLoadRetryTriggerController,
+        skippableCache: PhotosSkippableCache
     ) {
         self.deletedStoreResource = deletedStoreResource
         self.previewProvider = previewProvider
         self.retryTriggerController = retryTriggerController
+        self.skippableCache = skippableCache
     }
     
     func fetchAssets(ofSize size: CGSize) async -> ([FullPreview], Int) {
         let results = deletedStoreResource.getCloudIdentifiersAndError()
+        // There can be multiple failed items with the same cloud identifier. We will show only one of them in the view to avoid confusion.
+        let identifiersSet = Set(results.compactMap { $0.cloudIdentifier })
+        let uniqueIdentifiers = Array(identifiersSet).sorted(by: >)
         
         let previews = await previewProvider
-            .execute(results.compactMap { $0.cloudIdentifier }, size: size)
+            .execute(uniqueIdentifiers, size: size)
             .map { preview in
-                let error = results.first(where: { $0.cloudIdentifier == preview.localIdentifier && $0.error != nil })?.error
+                let error = results.first(where: { $0.cloudIdentifier == preview.cloudIdentifier && $0.error != nil })?.error
                 return FullPreview(
                     localIdentifier: preview.localIdentifier,
+                    cloudIdentifier: preview.cloudIdentifier,
                     filename: preview.originalFilename,
                     imageData: preview.imageData,
-                    errorMessage: error?.localizedDescription
+                    errorMessage: error?.localizedDescription,
+                    creationDate: preview.creationDate,
+                    modificationDate: preview.modificationDate
                 )
             }
 
-        return (previews, results.count - previews.count)
+        return (previews, uniqueIdentifiers.count - previews.count)
     }
     
     func clearDeletedStorage() {
         deletedStoreResource.reset()
+    }
+    
+    func markFailedAsSkippable(assets: [FullPreview]) {
+        var batch = [PhotoAssetMetadata.iOSPhotos: Int]()
+        for asset in assets {
+            guard let cloudIdentifier = asset.cloudIdentifier else {
+                continue
+            }
+            let identifier = PhotoAssetMetadata.iOSPhotos(identifier: cloudIdentifier, modificationTime: asset.modificationDate)
+            batch[identifier] = (batch[identifier] ?? 0) + 1
+        }
+        skippableCache.batchMarkAsSkippable(batch)
     }
     
     func retryUpload() {

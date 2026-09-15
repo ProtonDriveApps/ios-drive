@@ -18,8 +18,11 @@
 import Foundation
 
 struct FullPreview: Equatable {
-    var localIdentifier: String
-    var filename: String?
-    var imageData: Data?
-    var errorMessage: String?
+    let localIdentifier: String
+    let cloudIdentifier: String?
+    let filename: String?
+    let imageData: Data?
+    let errorMessage: String?
+    let creationDate: Date?
+    let modificationDate: Date?
 }

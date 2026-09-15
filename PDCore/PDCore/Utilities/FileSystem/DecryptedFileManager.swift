@@ -107,6 +107,22 @@ public class DecryptedFileManager {
             }
         }
     }
+
+    public static func decryptLegacyBlocksInContextIfNeeded(
+        file: CoreDataFile,
+        cancellation: LegacyDecryptionCancellation? = nil
+    ) throws {
+        guard let revision = file.activeRevision else {
+            throw file.invalidState("Uploaded file should have an active revision")
+        }
+        if revision.blocksAreValid() {
+            if let cancellation {
+                _ = try revision.decryptFile(isCancelled: &cancellation.isCancelled)
+            } else {
+                _ = try revision.decryptFile()
+            }
+        }
+    }
 }
 
 // MARK: - Hard links
@@ -157,6 +173,22 @@ extension DecryptedFileManager {
         let rhsPath = rhs.path(percentEncoded: false)
         guard stat(lhsPath, &lhsStat) == 0, stat(rhsPath, &rhsStat) == 0 else { return false }
         return lhsStat.st_ino == rhsStat.st_ino && lhsStat.st_dev == rhsStat.st_dev
+    }
+}
+
+// MARK: - Thumbnail
+extension DecryptedFileManager {
+    public static func thumbnailData(id: AnyVolumeIdentifier, type: ThumbnailType = .default) -> Data? {
+        let volumeBasedID = id.volumeBasedIdentifier
+        if let url = PDFileManager.getThumbnailURL(for: volumeBasedID, type: type),
+           FileManager.default.fileExists(atPath: url.path) {
+            return try? Data(contentsOf: url)
+        }
+        let legacyURL = PDFileManager.clearThumbnailV1URL(for: volumeBasedID, type: type, shouldCreate: false)
+        guard FileManager.default.fileExists(atPath: legacyURL.path) else {
+            return nil
+        }
+        return try? Data(contentsOf: legacyURL)
     }
 }
 #endif // os(iOS)

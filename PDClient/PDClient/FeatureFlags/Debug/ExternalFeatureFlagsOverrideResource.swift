@@ -53,5 +53,13 @@ public final class ExternalFeatureFlagsOverrideResource: ExternalFeatureFlagsRes
             return true
         }
     }
+    
+    public func getVariantPayload(for flag: ExternalFeatureFlag) -> String? {
+        if let overridenValue = overrides.first(where: { $0.flag == flag }) {
+            return overridenValue.payload
+        }
+        
+        return wrappedResource.getVariantPayload(for: flag)
+    }
 }
 #endif

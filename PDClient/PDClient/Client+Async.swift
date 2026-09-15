@@ -54,6 +54,18 @@ extension Client {
         return try await request(endpoint, completionExecutor: .asyncExecutor(dispatchQueue: backgroundQueue)).links
     }
 
+    public func listFolderChildrenV2(volumeID: VolumeID, folderID: FolderID, anchorID: String?, foldersOnly: Bool) async throws -> FolderChildrenListV2Response {
+        let endpoint = FolderChildrenListV2Endpoint(
+            service: service,
+            credential: try credential(),
+            volumeID: volumeID,
+            folderID: folderID,
+            anchorID: anchorID,
+            foldersOnly: foldersOnly
+        )
+        return try await request(endpoint, completionExecutor: .immediateExecutor)
+    }
+
     public func getVolumes() async throws -> [Volume] {
         let credential = try credential()
         let endpoint = VolumesEndpoint(service: self.service, credential: credential)
@@ -123,7 +135,7 @@ extension Client {
 
 public protocol MoveNodeClient {
     func moveEntry(shareID: Share.ShareID, nodeID: Link.LinkID, parameters: MoveEntryEndpoint.Parameters) async throws
-    func moveMultiple(volumeID: Volume.VolumeID, parameters: MoveMultipleEndpoint.Parameters) async throws
+    func moveMultiple(volumeID: Volume.VolumeID, parameters: MoveMultipleEndpoint.Parameters) async throws -> MoveMultipleResponse
     func transferMultiple(volumeID: Volume.VolumeID, parameters: TransferMultipleEndpoint.Parameters) async throws
 }
 
@@ -134,10 +146,10 @@ extension Client: MoveNodeClient {
         _ = try await request(endpoint)
     }
 
-    public func moveMultiple(volumeID: VolumeID, parameters: MoveMultipleEndpoint.Parameters) async throws {
+    public func moveMultiple(volumeID: VolumeID, parameters: MoveMultipleEndpoint.Parameters) async throws -> MoveMultipleResponse {
         let credential = try credential()
         let endpoint = MoveMultipleEndpoint(volumeID: volumeID, parameters: parameters, service: service, credential: credential)
-        _ = try await request(endpoint)
+        return try await request(endpoint)
     }
 
     public func transferMultiple(volumeID: VolumeID, parameters: TransferMultipleEndpoint.Parameters) async throws {
@@ -148,13 +160,13 @@ extension Client: MoveNodeClient {
 }
 
 public protocol SharesListing {
-    func listShares() async throws -> [ListSharesEndpoint.Response.Share]
+    func listShares(showAll: ListSharesEndpoint.Parameters.ShowAll) async throws -> [ListSharesEndpoint.Response.Share]
     func listShares(parameters: ListSharesEndpoint.Parameters) async throws -> [ListSharesEndpoint.Response.Share]
 }
 
 extension Client: SharesListing {
-    public func listShares() async throws -> [ListSharesEndpoint.Response.Share] {
-        let parameters = ListSharesEndpoint.Parameters(shareType: nil, showAll: .default)
+    public func listShares(showAll: ListSharesEndpoint.Parameters.ShowAll) async throws -> [ListSharesEndpoint.Response.Share] {
+        let parameters = ListSharesEndpoint.Parameters(shareType: nil, showAll: showAll)
         return try await listShares(parameters: parameters)
     }
 

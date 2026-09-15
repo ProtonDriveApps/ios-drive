@@ -36,3 +36,22 @@ struct EditNodeUIKitView: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
     }
 }
+
+struct EEditNodeUIKitView: UIViewControllerRepresentable {
+    typealias UIViewControllerType = UIViewController
+    
+    @Environment(\.dismiss) var dismiss
+    let vm: EditNodeViewModel
+    let nfvm: NameFormattingViewModel
+    
+    func makeUIViewController(context: Context) -> UIViewController {
+        let vc = EditNodeViewController()
+        vc.viewModel = vm
+        vc.tfViewModel = nfvm
+        vm.onDismiss = { dismiss() }
+        return UINavigationController(rootViewController: vc)
+    }
+    
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+    }
+}

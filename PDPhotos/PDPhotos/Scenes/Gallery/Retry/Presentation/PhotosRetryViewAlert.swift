@@ -19,17 +19,17 @@ import Foundation
 import PDLocalization
 
 enum PhotosRetryViewAlert {
-    case skipDialog
-    
+    case skip
+
     var title: String {
         Localization.retry_skip_alert_title
     }
     var message: String {
-        Localization.retry_skip_alert_message
+        Localization.retry_skip_permanently_alert_message
     }
     var buttons: [(String, (PhotosRetryViewModel) -> Void)] {
         [
-            (Localization.general_skip, { $0.pushSkipAlertConfirmButton() }),
+            (Localization.general_skip, { $0.confirmSkip() }),
             (Localization.general_go_back, { $0.pushSkipAlertCancelButton() })
         ]
     }

@@ -18,6 +18,7 @@
 import Foundation
 import ProtonCoreCryptoGoInterface
 import ProtonCoreKeyManager
+import CommonCrypto
 
 public struct RevisionContentKeys {
     public let contentSessionKey: SessionKey
@@ -38,6 +39,29 @@ public class Encryptor {
 
     public static func hmac(filename: String, parentHashKey: String) throws -> String {
         try CoreEncryptor.hmac(filename: filename, parentHashKey: parentHashKey)
+    }
+
+    /// HMAC-SHA256 keyed with the raw hash-key bytes used directly (never base64-decoded).
+    /// For a base64-string key this produces the same bytes as the `String` overload
+    /// (`Data(parentHashKey.utf8)`), so existing hashes are unchanged; for non-UTF-8 keys
+    /// it avoids the U+FFFD corruption of decrypting the key as text.
+    public static func hmac(filename: String, parentHashKey: Data) throws -> String {
+        let message = Data(filename.utf8)
+        var digest = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
+        parentHashKey.withUnsafeBytes { keyBytes in
+            message.withUnsafeBytes { messageBytes in
+                CCHmac(
+                    CCHmacAlgorithm(kCCHmacAlgSHA256),
+                    keyBytes.baseAddress,
+                    parentHashKey.count,
+                    messageBytes.baseAddress,
+                    message.count,
+                    &digest
+                )
+            }
+        }
+        // Hex-encode identically to ProtonCore's Encryptor.HashableString.hmacSHA256(key:).
+        return digest.compactMap { String(format: "%02x", $0) }.joined()
     }
 
     static func encrypt(_ cleartext: String, key: String) throws -> String {
@@ -355,7 +379,7 @@ extension Encryptor: EncryptionResource {
         try Encryptor.encryptAndSignWithCompression(plainData, encryptionKey: encryptionKey, signingKey: signingKey, passphrase: passphrase)
     }
 
-    public func makeHmac(string: String, hashKey: String) throws -> String {
+    public func makeHmac(string: String, hashKey: Data) throws -> String {
         return try Encryptor.hmac(filename: string, parentHashKey: hashKey)
     }
     

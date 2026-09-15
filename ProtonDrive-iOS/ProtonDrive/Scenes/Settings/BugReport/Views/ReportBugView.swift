@@ -19,6 +19,7 @@ import SwiftUI
 import UIKit
 import ProtonCoreUIFoundations
 import PDUIComponents
+import PDLocalization
 
 struct ReportBugView: View {
     @EnvironmentObject var hostingProvider: ViewControllerProvider
@@ -63,6 +64,7 @@ struct ReportBugView: View {
 
     private var formContent: some View {
         VStack(alignment: .leading, spacing: 20) {
+            webHelpNote
             topicPickerField
             usernameField
             emailField
@@ -70,6 +72,24 @@ struct ReportBugView: View {
             attachmentsField
             Spacer()
         }
+    }
+
+    private var webHelpNote: some View {
+        Text(webHelpAttributedNote)
+            .font(.callout)
+            .foregroundColor(ColorProvider.TextWeak)
+            .tint(ColorProvider.BrandNorm)
+            .accessibilityIdentifier("ReportBugView.webHelpNote")
+    }
+
+    private var webHelpAttributedNote: AttributedString {
+        let linkText = Localization.report_bug_web_help_link
+        var attributed = AttributedString(Localization.report_bug_web_help_note(link: linkText))
+        if let range = attributed.range(of: linkText) {
+            attributed[range].link = viewModel.webHelpURL
+            attributed[range].foregroundColor = ColorProvider.BrandNorm
+        }
+        return attributed
     }
 
     private var topicPickerField: some View {
@@ -99,7 +119,7 @@ struct ReportBugView: View {
                 }
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
-                        .stroke(ColorProvider.BrandNorm, lineWidth: 1)
+                        .stroke(ColorProvider.SeparatorNorm, lineWidth: 1)
                 )
             }
         }
@@ -114,7 +134,7 @@ struct ReportBugView: View {
                     .autocorrectionDisabled()
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(ColorProvider.BrandNorm, lineWidth: 1)
+                            .stroke(ColorProvider.SeparatorNorm, lineWidth: 1)
                     )
             }
         }
@@ -129,7 +149,7 @@ struct ReportBugView: View {
                     .autocorrectionDisabled()
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(ColorProvider.BrandNorm, lineWidth: 1)
+                            .stroke(ColorProvider.SeparatorNorm, lineWidth: 1)
                     )
 
                 Text(viewModel.emailField.warning)
@@ -147,7 +167,7 @@ struct ReportBugView: View {
                     .frame(minHeight: 66, maxHeight: 200)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(ColorProvider.BrandNorm, lineWidth: 1)
+                            .stroke(ColorProvider.SeparatorNorm, lineWidth: 1)
                     )
 
                 Text(viewModel.messageField.warning)
@@ -160,14 +180,12 @@ struct ReportBugView: View {
     private var attachmentsField: some View {
         BugReportFormField(label: viewModel.attachmentsField.title) {
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    SkeletonButton(text: viewModel.attachmentsField.addFromFiles, icon: IconProvider.fileLines) {
+                HStack(spacing: 10) {
+                    SecondaryIconButton(title: viewModel.attachmentsField.addFromFiles, icon: IconProvider.fileLines) {
                         showDocumentPicker.toggle()
                     }
 
-                    Spacer()
-
-                    SkeletonButton(text: viewModel.attachmentsField.addFromGallery, icon: IconProvider.camera) {
+                    SecondaryIconButton(title: viewModel.attachmentsField.addFromGallery, icon: IconProvider.camera) {
                         showImagePicker.toggle()
                     }
                 }

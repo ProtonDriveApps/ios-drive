@@ -187,6 +187,274 @@
         }
       }
     },
+    "full_resync_cancelled_recovery" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "be" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Паўторная сінхранізацыя скасавана перад яе завяршэннем. Паўтарыце спробу або стварыце новую папку сінхранізацыі."
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La resincronització s'ha cancel·lat abans d'acabar. Torneu-ho a provar o creeu una nova carpeta de sincronització."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resynchronizace byla zrušena před dokončením. Zkuste to znovu nebo vytvořte novou synchronizovanou složku."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resynkroniseringen blev annulleret før den blev afsluttet. Prøv igen, eller opret en ny synkroniseringsmappe."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Neusynchronisierung wurde vorzeitig abgebrochen. Versuche es erneut oder erstelle einen neuen Synchronisierungsordner."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ο επανασυγχρονισμός ακυρώθηκε πριν ολοκληρωθεί. Δοκιμάστε ξανά ή δημιουργήστε έναν νέο φάκελο συγχρονισμού."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resync was cancelled before it finished. Retry, or create a new sync folder."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La resincronización se canceló antes de finalizar. Vuelve a intentarlo o crea una nueva carpeta de sincronización."
+          }
+        },
+        "es-419" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La resincronización se canceló antes de finalizar. Reintente de nuevo o cree otra carpeta de sincronización."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synkronointi keskeytettiin ennen kuin se ehti päättyä. Yritä uudelleen tai luo uusi synkronointikansio."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La resynchronisation a été annulée avant la fin. Réessayez ou créez un nouveau dossier de synchronisation."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La risincronizzazione è stata annullata prima del completamento. Riprovare oppure creare una nuova cartella di sincronizzazione."
+          }
+        },
+        "ka" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "თავიდან სინქრონიზაცია დასრულებამდე გაუქმდა. სცადეთ თავიდან, ან შექმენით ახალი სინქრონიზაციის საქაღალდე."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "재동기화가 완료 전에 취소되었습니다. 다시 시도하거나 새로운 동기화 폴더를 생성하세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resynkroniseringen ble avbrutt før den var ferdig. Prøv på nytt, eller opprett en ny synkroniseringsmappe."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De hersynchronisatie is afgebroken voordat deze was voltooid. Probeer het opnieuw of maak een nieuwe synchronisatiemap aan."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A ressincronização foi cancelada antes de ser concluída. Tente novamente ou crie uma pasta de sincronização."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resincronizarea a fost anulată înainte de finalizare. Reîncercați sau creați un nou folder de sincronizare."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opätovná synchronizácia bola zrušená pred jej dokončením. Skúste to znova alebo vytvorte nový synchronizačný priečinok."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yeniden eşitleme işlemi tamamlanmadan iptal edildi. Yeniden deneyin ya da yeni bir eşitleme klasörü oluşturun."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新同步在完成前已取消！请重试，或新建同步文件夹。"
+          }
+        }
+      }
+    },
+    "full_resync_create_new_location" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "be" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стварыць новую папку сінхранізацыі"
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crea una nova carpeta de sincronització"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vytvořit novou synchronizovanou složku"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opret ny synkroniseringsmappe"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neuen Synchronisierungsordner erstellen"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Δημιουργία νέου φακέλου συγχρονισμού"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create new sync folder"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crear nueva carpeta de sincronización"
+          }
+        },
+        "es-419" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crear una carpeta de sincronización"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luo uusi synkronointikansio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Créer un nouveau dossier de synchronisation"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crea una nuova cartella di sincronizzazione"
+          }
+        },
+        "ka" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ახალი სინქრონიზაციის საქაღალდის შექმნა"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "새로운 동기화 폴더 생성"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opprett ny synkroniseringsmappe"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nieuwe synchronisatie map aanmaken"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Criar uma nova pasta de sincronização"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Creare folder de sincronizare"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vytvoriť nový synchronizačný priečinok"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skapa ny synkroniserad mapp"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yeni eşitleme klasörü oluştur"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新建同步文件夹"
+          }
+        }
+      }
+    },
     "full_resync_progress" : {
       "comment" : "#@itemsProcessed: Int@#",
       "extractionState" : "manual",
@@ -194,181 +462,175 @@
         "be" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Апрацавана элементаў: %d"
+            "value" : "%d апрацаваных файлаў"
           }
         },
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d elements processats"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d zpracovaných položek"
+            "value" : "S'han processat %d fitxers"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d elementer behandlet"
+            "value" : "%d filer behandlet"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d Einträge verarbeitet"
+            "value" : "%d Dateien verarbeitet"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d στοιχεία επεξεργάστηκαν"
+            "value" : "%d αρχεία επεξεργάστηκαν"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d items processed"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d elementos procesados"
+            "value" : "%d files processed"
           }
         },
         "es-419" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d elementos procesados"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d kohdetta käsitelty"
+            "value" : "%d archivos procesados"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d éléments traités"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d elem feldolgozva"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d item diproses"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d elementi elaborati"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d 個のアイテムが処理されました"
-          }
-        },
-        "ka" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d ელემენტი დამუშავდა"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d개 항목 처리됨"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d elementer behandlet"
+            "value" : "%d fichiers traités"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d objecten verwerkt"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Przetwarzanie %d elementów zostało zakończone"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d itens processados"
+            "value" : "%d bestanden verwerkt"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d itens processados"
+            "value" : "%d arquivos processados"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Articole procesate: %d"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Обработано %d элементов"
+            "value" : "Fișiere procesate: %d"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d spracovaných položiek"
+            "value" : "%d spracovaných súborov"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d objekt bearbetade"
+            "value" : "%d filer bearbetade"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d öge işlendi"
+            "value" : "%d dosya işlendi"
           }
-        },
-        "uk" : {
+        }
+      }
+    },
+    "full_resync_progress_of_total" : {
+      "comment" : "#@itemsProcessed: Int, total: Int@#\nHow many items had their metadata fetched, out of the total discovered.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "be" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d елементів оброблено"
+            "value" : "%1$d з %2$d файлаў"
           }
         },
-        "zh-Hans" : {
+        "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d 个项目已处理"
+            "value" : "%1$d de %2$d fitxers"
           }
         },
-        "zh-Hant" : {
+        "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d 個項目已處理"
+            "value" : "%1$d af %2$d filer"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$d von %2$d Dateien"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$d από %2$d αρχεία"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$d of %2$d files"
+          }
+        },
+        "es-419" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$d de %2$d archivos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$d fichiers sur %2$d"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$d van %2$d bestanden"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$d de %2$d arquivos"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$d din %2$d fișiere"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$d z %2$d súborov"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$d av %2$d filer"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$d \/ %2$d dosya"
           }
         }
       }
@@ -944,7 +1206,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Start... (%d%%)"
+            "value" : "Starten... (%d%%)"
           }
         },
         "el" : {
@@ -980,31 +1242,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lancement... (%d %%)"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Indítás... (%d%%)"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Meluncurkan... (%d%%)"
+            "value" : "Lancement en cours... (%d%%)"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Avvio... (%d%%)"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "起動中... (%d%%)"
+            "value" : "Avvio in corso... (%d%%)"
           }
         },
         "ka" : {
@@ -1031,18 +1275,6 @@
             "value" : "Starten... (%d%%)"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Uruchamianie... (%d%%)"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A iniciar... (%d%%)"
-          }
-        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1053,12 +1285,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Se lansează… (%d%%)"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Запуск... (%d%%)"
           }
         },
         "sk" : {
@@ -1076,25 +1302,13 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Başlatılıyor… (%%%d)"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Запуск... (%d%%)"
+            "value" : "Başlatılıyor... (%d%%)"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在启动...（%d%%）"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在啟動... (%d%%)"
+            "value" : "正在启动... (%d%%)"
           }
         }
       }
@@ -1874,7 +2088,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Auflistung der Änderungen... (%d Einträge)"
+            "value" : "Änderungen auflisten... (%d Einträge)"
           }
         },
         "el" : {
@@ -1892,7 +2106,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Listando los cambios... (%d elementos)"
+            "value" : "Listando cambios... (%d elementos)"
           }
         },
         "es-419" : {
@@ -1910,31 +2124,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modifications de la liste (%d éléments)"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Változások listázása... (%d elem)"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Memuat daftar perubahan... (%d item)"
+            "value" : "Modifications de la liste... (%d éléments)"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Modifiche all'elenco... (%d elementi)"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "変更をリスト中... (%d 個のアイテム)"
           }
         },
         "ka" : {
@@ -1958,19 +2154,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Weergeven wijzigingen...(%d items)"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sprawdzanie zmian %d elementów..."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A listar as alterações... (%d itens)"
+            "value" : "Wijzigingen weergeven... (%d items)"
           }
         },
         "pt-BR" : {
@@ -1982,19 +2166,13 @@
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Listare modificări... (%d elemente)"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Список изменений... (%d элементов)"
+            "value" : "Se afișează modificările... (%d articole)"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Listing changes... (%d položiek)"
+            "value" : "Vyhľadávanie zmien... (%d položiek)"
           }
         },
         "sv" : {
@@ -2009,22 +2187,10 @@
             "value" : "Değişiklikler listeleniyor... (%d öge)"
           }
         },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Перелік змін... (%d елементів)"
-          }
-        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "更改列表中... (%d 项)"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在列出變更... (%d 項目)"
+            "value" : "正在列出更改... (%d 项)"
           }
         }
       }
@@ -2069,13 +2235,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "No s'ha pogut sincronitzar %d element."
+                  "value" : "No s'ha pogut sincronitzar %d element"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "No s'han pogut sincronitzar %d elements."
+                  "value" : "No s'han pogut sincronitzar %d elements"
                 }
               }
             }
@@ -2135,13 +2301,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%d Element konnte nicht synchronisiert werden"
+                  "value" : "%d Eintrag konnte nicht synchronisiert werden"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%d Elemente konnten nicht synchronisiert werden"
+                  "value" : "%d Einträge konnten nicht synchronisiert werden"
                 }
               }
             }
@@ -2189,13 +2355,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "No se ha podido sincronizar %d elemento."
+                  "value" : "%d elemento no se pudo sincronizar"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "No se han podido sincronizar %d elementos."
+                  "value" : "%d elementos no se pudieron sincronizar"
                 }
               }
             }
@@ -2207,13 +2373,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "No se pudo sincronizar %d elemento."
+                  "value" : "No se pudo sincronizar %d elemento"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "No se pudieron sincronizar %d elementos."
+                  "value" : "No se pudieron sincronizar %d elementos"
                 }
               }
             }
@@ -2243,43 +2409,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%d élément n'a pas pu être synchronisé."
+                  "value" : "%d élément n'a pas pu être synchronisé"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%d éléments n'ont pas pu être synchronisés."
-                }
-              }
-            }
-          }
-        },
-        "hu" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%d elem szinkronizálása sikertelen"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%d elem szinkronizálása sikertelen"
-                }
-              }
-            }
-          }
-        },
-        "id" : {
-          "variations" : {
-            "plural" : {
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%d item gagal sinkronisasi"
+                  "value" : "%d éléments n'ont pas pu être synchronisés"
                 }
               }
             }
@@ -2303,31 +2439,19 @@
             }
           }
         },
-        "ja" : {
-          "variations" : {
-            "plural" : {
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%d 個のアイテムの同期に失敗しました"
-                }
-              }
-            }
-          }
-        },
         "ka" : {
           "variations" : {
             "plural" : {
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%d ელემენტის სინქრონიზაციაჩავარდა"
+                  "value" : "%d ელემენტის სინქრონიზაცია ჩავარდა"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%d ელემენტის სინქრონიზაციაჩავარდა"
+                  "value" : "%d ელემენტის სინქრონიზაცია ჩავარდა"
                 }
               }
             }
@@ -2381,54 +2505,6 @@
             }
           }
         },
-        "pl" : {
-          "variations" : {
-            "plural" : {
-              "few" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Nie udało się zsynchronizować %d elementów"
-                }
-              },
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Nie udało się zsynchronizować %d elementów"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Nie udało się zsynchronizować %d elementu"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Nie udało się zsynchronizować %d elementów"
-                }
-              }
-            }
-          }
-        },
-        "pt" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Erro na sincronização com %d item"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Erro na sincronização com %d itens"
-                }
-              }
-            }
-          }
-        },
         "pt-BR" : {
           "variations" : {
             "plural" : {
@@ -2471,36 +2547,6 @@
             }
           }
         },
-        "ru" : {
-          "variations" : {
-            "plural" : {
-              "few" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%d элемента не удалось синхронизировать"
-                }
-              },
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%d элементов не удалось синхронизировать"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%d элемент не удалось синхронизировать"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%d элементов не удалось синхронизировать"
-                }
-              }
-            }
-          }
-        },
         "sk" : {
           "variations" : {
             "plural" : {
@@ -2519,7 +2565,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Zlyhala synchronizácia %d položiek"
+                  "value" : "Zlyhala synchronizácia %d položky"
                 }
               },
               "other" : {
@@ -2567,36 +2613,6 @@
             }
           }
         },
-        "uk" : {
-          "variations" : {
-            "plural" : {
-              "few" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%d елементи не вдалося синхронізувати"
-                }
-              },
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%d елементів не вдалося синхронізувати"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%d елемент не вдалося синхронізувати"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%d елементів не вдалося синхронізувати"
-                }
-              }
-            }
-          }
-        },
         "zh-Hans" : {
           "variations" : {
             "plural" : {
@@ -2604,18 +2620,6 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%d 个项目同步失败"
-                }
-              }
-            }
-          }
-        },
-        "zh-Hant" : {
-          "variations" : {
-            "plural" : {
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%d 項目同步失敗"
                 }
               }
             }
@@ -3738,6 +3742,143 @@
         }
       }
     },
+    "menu_text_logout_remove_domain" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "be" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выдаліць папку сінхранізацыі і выйсці"
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ""
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odebrat synchronizovanou složku a odhlásit se"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fjern synkroniseringsmappe og log ud"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synchronisierungsordner entfernen und abmelden"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Κατάργηση φακέλου συγχρονισμού και αποσύνδεση"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove sync folder & sign out"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar carpeta de sincronización y cerrar sesión"
+          }
+        },
+        "es-419" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar carpeta de sincronización y cerrar sesión"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poista synkronointikansio ja kirjaudu ulos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retirer le dossier de synchronisation et se déconnecter"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rimuovi la cartella di sincronizzazione e esci dall'account"
+          }
+        },
+        "ka" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "სინქრონიზაციის საქაღალდის წაშლა და გასვლა"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "동기화 폴더 삭제 및 로그아웃"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fjern synkroniseringsmappen og logg av"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwijder synchronisatie map & uitloggen"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remover a pasta de sincronização e encerrar sessão"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminare folder de sincronizare și ieșire"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odstrániť synchronizačný priečinok a odhlásiť sa"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ta bort synkroniserad mapp och logga ut"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eşitleme klasörünü sil ve oturumu kapat"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移除同步文件夹并登出"
+          }
+        }
+      }
+    },
     "notification_details" : {
       "comment" : "Button to expand text view for error deteail",
       "extractionState" : "manual",
@@ -3964,13 +4105,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Hi ha %d problema."
+                  "value" : "Hi ha %d problema"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Hi ha %d problemes."
+                  "value" : "Hi ha %d problemes"
                 }
               }
             }
@@ -4084,7 +4225,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Hay %d problema."
+                  "value" : "Hay %d problema"
                 }
               },
               "other" : {
@@ -4138,13 +4279,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Il existe %d problème."
+                  "value" : "Il y a %d problème."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Il existe %d problèmes."
+                  "value" : "Il y a %d problèmes."
                 }
               }
             }
@@ -4156,13 +4297,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Egy %d probléma van"
+                  "value" : "%d probléma van"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%d problémák vannak"
+                  "value" : "%d probléma van"
                 }
               }
             }
@@ -4174,7 +4315,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Ada %d masalah"
+                  "value" : "Terdapat %d masalah"
                 }
               }
             }
@@ -4204,7 +4345,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%d個の問題"
+                  "value" : "%d件の問題があります"
                 }
               }
             }
@@ -4234,7 +4375,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%d개 문제가 존재합니다."
+                  "value" : "%d개 문제가 있습니다"
                 }
               }
             }
@@ -4264,61 +4405,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Er is een %d probleem"
+                  "value" : "Er is %d probleem"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Er zijn %d problemen"
-                }
-              }
-            }
-          }
-        },
-        "pl" : {
-          "variations" : {
-            "plural" : {
-              "few" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%d problemy"
-                }
-              },
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%d problemów"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%d problem"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%d problemów"
-                }
-              }
-            }
-          }
-        },
-        "pt" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Há %d problema"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Há %d problemas"
                 }
               }
             }
@@ -4348,49 +4441,19 @@
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Există %d probleme"
+                  "value" : "Probleme detectate: %d"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Există %d problemă"
+                  "value" : "Probleme detectate: %d"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Există %d de probleme"
-                }
-              }
-            }
-          }
-        },
-        "ru" : {
-          "variations" : {
-            "plural" : {
-              "few" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Имеется %d проблемы"
-                }
-              },
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Имеется %d проблем"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Имеется %d проблема"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Имеется %d проблем"
+                  "value" : "Probleme detectate: %d"
                 }
               }
             }
@@ -4432,7 +4495,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Det finns problem %d problem"
+                  "value" : "Det finns %d problem"
                 }
               },
               "other" : {
@@ -4462,55 +4525,13 @@
             }
           }
         },
-        "uk" : {
-          "variations" : {
-            "plural" : {
-              "few" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Існує %d проблеми"
-                }
-              },
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Існує %d проблем"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Існує %d проблема"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Існують %d проблем"
-                }
-              }
-            }
-          }
-        },
         "zh-Hans" : {
           "variations" : {
             "plural" : {
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "有 %d 个问题"
-                }
-              }
-            }
-          }
-        },
-        "zh-Hant" : {
-          "variations" : {
-            "plural" : {
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "有 %d 個問題"
+                  "value" : "存在 %d 个问题"
                 }
               }
             }
@@ -4700,6 +4721,282 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "有可用的更新 — 點擊以重新啟動並安裝。"
+          }
+        }
+      }
+    },
+    "notification_volume_locked" : {
+      "comment" : "Notification shown when the user's volume is locked on the backend",
+      "extractionState" : "manual",
+      "localizations" : {
+        "be" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вашы файлы заблакіраваны і іх немагчыма сінхранізаваць"
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Els vostres fitxers estan bloquejats i no es poden sincronitzar"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vaše soubory jsou uzamčeny a nelze je synchronizovat"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dine filer er låste og kan ikke synkroniseres"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Dateien sind gesperrt und können nicht synchronisiert werden"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Τα αρχεία σας είναι κλειδωμένα και δεν είναι δυνατός ο συγχρονισμός τους"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your files are locked and can't sync"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tus archivos están bloqueados y no se pueden sincronizar"
+          }
+        },
+        "es-419" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los archivos están bloqueados y no se pueden sincronizar"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiedostosi ovat lukittuina, eikä niitä voi synkronoida"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vos fichiers sont verrouillés et ne peuvent pas être synchronisés"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I tuoi file sono bloccati e non possono essere sincronizzati"
+          }
+        },
+        "ka" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "თქვენი ფაილები დაბლოკილია და მათი სინქრონიზაცია შეუძლებელია"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "파일이 잠겨 있어 동기화할 수 없습니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filene dine er låst og kan ikke synkroniseres"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uw bestanden zijn vergrendeld en kunnen niet worden gesynchroniseerd"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Os arquivos estão bloqueados e não podem ser sincronizados"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fișierele sunt blocate și nu pot fi sincronizate"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vaše súbory sú uzamknuté a nemožno ich synchronizovať"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dina filer är låsta och kan inte synkroniseras"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dosyalarınız kilitli olduğundan eşitlenemiyor"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "您的文件已锁定，无法同步"
+          }
+        }
+      }
+    },
+    "notification_volume_locked_restore" : {
+      "comment" : "Banner inviting the user to restore access to their locked volume via the web recovery flow",
+      "extractionState" : "manual",
+      "localizations" : {
+        "be" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Аднавіце доступ да вашых заблакіраваных файлаў"
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaura l'accés als vostres fitxers bloquejats"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obnovte přístup ke svým uzamčeným souborům"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Genskab adgang til dine låste filer"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zugriff auf deine gesperrten Dateien wieder herstellen"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Επαναφορά πρόσβασης στα κλειδωμένα αρχεία σας"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore access to your locked files"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurar el acceso a tus archivos bloqueados"
+          }
+        },
+        "es-419" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recupere el acceso a los archivos bloqueados"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Palauta pääsy lukittuihin tiedostoihisi"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Récupérez l'accès à vos fichiers verrouillés"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ripristina l'accesso ai tuoi file bloccati"
+          }
+        },
+        "ka" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "აღიდგინეთ წვდომა თქვენს დაბლოკილ ფაილებთან"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "잠긴 파일에 접근 복원"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenopprett tilgang til låste filer"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Herstel de toegang tot uw vergrendelde bestanden"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recupere o acesso aos seus arquivos bloqueados"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurați accesul la fișierele blocate"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obnovte prístup k vašim uzamknutým súborom"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Återställ åtkomst till dina låsta filer"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kilitli dosyalarınıza erişimi açın"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复对已锁定文件的访问权限"
           }
         }
       }
@@ -5820,6 +6117,168 @@
         }
       }
     },
+    "setting_fix_syncing_issues_button" : {
+      "comment" : "Fix syncing issues section button title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "be" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Паўторная сінхранізацыя"
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Torneu a sincronitzar"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synkroniser igen"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erneut synchronisieren"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Επανασυγχρονισμός"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resync"
+          }
+        },
+        "es-419" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volver a sincronizar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resynchroniser"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opnieuw synchroniseren"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resincronizar"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resincronizare"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Znovu zosynchronizovať"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yeniden eşitle"
+          }
+        }
+      }
+    },
+    "setting_fix_syncing_issues_description" : {
+      "comment" : "Fix syncing issues section description",
+      "extractionState" : "manual",
+      "localizations" : {
+        "be" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Калі ваша праграма сінхранізуецца няправільна, то паўторная сінхранізацыя забяспечыць абнаўленне ўсіх вашых даных. Гэта можа заняць некалькі хвілін або нават гадзін, калі ў вас шмат файлаў."
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si la vostra aplicació no se sincronitza correctament, tornar-la a sincronitzar garantirà que totes les vostres dades estiguin actualitzades. Pot trigar uns quants minuts o fins i tot hores si teniu molts fitxers."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hvis din app ikke synkroniseres korrekt, vil gensynkronisering sikre, at alle dine data er opdaterede. Det kan tage et par minutter eller endda timer, hvis du har mange filer."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Falls deine App nicht korrekt synchronisiert, sorgt eine erneute Synchronisierung dafür, dass alle deine Daten auf dem neuesten Stand sind. Dies kann einige Minuten oder bei einer großen Anzahl von Dateien sogar mehrere Stunden dauern."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Εάν η εφαρμογή σας δε συγχρονίζεται σωστά, ο επανασυγχρονισμός θα διασφαλίσει ότι όλα τα δεδομένα σας είναι ενημερωμένα. Μπορεί να χρειαστούν μερικά λεπτά ή και ώρες εάν έχετε πολλά αρχεία."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If your app is not syncing correctly, resyncing will ensure all your data is up to date. It may take a few minutes or even hours if you have many files."
+          }
+        },
+        "es-419" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si la aplicación no se sincroniza correctamente, volver a sincronizarla garantizará que todos sus datos estén actualizados. Esto puede tardar unos minutos o incluso horas si tiene muchos archivos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si votre application ne se synchronise pas correctement, une nouvelle synchronisation vous permettra de vous assurer que toutes vos données sont à jour. Cela peut prendre quelques minutes, voire plusieurs heures si vous avez beaucoup de fichiers."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als uw app niet correct synchroniseert, zorgt het opnieuw synchroniseren ervoor dat al uw gegevens up-to-date zijn. Als u veel bestanden heeft, kan het enkele minuten of zelfs uren duren."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dacă aplicația nu se sincronizează corect, resincronizarea va asigura că toate datele sunt actualizate. Poate dura câteva minute sau chiar ore dacă aveți multe fișiere."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ak sa vaša aplikácia nesynchronizuje správne, opätovná synchronizácia zabezpečí, že všetky vaše údaje budú aktuálne. Ak máte veľa súborov, môže to trvať niekoľko minút alebo dokonca hodín."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uygulamanız doğru eşitlenmiyorsa yeniden eşitleme işlemi tüm verilerinizin güncel olmasını sağlar. Dosya sayınız fazlaysa bu işlem birkaç dakika hatta birkaç saat sürebilir."
+          }
+        }
+      }
+    },
     "setting_get_help" : {
       "comment" : "Get help section title",
       "extractionState" : "manual",
@@ -6025,7 +6484,7 @@
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Další nápovědu najdete na naší [webové stránce podpory](%@)"
+            "value" : "Další pomoc najdete na naší [webové stránce podpory](%@)"
           }
         },
         "da" : {
@@ -6055,13 +6514,13 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Encontrarás ayuda adicional en nuestro [sitio de soporte](%@)."
+            "value" : "Encontrarás ayuda adicional en nuestro [sitio de soporte](%@)"
           }
         },
         "es-419" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Encontrará ayuda adicional en nuestro [sitio de soporte](%@)."
+            "value" : "Encontrará ayuda adicional en nuestro [sitio de soporte](%@)"
           }
         },
         "fi" : {
@@ -6085,7 +6544,7 @@
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Anda akan menemukan bantuan rambahan di [situs web layanan dukungan(%@) kami"
+            "value" : "Temukan bantuan tambahan di [situs web dukungan](%@) kami"
           }
         },
         "it" : {
@@ -6097,7 +6556,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "私たちの[サポートWebサイト](%@)で追加のヘルプを見つけることができます。"
+            "value" : "私たちの[サポートWebサイト](%@)で追加のヘルプを見つけることができます"
           }
         },
         "ka" : {
@@ -6109,7 +6568,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "당사 [지원 사이트](%@)에서 추가 지원을 찾으실 수 있습니다."
+            "value" : "[지원 사이트](%@)에서 추가적인 지원을 찾으실 수 있습니다."
           }
         },
         "nb" : {
@@ -6124,18 +6583,6 @@
             "value" : "U vindt extra hulp op onze [support website](%@)"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dodatkową pomoc znajdziesz na naszej [stronie internetowej](%@)"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Encontrará ajuda adicional no nosso [sítio web de apoio ao cliente](%@)"
-          }
-        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6146,12 +6593,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Veți găsi ajutor suplimentar pe [site-ul de asistență] (%@)."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вы найдете дополнительную помощь на нашем [веб-сайте поддержки](%@)"
           }
         },
         "sk" : {
@@ -6172,22 +6613,10 @@
             "value" : "[Destek sitemizde](%@) ek yardım bulabilirsiniz"
           }
         },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Додаткову допомогу ви знайдете на нашому [вебсайті підтримки](%@)"
-          }
-        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您可以在我们的[支持网站] (%@) 上获得进一步的帮助"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "您可以在我們的[支援服務網站](%@)找到更多協助。"
+            "value" : "您可以在我们的[支持网站](%@)找到更多帮助"
           }
         }
       }
@@ -6820,28 +7249,10 @@
             "value" : "Version %@"
           }
         },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verzió %@"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Versi %@"
-          }
-        },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Versione %@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "バージョン%@"
           }
         },
         "ka" : {
@@ -6853,7 +7264,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ 버전"
+            "value" : "버전 %@"
           }
         },
         "nb" : {
@@ -6868,18 +7279,6 @@
             "value" : "Versie %@"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wersja %@"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Versão %@"
-          }
-        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6890,12 +7289,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Versiunea %@"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Версия %@"
           }
         },
         "sk" : {
@@ -6913,22 +7306,10 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ sürümü"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Версія %@"
+            "value" : "Sürüm %@"
           }
         },
         "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "版本 %@"
-          }
-        },
-        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "版本 %@"
@@ -7499,19 +7880,19 @@
         "be" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Выкарыстана %@ з %@"
+            "value" : "Выкарыстоўваецца %@ з %@"
           }
         },
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ús: %@ de %@"
+            "value" : "S'està utilitzant %@ de %@"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Využito %@ z %@"
+            "value" : "Používáte %@ z %@"
           }
         },
         "da" : {
@@ -7523,13 +7904,13 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ von %@ verwendet"
+            "value" : "Du nutzt %@ von %@"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ από %@ σε χρήση"
+            "value" : "Χρησιμοποιείται %@ από %@"
           }
         },
         "en" : {
@@ -7541,31 +7922,31 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uso: %@ de %@"
+            "value" : "Usando %@ de %@"
           }
         },
         "es-419" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uso: %@ de %@"
+            "value" : "Usando %@ de %@"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ \/ %@ käytössä"
+            "value" : "Käytetään %@\/%@"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Utilisation : %@ de %@"
+            "value" : "Utilisation de %@ sur %@"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ a(z) %@-ból felhasználva"
+            "value" : "%@ használva (összesen: %@)"
           }
         },
         "id" : {
@@ -7577,25 +7958,25 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Utilizzo %@ di %@"
+            "value" : "Usare %@ di %@"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@の%@を使用"
+            "value" : "%@ \/ %@ 使用中"
           }
         },
         "ka" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "გამოიყენება %@ %@-დან"
+            "value" : "გამოყენებულია %@ %@-დან"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@\/%@ 사용중"
+            "value" : "%@ 중 %@ 사용 중"
           }
         },
         "nb" : {
@@ -7607,19 +7988,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ van %@"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wykorzystano %@ z %@"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Utilização: %@ de %@"
+            "value" : "%@ van %@ wordt gebruikt"
           }
         },
         "pt-BR" : {
@@ -7631,13 +8000,7 @@
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Folosire %@ din %@"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Используется %@ из %@"
+            "value" : "Utilizați %@ din %@"
           }
         },
         "sk" : {
@@ -7658,19 +8021,7 @@
             "value" : "%@ \/ %@ kullanılıyor"
           }
         },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Використовується %@ з %@"
-          }
-        },
         "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "使用 %@ 中的 %@"
-          }
-        },
-        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "已使用 %@ \/ %@"
@@ -8609,187 +8960,91 @@
       }
     },
     "setting_system_up_to_date" : {
-      "comment" : "#@version: String@#\nInformation text",
+      "comment" : "Information text",
       "extractionState" : "manual",
       "localizations" : {
         "be" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "У вас апошняя версія Proton Drive: v%@"
+            "value" : "У вас апошняя версія Proton Drive"
           }
         },
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El Proton Drive està al dia: v%@"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Proton Drive je aktuální: v%@"
+            "value" : "Proton Drive està actualitzat"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Proton Drive er up-to-date: v%@"
+            "value" : "Proton Drive er up-to-date"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Proton Drive ist auf dem aktuellsten Stand: v%@"
+            "value" : "Proton Drive ist auf dem aktuellsten Stand"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Το Proton Drive είναι ενημερωμένο: v%@"
+            "value" : "Το Proton Drive είναι ενημερωμένο"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Proton Drive is up to date: v%@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Proton Drive está actualizado: v%@"
+            "value" : "Proton Drive is up to date"
           }
         },
         "es-419" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Proton Drive está actualizado: v%@"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Proton Drive on ajan tasalla: v%@"
+            "value" : "Proton Drive está actualizado"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Proton Drive est à jour : v%@"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A Proton Drive naprakész: v%@"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Proton Drive sudah di versi terbaru: v%@"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Proton Drive è aggiornato: v%@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Proton Driveは最新です：v%@"
-          }
-        },
-        "ka" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Proton Drive განახლებულია: v%@"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Proton Drive가 최신 상태입니다: v%@"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Proton Drive er oppdatert: v%@"
+            "value" : "Proton Drive est à jour"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Proton Drive is up-to-date: v%@"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Proton Drive jest aktualny: v%@"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O Proton Drive está atualizado: v%@"
+            "value" : "Proton Drive is up-to-date"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Proton Drive está atualizado: v%@"
+            "value" : "O Proton Drive está atualizado"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Proton Drive este la zi: v%@"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Proton Drive уже обновлён: v%@"
+            "value" : "Proton Drive este la zi"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Proton Drive je aktuálny: v%@"
+            "value" : "Proton Drive je aktuálny"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Proton Drive är uppdaterad: v%@"
+            "value" : "Proton Drive är uppdaterad"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Proton Drive güncel: v%@"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "У вас остання версія Proton Drive: v%@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Proton Drive 是最新版本：v%@"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Proton Drive 已是最新版本: v%@"
+            "value" : "Proton Drive güncel"
           }
         }
       }
@@ -9235,28 +9490,10 @@
             "value" : "Version %@"
           }
         },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verzió %@"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Versi %@"
-          }
-        },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Versione %@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "バージョン%@"
           }
         },
         "ka" : {
@@ -9268,7 +9505,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ 버전"
+            "value" : "버전 %@"
           }
         },
         "nb" : {
@@ -9283,18 +9520,6 @@
             "value" : "Versie %@"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wersja %@"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Versão %@"
-          }
-        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -9305,12 +9530,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Versiunea %@"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Версия %@"
           }
         },
         "sk" : {
@@ -9328,22 +9547,10 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ sürümü"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Версія %@"
+            "value" : "Sürüm %@"
           }
         },
         "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "版本 %@"
-          }
-        },
-        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "版本 %@"

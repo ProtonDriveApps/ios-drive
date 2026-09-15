@@ -19,87 +19,86 @@ import FileProvider
 import PDCore
 
 public final class WorkingSetEnumerator: NSObject, NSFileProviderEnumerator, EnumeratorWithItemsFromDB {
+    typealias Model = ActivityModel
 
-    @SettingsStorage(UserDefaults.FileProvider.workingSetEnumerationInProgressKey.rawValue) var workingSetEnumerationInProgress: Bool?
-    
     private weak var tower: Tower!
-    internal let keepDownloadedManager: KeepDownloadedEnumerationManager
+    let keepDownloadedManager: KeepDownloadedEnumerationManager
+    let resyncEnumerationServiceProperty: ResyncEnumerationService
 
-    private var _model: ActivityModel! // backing property
-    internal private(set) var model: ActivityModel! {
-        get {
-            // swiftlint:disable force_try
-            try! reinitializeModelIfNeeded()
-            // swiftlint:enable force_try
-            return _model
-        }
-        set {
-            _model = newValue
-        }
-    }
-    
+    private(set) var model: ActivityModel?
+    var resyncEnumerationTask: Task<Void, Never>?
+
     private let pageSize: Int
 
-    var shouldReenumerateItems: Bool = false
     let enumerationObserver: EnumerationObserverProtocol?
 
     let displayChangeEnumerationDetails: Bool
 
     public init(tower: Tower,
                 keepDownloadedManager: KeepDownloadedEnumerationManager,
+                resyncEnumerationService: ResyncEnumerationService,
                 pageSize: Int = 5_000,
                 enumerationObserver: EnumerationObserverProtocol? = nil,
-                displayChangeEnumerationDetails: Bool = false,
-                shouldReenumerateItems: Bool = false) {
+                displayChangeEnumerationDetails: Bool = false) {
         Log.trace()
         self.tower = tower
         self.keepDownloadedManager = keepDownloadedManager
+        self.resyncEnumerationServiceProperty = resyncEnumerationService
         self.pageSize = pageSize
         self.enumerationObserver = enumerationObserver
         self.displayChangeEnumerationDetails = displayChangeEnumerationDetails
-        
+
         super.init()
-        
-        _workingSetEnumerationInProgress.configure(with: SettingsStorageSuite.group(named: Constants.appGroup))
-        
-        self.shouldReenumerateItems = workingSetEnumerationInProgress == true ? true : shouldReenumerateItems
     }
 
     public func invalidate() {
         Log.trace()
+        resyncEnumerationTask?.cancel()
+        resyncEnumerationServiceProperty.diffCache.clear()
         self.model = nil
     }
 
-    func reinitializeModelIfNeeded() throws {
-        guard _model == nil else {
-            Log.trace("guard")
-            return
-        }
-        
+    func reinitializeModelIfNeeded() throws -> ActivityModel {
+        if let model { return model }
+
         Log.trace()
-        self.model = try ActivityModel(tower: tower)
+        let model = try ActivityModel(tower: tower)
+        self.model = model
+        return model
+    }
+
+    private func clearWorkingSetEnumerationFlagIfStillSet() {
+        guard resyncEnumerationServiceProperty.workingSetEnumerationInProgress == true else { return }
+        resyncEnumerationServiceProperty.workingSetEnumerationInProgress = false
     }
 
     // MARK: Enumeration
 
     public func enumerateItems(for observer: NSFileProviderEnumerationObserver, startingAt page: NSFileProviderPage) {
         Log.event(.enumerateItems(.started(.init(containerType: .workingSet, pageNumber: page.int))))
-        defer {
-            if workingSetEnumerationInProgress == true {
-                workingSetEnumerationInProgress = false
-            }
-        }
-        
-        let observers: [NSFileProviderEnumerationObserver] = [observer, enumerationObserver?.items as? NSFileProviderEnumerationObserver].compactMap { $0 }
+
+        // Clear the flag only when enumeration terminates (last page emitted or error thrown),
+        // not at the return of every `enumerateItems` call. Otherwise the coordinator would stop
+        // waiting after just the first page, while the working set may span many more pages.
+        let clearFlagIfStillSet: () -> Void = { [weak self] in self?.clearWorkingSetEnumerationFlagIfStillSet() }
+        let completionHook = WorkingSetEnumerationCompletionHook(onFinish: clearFlagIfStillSet)
+
+        let observers: [NSFileProviderEnumerationObserver] = [
+            observer,
+            enumerationObserver?.items as? NSFileProviderEnumerationObserver,
+            completionHook
+        ].compactMap { $0 }
 
         let pageNumber = page.rawValue.first ?? 0
 
         enumerationObserver?.items.didStartEnumeratingItems(name: "Page \(pageNumber.description)")
 
+        let model: ActivityModel
         do {
-            try self.reinitializeModelIfNeeded()
+            model = try self.reinitializeModelIfNeeded()
         } catch {
             observer.finishEnumeratingWithError(Errors.mapLegacyErrorToFileProviderError(Errors.failedToCreateModel))
+            clearFlagIfStillSet()
             Log.event(.enumerateItems(.failed(.init(
                 containerType: .workingSet,
                 errorMessage: "Failed to enumerate items due to model failing to be created"
@@ -107,27 +106,66 @@ public final class WorkingSetEnumerator: NSObject, NSFileProviderEnumerator, Enu
             // if we cannot create a model, there's no point in accessing the model for enumeration later
             return
         }
-        self.model.loadFromCache()
-        self.fetchPageFromDB(.workingSet, page.int, pageSize: pageSize, observers: observers)
+        model.loadFromCache()
+        self.fetchPageFromDB(.workingSet, page.int, pageSize: pageSize, observers: observers, model: model)
     }
 
     // MARK: Changes
 
     public func currentSyncAnchor(completionHandler: @escaping (NSFileProviderSyncAnchor?) -> Void) {
-        Log.trace()
-        self.currentSyncAnchor(completionHandler)
+        Log.trace("Working set enumeration", domain: .enumerating)
+        do {
+            let model = try reinitializeModelIfNeeded()
+            self.currentSyncAnchor(shareID: model.shareID, completionHandler)
+        } catch {
+            Log.error("Failed to get currentSyncAnchor due to model failing to be created", error: error, domain: .enumerating)
+            completionHandler(nil)
+        }
     }
 
     public func enumerateChanges(for observer: NSFileProviderChangeObserver, from syncAnchor: NSFileProviderSyncAnchor) {
-        Log.trace()
-        let observers = [observer, enumerationObserver?.changes as? NSFileProviderChangeObserver].compactMap { $0 }
-        self.enumerateChanges(.workingSet, observers, syncAnchor)
+        do {
+            Log.trace("Working set enumeration", domain: .enumerating)
+            let observers = [observer, enumerationObserver?.changes as? NSFileProviderChangeObserver].compactMap { $0 }
+            let model = try self.reinitializeModelIfNeeded()
+            self.enumerateChanges(model.shareID, .workingSet, observers, syncAnchor, "WorkingSetEnumerator")
+        } catch {
+            observer.finishEnumeratingWithError(Errors.mapLegacyErrorToFileProviderError(Errors.failedToCreateModel))
+            // match enumerateItems: unblock FullResyncCoordinator's working-set wait instead of letting it time out
+            clearWorkingSetEnumerationFlagIfStillSet()
+            Log.error("Failed to enumerate changes due to model failing to be created", error: error, domain: .enumerating)
+            // if we cannot create a model, there's no point in accessing the model for enumeration later
+            return
+        }
     }
 }
 
 extension WorkingSetEnumerator: EnumeratorWithChanges {
-    internal var shareID: String { self.model.shareID }
-    internal var eventsManager: EventsSystemManager { self.tower }
-    internal var fileSystemSlot: FileSystemSlot { self.tower.fileSystemSlot! }
-    internal var cloudSlot: CloudSlotProtocol { self.tower.cloudSlot! }
+    var resyncEnumerationService: ResyncEnumerationService? { resyncEnumerationServiceProperty }
+    var eventsManager: EventsSystemManager { self.tower }
+    var fileSystemSlot: FileSystemSlot { self.tower.fileSystemSlot! }
+    var cloudSlot: CloudSlotProtocol { self.tower.cloudSlot! }
+}
+
+private final class WorkingSetEnumerationCompletionHook: NSObject, NSFileProviderEnumerationObserver {
+    private let onFinish: () -> Void
+    private var hasFinished = false
+
+    init(onFinish: @escaping () -> Void) {
+        self.onFinish = onFinish
+    }
+
+    func didEnumerate(_ updatedItems: [any NSFileProviderItemProtocol]) {}
+
+    func finishEnumerating(upTo nextPage: NSFileProviderPage?) {
+        guard nextPage == nil, !hasFinished else { return }
+        hasFinished = true
+        onFinish()
+    }
+
+    func finishEnumeratingWithError(_ error: any Error) {
+        guard !hasFinished else { return }
+        hasFinished = true
+        onFinish()
+    }
 }

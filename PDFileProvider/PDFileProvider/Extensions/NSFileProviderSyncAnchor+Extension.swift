@@ -23,11 +23,15 @@ extension NSFileProviderSyncAnchor {
         let eventID: String
         let shareID: String
         let referenceDate: Date
-        
-        init(eventID: String, shareID: String, eventSystemRerefenceDate: Date) {
+        /// Page cursor for the post-resync changes enumeration; nil for event-origin anchors. Optional so
+        /// older persisted anchors (without the field) still decode — Codable handles it via *IfPresent.
+        let resyncPageOffset: Int?
+
+        init(eventID: String, shareID: String, eventSystemRerefenceDate: Date, resyncPageOffset: Int? = nil) {
             self.eventID = eventID
             self.shareID = shareID
             self.referenceDate = eventSystemRerefenceDate
+            self.resyncPageOffset = resyncPageOffset
         }
         
         fileprivate init(rawValue: Data) throws {
@@ -48,6 +52,24 @@ extension NSFileProviderSyncAnchor {
     
     subscript<T>(_ member: KeyPath<UnderlyingAnchor, T>) -> T? {
         try? UnderlyingAnchor(rawValue: self.rawValue)[keyPath: member]
+    }
+
+    /// The resync page cursor carried by this anchor, or nil for event-origin / pre-paging anchors.
+    var resyncPageOffset: Int? {
+        // The subscript yields Int?? (outer nil = undecodable); flatten to Int?.
+        self[\.resyncPageOffset] ?? nil
+    }
+
+    /// A copy of this anchor carrying `offset` as its resync page cursor (same eventID/shareID/referenceDate).
+    /// Drives `moreComing` paging of the post-resync changes; returns self unchanged if it can't be decoded.
+    func withResyncPageOffset(_ offset: Int) -> NSFileProviderSyncAnchor {
+        guard let underlying = try? UnderlyingAnchor(rawValue: rawValue) else { return self }
+        return NSFileProviderSyncAnchor(anchor: UnderlyingAnchor(
+            eventID: underlying.eventID,
+            shareID: underlying.shareID,
+            eventSystemRerefenceDate: underlying.referenceDate,
+            resyncPageOffset: offset
+        ))
     }
 }
 

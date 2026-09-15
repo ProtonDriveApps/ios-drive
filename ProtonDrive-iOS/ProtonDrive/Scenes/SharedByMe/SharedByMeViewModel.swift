@@ -54,7 +54,7 @@ class SharedByMeViewModel: ObservableObject, FinderViewModel, DownloadingViewMod
         Localization.shared_by_me_screen_title
     }
     var trailingNavBarItems: [NavigationBarButton] {
-        self.listState.isSelecting ? [.cancel] : [.apply(title: "", disabled: true)]
+        self.listState.isSelecting ? [.cancel] : []
     }
     var leadingNavBarItems: [NavigationBarButton] {
         self.listState.isSelecting ? [.apply(title: selection.selectAllText, disabled: false)] : [.menu]

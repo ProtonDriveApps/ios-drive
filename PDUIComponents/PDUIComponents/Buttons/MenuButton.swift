@@ -34,7 +34,7 @@ public struct MenuButton: View {
                 .frame(width: 24, height: 24)
                 .foregroundColor(Color.IconNorm)
         })
-        .frame(width: 40, height: 40, alignment: .leading)
+        .frame(width: 40, height: 40)
         .accessibility(identifier: "Button.BurgerMenu")
     }
 }

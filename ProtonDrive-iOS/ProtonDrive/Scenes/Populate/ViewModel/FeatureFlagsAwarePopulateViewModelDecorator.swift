@@ -24,20 +24,20 @@ final class FeatureFlagsAwarePopulateViewModelDecorator: PopulateViewModelProtoc
     let connectionResource: ConnectionStateResource
     let localSettings: LocalSettings
     let viewModel: PopulateViewModelProtocol
-    let featureFlagsRepository: FeatureFlagsStartingRepository
+    let featureFlagProvider: DriveFeatureFlagsProvider
     let entitlementsManager: EntitlementsManagerProtocol
 
     init(
         connectionResource: ConnectionStateResource,
         localSettings: LocalSettings,
         viewModel: PopulateViewModelProtocol,
-        featureFlagsRepository: FeatureFlagsStartingRepository,
+        featureFlagProvider: DriveFeatureFlagsProvider,
         entitlementsManager: EntitlementsManagerProtocol
     ) {
         self.connectionResource = connectionResource
         self.localSettings = localSettings
         self.viewModel = viewModel
-        self.featureFlagsRepository = featureFlagsRepository
+        self.featureFlagProvider = featureFlagProvider
         self.entitlementsManager = entitlementsManager
     }
 
@@ -55,7 +55,7 @@ final class FeatureFlagsAwarePopulateViewModelDecorator: PopulateViewModelProtoc
             }
         } else {
             try await measure(message: "Bootstrap feature flag", domain: .applicationBootstrap) {
-                // Call featureFlagsRepository.startAsync() before viewModel.viewDidLoad() the first time
+                // Call featureFlagProvider.startAsync() before viewModel.viewDidLoad() the first time
                 try await updateFeatureFlags(hasCached: false)
             }
         }
@@ -65,7 +65,7 @@ final class FeatureFlagsAwarePopulateViewModelDecorator: PopulateViewModelProtoc
         guard connectionResource.currentState.isReachable else {
             throw NetworkStateError.deviceIsOffline
         }
-        try await featureFlagsRepository.startAsync()
+        try await featureFlagProvider.startAsync()
         if hasCached == false {
             localSettings.didFetchFeatureFlags = true
         }

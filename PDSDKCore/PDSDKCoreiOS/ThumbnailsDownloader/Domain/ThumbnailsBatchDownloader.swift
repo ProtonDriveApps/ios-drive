@@ -23,19 +23,29 @@ import ProtonDriveSDK
 
 actor ThumbnailsBatchDownloader {
     typealias StreamFactory = ([SDKNodeUid], ThumbnailData.ThumbnailType, UUID, NSManagedObjectContext) -> AsyncThrowingStream<ThumbnailDataWithId?, Error>
+    typealias TokenCanceller = (UUID) async -> Void
 
     private struct PendingRequest {
         let identifier: AnyVolumeIdentifier
         let continuation: CheckedContinuation<AnyVolumeIdentifier?, any Error>
     }
 
+    private struct InFlightBatch {
+        let requests: [PendingRequest]
+        let type: ThumbnailType
+        var resolvedIndices: Set<Int> = []
+    }
+
     private let cacheResource: ThumbnailsDownloadLocalCacheProtocol
     private let managedObjectContext: NSManagedObjectContext
     private let tokenStore: ThumbnailsDownloadTokensCache
     private let streamFactory: StreamFactory
+    private let tokenCanceller: TokenCanceller
 
     private var pendingByType: [ThumbnailType: [PendingRequest]] = [:]
     private var flushTasksByType: [ThumbnailType: Task<Void, Never>] = [:]
+    private var inFlightBatches: [UUID: InFlightBatch] = [:]
+    private var emptyThumbnails: [AnyVolumeIdentifier] = []
 
     private let maxBatchSize = 30
     private static let flushWindowMilliseconds: any BinaryInteger = 50
@@ -44,12 +54,14 @@ actor ThumbnailsBatchDownloader {
         cacheResource: ThumbnailsDownloadLocalCacheProtocol,
         managedObjectContext: NSManagedObjectContext,
         tokenStore: ThumbnailsDownloadTokensCache,
-        streamFactory: @escaping StreamFactory
+        streamFactory: @escaping StreamFactory,
+        tokenCanceller: @escaping TokenCanceller
     ) {
         self.cacheResource = cacheResource
         self.managedObjectContext = managedObjectContext
         self.tokenStore = tokenStore
         self.streamFactory = streamFactory
+        self.tokenCanceller = tokenCanceller
     }
 
     // MARK: - Public
@@ -58,7 +70,8 @@ actor ThumbnailsBatchDownloader {
         file identifier: AnyVolumeIdentifier,
         type: ThumbnailType
     ) async throws -> AnyVolumeIdentifier? {
-        try await withCheckedThrowingContinuation { continuation in
+        if emptyThumbnails.contains(identifier) { return nil }
+        return try await withCheckedThrowingContinuation { continuation in
             let request = PendingRequest(identifier: identifier, continuation: continuation)
             pendingByType[type, default: []].append(request)
 
@@ -82,6 +95,40 @@ actor ThumbnailsBatchDownloader {
 
         for request in cancelled {
             request.continuation.resume(throwing: CancellationError())
+        }
+    }
+
+    func cancelAll() async {
+        for task in flushTasksByType.values {
+            task.cancel()
+        }
+        flushTasksByType.removeAll()
+
+        let pending = pendingByType
+        pendingByType.removeAll()
+        for requests in pending.values {
+            for request in requests {
+                request.continuation.resume(throwing: CancellationError())
+            }
+        }
+
+        let batches = inFlightBatches
+        inFlightBatches.removeAll()
+
+        var tokensToCancel = Set<UUID>()
+        for (batchToken, batch) in batches {
+            tokensToCancel.insert(batchToken)
+            for (index, request) in batch.requests.enumerated() where !batch.resolvedIndices.contains(index) {
+                await tokenStore.remove(for: request.identifier, type: batch.type)
+                request.continuation.resume(throwing: CancellationError())
+            }
+        }
+
+        let remainingTokens = await tokenStore.removeAll()
+        tokensToCancel.formUnion(Set(remainingTokens))
+
+        for token in tokensToCancel {
+            await tokenCanceller(token)
         }
     }
 
@@ -113,20 +160,23 @@ actor ThumbnailsBatchDownloader {
             scheduleFlush(for: type)
         }
 
+        let batchToken = UUID()
+        inFlightBatches[batchToken] = InFlightBatch(requests: requests, type: type)
+
         Task { [weak self] in
-            await self?.performBatchDownload(requests, type: type)
+            await self?.performBatchDownload(batchToken: batchToken, requests: requests, type: type)
         }
     }
 
     // MARK: - Batch download
 
-    private func performBatchDownload(_ requests: [PendingRequest], type: ThumbnailType) async {
-        let batchToken = UUID()
+    private func performBatchDownload(batchToken: UUID, requests: [PendingRequest], type: ThumbnailType) async {
+        defer { inFlightBatches.removeValue(forKey: batchToken) }
+
         for request in requests {
             await tokenStore.setToken(batchToken, for: request.identifier, type: type)
         }
         Log.info("Batch download \(requests.count) thumbnails", domain: .thumbnails)
-        var resolvedIndices = Set<Int>()
 
         do {
             let stream = streamFactory(
@@ -141,55 +191,77 @@ actor ThumbnailsBatchDownloader {
                     Log.debug("Skip because thumbnail data is nil", domain: .thumbnails)
                     continue
                 }
-                try await cacheResource.storeThumbnails([thumbnail], type: type)
                 let identifier = thumbnail.fileUid.any
                 await tokenStore.remove(for: identifier, type: type)
-                resumeRequests(
-                    in: requests,
-                    matching: identifier,
-                    type: type,
-                    resolvedIndices: &resolvedIndices,
-                    result: .success(identifier)
-                )
+                switch thumbnail.result {
+                case .failure(let error):
+                    if error.localizedDescription.hasSuffix("has no thumbnails") {
+                        emptyThumbnails.append(identifier)
+                    }
+                    resolveBatchRequests(
+                        batchToken: batchToken,
+                        matching: identifier,
+                        result: .failure(error)
+                    )
+                case .success:
+                    try await cacheResource.storeThumbnails([thumbnail], type: type)
+                    resolveBatchRequests(
+                        batchToken: batchToken,
+                        matching: identifier,
+                        result: .success(identifier)
+                    )
+                }
             }
 
             // Stream completed — resume any requests the server did not yield a thumbnail for.
-            for (index, request) in requests.enumerated() where !resolvedIndices.contains(index) {
-                resolvedIndices.insert(index)
+            await resolveUnresolvedBatchRequests(batchToken: batchToken) { request in
                 Log.warning(
                     "Thumbnail stream completed without yield for \(request.identifier.debugDesc), type: \(type), token: \(batchToken.uuidString)",
                     domain: .thumbnails
                 )
-                await tokenStore.remove(for: request.identifier, type: type)
                 request.continuation.resume(returning: nil)
             }
             Log.info("Batch download of \(requests.count) thumbnails finished", domain: .thumbnails)
         } catch {
             Log.error("Batch download thumbnail failed", error: error, domain: .thumbnails)
-            for (index, request) in requests.enumerated() where !resolvedIndices.contains(index) {
-                await tokenStore.remove(for: request.identifier, type: type)
+            await resolveUnresolvedBatchRequests(batchToken: batchToken) { request in
                 request.continuation.resume(throwing: error)
             }
         }
     }
 
-    private func resumeRequests(
-        in requests: [PendingRequest],
+    private func resolveBatchRequests(
+        batchToken: UUID,
         matching identifier: AnyVolumeIdentifier,
-        type: ThumbnailType,
-        resolvedIndices: inout Set<Int>,
         result: Result<AnyVolumeIdentifier, any Error>
     ) {
-        for (index, request) in requests.enumerated()
-            where !resolvedIndices.contains(index) && request.identifier == identifier {
-            resolvedIndices.insert(index)
+        guard var batch = inFlightBatches[batchToken] else { return }
+
+        for (index, request) in batch.requests.enumerated()
+            where !batch.resolvedIndices.contains(index) && request.identifier == identifier {
+            batch.resolvedIndices.insert(index)
+            inFlightBatches[batchToken] = batch
+
             switch result {
             case .success(let id):
                 request.continuation.resume(returning: id)
             case .failure(let error):
-                Log.error("Download thumbnail \(identifier.debugDesc) failed", error: error, domain: .thumbnails)
                 request.continuation.resume(throwing: error)
             }
+        }
+    }
+
+    private func resolveUnresolvedBatchRequests(
+        batchToken: UUID,
+        resolve: (PendingRequest) -> Void
+    ) async {
+        guard var batch = inFlightBatches[batchToken] else { return }
+
+        for (index, request) in batch.requests.enumerated() where !batch.resolvedIndices.contains(index) {
+            batch.resolvedIndices.insert(index)
+            inFlightBatches[batchToken] = batch
+            await tokenStore.remove(for: request.identifier, type: batch.type)
+            resolve(request)
         }
     }
 }

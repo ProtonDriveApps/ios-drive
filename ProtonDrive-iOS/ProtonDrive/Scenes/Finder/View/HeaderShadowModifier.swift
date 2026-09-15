@@ -23,44 +23,44 @@ import ProtonCoreUIFoundations
 /// Used with ``GridOrList`` modified by ``HeaderScrollSignal`` and ``HeaderScrollObserver``.
 struct HeaderShadowModifier: ViewModifier {
     @Binding var visible: Bool
-    
+
     func body(content: Content) -> some View {
         content
-        .background( // visible background of the frame
-            ColorProvider.BackgroundNorm
-                .frame(maxWidth: .infinity)
-        )
-        .background( // base for shadow calculation
-            ColorProvider.BackgroundNorm
-                .shadow(color: visible ? ColorProvider.Shade40 : Color.clear, radius: 4)
-                .clipShape(Rectangle().offset(.init(x: 0, y: 8)))
-        )
+            .background( // visible background of the frame
+                ColorProvider.BackgroundNorm
+                    .frame(maxWidth: .infinity)
+            )
+            .background( // base for shadow calculation
+                ColorProvider.BackgroundNorm
+                    .shadow(color: visible ? ColorProvider.Shade40 : Color.clear, radius: 4)
+                    .clipShape(Rectangle().offset(.init(x: 0, y: 8)))
+            )
     }
 }
 
 /// Observes preference of scroll offset of ``HeaderScrollSignal``
 struct HeaderScrollObserver<Key: PreferenceKey>: ViewModifier where Key.Value == CGFloat {
     @Binding var visible: Bool
-    
+
     func body(content: Content) -> some View {
         content
-        .onPreferenceChange(Key.self) { offset in
-            visible = offset < 0
-        }
+            .onPreferenceChange(Key.self) { offset in
+                visible = offset < 0
+            }
     }
 }
 
 /// Signals scroll offset via preference for ``HeaderScrollObserver`` to observe
 struct HeaderScrollSignal<Key: PreferenceKey>: ViewModifier where Key.Value == CGFloat {
     var coordinateSpace: String
-    
+
     func body(content: Content) -> some View {
         ZStack {
             GeometryReader { proxy in
                 let offset = proxy.frame(in: .named(coordinateSpace)).minY
                 Color.clear.preference(key: Key.self, value: offset)
             }
-            
+
             content
                 .animation(nil) // probably prevents shattering glitch in sticky header on iOS 14
         }

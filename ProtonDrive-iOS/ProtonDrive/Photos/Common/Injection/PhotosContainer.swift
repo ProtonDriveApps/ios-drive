@@ -234,7 +234,7 @@ final class PhotosContainer {
                     photoUpsellResultNotifier: photoUpsellResultNotifier
                 )
             ),
-            BackgroundPhotoUploadContainer(dependencies: .init(workerState: globalWorker, appBackgroundStateListener: appStateResource.state, computationAvailability: computationalAvailabilityController, backgroundTaskStateController: processingTaskController, externalFeatureFlagStore: tower.localSettings, settingsProvider: DriveKeychain.shared, keymaker: dependencies.keymaker, backgroundTaskResultStateRepository: backgroundUploadMeasurementsRepository)),
+            BackgroundPhotoUploadContainer(dependencies: .init(workerState: globalWorker, appBackgroundStateListener: appStateResource.state, computationAvailability: computationalAvailabilityController, backgroundTaskStateController: processingTaskController, featureFlagCache: tower.localSettings, settingsProvider: DriveKeychain.shared, keymaker: dependencies.keymaker, backgroundTaskResultStateRepository: backgroundUploadMeasurementsRepository)),
             factory.makeOpenAppReminderChildContainer(tower: tower, globalWorker: globalWorker, appStateResource: appStateResource),
         ]
         processingContainer = PhotosProcessingContainer(
@@ -325,7 +325,9 @@ final class PhotosContainer {
             photoTagsMigrationController: photoTagsMigrationController,
             tagsMigrationConstraint: tagsMigrationConstraintController,
             performanceMetricsController: dependencies.performanceMetricsController,
-            authenticator: dependencies.authenticator
+            authenticator: dependencies.authenticator,
+            appStorePageURL: Constants.appStorePageURL,
+            photoSkippableCache: dependencies.photoSkippableCache
         )
         return PDPhotosContainer(dependencies: dependencies)
     }

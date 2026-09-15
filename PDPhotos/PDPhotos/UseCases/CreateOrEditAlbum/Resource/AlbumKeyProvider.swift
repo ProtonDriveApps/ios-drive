@@ -19,13 +19,13 @@ import CoreData
 import PDCore
 
 protocol AlbumKeyProviderProtocol {
-    func loadAlbumKey(id: AnyVolumeIdentifier) async throws -> (String, String)
+    func loadAlbumKey(id: AnyVolumeIdentifier) async throws -> (String, Data)
 }
 
 struct AlbumKeyProvider: AlbumKeyProviderProtocol {
     let context: NSManagedObjectContext
 
-    func loadAlbumKey(id: AnyVolumeIdentifier) async throws -> (String, String) {
+    func loadAlbumKey(id: AnyVolumeIdentifier) async throws -> (String, Data) {
         return try await context.perform {
             guard let album = CoreDataAlbum.fetch(identifier: id, in: context) else {
                 throw CreateAlbumError.albumDoesNotExist

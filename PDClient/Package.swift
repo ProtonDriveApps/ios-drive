@@ -14,9 +14,9 @@ let package = Package(
     ],
     dependencies: [
 
-        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", exact: "37.0.1"),
+        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", exact: "37.3.0"),
         .package(url: "https://github.com/ProtonMail/apple-fusion.git", exact: "2.1.5"),
-        .package(url: "https://github.com/getsentry/sentry-cocoa.git", exact: "9.8.0"),
+        .package(url: "https://github.com/getsentry/sentry-cocoa.git", exact: "9.15.0"),
         .package(url: "https://github.com/Unleash/unleash-proxy-client-swift.git", exact: "2.4.0"),
 
         // tests only

@@ -25,11 +25,10 @@ final class PhotosScenesContainer {
         let parentDependencies: PDPhotosContainer.Dependencies
         let managedObjectContext: NSManagedObjectContext
         var tower: Tower { parentDependencies.tower }
+        let appStorePageURL: URL
     }
     let dependencies: Dependencies
     let metadataController: MetadataControllerProtocol
-    let streamThumbnailsContainer: ThumbnailsControllersContainer
-    let albumsThumbnailsContainer: ThumbnailsControllersContainer
     let screenLockController: ScreenLockController
     private(set) weak var parent: PDPhotosContainer?
     private(set) var gallerySceneContainer: GallerySceneContainer?
@@ -40,22 +39,11 @@ final class PhotosScenesContainer {
         let context = parent.dependencies.tower.storage.photosSecondaryBackgroundContext
         dependencies = Dependencies(
             parentDependencies: parent.dependencies,
-            managedObjectContext: context
+            managedObjectContext: context,
+            appStorePageURL: parent.dependencies.appStorePageURL
         )
         let factory = PDPhotosFactory()
         metadataController = factory.makeMetadataController(tower: dependencies.parentDependencies.tower, managedObjectContext: context)
-        streamThumbnailsContainer = factory.makeThumbnailsContainer(
-            tower: dependencies.parentDependencies.tower,
-            metadataController: metadataController,
-            performanceMetricsController: dependencies.parentDependencies.performanceMetricsController,
-            featureFlagsController: dependencies.parentDependencies.featureFlagsController
-        )
-        albumsThumbnailsContainer = factory.makeThumbnailsContainer(
-            tower: dependencies.parentDependencies.tower,
-            metadataController: metadataController,
-            performanceMetricsController: dependencies.parentDependencies.performanceMetricsController,
-            featureFlagsController: dependencies.parentDependencies.featureFlagsController
-        )
         let lockingFactory = LockingBannerFactory()
         screenLockController = lockingFactory.makeController(
             backupNotifier: dependencies.parentDependencies.backupStateController,
@@ -110,9 +98,8 @@ final class PhotosScenesContainer {
             parentDependencies: dependencies.parentDependencies,
             managedObjectContext: dependencies.managedObjectContext,
             metadataController: metadataController,
-            streamThumbnailsContainer: streamThumbnailsContainer,
-            albumsThumbnailsContainer: albumsThumbnailsContainer,
-            tagsController: galleryTagsController
+            tagsController: galleryTagsController,
+            appStorePageURL: dependencies.appStorePageURL
         )
         return GallerySceneContainer(
             dependencies: dependencies,

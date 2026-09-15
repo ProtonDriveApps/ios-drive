@@ -37,10 +37,10 @@ public extension Sequence {
         }
     }
 
-    func parallelMap<T>(_ transform: @escaping (Element) async throws -> T) async rethrows -> [T] {
+    func parallelMap<T>(priority: TaskPriority? = nil, _ transform: @escaping (Element) async throws -> T) async rethrows -> [T] {
         return try await withThrowingTaskGroup(of: T.self) { taskGroup in
             for element in self {
-                taskGroup.addTask { try await transform(element) }
+                taskGroup.addTask(priority: priority) { try await transform(element) }
             }
             return try await taskGroup.reduce([], { $0 + [$1] })
         }

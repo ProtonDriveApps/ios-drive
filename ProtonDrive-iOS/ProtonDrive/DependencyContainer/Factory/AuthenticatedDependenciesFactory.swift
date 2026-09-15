@@ -47,18 +47,15 @@ struct AuthenticatedDependenciesFactory {
     }
 
     @MainActor
-    func makeSDKThumbnailsDownloader(performer: FileOperationPerformer) -> SDKThumbnailsDownloaderProtocol {
-        SDKThumbnailsDownloaderFactory().makeFilesThumbnailDownloader(
-            operationPerformer: performer,
-            managedObjectContext: tower.storage.backgroundContext
-        )
-    }
-
-    @MainActor
-    func makeSDKPhotosThumbnailsDownloader(performer: PhotosOperationPerformer) -> SDKThumbnailsDownloaderProtocol {
-        SDKThumbnailsDownloaderFactory().makePhotosThumbnailDownloader(
-            operationPerformer: performer,
-            managedObjectContext: tower.storage.backgroundContext
+    func makeSDKThumbnailsDownloader(
+        fileOperationPerformer: FileOperationPerformer,
+        photoOperationPerformer: PhotosOperationPerformer
+    ) -> SDKThumbnailsDownloaderProtocol {
+        SDKThumbnailsDownloaderFactory().makeThumbnailDownloader(
+            contextPool: tower.storage.synchronousContextPool,
+            fileOperationPerformer: fileOperationPerformer,
+            photoOperationPerformer: photoOperationPerformer,
+            volumeIDRepository: tower.storage
         )
     }
 

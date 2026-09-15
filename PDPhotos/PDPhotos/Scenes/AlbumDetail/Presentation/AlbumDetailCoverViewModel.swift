@@ -35,8 +35,8 @@ final class AlbumDetailCoverViewModel: ObservableObject {
         guard let album, let linkID = album.coverLinkID else { return nil }
         return .init(id: linkID, volumeID: album.identifier.volumeID)
     }
-    private var thumbnailCancellable: AnyCancellable?
-    private var thumbnailController: ThumbnailController?
+    private var thumbnailTask: Task<Void, Never>?
+    private var readyMetadataIDs = Set<AnyVolumeIdentifier>()
     var coverIsChangedPublisher: AnyPublisher<Void, Never> {
         coverIsChanged.eraseToAnyPublisher()
     }
@@ -52,10 +52,15 @@ final class AlbumDetailCoverViewModel: ObservableObject {
                 guard let self, let album else { return }
                 if self.album?.coverLinkID != album.coverLinkID {
                     self.album = album
-                    loadFullCover()
+                    thumbnailTask?.cancel()
+                    thumbnailTask = nil
+                    readyMetadataIDs.removeAll()
+                    loadMetadataIfPossible()
                     loadThumbnailIfNeeded()
                 }
                 if album.coverLinkID == nil {
+                    thumbnailTask?.cancel()
+                    thumbnailTask = nil
                     hasCover = false
                     coverData = nil
                 } else {
@@ -72,29 +77,40 @@ final class AlbumDetailCoverViewModel: ObservableObject {
                 self?.handleFileContentUpdate(content)
             }
             .store(in: &cancellables)
+        dependencies.metadataController.readyIDs
+            .sink { [weak self] ids in
+                guard let self else { return }
+                readyMetadataIDs.formUnion(ids)
+                loadCoverIfPossible()
+            }
+            .store(in: &cancellables)
     }
 
     private func loadThumbnailIfNeeded() {
         guard let coverID else { return }
-        let thumbnailController = dependencies.thumbnailControllerContainer
-            .makeSmallThumbnailController(id: coverID)
-        self.thumbnailController = thumbnailController
-
-        if thumbnailController.getImage() == nil {
-            thumbnailController.bootstrap()
-            thumbnailCancellable = thumbnailController.updatePublisher
-                .sink { [weak self] _ in
-                    self?.reloadImage()
-                }
-            thumbnailController.load()
-        } else {
+        if DecryptedFileManager.thumbnailData(id: coverID) != nil {
             reloadImage()
+            return
+        }
+        guard thumbnailTask == nil else { return }
+        thumbnailTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                _ = try await dependencies.thumbnailDownloader?.downloadThumbnail(for: coverID, type: .default)
+            } catch {
+                Log.error("Failed to download album detail cover thumbnail", error: error, domain: .thumbnails)
+            }
+            await MainActor.run {
+                self.thumbnailTask = nil
+                self.reloadImage()
+            }
         }
     }
 
     private func reloadImage() {
         guard
-            let image = thumbnailController?.getImage(),
+            let coverID,
+            let image = DecryptedFileManager.thumbnailData(id: coverID),
             self.coverData != image
         else { return }
         if case .full = currentPreviewType {
@@ -105,8 +121,20 @@ final class AlbumDetailCoverViewModel: ObservableObject {
         self.coverData = image
     }
 
-    private func loadFullCover() {
-        guard let coverID else { return }
+    private func loadMetadataIfPossible() {
+        guard let album, let coverID else { return }
+        dependencies.metadataController.loadImmediatelly([album.identifier, coverID], forceToRefresh: false)
+    }
+
+    private func loadCoverIfPossible() {
+        guard let album, let coverID else {
+            return
+        }
+        
+        let necessaryIds = [album.identifier, coverID]
+        guard readyMetadataIDs.isSuperset(of: necessaryIds) else {
+            return
+        }
         dependencies.contentController.execute(with: coverID)
     }
 
@@ -124,6 +152,7 @@ final class AlbumDetailCoverViewModel: ObservableObject {
     }
 
     deinit {
+        thumbnailTask?.cancel()
         dependencies.contentController.clear()
     }
 }
@@ -131,8 +160,9 @@ final class AlbumDetailCoverViewModel: ObservableObject {
 extension AlbumDetailCoverViewModel {
     struct Dependencies {
         let albumRepository: AlbumRepositoryProtocol
-        let thumbnailControllerContainer: ThumbnailsControllersContainerProtocol
+        let thumbnailDownloader: SDKThumbnailsDownloaderProtocol?
         let contentController: FileContentController
+        let metadataController: MetadataControllerProtocol
     }
 
     enum PreviewType {

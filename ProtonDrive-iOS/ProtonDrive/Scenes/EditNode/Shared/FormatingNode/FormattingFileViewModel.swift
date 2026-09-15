@@ -39,7 +39,12 @@ final class FormattingFileViewModel: NameFormattingViewModel {
     func attributed(_ name: String) -> NSAttributedString {
         let formatter = NodeNameFormatter<FileFormatter>(fullName: name)
         let a = NSMutableAttributedString(string: formatter.name, attributes: nameAttributes)
-        let b = NSMutableAttributedString(string: formatter.extension ?? "", attributes: extensionAttributes)
+        let b: NSMutableAttributedString
+        if let ext = formatter.extension {
+            b = NSMutableAttributedString(string: ".\(ext)", attributes: extensionAttributes)
+        } else {
+            b = NSMutableAttributedString(string: "", attributes: extensionAttributes)
+        }
         a.append(b)
         return a
     }

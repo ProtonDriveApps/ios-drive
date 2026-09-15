@@ -21,18 +21,7 @@
 	<key>DYNAMIC_DOMAIN</key>
 	<string>$(DYNAMIC_DOMAIN)</string>
 	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSExceptionDomains</key>
-		<dict>
-			<key>compute.amazonaws.com</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-			</dict>
-		</dict>
-	</dict>
+	<dict/>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionAttributes</key>

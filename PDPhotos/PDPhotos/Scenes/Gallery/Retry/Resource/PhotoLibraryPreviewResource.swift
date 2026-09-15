@@ -28,34 +28,47 @@ protocol PhotoLibraryPreviewResourceProtocol {
 typealias ConcretePhotoLibraryPreviewResource = PhotoLibraryPreviewResource<PHAsset>
 
 struct PhotoLibraryPreviewResource<AssetType>: PhotoLibraryPreviewResourceProtocol {
-    typealias Filename = String
-    
     enum Errors: Error {
         case noImageProvided(localIdentifier: Identifier)
+        case inCloudButUnavailable(localIdentifier: Identifier)
+        case cancelled(localIdentifier: Identifier)
+        case degradedOnly(localIdentifier: Identifier)
         case requestReturned(error: NSError)
         case imageIsNotConvertibleToPng(localIdentifier: Identifier)
     }
-    
-    var assetsAndResourcesForIds: ([Identifier]) -> [(Identifier, AssetType, Filename?)]
+
+    struct AssetInfo {
+        let localIdentifier: String
+        let cloudIdentifier: String?
+        let asset: AssetType
+        let filename: String?
+        let creationDate: Date?
+        let modificationDate: Date?
+    }
+
+    var assetsAndResourcesForIds: ([Identifier]) -> [AssetInfo]
     var imageForAsset: (AssetType, CGSize) async throws -> Data
     
     func execute(_ cloudIdentifiers: [Identifier], size: CGSize) async -> [AssetPreview] {
         var previews = [AssetPreview]()
         
-        for (identifier, asset, filename) in assetsAndResourcesForIds(cloudIdentifiers) {
+        for info in assetsAndResourcesForIds(cloudIdentifiers) {
             let image: Data?
             do {
-                image = try await imageForAsset(asset, size)
+                image = try await imageForAsset(info.asset, size)
             } catch {
                 image = .none
                 Log.error("Failed to load preview image for PhotoLibraryPreviewResource", error: error, domain: .photosUI)
             }
-            
+
             previews.append(
                 AssetPreview(
-                    localIdentifier: identifier,
-                    originalFilename: filename,
-                    imageData: image
+                    localIdentifier: info.localIdentifier,
+                    cloudIdentifier: info.cloudIdentifier,
+                    originalFilename: info.filename,
+                    creationDate: info.creationDate,
+                    imageData: image,
+                    modificationDate: info.modificationDate
                 )
             )
         }
@@ -72,8 +85,10 @@ extension PhotoLibraryPreviewResource where AssetType == PHAsset {
         let fetchOptions = PHFetchOptions.defaultPhotosOptions()
         
         let requestOptions = PHImageRequestOptions()
-        requestOptions.deliveryMode = .fastFormat
-        
+        requestOptions.deliveryMode = .highQualityFormat
+        requestOptions.resizeMode = .fast
+        requestOptions.isNetworkAccessAllowed = true
+
         func buildLocalToCloudIDMapping(_ cloudIdentifiers: [String]) -> [String: String] {
             var mapping = [String: String]()
             
@@ -96,15 +111,20 @@ extension PhotoLibraryPreviewResource where AssetType == PHAsset {
             assetsAndResourcesForIds: { cloudIdentifiers in
                 let mapping = buildLocalToCloudIDMapping(cloudIdentifiers)
                 let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: Array(mapping.keys), options: fetchOptions)
-                var collection = [(String, PHAsset, String?)]()
-                
+                var collection = [AssetInfo]()
+
                 fetchResult.enumerateObjects { asset, _, _ in
                     let resources = PHAssetResource.assetResources(for: asset)
-                    collection.append((
-                        mapping[asset.localIdentifier]!,
-                        asset,
-                        resources.first?.originalFilename
-                    ))
+                    collection.append(
+                        AssetInfo(
+                            localIdentifier: asset.localIdentifier,
+                            cloudIdentifier: mapping[asset.localIdentifier],
+                            asset: asset,
+                            filename: resources.first?.originalFilename,
+                            creationDate: asset.creationDate,
+                            modificationDate: asset.modificationDate
+                        )
+                    )
                 }
                 
                 return collection
@@ -115,7 +135,7 @@ extension PhotoLibraryPreviewResource where AssetType == PHAsset {
                     throw Errors.requestReturned(error: requestError)
                 }
                 guard let uiImage else {
-                    throw Errors.noImageProvided(localIdentifier: asset.localIdentifier)
+                    throw Self.classifyMissingImage(asset: asset, info: imageResultInfo, targetSize: size)
                 }
                 guard let data = uiImage.pngData() else {
                     throw Errors.imageIsNotConvertibleToPng(localIdentifier: asset.localIdentifier)
@@ -124,5 +144,54 @@ extension PhotoLibraryPreviewResource where AssetType == PHAsset {
             }
         )
     }
-    
+
+    private static func classifyMissingImage(asset: PHAsset, info: [AnyHashable: Any]?, targetSize: CGSize) -> Errors {
+        let isInCloud = (info?[PHImageResultIsInCloudKey] as? NSNumber)?.boolValue == true
+        let isCancelled = (info?[PHImageCancelledKey] as? NSNumber)?.boolValue == true
+        let isDegraded = (info?[PHImageResultIsDegradedKey] as? NSNumber)?.boolValue == true
+
+        let fingerprint = assetFingerprint(asset, targetSize: targetSize, info: info)
+        Log.warning(
+            "PhotoLibraryPreviewResource got nil UIImage. \(fingerprint)",
+            domain: .photosUI
+        )
+
+        if isInCloud {
+            return .inCloudButUnavailable(localIdentifier: asset.localIdentifier)
+        }
+        if isCancelled {
+            return .cancelled(localIdentifier: asset.localIdentifier)
+        }
+        if isDegraded {
+            return .degradedOnly(localIdentifier: asset.localIdentifier)
+        }
+        return .noImageProvided(localIdentifier: asset.localIdentifier)
+    }
+
+    private static func assetFingerprint(_ asset: PHAsset, targetSize: CGSize, info: [AnyHashable: Any]?) -> String {
+        let resources = PHAssetResource.assetResources(for: asset)
+            .map { "\($0.type.rawValue):\($0.uniformTypeIdentifier)" }
+            .joined(separator: ",")
+
+        let infoFlags: [String] = [
+            (info?[PHImageResultIsInCloudKey] as? NSNumber)?.boolValue == true ? "inCloud" : nil,
+            (info?[PHImageCancelledKey] as? NSNumber)?.boolValue == true ? "cancelled" : nil,
+            (info?[PHImageResultIsDegradedKey] as? NSNumber)?.boolValue == true ? "degraded" : nil,
+        ].compactMap { $0 }
+        let infoFlagsDescription = infoFlags.isEmpty ? "none" : infoFlags.joined(separator: "|")
+
+        return [
+            "localId=\(asset.localIdentifier)",
+            "mediaType=\(asset.mediaType.rawValue)",
+            "mediaSubtypes=\(asset.mediaSubtypes.rawValue)",
+            "sourceType=\(asset.sourceType.rawValue)",
+            "pixelSize=\(asset.pixelWidth)x\(asset.pixelHeight)",
+            "targetSize=\(Int(targetSize.width))x\(Int(targetSize.height))",
+            "burstId=\(asset.burstIdentifier ?? "nil")",
+            "representsBurst=\(asset.representsBurst)",
+            "resources=[\(resources)]",
+            "infoFlags=\(infoFlagsDescription)"
+        ].joined(separator: " ")
+    }
+
 }

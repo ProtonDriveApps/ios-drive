@@ -29,7 +29,7 @@ final class SDKPhotosTrashInteractor: ThrowingAsynchronousInteractor {
     }
 
     func execute(with input: PhotoIdsSet) async throws {
-        let (affectedIDs, error) = try await performer.trash(nodes: Array(input))
+        let (affectedIDs, error) = try await performer.trash(nodes: Array(input)).collectCompletion()
         downloader.cancel(operationsOf: affectedIDs)
         if let error {
             throw error

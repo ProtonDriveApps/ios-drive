@@ -17,13 +17,17 @@
 
 import Combine
 import PDCore
+import PDLocalization
 import PDUIComponents
 import SwiftUI
 import ProtonCoreDataModel
 
 protocol LockedStateTopBannerViewModelProtocol: ObservableObject {
     var data: LockedStateTopBannerViewData { get }
+    var showsDismissButton: Bool { get }
     func openUrl()
+    func performSecondaryAction()
+    func dismiss()
 }
 
 struct LockedStateTopBannerViewData: Equatable {
@@ -31,28 +35,74 @@ struct LockedStateTopBannerViewData: Equatable {
     let title: String?
     let description: String?
     let actionButton: String?
+    let secondaryActionButton: String?
     let buttonUrl: String?
+
+    init(
+        severance: WarningBadgeSeverance,
+        title: String?,
+        description: String?,
+        actionButton: String?,
+        secondaryActionButton: String? = nil,
+        buttonUrl: String?
+    ) {
+        self.severance = severance
+        self.title = title
+        self.description = description
+        self.actionButton = actionButton
+        self.secondaryActionButton = secondaryActionButton
+        self.buttonUrl = buttonUrl
+    }
 }
 
 final class LockedStateTopBannerViewModel: LockedStateTopBannerViewModelProtocol {
-    
-    @Published var data: LockedStateTopBannerViewData
 
-    init(data: LockedStateTopBannerViewData) {
+    @Published var data: LockedStateTopBannerViewData
+    let showsDismissButton: Bool
+
+    private var onPrimaryAction: (() -> Void)?
+    private var onSecondaryAction: (() -> Void)?
+    private var onDismissAction: (() -> Void)?
+
+    init(
+        data: LockedStateTopBannerViewData,
+        showsDismissButton: Bool = false,
+        onPrimaryAction: (() -> Void)? = nil,
+        onSecondaryAction: (() -> Void)? = nil,
+        onDismissAction: (() -> Void)? = nil
+    ) {
         self.data = data
+        self.showsDismissButton = showsDismissButton
+        self.onPrimaryAction = onPrimaryAction
+        self.onSecondaryAction = onSecondaryAction
+        self.onDismissAction = onDismissAction
     }
-    
-    convenience init(lockedStateBannerVisibiliy: LockedStateAlertVisibility) {
-        let data = LockedStateTopBannerViewData(severance: .error,
-                                                title: lockedStateBannerVisibiliy.bannerTitle,
-                                                description: lockedStateBannerVisibiliy.bannerDescription,
-                                                actionButton: lockedStateBannerVisibiliy.bannerButtonTitle,
-                                                buttonUrl: lockedStateBannerVisibiliy.bannerButtonUrl)
+
+    convenience init(lockedStateBannerVisibility: LockedStateAlertVisibility) {
+        let data = LockedStateTopBannerViewData(
+            severance: .error,
+            title: lockedStateBannerVisibility.bannerTitle,
+            description: lockedStateBannerVisibility.bannerDescription,
+            actionButton: lockedStateBannerVisibility.bannerButtonTitle,
+            buttonUrl: lockedStateBannerVisibility.bannerButtonUrl
+        )
         self.init(data: data)
     }
-    
+
     func openUrl() {
+        if let onPrimaryAction {
+            onPrimaryAction()
+            return
+        }
         guard let urlString = self.data.buttonUrl, let url = URL(string: urlString) else { return }
         UIApplication.shared.open(url)
+    }
+
+    func performSecondaryAction() {
+        onSecondaryAction?()
+    }
+
+    func dismiss() {
+        onDismissAction?()
     }
 }

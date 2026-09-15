@@ -27,6 +27,8 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
     typealias Identifier = NodeIdentifier
     private let localSettings: LocalSettings
     private let volumeIdsController: SharedVolumeIdsController
+    private let upgradeRequirementBannerController: UpgradeRequirementBannerControllerProtocol
+    var upgradeRequirementHandling: UpgradeRequirementHandling? { upgradeRequirementBannerController }
     let scrollToTopPublisher: AnyPublisher<TabBarItem, Never>?
     let currentTab: TabBarItem?
 
@@ -83,7 +85,7 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
         } else if self.node?.isRoot == true {
             return [.menu]
         } else {
-            return [.apply(title: "", disabled: true)]
+            return []
         }
     }
 
@@ -94,6 +96,7 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
     let featureFlagsController: FeatureFlagsControllerProtocol
 
     @Published var isUploadDisclaimerVisible: Bool = false
+    @Published var upgradeRequirementLevel: UpgradeRequirementLevel = .none
 
     func closeUploadDisclaimer() {
         localSettings.isUploadingDisclaimerActive = false
@@ -172,6 +175,10 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
         self.currentTab = isSharedWithMe ? .sharedWithMe : .files
         hasPlusFunctionality = !isSharedWithMe || node.getNodePermissions() != .view
         self.progressTrackersController = progressTrackersController
+        self.upgradeRequirementBannerController = UpgradeRequirementBannerController(
+            appStorePageURL: Constants.appStorePageURL,
+            localSettings: localSettings
+        )
 
         self.subscribeToSort()
         self.subscribeToChildren()
@@ -182,7 +189,7 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
         self.subscribeToLayoutChanges()
         self.subscribeToUserInfoUpdates()
         setupLockedStateBannerVisibility()
-        setupUploadBannerVisibility()
+        subscribeLocalSettings()
 
         if let controller = model.userInfoController {
             controller.userInfo
@@ -217,10 +224,17 @@ class FolderViewModel: ObservableObject, FinderViewModel, FetchingViewModel, Has
             .store(in: &cancellables)
     }
 
-    private func setupUploadBannerVisibility() {
+    private func subscribeLocalSettings() {
         localSettings.publisher(for: \.isUploadingDisclaimerActive)
             .sink { [weak self] value in
                 self?.isUploadDisclaimerVisible = value
+            }
+            .store(in: &cancellables)
+
+        upgradeRequirementBannerController
+            .subscribeToUpgradeRequirement(currentTab: currentTab)
+            .sink { [weak self] level in
+                self?.upgradeRequirementLevel = level
             }
             .store(in: &cancellables)
     }

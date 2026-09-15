@@ -18,7 +18,10 @@
 import Foundation
 
 struct AssetPreview {
-    var localIdentifier: String
-    var originalFilename: String?
-    var imageData: Data?
+    let localIdentifier: String
+    let cloudIdentifier: String?
+    let originalFilename: String?
+    let creationDate: Date?
+    let imageData: Data?
+    let modificationDate: Date?
 }

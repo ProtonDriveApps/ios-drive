@@ -95,6 +95,8 @@ public extension PDPhotosContainer {
         let tagsMigrationConstraint: MigrationConstraintController
         let performanceMetricsController: PerformanceMetricsControllerProtocol
         let authenticator: Authenticator
+        let appStorePageURL: URL
+        let photoSkippableCache: PhotosSkippableCache
 
         public init(
             tower: Tower,
@@ -127,7 +129,9 @@ public extension PDPhotosContainer {
             photoTagsMigrationController: PhotoTagsMigrationController,
             tagsMigrationConstraint: MigrationConstraintController,
             performanceMetricsController: PerformanceMetricsControllerProtocol,
-            authenticator: Authenticator
+            authenticator: Authenticator,
+            appStorePageURL: URL,
+            photoSkippableCache: PhotosSkippableCache
         ) {
             self.tower = tower
             self.keymaker = keymaker
@@ -160,6 +164,8 @@ public extension PDPhotosContainer {
             self.tagsMigrationConstraint = tagsMigrationConstraint
             self.performanceMetricsController = performanceMetricsController
             self.authenticator = authenticator
+            self.appStorePageURL = appStorePageURL
+            self.photoSkippableCache = photoSkippableCache
         }
     }
 }

@@ -83,8 +83,8 @@ extension Decryptor {
         _ nodeHashKey: Armored,
         decryptionKeys: [DecryptionKey],
         verificationKeys: [ArmoredKey]
-    ) throws -> VerifiedText {
-        try decryptAndVerifyAttachedTextMessage(nodeHashKey, decryptionKeys: decryptionKeys, verificationKeys: verificationKeys)
+    ) throws -> VerifiedBinary {
+        try decryptAndVerifyAttachedBinaryMessage(nodeHashKey, decryptionKeys: decryptionKeys, verificationKeys: verificationKeys)
     }
 
     static func decryptContentKeyPacket(
@@ -235,9 +235,11 @@ extension Decryptor {
         decryptionKeys: [DecryptionKey],
         verificationKeys: [ArmoredKey]
     ) throws -> VerifiedText {
+        #if os(iOS)
         defer {
             Crypto.freeGolangMem()
         }
+        #endif
         let explicitMessage = try decryptAndVerifyAttachedMessage(message, decryptionKeys: decryptionKeys, verificationKeys: verificationKeys)
 
         guard let message = explicitMessage.messageGoCrypto?.getString() else {
@@ -256,9 +258,11 @@ extension Decryptor {
         decryptionKeys: [DecryptionKey],
         verificationKeys: [ArmoredKey]
     ) throws -> VerifiedBinary {
+        #if os(iOS)
         defer {
             Crypto.freeGolangMem()
         }
+        #endif
         let explicitMessage = try decryptAndVerifyAttachedMessage(message, decryptionKeys: decryptionKeys, verificationKeys: verificationKeys)
 
         guard let message = explicitMessage.messageGoCrypto?.getBinary() else {
@@ -278,9 +282,11 @@ extension Decryptor {
         _ decryptionKeys: [DecryptionKey],
         _ verificationKeys: [ArmoredKey]
     ) throws -> VerifiedText {
+        #if os(iOS)
         defer {
             Crypto.freeGolangMem()
         }
+        #endif
         let plainMessage = try decryptMessage(message, decryptionKeys)
 
         do {

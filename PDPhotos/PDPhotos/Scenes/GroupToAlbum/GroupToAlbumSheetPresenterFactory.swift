@@ -51,7 +51,7 @@ struct GroupToAlbumFactory {
                 coordinator: coordinator,
                 metadataController: container.dependencies.metadataController,
                 nativeSharePhotoController: nativeSharePhotoController,
-                thumbnailContainer: container.dependencies.albumsThumbnailsContainer
+                thumbnailDownloader: container.dependencies.tower.sdkObjects.thumbnailDownloader
             ),
             rootViewController: rootViewController
         )

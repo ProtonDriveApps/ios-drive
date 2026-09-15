@@ -50,7 +50,7 @@ enum ProtonFileWebPreviewError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .failedDownload:
-            Localization.proton_docs_download_error
+            Localization.download_failed
         case .failedOpening:
             Localization.proton_docs_opening_error
         }

@@ -64,7 +64,7 @@ extension NameEncryptor {
         /// Parent node key
         let nodeKey: String
         /// Parent decrypted hash key
-        let decryptedHashKey: String
+        let decryptedHashKey: Data
     }
 
     struct Result {

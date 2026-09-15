@@ -129,9 +129,7 @@ final class GroupToAlbumSheetPresenter: GroupToAlbumSheetPresenterProtocol {
                 nativeSharePhotoController: dependencies.nativeSharePhotoController,
                 selectionController: selectionController
             ),
-            metadataController: dependencies.metadataController,
             selectedPhotoIDs: selectedPhotoIDs,
-            thumbnailContainer: dependencies.thumbnailContainer,
             type: type
         )
     }
@@ -147,7 +145,7 @@ extension GroupToAlbumSheetPresenter {
         let coordinator: GroupToAlbumCoordinatorProtocol
         let metadataController: MetadataControllerProtocol
         let nativeSharePhotoController: NativeSharePhotoControllerProtocol
-        let thumbnailContainer: ThumbnailsControllersContainerProtocol
+        let thumbnailDownloader: SDKThumbnailsDownloaderProtocol?
 
         init(
             addPhotosController: AddPhotosToAlbumControllerProtocol,
@@ -156,7 +154,7 @@ extension GroupToAlbumSheetPresenter {
             coordinator: GroupToAlbumCoordinatorProtocol,
             metadataController: MetadataControllerProtocol,
             nativeSharePhotoController: NativeSharePhotoControllerProtocol,
-            thumbnailContainer: ThumbnailsControllersContainerProtocol
+            thumbnailDownloader: SDKThumbnailsDownloaderProtocol?
         ) {
             self.addPhotosController = addPhotosController
             self.albumListController = albumListController
@@ -164,8 +162,9 @@ extension GroupToAlbumSheetPresenter {
             self.coordinator = coordinator
             self.metadataController = metadataController
             self.nativeSharePhotoController = nativeSharePhotoController
-            self.thumbnailContainer = thumbnailContainer
+            self.thumbnailDownloader = thumbnailDownloader
 
+            let thumbnailCache = SmallThumbnailURLCache()
             self.albumGridItemViewModelFactory = CachingAlbumGridItemViewModelFactory(factory: { id in
                 let repository = AlbumRepository(albumID: id, managedObjectContext: context)
                 return .init(
@@ -173,7 +172,8 @@ extension GroupToAlbumSheetPresenter {
                     albumRepository: repository,
                     debounceResource: CommonLoopDebounceResource(),
                     metadataController: metadataController,
-                    thumbnailContainer: thumbnailContainer
+                    thumbnailDownloader: thumbnailDownloader,
+                    thumbnailCache: thumbnailCache
                 )
             })
         }

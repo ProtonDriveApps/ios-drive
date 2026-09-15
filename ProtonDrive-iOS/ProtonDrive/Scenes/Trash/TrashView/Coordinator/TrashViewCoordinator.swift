@@ -36,9 +36,3 @@ final class TrashViewCoordinator: ObservableObject, SwiftUICoordinator {
 
     func go(to destination: Never) -> Never { }
 }
-
-extension TrashViewCoordinator: FlatNavigationBarDelegate {
-    func numberOfControllers(_ count: Int, _ root: RootViewModel) {
-        // this only matters for views inside Menu view active area
-    }
-}

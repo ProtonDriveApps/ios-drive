@@ -61,7 +61,9 @@ public struct CharacterLimitTextField: UIViewRepresentable {
     }
     
     public func updateUIView(_ uiView: PMTextField, context: Context) {
-        uiView.value = text
+        if uiView.value != text {
+            uiView.value = text
+        }
         uiView.isEnabled = isEnabled
     }
 }
@@ -96,7 +98,9 @@ public final class CharacterLimitTextFieldCoordinator: NSObject, PMTextFieldDele
             textField.errorMessage = ""
             textField.assistiveText = "\(value.count)/\(maximumChars)"
         }
-        textBinding.wrappedValue = value
+        if textBinding.wrappedValue != value {
+            textBinding.wrappedValue = value
+        }
     }
 }
 

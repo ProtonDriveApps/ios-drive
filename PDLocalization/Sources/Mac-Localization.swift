@@ -107,8 +107,18 @@ public class Localization {
     /// "Looking for files to sync…"
     public static var enumerating_after_resuming: String { localized(key: "enumerating_after_resuming", table: "Mac-Localizable") }
 
-    /// "%d items processed"
+    /// "Resync was cancelled before it finished. Retry, or create a new sync folder."
+    public static var full_resync_cancelled_recovery: String { localized(key: "full_resync_cancelled_recovery", table: "Mac-Localizable") }
+
+    /// "Create new sync folder"
+    public static var full_resync_create_new_location: String { localized(key: "full_resync_create_new_location", table: "Mac-Localizable") }
+
+    /// "%d files processed"
     public static func full_resync_progress(itemsProcessed: Int) -> String { String(format: localized(key: "full_resync_progress", table: "Mac-Localizable"), itemsProcessed) }
+
+    /// "How many items had their metadata fetched, out of the total discovered."
+    /// "%1$d of %2$d files"
+    public static func full_resync_progress_of_total(itemsProcessed: Int, total: Int) -> String { String(format: localized(key: "full_resync_progress_of_total", table: "Mac-Localizable"), itemsProcessed, total) }
 
     /// "Shown in Settings view"
     /// "Full resync"
@@ -172,6 +182,9 @@ public class Localization {
     /// "Sign out"
     public static var menu_text_logout: String { localized(key: "menu_text_logout", table: "Mac-Localizable") }
 
+    /// "Remove sync folder & sign out"
+    public static var menu_text_logout_remove_domain: String { localized(key: "menu_text_logout_remove_domain", table: "Mac-Localizable") }
+
     /// "Button to expand text view for error deteail"
     /// "Details"
     public static var notification_details: String { localized(key: "notification_details", table: "Mac-Localizable") }
@@ -183,6 +196,14 @@ public class Localization {
     /// "Button to restart application"
     /// "Update available — click to restart and install."
     public static var notification_update_available: String { localized(key: "notification_update_available", table: "Mac-Localizable") }
+
+    /// "Notification shown when the user\'s volume is locked on the backend"
+    /// "Your files are locked and can\'t sync"
+    public static var notification_volume_locked: String { localized(key: "notification_volume_locked", table: "Mac-Localizable") }
+
+    /// "Banner inviting the user to restore access to their locked volume via the web recovery flow"
+    /// "Restore access to your locked files"
+    public static var notification_volume_locked_restore: String { localized(key: "notification_volume_locked_restore", table: "Mac-Localizable") }
 
     /// "Message shown in the mac onboarding view"
     /// "Open your folder and click Enable to finish setting up Proton Drive on your Mac."
@@ -207,6 +228,14 @@ public class Localization {
     /// "Fix syncing issues section title"
     /// "Fix syncing issues"
     public static var setting_fix_syncing_issues: String { localized(key: "setting_fix_syncing_issues", table: "Mac-Localizable") }
+
+    /// "Fix syncing issues section button title"
+    /// "Resync"
+    public static var setting_fix_syncing_issues_button: String { localized(key: "setting_fix_syncing_issues_button", table: "Mac-Localizable") }
+
+    /// "Fix syncing issues section description"
+    /// "If your app is not syncing correctly, resyncing will ensure all your data is up to date. It may take a few minutes or even hours if you have many files."
+    public static var setting_fix_syncing_issues_description: String { localized(key: "setting_fix_syncing_issues_description", table: "Mac-Localizable") }
 
     /// "Get help section title"
     /// "Get help"
@@ -266,8 +295,8 @@ public class Localization {
     public static var setting_system_new_version_available: String { localized(key: "setting_system_new_version_available", table: "Mac-Localizable") }
 
     /// "Information text"
-    /// "Proton Drive is up to date: v%@"
-    public static func setting_system_up_to_date(version: String) -> String { String(format: localized(key: "setting_system_up_to_date", table: "Mac-Localizable"), version) }
+    /// "Proton Drive is up to date"
+    public static var setting_system_up_to_date: String { localized(key: "setting_system_up_to_date", table: "Mac-Localizable") }
 
     /// "Button title"
     /// "Update now"
@@ -379,6 +408,10 @@ public class Localization {
     /// "Button to move item to trash"
     /// "Move to trash"
     public static var edit_section_remove: String { localized(key: "edit_section_remove", table: "shared-Localizable") }
+
+    /// "Error message displayed when the user attempts to access a permanently deleted file or folder"
+    /// "File or folder not found"
+    public static var error_not_found: String { localized(key: "error_not_found", table: "shared-Localizable") }
 
     /// "Concat with other string, e.g. Restore 4 files, Delete 1 file"
     /// "%d File"
@@ -524,42 +557,6 @@ public class Localization {
     /// "Label for button which opens a file"
     /// "Open"
     public static var open: String { localized(key: "open", table: "shared-Localizable") }
-
-    /// "Error message displayed on the photo backup issue page"
-    /// "Unable to connect to iCloud"
-    public static var retry_error_explainer_cannot_connect_icloud: String { localized(key: "retry_error_explainer_cannot_connect_icloud", table: "shared-Localizable") }
-
-    /// "Error message displayed on the photo backup issue page"
-    /// "Network connection error"
-    public static var retry_error_explainer_connection_error: String { localized(key: "retry_error_explainer_connection_error", table: "shared-Localizable") }
-
-    /// "Error message displayed on the photo backup issue page"
-    /// "Device storage full"
-    public static var retry_error_explainer_device_storage_full: String { localized(key: "retry_error_explainer_device_storage_full", table: "shared-Localizable") }
-
-    /// "Error message displayed on the photo backup issue page"
-    /// "Encryption failed"
-    public static var retry_error_explainer_encryption_error: String { localized(key: "retry_error_explainer_encryption_error", table: "shared-Localizable") }
-
-    /// "Error message displayed on the photo backup issue page"
-    /// "Failed to load resource"
-    public static var retry_error_explainer_failed_to_load_resource: String { localized(key: "retry_error_explainer_failed_to_load_resource", table: "shared-Localizable") }
-
-    /// "Error message displayed on the photo backup issue page"
-    /// "Can\'t access the original file."
-    public static var retry_error_explainer_invalid_asset: String { localized(key: "retry_error_explainer_invalid_asset", table: "shared-Localizable") }
-
-    /// "Error message displayed on the photo backup issue page"
-    /// "Missing permissions"
-    public static var retry_error_explainer_missing_permissions: String { localized(key: "retry_error_explainer_missing_permissions", table: "shared-Localizable") }
-
-    /// "Error message displayed on the photo backup issue page"
-    /// "Name validation failed"
-    public static var retry_error_explainer_name_validation: String { localized(key: "retry_error_explainer_name_validation", table: "shared-Localizable") }
-
-    /// "Error message displayed on the photo backup issue page"
-    /// "Drive storage full"
-    public static var retry_error_explainer_quote_exceeded: String { localized(key: "retry_error_explainer_quote_exceeded", table: "shared-Localizable") }
 
     /// "Add selected photos to shared album"
     /// "Add to shared album"

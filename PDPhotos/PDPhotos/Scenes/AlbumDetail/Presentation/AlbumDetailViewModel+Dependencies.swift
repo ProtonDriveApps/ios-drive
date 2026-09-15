@@ -36,7 +36,7 @@ extension AlbumDetailViewModel {
         let metadataController: MetadataControllerProtocol
         let photosGridViewModel: any PhotosGridViewModelProtocol
         let selectionController: PhotosSelectionController
-        let thumbnailControllerContainer: ThumbnailsControllersContainerProtocol
+        let thumbnailDownloader: SDKThumbnailsDownloaderProtocol?
         let userMessageHandler: UserMessageHandlerProtocol
         let copyToStreamController: CopyPhotosToStreamControllerProtocol
 
@@ -54,7 +54,7 @@ extension AlbumDetailViewModel {
             metadataController: MetadataControllerProtocol,
             photosGridViewModel: any PhotosGridViewModelProtocol,
             selectionController: PhotosSelectionController,
-            thumbnailControllerContainer: ThumbnailsControllersContainerProtocol,
+            thumbnailDownloader: SDKThumbnailsDownloaderProtocol?,
             userMessageHandler: UserMessageHandlerProtocol = UserMessageHandler(),
             copyToStreamController: CopyPhotosToStreamControllerProtocol
         ) {
@@ -74,7 +74,7 @@ extension AlbumDetailViewModel {
             self.photosGridViewModel = photosGridViewModel
             self.selectionController = selectionController
             self.userMessageHandler = userMessageHandler
-            self.thumbnailControllerContainer = thumbnailControllerContainer
+            self.thumbnailDownloader = thumbnailDownloader
             self.copyToStreamController = copyToStreamController
         }
     }

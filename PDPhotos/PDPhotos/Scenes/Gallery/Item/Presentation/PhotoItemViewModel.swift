@@ -54,7 +54,7 @@ enum PhotoItemShareBadge {
 
 final class PhotoItemViewModel: PhotoItemViewModelProtocol {
     private var item: PhotoGridViewItem
-    private let thumbnailController: ThumbnailController
+    private let thumbnailDownloader: SDKThumbnailsDownloaderProtocol
     private let coordinator: PhotoItemCoordinator
     private let selectionController: PhotosSelectionController
     private let infoController: PhotoAdditionalInfoController
@@ -63,7 +63,8 @@ final class PhotoItemViewModel: PhotoItemViewModelProtocol {
     private let fetchingController: PhotosListFetchingControllerProtocol
     private let metadataController: MetadataControllerProtocol
     private let featureFlagsController: FeatureFlagsControllerProtocol
-    private var thumbnailCancellable: AnyCancellable?
+    private let thumbnailCache: ThumbnailURLCache
+    private var thumbnailTask: Task<Void, Never>?
     private var selectionCancellable: AnyCancellable?
     private var isVisible = false
 
@@ -80,9 +81,9 @@ final class PhotoItemViewModel: PhotoItemViewModelProtocol {
     @Published var isSelected = false
     var badges: PhotoItemViewModelBadges?
 
-    init(item: PhotoGridViewItem, thumbnailController: ThumbnailController, coordinator: PhotoItemCoordinator, selectionController: PhotosSelectionController, infoController: PhotoAdditionalInfoController, durationFormatter: DurationFormatter, debounceResource: DebounceResource, fetchingController: PhotosListFetchingControllerProtocol, featureFlagsController: FeatureFlagsControllerProtocol, metadataController: MetadataControllerProtocol) {
+    init(item: PhotoGridViewItem, thumbnailDownloader: SDKThumbnailsDownloaderProtocol, coordinator: PhotoItemCoordinator, selectionController: PhotosSelectionController, infoController: PhotoAdditionalInfoController, durationFormatter: DurationFormatter, debounceResource: DebounceResource, fetchingController: PhotosListFetchingControllerProtocol, featureFlagsController: FeatureFlagsControllerProtocol, metadataController: MetadataControllerProtocol, thumbnailCache: ThumbnailURLCache) {
         self.item = item
-        self.thumbnailController = thumbnailController
+        self.thumbnailDownloader = thumbnailDownloader
         self.coordinator = coordinator
         self.selectionController = selectionController
         self.infoController = infoController
@@ -91,6 +92,7 @@ final class PhotoItemViewModel: PhotoItemViewModelProtocol {
         self.fetchingController = fetchingController
         self.metadataController = metadataController
         self.featureFlagsController = featureFlagsController
+        self.thumbnailCache = thumbnailCache
         setUpAfterInitialization()
     }
 
@@ -170,9 +172,9 @@ final class PhotoItemViewModel: PhotoItemViewModelProtocol {
         }
         image = nil
         debounceResource.cancel()
-        thumbnailController.cancel()
+        thumbnailTask?.cancel()
+        thumbnailTask = nil
         metadataController.cancel(identifier: id)
-        thumbnailCancellable = nil
         selectionCancellable = nil
     }
 
@@ -209,18 +211,35 @@ final class PhotoItemViewModel: PhotoItemViewModelProtocol {
                 .assign(to: &$duration)
         }
 
-        thumbnailController.bootstrap()
-        thumbnailCancellable = thumbnailController.updatePublisher
-            .sink { [weak self] _ in
-                self?.reloadImage()
+        loadThumbnailIfNeeded()
+    }
+
+    private func loadThumbnailIfNeeded() {
+        if let cachedImage = thumbnailCache.getThumbnailData(id: id) {
+            updateImage(cachedImage)
+            return
+        }
+        guard thumbnailTask == nil else { return }
+        thumbnailTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                _ = try await thumbnailDownloader.downloadThumbnail(for: id.any(), type: .default)
+            } catch {
+                Log.error("Failed to download photo thumbnail", error: error, domain: .thumbnails)
             }
-        if thumbnailController.getImage() == nil {
-            thumbnailController.load()
+            await MainActor.run {
+                self.thumbnailTask = nil
+                self.reloadImage()
+            }
         }
     }
 
     private func reloadImage() {
-        let image = thumbnailController.getImage()
+        let image = thumbnailCache.getThumbnailData(id: id)
+        updateImage(image)
+    }
+
+    private func updateImage(_ image: Data?) {
         if self.image != image {
             self.image = image
             // We don't want to make image @Published because we also want to deallocate it when onDisappear without triggering view updates.

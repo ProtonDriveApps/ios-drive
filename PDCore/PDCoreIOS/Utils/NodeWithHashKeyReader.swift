@@ -67,6 +67,6 @@ public struct NodeWithHashKeyReader: DecryptedNodeHashKeyRepository {
 
 public struct NodeWithNodeHashKeyProperty {
     public let nodeKey: String
-    public let decryptedHashKey: String
+    public let decryptedHashKey: Data
     public let identifier: AnyVolumeIdentifier
 }

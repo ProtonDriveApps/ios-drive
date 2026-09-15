@@ -17,23 +17,24 @@
 
 import Foundation
 
-public final class UpgradeRequirementResult: Equatable {
-    /// update required products
+public final class UpgradeRequirementResult: NSObject, Codable {
+    /// Update required products
     public private(set) var updateRequired: [String] = []
-    /// update recommended products
+    /// Update recommended products
     public private(set) var updateRecommended: [String] = []
     
     var hasAnyUpdate: Bool { !updateRequired.isEmpty || !updateRecommended.isEmpty }
-    
-    public static func == (lhs: UpgradeRequirementResult, rhs: UpgradeRequirementResult) -> Bool {
-        lhs.updateRequired.sorted() == rhs.updateRequired.sorted() &&
-        lhs.updateRecommended.sorted() == rhs.updateRecommended.sorted()
+
+    override public func isEqual(_ object: Any?) -> Bool {
+        guard let object = object as? UpgradeRequirementResult else { return false }
+        return object.updateRequired.sorted() == updateRequired.sorted() &&
+        object.updateRecommended.sorted() == updateRecommended.sorted()
     }
-    
+
     func insert(required: String) {
         updateRequired.append(required)
     }
-    
+
     func insert(recommended: String) {
         updateRecommended.append(recommended)
     }

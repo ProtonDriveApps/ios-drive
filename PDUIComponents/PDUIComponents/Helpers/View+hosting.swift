@@ -16,6 +16,7 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import SwiftUI
+import ProtonCoreUIFoundations
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -28,6 +29,7 @@ extension View {
         let hostingController = UIHostingController(rootView: hostingAccessingView)
         provider.viewController = hostingController
         hostingController.sizingOptions = [.intrinsicContentSize]
+        hostingController.view.backgroundColor = ColorProvider.BackgroundNorm
         return hostingController
     }
 

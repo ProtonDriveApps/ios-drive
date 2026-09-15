@@ -40,10 +40,13 @@ final class SDKBootstrapStarter: AppBootstrapper {
                 async let photosPerformerInitializer = initializeSDKPhotosOperationPerformer()
                 let (performer, photosPerformer) = try await (performerInitializer, photosPerformerInitializer)
                 
-                let nodeOperationPerformer = initializeSDKNodeOperationPerformer(performer: performer)
+                let nodeOperationPerformer = initializeSDKNodeOperationPerformer(performer: performer, photoPerformer: photosPerformer)
                 async let fileUploaderInitializer = factory.makeSDKUploader(performer: performer)
                 async let fileDownloaderInitializer = factory.makeSDKDownloader(performer: performer)
-                async let fileThumbnailDownloaderInitializer = factory.makeSDKThumbnailsDownloader(performer: performer)
+                async let thumbnailDownloaderInitializer = factory.makeSDKThumbnailsDownloader(
+                    fileOperationPerformer: performer,
+                    photoOperationPerformer: photosPerformer
+                )
                 async let revisionUploaderInitializer = SDKRevisionUploaderFactory().makeUploader(
                     operationPerformer: performer,
                     managedObjectContext: tower.storage.backgroundContext
@@ -51,20 +54,17 @@ final class SDKBootstrapStarter: AppBootstrapper {
                 
                 async let photoUploaderInitializer = initializePhotosUploader(performer: photosPerformer)
                 async let photoDownloaderInitializer = factory.makeSDKPhotoDownloader(performer: photosPerformer)
-                async let photoThumbnailDownloaderInitializer = factory.makeSDKPhotosThumbnailsDownloader(performer: photosPerformer)
                 
                 let sdkObjects = SDKObjects(
-                    fileUploader: await fileUploaderInitializer,
                     fileDownloader: await fileDownloaderInitializer,
-                    fileThumbnailDownloader: await fileThumbnailDownloaderInitializer,
-                    photoUploader: await photoUploaderInitializer,
+                    fileUploader: await fileUploaderInitializer,
+                    nodeOperationPerformer: nodeOperationPerformer,
                     photoDownloader: await photoDownloaderInitializer,
-                    photoThumbnailDownloader: await photoThumbnailDownloaderInitializer,
+                    photoUploader: await photoUploaderInitializer,
                     revisionUploader: await revisionUploaderInitializer,
-                    nodeOperationPerformer: nodeOperationPerformer
+                    thumbnailDownloader: await thumbnailDownloaderInitializer
                 )
                 tower.set(sdkObjects: sdkObjects)
-                tower.createThumbnailLoader()
                 tower.offlineSavers = factory.makeOfflineSavers(
                     connectionStateResource: dependencies.connectionStateResource,
                     sdkDownloaders: (sdkObjects.fileDownloader, sdkObjects.photoDownloader)
@@ -84,11 +84,15 @@ extension SDKBootstrapStarter {
         return try await SDKOperationPerformerFactory().makeFilePerformer(tower: tower)
     }
 
-    private func initializeSDKNodeOperationPerformer(performer: FileOperationPerformer) -> NodeOperationPerformer? {
-        guard featureFlagsController.hasSDKNodeOperations else { return nil }
+    private func initializeSDKNodeOperationPerformer(
+        performer: FileOperationPerformer,
+        photoPerformer: PhotosOperationPerformer
+    ) -> NodeOperationPerformer? {
+        guard featureFlagsController.needsSDKNodeOperationPerformer else { return nil }
         let operationPerformer = NodeOperationPerformer(
             dependencies: .init(
                 performer: performer,
+                photoPerformer: photoPerformer,
                 context: tower.storage.backgroundContext
             )
         )

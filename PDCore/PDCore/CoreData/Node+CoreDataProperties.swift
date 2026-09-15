@@ -216,12 +216,6 @@ public extension Node {
     }
 }
 
-public extension Node {
-    var isDirty: Bool {
-        dirtyIndex != 0
-    }
-}
-
 extension Node {
     @objc(addDirectSharesObject:)
     @NSManaged public func addToDirectShares(_ value: Share)
@@ -236,7 +230,7 @@ extension Node {
     @NSManaged public func removeFromDirectShares(_ values: Set<Share>)
 }
 
-public enum Permissions: Int16, Comparable {
+public enum Permissions: Int16, Comparable, Sendable {
     case view = 4
     case edit = 6
     case administrate = 22
@@ -246,7 +240,7 @@ public enum Permissions: Int16, Comparable {
     }
 }
 
-public enum Role {
+public enum Role: Sendable {
     case viewer
     case editor
     case admin

@@ -41,13 +41,3 @@ public final class OfflineAvailableModel: FinderModel, FinderErrorModel, NodesLi
         self.childrenObserver = FetchedObjectsObserver(children)
     }
 }
-
-extension OfflineAvailableModel: ThumbnailLoader {
-    public func loadThumbnail(with id: Identifier) {
-        return tower.loadThumbnail(with: id)
-    }
-
-    public func cancelThumbnailLoading(_ id: Identifier) {
-        tower.cancelThumbnailLoading(id)
-    }
-}

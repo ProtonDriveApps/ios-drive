@@ -1,24 +1,21 @@
+// Copyright (c) 2022 Proton AG
 //
-//  PMSettingsViewController.swift
-//  ProtonCore-Settings - Created on 23.09.2020.
+// This file is part of Proton Drive.
 //
-//  Copyright (c) 2022 Proton Technologies AG
+// Proton Drive is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
 //
-//  This file is part of Proton Technologies AG and ProtonCore.
+// Proton Drive is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
 //
-//  ProtonCore is free software: you can redistribute it and/or modify
-//  it under the terms of the GNU General Public License as published by
-//  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
-//
-//  ProtonCore is distributed in the hope that it will be useful,
-//  but WITHOUT ANY WARRANTY; without even the implied warranty of
-//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//  GNU General Public License for more details.
-//
-//  You should have received a copy of the GNU General Public License
-//  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
+// You should have received a copy of the GNU General Public License
+// along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import PDUIComponents
 import UIKit
 import ProtonCoreUIFoundations
 
@@ -30,7 +27,13 @@ public class PMSettingsViewController: UITableViewController {
         super.viewDidLoad()
 
         addNavigationBarButton()
-        setLeadingTitleView(title: viewModel?.pageTitle ?? "Settings")
+        navigationItem.title = viewModel?.pageTitle ?? "Settings"
+        navigationItem.backButtonDisplayMode = .minimal
+
+        let barAppearance = UINavigationBarAppearance.drive
+        navigationItem.standardAppearance = barAppearance
+        navigationItem.compactAppearance = barAppearance
+        navigationItem.scrollEdgeAppearance = barAppearance
         tableView = UITableView(frame: .zero, style: .grouped)
         tableView.separatorStyle = .none
         tableView.backgroundColor = ColorProvider.BackgroundNorm
@@ -69,18 +72,6 @@ public class PMSettingsViewController: UITableViewController {
         tableView.register(cellType: PMDrillDownCell.self)
         tableView.register(cellType: PMSwitchCell.self)
         tableView.register(cellType: PMLoadingLabelCell.self)
-    }
-
-    private func setLeadingTitleView(title: String) {
-        let titleLabel = UILabel()
-        titleLabel.text = title
-        titleLabel.textColor = ColorProvider.TextNorm
-        titleLabel.font = .preferredFont(for: .title2, weight: .bold)
-        titleLabel.textAlignment = .left
-
-        let leftItems = navigationItem.leftBarButtonItems ?? []
-        let titleItem = UIBarButtonItem(customView: titleLabel)
-        navigationItem.leftBarButtonItems = leftItems + [titleItem]
     }
 
     override public func viewWillAppear(_ animated: Bool) {

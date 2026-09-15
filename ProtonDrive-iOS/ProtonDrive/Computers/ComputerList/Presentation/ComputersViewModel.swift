@@ -23,8 +23,10 @@ import PDCoreIOS
 @MainActor
 class ComputersViewModel: ObservableObject {
     @Published var computers: [ComputerIdentifier] = []
+    @Published var upgradeRequirementLevel: UpgradeRequirementLevel = .none
 
     var subscriptions = Set<AnyCancellable>()
+    let upgradeRequirementBannerController: UpgradeRequirementBannerControllerProtocol
 
     private let observer: ComputersObserverInteractorProtocol
     private let scanner: ComputersScannerInteractorProtocol
@@ -42,7 +44,8 @@ class ComputersViewModel: ObservableObject {
         goBackPublisher: AnyPublisher<Void, Never> = DriveNotification.virtualBack.publisher.map { _ in Void() }.eraseToAnyPublisher(),
         messageHandler: UserMessageHandlerProtocol,
         coordinator: ComputersCoordinatorProtocol,
-        performanceMetricsController: PerformanceMetricsControllerProtocol?
+        performanceMetricsController: PerformanceMetricsControllerProtocol?,
+        upgradeRequirementBannerController: UpgradeRequirementBannerControllerProtocol
     ) {
         self.scanner = scanner
         self.observer = observer
@@ -51,6 +54,7 @@ class ComputersViewModel: ObservableObject {
         self.messageHandler = messageHandler
         self.goBackPublisher = goBackPublisher
         self.performanceMetricsController = performanceMetricsController
+        self.upgradeRequirementBannerController = upgradeRequirementBannerController
     }
 
     var isInitialLoad: Bool {
@@ -86,6 +90,14 @@ class ComputersViewModel: ObservableObject {
             self?.coordinator.goBack()
         }
         .store(in: &subscriptions)
+
+        upgradeRequirementBannerController
+            .subscribeToUpgradeRequirement(currentTab: .computers)
+            .sink { [weak self] level in
+                self?.upgradeRequirementLevel = level
+            }
+            .store(in: &subscriptions)
+
     }
 
     func openSideMenu() {

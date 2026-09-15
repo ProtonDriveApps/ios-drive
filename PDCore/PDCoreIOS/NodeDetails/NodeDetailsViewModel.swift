@@ -187,7 +187,7 @@ class NodeDetailsViewModel: ObservableObject {
                     KeyValue(key: "SHA1", value: common.digests?.sha1 ?? ""),
                 ]
                 if let modificationTime = common.modificationTime {
-                    let modificationTimeDate = ISO8601DateFormatter.default.date(modificationTime)
+                    let modificationTimeDate = ISO8601DateFormatter.date(modificationTime)
                     let formattedTime = modificationTimeDate.map { Self.dateFormatter.string(from: $0) }
                     array += [
                         KeyValue(key: "Modified (in xAttr)", value: formattedTime ?? ""),

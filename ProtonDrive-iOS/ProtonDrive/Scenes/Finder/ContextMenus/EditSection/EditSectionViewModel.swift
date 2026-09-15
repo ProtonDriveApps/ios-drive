@@ -181,13 +181,17 @@ final class EditSectionViewModel: ObservableObject {
 
 extension EditSectionViewModel {
     enum EditSectionItem: SectionItemDisplayable, Equatable {
+        /// Deprecated
         case share
         case configShareMember
+        /// Available offline
         case download(isMarked: Bool)
+        /// Deprecated
         case shareLink(exists: Bool)
         case rename
         case move
         case details(isFile: Bool)
+        /// Trash
         case remove
         case openInBrowser
         case removeMe

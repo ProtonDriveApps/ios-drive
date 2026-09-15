@@ -177,7 +177,11 @@ final class SettingsAssembler {
         let viewModel = BaseDrillDownCellViewModel(title: Localization.setting_debug_mode, preview: nil)
 
         return PMDrillDownConfiguration(viewModel: viewModel) {
-            DebugModeSettingsCoordinator(backupSettingsController: backupSettingsController, tower: tower).start()
+            DebugModeSettingsCoordinator(
+                backupSettingsController: backupSettingsController,
+                tower: tower,
+                featureFlagsController: featureFlagsController
+            ).start()
         }
     }
 
@@ -236,9 +240,7 @@ final class SettingsAssembler {
 
     /// Provides the Account Recovery row for the settings, provided the FF is enabled
     static func accountRecoveryRow(apiService: APIService, accountRecovery: AccountRecovery?) -> PMDrillDownConfiguration? {
-        guard FeatureFlagsRepository.shared.isEnabled(
-            CoreFeatureFlagType.accountRecovery
-        ) else { return nil }
+        guard FeatureFlagsRepository.shared.isEnabled(CoreFeatureFlagType.accountRecovery) else { return nil }
 
         guard let accountRecovery else { return nil }
 

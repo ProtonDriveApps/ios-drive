@@ -17,7 +17,7 @@
 
 import Foundation
 
-final class Atomic<A> {
+final class Atomic<A>: Sendable {
 
     private let serialAccessQueue = DispatchQueue(label: "ch.proton.atomic_queue")
     private let queueKey = DispatchSpecificKey<Void>()

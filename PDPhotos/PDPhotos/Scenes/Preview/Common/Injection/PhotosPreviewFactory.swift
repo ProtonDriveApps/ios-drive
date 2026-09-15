@@ -62,7 +62,7 @@ struct PhotosPreviewFactory {
         albumId: AlbumIdentifier?,
         tower: Tower,
         coordinator: PhotosPreviewCoordinator,
-        thumbnailsContainer: ThumbnailsControllersContainer,
+        photoThumbnailDownloader: SDKThumbnailsDownloaderProtocol,
         modeController: PhotosPreviewModeController,
         previewController: PhotosPreviewController,
         detailController: PhotoPreviewDetailController,
@@ -73,8 +73,6 @@ struct PhotosPreviewFactory {
         featureFlagsController: FeatureFlagsControllerProtocol,
         fileIsDownloadedSubject: PassthroughSubject<PhotoId, Never>
     ) -> UIViewController {
-        let smallThumbnailController = thumbnailsContainer.makeSmallThumbnailController(id: id)
-        let fullThumbnailController = thumbnailsContainer.makeBigThumbnailController(id: id)
         let fileContentController = GalleryScenesFactory().makeFileContentController(
             tower: tower,
             featureFlagsController: featureFlagsController,
@@ -85,15 +83,14 @@ struct PhotosPreviewFactory {
             id: id,
             buildType: Constants.buildType,
             detailController: detailController,
-            fullThumbnailController: fullThumbnailController,
-            smallThumbnailController: smallThumbnailController,
+            photoThumbnailDownloader: photoThumbnailDownloader,
             contentController: fileContentController,
             messageHandler: UserMessageHandler()
         )
         let shareController = CachingPhotoPreviewDetailShareController(fileContentController: fileContentController, coordinator: coordinator, id: id)
         let videoXAttrBackfiller = makeVideoXAttrBackfiller(tower: tower, id: id, managedContext: photosManagedObjectContext)
         let viewModel = PhotoPreviewDetailViewModel(
-            thumbnailController: smallThumbnailController,
+            photoThumbnailDownloader: photoThumbnailDownloader,
             modeController: modeController,
             previewController: previewController,
             detailController: detailController,

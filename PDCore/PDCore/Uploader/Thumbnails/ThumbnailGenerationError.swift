@@ -18,10 +18,7 @@
 import Foundation
 
 public enum ThumbnailGenerationError: String, LocalizedError {
-    case noFileKeyPacket
-    case generation
     case compression
     case cancelled
     case invalidSizeThumbnail
-    case noSignatureEmailInFile
 }

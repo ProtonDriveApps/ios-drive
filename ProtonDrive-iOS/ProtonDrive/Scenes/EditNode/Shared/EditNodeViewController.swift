@@ -176,12 +176,6 @@ extension EditNodeViewController {
                                      style: .done,
                                      target: self,
                                      action: #selector(performButtonAction))
-        button.setTitleTextAttributes([.font: UIFont.preferredFont(forTextStyle: .headline),
-                                       .foregroundColor: UIColor(ColorProvider.TextAccent)],
-                                      for: .normal)
-        button.setTitleTextAttributes([.font: UIFont.preferredFont(forTextStyle: .headline),
-                                       .foregroundColor: UIColor(ColorProvider.TextDisabled)],
-                                      for: .disabled)
         button.accessibilityIdentifier = "EditNodeViewController.makeRightBarButton.Save"
         return button
     }

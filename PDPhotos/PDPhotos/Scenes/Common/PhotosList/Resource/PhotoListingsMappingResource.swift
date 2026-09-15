@@ -34,7 +34,20 @@ final class PhotoListingsMappingResource: PhotoListingsMappingResourceProtocol {
     }
 
     private func makeSection(listings: [CoreDataPhotoListing], downloadingIds: PhotoIdsSet) -> PhotosListSection? {
-        let models = listings.compactMap { makeListing(listing: $0, downloadingIds: downloadingIds) }
+        // We make sure there's no 2 items in a section with same id. This relies on a fact that listings are
+        // sorted by capture time & link id -> so we know that duplicates would be ordered next to each other
+        // so we don't have to map to Set and back to array etc.
+        // The duplicities ideally never happen, when they do, they are cleaned up during app bootstrap,
+        // in worst case they're caught and filtered out here.
+        var previousId: PhotoId?
+        let models = listings
+            .compactMap { coreDataListing in
+                let listing = makeListing(listing: coreDataListing, downloadingIds: downloadingIds, previousId: previousId)
+                if let id = listing?.id {
+                    previousId = id
+                }
+                return listing
+            }
         guard !models.isEmpty else {
             return nil
         }
@@ -51,8 +64,14 @@ final class PhotoListingsMappingResource: PhotoListingsMappingResourceProtocol {
         return firstPhoto.captureTime
     }
 
-    private func makeListing(listing: CoreDataPhotoListing, downloadingIds: PhotoIdsSet) -> PhotoListing? {
+    private func makeListing(listing: CoreDataPhotoListing, downloadingIds: PhotoIdsSet, previousId: PhotoId?) -> PhotoListing? {
         guard listing.managedObjectContext != nil else { return nil }
+        
+        let identifier = listing.photoIdentifier
+        guard identifier != previousId else {
+            return nil
+        }
+        
         if let photo = listing.photo {
             let isAllChildrenUploaded = photo.children.allSatisfy { $0.state == .active }
             guard isAllChildrenUploaded else { return nil }
@@ -63,7 +82,7 @@ final class PhotoListingsMappingResource: PhotoListingsMappingResourceProtocol {
             downloadingIds: downloadingIds
         )
         return PhotoListing(
-            id: listing.photoIdentifier,
+            id: identifier,
             albumId: listing.albumID,
             captureTime: listing.captureTime,
             metadata: metadata,

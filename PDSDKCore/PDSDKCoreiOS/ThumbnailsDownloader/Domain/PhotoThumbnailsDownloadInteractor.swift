@@ -41,6 +41,9 @@ final class PhotoThumbnailsDownloadInteractor: ThumbnailsDownloadInteractor {
                     cancellationToken: token,
                     moc: moc
                 )
+            },
+            tokenCanceller: { [weak operationPerformer] token in
+                try? await operationPerformer?.cancelDownload(cancellationToken: token)
             }
         )
     }
@@ -54,5 +57,9 @@ final class PhotoThumbnailsDownloadInteractor: ThumbnailsDownloadInteractor {
 
     func cancel(file identifier: AnyVolumeIdentifier, type: ThumbnailType) async {
         await downloader.cancel(file: identifier, type: type)
+    }
+
+    func cancelAll() async {
+        await downloader.cancelAll()
     }
 }

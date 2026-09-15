@@ -24,4 +24,6 @@ public typealias EventID = PDClient.EventID
 public protocol EventsListener: AnyObject {
     func processorReceivedEvents()
     func processorAppliedEvents(affecting: [NodeIdentifier])
+
+    func rootMetadataMayHaveChanged(volumeID: String)
 }

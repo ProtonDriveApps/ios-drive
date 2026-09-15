@@ -56,8 +56,8 @@ struct NodeWrapper: Identifiable, Equatable {
     }
 }
 
-protocol FinderViewModel: NodeEditionViewModel, FlatNavigationBarDelegate, ScrollToTopViewModel {
-    associatedtype Model: FinderModel, NodesListing, ThumbnailLoader
+protocol FinderViewModel: NodeEditionViewModel, ScrollToTopViewModel {
+    associatedtype Model: FinderModel, NodesListing
     typealias ApplyActionCompletion = () -> Void
     var model: Model { get }
     var provedEmpty: Bool { get }
@@ -75,6 +75,8 @@ protocol FinderViewModel: NodeEditionViewModel, FlatNavigationBarDelegate, Scrol
     var childrenCancellable: AnyCancellable? { get set }
     var transientChildren: [NodeWrapper] { get set }
     var permanentChildren: [NodeWrapper] { get set }
+    var upgradeRequirementLevel: UpgradeRequirementLevel { get }
+    var upgradeRequirementHandling: UpgradeRequirementHandling? { get }
 
     var isVisible: Bool { get set }
     var isRoot: Bool { get }
@@ -112,6 +114,9 @@ extension FinderViewModel {
     var node: Folder? {
         self.model.folder
     }
+
+    var upgradeRequirementLevel: UpgradeRequirementLevel { .none }
+    var upgradeRequirementHandling: UpgradeRequirementHandling? { nil }
 
     var lockedFlags: LockedFlags? {
         return self.model.tower.sessionVault.getUserInfo()?.lockedFlags
@@ -192,14 +197,6 @@ extension FinderViewModel {
     func closeUploadDisclaimer() {}
 }
 
-extension FinderViewModel {
-
-    func numberOfControllers(_ count: Int, _ root: RootViewModel) {
-        root.isAccessible = count == 1
-    }
-
-}
-
 typealias FinderViewModelWithSelection = any FinderViewModel & HasMultipleSelection
 extension FinderViewModel where Self: HasMultipleSelection {
 
@@ -239,7 +236,7 @@ extension FinderViewModel where Self: UploadingViewModel, Self: DownloadingViewM
             selectionModel: node.state?.existsOnCloud == true ? self.prepareSelectionModel() : nil,
             // progresses come from Uploader a little later that nodes from db. Waiting for notification to redraw.
             progressesAvailable: hasReceivedUploadsUpdate,
-            thumbnailLoader: self.model,
+            thumbnailLoader: self.model.tower.sdkObjects.thumbnailDownloader,
             nodeStatePolicy: nodeStatePolicy,
             featureFlagsController: featureFlagsController,
             isSharedWithMeRoot: isSharedWithMeRoot,
@@ -266,7 +263,7 @@ extension FinderViewModel where Self: DownloadingViewModel, Self: HasMultipleSel
         NodeCellWithProgressConfiguration(
             from: node,
             selectionModel: self.prepareSelectionModel(),
-            thumbnailLoader: self.model,
+            thumbnailLoader: self.model.tower.sdkObjects.thumbnailDownloader,
             nodeStatePolicy: DisabledNodeStatePolicy(),
             featureFlagsController: featureFlagsController,
             isSharedWithMeRoot: isSharedWithMeRoot,
@@ -435,7 +432,8 @@ extension FinderViewModel where Self.Model: NodesListing {
     }
 
     func sendToTrash(_ currentNodes: [Node]) async throws {
-        if let performer = model.tower.sdkObjects.nodeOperationPerformer {
+        if let performer = model.tower.sdkObjects.nodeOperationPerformer,
+           model.tower.featureFlags.isEnabled(flag: .driveiOSSDKTrashNode) {
             try await trash(currentNodes, via: performer)
             return
         }
@@ -474,8 +472,9 @@ extension FinderViewModel where Self.Model: NodesListing {
     }
 
     private func trash(_ currentNodes: [Node], via performer: SDKNodeOperationPerformer) async throws {
-        let (ids, error) = try await performer.trash(nodes: currentNodes.map { $0.identifier.any() })
-        model.tower.sdkObjects.fileDownloader.cancel(operationsOf: ids)
+        let ids = currentNodes.map { $0.identifier.any() }
+        let (affectedIDs, error) = try await performer.trash(nodes: ids).collectCompletion()
+        model.tower.sdkObjects.fileDownloader.cancel(operationsOf: affectedIDs)
         if let error { throw error }
     }
 }

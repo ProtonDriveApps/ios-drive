@@ -35,28 +35,41 @@ public protocol FeatureFlagsControllerProtocol {
     var hasProtonSheetCreation: Bool { get }
     var hasDebugMode: Bool { get }
     var hasPaymentsV2: Bool { get }
-    var hasSDKNodeOperations: Bool { get }
+    var hasCustomUpsellModal: Bool { get }
+    var needsSDKNodeOperationPerformer: Bool { get }
+    var hasSDKCreateFolder: Bool { get }
+    var hasSDKTrashNode: Bool { get }
+    var hasSDKDeviceOperations: Bool { get }
     var hasGradualRolloutChannel: Bool { get }
+    var hasRefactoredFinderView: Bool { get }
+    var hasRefactoredFinderViewByDefault: Bool { get }
     /// Makes current value publisher for the specific FF
+    var hasUnlimitedPickerSelection: Bool { get }
+    var hasUnlimitedDownloads: Bool { get }
+    var hasPhotosGridZoom: Bool { get }
     func makePublisher(keyPath: KeyPath<FeatureFlagsControllerProtocol, Bool>) -> AnyPublisher<Bool, Never>
 }
 
 public final class FeatureFlagsController: FeatureFlagsControllerProtocol {
     private let buildType: BuildType
-    private let featureFlagsStore: ExternalFeatureFlagsStore
-    private let updateRepository: FeatureFlagsUpdateRepository
+    private let featureFlagProvider: DriveFeatureFlagsProvider
+    private let experimentalFeatureFlagProvider: ExperimentalFeatureFlagProvider
     private let subject = PassthroughSubject<Void, Never>()
     private var cancellables = Set<AnyCancellable>()
 
-    public init(buildType: BuildType, featureFlagsStore: ExternalFeatureFlagsStore, updateRepository: FeatureFlagsUpdateRepository) {
+    public init(
+        buildType: BuildType,
+        featureFlagProvider: DriveFeatureFlagsProvider,
+        experimentalFeatureFlagProvider: ExperimentalFeatureFlagProvider
+    ) {
         self.buildType = buildType
-        self.featureFlagsStore = featureFlagsStore
-        self.updateRepository = updateRepository
+        self.featureFlagProvider = featureFlagProvider
+        self.experimentalFeatureFlagProvider = experimentalFeatureFlagProvider
         subscribeToUpdates()
     }
 
     private func subscribeToUpdates() {
-        updateRepository.updatePublisher
+        featureFlagProvider.updatePublisher
             .sink { [weak self] in
                 self?.subject.send()
             }
@@ -68,69 +81,117 @@ public final class FeatureFlagsController: FeatureFlagsControllerProtocol {
     }
 
     public var hasSharing: Bool {
-        return !featureFlagsStore.isFeatureEnabled(.driveSharingDisabled)
+        !featureFlagProvider.isEnabled(flag: .driveSharingDisabled)
     }
 
     public var hasSharingExternalInvitations: Bool {
-        return hasSharing && featureFlagsStore.isFeatureEnabled(.driveSharingExternalInvitations) && !featureFlagsStore.isFeatureEnabled(.driveSharingExternalInvitationsDisabled)
+        return hasSharing && featureFlagProvider.isEnabled(flag: .driveSharingExternalInvitations) && !featureFlagProvider.isEnabled(flag: .driveSharingExternalInvitationsDisabled)
     }
 
     public var hasSharingAdminPermissions: Bool {
-        return hasSharing && featureFlagsStore.isFeatureEnabled(.driveSharingAdminPermissions)
+        return hasSharing && featureFlagProvider.isEnabled(flag: .driveSharingAdminPermissions)
     }
     
     public var hasPublicShareEditMode: Bool {
-        return featureFlagsStore.isFeatureEnabled(.drivePublicShareEditMode) && !featureFlagsStore.isFeatureEnabled(.drivePublicShareEditModeDisabled)
+        return featureFlagProvider.isEnabled(flag: .drivePublicShareEditMode) && !featureFlagProvider.isEnabled(flag: .drivePublicShareEditModeDisabled)
     }
 
     public var hasRatingBooster: Bool {
-        return featureFlagsStore.isFeatureEnabled(.driveRatingBooster)
+        return featureFlagProvider.isEnabled(flag: .driveRatingBooster)
     }
     
     public var hasRatingIOSDrive: Bool {
-        return featureFlagsStore.isFeatureEnabled(.ratingIOSDrive)
+        return featureFlagProvider.isEnabled(flag: .ratingIOSDrive)
     }
 
     public var hasBookmarks: Bool {
-        return featureFlagsStore.isFeatureEnabled(.driveShareURLBookmarking) && !featureFlagsStore.isFeatureEnabled(.driveShareURLBookmarksDisabled)
+        return featureFlagProvider.isEnabled(flag: .driveShareURLBookmarking) && !featureFlagProvider.isEnabled(flag: .driveShareURLBookmarksDisabled)
     }
 
     public var hasCopy: Bool {
-        return !featureFlagsStore.isFeatureEnabled(.driveCopyDisabled)
+        return !featureFlagProvider.isEnabled(flag: .driveCopyDisabled)
     }
 
     public var hasPhotosTagsMigration: Bool {
-        return !featureFlagsStore.isFeatureEnabled(.drivePhotosTagsMigrationDisabled)
+        return !featureFlagProvider.isEnabled(flag: .drivePhotosTagsMigrationDisabled)
     }
 
     public var hasProtonSheetCreation: Bool {
-        return featureFlagsStore.isFeatureEnabled(.docsSheetsEnabled) &&
-        featureFlagsStore.isFeatureEnabled(.docsCreateNewSheetOnMobileEnabled) &&
-        !featureFlagsStore.isFeatureEnabled(.docsSheetsDisabled)
+        return featureFlagProvider.isEnabled(flag: .docsSheetsEnabled)
+            && featureFlagProvider.isEnabled(flag: .docsCreateNewSheetOnMobileEnabled)
+            && !featureFlagProvider.isEnabled(flag: .docsSheetsDisabled)
     }
 
     public var hasDebugMode: Bool {
-        return featureFlagsStore.isFeatureEnabled(.driveiOSDebugMode)
+        return featureFlagProvider.isEnabled(flag: .driveiOSDebugMode)
     }
 
     public var hasPaymentsV2: Bool {
-        return featureFlagsStore.isFeatureEnabled(.driveiOSPaymentsV2)
+        return featureFlagProvider.isEnabled(flag: .driveiOSPaymentsV2)
+    }
+
+    public var hasCustomUpsellModal: Bool {
+        return featureFlagProvider.isEnabled(flag: .driveMobileUpsellPlan)
     }
 
     public var hasSDKCryptoEncryptBlocksWithPgpAead: Bool {
-        return featureFlagsStore.isFeatureEnabled(.driveCryptoEncryptBlocksWithPgpAead)
+        return featureFlagProvider.isEnabled(flag: .driveCryptoEncryptBlocksWithPgpAead)
     }
     
     public var hasDriveDownloadVerificationDisabled: Bool {
-        return featureFlagsStore.isFeatureEnabled(.driveDownloadVerificationDisabled)
+        return featureFlagProvider.isEnabled(flag: .driveDownloadVerificationDisabled)
     }
 
-    public var hasSDKNodeOperations: Bool {
-        return featureFlagsStore.isFeatureEnabled(.driveiOSSDKNodeOperations)
+    /// /// Any of the SDK node-operation sub-features that require the performer to exist
+    public var needsSDKNodeOperationPerformer: Bool {
+        return featureFlagProvider.isEnabled(flag: .driveiOSSDKNodeOperations) ||
+               hasSDKCreateFolder ||
+               hasSDKTrashNode ||
+               hasSDKDeviceOperations
+    }
+
+    public var hasSDKCreateFolder: Bool {
+        return featureFlagProvider.isEnabled(flag: .driveiOSSDKCreateFolder)
+    }
+
+    public var hasSDKTrashNode: Bool {
+        return featureFlagProvider.isEnabled(flag: .driveiOSSDKTrashNode)
+    }
+
+    public var hasSDKDeviceOperations: Bool {
+        return featureFlagProvider.isEnabled(flag: .driveiOSSDKDevicesOperations)
     }
 
     public var hasGradualRolloutChannel: Bool {
-        featureFlagsStore.isFeatureEnabled(.driveMacGradualRolloutChannelEnabled)
+        featureFlagProvider.isEnabled(flag: .driveMacGradualRolloutChannelEnabled)
+    }
+
+    public var hasRefactoredFinderView: Bool {
+        experimentalFeatureFlagProvider.iOSRefactoredFinder || hasRefactoredFinderViewByDefault
+    }
+
+    public var hasRefactoredFinderViewByDefault: Bool {
+        buildType.isQaOrBelow
+    }
+
+    private var isTestingEnabled: Bool {
+        featureFlagProvider.isEnabled(flag: .driveClientTestsEnabled)
+    }
+
+    public var hasUnlimitedPickerSelection: Bool {
+        buildType == .dev ||
+            featureFlagProvider.isEnabled(flag: .driveiOSUnlimitedPickerSelection) ||
+            isTestingEnabled
+    }
+
+    public var hasUnlimitedDownloads: Bool {
+        buildType == .dev ||
+            featureFlagProvider.isEnabled(flag: .driveiOSDownloadMultiple) ||
+            isTestingEnabled
+    }
+
+    public var hasPhotosGridZoom: Bool {
+        featureFlagProvider.isEnabled(flag: .driveiOSPhotosGridZoom)
     }
 
     public func makePublisher(keyPath: KeyPath<FeatureFlagsControllerProtocol, Bool>) -> AnyPublisher<Bool, Never> {

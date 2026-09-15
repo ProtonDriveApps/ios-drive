@@ -31,35 +31,5 @@ public enum PhotosFailureUserError: Error {
     case missingPermission
     case nameValidationError
     case unknown
-    
-    public var localizedDescription: String {
-        switch self {
-        case .accessFileFailed, .corruptedAsset:
-            return Localization.retry_error_explainer_invalid_asset
-        case .connectionError:
-            return Localization.retry_error_explainer_connection_error
-        case .deviceStorageFull:
-            return Localization.retry_error_explainer_device_storage_full
-        case .driveStorageFull:
-            return Localization.retry_error_explainer_quote_exceeded
-        case .encryptionFailed:
-            return Localization.retry_error_explainer_encryption_error
-        case .iCloudNotReachable:
-            return Localization.retry_error_explainer_cannot_connect_icloud
-        case .loadResourceFailed:
-            return Localization.retry_error_explainer_failed_to_load_resource
-        case .missingPermission:
-            return Localization.retry_error_explainer_missing_permissions
-        case .nameValidationError:
-            return Localization.retry_error_explainer_name_validation
-        case .unknown:
-            return ""
-        }
-    }
-}
-
-extension PhotosFailureUserError: LocalizedError {
-    public var errorDescription: String? {
-        localizedDescription
-    }
+    case partiallyInAlbum
 }

@@ -18,6 +18,15 @@
 import Foundation
 import CoreData
 
+public protocol VolumeIDRepository {
+    func getVolumeIDs(within moc: NSManagedObjectContext) async throws -> StorageManager.VolumeIDs
+    func getVolumeIDs(in moc: NSManagedObjectContext) throws -> StorageManager.VolumeIDs
+    func getPhotosVolumeId(in managedObjectContext: NSManagedObjectContext) -> String?
+    func getMyVolumeId(in moc: NSManagedObjectContext) throws -> String
+}
+
+extension StorageManager: VolumeIDRepository {}
+
 public extension StorageManager {
 
     func entities<E: NSManagedObject>(in moc: NSManagedObjectContext) throws -> [E] {
@@ -39,7 +48,7 @@ public extension StorageManager {
         return result
     }
 
-    public struct VolumeIDs {
+    struct VolumeIDs {
         public let main: VolumeID
         public let photo: VolumeID?
         public let other: [VolumeID]
@@ -47,19 +56,31 @@ public extension StorageManager {
 
     func getVolumeIDs(in moc: NSManagedObjectContext) throws -> VolumeIDs {
         return try moc.performAndWait {
-            var volumes = (try? moc.fetch(self.requestVolumes())) ?? []
-
-            guard let mainVolumeIndex = volumes.firstIndex(where: { $0.shares.contains(where: { $0.type == .main }) }) else {
-                throw DriveError("Session without a volume with a main share.")
-            }
-            let mainVolume = volumes.remove(at: mainVolumeIndex)
-
-            var photoVolume: Volume?
-            if let photoVolumeIndex = volumes.firstIndex(where: { $0.shares.contains(where: { $0.type == .photos }) }) {
-                photoVolume = volumes.remove(at: photoVolumeIndex)
-            }
-            return VolumeIDs(main: mainVolume.id, photo: photoVolume?.id, other: volumes.map(\.id))
+            let volumes = (try? moc.fetch(self.requestVolumes())) ?? []
+            return try self.makeVolumeIDs(from: volumes)
         }
+    }
+
+    func getVolumeIDs(within moc: NSManagedObjectContext) async throws -> VolumeIDs {
+        try await moc.perform {
+            let volumes = (try? moc.fetch(self.requestVolumes())) ?? []
+            return try self.makeVolumeIDs(from: volumes)
+        }
+    }
+
+    private func makeVolumeIDs(from volumes: [Volume]) throws -> VolumeIDs {
+        var volumes = volumes
+
+        guard let mainVolumeIndex = volumes.firstIndex(where: { $0.shares.contains(where: { $0.type == .main }) }) else {
+            throw DriveError("Session without a volume with a main share.")
+        }
+        let mainVolume = volumes.remove(at: mainVolumeIndex)
+
+        var photoVolume: Volume?
+        if let photoVolumeIndex = volumes.firstIndex(where: { $0.shares.contains(where: { $0.type == .photos }) }) {
+            photoVolume = volumes.remove(at: photoVolumeIndex)
+        }
+        return VolumeIDs(main: mainVolume.id, photo: photoVolume?.id, other: volumes.map(\.id))
     }
 
     func getPhotosVolumeId(in managedObjectContext: NSManagedObjectContext) -> String? {
@@ -295,16 +316,13 @@ public extension StorageManager {
         }
         return nodes ?? []
     }
-
-    func fetchDirtyNodes(of shareID: String, moc: NSManagedObjectContext) async throws -> [Node] {
-        try await moc.perform {
-            try moc.fetch(self.requestDirtyNodes(share: shareID, moc: moc))
-        }
-    }
-
-    func fetchDirtyNodesCount(share shareID: String, moc: NSManagedObjectContext) async throws -> Int {
-        try await moc.perform {
-            try moc.count(for: self.requestDirtyNodes(share: shareID, moc: moc))
+    
+    func fetchAllNodeIdentifiers(moc: NSManagedObjectContext? = nil) async throws -> [NodeIdentifier] {
+        let moc = moc ?? backgroundContext
+        return try await moc.perform {
+            let fetchRequest: NSFetchRequest<Node> = Node.fetchRequest()
+            fetchRequest.propertiesToFetch = ["id", "shareID", "volumeID"]
+            return try moc.fetch(fetchRequest).map(\.identifierWithinManagedObjectContext)
         }
     }
 
@@ -487,9 +505,12 @@ public extension StorageManager {
                                           cacheName: nil)
     }
 
-    func subscriptionToUploadingFiles() -> NSFetchedResultsController<File> {
-        return NSFetchedResultsController(fetchRequest: self.requestUploading(moc: mainContext),
-                                          managedObjectContext: mainContext,
+    func subscriptionToUploadingFiles(
+        preferredContext: NSManagedObjectContext? = nil
+    ) -> NSFetchedResultsController<File> {
+        let context = preferredContext ?? mainContext
+        return NSFetchedResultsController(fetchRequest: self.requestUploading(moc: context),
+                                          managedObjectContext: context,
                                           sectionNameKeyPath: nil,
                                           cacheName: nil)
     }
@@ -795,16 +816,6 @@ public extension StorageManager {
         return fetchRequest
     }
 
-    private func requestDirtyNodes(share shareID: String, moc: NSManagedObjectContext) -> NSFetchRequest<Node> {
-        let fetchRequest = NSFetchRequest<Node>()
-        fetchRequest.entity = Node.entity()
-        fetchRequest.sortDescriptors = [.init(key: #keyPath(Node.dirtyIndex), ascending: true)]
-        fetchRequest.predicate = NSPredicate(format: "%K == %@ AND %K != %d",
-                                             #keyPath(Node.shareID), shareID,
-                                             #keyPath(Node.dirtyIndex), 0)
-        return fetchRequest
-    }
-
     private func requestUploading<Result: NSFetchRequestResult>(moc: NSManagedObjectContext) -> NSFetchRequest<Result> {
         let fetchRequest = NSFetchRequest<Result>()
         fetchRequest.entity = File.entity()
@@ -843,15 +854,14 @@ public extension StorageManager {
         return fetchRequest
     }
 
-    private func requestTrashResult<Result: NSFetchRequestResult>(volumeIDs: [String], moc: NSManagedObjectContext) -> NSFetchRequest<Result> {
+    public func requestTrashResult<Result: NSFetchRequestResult>(volumeIDs: [String], moc: NSManagedObjectContext) -> NSFetchRequest<Result> {
         let fetchRequest = NSFetchRequest<Result>()
         fetchRequest.entity = Node.entity()
         let sorting = SortPreference.default
         fetchRequest.sortDescriptors = [sorting.descriptor]
         fetchRequest.predicate = NSPredicate(
-            format: "%K == %d AND %K == %d AND %K IN %@",
+            format: "%K == %d AND %K IN %@",
             #keyPath(Node.stateRaw), Node.State.deleted.rawValue,
-            #keyPath(Node.isToBeDeleted), false,
             #keyPath(Node.volumeID), volumeIDs
         )
         return fetchRequest

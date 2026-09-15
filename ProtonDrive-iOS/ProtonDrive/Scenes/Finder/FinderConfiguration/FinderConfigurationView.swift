@@ -87,11 +87,11 @@ struct FinderConfigurationView: View {
                 .accessibility(identifier: "Button.LayoutSwitcher")
             }
         }
-        .background(ColorProvider.BackgroundNorm)
+        .background(.clear)
     }
     
     private func switchSortPreference(ascending: SortPreference, descending: SortPreference) {
-        let next: SortPreference = sorting == ascending ? descending : ascending
+        let next: SortPreference = sorting == descending ? ascending : descending
         switchSorting?(next)
     }
     

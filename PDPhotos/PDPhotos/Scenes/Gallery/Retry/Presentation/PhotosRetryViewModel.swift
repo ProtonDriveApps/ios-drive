@@ -23,15 +23,16 @@ final class PhotosRetryViewModel: ObservableObject {
     @Published var presentedAlert: PhotosRetryViewAlert?
     @Published private(set) var items = [PhotosRetryListRowItem]()
     @Published private(set) var failedToPreview = 0
-    
+    private var assets = [FullPreview]()
+
     private let interactor: PhotosRetryInteractorProtocol
     private let nameUnwrappingStrategy: RetryItemNameUnwrappingStrategy
     private let imageUnwrappingStrategy: RetryImageUnwrappingStrategy
-    
+
     let fallbackSystemImage = "eye.slash"
     let title = Localization.retry_view_title
     let retryButtonTitle = Localization.retry_view_button_retry_all
-    let skipButtonTitle = Localization.general_skip
+    let skipButton = Localization.skip_permanently_button
     
     var subtitle: String {
         let count = items.count + failedToPreview
@@ -50,15 +51,17 @@ final class PhotosRetryViewModel: ObservableObject {
 
     @MainActor
     func task() async {
-        let (previews, failures) = await interactor.fetchAssets(ofSize: CGSize(width: 32, height: 32))
-        self.items = previews.map {
+        let (assets, failures) = await interactor.fetchAssets(ofSize: CGSize(width: 32, height: 32))
+        self.items = assets.map {
             PhotosRetryListRowItem(
                 id: $0.localIdentifier,
                 name: nameUnwrappingStrategy($0.filename),
                 image: imageUnwrappingStrategy($0.imageData),
-                failureReason: $0.errorMessage
+                failureReason: $0.errorMessage,
+                creationDate: $0.creationDate
             )
         }
+        self.assets = assets
         self.failedToPreview = failures
     }
     
@@ -70,10 +73,11 @@ final class PhotosRetryViewModel: ObservableObject {
     }
     
     func pushSkipButton() {
-        presentedAlert = .skipDialog
+        presentedAlert = .skip
     }
-    
-    func pushSkipAlertConfirmButton() {
+
+    func confirmSkip() {
+        interactor.markFailedAsSkippable(assets: assets)
         interactor.clearDeletedStorage()
         destination = .unwind
     }

@@ -26,7 +26,24 @@ struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
     @ObservedObject var viewModel: ViewModel
     let accessibilityIndex: String
     let isPickingPhotos: Bool
+    let disablesLongPress: Bool
     @State private var isAnimating = false
+
+    private let selectionIconSize: CGFloat = 18
+    private let selectionViewSize: CGFloat = 21
+    private let selectionPadding: CGFloat = 11
+    
+    private let badgeIconSize: CGFloat = 16
+    private let downloadingArrowSize: CGFloat = 12
+
+    private let badgeSpacing: CGFloat = 4
+    private let badgeInsets = EdgeInsets(top: 6, leading: 6, bottom: 4, trailing: 6)
+
+    private let overlayMinScale: CGFloat = 0.55
+
+    private let burstMinCellWidth: CGFloat = PhotosGridLayoutFactory.defaultItemWidth / 2
+
+    private let selectedTintOpacity: CGFloat = 0.30
 
     private var accessibilityIdentifier: String {
         "PhotoItemView_\(accessibilityIndex)"
@@ -39,11 +56,13 @@ struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
     init(
         viewModel: ViewModel,
         accessibilityIndex: String,
-        isPickingPhotos: Bool = false
+        isPickingPhotos: Bool = false,
+        disablesLongPress: Bool = false
     ) {
         self.viewModel = viewModel
         self.accessibilityIndex = accessibilityIndex
         self.isPickingPhotos = isPickingPhotos
+        self.disablesLongPress = disablesLongPress
     }
 
     var body: some View {
@@ -52,7 +71,7 @@ struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
                 // Add small delay. When the view gets hidden before the delay finishes, it means it has been
                 // scrolled out of the screen. This should prevent excessive loading of resources when the user
                 // is scrolling quickly through the items.
-                try? await Task.sleep(nanoseconds: 1000 * 250) // 250 ms
+                try? await Task.sleep(for: .milliseconds(25)) // 25 ms
                 let isVisible = !Task.isCancelled
                 updateViewModel(isVisible: isVisible)
             }
@@ -73,11 +92,10 @@ struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
         content
             .contentShape(.interaction, Rectangle())
             .onTapGesture(perform: viewModel.didTap)
-            .onLongPressGesture {
-                if isPickingPhotos { return }
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                viewModel.didLongPress()
-            }
+            .modifier(ConditionalLongPressModifier(
+                enabled: !disablesLongPress && !isPickingPhotos,
+                action: viewModel.didLongPress
+            ))
             .contextMenu {
                 if isPickingPhotos {
                     Button {
@@ -105,6 +123,9 @@ struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
         ZStack {
             ColorProvider.BackgroundDeep
             viewModel.image.map(makeImage)
+            if viewModel.isSelected {
+                ColorProvider.White.opacity(selectedTintOpacity)
+            }
         }
         .accessibilityIdentifier(accessibilityIdentifier)
         .overlay(alignment: .bottom) {
@@ -127,24 +148,51 @@ struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
     @ViewBuilder
     private var selectionView: some View {
         if viewModel.isSelecting {
-            RoundedSelectionView(isSelected: viewModel.isSelected)
+            GeometryReader { proxy in
+                let scale = overlayScale(forCellWidth: proxy.size.width)
+                RoundedSelectionView(
+                    isSelected: viewModel.isSelected,
+                    iconSize: selectionIconSize * scale,
+                    viewSize: selectionViewSize * scale
+                )
                 .accessibilityIdentifier("\(accessibilityBadgeIdentifier).SelectionButton")
-                .padding(11)
+                .padding(selectionPadding * scale)
+            }
         }
     }
-    
+
+    private func overlayScale(forCellWidth width: CGFloat) -> CGFloat {
+        guard width > 0 else { return 1 }
+        let scale = width / PhotosGridLayoutFactory.defaultItemWidth
+        return min(max(scale, overlayMinScale), 1)
+    }
+
+    private func scaledEdgeInsets(_ insets: EdgeInsets, by scale: CGFloat) -> EdgeInsets {
+        EdgeInsets(
+            top: insets.top * scale,
+            leading: insets.leading * scale,
+            bottom: insets.bottom * scale,
+            trailing: insets.trailing * scale
+        )
+    }
+
     @ViewBuilder
     private func makeBurstIcon(burstChildrenCount: Int?) -> some View {
         if let num = burstChildrenCount,
            let burstIcon = UIImage(named: "ic-burst") {
-            IconBadgeView(
-                text: "\(num + 1)",
-                icon: burstIcon,
-                accessibilityIDPrefix: "\(accessibilityBadgeIdentifier).burst"
-            )
-            .padding(.trailing, 6)
-            .padding(.bottom, 6)
-            .accessibilityLabel("\(accessibilityBadgeIdentifier).burst.badge")
+            GeometryReader { proxy in
+                if proxy.size.width >= burstMinCellWidth {
+                    IconBadgeView(
+                        text: "\(num + 1)",
+                        icon: burstIcon,
+                        accessibilityIDPrefix: "\(accessibilityBadgeIdentifier).burst"
+                    )
+                    .padding(.trailing, 6)
+                    .padding(.bottom, 6)
+                    .accessibilityLabel("\(accessibilityBadgeIdentifier).burst.badge")
+                    .frame(width: proxy.size.width, height: proxy.size.height, alignment: .bottomTrailing)
+                }
+            }
         }
     }
 
@@ -160,42 +208,84 @@ struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
     }
 
     private func makeDurationView(with duration: String) -> some View {
+        GeometryReader { proxy in
+            // Prioritize duration over icon rendering for videos when zooming out
+            ViewThatFits(in: .horizontal) {
+                durationContent(duration: duration, showsIcon: true)
+                durationContent(duration: duration, showsIcon: false)
+                durationContent(duration: nil, showsIcon: false)
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .background {
+                InternalIcon.videoBackground
+                    .resizable(resizingMode: .tile)
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .bottom)
+        }
+    }
+
+    private func durationContent(duration: String?, showsIcon: Bool) -> some View {
         HStack(spacing: 4) {
-            Spacer()
-            Text(duration)
-                .font(.caption)
-                .foregroundColor(ColorProvider.White)
-            InternalIcon.playFilledBackground
+            if let duration {
+                Text(duration)
+                    .monospacedDigit()
+                    .font(.caption)
+                    .foregroundColor(ColorProvider.White)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            if showsIcon {
+                InternalIcon.playFilledBackground
+            }
         }
         .padding(EdgeInsets(top: 4, leading: 6, bottom: 6, trailing: 6))
-        .background {
-            InternalIcon.videoBackground
-                .resizable(resizingMode: .tile)
-        }
     }
 
     private func makeBadgesView(badges: PhotoItemViewModelBadges) -> some View {
-        HStack(spacing: 4) {
-            Spacer()
-            if badges.isAvailableOffline {
-                offlineAvailableView
+        GeometryReader { proxy in
+            let scale = overlayScale(forCellWidth: proxy.size.width)
+            let showsSecondaryBadges = badgesFit(badges, cellWidth: proxy.size.width, scale: scale)
+            
+            if showsSecondaryBadges || badges.isFavorite {
+                HStack(spacing: badgeSpacing * scale) {
+                    if showsSecondaryBadges {
+                        if badges.isAvailableOffline {
+                            offlineAvailableView(scale: scale)
+                        }
+                        if badges.isDownloading {
+                            downloadingView(scale: scale)
+                        }
+                        badges.shareBadge.map { makeShareView(badge: $0, scale: scale) }
+                    }
+                    if badges.isFavorite {
+                        favoriteView(scale: scale)
+                    }
+                }
+                .padding(scaledEdgeInsets(badgeInsets, by: scale))
+                .frame(width: proxy.size.width, alignment: .trailing)
+                .background {
+                    InternalIcon.iconsBackground
+                        .resizable(resizingMode: .stretch)
+                }
             }
-            if badges.isDownloading {
-                downloadingView
-            }
-            badges.shareBadge.map(makeShareView)
-            if badges.isFavorite {
-                favoriteView
-            }
-        }
-        .padding(EdgeInsets(top: 6, leading: 6, bottom: 4, trailing: 6))
-        .background {
-            InternalIcon.iconsBackground
-                .resizable(resizingMode: .stretch)
         }
     }
 
-    private var downloadingView: some View {
+    private func badgesFit(_ badges: PhotoItemViewModelBadges, cellWidth: CGFloat, scale: CGFloat) -> Bool {
+        var count = 0
+        if badges.isAvailableOffline { count += 1 }
+        if badges.isDownloading { count += 1 }
+        if badges.shareBadge != nil { count += 1 }
+        if badges.isFavorite { count += 1 }
+        guard count > 1 else { return true }
+
+        let icon = badgeIconSize * scale
+        let spacing = badgeSpacing * scale
+        let available = cellWidth - (badgeInsets.leading + badgeInsets.trailing) * scale
+        return CGFloat(count) * icon + CGFloat(count - 1) * spacing <= available
+    }
+
+    private func downloadingView(scale: CGFloat) -> some View {
         InternalIcon.ellipseDotted
             .resizable()
             .rotationEffect(Angle(degrees: isAnimating ? 360 : 0.0))
@@ -203,18 +293,18 @@ struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
             .overlay {
                 InternalIcon.arrowDownWhite
                     .resizable()
-                    .frame(width: 12, height: 12)
+                    .frame(width: downloadingArrowSize * scale, height: downloadingArrowSize * scale)
             }
             .onAppear { isAnimating = true }
             .onDisappear { isAnimating = false }
-            .frame(width: 16, height: 16)
+            .frame(width: badgeIconSize * scale, height: badgeIconSize * scale)
             .accessibilityIdentifier("\(accessibilityBadgeIdentifier).DownloadingIcon")
     }
 
-    private var offlineAvailableView: some View {
+    private func offlineAvailableView(scale: CGFloat) -> some View {
         InternalIcon.arrowDownWhite
             .resizable()
-            .frame(width: 16, height: 16)
+            .frame(width: badgeIconSize * scale, height: badgeIconSize * scale)
             .accessibilityIdentifier("\(accessibilityBadgeIdentifier).AvailableOfflineIcon")
     }
 
@@ -234,29 +324,47 @@ struct PhotoItemView<ViewModel: PhotoItemViewModelProtocol>: View {
     }
 
     @ViewBuilder
-    private func makeShareView(badge: PhotoItemShareBadge) -> some View {
+    private func makeShareView(badge: PhotoItemShareBadge, scale: CGFloat) -> some View {
         switch badge {
         case .link:
             IconProvider.link
                 .resizable()
-                .frame(width: 16, height: 16)
+                .frame(width: badgeIconSize * scale, height: badgeIconSize * scale)
                 .foregroundStyle(ColorProvider.IconInverted)
                 .accessibilityIdentifier("\(accessibilityBadgeIdentifier).ShareIcon")
         case .collaborative:
             InternalIcon.users
                 .resizable()
                 .foregroundColor(ColorProvider.White)
-                .frame(width: 16, height: 16)
+                .frame(width: badgeIconSize * scale, height: badgeIconSize * scale)
                 .accessibilityIdentifier("\(accessibilityBadgeIdentifier).ShareIcon")
         }
     }
 
-    private var favoriteView: some View {
+    private func favoriteView(scale: CGFloat) -> some View {
         InternalIcon.heartFilled
             .resizable()
             .foregroundColor(ColorProvider.White)
-            .frame(width: 16, height: 16)
+            .frame(width: badgeIconSize * scale, height: badgeIconSize * scale)
             .accessibilityIdentifier("\(accessibilityBadgeIdentifier).FavoriteIcon")
+    }
+}
+
+/// Applies `onLongPressGesture` only when `enabled` — lets the collection-view
+/// grid own the long-press (for drag-select) while the SwiftUI grid keeps its own.
+private struct ConditionalLongPressModifier: ViewModifier {
+    let enabled: Bool
+    let action: () -> Void
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.onLongPressGesture {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                action()
+            }
+        } else {
+            content
+        }
     }
 }
 

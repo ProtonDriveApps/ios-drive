@@ -67,7 +67,7 @@ public extension DriveDependencyContainer {
         let accountRecoveryWrapper = AccountRecoveryWrapper(publisher: PassthroughSubject<Void, Never>(), 
                                                             apiService: networkService)
 
-        if featureFlagRepository.isEnabled(CoreFeatureFlagType.accountRecovery) {
+        if featureFlagsRepository.isEnabled(CoreFeatureFlagType.accountRecovery) {
             let driveHandler = AccountRecoveryHandler()
             driveHandler.handler = { _ in
                 accountRecoveryWrapper.publisher.send()

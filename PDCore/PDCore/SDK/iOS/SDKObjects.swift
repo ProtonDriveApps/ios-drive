@@ -18,14 +18,13 @@
 import Foundation
 
 public protocol SDKObjectsProtocol {
-    var fileUploader: SDKFileUploaderProtocol { get }
     var fileDownloader: SDKFileDownloaderProtocol { get }
-    var fileThumbnailDownloader: SDKThumbnailsDownloaderProtocol { get }
-    var photoUploader: SDKFileUploaderProtocol { get }
-    var photoDownloader: SDKFileDownloaderProtocol { get }
-    var photoThumbnailDownloader: SDKThumbnailsDownloaderProtocol { get }
-    var revisionUploader: SDKRevisionUploaderProtocol { get }
+    var fileUploader: SDKFileUploaderProtocol { get }
     var nodeOperationPerformer: SDKNodeOperationPerformer? { get }
+    var photoDownloader: SDKFileDownloaderProtocol { get }
+    var photoUploader: SDKFileUploaderProtocol { get }
+    var revisionUploader: SDKRevisionUploaderProtocol { get }
+    var thumbnailDownloader: SDKThumbnailsDownloaderProtocol { get }
 }
 
 public protocol FPSDKObjectsProtocol {
@@ -36,33 +35,30 @@ public protocol FPSDKObjectsProtocol {
 
 #if os(iOS)
 public final class SDKObjects: SDKObjectsProtocol {
-    public let fileUploader: SDKFileUploaderProtocol
     public let fileDownloader: SDKFileDownloaderProtocol
-    public let fileThumbnailDownloader: SDKThumbnailsDownloaderProtocol
-    public let photoUploader: SDKFileUploaderProtocol
-    public let photoDownloader: SDKFileDownloaderProtocol
-    public let photoThumbnailDownloader: SDKThumbnailsDownloaderProtocol
-    public let revisionUploader: SDKRevisionUploaderProtocol
+    public let fileUploader: SDKFileUploaderProtocol
     public let nodeOperationPerformer: SDKNodeOperationPerformer?
-    
+    public let photoDownloader: SDKFileDownloaderProtocol
+    public let photoUploader: SDKFileUploaderProtocol
+    public let revisionUploader: SDKRevisionUploaderProtocol
+    public let thumbnailDownloader: SDKThumbnailsDownloaderProtocol
+
     public init(
-        fileUploader: SDKFileUploaderProtocol,
         fileDownloader: SDKFileDownloaderProtocol,
-        fileThumbnailDownloader: SDKThumbnailsDownloaderProtocol,
-        photoUploader: SDKFileUploaderProtocol,
+        fileUploader: SDKFileUploaderProtocol,
+        nodeOperationPerformer: SDKNodeOperationPerformer?,
         photoDownloader: SDKFileDownloaderProtocol,
-        photoThumbnailDownloader: SDKThumbnailsDownloaderProtocol,
+        photoUploader: SDKFileUploaderProtocol,
         revisionUploader: SDKRevisionUploaderProtocol,
-        nodeOperationPerformer: SDKNodeOperationPerformer?
+        thumbnailDownloader: SDKThumbnailsDownloaderProtocol
     ) {
-        self.fileUploader = fileUploader
         self.fileDownloader = fileDownloader
-        self.fileThumbnailDownloader = fileThumbnailDownloader
-        self.photoUploader = photoUploader
-        self.photoDownloader = photoDownloader
-        self.photoThumbnailDownloader = photoThumbnailDownloader
-        self.revisionUploader = revisionUploader
+        self.fileUploader = fileUploader
         self.nodeOperationPerformer = nodeOperationPerformer
+        self.photoDownloader = photoDownloader
+        self.photoUploader = photoUploader
+        self.revisionUploader = revisionUploader
+        self.thumbnailDownloader = thumbnailDownloader
     }
 }
 

@@ -34,19 +34,14 @@ class AddressBootstrapStarter: AppBootstrapper {
     }
 
     func bootstrap() async throws {
-        if let addresses = localAddressProvider.addresses, !addresses.isEmpty {
-            let isSuccess = try validateAddresses(addresses: addresses)
-            if !isSuccess {
-                try await fetchRemoteAddress()
-            }
-        } else {
-            try await fetchRemoteAddress()
-        }
+        try await fetchRemoteAddress()
     }
 
     private func fetchRemoteAddress() async throws {
         guard connectionStateResource.currentState.isReachable else {
-            throw NetworkStateError.deviceIsOffline
+            Log.debug("Skip fetching the remote address because the device is offline", domain: .applicationBootstrap)
+            try validateLocalAddresses()
+            return
         }
         guard localAddressProvider.userInfo != nil else {
             throw LoggingOutError("The session is invalid.")
@@ -56,19 +51,20 @@ class AddressBootstrapStarter: AppBootstrapper {
         localAddressProvider.storeAddresses(addresses)
     }
 
-    /// - Returns: Validate success
-    private func validateAddresses(addresses: [Address]) throws -> Bool {
-        guard localAddressProvider.userInfo != nil else {
-            throw LoggingOutError("The session is invalid.")
-        }
+    private func validateLocalAddresses() throws {
+        guard
+            let addresses = localAddressProvider.addresses,
+            !addresses.isEmpty,
+            localAddressProvider.userInfo != nil
+        else { throw LoggingOutError("The session is invalid.") }
 
         for address in addresses {
             let pairs = address.activeKeys.compactMap(KeyPair.init)
             if pairs.isEmpty {
                 Log.warning("KeyPair initialized failed", domain: .applicationBootstrap)
-                return false
+                // Clear cache should be enough but the device is offline, clear cache makes infinite stuck
+                throw LoggingOutError("Key pair initialized failed")
             }
         }
-        return true
     }
 }

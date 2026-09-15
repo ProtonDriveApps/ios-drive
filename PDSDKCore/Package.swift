@@ -16,7 +16,7 @@ let SDK_PACKAGE: PackageDescription.Package.Dependency = if let localSDKPath = C
     /// e. Rebuild the app
     .package(name: "ProtonDriveSDK",
              url: "https://github.com/ProtonDriveApps/sdk-swift.git",
-             branch: "0.15.1")
+             branch: "0.24.0")
 }
 
 let package = Package(

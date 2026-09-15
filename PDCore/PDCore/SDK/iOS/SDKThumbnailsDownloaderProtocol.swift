@@ -25,4 +25,5 @@ public protocol SDKThumbnailsDownloaderProtocol {
         type: ThumbnailType
     ) async throws -> AnyVolumeIdentifier?
     func cancel(_ identifiers: [AnyVolumeIdentifier], type: ThumbnailType)
+    func cancelAll() async
 }

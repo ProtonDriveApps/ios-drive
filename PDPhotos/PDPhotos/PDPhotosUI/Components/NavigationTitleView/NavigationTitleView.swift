@@ -73,7 +73,7 @@ public struct NavigationTitleView {
     private func text(tag: GalleryType, selected: Binding<GalleryType>) -> some View {
         let foreground: Color = selected.wrappedValue == tag ? ColorProvider.TextNorm : ColorProvider.TextHint
         Text(tag.title)
-            .font(.title2)
+            .font(.headline)
             .foregroundStyle(foreground)
             .fontWeight(.bold)
             .accessibilityIdentifier("NavigationTitleView.Text.\(tag.title)")

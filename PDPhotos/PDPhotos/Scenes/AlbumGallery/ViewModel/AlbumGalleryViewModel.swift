@@ -211,7 +211,7 @@ extension AlbumGalleryViewModel {
         let selectionController: PhotosSelectionController
         let metadataController: MetadataControllerProtocol
         let remoteAlbumFetchController: RemoteAlbumFetchControllerProtocol
-        let thumbnailContainer: ThumbnailsControllersContainerProtocol
+        let thumbnailDownloader: SDKThumbnailsDownloaderProtocol?
         let userMessageHandler: UserMessageHandlerProtocol = UserMessageHandler()
         let invitationsController: AlbumInvitationsControllerProtocol
         let invitationsChangeController: PendingInvitationsChangeControllerProtocol
@@ -223,7 +223,7 @@ extension AlbumGalleryViewModel {
             selectionController: PhotosSelectionController,
             metadataController: MetadataControllerProtocol,
             remoteAlbumFetchController: RemoteAlbumFetchControllerProtocol,
-            thumbnailContainer: ThumbnailsControllersContainerProtocol,
+            thumbnailDownloader: SDKThumbnailsDownloaderProtocol?,
             invitationsController: AlbumInvitationsControllerProtocol,
             invitationsChangeController: PendingInvitationsChangeControllerProtocol
         ) {
@@ -233,10 +233,11 @@ extension AlbumGalleryViewModel {
             self.selectionController = selectionController
             self.metadataController = metadataController
             self.remoteAlbumFetchController = remoteAlbumFetchController
-            self.thumbnailContainer = thumbnailContainer
+            self.thumbnailDownloader = thumbnailDownloader
             self.invitationsController = invitationsController
             self.invitationsChangeController = invitationsChangeController
 
+            let thumbnailCache = SmallThumbnailURLCache()
             self.albumGridItemViewModelFactory = CachingAlbumGridItemViewModelFactory(factory: { id in
                 let repository = AlbumRepository(albumID: id, managedObjectContext: context)
                 return .init(
@@ -244,7 +245,8 @@ extension AlbumGalleryViewModel {
                     albumRepository: repository,
                     debounceResource: CommonLoopDebounceResource(),
                     metadataController: metadataController,
-                    thumbnailContainer: thumbnailContainer
+                    thumbnailDownloader: thumbnailDownloader,
+                    thumbnailCache: thumbnailCache
                 )
             })
         }

@@ -17,6 +17,7 @@
 
 import Combine
 import PDLocalization
+import PDCoreIOS
 
 enum GalleryRootState: Equatable {
     case loading
@@ -30,6 +31,8 @@ protocol GalleryRootViewModelProtocol: ObservableObject {
     var state: GalleryRootState { get }
     var isVisible: Bool { get }
     var visiblePublisher: AnyPublisher<Bool, Never> { get }
+    var upgradeRequirementHandling: UpgradeRequirementHandling? { get }
+    var upgradeRequirementLevel: UpgradeRequirementLevel { get }
 
     func refreshIfNeeded()
     func updateVisibleStatus(isVisible: Bool)
@@ -48,7 +51,10 @@ final class GalleryRootViewModel: GalleryRootViewModelProtocol {
     /// Is photos root view visible on the screen
     var isVisible: Bool { visibleSubject.value }
     private var visibleSubject = CurrentValueSubject<Bool, Never>(true)
+    private let upgradeRequirementBannerController: UpgradeRequirementBannerControllerProtocol
+    var upgradeRequirementHandling: UpgradeRequirementHandling? { upgradeRequirementBannerController }
 
+    @Published private(set) var upgradeRequirementLevel: UpgradeRequirementLevel = .none
     @Published var state: GalleryRootState = .loading
     var visiblePublisher: AnyPublisher<Bool, Never> {
         visibleSubject.eraseToAnyPublisher()
@@ -62,7 +68,8 @@ final class GalleryRootViewModel: GalleryRootViewModelProtocol {
         fetchingController: PhotosListFetchingControllerProtocol,
         fetchingStatusController: PhotosListFetchingStatusControllerProtocol,
         photoUpsellFlowController: PhotoUpsellFlowController?,
-        screenLockController: ScreenLockController
+        screenLockController: ScreenLockController,
+        upgradeRequirementBannerController: UpgradeRequirementBannerControllerProtocol,
     ) {
         self.configuration = configuration
         self.settingsController = settingsController
@@ -72,6 +79,7 @@ final class GalleryRootViewModel: GalleryRootViewModelProtocol {
         self.fetchingStatusController = fetchingStatusController
         self.photoUpsellFlowController = photoUpsellFlowController
         self.screenLockController = screenLockController
+        self.upgradeRequirementBannerController = upgradeRequirementBannerController
         subscribeToUpdates()
     }
 
@@ -87,6 +95,10 @@ final class GalleryRootViewModel: GalleryRootViewModelProtocol {
         }
         .removeDuplicates()
         .assign(to: &$state)
+
+        upgradeRequirementBannerController
+            .subscribeToUpgradeRequirement(currentTab: .photos)
+            .assign(to: &$upgradeRequirementLevel)
     }
 
     private func map(

@@ -26,7 +26,6 @@ final class DatabasePhotosFilterByIdResource: PhotosFilterByIdResource {
     private let storage: StorageManager
     private let policy: PhotoIdentifiersFilterPolicyProtocol
     private let managedObjectContext: NSManagedObjectContext
-    private static let formatter = ISO8601DateFormatter.default
 
     init(storage: StorageManager, policy: PhotoIdentifiersFilterPolicyProtocol) {
         self.storage = storage
@@ -48,7 +47,7 @@ final class DatabasePhotosFilterByIdResource: PhotosFilterByIdResource {
             guard let cloudIdentifier = attribute.iCloudID else {
                 continue
             }
-            let modifiedDate = DatabasePhotosFilterByIdResource.formatter.date(attribute.modificationTime)
+            let modifiedDate = ISO8601DateFormatter.date(attribute.modificationTime)
             metadata.append(PhotoMetadata.iOSMeta(cloudIdentifier: cloudIdentifier, modifiedDate: modifiedDate))
         }
 

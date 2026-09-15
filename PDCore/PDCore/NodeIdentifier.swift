@@ -18,7 +18,7 @@
 import Foundation
 import FileProvider
 
-public struct NodeIdentifier: Equatable, Hashable {
+public struct NodeIdentifier: Equatable, Hashable, Sendable, Codable {
     public let nodeID: String
     public let shareID: String
     public let volumeID: String

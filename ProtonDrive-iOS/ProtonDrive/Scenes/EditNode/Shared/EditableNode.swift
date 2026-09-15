@@ -63,31 +63,4 @@ private extension String {
 
         return NSRange(location: start, length: end - start)
     }
-
-    /// Splits the filename and extension using UTType.
-    ///
-    /// Produces accurate results when the file extension is recognized by UTType.
-    /// However, newer or less common extensions may not be recognized
-    /// requiring a hardcoded fallback list
-    ///
-    /// This is similar to macOS Finder behavior.
-    ///
-    /// For example:
-    /// - Renaming `abc.jpg` highlights only `abc`
-    /// - Renaming `test.wasm` highlights the entire `test.wasm`
-    func splitIntoNameAndExtension() -> (name: String, extension: String?) {
-        if UTType(filenameExtension: fileExtension)?.preferredMIMEType == nil {
-            let uncommonExtension = [
-                "wasm", "blend", "gguf", "safetensors", "onnx", "ckpt", "pt", "pth", "parquet", "arrow",
-                "zst", "glb", "fbx"
-            ]
-            if uncommonExtension.contains(fileExtension.lowercased()) {
-                return (fileName, ".\(fileExtension)")
-            } else {
-                return (self, nil)
-            }
-        } else {
-            return (fileName, ".\(fileExtension)")
-        }
-    }
 }

@@ -32,7 +32,7 @@ final class FilePreviewPreparationCoordinator {
         messageHandler: UserMessageHandlerProtocol,
         repository: FilePreviewRepository,
         performanceMetricsController: PerformanceMetricsControllerProtocol?,
-        root: UIViewController
+        root: UIViewController?
     ) {
         self.messageHandler = messageHandler
         self.repository = repository
@@ -65,7 +65,6 @@ final class FilePreviewPreparationCoordinator {
         presentingController = alert
         root?.present(alert, animated: false)
     }
-
 
     @MainActor
     private func openPreview(repository: FilePreviewRepository) {

@@ -122,7 +122,7 @@ public class DriveDependencyContainer {
         initialServices.pushNotificationService
     }
 
-    var featureFlagRepository: FeatureFlagsRepositoryProtocol {
+    var featureFlagsRepository: FeatureFlagsRepositoryProtocol {
         initialServices.featureFlagsRepository
     }
 

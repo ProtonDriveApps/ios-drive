@@ -45,7 +45,7 @@ class MyFilesRootFetcher {
     func getRoot() -> NodeIdentifier {
         return storage.mainContext.performAndWait {
             let shares = storage.getMainShares(in: storage.mainContext)
-            guard let share = shares.first,
+            guard let share = shares.first(where: { $0.locked == false }) ?? shares.first,
                   let linkID = share.linkID else {
                 let hasShare = !shares.isEmpty
                 let reason = "Get root failed: \(hasShare ? "No share" : "No linkID")"

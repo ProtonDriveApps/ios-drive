@@ -69,7 +69,7 @@ extension SimplePhotoDuplicatesCheckInteractor {
 
     private func getHashes(
         from nodes: [CoreDataPhoto],
-        rootHashKey: String
+        rootHashKey: Data
     ) async throws -> [PhotoAndHashes] {
         let context = dependencies.context
         return try await context.perform {
@@ -85,7 +85,7 @@ extension SimplePhotoDuplicatesCheckInteractor {
         }
     }
 
-    private func getContentHash(photo: CoreDataPhoto, rootHashKey: String) throws -> String {
+    private func getContentHash(photo: CoreDataPhoto, rootHashKey: Data) throws -> String {
         let contentDigest = try photo.photoRevision.getContentDigest()
         switch contentDigest {
         case let .contentDigest(digest):
@@ -99,7 +99,7 @@ extension SimplePhotoDuplicatesCheckInteractor {
     }
 }
 
-// MARL: - Filter
+// MARK: - Filter
 extension SimplePhotoDuplicatesCheckInteractor {
     private func filterHashesByRemote(
         hashes: [PhotoAndHashes],

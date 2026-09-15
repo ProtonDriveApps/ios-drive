@@ -59,13 +59,3 @@ public final class SharedWithMeModel: FinderModel, FinderErrorModel, NodesListin
             }
     }
 }
-
-extension SharedWithMeModel: ThumbnailLoader {
-    public func loadThumbnail(with id: Identifier) {
-        return tower.loadThumbnail(with: id)
-    }
-
-    public func cancelThumbnailLoading(_ id: Identifier) {
-        tower.cancelThumbnailLoading(id)
-    }
-}

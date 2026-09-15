@@ -43,7 +43,7 @@ public enum Constants {
     }
     public static let humanVerificationSupportURL = URL(string: "https://protonmail.ch")!
     
-    public static var clientVersion: String? = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+    public static var clientVersion: String? = BundleInfo.value(for: .shortVersion)
 
     // MARK: - Pagination - depends on BE capabilities
     public static let childrenRefreshStrategy: RefreshMode = .events

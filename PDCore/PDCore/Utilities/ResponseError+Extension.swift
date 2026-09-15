@@ -30,9 +30,10 @@ public extension ResponseError {
         !RetryPolicy.retryableIncludingInternetIssues.isDisjoint(with: allUnderlyingErrorCodes)
     }
     
-    private var allUnderlyingErrorCodes: [Int?] {
+    private var allUnderlyingErrorCodes: [Int] {
         let underlyingErrorCodes = [underlyingError?.httpCode] + (underlyingError?.underlyingErrors.map { $0.httpCode } ?? [])
-        return [httpCode, bestShotAtReasonableErrorCode] + underlyingErrorCodes
+        let allPossibleCodes = [httpCode, bestShotAtReasonableErrorCode] + underlyingErrorCodes
+        return allPossibleCodes.compactMap { $0 }
     }
 }
 

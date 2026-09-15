@@ -43,6 +43,7 @@ struct GalleryScenesFactory {
         managedObjectContext: NSManagedObjectContext,
         volumeId: VolumeID,
         screenLockController: ScreenLockController,
+        upgradeRequirementBannerController: UpgradeRequirementBannerControllerProtocol,
         onboardingView: @escaping () -> some View,
         permissionsView: @escaping () -> some View,
         galleryView: some View
@@ -57,7 +58,8 @@ struct GalleryScenesFactory {
             photoUpsellFlowController: photoUpsellFlowController,
             managedObjectContext: managedObjectContext,
             volumeId: volumeId,
-            screenLockController: screenLockController
+            screenLockController: screenLockController,
+            upgradeRequirementBannerController: upgradeRequirementBannerController
         )
         return GalleryRootView(
             viewModel: viewModel,
@@ -78,7 +80,8 @@ struct GalleryScenesFactory {
         photoUpsellFlowController: PhotoUpsellFlowController?,
         managedObjectContext: NSManagedObjectContext,
         volumeId: VolumeID,
-        screenLockController: ScreenLockController
+        screenLockController: ScreenLockController,
+        upgradeRequirementBannerController: UpgradeRequirementBannerControllerProtocol
     ) -> GalleryRootViewModel {
         GalleryRootViewModel(
             configuration: configuration,
@@ -88,7 +91,8 @@ struct GalleryScenesFactory {
             fetchingController: fetchingController,
             fetchingStatusController: initialLoadController,
             photoUpsellFlowController: photoUpsellFlowController,
-            screenLockController: screenLockController
+            screenLockController: screenLockController,
+            upgradeRequirementBannerController: upgradeRequirementBannerController
         )
     }
 
@@ -126,7 +130,7 @@ struct GalleryScenesFactory {
         coordinator: GalleryCoordinator,
         listController: PhotosListControllerProtocol,
         fetchingController: PhotosListFetchingControllerProtocol,
-        thumbnailsContainer: ThumbnailsControllersContainer,
+        thumbnailDownloader: SDKThumbnailsDownloaderProtocol,
         settingsController: PhotoBackupSettingsController,
         errorControllers: [ErrorController],
         selectionController: PhotosSelectionController,
@@ -144,6 +148,7 @@ struct GalleryScenesFactory {
         streamConfiguration: PhotoStreamConfiguration,
         scrollerController: GridScrollerControllerProtocol,
         itemsViewModelsCache: PhotoItemViewModelsCache,
+        zoomController: PhotosGridZoomController,
         bannersView: some View,
         tagsView: some View,
         scrollerView: some View
@@ -158,9 +163,21 @@ struct GalleryScenesFactory {
             tagsController: tagsController,
             streamConfiguration: streamConfiguration
         )
+        let thumbnailCache = SmallThumbnailURLCache()
         let itemViewModelFactory = CachingPhotoItemViewModelFactory(cache: itemsViewModelsCache) { item in
-            makeItemViewModel(item: item, thumbnailsContainer: thumbnailsContainer, coordinator: coordinator, selectionController: selectionController, infosController: infosController, featureFlagsController: featureFlagsController, fetchingController: fetchingController, metadataController: metadataController)
+            makeItemViewModel(
+                item: item,
+                coordinator: coordinator,
+                selectionController: selectionController,
+                infosController: infosController,
+                featureFlagsController: featureFlagsController,
+                fetchingController: fetchingController,
+                metadataController: metadataController,
+                thumbnailDownloader: thumbnailDownloader,
+                thumbnailCache: thumbnailCache
+            )
         }
+
         return PhotosGalleryView(
             viewModel: viewModel,
             grid: { bannersView in
@@ -168,7 +185,6 @@ struct GalleryScenesFactory {
                     tower: tower,
                     coordinator: coordinator,
                     listController: listController,
-                    thumbnailsContainer: thumbnailsContainer,
                     fetchingController: fetchingController,
                     selectionController: selectionController,
                     rootFolderRepository: rootFolderRepository,
@@ -183,6 +199,7 @@ struct GalleryScenesFactory {
                     remoteAlbumFetchController: remoteAlbumFetchController,
                     streamConfiguration: streamConfiguration,
                     scrollerController: scrollerController,
+                    zoomController: zoomController,
                     bannersView: bannersView,
                     scrollerView: scrollerView,
                     itemViewModelFactory: itemViewModelFactory
@@ -261,7 +278,6 @@ struct GalleryScenesFactory {
         tower: Tower,
         coordinator: GalleryCoordinator,
         listController: PhotosListControllerProtocol,
-        thumbnailsContainer: ThumbnailsControllersContainer,
         fetchingController: PhotosListFetchingControllerProtocol,
         selectionController: PhotosSelectionController,
         rootFolderRepository: PhotosRootFolderRepository,
@@ -276,6 +292,7 @@ struct GalleryScenesFactory {
         remoteAlbumFetchController: RemoteAlbumFetchControllerProtocol,
         streamConfiguration: PhotoStreamConfiguration,
         scrollerController: GridScrollerControllerProtocol,
+        zoomController: PhotosGridZoomController,
         bannersView: some View,
         scrollerView: some View,
         itemViewModelFactory: CachingPhotoItemViewModelFactoryProtocol
@@ -316,21 +333,44 @@ struct GalleryScenesFactory {
             streamConfiguration: streamConfiguration,
             configuration: configuration
         )
-        return PhotosGridView(
-            viewModel: viewModel,
-            navigationFactory: PhotosRootNavigationButtonFactory(),
-            actionView: actionView,
-            bannersView: bannersView,
-            scrollerView: scrollerView
-        ) { item, accessibilityIndex in
-            return PhotoItemWrapperView {
-                let viewModel = itemViewModelFactory.makeViewModel(for: item)
-                return PhotoItemView(
+        if featureFlagsController.hasPhotosGridZoom {
+            // UICollectionView-backed grid, wrapped with the same overlays as PhotosGridView.
+            return AnyView(
+                PhotosCollectionGridView(
                     viewModel: viewModel,
-                    accessibilityIndex: accessibilityIndex,
-                    isPickingPhotos: configuration.isPickingPhotos
-                )
-            }
+                    navigationFactory: PhotosRootNavigationButtonFactory(),
+                    zoomController: zoomController,
+                    actionView: actionView,
+                    bannersView: bannersView,
+                    scrollerView: scrollerView
+                ) { gridItem, accessibilityIndex in
+                    PhotoItemView(
+                        viewModel: itemViewModelFactory.makeViewModel(for: gridItem),
+                        accessibilityIndex: accessibilityIndex,
+                        isPickingPhotos: configuration.isPickingPhotos,
+                        disablesLongPress: true // the collection view owns long-press for drag-select
+                    )
+                }
+            )
+        } else {
+            return AnyView(
+                PhotosGridView(
+                    viewModel: viewModel,
+                    navigationFactory: PhotosRootNavigationButtonFactory(),
+                    actionView: actionView,
+                    bannersView: bannersView,
+                    scrollerView: scrollerView
+                ) { item, accessibilityIndex in
+                    PhotoItemWrapperView {
+                        let itemViewModel = itemViewModelFactory.makeViewModel(for: item)
+                        return PhotoItemView(
+                            viewModel: itemViewModel,
+                            accessibilityIndex: accessibilityIndex,
+                            isPickingPhotos: configuration.isPickingPhotos
+                        )
+                    }
+                }
+            )
         }
     }
 
@@ -419,7 +459,8 @@ struct GalleryScenesFactory {
     }
 
     func makeTrashController(tower: Tower) -> PhotosTrashController {
-        if let performer = tower.sdkObjects.nodeOperationPerformer {
+        if let performer = tower.sdkObjects.nodeOperationPerformer,
+           tower.featureFlags.isEnabled(flag: .driveiOSSDKTrashNode) {
             let interactor = SDKPhotosTrashInteractor(
                 downloader: tower.sdkObjects.photoDownloader,
                 performer: performer
@@ -436,11 +477,20 @@ struct GalleryScenesFactory {
     }
 
     // swiftlint:disable:next function_parameter_count
-    func makeItemViewModel(item: PhotoGridViewItem, thumbnailsContainer: ThumbnailsControllersContainer, coordinator: PhotoItemCoordinator, selectionController: PhotosSelectionController, infosController: PhotoAdditionalInfosController, featureFlagsController: FeatureFlagsControllerProtocol, fetchingController: PhotosListFetchingControllerProtocol, metadataController: MetadataControllerProtocol) -> PhotoItemViewModel {
+    func makeItemViewModel(
+        item: PhotoGridViewItem,
+        coordinator: PhotoItemCoordinator,
+        selectionController: PhotosSelectionController,
+        infosController: PhotoAdditionalInfosController,
+        featureFlagsController: FeatureFlagsControllerProtocol,
+        fetchingController: PhotosListFetchingControllerProtocol,
+        metadataController: MetadataControllerProtocol,
+        thumbnailDownloader: SDKThumbnailsDownloaderProtocol,
+        thumbnailCache: ThumbnailURLCache
+    ) -> PhotoItemViewModel {
         let id = PhotoId(id: item.photoId, volumeID: item.volumeId)
         let infoController = ConcretePhotoAdditionalInfoController(id: id, controller: infosController)
-        let thumbnailController = thumbnailsContainer.makeSmallThumbnailController(id: id)
-        let viewModel = PhotoItemViewModel(item: item, thumbnailController: thumbnailController, coordinator: coordinator, selectionController: selectionController, infoController: infoController, durationFormatter: LocalizedDurationFormatter(), debounceResource: CommonLoopDebounceResource(), fetchingController: fetchingController, featureFlagsController: featureFlagsController, metadataController: metadataController)
+        let viewModel = PhotoItemViewModel(item: item, thumbnailDownloader: thumbnailDownloader, coordinator: coordinator, selectionController: selectionController, infoController: infoController, durationFormatter: LocalizedDurationFormatter(), debounceResource: CommonLoopDebounceResource(), fetchingController: fetchingController, featureFlagsController: featureFlagsController, metadataController: metadataController, thumbnailCache: thumbnailCache)
         return viewModel
     }
 
@@ -478,10 +528,14 @@ struct GalleryScenesFactory {
         )
     }
 
-    func makeRetryViewController(deletedStoreResource: DeletedPhotosIdentifierStoreResource, retryTriggerController: PhotoLibraryLoadRetryTriggerController) -> UIViewController {
+    func makeRetryViewController(
+        deletedStoreResource: DeletedPhotosIdentifierStoreResource,
+        retryTriggerController: PhotoLibraryLoadRetryTriggerController,
+        skippableCache: PhotosSkippableCache
+    ) -> UIViewController {
         let strategyFactory = RetryUnwrappingStrategyFactory()
         let previewProvider = ConcretePhotoLibraryPreviewResource.makeApplePhotosPreviewResource()
-        let interactor = PhotosRetryInteractor(deletedStoreResource: deletedStoreResource, previewProvider: previewProvider, retryTriggerController: retryTriggerController)
+        let interactor = PhotosRetryInteractor(deletedStoreResource: deletedStoreResource, previewProvider: previewProvider, retryTriggerController: retryTriggerController, skippableCache: skippableCache)
         let viewModel = PhotosRetryViewModel(interactor: interactor, nameUnwrappingStrategy: strategyFactory.makeItemNameUnwrappingStrategy(), imageUnwrappingStrategy: strategyFactory.makeImageUnwrappingStrategy())
         let view = NavigationView { PhotosRetryView(viewModel: viewModel) }
         return UIHostingController(rootView: view)

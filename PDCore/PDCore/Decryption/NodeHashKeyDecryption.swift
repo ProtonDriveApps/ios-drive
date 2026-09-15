@@ -15,16 +15,18 @@
 // You should have received a copy of the GNU General Public License
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
+import Foundation
+
 public typealias NodeWithNodeHashKey = Node & NodeWithNodeHashKeyProtocol
 
 public protocol NodeWithNodeHashKeyProtocol {
     var nodeHashKey: String? { get }
-    func decryptNodeHashKey() throws -> String
+    func decryptNodeHashKey() throws -> Data
     func generateHashKey(nodeKey: KeyCredentials) throws -> String
 }
 
 public extension NodeWithNodeHashKeyProtocol where Self: Node {
-    func decryptNodeHashKey() throws -> String  {
+    func decryptNodeHashKey() throws -> Data  {
         do {
             let nodePassphrase = try self.decryptPassphrase()
             let decryptionKey = DecryptionKey(privateKey: nodeKey, passphrase: nodePassphrase)
@@ -39,7 +41,7 @@ public extension NodeWithNodeHashKeyProtocol where Self: Node {
             let addressVerificationKeys = try getAddressPublicKeys(email: signatureEmail)
             let verificationKeys = [nodeKey] + addressVerificationKeys
 
-            let decrypted: VerifiedText
+            let decrypted: VerifiedBinary
             do {
                 decrypted = try Decryptor.decryptAndVerifyNodeHashKey(
                     nodeHashKey,

@@ -43,7 +43,9 @@ public struct GetShareBootstrapEndpoint: Endpoint {
         let code: Int
         public let shareID: String
         public let volumeID: String
+        /// 1=folder, 2=file
         public let type: Int
+        /// 0=draft, 1=active, 2=trashed
         public let state: Int
         public let creator: String
         public let locked: Bool?

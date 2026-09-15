@@ -14,9 +14,9 @@ let package = Package(
         .library(name: "PDPhotos", targets: ["PDPhotos"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", exact: "37.0.1"),
+        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", exact: "37.3.0"),
         .package(url: "https://github.com/ProtonMail/apple-fusion.git", exact: "2.1.5"),
-        .package(url: "https://github.com/airbnb/lottie-ios", exact: "4.3.3"),
+        .package(url: "https://github.com/airbnb/lottie-spm", exact: "4.6.0"),
         .package(name: "PDClient", path: "../PDClient"),
         .package(name: "PDCore", path: "../PDCore"),
         .package(name: "PDLocalization", path: "../PDLocalization"),
@@ -36,7 +36,7 @@ let package = Package(
                 .product(name: "PDLocalization", package: "PDLocalization"),
                 .product(name: "ProtonCoreUIFoundations", package: "protoncore_ios"),
                 .product(name: "PDContacts", package: "PDContacts"),
-                .product(name: "Lottie", package: "lottie-ios"),
+                .product(name: "Lottie", package: "lottie-spm"),
                 .product(name: "ProtonCoreAuthentication", package: "protoncore_ios"),
                 .product(name: "PDSDKCore", package: "PDSDKCore"),
                 .product(name: "PDSDKCoreiOS", package: "PDSDKCore")

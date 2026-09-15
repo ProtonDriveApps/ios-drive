@@ -154,8 +154,9 @@ final class AlbumDetailViewModel: ObservableObject {
         let vm: AlbumDetailCoverViewModel = .init(
             dependencies: .init(
                 albumRepository: dependencies.albumRepository,
-                thumbnailControllerContainer: dependencies.thumbnailControllerContainer,
-                contentController: dependencies.contentController
+                thumbnailDownloader: dependencies.thumbnailDownloader,
+                contentController: dependencies.contentController,
+                metadataController: dependencies.metadataController
             )
         )
         coverViewModel = vm

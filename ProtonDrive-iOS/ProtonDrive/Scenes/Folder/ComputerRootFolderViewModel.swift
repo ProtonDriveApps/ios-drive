@@ -194,7 +194,7 @@ class ComputerRootFolderViewModel: ObservableObject, FinderViewModel, FetchingVi
     }
 
     func childViewModel(for node: PDCore.Node) -> any NodeCellConfiguration {
-        return NodeCellSimpleConfiguration(from: node, disabled: false, loader: model, featureFlagsController: featureFlagsController)
+        return NodeCellSimpleConfiguration(from: node, disabled: false, loader: model.tower.sdkObjects.thumbnailDownloader, featureFlagsController: featureFlagsController)
     }
 
     func applyAction(completion: @escaping ApplyActionCompletion) {

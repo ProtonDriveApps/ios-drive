@@ -28,7 +28,6 @@ final class TrashCellViewModel: ObservableObject {
     let selectionModel: CellSelectionModel?
     let iconName: FileAssetName
     private let tower: Tower
-    private var cancellables: Set<AnyCancellable> = []
 
     // MARK: Non-applicable for trash properties, required by `NodeCellConfiguration` protocol
     let isFavorite = false
@@ -58,7 +57,7 @@ final class TrashCellViewModel: ObservableObject {
         fileTypeAsset: FileTypeAsset = .shared,
         selectionModel: CellSelectionModel? = nil,
         nodeRowActionMenuViewModel: NodeRowActionMenuViewModel? = nil,
-        thumbnailLoader: ThumbnailLoader,
+        thumbnailLoader: SDKThumbnailsDownloaderProtocol?,
         featureFlagsController: FeatureFlagsControllerProtocol
     ) {
         self.node = node
@@ -68,12 +67,6 @@ final class TrashCellViewModel: ObservableObject {
         self.nodeRowActionMenuViewModel = nodeRowActionMenuViewModel
         self.iconName = fileTypeAsset.getAsset(node.mimeType)
         self.featureFlagsController = featureFlagsController
-
-        tower.succeededId.sink { [weak self] id in
-            guard let node = self?.node, node.identifier.id == id.id else { return }
-            self?.objectWillChange.send()
-        }
-        .store(in: &cancellables)
     }
 }
 

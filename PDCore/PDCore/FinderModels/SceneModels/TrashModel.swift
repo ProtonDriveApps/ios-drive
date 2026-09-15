@@ -31,8 +31,13 @@ extension TrashListing {
         self.childrenObserver.objectWillChange
         .map {
             let trash = self.childrenObserver.fetchedObjects
-            return self.sorting.sort(trash)
+                .filter { $0.isToBeDeleted == false }
+            return trash
         }
+        .removeDuplicates(by: { old, new in
+            old.map(\.genericIdentifier.id).sorted() == new.map(\.genericIdentifier.id).sorted()
+        })
+        .map { return self.sorting.sort($0) }
         .eraseToAnyPublisher()
     }
     
@@ -45,7 +50,7 @@ extension TrashListing {
     }
 }
 
-public final class TrashModel: FinderModel, TrashListing, NodesListing, ThumbnailLoader  {
+public final class TrashModel: FinderModel, TrashListing, NodesListing  {
     private let volumeIDs: [String]
     private let restorer: TrashedNodeRestorer
     private let deleter: TrashedNodeDeleter
@@ -109,30 +114,45 @@ public final class TrashModel: FinderModel, TrashListing, NodesListing, Thumbnai
         self.didFetchAllTrash = true
     }
 
+    private var sdkTrashOperationsPerformer: SDKNodeOperationPerformer? {
+        guard tower.featureFlags.isEnabled(flag: .driveiOSSDKTrashOperations) else { return nil }
+        return tower.sdkObjects.nodeOperationPerformer
+    }
+
     public func deleteTrashed(nodes: [NodeIdentifier]) async throws {
-        try await deleter.deletePerVolume(nodes)
+        if let performer = sdkTrashOperationsPerformer {
+            Log.debug("Delete \(nodes.count) nodes via SDK", domain: .sdk)
+            let (_, error) = try await performer.delete(nodes: nodes.map { $0.any() }).collectCompletion()
+            if let error { throw error }
+        } else {
+            Log.debug("Delete \(nodes.count) nodes via legacy", domain: .nodeOperation)
+            try await deleter.deletePerVolume(nodes)
+        }
     }
 
     public func emptyTrash(nodes: [NodeIdentifier]) async throws {
-        try await trashCleaner.emptyTrashPerVolume(nodes)
+        if let performer = sdkTrashOperationsPerformer {
+            // Intentionally not injecting nodes
+            // since semantically for empty trash, the function doesn't need to know which nodes are in the trash
+            try await performer.emptyTrash()
+        } else {
+            try await trashCleaner.emptyTrashPerVolume(nodes)
+        }
     }
 
     public func restoreTrashed(_ nodes: [NodeIdentifier]) async throws {
-        try await restorer.restoreVolume(nodes: nodes)
+        if let performer = sdkTrashOperationsPerformer {
+            Log.debug("Restore \(nodes.count) nodes via SDK", domain: .sdk)
+            let (_, error) = try await performer.restore(nodes: nodes.map { $0.any() }).collectCompletion()
+            if let error { throw error }
+        } else {
+            Log.debug("Restore \(nodes.count) nodes via legacy", domain: .nodeOperation)
+            try await restorer.restoreVolume(nodes: nodes)
+        }
         await MainActor.run {
             // To immediately refresh nodes' states
             // Special case for photos - we need to get update event to recreate CoreDataPhotoListing objects
             tower.forcePolling(volumeIDs: volumeIDs)
         }
-    }
-}
-
-extension TrashModel {
-    public func loadThumbnail(with id: Identifier) {
-        return tower.loadThumbnail(with: id)
-    }
-
-    public func cancelThumbnailLoading(_ id: Identifier) {
-        tower.cancelThumbnailLoading(id)
     }
 }

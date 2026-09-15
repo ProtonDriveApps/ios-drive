@@ -53,13 +53,13 @@ final class LocalPhotoAssetIdentifiersInteractor: PhotoAssetIdentifiersInteracto
         return try makeIdentifiers(from: compound, key: root.hashKey)
     }
 
-    private func makeIdentifiers(from compound: PhotoAssetCompound, key: String) throws -> PhotosFilterItem {
+    private func makeIdentifiers(from compound: PhotoAssetCompound, key: Data) throws -> PhotosFilterItem {
         let primaryIdentifier = try makeIdentifier(from: compound.primary, key: key)
         let secondaryIdentifiers = try compound.secondary.map { try makeIdentifier(from: $0, key: key) }
         return PhotosFilterItem(primary: primaryIdentifier, secondary: secondaryIdentifiers)
     }
 
-    private func makeIdentifier(from asset: PhotoAsset, key: String) throws -> PhotoAssetIdentifier {
+    private func makeIdentifier(from asset: PhotoAsset, key: Data) throws -> PhotoAssetIdentifier {
         let name = try nameCorrectionPolicy.validateNameAndCorrectIfNeeded(fileName: asset.filename)
         let newAsset = asset.copy(with: name)
         let nameHash = try encryptionResource.makeHmac(string: name, hashKey: key)

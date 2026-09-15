@@ -22,7 +22,7 @@ public typealias ArmoredMessage = String
 public typealias ArmoredSignature = String
 public typealias SignerEmail = String
 
-public typealias HashKey = String
+public typealias HashKey = Data
 
 public typealias VerifiedText = DecryptedMessage<String>
 public typealias VerifiedBinary = DecryptedMessage<Data>

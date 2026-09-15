@@ -32,9 +32,8 @@ final class GallerySceneContainer {
         let managedObjectContext: NSManagedObjectContext
         var tower: Tower { parentDependencies.tower }
         let metadataController: MetadataControllerProtocol
-        let streamThumbnailsContainer: ThumbnailsControllersContainer
-        let albumsThumbnailsContainer: ThumbnailsControllersContainer // Once thumbnails are supported by SDK get back to a single thumbnailsContainer
         let tagsController: GalleryTagsControllerProtocol
+        let appStorePageURL: URL
     }
     let streamConfiguration: PhotoStreamConfiguration
     let dependencies: Dependencies
@@ -45,6 +44,7 @@ final class GallerySceneContainer {
     let anchorController: PhotosListAnchorControllerProtocol
     let scrollerController: GridScrollerControllerProtocol
     private let itemsViewModelsCache: PhotoItemViewModelsCache
+    private let zoomController: PhotosGridZoomController
 
     var volumeId: VolumeID {
         streamConfiguration.volumeId
@@ -83,6 +83,7 @@ final class GallerySceneContainer {
         initialLoadController = PhotosListFetchingControllerFactory().makeInitialStatusController(fetchingController: fetchingController)
         scrollerController = GridScrollerControllerFactory().makeController(listController: streamListController, fetchingController: fetchingController)
         itemsViewModelsCache = PhotoItemViewModelsCache()
+        zoomController = PhotosGridZoomController()
     }
 
     func makeMainView(
@@ -109,6 +110,10 @@ final class GallerySceneContainer {
             managedObjectContext: dependencies.managedObjectContext,
             volumeId: volumeId,
             screenLockController: screenLockController,
+            upgradeRequirementBannerController: UpgradeRequirementBannerController(
+                appStorePageURL: dependencies.appStorePageURL,
+                localSettings: dependencies.tower.localSettings
+            ),
             onboardingView: { [unowned self] in
                 makeOnboardingView()
             },
@@ -163,7 +168,7 @@ final class GallerySceneContainer {
                 selectionController: configuration.selectionController ?? LocalPhotosSelectionController(),
                 metadataController: dependencies.metadataController,
                 remoteAlbumFetchController: remoteAlbumFetchController,
-                thumbnailContainer: dependencies.albumsThumbnailsContainer,
+                thumbnailDownloader: dependencies.tower.sdkObjects.thumbnailDownloader,
                 invitationsController: invitationsController,
                 invitationsChangeController: pendingInvitationsContainer.changeController
             ),
@@ -244,7 +249,7 @@ final class GallerySceneContainer {
             coordinator: coordinator,
             listController: listController,
             fetchingController: fetchingController,
-            thumbnailsContainer: dependencies.streamThumbnailsContainer,
+            thumbnailDownloader: dependencies.tower.sdkObjects.thumbnailDownloader,
             settingsController: dependencies.parentDependencies.settingsController,
             errorControllers: [dependencies.parentDependencies.processingController],
             selectionController: selectionController,
@@ -263,6 +268,8 @@ final class GallerySceneContainer {
             scrollerController: scrollerController,
             // So we won’t reuse the same PhotoItemViewModel for both the gallery and the photo picker
             itemsViewModelsCache: configuration.isPickingPhotos ? PhotoItemViewModelsCache() : itemsViewModelsCache,
+            // Same reasoning: the picker keeps its own zoom level rather than moving the gallery's
+            zoomController: configuration.isPickingPhotos ? PhotosGridZoomController() : zoomController,
             bannersView: bannersView,
             tagsView: tagsView,
             scrollerView: scrollerView
@@ -275,7 +282,6 @@ final class GallerySceneContainer {
             albumId: albumId,
             tower: dependencies.parentDependencies.tower,
             listController: makeListController(albumId: albumId),
-            thumbnailsContainer: albumId == nil ? dependencies.streamThumbnailsContainer : dependencies.albumsThumbnailsContainer,
             photosManagedObjectContext: dependencies.parentDependencies.photosManagedObjectContext,
             photoUploadedNotifier: dependencies.parentDependencies.photoUploadedNotifier,
             metadataController: dependencies.metadataController,
@@ -299,21 +305,35 @@ final class GallerySceneContainer {
         )
     }
 
-    func makeSubscriptionsViewController() -> UIViewController {
-        let dependencies = SubscriptionsContainer.Dependencies(
-            tower: dependencies.parentDependencies.tower,
-            keymaker: dependencies.parentDependencies.keymaker,
-            networkService: dependencies.parentDependencies.networkService,
-            featureFlagsController: dependencies.parentDependencies.featureFlagsController
+    @MainActor
+    func makeUpsellCoordinator() -> UpsellCoordinator {
+        let parent = dependencies.parentDependencies
+        let upsellContainer = UpsellContainer(
+            dependencies: UpsellContainer.Dependencies(
+                tower: parent.tower,
+                featureFlagsController: parent.featureFlagsController,
+                userInfoController: UserInfoControllerFactory().makeController(sessionVault: parent.tower.sessionVault)
+            )
         )
-        let container = SubscriptionsContainer(dependencies: dependencies)
-        return container.makeRootViewController()
+        let subscriptionsContainer = SubscriptionsContainer(
+            dependencies: SubscriptionsContainer.Dependencies(
+                tower: parent.tower,
+                keymaker: parent.keymaker,
+                networkService: parent.networkService,
+                featureFlagsController: parent.featureFlagsController
+            )
+        )
+        return UpsellCoordinator(
+            container: upsellContainer,
+            subscriptionsContainer: subscriptionsContainer
+        )
     }
 
     func makeRetryViewController() -> UIViewController {
         GalleryScenesFactory().makeRetryViewController(
             deletedStoreResource: dependencies.parentDependencies.failedPhotosResource,
-            retryTriggerController: dependencies.parentDependencies.retryTriggerController
+            retryTriggerController: dependencies.parentDependencies.retryTriggerController,
+            skippableCache: dependencies.parentDependencies.photoSkippableCache
         )
     }
 

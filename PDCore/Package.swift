@@ -20,7 +20,7 @@ let package = Package(
         .package(name: "PDUIComponents", path: "../PDUIComponents"),
         .package(name: "PDContacts", path: "../PDContacts"),
 
-        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", exact: "37.0.1"),
+        .package(url: "https://github.com/ProtonMail/protoncore_ios.git", exact: "37.3.0"),
         .package(url: "https://github.com/ProtonMail/apple-fusion.git", exact: "2.1.5"),
         .package(url: "https://github.com/ProtonMail/TrustKit.git", exact: "1.0.3"),
         .package(url: "https://github.com/ashleymills/Reachability.swift", exact: "5.2.4"),

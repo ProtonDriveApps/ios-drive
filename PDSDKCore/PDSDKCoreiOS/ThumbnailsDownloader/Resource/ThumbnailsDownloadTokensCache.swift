@@ -39,6 +39,12 @@ actor ThumbnailsDownloadTokensCache {
         return token
     }
 
+    func removeAll() -> [UUID] {
+        let copied = tokens
+        tokens = [:]
+        return Array(copied.values)
+    }
+
     private func makeKey(for identifier: AnyVolumeIdentifier, type: ThumbnailType) -> Key {
         Key(identifier: identifier, type: type)
     }

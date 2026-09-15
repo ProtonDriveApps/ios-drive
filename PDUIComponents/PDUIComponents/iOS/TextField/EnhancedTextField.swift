@@ -50,6 +50,9 @@ public struct EnhancedTextField: UIViewRepresentable {
     
     public func updateUIView(_ uiView: EnhancedUITextField, context: Context) {
         uiView.onBackspace = onBackspace
+        if uiView.text != text {
+            uiView.text = text
+        }
     }
     
     // custom UITextField subclass that detects backspace events

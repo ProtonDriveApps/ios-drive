@@ -28,7 +28,6 @@ final class PhotosPreviewContainer {
         let albumId: AlbumIdentifier?
         let tower: Tower
         let listController: PhotosListControllerProtocol
-        let thumbnailsContainer: ThumbnailsControllersContainer
         let photosManagedObjectContext: NSManagedObjectContext
         let photoUploadedNotifier: PhotoUploadedNotifier
         let metadataController: MetadataControllerProtocol
@@ -82,7 +81,7 @@ final class PhotosPreviewContainer {
             albumId: dependencies.albumId,
             tower: dependencies.tower,
             coordinator: coordinator,
-            thumbnailsContainer: dependencies.thumbnailsContainer,
+            photoThumbnailDownloader: dependencies.tower.sdkObjects.thumbnailDownloader,
             modeController: modeController,
             previewController: previewController,
             detailController: detailController,

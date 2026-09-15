@@ -19,9 +19,12 @@ import Foundation
 
 public enum NavigationBarButton: Identifiable, MirrorableEnum {
     case menu, upload, action, close
+    /// Actions like `move here`, `save here`
     case apply(title: String, disabled: Bool)
     case virtualBack
+    /// Disable selection mode
     case cancel
+    case toggleSelectAll(title: String)
     case subscribe
 
     public var id: String { self.mirror.label }

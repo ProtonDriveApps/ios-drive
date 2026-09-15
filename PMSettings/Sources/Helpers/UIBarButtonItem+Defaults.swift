@@ -1,23 +1,19 @@
+// Copyright (c) 2022 Proton AG
 //
-//  UIBarButtonItem+Defaults.swift
-//  ProtonCore-Settings - Created on 09.11.2020.
+// This file is part of Proton Drive.
 //
-//  Copyright (c) 2022 Proton Technologies AG
+// Proton Drive is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
 //
-//  This file is part of Proton Technologies AG and ProtonCore.
+// Proton Drive is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
 //
-//  ProtonCore is free software: you can redistribute it and/or modify
-//  it under the terms of the GNU General Public License as published by
-//  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
-//
-//  ProtonCore is distributed in the hope that it will be useful,
-//  but WITHOUT ANY WARRANTY; without even the implied warranty of
-//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//  GNU General Public License for more details.
-//
-//  You should have received a copy of the GNU General Public License
-//  along with ProtonCore.  If not, see <https://www.gnu.org/licenses/>.
+// You should have received a copy of the GNU General Public License
+// along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 import UIKit
 import ProtonCoreUIFoundations
@@ -36,21 +32,17 @@ public extension UIBarButtonItem {
     }
 
     private static func makeButton(on target: Any?, action: Selector, image: UIImage?) -> UIBarButtonItem {
-        let button = UIButton(frame: .zero)
-        button.setSizeContraint(height: 24, width: 24)
-        button.tintColor = ColorProvider.TextNorm
-        button.setBackgroundImage(image, for: .normal)
+        let button = UIButton(type: .custom)
+        button.tintColor = ColorProvider.IconNorm
+        button.setImage(image, for: .normal)
         button.addTarget(target, action: action, for: .touchUpInside)
-        button.translatesAutoresizingMaskIntoConstraints = false
-
-        let container = UIView()
-        container.addSubview(button)
-        NSLayoutConstraint.activate([
-            button.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            button.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            container.widthAnchor.constraint(equalToConstant: 40),
-            container.heightAnchor.constraint(equalToConstant: 40)
-        ])
-        return UIBarButtonItem(customView: container)
+        if #available(iOS 26.0, *) {
+            button.setSizeContraint(height: 24, width: 24)
+        } else {
+            // UIBarButtonItem(customView:) doesn't get the system 44pt minimum touch target,
+            // so enforce it on pre-26 bars; the image keeps its intrinsic 24pt size.
+            button.setSizeContraint(height: 44, width: 44)
+        }
+        return UIBarButtonItem(customView: button)
     }
 }

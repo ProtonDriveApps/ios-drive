@@ -207,7 +207,7 @@ struct AddPhotosToOwnAlbumInteractor: AddPhotosToOwnAlbumInteractorProtocol {
     // Creates new nodePassphrase based on the album node (and not the photos root share)
     // Re-encrypt name with album node key
     private func makeAlbumData(
-        decryptedHashKey: String,
+        decryptedHashKey: Data,
         photo: CoreDataPhoto,
         nodeKey: String,
         signersKit: SignersKit
@@ -254,7 +254,7 @@ struct AddPhotosToOwnAlbumInteractor: AddPhotosToOwnAlbumInteractorProtocol {
         )
     }
 
-    private func rehashed(contentDigest: FileContentDigest?, albumDecryptedHashKey: String) throws -> String {
+    private func rehashed(contentDigest: FileContentDigest?, albumDecryptedHashKey: Data) throws -> String {
         guard let contentDigest else { throw AddPhotosError.ContentDigestMissing }
 
         switch contentDigest {

@@ -18,18 +18,21 @@
 import Foundation
 
 public struct MoveMultipleEndpoint: Endpoint {
+    public typealias Response = MoveMultipleResponse
+
     public struct Parameters: Codable {
         public let ParentLinkID: String
         public let Links: [Link]
         public let NameSignatureEmail: String
-        public let SignatureEmail: String
+        /// Send only if moving anonymous files
+        public let SignatureEmail: String?
         public let NewShareID: String?
 
         public init(
             parentLinkID: String,
             links: [Link],
             nameSignatureEmail: String,
-            signatureEmail: String,
+            signatureEmail: String?,
             newShareID: String?
         ) {
             self.ParentLinkID = parentLinkID
@@ -71,14 +74,6 @@ public struct MoveMultipleEndpoint: Endpoint {
         }
     }
 
-    public struct Response: Codable {
-        var code: Int
-
-        public init(code: Int) {
-            self.code = code
-        }
-    }
-
     public var request: URLRequest
 
     public init(volumeID: Volume.VolumeID, parameters: Parameters, service: APIService, credential: ClientCredential) {
@@ -100,5 +95,34 @@ public struct MoveMultipleEndpoint: Endpoint {
         request.httpBody = try? JSONEncoder().encode(parameters)
 
         self.request = request
+    }
+}
+
+public struct MoveMultipleResponse: Codable {
+    public let code: Int
+    public let responses: [MoveResponse]
+
+    public init(code: Int, responses: [MoveResponse]) {
+        self.code = code
+        self.responses = responses
+    }
+
+    public struct MoveResponse: Codable {
+        public let linkID: String
+        public let response: MoveResult
+    }
+
+    public struct MoveResult: Codable {
+        public let code: Int
+        public let error: String?
+        public let details: Detail?
+    }
+
+    public struct Detail: Codable {
+        public let conflictLinkID: String?
+        public let conflictRevisionID: String?
+        public let conflictDraftRevisionID: String?
+        public let conflictDraftClientUID: String?
+        public let revisionID: String?
     }
 }

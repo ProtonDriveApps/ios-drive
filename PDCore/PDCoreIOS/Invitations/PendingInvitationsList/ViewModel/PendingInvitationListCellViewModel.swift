@@ -57,7 +57,7 @@ final class PendingInvitationListCellViewModel: PendingInvitationListCellViewMod
         PendingInvitationListCellViewState(
             inviter: String(invitation.inviterEmail.first ?? Character("-")).capitalized,
             title: invitation.name,
-            subtitle: "\(invitation.inviterEmail) • \(DateFormatter.sharedWithMe.string(from: invitation.invitationDate))",
+            subtitle: "\(invitation.inviterEmail) • \(DateFormatter.displayMediumDate.string(from: invitation.invitationDate))",
             iconName: FileTypeAsset.shared.getAsset(invitation.mimeType)
         )
     }
@@ -85,13 +85,4 @@ final class PendingInvitationListCellViewModel: PendingInvitationListCellViewMod
         }
         isPerformingOperation = false
     }
-}
-
-extension DateFormatter {
-    static let sharedWithMe = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, yyyy"
-        return formatter
-
-    }()
 }

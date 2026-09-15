@@ -32,23 +32,18 @@ public final class MenuNavigationViewController: UINavigationController {
     }
 
     private func makeMenuButton() -> UIBarButtonItem {
-        let button = UIButton(frame: .zero)
-        button.setSizeContraint(height: 24, width: 24)
+        let button = UIButton(type: .custom)
         button.tintColor = ColorProvider.IconNorm
-        button.setBackgroundImage(IconProvider.hamburger, for: .normal)
+        button.setImage(IconProvider.hamburger, for: .normal)
         button.addTarget(self, action: #selector(tapMenuButton), for: .touchUpInside)
-        button.translatesAutoresizingMaskIntoConstraints = false
-
-        let container = UIView()
-        container.addSubview(button)
-        NSLayoutConstraint.activate([
-            button.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            button.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            container.widthAnchor.constraint(equalToConstant: 40),
-            container.heightAnchor.constraint(equalToConstant: 40)
-        ])
-
-        return UIBarButtonItem(customView: container)
+        if #available(iOS 26.0, *) {
+            button.setSizeContraint(height: 24, width: 24)
+        } else {
+            // UIBarButtonItem(customView:) doesn't get the system 44pt minimum touch target,
+            // so enforce it on pre-26 bars; the image keeps its intrinsic 24pt size.
+            button.setSizeContraint(height: 44, width: 44)
+        }
+        return UIBarButtonItem(customView: button)
     }
 
     @objc

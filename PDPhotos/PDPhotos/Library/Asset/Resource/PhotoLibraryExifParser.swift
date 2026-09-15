@@ -69,7 +69,7 @@ public final class CoreImagePhotoLibraryExifParser: PhotoLibraryExifParser {
 
             let dateMetadata = metadata.first(where: { $0.commonKey?.rawValue == "creationDate" })
             let dateString = try await dateMetadata?.load(.stringValue)
-            creationDate = ISO8601DateFormatter.default.date(dateString)
+            creationDate = ISO8601DateFormatter.date(dateString)
 
             let modelMetadata = metadata.first(where: { $0.commonKey?.rawValue == "model" })
             modelString = try await modelMetadata?.load(.stringValue)

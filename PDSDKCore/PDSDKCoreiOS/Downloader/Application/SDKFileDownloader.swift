@@ -104,8 +104,13 @@ import ProtonDriveSDK
                 await self.removeProgress(for: identifier)
             } catch {
                 await self.removeProgress(for: identifier)
-                if let sdkError = error as? ProtonDriveSDKError, sdkError.isCancellationError {
-                    throw SDKDownloadErrors.cancelled
+                await updateProgressToCompleted(for: identifier)
+                if let sdkError = error as? ProtonDriveSDKError {
+                    if sdkError.isCancellationError {
+                        throw SDKDownloadErrors.cancelled
+                    } else if sdkError.primaryCode == 2501 {
+                        throw SDKDownloadErrors.notExisting
+                    }
                 } else if error is CancellationError {
                     throw SDKDownloadErrors.cancelled
                 }

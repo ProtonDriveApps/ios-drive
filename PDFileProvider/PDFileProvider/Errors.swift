@@ -178,4 +178,14 @@ public extension NSFileProviderError {
             ]
         )
     }
+    
+    static func create(_ status: NSFileProviderError.Code, userFacingDescription: String) -> Self {
+        return NSFileProviderError(
+            status,
+            userInfo: [
+                NSDebugDescriptionErrorKey: "FP error code: \(status). UserFacingDescription: \(userFacingDescription)",
+                NSLocalizedDescriptionKey: userFacingDescription
+            ]
+        )
+    }
 }

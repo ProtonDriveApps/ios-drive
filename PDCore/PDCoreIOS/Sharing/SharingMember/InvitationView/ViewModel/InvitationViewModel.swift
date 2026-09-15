@@ -217,25 +217,9 @@ extension InvitationViewModel {
         
         $queryText
             .sink { [weak self] newString in
-                self?.handle(newQueryString: newString)
+                self?.queryContacts(keyword: newString)
             }
             .store(in: &cancellables)
-    }
-    
-    private func handle(newQueryString: String) {
-        var newString = newQueryString
-        if !newString.isEmpty {
-            let newChar = newString.removeLast()
-            if newChar.isWhitespace {
-                addCandidate(by: newString)
-                DispatchQueue.main.asyncAfter(deadline: .now()) {
-                    // Can't update text in $queryText
-                    self.queryText = ""
-                }
-                return
-            }
-        }
-        queryContacts(keyword: newQueryString)
     }
     
     private func queryContacts(keyword: String) {

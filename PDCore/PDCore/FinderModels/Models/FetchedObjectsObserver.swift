@@ -40,10 +40,7 @@ public final class FetchedObjectsObserver<ResultType: NSFetchRequestResult&Equat
     }
     
     public func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
-        let oldCache = self.cache
-        if oldCache != self.fetchedObjects {
-            objectWillChange.send()
-        }
+        objectWillChange.send()
     }
     
     public func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>,

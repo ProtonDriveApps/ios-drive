@@ -18,6 +18,7 @@
 import PDUIComponents
 import ProtonCoreUIFoundations
 import SwiftUI
+import PDCoreIOS
 
 struct GalleryRootView<
     ViewModel: GalleryRootViewModelProtocol,
@@ -59,7 +60,16 @@ struct GalleryRootView<
     }
 
     @ViewBuilder
+    private var upgradeHintBanner: some View {
+        let level = viewModel.upgradeRequirementLevel
+        if let handling = viewModel.upgradeRequirementHandling {
+            UpgradeRequirementBannerView(level: level, handling: handling)
+        }
+    }
+
+    @ViewBuilder
     private var content: some View {
+        upgradeHintBanner
         switch viewModel.state {
         case .disconnection:
             NoConnectionView(isUpdating: .constant(false), config: .noConnectionInPhoto) { [weak viewModel] in

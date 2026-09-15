@@ -45,10 +45,14 @@ public struct CacheCleanupStrategy: OptionSet {
 
 public protocol DomainOperationsServiceProtocol {
     var cacheCleanupStrategy: CacheCleanupStrategy { get }
+    /// true while the cache/metadata rebuild has not finished; see DomainOperationsService for lifecycle.
+    var keepDomainDisconnectedForCacheRebuild: Bool? { get set }
     func tearDownConnectionToAllDomains() async throws
     func signalEnumerator(reason: FileOperationEvent.SignalEnumeratorReason) async throws
     func removeAllDomains() async throws
     func groupContainerMigrationStarted() async throws
+    func tryResolvingErrors() async
+    func tryResolvingCannotSynchronizeErrorIfDeferred() async
 }
 
 public enum DomainOperationErrors: Error {

@@ -91,7 +91,7 @@ public class Photo: File {
         guard let iOSPhotos = iOSPhotos, let iCloudID = iOSPhotos.iCloudID else {
             return nil
         }
-        let modificationTime = ISO8601DateFormatter.default.date(iOSPhotos.modificationTime)
+        let modificationTime = ISO8601DateFormatter.date(iOSPhotos.modificationTime)
         return PhotoAssetMetadata.iOSPhotos(identifier: iCloudID, modificationTime: modificationTime)
     }
     
@@ -155,16 +155,15 @@ public struct TemporalMetadata: Codable {
     public let iOSPhotos: ExtendedAttributes.iOSPhotos
 
     public init(metadata: PhotoAssetMetadata) {
-        let formatter = ISO8601DateFormatter.default
         self.location = metadata.location.map { ExtendedAttributes.Location(latitude: $0.latitude, longitude: $0.longitude) }
         self.camera = ExtendedAttributes.Camera(
-            captureTime: formatter.string(metadata.camera.captureTime),
+            captureTime: ISO8601DateFormatter.string(metadata.camera.captureTime),
             device: metadata.camera.device,
             orientation: metadata.camera.orientation,
             subjectCoordinates: ExtendedAttributes.SubjectCoordinates(subjectCoordinates: metadata.camera.subjectCoordinates)
         )
         self.media = ExtendedAttributes.Media(width: metadata.media.width, height: metadata.media.height, duration: metadata.media.duration)
-        self.iOSPhotos = ExtendedAttributes.iOSPhotos(iCloudID: metadata.iOSPhotos.identifier, modificationTime: formatter.string(metadata.iOSPhotos.modificationTime))
+        self.iOSPhotos = ExtendedAttributes.iOSPhotos(iCloudID: metadata.iOSPhotos.identifier, modificationTime: ISO8601DateFormatter.string(metadata.iOSPhotos.modificationTime))
     }
 
     func base64Encoded() -> String? {

@@ -24,6 +24,7 @@ public extension Volume {
         self.usedSpace = meta.usedSpace ?? 0
         let typeValue = Int16(meta.type.rawValue)
         self.type = PDCore.Volume.VolumeType(rawValue: typeValue) ?? .undetermined
+        self.state = meta.state
     }
 }
 

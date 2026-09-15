@@ -28,9 +28,15 @@ final class ReportBugViewModel: ObservableObject {
     @Published var topicField: TopicField = TopicField()
     @Published var selectedTopic: ReportTopic = .other
 
+    static let messageCharacterLimit = 4000
+
     @Published var messageField = MessageField()
     @Published var messageText: String = "" {
         didSet {
+            if messageText.count > Self.messageCharacterLimit {
+                // Assigning within didSet does not re-trigger the observer.
+                messageText = String(messageText.prefix(Self.messageCharacterLimit))
+            }
             updateSendButtonState()
         }
     }
@@ -51,6 +57,8 @@ final class ReportBugViewModel: ObservableObject {
 
     @Published var selectedLogs: [URL] = []
     @Published var selectedMedia: [URL] = []
+    
+    let webHelpURL = URL(string: "https://proton.me/support/contact?topic=Proton+Drive&product=drive")!
 
     // MARK: - Dependencies
     private let service: BugReportServiceProtocol

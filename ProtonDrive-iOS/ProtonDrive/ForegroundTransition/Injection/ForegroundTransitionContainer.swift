@@ -24,14 +24,16 @@ final class ForegroundTransitionContainer {
         tower: Tower,
         pickerResource: PickerResource,
         populatedStateController: PopulatedStateControllerProtocol,
-        lockedStateController: LockedStateControllerProtocol
+        lockedStateController: LockedStateControllerProtocol,
+        volumeLockController: VolumeLockController
     ) {
         let factory = ForegroundTransitionFactory()
         controller = factory.makeController(
             tower: tower,
             pickerResource: pickerResource,
             populatedStateController: populatedStateController,
-            lockedStateController: lockedStateController
+            lockedStateController: lockedStateController,
+            volumeLockController: volumeLockController
         )
     }
 }

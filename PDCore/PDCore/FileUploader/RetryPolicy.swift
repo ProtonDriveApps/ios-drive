@@ -35,8 +35,12 @@ public enum RetryPolicy {
         NSURLErrorSecureConnectionFailed, // -1200
     ]
     
-    static let retryable: Set<Int?> = retryable4xxErrors.union(retryable5xxErrors).union(iosRetryableErrors)
-    static let retryableIncludingInternetIssues: Set<Int?> = retryable.union(internetErrors)
+    private static let decodingErrors: Set<Int> = [
+        NSPropertyListReadCorruptError
+    ]
+    
+    static let retryable: Set<Int> = retryable4xxErrors.union(retryable5xxErrors).union(iosRetryableErrors)
+    static let retryableIncludingInternetIssues: Set<Int> = retryable.union(internetErrors).union(decodingErrors)
     
     static var iOSDriveRetriableCode: Int {
         321321321 // Just drive iOS specific

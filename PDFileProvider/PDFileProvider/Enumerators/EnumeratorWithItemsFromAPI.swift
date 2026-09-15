@@ -28,12 +28,12 @@ protocol EnumeratorWithItemsFromAPI: AnyObject, EnumeratorWithItemsFromDB where 
 
 /// "Item" enumerations are when listing the contents of a directory.
 extension EnumeratorWithItemsFromAPI {
-    
-    func fetchPageFromAPI(_ containerType: FileOperationEvent.ContainerType, _ page: Int, observers: [NSFileProviderEnumerationObserver], moc: NSManagedObjectContext) {
+
+    func fetchPageFromAPI(_ containerType: FileOperationEvent.ContainerType, _ page: Int, observers: [NSFileProviderEnumerationObserver], model: Model, moc: NSManagedObjectContext) {
         Log.trace()
-        self.model.prepareForRefresh(fromPage: page)
+        model.prepareForRefresh(fromPage: page)
         self.fetchFromAPICancellable?.cancel()
-        
+
         // This additional guard was introduced to work around a double enumeration issue, aka following scenario:
         // 1. Enumerator 1 starts fetching page 0
         // 2. Enumerator 1 finishes fetching page 0 and reports 150 items (150 total reported)
@@ -46,63 +46,63 @@ extension EnumeratorWithItemsFromAPI {
         // Outcome: system now thinks there are 150 items, because that's what was last reported
         // To fix that, we skip the model.node.isChildrenListFullyFetched check if fetched page was not the last page
         var receivedTheLastPage = false
-        
-        self.fetchFromAPICancellable = self.model.fetchChildrenFromAPI(proceedTillLastPage: false, moc: moc)
-        .sink { completion in
-            if case let .failure(error) = completion {
-                Log.event(.enumerateItems(.failed(.init(containerType: containerType, error: error))))
-                let fsError = Errors.mapLegacyErrorToFileProviderError(error)
-                observers.forEach { $0.finishEnumeratingWithError(fsError) }
-            } else {
-                Log.info("Finished fetching page \(page) from cloud", domain: .enumerating)
 
-                // if it fetched from the cloud, but it's not the last page, it should NOT finish here
-                if receivedTheLastPage, 
-                    let moc = self.model.node.moc,
-                    moc.performAndWait({ self.model.node.isChildrenListFullyFetched }) {
-                    observers.forEach { $0.finishEnumerating(upTo: nil) }
+        self.fetchFromAPICancellable = model.fetchChildrenFromAPI(proceedTillLastPage: false, moc: moc)
+            .sink { completion in
+                if case let .failure(error) = completion {
+                    Log.event(.enumerateItems(.failed(.init(containerType: containerType, error: error))))
+                    let fsError = Errors.mapLegacyErrorToFileProviderError(error)
+                    observers.forEach { $0.finishEnumeratingWithError(fsError) }
+                } else {
+                    Log.info("Finished fetching page \(page) from cloud", domain: .enumerating)
+
+                    // if it fetched from the cloud, but it's not the last page, it should NOT finish here
+                    if receivedTheLastPage,
+                        let moc = model.node.moc,
+                        moc.performAndWait({ model.node.isChildrenListFullyFetched }) {
+                        observers.forEach { $0.finishEnumerating(upTo: nil) }
+                        return
+                    }
+
+                    let nextPage = page + 1
+                    let providerPage = NSFileProviderPage(nextPage)
+                    observers.forEach { $0.finishEnumerating(upTo: providerPage) }
+
+                }
+            } receiveValue: { value in
+                Log.info("Received page from cloud", domain: .enumerating)
+                receivedTheLastPage = value.isLastPage
+                let nodes = value.nodes
+                guard let moc = nodes.first?.managedObjectContext else {
                     return
                 }
 
-                let nextPage = page + 1
-                let providerPage = NSFileProviderPage(nextPage)
-                observers.forEach { $0.finishEnumerating(upTo: providerPage) }
-                
-            }
-        } receiveValue: { value in
-            Log.info("Received page from cloud", domain: .enumerating)
-            receivedTheLastPage = value.isLastPage
-            let nodes = value.nodes
-            guard let moc = nodes.first?.managedObjectContext else {
-                return
-            }
+                #if os(macOS)
+                self.sendSuccessfulFetchMetric(for: model.node)
+                #endif
 
-            #if os(macOS)
-            self.sendSuccessfulFetchMetric(for: self.model.node)
-            #endif
-
-            let items = moc.performAndWait {
-                nodes.filter { $0.state != .deleted }.compactMap {
-                    do {
-                        let node = try NodeItem(node: $0)
-                        if self.displayEnumeratedItems {
-                            self.model.reportEnumeratedItem(for: $0)
+                let items = moc.performAndWait {
+                    nodes.filter { $0.state != .deleted }.compactMap {
+                        do {
+                            let node = try NodeItem(node: $0)
+                            if self.displayEnumeratedItems {
+                                model.reportEnumeratedItem(for: $0)
+                            }
+                            return node
+                        } catch {
+                            model.reportDecryptionError(for: $0, underlyingError: error)
+                            return nil
                         }
-                        return node
-                    } catch {
-                        self.model.reportDecryptionError(for: $0, underlyingError: error)
-                        return nil
                     }
                 }
+                Log.event(.enumerateItems(.succeeded(.init(
+                    containerType: containerType,
+                    itemEnumerationMode: .api,
+                    enumeratedItemIDs: items.map(\.itemIdentifier.logIdentifier),
+                    hasMorePages: receivedTheLastPage == false
+                ))))
+                observers.forEach { $0.didEnumerate(items) }
             }
-            Log.event(.enumerateItems(.succeeded(.init(
-                containerType: containerType,
-                itemEnumerationMode: .api,
-                enumeratedItemIDs: items.map(\.itemIdentifier.logIdentifier),
-                hasMorePages: receivedTheLastPage == false
-            ))))
-            observers.forEach { $0.didEnumerate(items) }
-        }
     }
 
     @available(iOS, unavailable)

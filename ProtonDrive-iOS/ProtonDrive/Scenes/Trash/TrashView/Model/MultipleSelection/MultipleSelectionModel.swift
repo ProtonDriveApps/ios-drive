@@ -17,6 +17,7 @@
 
 import Foundation
 import PDCoreIOS
+import PDLocalization
 
 final class MultipleSelectionModel<Identifier: Hashable> {
     
@@ -62,6 +63,54 @@ final class MultipleSelectionModel<Identifier: Hashable> {
         hideTabBar(false)
     }
 
+    func hideTabBar(_ hidden: Bool) {
+        NotificationCenter.default.post(name: DriveNotification.tabBar.name, object: hidden)
+    }
+}
+
+@MainActor
+final class MMultipleSelectionModel<Identifier: Hashable>: ObservableObject {
+    @Published private(set) var isSelectionEnabled = false
+    @Published private(set) var selectable = Set<Identifier>()
+    @Published private(set) var selected = Set<Identifier>()
+    
+    var selectAllText: String {
+        selected == selectable ? Localization.general_deselect_all : Localization.general_select_all
+    }
+    
+    func toggle(identifier: Identifier) {
+        if selected.contains(identifier) {
+            selected.remove(identifier)
+        } else {
+            selected.insert(identifier)
+        }
+    }
+    
+    func isSelected(_ identifier: Identifier) -> Bool {
+        selected.contains(identifier)
+    }
+    
+    func toggleSelectAll() {
+        if selected == selectable {
+            selected = []
+        } else {
+            selected = selectable
+        }
+    }
+    
+    func update(selectable: Set<Identifier>) {
+        self.selectable = selectable
+        selected = selected.intersection(selectable)
+    }
+    
+    func setSelectionMode(enabled: Bool) {
+        isSelectionEnabled = enabled
+        if !enabled {
+            selected = []
+        }
+        hideTabBar(enabled)
+    }
+    
     func hideTabBar(_ hidden: Bool) {
         NotificationCenter.default.post(name: DriveNotification.tabBar.name, object: hidden)
     }

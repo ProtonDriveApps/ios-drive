@@ -116,6 +116,11 @@ public final class UnleashFeatureFlagsResource: ExternalFeatureFlagsResource {
         let name = flag.rawValue
         return client?.isEnabled(name: name) ?? false
     }
+    
+    public func getVariantPayload(for flag: ExternalFeatureFlag) -> String? {
+        let name = flag.rawValue
+        return client?.getVariant(name: name).payload?.value
+    }
 
     enum Errors: String, LocalizedError {
         case clientAlreadyStarted = "Feature flag client already started"

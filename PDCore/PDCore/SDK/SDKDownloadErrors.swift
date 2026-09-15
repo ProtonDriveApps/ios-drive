@@ -20,11 +20,14 @@ import PDLocalization
 
 public enum SDKDownloadErrors: Error, LocalizedError {
     case cancelled
+    case notExisting
 
     public var errorDescription: String? {
         switch self {
         case .cancelled:
             return Localization.general_cancel
+        case .notExisting:
+            return Localization.error_not_found
         }
     }
 }

@@ -101,11 +101,12 @@ final class LaunchViewController: UIViewController {
         let duration: TimeInterval = Constants.isUITest ? 10 : 4
         let banner = PMBanner(message: banner.message, style: banner.style, dismissDuration: duration)
         banner.accessibilityIdentifier = "Banner.bannerShown"
-        let topView = UIApplication.shared.topViewController()!.view!
+        let topVC = UIApplication.shared.topViewController()
+        let topView = topVC!.view!
         let toolbarHeight = toolbarHeight(view: topView)
         banner.show(
             at: .bottomCustom(UIEdgeInsets(top: CGFloat.infinity, left: 8, bottom: toolbarHeight, right: 8)),
-            on: UIApplication.shared.topViewController()!
+            on: topVC!
         )
     }
 

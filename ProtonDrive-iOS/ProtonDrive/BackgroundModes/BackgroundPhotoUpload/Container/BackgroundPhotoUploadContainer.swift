@@ -29,7 +29,7 @@ final class BackgroundPhotoUploadContainer {
         let appBackgroundStateListener: AnyPublisher<ApplicationRunningState, Never>
         let computationAvailability: ComputationalAvailabilityController
         let backgroundTaskStateController: BackgroundTaskStateController
-        let externalFeatureFlagStore: ExternalFeatureFlagsStore
+        let featureFlagCache: FeatureFlagCache
         let settingsProvider: SettingsProvider
         var postLocalNotification = UNUserNotificationCenter.current().post
         let keymaker: Keymaker
@@ -59,7 +59,7 @@ final class BackgroundPhotoUploadContainer {
             let lockPolicy = TimeoutLockProtectionEnabledPolicy(settingsProvider: dependencies.settingsProvider, protectionResource: dependencies.keymaker)
             let policy = PhotosTaskSchedulerEnabledPolicy(
                 lockPolicy: lockPolicy,
-                featureFlagStore: dependencies.externalFeatureFlagStore
+                featureFlagStore: dependencies.featureFlagCache
             )
 
             return ConstrainedTaskSchedulerDecorator(

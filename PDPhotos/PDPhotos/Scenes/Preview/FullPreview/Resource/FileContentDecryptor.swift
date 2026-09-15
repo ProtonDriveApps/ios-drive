@@ -59,17 +59,13 @@ final class RemoteFileContentDecryptor<T: File>: FileContentDecryptor {
     }
 
     private func decryptedURL(from file: FileType) async throws -> URL {
-        if DecryptedFileManager.validatedDecryptedFilePath(identifier: file.identifier) != nil {
-            return try DecryptedFileManager.ensureHardLink(
-                identifier: file.genericIdentifier,
-                filename: file.decryptedName
-            )
-        } else {
+        if DecryptedFileManager.validatedDecryptedFilePath(identifier: file.identifier) == nil {
             try await DecryptedFileManager.decryptLegacyBlocksIfNeeded(file: file)
-            return try DecryptedFileManager.ensureHardLink(
-                identifier: file.genericIdentifier,
-                filename: file.decryptedName
-            )
         }
+        
+        return try DecryptedFileManager.ensureHardLink(
+            identifier: file.genericIdentifier,
+            filename: file.decryptedName
+        )
     }
 }

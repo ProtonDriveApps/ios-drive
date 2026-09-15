@@ -28,13 +28,13 @@ public protocol B2BUserStatusStarterProtocol {
 }
 
 public final class B2BUserStatusStarter: B2BUserStatusStarterProtocol {
-    private let featureFlags: any FeatureFlagsRepository
+    private let featureFlags: any DriveFeatureFlagsProvider
     private let localSettings: LocalSettings
     private let networking: PMAPIService
     private let connectionStateResource: ConnectionStateResource
 
     public init(
-        featureFlags: any FeatureFlagsRepository,
+        featureFlags: any DriveFeatureFlagsProvider,
         localSettings: LocalSettings,
         networking: PMAPIService,
         connectionStateResource: ConnectionStateResource

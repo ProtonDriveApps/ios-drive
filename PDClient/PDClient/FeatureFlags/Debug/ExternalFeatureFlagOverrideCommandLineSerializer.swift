@@ -16,12 +16,19 @@
 // along with Proton Drive. If not, see https://www.gnu.org/licenses/.
 
 #if DEBUG
+import Foundation
+
 public final class ExternalFeatureFlagOverrideCommandLineSerializer {
     public init() {}
     
     public func serialize(flags: [ExternalFeatureFlagOverride]) -> String {
         return flags
-            .map { $0.flag.rawValue + ":\($0.value)" }
+            .map { flag in
+                let payload = flag.payload.map {
+                    Data($0.utf8).base64EncodedString()
+                }
+                return "\(flag.flag.rawValue):\(flag.value):\(payload ?? "")"
+            }
             .joined(separator: ",")
     }
 
@@ -32,7 +39,7 @@ public final class ExternalFeatureFlagOverrideCommandLineSerializer {
 
     private func parseOverride(from string: String) -> ExternalFeatureFlagOverride? {
         let components = string.components(separatedBy: ":")
-        guard components.count == 2 else {
+        guard components.count == 3 else {
             return nil
         }
         guard let flag = ExternalFeatureFlag(rawValue: components[0]) else {
@@ -41,7 +48,12 @@ public final class ExternalFeatureFlagOverrideCommandLineSerializer {
         guard let value = Bool(components[1]) else {
             return nil
         }
-        return ExternalFeatureFlagOverride(flag: flag, value: value)
+        var deserializedPayload: String?
+        let payloadData = components[2]
+        if !payloadData.isEmpty, let data = Data(base64Encoded: payloadData) {
+            deserializedPayload = String(data: data, encoding: .utf8)
+        }
+        return ExternalFeatureFlagOverride(flag: flag, value: value, payload: deserializedPayload)
     }
 }
 #endif

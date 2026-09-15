@@ -20,33 +20,6 @@ import PDCore
 import ProtonCoreKeymaker
 import PDUIComponents
 
-// MARK: - Keymaker
-@available(*, deprecated, message: "Refactor this out: used only in this file")
-extension EnvironmentValues {
-    var keymaker: DriveKeymaker {
-        get { self[KeymakerKey.self] }
-        set { self[KeymakerKey.self] = newValue }
-    }
-}
-
-@available(*, deprecated, message: "Refactor this out: used only in this file")
-private struct KeymakerKey: EnvironmentKey {
-    static var defaultValue = DriveKeymaker(autolocker: Environment(\.autolocker).wrappedValue, keychain: DriveKeychain.shared)
-}
-
-// MARK: - AutoLocker
-@available(*, deprecated, message: "Refactor this out: used only in this file")
-extension EnvironmentValues {
-    var autolocker: Autolocker {
-        get { self[KeymakerAutolockerKey.self] }
-        set { self[KeymakerAutolockerKey.self] = newValue }
-    }
-}
-@available(*, deprecated, message: "Refactor this out: used only in this file")
-private struct KeymakerAutolockerKey: EnvironmentKey {
-    static var defaultValue = Autolocker(lockTimeProvider: DriveKeychain.shared)
-}
-
 // MARK: - StorageKey
 @available(*, deprecated, message: "Refactor this out: used only in this file")
 extension EnvironmentValues {
@@ -75,31 +48,5 @@ private struct AcknowledgedNotEnoughStorageKey: EnvironmentKey {
     static var defaultValue = Binding<Bool>(
         get: { acknowledgedNotEnoughStorage ?? false },
         set: { acknowledgedNotEnoughStorage = $0 }
-    )
-}
-
-// MARK: - InitialServicesKey
-@available(*, deprecated, message: "Refactor this out: used only in this file")
-extension EnvironmentValues {
-    var initialServices: InitialServices {
-        get { self[InitialServicesKey.self] }
-        set { self[InitialServicesKey.self] = newValue }
-    }
-}
-
-@available(*, deprecated, message: "Refactor this out: used only in this file")
-private struct InitialServicesKey: EnvironmentKey {
-    static var defaultValue = InitialServices(
-        userDefault: Constants.appGroup.userDefaults,
-        clientConfig: Constants.clientApiConfig,
-        mainKeyProvider: Environment(\.keymaker).wrappedValue,
-        autoLocker: Environment(\.autolocker).wrappedValue,
-        sessionRelatedCommunicatorFactory: { sessionStore, authenticator, _ in
-            SessionRelatedCommunicatorForMainApp(
-                userDefaultsConfiguration: .forFileProviderExtension(userDefaults: Constants.appGroup.userDefaults),
-                sessionStorage: sessionStore,
-                authenticator: authenticator
-            )
-        }
     )
 }

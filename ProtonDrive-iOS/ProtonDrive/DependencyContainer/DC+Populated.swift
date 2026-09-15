@@ -30,6 +30,7 @@ import PMSideMenu
 import PDLocalization
 import ProtonCoreUIFoundations
 import ProtonCoreFeatureFlags
+import PDClient
 
 extension AuthenticatedDependencyContainer {
     func makeHomeViewController() -> UIViewController {
@@ -73,12 +74,19 @@ extension AuthenticatedDependencyContainer {
     private func getSDKMenuFlags() -> SDKMenuFlags {
         #if HAS_BETA_FEATURES
         let sdkFlags: [SDKMenuFlag] = [
-            tower.sdkObjects.nodeOperationPerformer.isNotNil ? SDKMenuFlag.isUsingSDKNodeOperations : nil
+            isSDKFeatureEnabled(flag: .driveiOSSDKNodeOperations) ? SDKMenuFlag.isUsingSDKNodeOperations : nil,
+            isSDKFeatureEnabled(flag: .driveiOSSDKCreateFolder) ? SDKMenuFlag.isUsingSDKCreateFolder : nil,
+            isSDKFeatureEnabled(flag: .driveiOSSDKTrashNode) ? SDKMenuFlag.isUsingSDKTrashNode : nil,
+            isSDKFeatureEnabled(flag: .driveiOSSDKDevicesOperations) ? SDKMenuFlag.isUsingSDKDeviceOperation : nil
         ].compactMap { $0 }
         return Set(sdkFlags)
         #else
         return []
         #endif
+    }
+
+    private func isSDKFeatureEnabled(flag: ExternalFeatureFlag) -> Bool {
+        tower.featureFlags.isEnabled(flag: flag) && tower.sdkObjects.nodeOperationPerformer.isNotNil
     }
 
     private func makeSideMenuCoordinator(_ viewController: SideMenuViewController) -> SideMenuCoordinator {
@@ -128,10 +136,13 @@ extension AuthenticatedDependencyContainer {
             SharedWithMeTabVisibilityResponder(featureFlags: featureFlagsController),
             SharedTabVisibilityResponder(featureFlags: featureFlagsController)
         ])
+        if featureFlagsController.hasRefactoredFinderView {
+            Log.debug("Use refactored finder view", domain: .application)
+        }
         return TabBarChildrenFactory(
             visibilityPolicy: visibilityPolicy,
             deepLink: deepLink,
-            makeFilesViewControllerFactory: makeFilesViewControllerFactory,
+            makeFilesViewControllerFactory: featureFlagsController.hasRefactoredFinderView ? makeFFilesViewControllerFactory : makeFilesViewControllerFactory,
             makePhotosViewController: makePhotosViewController,
             makeSharedViewController: makeSharedViewController,
             makeSharedWithMeViewController: makeSharedWithMeViewController,
@@ -147,6 +158,17 @@ extension AuthenticatedDependencyContainer {
         let rootView = RootView(vm: RootViewModel(), activeArea: { rootFolderView })
         let vc = UIHostingController(rootView: rootView)
         coordinator.rootViewController = vc
+        configureForTabBar(vc, tabBarItem: .files)
+        return vc
+    }
+    
+    @MainActor
+    private func makeFFilesViewControllerFactory(deepLink: Deeplink?) -> UIViewController {
+        let scrollToTopPublisher = scrollToTopSubject.eraseToAnyPublisher()
+        let coordinator = FFinderCoordinator(
+            dependencies: .init(container: self, scrollToTopPublisher: scrollToTopPublisher)
+        )
+        let vc = coordinator.start(location: .myFinderRoot, deeplink: deepLink)
         configureForTabBar(vc, tabBarItem: .files)
         return vc
     }
@@ -219,7 +241,18 @@ extension AuthenticatedDependencyContainer {
         let observer = ComputersObserverInteractor(repository: devicesRepository)
         let scanner = ComputersScannerInteractor(remote: tower.client, cache: tower.storage)
         let loadStateRepository = ComputersLoadStateRepository(localSettings: tower.localSettings)
-        let viewModel = ComputersViewModel(scanner: scanner, observer: observer, loadStateRepository: loadStateRepository, messageHandler: UserMessageHandler(), coordinator: coordinator, performanceMetricsController: tower.performanceMetricsController)
+        let viewModel = ComputersViewModel(
+            scanner: scanner,
+            observer: observer,
+            loadStateRepository: loadStateRepository,
+            messageHandler: UserMessageHandler(),
+            coordinator: coordinator,
+            performanceMetricsController: tower.performanceMetricsController,
+            upgradeRequirementBannerController: UpgradeRequirementBannerController(
+                appStorePageURL: Constants.appStorePageURL,
+                localSettings: tower.localSettings
+            )
+        )
         let rootViewController = ComputersViewController(viewModel: viewModel, cellFactory: cellFactory)
         configureForTabBar(rootViewController, tabBarItem: .computers)
         let nc = MenuNavigationViewController(rootViewController: rootViewController)
@@ -240,13 +273,14 @@ extension AuthenticatedDependencyContainer {
         let nodeRenamer = DeviceRenamer(
             storage: tower.storage,
             cloudNodeRenamer: tower.client.renameEntry,
-            signersKitFactory: tower.sessionVault
+            signersKitFactory: tower.sessionVault,
+            nodeOperationPerformer: tower.sdkObjects.nodeOperationPerformer,
+            featureFlags: tower.featureFlags
         )
         let nameEditor = NodeNameEditor(
             storage: tower.storage,
             managedObjectContext: tower.storage.backgroundContext,
-            nodeRenamer: nodeRenamer,
-            nodeOperationPerformer: tower.sdkObjects.nodeOperationPerformer
+            nodeRenamer: nodeRenamer
         )
         let viewModel = EditNodeNameViewModel(node: editedNode, nameEditor: nameEditor, validator: NameValidations.userSelectedName)
         let formattingViewModel = FormattingFileViewModel(

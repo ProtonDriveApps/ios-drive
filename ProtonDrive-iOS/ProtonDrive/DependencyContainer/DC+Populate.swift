@@ -55,6 +55,7 @@ final class AuthenticatedDependencyContainer {
     let scrollToTopSubject = PassthroughSubject<TabBarItem, Never>()
     private weak var autoLocker: Autolocker?
     let lockedStateController: LockedStateControllerProtocol
+    let volumeLockController: VolumeLockController
     private var bootstrappedSubject = CurrentValueSubject<Bool, Never>(false)
     let bootstrapStateController: BootstrapStateControllerProtocol
     let sceneInitStateController: SceneInitStateControllerProtocol
@@ -76,7 +77,8 @@ final class AuthenticatedDependencyContainer {
         photoUploadedNotifier: PhotoUploadedNotifier,
         failedPhotosResource: DeletedPhotosIdentifierStoreResource,
         photosSkippableCacheStorage: PhotosSkippableStorage,
-        lockedStateController: LockedStateControllerProtocol
+        lockedStateController: LockedStateControllerProtocol,
+        volumeLockController: VolumeLockController
     ) {
         self.tower = tower
         self.keymaker = keymaker
@@ -102,6 +104,7 @@ final class AuthenticatedDependencyContainer {
         )
         tower.set(externalInvitationConverter: converter)
         self.lockedStateController = lockedStateController
+        self.volumeLockController = volumeLockController
 
         pickersContainer = PickersContainer()
 
@@ -111,7 +114,9 @@ final class AuthenticatedDependencyContainer {
         self.featureFlagsController = featureFlagsController
         let notificationFlowController = NotificationsPermissionsFactory().makeFlowController()
         ratingBoosterFlowController = RatingBoosterFlowController(
-            coordinator: RatingBoosterCoordinator(),
+            coordinator: RatingBoosterCoordinator(
+                bugReportFactory: BugReportFactory(apiService: tower.networking, sessionVault: tower.sessionVault)
+            ),
             featureFlagsController: featureFlagsController,
             localSettings: localSettings,
             repository: DisableLegacyRatingRepository(networkService: tower.networking)
@@ -147,7 +152,8 @@ final class AuthenticatedDependencyContainer {
                 tower: tower,
                 pickerResource: pickersContainer.photoPickerResource,
                 populatedStateController: populatedStateController,
-                lockedStateController: lockedStateController
+                lockedStateController: lockedStateController,
+                volumeLockController: volumeLockController
             ),
             QuotaUpdatesContainer(tower: tower, photoUploader: tower.sdkObjects.photoUploader),
             PaymentsCleanUpContainer(tower: tower),
@@ -233,7 +239,7 @@ final class AuthenticatedDependencyContainer {
             connectionResource: tower.connectionStateResource,
             localSettings: localSettings,
             viewModel: makeAppBootstrappingPopulateViewModel(coordinator: coordinator),
-            featureFlagsRepository: tower.featureFlags,
+            featureFlagProvider: tower.featureFlags,
             entitlementsManager: tower.entitlementsManager
         )
     }
@@ -250,17 +256,26 @@ final class AuthenticatedDependencyContainer {
             remoteAddressProvider: self.tower.addressManager,
             connectionStateResource: tower.connectionStateResource
         )
-        let localRootShareStarter = LocalRootSharesBootstrapStarter(storage: tower.storage)
         let remoteRootShareStarter = RemoteSharesBootstrapStarter(
-            listShares: tower.client.listShares,
+            listShares: { [tower] in try await tower.client.listShares(showAll: .disabled) },
             bootstrapRoot: tower.client.bootstrapRoot,
             featureFlagsController: featureFlagsController,
             storage: tower.storage,
-            connectionStateResource: tower.connectionStateResource
+            connectionStateResource: tower.connectionStateResource,
+            volumeLockController: volumeLockController
         )
         let volumeCreator = VolumeCreator(sessionVault: tower.sessionVault, storage: tower.storage, client: tower.client)
         let creatingRootShareStarter = CreatingMainShareStarter(volumeCreator: volumeCreator, remoteRootsBootstrapper: remoteRootShareStarter)
-        let rootShareStarter = RootSharesBootstrapStarter(localStore: localRootShareStarter, remote: remoteRootShareStarter, creating: creatingRootShareStarter)
+        let localShareBootstrapStarter = LocalRootSharesBootstrapStarter(
+            storage: tower.storage,
+            connectionStateResource: tower.connectionStateResource
+        )
+        let rootShareStarter = RootSharesBootstrapStarter(
+            localStore: localShareBootstrapStarter,
+            remote: remoteRootShareStarter,
+            creating: creatingRootShareStarter,
+            connectionStateResource: tower.connectionStateResource
+        )
         let eventsStarter = EventsBootstrapStarter(eventsStarter: tower, mainVolumeIdDataSource: MainVolumeIdDataSource(storage: tower.storage, context: tower.storage.backgroundContext), eventsStorageManager: tower.eventStorageManager, eventsManagedObjectContext: tower.eventStorageManager.makeNewBackgroundContext(), eventSerializer: ClientEventSerializer())
         let checklistBootstrapper = DriveChecklistBootstrapper(
             repository: StorageBonusPromoFactory().makeStoragePromoBonusStatusRepository(tower: tower),
@@ -319,7 +334,9 @@ final class AuthenticatedDependencyContainer {
             duplicatePhotoListingBootstrapper: duplicatePhotoListingBootstrapper,
             bootstrapStateController: bootstrapStateController,
             sdkRelatedInfrastructureBootstrapper: sdkRelatedInfrastructureBootstrapper,
-            filePathMigrationBootstrapStarter: FilePathMigrationBootstrapStarter()
+            filePathMigrationBootstrapStarter: FilePathMigrationBootstrapStarter(),
+            volumeLockController: volumeLockController,
+            connectionStateResource: tower.connectionStateResource
         )
     }
 
@@ -376,7 +393,7 @@ final class AuthenticatedDependencyContainer {
             }
         )
     }
-
+    
     func makeSubscriptionsContainer() -> SubscriptionsContainer {
         let dependencies = SubscriptionsContainer.Dependencies(
             tower: tower,
@@ -385,6 +402,21 @@ final class AuthenticatedDependencyContainer {
             featureFlagsController: featureFlagsController
         )
         return SubscriptionsContainer(dependencies: dependencies)
+    }
+    
+    @MainActor
+    func makeUpsellCoordinator() -> UpsellCoordinator {
+        let upsellContainer = UpsellContainer(
+            dependencies: UpsellContainer.Dependencies(
+                tower: tower,
+                featureFlagsController: featureFlagsController,
+                userInfoController: UserInfoControllerFactory().makeController(sessionVault: tower.sessionVault)
+            )
+        )
+        return UpsellCoordinator(
+            container: upsellContainer,
+            subscriptionsContainer: makeSubscriptionsContainer()
+        )
     }
 }
 

@@ -18,23 +18,31 @@
 import Foundation
 
 public extension ISO8601DateFormatter {
-    // Default instance for default `formatOptions`
-    // Should return `UTC time in ISO 8601 format` (used for xAttr for example)
-    static let `default`: ISO8601DateFormatter = {
+    // Plain formatter with default `formatOptions`: UTC internet date-time without fractional seconds.
+    private static let `default`: ISO8601DateFormatter = {
         return ISO8601DateFormatter()
     }()
-    
-    func date(_ string: String?) -> Date? {
+
+    // Fallback for ISO8601 strings with fractional seconds (e.g. from Windows/.NET clients),
+    // which the default `.withInternetDateTime` options reject. Sub-millisecond digits are truncated.
+    private static let fractionalSecondsFallback: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    // Static so callers don't get the cascade behaviour disguised as a method on a specific instance.
+    static func date(_ string: String?) -> Date? {
         guard let string else {
             return nil
         }
-        return date(from: string)
+        return `default`.date(from: string) ?? fractionalSecondsFallback.date(from: string)
     }
 
-    func string(_ date: Date?) -> String? {
+    static func string(_ date: Date?) -> String? {
         guard let date else {
             return nil
         }
-        return string(from: date)
+        return `default`.string(from: date)
     }
 }

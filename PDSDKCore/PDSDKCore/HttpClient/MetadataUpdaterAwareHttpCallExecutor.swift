@@ -33,7 +33,7 @@ public protocol MetadataUpdaterAwareHttpCallExecutor {
         metadataUpdater: MetadataUpdaterProtocol,
         retryConfiguration: HttpClientResilience.Configuration,
         rateLimitGate: RateLimitGate
-    ) async -> Result<HttpClientResponse, NSError>
+    ) async -> Result<HttpClientResponse, Error>
 
     /// Raw request (takes whole url) - should be storage request
     func requestUploadToStorage(
@@ -43,7 +43,7 @@ public protocol MetadataUpdaterAwareHttpCallExecutor {
         headers: [(String, [String])],
         retryConfiguration: HttpClientResilience.Configuration,
         rateLimitGate: RateLimitGate
-    ) async -> Result<HttpClientResponse, NSError>
+    ) async -> Result<HttpClientResponse, Error>
 
     func requestDownloadFromStorage(
         method: String,
@@ -53,7 +53,7 @@ public protocol MetadataUpdaterAwareHttpCallExecutor {
         retryConfiguration: HttpClientResilience.Configuration,
         rateLimitGate: RateLimitGate,
         downloadStreamCreator: @Sendable @escaping (URLSession.AsyncBytes) -> AnyAsyncSequence<UInt8>
-    ) async -> Result<HttpClientStream, NSError>
+    ) async -> Result<HttpClientStream, Error>
 }
 
 /// Family identifiers used by this layer when feeding the shared 429 gate.
@@ -91,7 +91,7 @@ extension PMAPIService: MetadataUpdaterAwareHttpCallExecutor {
         metadataUpdater: MetadataUpdaterProtocol,
         retryConfiguration: HttpClientResilience.Configuration,
         rateLimitGate: RateLimitGate
-    ) async -> Result<HttpClientResponse, NSError> {
+    ) async -> Result<HttpClientResponse, Error> {
         Log.debug("sdk request (drive): \(relativePath), headers: \(headers), content: \(String(data: content, encoding: .utf8) ?? "\(content.count) bytes")", domain: .sdk)
 
         // Same `(method, path) → family` mapping PDClient endpoints use, so a 429
@@ -105,7 +105,7 @@ extension PMAPIService: MetadataUpdaterAwareHttpCallExecutor {
             refreshCredentials: performRequestToRefreshCredentials()
         ) { [weak self] previousError in
             guard let self else {
-                let error = (previousError ?? CocoaError(.userCancelled)) as NSError
+                let error = (previousError ?? CocoaError(.userCancelled))
                 return .doNotRetry(.failure(error))
             }
             let result = await self.executeDriveAPICall(
@@ -122,7 +122,7 @@ extension PMAPIService: MetadataUpdaterAwareHttpCallExecutor {
         headers: [(String, [String])],
         retryConfiguration: HttpClientResilience.Configuration,
         rateLimitGate: RateLimitGate
-    ) async -> Result<HttpClientResponse, NSError> {
+    ) async -> Result<HttpClientResponse, Error> {
         Log.debug("upload request: \(url), headers: \(headers)", domain: .sdk)
 
         let uploader = SDKURLSessionStreamingUploader()
@@ -134,7 +134,7 @@ extension PMAPIService: MetadataUpdaterAwareHttpCallExecutor {
             refreshCredentials: performRequestToRefreshCredentials()
         ) { [weak self] previousError in
             guard let self else {
-                let error = (previousError ?? CocoaError(.userCancelled)) as NSError
+                let error = (previousError ?? CocoaError(.userCancelled))
                 return .doNotRetry(.failure(error))
             }
             return await executeUpload(
@@ -157,7 +157,7 @@ extension PMAPIService: MetadataUpdaterAwareHttpCallExecutor {
         retryConfiguration: HttpClientResilience.Configuration,
         rateLimitGate: RateLimitGate,
         downloadStreamCreator: @Sendable @escaping (URLSession.AsyncBytes) -> AnyAsyncSequence<UInt8>
-    ) async -> Result<HttpClientStream, NSError> {
+    ) async -> Result<HttpClientStream, Error> {
         Log.debug("download request: \(url), headers: \(headers), content: \(String(data: content, encoding: .utf8) ?? "\(content.count) bytes")", domain: .sdk)
 
         let downloader = SDKURLSessionStreamingDownloader(downloadStreamCreator: downloadStreamCreator)
@@ -169,7 +169,7 @@ extension PMAPIService: MetadataUpdaterAwareHttpCallExecutor {
             refreshCredentials: performRequestToRefreshCredentials()
         ) { [weak self] previousError in
             guard let self else {
-                let error = (previousError ?? CocoaError(.userCancelled)) as NSError
+                let error = (previousError ?? CocoaError(.userCancelled))
                 return .doNotRetry(.failure(error))
             }
 
@@ -203,10 +203,10 @@ extension PMAPIService: MetadataUpdaterAwareHttpCallExecutor {
         content: Data,
         headers requestHeaders: [(String, [String])],
         metadataUpdater: MetadataUpdaterProtocol
-    ) async -> Result<HttpClientResponse, NSError> {
+    ) async -> Result<HttpClientResponse, Error> {
         // Check if the task was cancelled before starting the request
         if Task.isCancelled {
-            return .failure(URLError(.cancelled) as NSError)
+            return .failure(URLError(.cancelled))
         }
         var dataTask: URLSessionDataTask?
         return await withTaskCancellationHandler {
@@ -266,11 +266,11 @@ extension PMAPIService: MetadataUpdaterAwareHttpCallExecutor {
                                     continuation.resume(returning: response)
                                 }
                             } catch {
-                                continuation.resume(returning: .failure(error as NSError))
+                                continuation.resume(returning: .failure(error))
                             }
                         })
                 } catch {
-                    continuation.resume(returning: .failure(error as NSError))
+                    continuation.resume(returning: .failure(error))
                 }
             }
         } onCancel: {
@@ -286,7 +286,7 @@ extension PMAPIService: MetadataUpdaterAwareHttpCallExecutor {
         _ httpResponse: HTTPURLResponse,
         _ jsonDictionary: JSONDictionary,
         _ metadataUpdater: MetadataUpdaterProtocol
-    ) throws -> Result<HttpClientResponse, NSError> {
+    ) throws -> Result<HttpClientResponse, Error> {
         let responseHeaders = extractHeaders(from: httpResponse)
         let data = try JSONSerialization.data(withJSONObject: jsonDictionary, options: [])
         let statusCode = httpResponse.statusCode
@@ -325,7 +325,7 @@ extension PMAPIService: MetadataUpdaterAwareHttpCallExecutor {
         // if the stream used for HTTP request body was already read from, we don't retry
         guard content.input.streamStatus == .notOpen else {
             Log.debug("HttpClientResilience: not retrying upload due to already written stream", domain: .networking)
-            let error = (previousError ?? CocoaError(.userCancelled)) as NSError
+            let error = (previousError ?? CocoaError(.userCancelled))
             return .retryIfNeeded(.failure(error))
         }
 
@@ -336,7 +336,7 @@ extension PMAPIService: MetadataUpdaterAwareHttpCallExecutor {
             )
             return .retryIfNeeded(result)
         } catch {
-            return .retryIfNeeded(.failure(error as NSError))
+            return .retryIfNeeded(.failure(error))
         }
     }
     
@@ -347,10 +347,10 @@ extension PMAPIService: MetadataUpdaterAwareHttpCallExecutor {
         content: Data,
         headers: [(String, [String])],
         retryConfiguration: HttpClientResilience.Configuration
-    ) async -> Result<HttpClientStream, NSError> {
+    ) async -> Result<HttpClientStream, Error> {
         // Check if the task was cancelled before starting the upload
         if Task.isCancelled {
-            return .failure(URLError(.cancelled) as NSError)
+            return .failure(URLError(.cancelled))
         }
         
         let updatedHeaders = await addHeadersToRawStorageCall(headers: headers)
